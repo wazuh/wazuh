@@ -216,7 +216,7 @@ TEST_F(UnixStreamTest, BindAndClose)
         m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
     server.close();
-    m_loop->run();
+    m_loop->run<uvw::Loop::Mode::ONCE>();
 }
 
 TEST_F(UnixStreamTest, EchoMessage)

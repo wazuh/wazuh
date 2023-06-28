@@ -93,9 +93,9 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
 
     // Server in case of close
     m_handle->on<uvw::CloseEvent>(
-        [this](const uvw::CloseEvent&, uvw::PipeHandle& handle)
+        [address = m_address](const uvw::CloseEvent&, uvw::PipeHandle& handle)
         {
-            LOG_INFO("[Endpoint: {}] Closed", m_address);
+            LOG_INFO("[Endpoint: {}] Closed", address);
         });
 
     // Server in case of connection
@@ -153,7 +153,8 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
     auto client = m_loop->resource<uvw::PipeHandle>();
 
     // Create a new timer for the client timeout
-    std::shared_ptr<uvw::TimerHandle> timer = createTimer(client);
+    auto weakClient = std::weak_ptr<uvw::PipeHandle>(client);
+    auto timer = createTimer(weakClient);
 
     // Configure the close events for the client
     configureCloseClient(client, timer);
@@ -161,7 +162,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
     // Create 1 protocol handler per client
     auto protocolHandler = m_factory->create();
     client->on<uvw::DataEvent>(
-        [this, timer, client, protocolHandler](const uvw::DataEvent& data, uvw::PipeHandle& clienRef)
+        [this, weakClient, timer, protocolHandler](const uvw::DataEvent& data, uvw::PipeHandle& clientRef)
         {
             // Avoid use _clientRef, it's a reference to the client, but we want to use the shared_ptr
             // to avoid the client release the memory before the workers finish the processing
@@ -183,7 +184,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             {
                 LOG_WARNING("[Endpoint: {}] Error processing data, close conexion: {}", m_address, e.what());
                 timer->close();
-                client->close();
+                clientRef.close();
                 return;
             }
 
@@ -196,7 +197,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             m_metric.m_totalRequest->addValue(result->size());
             m_metric.m_requestPerSecond->addValue(result->size());
 
-            processMessages(client, protocolHandler, std::move(result.value()));
+            processMessages(weakClient, protocolHandler, std::move(result.value()));
         });
 
     // Accept the connection
@@ -204,10 +205,11 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
     return client;
 }
 
-void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
+void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
                                  std::shared_ptr<ProtocolHandler> protocolHandler,
                                  std::vector<std::string>&& messages)
 {
+
     for (auto& message : messages)
     {
         // No queue worker, process the message in the main thread
@@ -225,7 +227,12 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
                 *response = protocolHandler->getErrorResponse();
             }
             auto [buffer, size] = protocolHandler->streamToSend(std::move(response));
-
+            auto client = wClient.lock();
+            if (!client)
+            {
+                LOG_WARNING("[Endpoint: {}] endpoint: Client already closed", m_address);
+                return;
+            }
             client->write(std::move(buffer), size);
 
             auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
@@ -238,6 +245,12 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
             auto responseTimer = base::chrono::Timer();
             LOG_DEBUG("[Endpoint: {}] endpoint: No queue worker available, disarting...", m_address);
             auto [buffer, size] = protocolHandler->getBusyResponse();
+            auto client = wClient.lock();
+            if (!client)
+            {
+                LOG_WARNING("[Endpoint: {}] endpoint: Client already closed", m_address);
+                return;
+            }
             client->write(std::move(buffer), size);
 
             auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
@@ -246,11 +259,11 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
             continue;
         }
 
-        createAndEnqueueTask(client, protocolHandler, std::move(message));
+        createAndEnqueueTask(wClient, protocolHandler, std::move(message));
     }
 }
 
-void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
+void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
                                       std::shared_ptr<ProtocolHandler> protocolHandler,
                                       std::string&& message)
 {
@@ -284,12 +297,18 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
 
     // On finish
     work->on<uvw::WorkEvent>(
-        [this, client, response, protocolHandler, responseTimer](const uvw::WorkEvent&, uvw::WorkReq& work)
+        [this, wClient, response, protocolHandler, responseTimer](const uvw::WorkEvent&, uvw::WorkReq& work)
         {
             --m_currentTaskQueueSize;
             m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+
             // Check if client is closed
-            if (client->closing())
+            auto client = wClient.lock();
+            if (!client)
+            {
+                LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response", m_address);
+                return;
+            } else  if (client->closing())
             {
                 LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", m_address);
                 return;
@@ -306,31 +325,36 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 }
 
-std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::shared_ptr<uvw::PipeHandle> client)
+std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient)
 {
     auto timer = m_loop->resource<uvw::TimerHandle>();
 
     // Timeout, close the client
     timer->on<uvw::TimerEvent>(
-        [client, timer, this](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+        [wClient, address = m_address](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
         {
-            LOG_DEBUG("[Endpoint: {}] Client timeout, close connection.", m_address);
-            if (!client->closing())
+            LOG_DEBUG("[Endpoint: {}] Client timeout, close connection.", address);
+            auto client = wClient.lock();
+            if (wClient.expired())
+            {
+                LOG_DEBUG("[Endpoint: {}] Client already closed", address);
+            }
+            else if (client && !client->closing())
             {
                 client->close();
             }
-            timer->close();
+            timerRef.close();
         });
 
     timer->on<uvw::ErrorEvent>(
-        [timer, this](const uvw::ErrorEvent& error, uvw::TimerHandle& timerRef)
+        [address = m_address](const uvw::ErrorEvent& error, uvw::TimerHandle& timerRef)
         {
-            LOG_ERROR("[Endpoint: {}] Timer error: {}", m_address, error.what()); // Never happens, just in case
-            timer->close();
+            LOG_ERROR("[Endpoint: {}] Timer error: {}", address, error.what());
+            timerRef.close();
         });
 
-    timer->on<uvw::CloseEvent>([this](const uvw::CloseEvent&, uvw::TimerHandle& timer)
-                               { LOG_DEBUG("[Endpoint: {}] Timer closed", m_address); });
+    timer->on<uvw::CloseEvent>([address = m_address](const uvw::CloseEvent&, uvw::TimerHandle&)
+                               { LOG_DEBUG("[Endpoint: {}] Timer closed", address); });
 
     return timer;
 }
@@ -338,50 +362,50 @@ std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::shared_ptr<uvw::P
 void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, std::shared_ptr<uvw::TimerHandle> timer)
 {
 
-    auto gracefullEnd = [timer, client, this]()
+    auto gracefullEnd = [timer, metric = m_metric](uvw::PipeHandle& client)
     {
         if (!timer->closing())
         {
             timer->stop();
             timer->close();
         }
-        if (!client->closing())
+        if (!client.closing())
         {
-            client->close();
-            m_metric.m_connectedClients->addValue(-1L);
+            client.close();
+            metric.m_connectedClients->addValue(-1L);
         }
     };
 
     // On error
     client->on<uvw::ErrorEvent>(
-        [gracefullEnd, this](const uvw::ErrorEvent& error, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address](const uvw::ErrorEvent& error, uvw::PipeHandle& client)
         {
-            LOG_WARNING("[Endpoint: {}] Client error: {}", m_address, error.what());
-            gracefullEnd();
+            LOG_WARNING("[Endpoint: {}] Client error: {}", address, error.what());
+            gracefullEnd(client);
         });
 
     // On close
     client->on<uvw::CloseEvent>(
-        [gracefullEnd, this](const uvw::CloseEvent&, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address](const uvw::CloseEvent&, uvw::PipeHandle& client)
         {
-            LOG_DEBUG("[Endpoint: {}] Client closed connection gracefully", m_address);
-            gracefullEnd();
+            LOG_DEBUG("[Endpoint: {}] Client closed connection gracefully", address);
+            gracefullEnd(client);
         });
 
     // On Shutdown
     client->on<uvw::ShutdownEvent>(
-        [gracefullEnd, this](const uvw::ShutdownEvent&, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address](const uvw::ShutdownEvent&, uvw::PipeHandle& client)
         {
-            LOG_DEBUG("[Endpoint: {}] Client shutdown connection", m_address);
-            gracefullEnd();
+            LOG_DEBUG("[Endpoint: {}] Client shutdown connection", address);
+            gracefullEnd(client);
         });
 
     // End event
     client->on<uvw::EndEvent>(
-        [gracefullEnd, this](const uvw::EndEvent&, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address](const uvw::EndEvent&, uvw::PipeHandle& client)
         {
-            LOG_DEBUG("[Endpoint: {}] Client disconnected gracefully", m_address);
-            gracefullEnd();
+            LOG_DEBUG("[Endpoint: {}] Client disconnected gracefully", address);
+            gracefullEnd(client);
         });
 }
 
