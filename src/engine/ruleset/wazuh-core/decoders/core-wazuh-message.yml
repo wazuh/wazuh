@@ -41,5 +41,6 @@ normalize:
   - check:
       - agent.id: +exists
     map:
+      - agent.type: wazuh-agent
       - host.id: $agent.id
       - host: +kvdb_get/agents_host_data/$agent.id
