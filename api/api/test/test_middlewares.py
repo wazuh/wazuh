@@ -111,7 +111,7 @@ async def test_middlewares_prevent_bruteforce_attack(request_info, stats):
     (-80, 300, 'general_current_time', 'general_request_counter', {}),
     (0, 0, 'events_current_time', 'events_request_counter', {
         'code': 6005,
-        'extra_message': 'For /events endpoint the limit is set to 0 requests.'
+        'extra_message': 'For POST /events endpoint the limit is set to 0 requests.'
     }),
     (0, 0, 'general_current_time', 'general_request_counter', {'code': 6001}),
 ])
