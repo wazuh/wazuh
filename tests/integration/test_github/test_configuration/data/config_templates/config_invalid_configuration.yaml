@@ -20,7 +20,7 @@
         - api_parameters:
             elements:
               - event_type:
-                value: 'EVENT_TYPE'
+                  value: 'EVENT_TYPE'
 
     - section: sca
       elements:
