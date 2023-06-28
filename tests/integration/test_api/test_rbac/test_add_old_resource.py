@@ -77,22 +77,26 @@ daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 def test_add_old_resource(test_configuration, test_metadata, truncate_monitored_files, daemons_handler,
                           wait_for_api_start, set_security_resources):
     """
-    description: Check if the security relationships of a previous user are maintained in the system after adding a
+    description: Check if the security relationships of a previous user are removed from the system after adding a
                  new user with the same ID.
 
     wazuh_min_version: 4.2.0
 
     test_phases:
         - setup:
+            - Truncate monitored files
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
+            - Configure the security resources using the API
         - test:
             - Check if the user can be deleted
             - Check if the deleted user can be created with the same ID as before
             - Get relationships
             - Check if relationships between resources were removed
         - teardown:
+            - Truncate monitored files
             - Stop daemons defined in `daemons_handler_configuration` in this module
+            - Clean added resources
 
     tier: 0
 

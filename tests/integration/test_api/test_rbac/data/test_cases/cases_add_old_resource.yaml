@@ -1,6 +1,6 @@
 - name: ADD_OLD_USER
   description: |
-    Check if the user's security relationships still stored after adding a user with the same ID as a previous one.
+    Check if the user's security relationships are removed after adding a user with the same ID as a previous one.
   configuration_parameters:
   metadata:
     resources:
@@ -39,7 +39,7 @@
 
 - name: ADD_OLD_ROLE
   description: |
-    Check if the user's security relationships still stored after adding a role with the same ID as a previous one.
+    Check if the user's security relationships are removed after adding a role with the same ID as a previous one.
   configuration_parameters:
   metadata:
     resources:
@@ -80,7 +80,7 @@
 
 - name: ADD_OLD_POLICY
   description: |
-    Check if the policy's security relationships still stored after adding a policy with the same ID as a previous one.
+    Check if the policy's security relationships are removed after adding a policy with the same ID as a previous one.
   configuration_parameters:
   metadata:
     resources:
@@ -119,7 +119,7 @@
 
 - name: ADD_OLD_RULE
   description: |
-    Check if the rule's security relationships still stored after adding a rule with the same ID as a previous one.
+    Check if the rule's security relationships are removed after adding a rule with the same ID as a previous one.
   configuration_parameters:
   metadata:
     resources:
