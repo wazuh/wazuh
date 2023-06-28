@@ -1,0 +1,35 @@
+- name: active_response_is_being_triggered
+  description: Verify Active Response works with overwritten rules
+  configuration_parameters:
+    COMMAND: custom-ar
+    LOCATION: local
+    RULES: '100001'
+  metadata:
+    log_sample: 'Dec 25 20:45:02 MyHost example[12345]: TEST 2'
+
+- name: active_response_is_being_triggered_with_an_overwritten_rule
+  description: Verify Active Response works with overwritten rules
+  configuration_parameters:
+    COMMAND: custom-ar
+    LOCATION: local
+    RULES: '100002'
+  metadata:
+    log_sample: 'Dec 25 20:45:02 MyHost example[12345]: TEST 4'
+
+- name: active_response_is_being_triggered_with_depth_rules
+  description: Verify Active Response works with overwritten rules
+  configuration_parameters:
+    COMMAND: custom-ar
+    LOCATION: local
+    RULES: '100004'
+  metadata:
+    log_sample: 'Dec 25 20:45:02 MyHost example[12345]: TEST 2 TEST 5 TEST 6'
+
+- name: active_response_is_being_triggered_with_overwritten_depth_rules
+  description: active_response_is_being_triggered_with_depth_rules
+  configuration_parameters:
+    COMMAND: custom-ar
+    LOCATION: local
+    RULES: '100005'
+  metadata:
+    log_sample: 'Dec 25 20:45:02 MyHost example[12345]: TEST 4 TEST 7'

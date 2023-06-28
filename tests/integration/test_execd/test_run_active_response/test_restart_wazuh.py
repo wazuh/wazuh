@@ -63,10 +63,9 @@ from . import TEST_CASES_PATH
 # Set pytest marks.
 pytestmark = [pytest.mark.agent, pytest.mark.tier(level=1)]
 
-# Configuration and cases data.
+# Path to cases data.
 cases_path = Path(TEST_CASES_PATH, 'cases_execd_restart.yaml')
-
-# Test configurations.
+# Test metadata and ids.
 _, test_metadata, cases_ids = get_test_cases_data(cases_path)
 
 # Test internal options.
@@ -74,13 +73,13 @@ local_internal_options = EXECD_DEBUG_CONFIG
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 # Test Active Response configuration
-active_response_configuration = 'restart-wazuh0 - restart-wazuh - 0\nrestart-wazuh0 - restart-wazuh.exe - 0'
+ar_conf = 'restart-wazuh0 - restart-wazuh - 0'
 
 
 # Test Function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=cases_ids)
 def test_execd_restart(test_metadata, configure_local_internal_options, truncate_monitored_files,
-                       active_response_configuration, daemons_handler, send_execd_message):
+                       configure_ar_conf, daemons_handler, send_execd_message):
     '''
     description: Check if 'restart-wazuh' command of 'active response' is executed correctly.
                  For this purpose, a simulated agent is used, to which the active response is sent.
@@ -104,7 +103,7 @@ def test_execd_restart(test_metadata, configure_local_internal_options, truncate
         - truncate_monitored_files:
             type: fixture
             brief: Validate the Wazuh version.
-        - active_response_configuration:
+        - ar_conf:
             type: fixture
             brief: Set the Active Response configuration.
         - daemons_handler:

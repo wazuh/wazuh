@@ -233,6 +233,9 @@ def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
 
 # - - - - - - - - - - - - - - - - - - - - - - - End of Implemenation functions - - - - - - - - - - - - - - - - - - - - - - -
 
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - Pytest Fixtures - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
 @pytest.fixture(scope='session')
 def load_wazuh_basic_configuration():
     """Load a new basic configuration to the manager"""
