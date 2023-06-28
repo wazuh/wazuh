@@ -25,20 +25,13 @@ void KVDBManager::initialize()
 {
     initializeOptions();
     initializeMainDB();
-    m_isShuttingDown = false;
     m_isInitialized = true;
 }
 
 void KVDBManager::finalize()
 {
-    m_isShuttingDown = true;
     finalizeMainDB();
     m_isInitialized = false;
-}
-
-bool KVDBManager::managerShuttingDown() const
-{
-    return m_isShuttingDown;
 }
 
 std::variant<rocksdb::ColumnFamilyHandle*, base::Error> KVDBManager::createColumnFamily(const std::string& name)
@@ -146,11 +139,6 @@ std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHan
     auto kvdbHandler = std::make_shared<KVDBHandler>(m_pRocksDB, cfHandle, m_kvdbHandlerCollection, dbName, scopeName);
 
     return kvdbHandler;
-}
-
-void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
-{
-    m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName);
 }
 
 std::vector<std::string> KVDBManager::listDBs(const bool loaded)

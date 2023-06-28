@@ -87,18 +87,6 @@ public:
     std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
-     * @copydoc IKVDBManager::removeKVDBHandler
-     *
-     */
-    void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
-
-    /**
-     * @copydoc IKVDBManager::managerShuttingDown
-     *
-     */
-    bool managerShuttingDown() const override;
-
-    /**
      * @copydoc IKVDBManager::listDBs
      *
      */
@@ -198,20 +186,12 @@ private:
      */
     std::mutex m_mutexScopes;
 
-    // TODO: Check lock of functions where these states are changed/checked. Maybe use mutex to increase guard scope.
+    // TODO: Check lock of functions where these states are changed/checked.
     /**
      * @brief Flag bool variable to indicate if the Manager is initialized.
      *
      */
-
     std::atomic<bool> m_isInitialized {false};
-
-    // TODO: Check lock of functions where these states are changed/checked. Maybe use mutex to increase guard scope.
-    /**
-     * @brief Flag bool variable to indicate if the Manager is shutting down.
-     *
-     */
-    std::atomic<bool> m_isShuttingDown {false};
 };
 
 } // namespace kvdbManager

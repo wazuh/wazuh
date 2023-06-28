@@ -1,9 +1,17 @@
 #ifndef _KVDB_HANDLER_H
 #define _KVDB_HANDLER_H
 
-#include "rocksdb/db.h"
-
 #include <kvdb/iKVDBHandler.hpp>
+
+/**
+ * @brief Forward Declaration of RocksDB types used here
+ *
+ */
+namespace rocksdb
+{
+class DB;
+class ColumnFamilyHandle;
+};
 
 namespace kvdbManager
 {
@@ -12,10 +20,6 @@ class IKVDBHandlerCollection;
 
 /**
  * @brief This is the concrete implementation of a KVDB Handler.
- * Space -> Refers to an abstract concept in a NoSQL data store.
- * https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store)
- * Foreseeing possible changes where RocksDB and CF mapping
- * is not 1:n and also integrating prefix access (N/A yet).
  */
 class KVDBHandler
     : public IKVDBHandler
@@ -97,8 +101,22 @@ protected:
      */
     rocksdb::DB* m_pRocksDB;
 
+    /**
+     * @brief Name of the Database. Kept reference to remove handler from collection.
+     *
+     */
     std::string m_dbName;
+
+    /**
+     * @brief Name of the Scope. Kept reference to remove handler from collection.
+     *
+     */
     std::string m_scopeName;
+
+    /**
+     * @brief Collection that synchronize handlers in Manager.
+     *
+     */
     std::shared_ptr<IKVDBHandlerCollection> m_spCollection;
 };
 
