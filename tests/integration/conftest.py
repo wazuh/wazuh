@@ -180,7 +180,7 @@ def truncate_monitored_files() -> None:
 
 # - - - - - - - - - - - - - - - - - - - - - - -Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - - -
 @pytest.fixture()
-def restart_wazuh(daemon: str=None) -> None:
+def restart_wazuh(daemon: str = None) -> None:
     """Restart all Wazuh daemons"""
     services.control_service("restart", daemon=daemon)
     yield
@@ -188,7 +188,7 @@ def restart_wazuh(daemon: str=None) -> None:
 
 
 @pytest.fixture(scope='module')
-def restart_wazuh_daemon_after_finishing_module(daemon: str=None) -> None:
+def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
     """
     Restart a Wazuh daemon
     """

@@ -7,7 +7,7 @@ import shutil
 import pytest
 
 from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH
-from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.users import WAZUH_UNIX_GROUP, WAZUH_UNIX_USER
 from wazuh_testing.modules.analysisd import patterns
 from wazuh_testing.tools import file_monitor
@@ -36,5 +36,5 @@ def prepare_custom_rules_file(request, metadata):
 @pytest.fixture(scope='module')
 def wait_for_analysisd_startup(request):
     """Wait until analysisd has begun and alerts.json is created."""
-    log_monitor = file_monitor.FileMonitor(OSSEC_LOG_PATH)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(callback=callbacks.generate_callback(patterns.ANALYSISD_STARTED))
