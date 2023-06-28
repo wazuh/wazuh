@@ -278,9 +278,6 @@ class WazuhDBQueryGroup(WazuhDBQuery):
                               rbac_negate=rbac_negate, distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
-    def _add_select_to_query(self):
-        pass
-
     def _add_sort_to_query(self):
         """Consider the option to sort by count."""
         self.fields['count'] = 'count(id_group)'
