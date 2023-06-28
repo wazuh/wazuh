@@ -100,10 +100,10 @@ None
 
 | Name | Description |
 |---|---|
-| decoder/aws-s3/0 | Decoder for Wazuh integration of Amazon S3 server access logs |
-| decoder/aws-elb/0 | Decoder for wazuh integration of Amazon ELB (ALB, CLB, NLB) logs |
-| decoder/aws-json/0 | Partial JSON decoder for AWS events |
-| decoder/aws-cloudtrail/0 | Decoder for wazuh integration of AWS CloudTrail Logs |
+| decoder/aws-s3/0 | Decoder for Wazuh wodle of AWS S3 server access logs |
+| decoder/aws-elb/0 | Decoder for Wazuh wodle of AWS ELB (ALB, CLB, NLB) logs |
+| decoder/aws-json/0 | Partial JSON decoder for AWS wodle events |
+| decoder/aws-cloudtrail/0 | Decoder for Wazuh wodle of AWS CloudTrail Logs |
 ## Rules
 
 | Name | Description |
@@ -122,5 +122,3 @@ None
 |---|---|---|
 | 0.0.2-dev | Created integration for Amazon Wodle | [#17648](https://github.com/wazuh/wazuh/pull/17648) |
 | 0.0.1-dev | Created base integration for AWS | [#16766](#) |
-| 0.0.1-dev | Created integration for AWS CloudTrail | [#16766](#) |
-| 0.0.1-dev | Created integration for Amazon S3 | [#16766](#) |

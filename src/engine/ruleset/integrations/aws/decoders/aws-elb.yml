@@ -2,8 +2,8 @@
 name: decoder/aws-elb/0
 
 metadata:
-  title: Wazuh integration of AWS ELB Decoder
-  description: Decoder for wazuh integration of Amazon ELB (ALB, CLB, NLB) logs
+  title: Wazuh AWS wodle integration for AWS alb, clb and nlb bucket types
+  description: Decoder for Wazuh wodle of AWS ELB (ALB, CLB, NLB) logs
   module: AWS
   compatibility: >
     This decoder has been tested on Wazuh version 4.4
@@ -19,7 +19,7 @@ metadata:
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
-      date: 2023/01/20
+      date: 2023/06/20
 
 sources:
   - decoder/aws-json/0
@@ -31,8 +31,11 @@ check: +string_equal/~json.aws.source/alb OR +string_equal/~json.aws.source/elb 
 
 normalize:
   - logpar:
-      - ~json.aws.request: <http.request.method> <url.original> HTTP/<http.version>
       - ~json.aws.ssl_protocol: <tls.version>v<tls.version_protocol>
+  - logpar:
+      - ~json.aws.request: <http.request.method> <url.original> HTTP/<http.version>
+  - logpar:
+      - url.original: 'http://<source.ip>:<source.port>/'
 
   - map:
       - wazuh.decoders: +array_append/aws-elb
@@ -74,15 +77,12 @@ normalize:
       - log.file.path: $~json.aws.log_info.log_file
 
       # Temporary and custom fields
-      - ~json.temp_value_status_code: +parse_long/$~json.aws.target_status_code
+      - ~tmp.temp_value_status_code: +parse_long/$~json.aws.target_status_code
       - ~aws_elb.related_ports: $~json.aws.target_port_list
       - ~aws_elb.target_group_arn: $~json.aws.target_group_arn
       - ~aws_elb.classification: $~json.aws.classification
       - ~aws_elb.redirect_url: $~json.aws.redirect_url
       - ~aws_elb.bucket: $~json.aws.log_info.s3bucket
-
-    logpar:
-      - url.original: 'http://<source.ip>:<source.port>/'
 
   - check: +string_equal/~json.aws.type/http
     map:
@@ -93,19 +93,15 @@ normalize:
       - event.category: +array_append/network
 
   - check:
-      - ~json.temp_value_status_code: +int_less/400
+      - ~tmp.temp_value_status_code: +int_less/400
     map:
       - event.outcome: success
 
   - check:
-      - ~json.temp_value_status_code: +int_greater_or_equal/400
+      - ~tmp.temp_value_status_code: +int_greater_or_equal/400
     map:
       - event.outcome: failure
 
   - map:
       - ~json: +delete
-      - ~aws_elb: +delete
-      # ~aws_elb.related_ports: +delete
-      # ~aws_elb.classification: +delete
-      # ~aws_elb.redirect_url: +delete
-      # ~aws_elb.bucket: +delete
+      - ~tmp: +delete
