@@ -16,7 +16,7 @@ from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
 from wazuh_testing.logger import logger
-from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.tools import mocking, queue_monitor, socket_controller
 from wazuh_testing.utils import configuration, database, file, services
 
 
@@ -387,7 +387,7 @@ def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
 
 
 @pytest.fixture
-def prepare_test_files(request):
+def prepare_test_files(request: pytest.FixtureRequest) -> None:
     """Create the files/directories required by the test, and then delete them to clean up the environment.
 
     The test module must define a variable called `test_files` which is a list of files (defined as str or os.PathLike)

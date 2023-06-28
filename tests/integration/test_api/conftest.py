@@ -6,11 +6,9 @@ This program is free software; you can redistribute it and/or modify it under th
 import pytest
 
 from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.modules.api.callbacks import search_api_startup
 from wazuh_testing.modules.api.configuration import get_configuration, append_configuration, delete_configuration_file
 from wazuh_testing.constants.api import WAZUH_API_PORT, CONFIGURATION_TYPES
-from wazuh_testing.modules.api.patterns import API_STARTED_MSG
-from wazuh_testing.tools import file_monitor
-from wazuh_testing.utils.callbacks import generate_callback
 
 
 @pytest.fixture
@@ -63,13 +61,4 @@ def wait_for_api_start(test_configuration: dict) -> None:
             port = test_configuration['blocks'].get('port', WAZUH_API_PORT)
 
     file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if logs_format == 'json' else WAZUH_API_LOG_FILE_PATH
-    monitor_start_message = file_monitor.FileMonitor(file_to_monitor)
-    monitor_start_message.start(
-        callback=generate_callback(API_STARTED_MSG, {
-            'host': str(host),
-            'port': str(port)
-        })
-    )
-
-    if monitor_start_message.callback_result is None:
-        raise RuntimeError('The API was not started as expected.')
+    search_api_startup(file_to_monitor, host, port)
