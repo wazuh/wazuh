@@ -64,11 +64,15 @@ EngineServer::EngineServer(int threadPoolSize)
         {
             LOG_ERROR("Error: {} - {}", e.name(), e.what());
         });
+
 }
 
 EngineServer::~EngineServer()
 {
-    this->stop();
+    if (m_status == Status::RUNNING) { // The log should be initialized
+        this->stop();
+    }
+    m_loop->close();
 };
 
 void EngineServer::start()
@@ -81,12 +85,21 @@ void EngineServer::start()
 
 void EngineServer::stop()
 {
+
     LOG_INFO("Stopping the server");
-    m_loop->walk([](auto& handle) { handle.close(); });
+    LOG_DEBUG("Closing handlers");
+    m_loop->walk(
+        [](auto& handle)
+        {
+            if (!handle.closing())
+            {
+                handle.close();
+            }
+        });
+    LOG_DEBUG("Stopping loop");
     m_loop->stop();
-    // FIXME wait for workers to finish before closing the loop
-    // This throws segfault when closing the loop
-    this->m_loop->close();
+    LOG_DEBUG("Running loop once");
+    m_loop->run<uvw::Loop::Mode::ONCE>();
     LOG_INFO("Server closed");
 }
 
