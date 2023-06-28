@@ -53,7 +53,7 @@ stages:
 test_name: POST /events with invalid formats
 
 stages:
-  - name: POST /events with invalid event type
+  - name: Try to send an event with an invalid event type
     request:
       verify: false
       <<: *webhook_request
@@ -66,7 +66,7 @@ stages:
         detail: "{{'foo': 1}} is not of type 'string' - 'events.0'"
         title: Bad Request
 
-  - name: POST /events with invalid body
+  - name: Try to send events with an invalid body
     request:
       verify: false
       <<: *webhook_request
@@ -88,7 +88,7 @@ marks:
       - big_events_payload
 
 stages:
-  - name: POST /events with invalid size
+  - name: Try to send events with an invalid size
     request:
       verify: false
       <<: *webhook_request
@@ -110,7 +110,7 @@ marks:
       - large_event
 
 stages:
-  - name: POST /events with larger event (65536B)
+  - name: Try to send a too big event (65536B)
     request:
       verify: false
       <<: *webhook_request
@@ -132,7 +132,7 @@ stages:
                 - "{large_event}"
         message: No events were forwarded to analisysd
 
-  - name: POST /events with larger event and one that fits
+  - name: Send a too big event and one that fits
     request:
       verify: false
       <<: *webhook_request
@@ -158,7 +158,7 @@ stages:
 
 ---
 
-test_name: POST /events more than 30 times trigger the EPS limit
+test_name: Try to send more than 30 requests per minute
 
 stages:
   - name: Trigger EPS limit
