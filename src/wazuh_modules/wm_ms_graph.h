@@ -24,9 +24,16 @@
 
 #define WM_MS_GRAPH_DEFAULT_TIMEOUT 60L
 
-#define WM_MS_GRAPH_API_URL "https://graph.microsoft.com/%s/%s/%s?$filter=createdDateTime+gt+%s"
-#define WM_MS_GRAPH_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
-#define WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD "scope=https://graph.microsoft.com/.default&grant_type=client_credentials&client_id=%s&client_secret=%s"
+#define WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN "login.microsoftonline.com"
+#define WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN "graph.microsoft.com"
+#define WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN "login.microsoftonline.us"
+#define WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN "graph.mircosoft.us"
+#define WM_MS_GRAPH_DOD_API_LOGIN_FQDN "login.microsoftonline.us"
+#define WM_MS_GRAPH_DOD_API_QUERY_FQDN "dod-graph.microsoft.us"
+
+#define WM_MS_GRAPH_API_URL "https://%s/%s/%s/%s?$filter=createdDateTime+gt+%s"
+#define WM_MS_GRAPH_ACCESS_TOKEN_URL "https://%s/%s/oauth2/v2.0/token"
+#define WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD "scope=https://%s/.default&grant_type=client_credentials&client_id=%s&client_secret=%s"
 
 typedef struct wm_ms_graph_state_t {
 	time_t next_time;
@@ -36,6 +43,8 @@ typedef struct wm_ms_graph_auth {
 	char* client_id;
 	char* tenant_id;
 	char* secret_value;
+	char* login_fqdn;
+	char* query_fqdn;
 	char* access_token;
 	time_t token_expiration_time;
 } wm_ms_graph_auth;
