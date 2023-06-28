@@ -25,7 +25,7 @@ stages:
         message: All events were forwarded to analisysd
         error: 0
 
-  - name: POST /events with multiple elements
+  - name: Send multiple events in one request
     request:
       verify: false
       <<: *webhook_request
@@ -131,6 +131,7 @@ stages:
               id:
                 - "{large_event}"
         message: No events were forwarded to analisysd
+        error: 1
 
   - name: Send a too big event and one that fits
     request:
@@ -155,6 +156,7 @@ stages:
               id:
                 - "{large_event}"
         message: Some events were forwarded to analisysd
+        error: 2
 
 ---
 
