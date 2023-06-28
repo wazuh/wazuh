@@ -6,11 +6,3 @@ items:
   - version: 0.0.1-dev
     short: Created base integration for AWS
     pr: "[#16766](#)"
-
-  - version: 0.0.1-dev
-    short: Created integration for AWS CloudTrail
-    pr: "[#16766](#)"
-
-  - version: 0.0.1-dev
-    short: Created integration for Amazon S3
-    pr: "[#16766](#)"

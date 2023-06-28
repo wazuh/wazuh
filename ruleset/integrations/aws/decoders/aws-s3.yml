@@ -2,8 +2,8 @@
 name: decoder/aws-s3/0
 
 metadata:
-  title: Wazuh integration of AWS S3 Decoder
-  description: Decoder for Wazuh integration of Amazon S3 server access logs
+  title: Wazuh AWS wodle integration for server_access bucket type
+  description: Decoder for Wazuh wodle of AWS S3 server access logs
   module: AWS
   compatibility: >
     This decoder has been tested on Wazuh version 4.4
@@ -16,7 +16,7 @@ metadata:
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
-      date: 2022/01/20
+      date: 2022/06/20
 
 sources:
   - decoder/aws-json/0
@@ -60,7 +60,10 @@ normalize:
       - event.action: $~json.aws.operation
       - event.category: +array_append/web
       - error.code: $~json.aws.error_code
-      - event.duration: $~json.aws.total_time # TODO? ms - ECS transforms this field to nanoseconds
+      # from ms to nanoseconds
+      - event.duration: +parse_long/$~json.aws.total_time
+      # this can cause an overflown error, if so then it stores ms
+      - event.duration: +int_calculate/mul/1000000
       - event.id: $~json.aws.request_id
       - event.kind: event
       - event.type: +array_append/access
@@ -80,9 +83,3 @@ normalize:
 
   - map:
       - ~json: +delete
-      # - ~http_url_original : +delete
-      # - ~authentication_type : +delete
-      # - ~bucket: +delete
-      # - ~signature_version: +delete
-      # - ~turn_around_time: +delete
-      # - ~version_id : +delete
