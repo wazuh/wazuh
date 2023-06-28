@@ -25,6 +25,7 @@ static const char* XML_RESOURCE = "resource";
 static const char* XML_CLIENT_ID = "client_id";
 static const char* XML_TENANT_ID = "tenant_id";
 static const char* XML_SECRET_VALUE = "secret_value";
+static const char* XML_API_TYPE = "api_type";
 
 static const char* XML_RESOURCE_NAME = "name";
 static const char* XML_RESOURCE_RELATIONSHIP = "relationship";
@@ -161,6 +162,36 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
+				}
+				else if (!strcmp(children[j]->element, XML_API_TYPE)) {
+                    if (strlen(children[j]->content) == 0) {
+						merror(XML_VALUEERR, XML_API_TYPE, children[j]->content);
+						OS_ClearNode(children);
+						return OS_CFGERR;
+                    }
+                    else if (!strcmp(children[j]->content, "global")) {
+                        os_free(ms_graph->auth_config.login_fqdn);
+                        os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, ms_graph->auth_config.login_fqdn);
+                        os_free(ms_graph->auth_config.query_fqdn);
+                        os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, ms_graph->auth_config.query_fqdn);
+                    }
+                    else if (!strcmp(children[j]->content, "gcc-high")) {
+                        os_free(ms_graph->auth_config.login_fqdn);
+                        os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, ms_graph->auth_config.login_fqdn);
+                        os_free(ms_graph->auth_config.query_fqdn);
+                        os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, ms_graph->auth_config.query_fqdn);
+                    }
+                    else if (!strcmp(children[j]->content, "dod")) {
+                        os_free(ms_graph->auth_config.login_fqdn);
+                        os_strdup(WM_MS_GRAPH_DOD_API_LOGIN_FQDN, ms_graph->auth_config.login_fqdn);
+                        os_free(ms_graph->auth_config.query_fqdn);
+                        os_strdup(WM_MS_GRAPH_DOD_API_QUERY_FQDN, ms_graph->auth_config.query_fqdn);
+                    }
+                    else {
+						merror(XML_VALUEERR, XML_API_TYPE, children[j]->content);
+                        OS_ClearNode(children);
+                        return OS_CFGERR;
+                    }
 				}
 				else {
 					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
