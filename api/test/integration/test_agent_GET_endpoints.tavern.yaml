@@ -2764,6 +2764,17 @@ stages:
       json:
         error: 1407
 
+  - name: Get distinct agents groups
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /groups filter hash
 
@@ -3159,6 +3170,17 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
+
+  - name: Get distinct group agents
+    request:
+      verify: False
+      <<: *groups_id_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /groups/{group_id}/agents {sort,select}
@@ -3646,6 +3668,17 @@ stages:
       status_code: 400
       json: &invalid_select
         error: 1724
+
+  - name: Get distinct group files
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /groups/{group_id}/files filter hash

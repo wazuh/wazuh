@@ -320,6 +320,17 @@ stages:
       json:
         error: 1408
 
+  - name: Get distinct CDB list
+    request:
+      verify: False
+      <<: *get_lists
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /lists/files
 
