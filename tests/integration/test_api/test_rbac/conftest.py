@@ -21,13 +21,12 @@ def add_resources(test_metadata: dict) -> dict:
     for resource in resources:
         for payload in resources[resource]:
             response = manage_security_resources('post', resource={resource: payload})
-            if response.status_code != 200 or response.json()['error'] != 0: raise RuntimeError('Could not add '
-                                                                                                f"{resource}.\n"
-                                                                                                'Full response: '
-                                                                                                f"{response.text}")
+            if response.status_code != 200 or response.json()['error'] != 0:
+                raise RuntimeError(f"Could not add {resource}.\nFull response: {response.text}")
             resource_id = response.json()['data']['affected_items'][0]['id']
             # Enable authentication for the new user
-            if resource == 'user_ids': allow_user_to_authenticate(resource_id)
+            if resource == 'user_ids':
+                allow_user_to_authenticate(resource_id)
             # Set the resource ID for the test to use it
             test_metadata['resources_ids'][resource] = resource_id
             # Catch exception if the test does not have target resource
@@ -49,10 +48,8 @@ def remove_resources(test_metadata: dict) -> None:
 
     for resource in resources:
         response = manage_security_resources('delete', params_values={resource: 'all'})
-        if response.status_code != 200 or response.json()['error'] != 0: raise RuntimeError('Could not remove '
-                                                                                            f"{resource}.\n"
-                                                                                            'Full response: '
-                                                                                            f"{response.text}")
+        if response.status_code != 200 or response.json()['error'] != 0:
+            raise RuntimeError(f"Could not remove {resource}.\nFull response: {response.text}")
 
 
 def relate_resources(test_metadata: dict) -> None:
