@@ -148,9 +148,9 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     char** headers = NULL;
     curl_response* response;
 
-    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config->tenant_id);
+    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config->login_fqdn, auth_config->tenant_id);
     mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Access Token URL: '%s'", url);
-    snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config->client_id, auth_config->secret_value);
+    snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config->query_fqdn, auth_config->client_id, auth_config->secret_value);
     os_malloc(sizeof(char*) * 2, headers);
     os_strdup("Content-Type: application/x-www-form-urlencoded", headers[0]);
     headers[1] = NULL;
@@ -210,6 +210,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
 
             memset(url, '\0', OS_SIZE_8192);
             snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
+            ms_graph->auth_config.query_fqdn,
             ms_graph->version,
             ms_graph->resources[resource_num].name,
             ms_graph->resources[resource_num].relationships[relationship_num],
@@ -302,6 +303,8 @@ void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
     os_free(ms_graph->auth_config.tenant_id);
     os_free(ms_graph->auth_config.client_id);
     os_free(ms_graph->auth_config.secret_value);
+    os_free(ms_graph->auth_config.login_fqdn);
+    os_free(ms_graph->auth_config.query_fqdn);
     os_free(ms_graph->auth_config.access_token);
 
     os_free(ms_graph->version);
@@ -353,6 +356,16 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     }
     if(ms_graph->auth_config.secret_value){
         cJSON_AddStringToObject(ms_graph_auth, "secret_value", ms_graph->auth_config.secret_value);
+    }
+    // The FQDN used for querying the API is unique across types, so we can ignore the login FQDN
+    if(!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN)){
+        cJSON_AddStringToObject(ms_graph_auth, "api_type", "global");
+    }
+    else if(!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN)){
+        cJSON_AddStringToObject(ms_graph_auth, "api_type", "gcc-high");
+    }
+    else if(!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_DOD_API_QUERY_FQDN)){
+        cJSON_AddStringToObject(ms_graph_auth, "api_type", "dod");
     }
     cJSON_AddItemToObject(ms_graph_info, "api_auth", ms_graph_auth);
 
