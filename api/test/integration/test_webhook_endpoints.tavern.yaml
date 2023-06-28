@@ -102,6 +102,62 @@ stages:
 
 ---
 
+test_name: POST /events with big events
+
+marks:
+  - usefixtures:
+      - max_size_event
+      - large_event
+
+stages:
+  - name: POST /events with larger event (65536B)
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events:
+          - "{large_event}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1012
+                message: "Invalid message to queue: The event is too large to be sent to analysisd (maximum is 65535B)"
+              id:
+                - "{large_event}"
+        message: No events were forwarded to analisysd
+
+  - name: POST /events with larger event and one that fits
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events:
+          - "{max_size_event}"
+          - "{large_event}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "{max_size_event}"
+          total_affected_items: 1
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1012
+                message: "Invalid message to queue: The event is too large to be sent to analysisd (maximum is 65535B)"
+              id:
+                - "{large_event}"
+        message: Some events were forwarded to analisysd
+
+---
+
 test_name: POST /events more than 30 times trigger the EPS limit
 
 stages:
