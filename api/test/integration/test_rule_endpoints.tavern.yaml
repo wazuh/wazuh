@@ -761,6 +761,17 @@ stages:
         data:
           total_affected_items: !anyint
 
+  - name: Get distinct rules
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /rules/requirement/pci_dss
 
@@ -1619,6 +1630,17 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+  - name: Get distinct rules files
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /rules/files/{filename}

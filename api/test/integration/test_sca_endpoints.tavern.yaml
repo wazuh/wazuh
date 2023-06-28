@@ -414,6 +414,20 @@ stages:
       json:
         error: 2007
 
+  - name: Get distinct sca agent data
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /sca/{agent_id} using select (parametrized)
 

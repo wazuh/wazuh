@@ -465,6 +465,17 @@ stages:
     response:
       <<: *connexion_error
 
+  - name: Get distinct cluster nodes
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /cluster/nodes
 
@@ -1777,6 +1788,17 @@ stages:
           extra_kwargs:
             key: "level"
             expected_values: "info"
+
+  - name: Get distinct cluster node logs
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary

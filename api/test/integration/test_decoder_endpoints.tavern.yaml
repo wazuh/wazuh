@@ -316,6 +316,17 @@ stages:
           total_affected_items: 0
           total_failed_items: !anyint
 
+  - name: Get distinct decoders
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /decoders
 
@@ -730,6 +741,17 @@ stages:
       status_code: 400
       json:
         error: 1403
+
+  - name: Get distinct decoders files
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /decoders/files

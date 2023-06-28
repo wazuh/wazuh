@@ -351,6 +351,17 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  - name: Get distinct security roles
+    request:
+      verify: False
+      <<: *all_roles_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /security/policies
 
@@ -640,6 +651,17 @@ stages:
       status_code: 200
       json:
         <<: *response_error
+
+  - name: Get distinct security policies
+    request:
+      verify: False
+      <<: *all_policies_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /security/rules
@@ -968,6 +990,17 @@ stages:
                 - '999'
           total_affected_items: 1
           total_failed_items: 1
+
+  - name: Get distinct security rules
+    request:
+      verify: False
+      <<: *all_rules_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /security/user/authenticate
@@ -1430,6 +1463,17 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
+
+  - name: Get distinct security users
+    request:
+      verify: False
+      <<: *all_users_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /security/users/me
