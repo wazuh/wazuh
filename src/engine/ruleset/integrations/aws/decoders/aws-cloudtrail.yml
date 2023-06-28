@@ -2,8 +2,8 @@
 name: decoder/aws-cloudtrail/0
 
 metadata:
-  title: Wazuh integration of AWS Cloudtrail Decoder
-  description: Decoder for wazuh integration of AWS CloudTrail Logs
+  title: Wazuh AWS wodle integration for Cloudtrail bucket type
+  description: Decoder for Wazuh wodle of AWS CloudTrail Logs
   module: AWS
   compatibility: >
     This decoder has been tested on Wazuh version 4.4
@@ -16,7 +16,7 @@ metadata:
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
-      date: 2023/01/18
+      date: 2023/06/20
 
 sources:
   - decoder/aws-json/0
@@ -366,26 +366,26 @@ normalize:
 
       - error.code: $~json.aws.errorCode
       - error.message: $~json.aws.errorMessage
-
-      # TODO: double check!
       - event.id: $~json.aws.sharedEventId
-      - orchestrator.api_version: $~json.aws.apiVersion
       - event.end: $~json.aws.digestEndTime
-      - log.origin.file.name: $~json.aws.logFiles
-      - dll.code_signature.digest_algorithm: $~json.aws.digestSignatureAlgorithm
-      - dll.code_signature.timestamp: $~json.aws.digestStartTime
       - cloud.origin.account.id: $~json.aws.recipientAccountId
-      - http.request.id: $~json.aws.requestId
+      - service.target.id: $~json.aws.requestId
       - cloud.target.account.id: $~json.aws.resources.accountId
-      - orchestrator.resource.type: $~json.aws.resources.type
-      - user.roles: $~json.aws.userIdentity.sessionContext.sessionIssuer.type
+      - user.target.roles: $~json.aws.userIdentity.sessionContext.sessionIssuer.type
 
-      #TODO: earlier it was assigned into flattened after a string convertion
+      # previous flattened fields
       - ~aws_cloudtrail_request_parameters: $~json.aws.requestParameters
       - ~aws_cloudtrail_response_elements: $~json.aws.responseElements
       - ~aws_cloudtrail_additional_eventdata: $~json.aws.additionalEventData
       - ~aws_cloudtrail_console_login.login_to: $~json.aws.additionalEventData.LoginTo
       - ~aws_cloudtrail_service_event_details: $~json.aws.serviceEventDetails
+
+      # other custom fields
+      - ~digestSignatureAlgorithm: $~json.aws.digestSignatureAlgorithm
+      - ~digestStartTime: $~json.aws.digestStartTime
+      - ~api_version: $~json.aws.apiVersion
+      - ~resource_type: $~json.aws.resources.type
+      - ~logFiles: $~json.aws.logFiles
 
       - cloud.region: $~json.aws.awsRegion
       - cloud.account.id: $~json.aws.userIdentity.accountId
@@ -403,23 +403,24 @@ normalize:
       - source.ip: +parse_ip/$~json.aws.sourceIPAddress
       - user_agent.original: $~json.aws.userAgent
       - user.id: $~json.aws.userIdentity.principalId
+
       # TODO: when geolocation implementation done:
       # source.geo: +geo/$source.ip
       # source.as: +geo/$source.ip # database_file: GeoLite2-ASN.mmdb | properties:[asn, organization_name]
 
   - check: +string_equal/~json.aws.additionalEventData.MobileVersion/No
     map:
-      - ~console_login_mobile_version: false
+      - ~tmp.console_login_mobile_version: false
   - check: +string_not_equal/~json.aws.additionalEventData.MobileVersion/No
     map:
-      - ~console_login_mobile_version: true
+      - ~tmp.console_login_mobile_version: true
 
   - check: +string_equal/~json.aws.additionalEventData.MFAUsed/No
     map:
-      - ~console_login_mfa_used: false
+      - ~tmp.console_login_mfa_used: false
   - check: +string_not_equal/~json.aws.additionalEventData.MFAUsed/No
     map:
-      - ~console_login_mfa_used: true
+      - ~tmp.console_login_mfa_used: true
 
   - check: +exists/error.code OR +exists/error.message
     map:
@@ -431,10 +432,4 @@ normalize:
 
   - map:
       - ~json: +delete
-      # - ~aws_cloudtrail_request_parameters: +delete
-      # - ~aws_cloudtrail_response_elements: +delete
-      # - ~aws_cloudtrail_additional_eventdata: +delete
-      # - ~aws_cloudtrail_console_login.login_to: +delete
-      # - ~aws_cloudtrail_service_event_details: +delete
-      # - ~console_login_mobile_version: +delete
-      # - ~console_login_mfa_used: +delete
+      - ~tmp: +delete
