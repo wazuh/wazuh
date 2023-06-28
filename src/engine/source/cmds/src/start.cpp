@@ -43,11 +43,15 @@
 
 namespace
 {
-cmd::details::StackExecutor g_exitHanlder {};
+std::shared_ptr<engineserver::EngineServer> g_engineServer {};
 
 void sigint_handler(const int signum)
 {
-    g_exitHanlder.execute();
+    if (g_engineServer)
+    {
+        g_engineServer->request_stop();
+        g_engineServer.reset();
+    }
 }
 
 struct Options
@@ -83,6 +87,9 @@ namespace cmd::server
 {
 void runStart(ConfHandler confManager)
 {
+    // exit handler
+    cmd::details::StackExecutor exitHanlder {};
+
     // Get needed configuration on main function
     const auto confPath = confManager->get<std::string>("config");
 
@@ -187,7 +194,7 @@ void runStart(ConfHandler confManager)
         {
             api = std::make_shared<api::Api>();
             LOG_DEBUG("API created.");
-            g_exitHanlder.add(
+            exitHanlder.add(
                 [api]()
                 {
                     LOG_INFO("API terminated.");
@@ -209,7 +216,7 @@ void runStart(ConfHandler confManager)
         {
             kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
             LOG_INFO("KVDB initialized.");
-            g_exitHanlder.add(
+            exitHanlder.add(
                 [kvdb]()
                 {
                     LOG_INFO("KVDB terminated.");
@@ -237,7 +244,7 @@ void runStart(ConfHandler confManager)
                           hlpConfigFileName.fullName(),
                           std::get<base::Error>(hlpParsers).message);
 
-                g_exitHanlder.execute();
+                exitHanlder.execute();
                 return;
             }
             logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
@@ -302,7 +309,7 @@ void runStart(ConfHandler confManager)
             router = std::make_shared<router::Router>(builder, store, routerThreads);
 
             router->run(eventQueue);
-            g_exitHanlder.add([router]() { router->stop(); });
+            exitHanlder.add([router]() { router->stop(); });
             LOG_INFO("Router initialized.");
 
             // Register the API command
@@ -348,7 +355,7 @@ void runStart(ConfHandler confManager)
         {
             using namespace engineserver;
             server = std::make_shared<EngineServer>();
-            g_exitHanlder.add([server]() { server->request_stop(); });
+            g_engineServer = server;
 
             // API Endpoint
             auto apiMetricScope = metrics->getMetricsScope("endpointAPI");
@@ -380,7 +387,7 @@ void runStart(ConfHandler confManager)
     {
         const auto msg = utils::getExceptionStack(e);
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
-        g_exitHanlder.execute();
+        exitHanlder.execute();
         return;
     }
 
@@ -392,10 +399,9 @@ void runStart(ConfHandler confManager)
     catch (const std::exception& e)
     {
         LOG_ERROR("An error occurred while running the server: {}.", utils::getExceptionStack(e));
-        g_exitHanlder.execute();
-        return;
     }
-    g_exitHanlder.execute();
+    exitHanlder.execute();
+    return;
 }
 
 void configure(CLI::App_p app)
