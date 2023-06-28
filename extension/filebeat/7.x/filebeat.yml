@@ -54,4 +54,13 @@ filebeat.inputs:
     json.overwrite_keys: true
     json.keys_under_root: true
     json.expand_keys: true
+    publisher_pipeline.disable_host: true
 
+processors:
+  - drop_fields:
+      when:
+        equals:
+          log.file.path: "/var/ossec/logs/alerts/alerts-ECS.json"
+      fields: ["log.offset", "log.file.path"]
+  - drop_fields:
+      fields: ["agent.ephemeral_id", "agent.hostname", "agent.version", "input.type"]
