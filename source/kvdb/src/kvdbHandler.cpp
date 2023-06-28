@@ -5,15 +5,16 @@
 #include <fmt/format.h>
 #include <json/json.hpp>
 #include <logging/logging.hpp>
+#include <rocksdb/db.h>
 
 namespace kvdbManager
 {
 
 KVDBHandler::KVDBHandler(rocksdb::DB* db,
-                     rocksdb::ColumnFamilyHandle* cfHandle,
-                     std::shared_ptr<IKVDBHandlerCollection> collection,
-                     const std::string& spaceName,
-                     const std::string& scopeName)
+                         rocksdb::ColumnFamilyHandle* cfHandle,
+                         std::shared_ptr<IKVDBHandlerCollection> collection,
+                         const std::string& spaceName,
+                         const std::string& scopeName)
     : m_pRocksDB(db)
     , m_pCFhandle(cfHandle)
     , m_dbName(spaceName)
@@ -22,9 +23,8 @@ KVDBHandler::KVDBHandler(rocksdb::DB* db,
 {
 }
 
-KVDBHandler::~KVDBHandler() 
+KVDBHandler::~KVDBHandler()
 {
-    assert(m_spCollection);
     m_spCollection->removeKVDBHandler(m_dbName, m_scopeName);
 }
 
@@ -101,7 +101,7 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHand
     if (!iter->status().ok())
     {
         return base::Error {
-            fmt::format("Database '{}': Could not iterate over database: '{}'", "TODO: m_dbName", iter->status().ToString())};
+            fmt::format("Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
     }
 
     return content;
