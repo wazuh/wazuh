@@ -97,7 +97,8 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 
             if (resultLoad)
             {
-                return ::api::adapter::genericError<ResponseType>(resultLoad.value().message);
+                std::string message = fmt::format("The DB was created but loading data returned: {}", resultLoad.value().message);
+                return ::api::adapter::genericError<ResponseType>(message);
             }
         }
 
