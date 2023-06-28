@@ -2469,8 +2469,10 @@ checks:
       - mitre_mitigations: ["M1018"]
       - mitre_tactics: ["TA0005"]
       - mitre_techniques: ["T1562", "T1562.001"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled cron -> r:^enabled"
+      - "c:systemctl status cron -> r:^active"
 
   # 4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 31148
@@ -2492,8 +2494,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/crontab -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 31149
@@ -2515,8 +2518,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.hourly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 31150
@@ -2538,8 +2542,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.daily/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 31151
@@ -2561,8 +2566,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.weekly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 31152
@@ -2584,8 +2590,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.monthly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 31153
@@ -2607,8 +2614,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.d/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.1.8 Ensure cron is restricted to authorized users. (Automated)
   - id: 31154
@@ -2630,8 +2638,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/cron.allow"
+      - "not f:/etc/cron.deny"
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*crontab'
 
   # 4.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 31155
@@ -2653,8 +2664,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/at.allow"
+      - "not f:/etc/at.deny"
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/at.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 31156
@@ -2676,31 +2690,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/ssh/sshd_config -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:sh -c "stat -L /etc/ssh/sshd_config.d/*.conf" -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 31157
-    title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following script to set mode, ownership, and group on the private SSH host key files: #!/usr/bin/env bash { l_output=\"\" l_output2=\"\" l_skgn=\"ssh_keys\" # Group designated to own openSSH keys l_skgid=\"$(awk -F: '($1 == \"'\"$l_skgn\"'\"){print $3}' /etc/group)\" # Get gid of group if [ -n \"$l_skgid\" ]; then l_agroup=\"(root|$l_skgn)\" && l_sgroup=\"$l_skgn\" && l_mfix=\"u-x,g-wx,o- rwx\" else l_agroup=\"root\" && l_sgroup=\"root\" && l_mfix=\"u-x,go-rwx\" fi unset a_skarr && a_skarr=() # Clear and initialize array while IFS= read -r -d $'\\0' l_file; do # Loop to populate array if grep -Pq ':\\h+OpenSSH\\h+private\\h+key\\b' <<< \"$(file \"$l_file\")\"; then a_skarr+=(\"$(stat -Lc '%n^%#a^%U^%G^%g' \"$l_file\")\") fi done < <(find -L /etc/ssh -xdev -type f -print0) while IFS=\"^\" read -r l_file l_mode l_owner l_group l_gid; do l_out2=\"\" [ \"$l_gid\" = \"$l_skgid\" ] && l_pmask=\"0137\" || l_pmask=\"0177\" l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" if [ $(( $l_mode & $l_pmask )) -gt 0 ]; then l_out2=\"$l_out2\\n - Mode: \\\"$l_mode\\\" should be mode: \\\"$l_maxperm\\\" or more restrictive\\n - Revoking excess permissions\" chmod \"$l_mfix\" \"$l_file\" fi if [ \"$l_owner\" != \"root\" ]; then l_out2=\"$l_out2\\n - Owned by: \\\"$l_owner\\\" should be owned by \\\"root\\\"\\n - Changing ownership to \\\"root\\\"\" chown root \"$l_file\" fi if [[ ! \"$l_group\" =~ $l_agroup ]]; then l_out2=\"$l_out2\\n - Owned by group \\\"$l_group\\\" should be group owned by: \\\"${l_agroup//|/ or }\\\"\\n - Changing group ownership to \\\"$l_sgroup\\\"\" chgrp \"$l_sgroup\" \"$l_file\" fi [ -n \"$l_out2\" ] && l_output2=\"$l_output2\\n - File: \\\"$l_file\\\"$l_out2\" done <<< \"$(printf '%s\\n' \"${a_skarr[@]}\")\" unset a_skarr if [ -z \"$l_output2\" ]; then echo -e \"\\n- No access changes required\\n\" else echo -e \"\\n- Remediation results:\\n$l_output2\\n\" fi }."
-    compliance:
-      - cis: ["4.2.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1552", "T1552.004"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
   # 4.2.3 Ensure permissions on SSH public host key files are configured. (Automated)
   - id: 31158
@@ -2722,8 +2717,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \;" -> r:Access:\s*\( && !r:-rw-r--r--'
 
   # 4.2.4 Ensure SSH access is limited. (Automated)
   - id: 31159
@@ -2745,8 +2741,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
   # 4.2.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 31160
