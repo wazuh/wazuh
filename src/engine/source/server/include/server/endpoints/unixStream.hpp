@@ -63,7 +63,7 @@ private:
      * @param protocolHandler Protocol handler to process the message
      * @param messages Messages to be processed
      */
-    void processMessages(std::shared_ptr<uvw::PipeHandle> client,
+    void processMessages(std::weak_ptr<uvw::PipeHandle> clientRef,
                          std::shared_ptr<ProtocolHandler> protocolHandler,
                          std::vector<std::string>&& messages);
 
@@ -76,7 +76,7 @@ private:
      * @param protocolHandler Protocol handler to process the message
      * @param message Message to be processed
      */
-    void createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
+    void createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
                               std::shared_ptr<ProtocolHandler> protocolHandler,
                               std::string&& message);
 
@@ -93,10 +93,10 @@ private:
      * data
      *
      * @param loop Loop to create the timer
-     * @param client Client to close if the timer expires
+     * @param wClient Client to close if the timer expires
      * @return Timer resource
      */
-    std::shared_ptr<uvw::TimerHandle> createTimer(std::shared_ptr<uvw::PipeHandle> client);
+    std::shared_ptr<uvw::TimerHandle> createTimer(std::weak_ptr<uvw::PipeHandle> wClient);
 
 public:
     /**
