@@ -71,7 +71,7 @@ std::optional<base::Error> PolicyManager::deletePolicy(const std::string& name)
     // Complete the policies before deleting them
     for (auto& policy : it->second)
     {
-        policy.complete();
+        policy->complete();
     }
 
     if (m_policies.erase(name) != 1)
@@ -91,7 +91,7 @@ void PolicyManager::delAllPolicies()
     {
         for (auto& policy : runPolicy)
         {
-            policy.complete();
+            policy->complete();
         }
     }
 

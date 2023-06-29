@@ -153,10 +153,10 @@ public:
     /**
      * @brief Push an event to the queue of the router
      *
-     * @param event event to push to the queue in ossec format: <queue>:<location>:<data>
+     * @param event event to push to the queue in Wazuh format: <queue>:<location>:<data>
      * @return std::optional<base::Error> A error with description if the event can't be pushed
      */
-    std::optional<base::Error> enqueueOssecEvent(std::string_view event);
+    std::optional<base::Error> enqueueWazuhEvent(std::string_view event);
 
     /**
      * @brief Push an event to the queue of the router

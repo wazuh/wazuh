@@ -18,7 +18,7 @@
 namespace cmd::apiclnt
 {
 
-constexpr auto DEFAULT_TIMEOUT = 2000;
+constexpr auto DEFAULT_TIMEOUT = 1000;
 
 class Client
 {
