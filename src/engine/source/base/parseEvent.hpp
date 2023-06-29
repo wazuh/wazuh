@@ -13,9 +13,9 @@ constexpr char EVENT_LOCATION_ID[] {"/wazuh/location"};
 constexpr char EVENT_MESSAGE_ID[] {"/wazuh/message"};
 
 /**
- * @brief Parse an OSSEC message and extract the queue, location and message
+ * @brief Parse an Wazuh message and extract the queue, location and message
  *
- * @param event OSSEC message
+ * @param event Wazuh message
  * @return Event Event object
  */
 Event parseWazuhEvent(const std::string& event);

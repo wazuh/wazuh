@@ -85,15 +85,15 @@ public:
      */
     void complete()
     {
-        if (m_controller)
+        if (m_spController)
         {
-            m_controller->complete();
+            m_spController->complete();
         }
     }
 
     /**
-     * @brief 
-     * 
+     * @brief
+     *
      * @brief Subscribes to a callback that generates the outputs corresponding to each event.
      */
     void subscribeToOutput();

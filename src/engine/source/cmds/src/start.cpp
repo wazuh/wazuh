@@ -374,7 +374,7 @@ void runStart(ConfHandler confManager)
                 if (storeSetSessionsTable.has_value())
                 {
                     LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);
-                    g_exitHanlder.execute();
+                    exitHandler.execute();
                     return;
                 }
             }
