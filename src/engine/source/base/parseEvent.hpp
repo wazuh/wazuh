@@ -18,7 +18,7 @@ constexpr char EVENT_MESSAGE_ID[] {"/wazuh/message"};
  * @param event OSSEC message
  * @return Event Event object
  */
-Event parseOssecEvent(const std::string& event);
+Event parseWazuhEvent(const std::string& event);
 
 } // namespace base::parseEvent
 
