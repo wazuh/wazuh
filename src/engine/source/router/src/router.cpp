@@ -293,7 +293,7 @@ std::optional<base::Error> Router::enqueueOssecEvent(std::string_view event)
     std::optional<base::Error> err = std::nullopt;
     try
     {
-        base::Event ev = base::parseEvent::parseOssecEvent(event.data());
+        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
         err = enqueueEvent(std::move(ev));
     }
     catch (const std::exception& e)

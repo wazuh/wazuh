@@ -169,7 +169,7 @@ public:
         base::Event event;
         try
         {
-            event = base::parseEvent::parseOssecEvent(eventStr);
+            event = base::parseEvent::parseWazuhEvent(eventStr);
         }
         catch (const std::exception& e)
         {

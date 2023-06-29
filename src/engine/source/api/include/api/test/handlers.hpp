@@ -10,8 +10,8 @@ namespace api::test::handlers
 {
 
 constexpr uint8_t TEST_DEFAULT_PROTOCOL_QUEUE {1}; ///< Default protocol queue
-constexpr uint8_t TEST_MIN_PROTOCOL_QUEUE {0};
-constexpr uint8_t TEST_MAX_PROTOCOL_QUEUE {255};
+constexpr uint8_t TEST_MIN_PROTOCOL_QUEUE {0};     ///< Minimum protocol queue
+constexpr uint8_t TEST_MAX_PROTOCOL_QUEUE {255};   ///< Maximum protocol queue
 
 constexpr auto API_SESSIONS_DATA_FORMAT = R"({"name":"","id":"","creationdate":0,"lifespan":0,"description":"",)"
                                           R"("filtername":"","policyname":"","routename":""})"; ///< API session data
@@ -27,7 +27,7 @@ constexpr auto FILTER_CONTENT_FORMAT =
 constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0";   ///< Filter name format, '{}' is the session name
 constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0";   ///< Policy name format, '{}' is the session name
 constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                   ///< Route name format, '{}' is the session name
-constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "/~0TestSessionName";  ///< Field to check in filter.
+constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "/~0TestSessionID";    ///< Field to check in filter.
 constexpr auto TEST_DEFAULT_PROTOCOL_LOCATION = "api.test";           ///< Default protocol location
 
 constexpr auto TEST_DELETE_SESSIONS_API_CMD = "test.sessions/delete"; ///< API command to delete sessions
@@ -35,6 +35,14 @@ constexpr auto TEST_GET_SESSION_DATA_API_CMD = "test.session/get";    ///< API c
 constexpr auto TEST_GET_SESSIONS_LIST_API_CMD = "test.sessions/get";  ///< API command to get the list of sessions
 constexpr auto TEST_POST_SESSION_API_CMD = "test.session/post";       ///< API command to create a new session
 constexpr auto TEST_RUN_API_CMD = "test.run/post";                    ///< API command to test an event in a session
+
+constexpr auto FILTER_NOT_REMOVED_MSG = "Filter '{}' could not be removed from the catalog: {}";
+constexpr auto POLICY_NOT_REMOVED_MSG = "Policy '{}' could not be removed from the catalog: {}";
+constexpr auto ROUTE_NOT_REMOVED_MSG = "Route '{}' could not be removed from the router: {}";
+constexpr auto SESSION_NOT_FOUND_MSG = "Session '{}' could not be found";
+constexpr auto SESSION_NOT_REMOVED_MSG = "Session '{}' could not be removed from the sessions manager";
+
+constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
 
 /**
  * @brief Test configuration parameters.
@@ -136,8 +144,8 @@ inline std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<::
  * @param catalog Catalog instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> deleteAssetFromStore(const std::shared_ptr<catalog::Catalog>& catalog,
-                                                       const std::string& assetName);
+inline std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
+                                                         const std::string& assetName);
 
 /**
  * @brief Delete a session and the resources created along with it.
