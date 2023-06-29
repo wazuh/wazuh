@@ -13,6 +13,7 @@ brief: Active responses perform various countermeasures to address active threat
 tier: 2
 
 modules:
+    - wazuh_analysisd
     - active_response
 
 components:
@@ -64,18 +65,14 @@ from . import CONFIGS_PATH, TEST_CASES_PATH, CUSTOM_SCRIPTS_PATH, RULES_SAMPLE_P
 
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
-# Path to cases data.
+# Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_trigger_active_response.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_trigger_active_response.yaml')
-# Test metadata, configuration and ids.
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
-test_configuration = load_configuration_template(
-    config_path, test_configuration, test_metadata)
+test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
-# Test daemons to restart.
+# Test configurations and paths to validate.
 daemons_handler_configuration = {'all_daemons': True}
-
-# Paths needed for the tests and fixtures.
 custom_ar_script = Path(CUSTOM_SCRIPTS_PATH, 'custom-ar.sh')
 file_created_by_script = '/tmp/file-ar.txt'
 monitored_file = '/tmp/file_to_monitor.log'
@@ -83,7 +80,7 @@ monitored_file = '/tmp/file_to_monitor.log'
 
 # Test function
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_overwritten_rules_triggers_ar(test_configuration, test_metadata, truncate_monitored_files, set_wazuh_configuration,
+def test_rules_triggers_ar(test_configuration, test_metadata, truncate_monitored_files, set_wazuh_configuration,
                                        prepare_ar_files, prepare_custom_rules_file, daemons_handler, fill_monitored_file):
     '''
     description: Check if an active response is triggered when an event matches with a rule.
