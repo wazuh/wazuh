@@ -8,8 +8,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import AGENTD_CONNECTED_TO_SERVER
 from wazuh_testing.modules.execd.patterns import EXECD_RECEIVED_MESSAGE
 from wazuh_testing.tools.file_monitor import FileMonitor
-from wazuh_testing.tools.simulators import RemotedSimulator
-from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 
