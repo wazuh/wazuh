@@ -132,14 +132,14 @@ def test_execd_firewall_drop(test_metadata, configure_local_internal_options, tr
     wazuh_log_monitor.start(callback=generate_callback(execd_paterns.EXECD_EXECUTING_COMMAND))
     assert wazuh_log_monitor.callback_result, 'Execd `executing` command log not raised.'
 
-    # Wait and check the add command to be executed.
+    # Wait and check the firewall-drop programm to be executed.
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_FIREWALL_DROP))
     assert ar_monitor.callback_result, 'AR `firewall-drop` program not used.'
-    assert '"srcip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `srcip` value is not correct.'
 
     # Wait and check the add command to be executed.
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_ADD_COMMAND))
     assert '"command":"add"' in ar_monitor.callback_result, 'AR `add` command not executed.'
+    assert '"srcip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `srcip` value is not correct.'
 
     # Wait and check the delete command to be executed.
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_DELETE_COMMAND))

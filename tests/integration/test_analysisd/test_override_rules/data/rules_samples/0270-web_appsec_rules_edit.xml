@@ -1,8 +1,0 @@
-<group name="web,appsec,attack,">
-  <rule id="31533" level="9" frequency="50" timeframe="5" overwrite="yes">
-    <if_matched_sid>31530</if_matched_sid>
-    <same_source_ip/>
-    <description>Local - High amount of POST requests in a small period of time (likely bot) (50/5s).</description>
-    <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-  </rule>
-</group>

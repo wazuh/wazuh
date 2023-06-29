@@ -16,21 +16,20 @@ def configure_ar_conf(request: pytest.FixtureRequest) -> None:
     if not hasattr(request.module, 'ar_conf'):
         raise AttributeError('The var `ar_conf` is not defined in module.')
 
-    # Get the configuration values.
     ar_config = getattr(request.module, 'ar_conf')
-    # Backup the ar.conf file to restore it later.
-    ar_conf_exists = file.exists_and_is_file(AR_CONF)
 
-    if ar_conf_exists:
+    # Backup the original file state.
+    if file.exists_and_is_file(AR_CONF):
         backup = file.read_file_lines(AR_CONF)
+    else:
+        backup = None
 
-    # Write new Active Response configuration.
     file.write_file(AR_CONF, ar_config)
 
     yield
 
     # Restore the ar.conf file previous state.
-    if ar_conf_exists:
+    if backup:
         file.write_file(AR_CONF, backup)
     else:
         file.delete_file(AR_CONF)
@@ -39,9 +38,9 @@ def configure_ar_conf(request: pytest.FixtureRequest) -> None:
 @pytest.fixture()
 def send_execd_message(test_metadata: dict) -> None:
     # Validate the input to get the message from exists.
-    if not test_metadata.get('input'):
+    if test_metadata.get('input') is None:
         raise AttributeError('No `input` key in `test_metadata`.')
-    
+
     # Instanciate the monitor and remoted simulator.
     remoted = RemotedSimulator()
     monitor = FileMonitor(WAZUH_LOG_PATH)
