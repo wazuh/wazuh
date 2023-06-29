@@ -134,7 +134,7 @@ protected:
             fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
             fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)
         };
-        
+
         auto eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
                 SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
@@ -294,7 +294,7 @@ protected:
             fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
             fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)
         };
-        
+
         auto eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
                 SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
@@ -408,10 +408,10 @@ TEST_P(TestSessionListCommand, Functionality)
         EXPECT_EQ(tmp, expectedData) << "Response: " << tmp.prettyStr() << std::endl
                                             << "Expected: " << expectedData.prettyStr() << std::endl;
     }
-    
+
     EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    
+
     ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_spCatalog, m_spRouter, m_spMockStore));
     json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};
     base::utils::wazuhProtocol::WazuhRequest requestDelete;
@@ -487,7 +487,7 @@ protected:
             fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
             fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)
         };
-        
+
         auto eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
                 SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
@@ -567,7 +567,13 @@ TEST_P(TestSessionPostCommand, Functionality)
     base::utils::wazuhProtocol::WazuhRequest request;
     ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, sessionPostCommandparams));
     auto response = m_cmdAPI(request);
-    
+
+    if (executionNumber > 1)
+    {
+        SessionManager& instance = SessionManager::getInstance();
+        EXPECT_GT(instance.getNewSessionID(), 1);
+    }
+
     if (executionNumber == numTest)
     {
         ASSERT_NO_THROW(m_cmdAPI = sessionPost(m_spCatalog, m_spRouter, m_spMockStore));
@@ -587,7 +593,7 @@ TEST_P(TestSessionPostCommand, Functionality)
 
         EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        
+
         ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_spCatalog, m_spRouter, m_spMockStore));
         json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};
         base::utils::wazuhProtocol::WazuhRequest requestDelete;
@@ -704,7 +710,7 @@ protected:
             fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
             fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)
         };
-        
+
         auto eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
                 SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
@@ -804,7 +810,7 @@ TEST_P(TestRunCommandIntegration, Functionality)
 
     EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    
+
     ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_spCatalog, m_spRouter, m_spMockStore));
     json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};
     base::utils::wazuhProtocol::WazuhRequest requestDelete;
@@ -827,19 +833,19 @@ INSTANTIATE_TEST_SUITE_P(
                             "wazuh": {
                                 "message": "hello world!",
                                 "location": "api.test",
-                                "queue": 49
+                                "queue": 1
                             },
-                            "~TestSessionName": "dummy"
+                            "~TestSessionID": 1
                         }
                     })"),
                     std::make_tuple(3, R"({"name":"dummy", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "output": {
-                            "~TestSessionName": "dummy",
+                            "~TestSessionID": 1,
                             "wazuh": {
                                 "location": "api.test",
                                 "message": "hello world!",
-                                "queue": 49
+                                "queue": 1
                             }
                         },
                         "traces": {
@@ -853,10 +859,10 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple(4, R"({"name":"dummy", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "output": {
-                            "~TestSessionName": "dummy",
+                            "~TestSessionID": 1,
                             "wazuh": {
                                 "location": "api.test",
-                                "queue": 49,
+                                "queue": 1,
                                 "message": "hello world!"
                             }
                         },

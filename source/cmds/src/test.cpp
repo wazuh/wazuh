@@ -101,7 +101,7 @@ inline void printYML(const YAML::Node& node)
 {
     YAML::Emitter out;
     out << node;
-    std::cout << out.c_str() << std::endl;
+    std::cout << std::endl << out.c_str() << std::endl << std::endl;
 }
 
 /**
@@ -143,7 +143,7 @@ namespace cmd::test
 namespace eTest = ::com::wazuh::api::engine::test;
 namespace eEngine = ::com::wazuh::api::engine;
 
-void processEvent(const string& eventStr,
+void processEvent(const std::string& eventStr,
                   const Parameters& parameters,
                   std::shared_ptr<apiclnt::Client> client,
                   eTest::RunPost_Request eRequest)
@@ -195,6 +195,36 @@ void processEvent(const string& eventStr,
 
 void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
+    using RequestTypeList = eTest::SessionsGet_Request;
+    using ResponseTypeList = eTest::SessionsGet_Response;
+    const string commandList {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+
+    // Check that the session exists before executing the run command
+    RequestTypeList eRequestList;
+    const auto requestList = utils::apiAdapter::toWazuhRequest<RequestTypeList>(commandList, details::ORIGIN_NAME, eRequestList);
+    const auto responseList = client->send(requestList);
+    const auto eResponseList = utils::apiAdapter::fromWazuhResponse<ResponseTypeList>(responseList);
+
+    auto foundSession {false};
+    for (const auto& session : eResponseList.list())
+    {
+        if (parameters.sessionName == session)
+        {
+            foundSession = true;
+        }
+    }
+
+    if (!foundSession)
+    {
+        std::cout <<  fmt::format("Session '{}' could not be found", parameters.sessionName) << std::endl;
+        return;
+    }
+
+    // Call run command
+    using RequestType = eTest::RunPost_Request;
+    using ResponseType = eTest::RunPost_Response;
+    const string command {api::test::handlers::TEST_RUN_API_CMD};
+
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
 
@@ -349,7 +379,7 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
     std::cout << output << std::endl;
 }
 
-void sessionList(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+void sessionList(std::shared_ptr<apiclnt::Client> client)
 {
     using RequestType = eTest::SessionsGet_Request;
     using ResponseType = eTest::SessionsGet_Response;
@@ -406,7 +436,7 @@ void configure(CLI::App_p app)
 
     // API test session list
     auto testSessionListApp = testSessionApp->add_subcommand("list", "List sessions.");
-    testSessionListApp->callback([parameters, client]() { sessionList(client, *parameters); });
+    testSessionListApp->callback([parameters, client]() { sessionList(client); });
 
     // API test Run
     auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
