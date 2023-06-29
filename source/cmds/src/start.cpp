@@ -88,7 +88,7 @@ namespace cmd::server
 void runStart(ConfHandler confManager)
 {
     // exit handler
-    cmd::details::StackExecutor exitHanlder {};
+    cmd::details::StackExecutor exitHandler {};
 
     // Get needed configuration on main function
     const auto confPath = confManager->get<std::string>("config");
@@ -194,7 +194,7 @@ void runStart(ConfHandler confManager)
         {
             api = std::make_shared<api::Api>();
             LOG_DEBUG("API created.");
-            exitHanlder.add(
+            exitHandler.add(
                 [api]()
                 {
                     LOG_INFO("API terminated.");
@@ -216,7 +216,7 @@ void runStart(ConfHandler confManager)
         {
             kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
             LOG_INFO("KVDB initialized.");
-            exitHanlder.add(
+            exitHandler.add(
                 [kvdb]()
                 {
                     LOG_INFO("KVDB terminated.");
@@ -244,7 +244,7 @@ void runStart(ConfHandler confManager)
                           hlpConfigFileName.fullName(),
                           std::get<base::Error>(hlpParsers).message);
 
-                exitHanlder.execute();
+                exitHandler.execute();
                 return;
             }
             logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
@@ -309,7 +309,7 @@ void runStart(ConfHandler confManager)
             router = std::make_shared<router::Router>(builder, store, routerThreads);
 
             router->run(eventQueue);
-            exitHanlder.add([router]() { router->stop(); });
+            exitHandler.add([router]() { router->stop(); });
             LOG_INFO("Router initialized.");
 
             // Register the API command
@@ -387,7 +387,7 @@ void runStart(ConfHandler confManager)
     {
         const auto msg = utils::getExceptionStack(e);
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
-        exitHanlder.execute();
+        exitHandler.execute();
         return;
     }
 
@@ -400,7 +400,7 @@ void runStart(ConfHandler confManager)
     {
         LOG_ERROR("An error occurred while running the server: {}.", utils::getExceptionStack(e));
     }
-    exitHanlder.execute();
+    exitHandler.execute();
     return;
 }
 
