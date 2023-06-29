@@ -102,8 +102,8 @@ None
 |---|---|
 | decoder/aws-s3/0 | Decoder for Wazuh wodle of AWS S3 server access logs |
 | decoder/aws-elb/0 | Decoder for Wazuh wodle of AWS ELB (ALB, CLB, NLB) logs |
-| decoder/aws-json/0 | Partial JSON decoder for AWS wodle events |
 | decoder/aws-cloudtrail/0 | Decoder for Wazuh wodle of AWS CloudTrail Logs |
+| decoder/aws-json/0 | Partial JSON decoder for AWS wodle events |
 ## Rules
 
 | Name | Description |

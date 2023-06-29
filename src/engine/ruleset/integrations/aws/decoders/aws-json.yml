@@ -17,10 +17,13 @@ metadata:
 sources:
   - decoder/integrations/0
 
+# TODO: wodle output should be fixed
 # Wodle output              -> "location": "Wazuh-AWS"
 # How it should be received -> "location": "[NNN] (MMMMM) any->Wazuh-AWS"
 #                                                             <-origin->
-check: +starts_with/event.original/{ AND ( +string_equal/wazuh.origin/Wazuh-AWS OR +string_equal/wazuh.location/Wazuh-AWS )
+check:
+  - event.original: +starts_with/{
+  - wazuh.location: +string_equal/Wazuh-AWS
 
 parse:
   logpar:
