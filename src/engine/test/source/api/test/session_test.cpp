@@ -18,6 +18,16 @@ class SessionManagerTest : public ::testing::Test
     void SetUp() override { initLogging(); }
 };
 
+TEST_F(SessionManagerTest, GetNewSessionIDTest)
+{
+    // Act
+    SessionManager& instance = SessionManager::getInstance();
+    uint32_t sessionID = instance.getNewSessionID();
+
+    // Assert
+    EXPECT_EQ(sessionID, 1); // Debe haber una sesión registrada
+}
+
 TEST_F(SessionManagerTest, GetInstance)
 {
     // Get the instance of SessionManager

@@ -329,21 +329,22 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     base::Event event {};
                     if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
-                        std::shared_lock lock {m_mutexRoutes};
-                        for (auto& route : m_priorityRoute)
                         {
-                            if (route.second[i].accept(event))
+                            std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
+                            for (auto& route : m_priorityRoute)
                             {
-                                const auto& target = route.second[i].getTarget();
-                                m_policyManager->forwardEvent(target, i, std::move(event));
+                                if (route.second[i].accept(event))
+                                {
+                                    const auto& target = route.second[i].getTarget();
+                                    m_policyManager->forwardEvent(target, i, std::move(event));
 
-                                // Condition variable that notifies that the outputs and traces were generated
-                                m_dataState.isDataReady = true;
-                                lock.unlock();
-                                m_dataState.dataReady.notify_all();
-                                break;
+                                    // Condition variable that notifies that the outputs and traces were generated
+                                    m_dataState.isDataReady = true;
+                                    break;
+                                }
                             }
                         }
+                        m_dataState.dataReady.notify_all();
                     }
                 }
                 LOG_DEBUG("Thread '{}' router finished.", i);
