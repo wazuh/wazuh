@@ -48,7 +48,6 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.modulesd.configuration import LOCAL_INTERNAL_OPTIONS
-from wazuh_testing.modules import ALL_DAEMON_HANDLER as daemons_handler_configuration
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
