@@ -156,7 +156,8 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::st
 const std::variant<std::tuple<std::string, std::string>, base::Error>
 PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode)
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
     auto it = m_policies.find(name);
     if (m_policies.end() == it)
     {

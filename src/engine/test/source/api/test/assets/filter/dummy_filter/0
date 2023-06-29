@@ -1,8 +1,4 @@
 {
     "name": "filter/dummy_filter/0",
-    "check": [
-        {
-            "~TestSessionName": "dummy"
-        }
-    ]
+    "check": "~TestSessionID==1 OR ~TestSessionID==2 OR ~TestSessionID==3"
 }
