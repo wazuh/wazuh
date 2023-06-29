@@ -74,9 +74,11 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 mtinfo(WM_MS_GRAPH_LOGTAG, "Obtaining access token.");
                 wm_ms_graph_get_access_token(&ms_graph->auth_config, ms_graph->curl_max_size);
             }
-            mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", ms_graph->auth_config.tenant_id);
-            wm_ms_graph_scan_relationships(ms_graph);
 
+            if(ms_graph->auth_config.access_token && time(NULL) < ms_graph->auth_config.token_expiration_time){
+                mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", ms_graph->auth_config.tenant_id);
+            wm_ms_graph_scan_relationships(ms_graph);
+            }
         }
     }    
     return NULL;
