@@ -239,7 +239,7 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router)
             return ::api::adapter::genericError<ResponseType>("Missing /event");
         }
 
-        auto err = router->enqueueOssecEvent(eRequest.wazuh_event());
+        auto err = router->enqueueWazuhEvent(eRequest.wazuh_event());
         if (err.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(err.value().message);

@@ -288,7 +288,7 @@ std::optional<base::Error> Router::enqueueEvent(base::Event&& event)
     return std::nullopt;
 }
 
-std::optional<base::Error> Router::enqueueOssecEvent(std::string_view event)
+std::optional<base::Error> Router::enqueueWazuhEvent(std::string_view event)
 {
     std::optional<base::Error> err = std::nullopt;
     try
