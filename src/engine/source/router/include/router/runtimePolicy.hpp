@@ -9,6 +9,7 @@
 #include <builder.hpp>
 #include <error.hpp>
 #include <rxbk/rxFactory.hpp>
+#include <shared_mutex>
 
 namespace router
 {
@@ -36,6 +37,7 @@ private:
     std::string m_asset;
     std::shared_ptr<rxbk::Controller> m_spController;
     builder::Policy m_environment;
+    std::shared_mutex m_mutexData;
 
     std::unordered_map<std::string, std::string> m_output;
     std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> m_history;

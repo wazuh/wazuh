@@ -113,6 +113,7 @@ void RuntimePolicy::listenAllTrace()
 const std::variant<std::tuple<std::string, std::string>, base::Error>
 RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
 {
+    std::unique_lock<std::shared_mutex> lock {m_mutexData};
     auto trace = json::Json {R"({})"};
     if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
