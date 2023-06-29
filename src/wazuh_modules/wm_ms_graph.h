@@ -27,7 +27,7 @@
 #define WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN "login.microsoftonline.com"
 #define WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN "graph.microsoft.com"
 #define WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN "login.microsoftonline.us"
-#define WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN "graph.mircosoft.us"
+#define WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN "graph.microsoft.us"
 #define WM_MS_GRAPH_DOD_API_LOGIN_FQDN "login.microsoftonline.us"
 #define WM_MS_GRAPH_DOD_API_QUERY_FQDN "dod-graph.microsoft.us"
 
