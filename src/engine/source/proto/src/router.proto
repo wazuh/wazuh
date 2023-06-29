@@ -87,8 +87,8 @@ message TableGet_Response
 /***************************************************
  * Send a event to queue of the router
  *
- * Send a Standard OSSEC event -> "<Queue>:<Location>:<Message>"
- * Standard OSSEC event
+ * Send a Standard Wazuh event -> "<Queue>:<Location>:<Message>"
+ * Standard Wazuh event
  * command: router.queue/post (<resource>/<action>)
  **************************************************/
 message QueuePost_Request

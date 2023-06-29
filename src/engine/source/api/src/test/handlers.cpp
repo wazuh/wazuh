@@ -1,5 +1,6 @@
 #include "api/test/handlers.hpp"
 
+#include <algorithm>
 #include <optional>
 #include <string>
 
@@ -167,7 +168,8 @@ json::Json getSessionsAsJson(void)
     auto jsonSessions = json::Json("[]");
 
     auto& sessionManager = SessionManager::getInstance();
-    const auto list = sessionManager.getSessionsList();
+    auto list = sessionManager.getSessionsList();
+    std::sort(list.begin(), list.end());
     for (auto& sessionName : list)
     {
         const auto session = sessionManager.getSession(sessionName);

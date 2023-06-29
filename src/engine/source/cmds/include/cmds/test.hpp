@@ -16,7 +16,7 @@ namespace details
 constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
 } // namespace details
 
-constexpr auto SESSION_GET_DATA_FORMAT = R"({{"id":"{}","creation_date":"{}","policy":"{}", "filter":"{}",)"
+constexpr auto SESSION_GET_DATA_FORMAT = R"({{"id":"{}","creation_date":"{}","policy":"{}","filter":"{}",)"
                                          R"("route":"{}","lifespan":{},"description":"{}"}})"; ///< Session data format
 
 constexpr auto OUTPUT_ONLY {0};

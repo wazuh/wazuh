@@ -10,7 +10,7 @@
             "name": "Wazuh, Inc."
         },
         "compatibility": "Any service being tagged with the queue 51.",
-        "description": "Process events that have the Hostinfo queue in the standard OSSEC message format.\n",
+        "description": "Process events that have the Hostinfo queue in the standard Wazuh message format.\n",
         "references": [
             "https://documentation.wazuh.com/current/user-manual/reference/core-options.html"
         ],
