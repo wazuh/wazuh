@@ -54,6 +54,8 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->auth_config.tenant_id = NULL;
 	ms_graph->auth_config.secret_value = NULL;
 	ms_graph->auth_config.access_token = NULL;
+	ms_graph->auth_config.login_fqdn = NULL;
+	ms_graph->auth_config.query_fqdn = NULL;
 
 	os_malloc(sizeof(wm_ms_graph_resource) * 2, ms_graph->resources);
 	ms_graph->num_resources = 0;
@@ -211,6 +213,11 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 			else if (!ms_graph->auth_config.secret_value){
 				merror(XML_NO_ELEM, XML_SECRET_VALUE);
+				return OS_NOTFOUND;
+			}
+			// We only need to check one FQDN to see if the tag exists
+			else if (!ms_graph->auth_config.query_fqdn){
+				merror(XML_NO_ELEM, XML_API_TYPE);
 				return OS_NOTFOUND;
 			}
 
