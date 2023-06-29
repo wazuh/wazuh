@@ -5,4 +5,5 @@ include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
+add_subdirectory(component)
 add_subdirectory(unit)

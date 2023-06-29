@@ -1,7 +1,7 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager - Component Tests
  * Copyright (C) 2015, Wazuh Inc.
- * Jun 07, 2023.
+ * Jun 20, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -15,6 +15,7 @@
 #include "pubSubPublisher.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
+#include <memory>
 
 /**
  * @brief Runs unit tests for PubSubPublisher

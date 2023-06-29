@@ -18,13 +18,14 @@
 #define EXPORTED
 #endif
 
+#include "iRouterProvider.hpp"
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-class EXPORTED RouterProvider final
+class EXPORTED RouterProvider final : public IRouterProvider
 {
 private:
     const std::string m_topicName;
