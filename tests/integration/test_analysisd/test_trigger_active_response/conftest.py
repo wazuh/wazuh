@@ -1,16 +1,32 @@
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
-from pathlib import Path
-import subprocess
 import pytest
+import subprocess
+
+from pathlib import Path
+
 from wazuh_testing.constants.paths.binaries import ACTIVE_RESPONSE_BIN_PATH
-from wazuh_testing.constants.paths.logs import ALERTS_LOG_PATH
-from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils import file
-from wazuh_testing.utils.callbacks import generate_callback
 
 
 @pytest.fixture(scope='module')
 def prepare_ar_files(request: pytest.FixtureRequest) -> None:
+    """
+    Fixture for preparing AR (Active Response) files.
+
+    This fixture performs the necessary setup for AR files required for testing. It checks if the module
+    defining the fixture has the necessary attributes, writes files, sets file permissions, and cleans up
+    the files after the test.
+
+    Args:
+        request (FixtureRequest): The request object representing the fixture.
+
+    Raises:
+        AttributeError: If the `custom_ar_script` attribute is not defined in the module.
+        AttributeError: If the `monitored_file` attribute is not defined in the module.
+    """
     if not hasattr(request.module, 'custom_ar_script'):
         raise AttributeError('No `custom_ar_script` defined in module.')
     if not hasattr(request.module, 'monitored_file'):
@@ -29,12 +45,26 @@ def prepare_ar_files(request: pytest.FixtureRequest) -> None:
     yield
 
     file.remove_file(destination_ar_script)
-    file.remove_file(monitored_file)    
+    file.remove_file(monitored_file)
 
 
 @pytest.fixture()
 def fill_monitored_file(request: pytest.FixtureRequest, test_metadata: dict) -> None:
-    # Validate the input to get the message from exists.
+    """
+    Fixture for filling the monitored file with test data.
+
+    This fixture validates the input and necessary attributes, appends the test input to the monitored file,
+    and cleans up the file after the test.
+
+    Args:
+        request (pytest.FixtureRequest): The request object representing the fixture.
+        test_metadata (dict): Metadata containing the test input.
+
+    Raises:
+        AttributeError: If the `input` key is missing in the `test_metadata`.
+        AttributeError: If the `monitored_file` attribute is not defined in the module.
+        AttributeError: If the `file_created_by_script` attribute is not defined in the module.
+    """
     if test_metadata.get('input') is None:
         raise AttributeError('No `input` key in `test_metadata`.')
     if not hasattr(request.module, 'monitored_file'):
@@ -50,5 +80,3 @@ def fill_monitored_file(request: pytest.FixtureRequest, test_metadata: dict) -> 
     yield
 
     file.delete_file(getattr(request.module, 'file_created_by_script'))
-
-
