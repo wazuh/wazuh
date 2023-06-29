@@ -225,7 +225,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     }
     else
     {
-        std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
+        std::cout << std::endl << std::endl << "Type one log per line (Crtl+C to exit):" << std::endl << std::endl;
 
         // Only set non-canonical mode when connected to terminal
         if (isatty(fileno(stdin)) && !clear_icanon(true))
@@ -415,7 +415,7 @@ void configure(CLI::App_p app)
     testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
-        ->default_val(ENGINE_PROTOCOL_DEFAULT_QUEUE);
+        ->default_val(string {ENGINE_PROTOCOL_DEFAULT_QUEUE});
     testRunApp->add_flag("-d, --debug",
                          parameters->debugLevel,
                          "Enable debug mode [0-3]. Flag can appear multiple times. "

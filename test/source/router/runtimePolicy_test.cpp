@@ -83,7 +83,7 @@ TEST_F(RuntimePolicyTest, processEvent_1_event)
     auto error = policy->build(m_builder);
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
-    auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
+    auto e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[0]);
 
     // Send event
     auto decoderPath = json::Json::formatJsonPath("~decoder");
@@ -104,21 +104,21 @@ TEST_F(RuntimePolicyTest, processEvent_30_event)
 
     for (std::size_t i = 0; i < 30; i += 3)
     {
-        auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[i % 3]);
+        auto e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[i % 3]);
         // Send event
         auto result = policy->processEvent(e);
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_1") << e->prettyStr();
 
-        e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[(i + 1) % 3]);
+        e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[(i + 1) % 3]);
         // Send event
         result = policy->processEvent(e);
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_2") << e->prettyStr();
 
-        e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[(i + 2) % 3]);
+        e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[(i + 2) % 3]);
         // Send event
         result = policy->processEvent(e);
         ASSERT_FALSE(result) << result.value().message;
