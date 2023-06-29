@@ -65,13 +65,11 @@ void KVDBManager::initializeMainDB()
     const std::string dbNameFullPath {fmt::format("{}{}", dbStoragePath, m_ManagerOptions.dbName)};
 
     std::vector<std::string> columnNames;
-    auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
 
     std::vector<rocksdb::ColumnFamilyDescriptor> cfDescriptors;
     std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
-    rocksdb::Status openStatus;
-
+    auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
     if (listStatus.ok())
     {
         for (const auto& cfName : columnNames)
@@ -79,13 +77,9 @@ void KVDBManager::initializeMainDB()
             auto newDescriptor = rocksdb::ColumnFamilyDescriptor(cfName, rocksdb::ColumnFamilyOptions());
             cfDescriptors.push_back(newDescriptor);
         }
+    }
 
-        openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
-    }
-    else
-    {
-        openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, &m_pRocksDB);
-    }
+    auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
     // rocksdb::DB::Open returns two vectors.
     // One with the descriptors containing the names of the DBs. (cfDescriptors)
@@ -95,9 +89,6 @@ void KVDBManager::initializeMainDB()
     {
         m_mapCFHandles.emplace(cfDescriptors[cfDescriptorIndex].name, cfHandles[cfDescriptorIndex]);
     }
-
-    assert(openStatus.ok());
-    assert(m_pRocksDB);
 }
 
 void KVDBManager::finalizeMainDB()
@@ -107,14 +98,13 @@ void KVDBManager::finalizeMainDB()
     for (const auto& entry : m_mapCFHandles)
     {
         const auto& cfHandle = entry.second;
+        opStatus = m_pRocksDB->DropColumnFamily(cfHandle);
         opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
-        assert(opStatus.ok());
     }
 
     m_mapCFHandles.clear();
 
     opStatus = m_pRocksDB->Close();
-    assert(opStatus.ok());
 
     delete m_pRocksDB;
     m_pRocksDB = nullptr;
