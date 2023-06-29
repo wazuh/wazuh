@@ -3789,10 +3789,10 @@ def args_valid_iam_role_arn(iam_role_arn):
     argparse.ArgumentTypeError
         If the ARN provided is not in the expected format.
     """
-    pattern = r'^arn:aws:connect:\w+(?:-\w+)+:\d{12}:instance\/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+$'
+    pattern = r'^arn:(?P<Partition>[^:\n]*):(?P<Service>[^:\n]*):(?P<Region>[^:\n]*):(?P<AccountID>[^:\n]*):(?P<Ignore>(?P<ResourceType>[^:\/\n]*)[:\/])?(?P<Resource>.*)$'
 
     if not re.match(pattern, iam_role_arn):
-        raise argparse.ArgumentTypeError("Invalid ARN specified. Value must be a valid ARN.")
+        raise argparse.ArgumentTypeError("Invalid ARN Role specified. Value must be a valid ARN Role.")
 
     return iam_role_arn
 
