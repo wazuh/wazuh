@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 # Import AWS S3
 #
 # Copyright (C) 2015, Wazuh Inc.
@@ -30,6 +29,7 @@
 #   20 - Unable to find SQS
 #   21 - Failed fetch/delete from SQS
 #   22 - Invalid region
+#   23 - Profile not found
 
 import argparse
 import configparser
@@ -75,7 +75,8 @@ if sys.version_info[0] == 3:
 ################################################################################
 
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
-RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
+RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html' \
+                          '#Connection-configuration-for-retries'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
 GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html'
@@ -92,14 +93,77 @@ THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
 
 INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
 INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
-THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. If the problem persists" \
-                                     " check the following link to learn how to use the Retry configuration to avoid it: " \
-                                     f"'{RETRY_CONFIGURATION_URL}'"
+THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. If the problem " \
+                                     "persists check the following link to learn how to use the Retry configuration " \
+                                     f"to avoid it: {RETRY_CONFIGURATION_URL}'"
+RETRY_ATTEMPTS_KEY: str = "max_attempts"
+RETRY_MODE_CONFIG_KEY: str = "retry_mode"
+RETRY_MODE_BOTO_KEY: str = "mode"
+
 
 ALL_REGIONS = [
     'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2',
     'ap-south-1', 'eu-central-1', 'eu-west-1'
 ]
+
+
+################################################################################
+# Helpers functions
+################################################################################
+
+def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
+    """Create a botocore.config.Config object with the specified profile and profile_config.
+
+    This function reads the profile configuration from the provided profile_config object and extracts the necessary
+    parameters to create a botocore.config.Config object.
+    It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file for the
+    specified profile. If a setting is not found, a default value is used based on the boto3 documentation and config is
+    set into the boto_config.
+
+    Parameters
+    ----------
+    boto_config: dict
+        The config dictionary where the Boto Config will be set.
+
+    profile : str
+        The AWS profile name to use for the configuration.
+
+    profile_config : dict
+        The user config dict containing the profile configuration.
+    """
+    # Set s3 config
+    if f'{profile}.s3' in str(profile_config):
+        s3_config = {
+            "max_concurrent_requests": int(profile_config.get(f'{profile}.s3.max_concurrent_requests', 10)),
+            "max_queue_size": int(profile_config.get(f'{profile}.s3.max_queue_size', 10)),
+            "multipart_threshold": profile_config.get(f'{profile}.s3.multipart_threshold', '8MB'),
+            "multipart_chunksize": profile_config.get(f'{profile}.s3.multipart_chunksize', '8MB'),
+            "max_bandwidth": profile_config.get(f'{profile}.s3.max_bandwidth'),
+            "use_accelerate_endpoint": (
+                True if profile_config.get(f'{profile}.s3.use_accelerate_endpoint') == 'true' else False
+            ),
+            "addressing_style": profile_config.get(f'{profile}.s3.addressing_style', 'auto'),
+        }
+        boto_config['config'].s3 = s3_config
+
+    # Set Proxies configuration
+    if f'{profile}.proxy' in str(profile_config):
+        proxy_config = {
+            "host": profile_config.get(f'{profile}.proxy.host'),
+            "port": int(profile_config.get(f'{profile}.proxy.port')),
+            "username": profile_config.get(f'{profile}.proxy.username'),
+            "password": profile_config.get(f'{profile}.proxy.password'),
+        }
+        boto_config['config'].proxies = proxy_config
+
+        proxies_config = {
+            "ca_bundle": profile_config.get(f'{profile}.proxy.ca_bundle'),
+            "client_cert": profile_config.get(f'{profile}.proxy.client_cert'),
+            "use_forwarding_for_https": (
+                True if profile_config.get(f'{profile}.proxy.use_forwarding_for_https') == 'true' else False
+            )
+        }
+        boto_config['config'].proxies_config = proxies_config
 
 
 ################################################################################
@@ -188,7 +252,7 @@ class WazuhIntegration:
         # GovCloud regions
         self.gov_regions = {'us-gov-east-1', 'us-gov-west-1'}
 
-        self.connection_config = self.default_config()
+        self.connection_config = self.default_config(profile=aws_profile)
 
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
@@ -251,21 +315,113 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     @staticmethod
-    def default_config():
+    def default_config(profile: str) -> dict:
+        """Set the parameters found in user config file as a default configuration for client.
+
+        This method is called when Wazuh Integration is instantiated and sets a default config using .aws/config file
+        using the profile received from parameter.
+
+        If .aws/config file exist the file is retrieved and read to check for the existence of retry parameters mode and
+        max attempts if they exist and empty dictionary is returned and config is handled by botocore but if they don't
+        exist a botocore Config object is created and default configuration is set using user config for received
+        profile and retries parameters are set to avoid a throttling exception.
+
+        Parameters
+        ----------
+        profile : string
+                Aws profile configuration to use.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+
+        Raises
+        ------
+        KeyError
+            KeyError when there is no region in user config file.
+
+        ValueError
+            ValueError when there is an error parsing config file.
+
+        NoSectionError
+            configparser error when given profile does not exist in user config file.
+        """
         args = {}
-        if not path.exists(DEFAULT_AWS_CONFIG_PATH):
+
+        if path.exists(DEFAULT_AWS_CONFIG_PATH):
+            # Create boto Config object
+            args['config'] = botocore.config.Config()
+
+            # Get User Aws Config
+            aws_config = get_aws_config_params()
+
+            # Set profile
+            profile = profile if profile is not None else 'default'
+
+            try:
+                # Get profile config dictionary
+                profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
+
+            except configparser.NoSectionError:
+                print(f"No profile named: '{profile}' was found in the user config file")
+                sys.exit(23)
+
+            # Map Primary Botocore Config parameters with profile config file
+            try:
+                # Checks for retries config in profile config and sets it if not found to avoid throttling exception
+                if RETRY_ATTEMPTS_KEY in profile_config \
+                        or RETRY_MODE_CONFIG_KEY in profile_config:
+                    retries = {
+                        RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
+                        RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
+                    }
+                    debug(
+                        f"Retries parameters found in user profile. Using profile '{profile}' retries configuration",
+                        2)
+
+                else:
+                    # Set retry config
+                    retries = {
+                        RETRY_ATTEMPTS_KEY: 10,
+                        RETRY_MODE_BOTO_KEY: 'standard'
+                    }
+                    debug(
+                        "No retries configuration found in profile config. Generating default configuration for "
+                        f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
+                        2)
+
+                args['config'].retries = retries
+
+                # Set signature version
+                signature_version = profile_config.get('signature_version', 's3v4')
+                args['config'].signature_version = signature_version
+
+                # Set profile dictionaries configuration
+                set_profile_dict_config(boto_config=args,
+                                        profile=profile,
+                                        profile_config=profile_config)
+
+            except (KeyError, ValueError) as e:
+                print('Invalid key or value found in config '.format(e))
+                sys.exit(17)
+
+            debug(
+                f"Created Config object using profile: '{profile}' configuration",
+                2)
+
+        else:
+            # Set retries parameters to avoid a throttling exception
             args['config'] = botocore.config.Config(
                 retries={
-                    'max_attempts': 10,
-                    'mode': 'standard'
+                    RETRY_ATTEMPTS_KEY: 10,
+                    RETRY_MODE_BOTO_KEY: 'standard'
                 }
             )
             debug(
-                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                f"Generating default configuration for retries: {RETRY_MODE_BOTO_KEY} {args['config'].retries[RETRY_MODE_BOTO_KEY]} - "
+                f"{RETRY_ATTEMPTS_KEY} {args['config'].retries[RETRY_ATTEMPTS_KEY]}",
                 2)
-        else:
-            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
-                  2)
 
         return args
 
@@ -836,7 +992,8 @@ class AWSBucket(WazuhIntegration):
         # turn some list fields into dictionaries
         single_element_list_to_dictionary(event)
 
-        # in order to support both old and new index pattern, change data.aws.sourceIPAddress fieldname and parse that one with type ip
+        # in order to support both old and new index pattern,
+        # change data.aws.sourceIPAddress fieldname and parse that one with type ip
         # Only add this field if the sourceIPAddress is an IP and not a DNS.
         if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
