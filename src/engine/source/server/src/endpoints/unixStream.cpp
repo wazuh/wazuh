@@ -59,8 +59,6 @@ UnixStream::UnixStream(const std::string& address,
 
     m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
     m_metric.m_requestPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("RequestPerSecond");
-
-
 }
 
 UnixStream::~UnixStream()
@@ -92,11 +90,8 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
         });
 
     // Server in case of close
-    m_handle->on<uvw::CloseEvent>(
-        [address = m_address](const uvw::CloseEvent&, uvw::PipeHandle& handle)
-        {
-            LOG_INFO("[Endpoint: {}] Closed", address);
-        });
+    m_handle->on<uvw::CloseEvent>([address = m_address](const uvw::CloseEvent&, uvw::PipeHandle& handle)
+                                  { LOG_INFO("[Endpoint: {}] Closed", address); });
 
     // Server in case of connection
     m_handle->on<uvw::ListenEvent>(
@@ -306,9 +301,11 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
             auto client = wClient.lock();
             if (!client)
             {
-                LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response", m_address);
+                LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
+                          m_address);
                 return;
-            } else  if (client->closing())
+            }
+            else if (client->closing())
             {
                 LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", m_address);
                 return;
