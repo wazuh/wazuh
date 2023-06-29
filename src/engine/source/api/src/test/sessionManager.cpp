@@ -181,7 +181,7 @@ uint32_t SessionManager::getNewSessionID(void)
 
     uint32_t id = m_sessionIDCounter++;
 
-    while (m_idSet.count(id) > 0 && 0 != id)
+    while (m_idSet.count(id) > 0 || 0 == id)
     {
         id = m_sessionIDCounter++;
     }

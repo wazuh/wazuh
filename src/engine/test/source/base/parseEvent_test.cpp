@@ -31,7 +31,7 @@ void execute(const UseCase& useCase)
 {
     const std::string event {std::string {} + useCase.queue + ":" + useCase.location + ":" + useCase.log};
 
-    auto e = base::parseEvent::parseOssecEvent(event);
+    auto e = base::parseEvent::parseWazuhEvent(event);
 
     auto parsedQueue = e->getInt(base::parseEvent::EVENT_QUEUE_ID);
     EXPECT_EQ(parsedQueue.value(), int(useCase.queue)) << GTEST_CASE << useCase.description;
@@ -51,19 +51,19 @@ void execute(const UseCase& useCase)
     EXPECT_STREQ(parsedMessage.value().c_str(), useCase.log.c_str()) << GTEST_CASE << useCase.description;
 }
 
-TEST(parseOssecEvent, InvalidEventFormat)
+TEST(parseWazuhEvent, InvalidEventFormat)
 {
     const std::string event {"Invalid event format string"};
-    ASSERT_THROW(base::parseEvent::parseOssecEvent(event), std::runtime_error);
+    ASSERT_THROW(base::parseEvent::parseWazuhEvent(event), std::runtime_error);
 }
 
-TEST(parseOssecEvent, InvalidShortEvent)
+TEST(parseWazuhEvent, InvalidShortEvent)
 {
     const std::string event {"x::"};
-    ASSERT_THROW(base::parseEvent::parseOssecEvent(event), std::runtime_error);
+    ASSERT_THROW(base::parseEvent::parseWazuhEvent(event), std::runtime_error);
 }
 
-TEST(parseOssecEvent, Forms)
+TEST(parseWazuhEvent, Forms)
 {
     std::vector<UseCase> useCases = {
         UseCase {"FormI",

@@ -91,11 +91,11 @@ TEST_F(PolicyManagerTest, policyFlow)
         // Create event to process
         auto pathDeco = json::Json::formatJsonPath("~decoder");
 
-        auto e1 = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
+        auto e1 = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[0]);
         ASSERT_FALSE(e1->exists(pathDeco));
-        auto e2 = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[1]);
+        auto e2 = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[1]);
         ASSERT_FALSE(e2->exists(pathDeco));
-        auto e3 = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[2]);
+        auto e3 = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[2]);
         ASSERT_FALSE(e3->exists(pathDeco));
 
         // Process event

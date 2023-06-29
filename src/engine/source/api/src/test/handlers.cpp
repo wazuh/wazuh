@@ -16,8 +16,6 @@
 namespace
 {
 
-constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
-
 using namespace api::sessionManager;
 
 using api::catalog::Catalog;
@@ -51,14 +49,14 @@ optional<base::Error> loadSessionsFromJson(const shared_ptr<Catalog>& catalog,
 
     if (!jsonSessions.isArray())
     {
-        return optional<base::Error> {base::Error {"Invalid sessions JSON format"}};
+        return base::Error {"Invalid sessions JSON format"};
     }
 
     for (const auto& jsonSession : jsonSessions.getArray().value_or(std::vector<json::Json> {}))
     {
         if (!jsonSession.isObject())
         {
-            return optional<base::Error> {base::Error {"Invalid session JSON format"}};
+            return base::Error {"Invalid session JSON format"};
         }
 
         const auto creationDate = jsonSession.getInt("/creationdate");
@@ -70,10 +68,44 @@ optional<base::Error> loadSessionsFromJson(const shared_ptr<Catalog>& catalog,
         const auto sessionID = jsonSession.getInt("/id");
         const auto sessionName = jsonSession.getString("/name");
 
-        if (!sessionName.has_value() || !sessionID.has_value() || !creationDate.has_value() || !lifespan.has_value()
-            || !description.has_value() || !filterName.has_value() || !policyName.has_value() || !routeName.has_value())
+        string missingFields;
+        if (!sessionName.has_value())
         {
-            return optional<base::Error> {base::Error {"Invalid session JSON format"}};
+            missingFields += "/name, ";
+        }
+        if (!sessionID.has_value())
+        {
+            missingFields += "/id, ";
+        }
+        if (!creationDate.has_value())
+        {
+            missingFields += "/creationDate, ";
+        }
+        if (!lifespan.has_value())
+        {
+            missingFields += "/lifespan, ";
+        }
+        if (!description.has_value())
+        {
+            missingFields += "/description, ";
+        }
+        if (!filterName.has_value())
+        {
+            missingFields += "/filtername, ";
+        }
+        if (!policyName.has_value())
+        {
+            missingFields += "/policyname, ";
+        }
+        if (!routeName.has_value())
+        {
+            missingFields += "/routename, ";
+        }
+        if (!missingFields.empty())
+        {
+            missingFields = missingFields.substr(0, missingFields.size() - 2); // Remove the last ", "
+            return base::Error {"An error occurred while loading the sessions. The following fields are missing: "
+                                + missingFields};
         }
 
         const auto createSessionError = sessionManager.createSession(sessionName.value(),
@@ -93,11 +125,37 @@ optional<base::Error> loadSessionsFromJson(const shared_ptr<Catalog>& catalog,
         const auto subscriptionError = router->subscribeOutputAndTraces(policyName.value());
         if (subscriptionError.has_value())
         {
-            sessionManager.deleteSession(sessionName.value());
-            deleteRouteFromRouter(router, routeName.value());
-            deleteAssetFromStore(catalog, filterName.value());
-            deleteAssetFromStore(catalog, policyName.value());
-            return subscriptionError;
+            string errorMsg {subscriptionError.value().message};
+
+            if (!sessionManager.deleteSession(sessionName.value()))
+            {
+                errorMsg += string(". ") + fmt::format(SESSION_NOT_REMOVED_MSG, sessionName.value());
+            }
+
+            const auto deleteRouteError = deleteRouteFromRouter(router, routeName.value());
+            if (deleteRouteError.has_value())
+            {
+                errorMsg += string(". ")
+                            + fmt::format(ROUTE_NOT_REMOVED_MSG, routeName.value(), deleteRouteError.value().message);
+            }
+
+            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName.value());
+            if (deleteFilterError.has_value())
+            {
+                errorMsg +=
+                    string(". ")
+                    + fmt::format(FILTER_NOT_REMOVED_MSG, filterName.value(), deleteFilterError.value().message);
+            }
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName.value());
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ")
+                    + fmt::format(POLICY_NOT_REMOVED_MSG, policyName.value(), deletePolicyError.value().message);
+            }
+
+            return base::Error {errorMsg};
         }
     }
 
@@ -109,10 +167,10 @@ json::Json getSessionsAsJson(void)
     auto jsonSessions = json::Json("[]");
 
     auto& sessionManager = SessionManager::getInstance();
-    auto list = sessionManager.getSessionsList();
+    const auto list = sessionManager.getSessionsList();
     for (auto& sessionName : list)
     {
-        auto session = sessionManager.getSession(sessionName);
+        const auto session = sessionManager.getSession(sessionName);
         auto jsonSession = json::Json(API_SESSIONS_DATA_FORMAT);
 
         jsonSession.setInt(session->getCreationDate(), "/creationdate");
@@ -239,7 +297,7 @@ addTestPolicyToCatalog(const shared_ptr<Catalog>& catalog, const string& session
     return addTestPolicyToCatalogError;
 }
 
-inline optional<base::Error> deleteAssetFromStore(const shared_ptr<Catalog>& catalog, const string& assetName)
+inline optional<base::Error> deleteAssetFromCatalog(const shared_ptr<Catalog>& catalog, const string& assetName)
 {
     optional<base::Error> deleteAssetError;
 
@@ -261,7 +319,7 @@ inline optional<base::Error> deleteAssetFromStore(const shared_ptr<Catalog>& cat
         if (deleteResourceError.has_value())
         {
             const auto error = fmt::format(
-                "Asset '{}' could not be removed from the store: {}", assetName, deleteResourceError.value().message);
+                "Asset '{}' could not be removed from the catalog: {}", assetName, deleteResourceError.value().message);
             deleteAssetError = optional<base::Error> {base::Error {error}};
         };
     }
@@ -286,14 +344,14 @@ inline optional<base::Error> deleteRouteFromRouter(const shared_ptr<Router>& rou
 }
 
 inline optional<base::Error>
-deleteSession(const shared_ptr<Router>& router, const shared_ptr<Catalog>& catalog, const string& sessionName)
+handleDeleteSession(const shared_ptr<Router>& router, const shared_ptr<Catalog>& catalog, const string& sessionName)
 {
     auto& sessionManager = SessionManager::getInstance();
 
-    auto session = sessionManager.getSession(sessionName);
+    const auto session = sessionManager.getSession(sessionName);
     if (!session.has_value())
     {
-        return base::Error {fmt::format("Session '{}' could not be found", sessionName)};
+        return base::Error {fmt::format(SESSION_NOT_FOUND_MSG, sessionName)};
     }
 
     const auto deleteRouteError = deleteRouteFromRouter(router, session->getRouteName());
@@ -302,13 +360,13 @@ deleteSession(const shared_ptr<Router>& router, const shared_ptr<Catalog>& catal
         return deleteRouteError;
     }
 
-    const auto deleteFilterError = deleteAssetFromStore(catalog, session->getFilterName());
+    const auto deleteFilterError = deleteAssetFromCatalog(catalog, session->getFilterName());
     if (deleteFilterError.has_value())
     {
         return deleteFilterError;
     }
 
-    const auto deletePolicyError = deleteAssetFromStore(catalog, session->getPolicyName());
+    const auto deletePolicyError = deleteAssetFromCatalog(catalog, session->getPolicyName());
     if (deletePolicyError.has_value())
     {
         return deletePolicyError;
@@ -316,7 +374,7 @@ deleteSession(const shared_ptr<Router>& router, const shared_ptr<Catalog>& catal
 
     if (!sessionManager.deleteSession(sessionName))
     {
-        return base::Error {fmt::format("Session '{}' could not be removed from the sessions manager", sessionName)};
+        return base::Error {fmt::format(SESSION_NOT_REMOVED_MSG, sessionName)};
     }
 
     return std::nullopt;
@@ -383,8 +441,16 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
         const auto addFilterError = addTestFilterToCatalog(catalog, filterName, sessionID);
         if (addFilterError.has_value())
         {
-            deleteAssetFromStore(catalog, policyName);
-            return genericError<ResponseType>(addFilterError.value().message);
+            string errorMsg {addFilterError.value().message};
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+            }
+
+            return genericError<ResponseType>(errorMsg);
         }
 
         // Set up the test session's route
@@ -395,17 +461,45 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
         const int32_t maxAvailablePriority = getMaximumAvailablePriority(router);
         if (TEST_ROUTE_MINIMUM_PRIORITY < maxAvailablePriority)
         {
-            deleteAssetFromStore(catalog, filterName);
-            deleteAssetFromStore(catalog, policyName);
-            return genericError<ResponseType>("There is no available priority");
+            string errorMsg {"There is no available priority"};
+
+            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName);
+            if (deleteFilterError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
+            }
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+            }
+
+            return genericError<ResponseType>(errorMsg);
         }
 
         const auto addRouteError = router->addRoute(routeName, maxAvailablePriority, filterName, policyName);
         if (addRouteError.has_value())
         {
-            deleteAssetFromStore(catalog, filterName);
-            deleteAssetFromStore(catalog, policyName);
-            return genericError<ResponseType>(addRouteError.value().message);
+            string errorMsg {addRouteError.value().message};
+
+            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName);
+            if (deleteFilterError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
+            }
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+            }
+
+            return genericError<ResponseType>(errorMsg);
         }
 
         // Create the session
@@ -419,32 +513,100 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
             sessionName, policyName, filterName, routeName, sessionID, lifespan, description);
         if (createSessionError.has_value())
         {
-            deleteRouteFromRouter(router, routeName);
-            deleteAssetFromStore(catalog, filterName);
-            deleteAssetFromStore(catalog, policyName);
-            return genericError<ResponseType>(createSessionError.value().message);
+            string errorMsg {createSessionError.value().message};
+
+            const auto deleteRouteError = deleteRouteFromRouter(router, routeName);
+            if (deleteRouteError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(ROUTE_NOT_REMOVED_MSG, routeName, deleteRouteError.value().message);
+            }
+
+            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName);
+            if (deleteFilterError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
+            }
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+            }
+
+            return genericError<ResponseType>(errorMsg);
         }
 
         // Suscribe to output and Trace
         const auto subscriptionError = router->subscribeOutputAndTraces(policyName);
         if (subscriptionError.has_value())
         {
-            sessionManager.deleteSession(sessionName);
-            deleteRouteFromRouter(router, routeName);
-            deleteAssetFromStore(catalog, filterName);
-            deleteAssetFromStore(catalog, policyName);
-            return genericError<ResponseType>(subscriptionError.value().message);
+            string errorMsg {subscriptionError.value().message};
+
+            if (!sessionManager.deleteSession(sessionName))
+            {
+                errorMsg += string(". ") + fmt::format(SESSION_NOT_REMOVED_MSG, sessionName);
+            }
+
+            const auto deleteRouteError = deleteRouteFromRouter(router, routeName);
+            if (deleteRouteError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(ROUTE_NOT_REMOVED_MSG, routeName, deleteRouteError.value().message);
+            }
+
+            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName);
+            if (deleteFilterError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
+            }
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+            }
+
+            return genericError<ResponseType>(errorMsg);
         }
 
         // Save the sessions to the store
         const auto saveSessionsToStoreError = saveSessionsToStore(store);
         if (saveSessionsToStoreError.has_value())
         {
-            sessionManager.deleteSession(sessionName);
-            deleteRouteFromRouter(router, routeName);
-            deleteAssetFromStore(catalog, filterName);
-            deleteAssetFromStore(catalog, policyName);
-            return genericError<ResponseType>(saveSessionsToStoreError.value().message);
+            string errorMsg {saveSessionsToStoreError.value().message};
+
+            if (!sessionManager.deleteSession(sessionName))
+            {
+                errorMsg += fmt::format(SESSION_NOT_REMOVED_MSG, sessionName);
+            }
+
+            const auto deleteRouteError = deleteRouteFromRouter(router, routeName);
+            if (deleteRouteError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(ROUTE_NOT_REMOVED_MSG, routeName, deleteRouteError.value().message);
+            }
+
+            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName);
+            if (deleteFilterError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
+            }
+
+            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            if (deletePolicyError.has_value())
+            {
+                errorMsg +=
+                    string(". ") + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+            }
+
+            return genericError<ResponseType>(errorMsg);
         }
 
         ResponseType eResponse;
@@ -480,7 +642,7 @@ api::Handler sessionGet(void)
         const auto session = sessionManager.getSession(eRequest.name());
         if (!session.has_value())
         {
-            return genericError<ResponseType>(fmt::format("Session '{}' could not be found", eRequest.name()));
+            return genericError<ResponseType>(fmt::format(SESSION_NOT_FOUND_MSG, eRequest.name()));
         }
 
         ResponseType eResponse;
@@ -517,7 +679,7 @@ api::Handler sessionsGet(void)
         const auto& eRequest = std::get<RequestType>(res);
 
         auto& sessionManager = SessionManager::getInstance();
-        auto list = sessionManager.getSessionsList();
+        const auto list = sessionManager.getSessionsList();
 
         ResponseType eResponse;
         for (const auto& sessionName : list)
@@ -563,7 +725,7 @@ api::Handler sessionsDelete(const shared_ptr<Catalog>& catalog,
         {
             for (auto& sessionName : sessionManager.getSessionsList())
             {
-                const auto deleteSessionError = deleteSession(router, catalog, sessionName);
+                const auto deleteSessionError = handleDeleteSession(router, catalog, sessionName);
                 if (deleteSessionError.has_value())
                 {
                     return genericError<ResponseType>(deleteSessionError.value().message);
@@ -572,7 +734,7 @@ api::Handler sessionsDelete(const shared_ptr<Catalog>& catalog,
         }
         else if (eRequest.has_name())
         {
-            const auto deleteSessionError = deleteSession(router, catalog, eRequest.name());
+            const auto deleteSessionError = handleDeleteSession(router, catalog, eRequest.name());
             if (deleteSessionError.has_value())
             {
                 return genericError<ResponseType>(deleteSessionError.value().message);
@@ -658,28 +820,28 @@ api::Handler runPost(const shared_ptr<Router>& router)
 
         // Get session
         auto& sessionManager = SessionManager::getInstance();
-        auto session = sessionManager.getSession(eRequest.name());
+        const auto session = sessionManager.getSession(eRequest.name());
         if (!session.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Session '{}' could not be found", eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(SESSION_NOT_FOUND_MSG, eRequest.name()));
         }
 
         // Event in Wazuh format
         const auto eventFormat =
-            fmt::format(WAZUH_EVENT_FORMAT, protocolQueue, protocolLocation, eRequest.event().string_value());
+            fmt::format(WAZUH_EVENT_FORMAT, strProtocolQueue, protocolLocation, eRequest.event().string_value());
         base::Event event;
         try
         {
-            event = base::parseEvent::parseOssecEvent(eventFormat);
+            event = base::parseEvent::parseWazuhEvent(eventFormat);
         }
         catch (const std::exception& e)
         {
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        // Add new field for filter
-        event->setString(eRequest.name(), TEST_FIELD_TO_CHECK_IN_FILTER);
+        // Add session ID to the event to filter it on the route
+        const auto sessionID = session.value().getSessionID();
+        event->setInt(sessionID, TEST_FIELD_TO_CHECK_IN_FILTER);
 
         // Enqueue event
         const auto enqueueEventError = router->enqueueEvent(std::move(event));
@@ -689,8 +851,7 @@ api::Handler runPost(const shared_ptr<Router>& router)
         }
 
         // Get payload (output and traces)
-        auto payload = router->getData(session.value().getPolicyName(), routerDebugMode);
-
+        const auto payload = router->getData(session.value().getPolicyName(), routerDebugMode);
         if (std::holds_alternative<base::Error>(payload))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(payload).message);
@@ -701,14 +862,25 @@ api::Handler runPost(const shared_ptr<Router>& router)
         // Get output
         const auto output = eMessage::eMessageFromJson<google::protobuf::Value>(
             std::get<0>(std::get<std::tuple<string, string>>(payload)));
-        const auto jsonOutput = std::get<google::protobuf::Value>(output);
-        eResponse.mutable_output()->CopyFrom(jsonOutput);
+        if (std::holds_alternative<base::Error>(output))
+        {
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(output).message);
+        }
+        else
+        {
+            const auto jsonOutput = std::get<google::protobuf::Value>(output);
+            eResponse.mutable_output()->CopyFrom(jsonOutput);
+        }
 
         // Get traces
         if (!std::get<1>(std::get<std::tuple<string, string>>(payload)).empty())
         {
             const auto trace = eMessage::eMessageFromJson<google::protobuf::Value>(
                 std::get<1>(std::get<std::tuple<string, string>>(payload)));
+            if (std::holds_alternative<base::Error>(trace))
+            {
+                return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(trace).message);
+            }
             const auto jsonTrace = std::get<google::protobuf::Value>(trace);
             eResponse.mutable_traces()->CopyFrom(jsonTrace);
         }
