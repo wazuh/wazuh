@@ -223,45 +223,45 @@ def test_cut_array_ko(limit, offset, expected_exception):
         # Test cases with queries
         ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-         'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None, None,
+         'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None, False,
          [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
         ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-         'datetime<2017-10-26', None, None, None, None, None, None,
+         'datetime<2017-10-26', None, None, None, None, None, False,
          [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
         ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-         'datetime>2019-10-26,datetime<2017-10-26', None, None, None, None, None, None,
+         'datetime>2019-10-26,datetime<2017-10-26', None, None, None, None, None, False,
          [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
         ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', None, None, None, None, None, None,
+         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', None, None, None, None, None, False,
          [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}], 1),
 
         ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
-         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None, None,
+         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None, False,
          [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}], 1),
 
         # Test cases with filters, limit and search
         ([{'item': 'value_1', 'some': 't'}, {'item': 'value_2', 'some': 'a'}, {'item': 'value_3', 'some': 'b'}],
-         None, {'item': 'value_1', 'some': 't'}, 1, None, None, None, None,
+         None, {'item': 'value_1', 'some': 't'}, 1, None, None, None, False,
          [{'item': 'value_1', 'some': 't'}], 1),
 
         ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
-         None, None, 1, 'e_1', None, None, None,
+         None, None, 1, 'e_1', None, None, False,
          [{'item': 'value_1'}], 2),
 
         ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
-         None, None, 2, 'e_1', None, None, None,
+         None, None, 2, 'e_1', None, None, False,
          [{'item': 'value_1'}, {'item': 'value_1'}], 2),
 
         # Test cases with sort
         ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
-         None, None, None, None, None, ['item'], None,
+         None, None, None, None, None, ['item'], False,
          [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
 
         # Test cases with distinct
@@ -278,18 +278,18 @@ def test_cut_array_ko(limit, offset, expected_exception):
         # Complex test cases
         ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
-         'datetime~2017', {'item': 'value_1'}, 1, 'frame', None, None, None,
+         'datetime~2017', {'item': 'value_1'}, 1, 'frame', None, None, False,
          [{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z',
            'component': 'framework'}], 1),
 
         ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
-         'datetime~2019', {'item': 'value_1'}, 1, None, None, None, None,
+         'datetime~2019', {'item': 'value_1'}, 1, None, None, None, False,
          [], 0),
 
         ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
-         'datetime~2017', {'item': 'value_1'}, 1, None, ['component', 'item'], None, None,
+         'datetime~2017', {'item': 'value_1'}, 1, None, ['component', 'item'], None, False,
          [{'item': 'value_1', 'component': 'framework'}], 1),
     ])
 def test_process_array(array, q, filters, limit, search_text, sort_by, select, distinct, expected_items,
