@@ -26,7 +26,7 @@
             [
                 "web"
             ],
-            "duration": 1300000000,
+            "duration": 13000000,
             "id": "0EC86NTN8Y97ACDW",
             "kind": "event",
             "type":
@@ -52,7 +52,6 @@
                 "status_code": "403"
             }
         },
-        "~http_url_original": "/favicon.ico",
         "~authentication_type": "-",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "-",
@@ -104,6 +103,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/favicon.ico"
         }
     },
     {
@@ -133,7 +136,7 @@
             [
                 "web"
             ],
-            "duration": 25,
+            "duration": 25000000,
             "id": "M5XR3KNK3KQ9TBD9",
             "kind": "event",
             "type":
@@ -159,7 +162,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/?publicAccessBlock",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -211,6 +213,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "publicAccessBlock"
         }
     },
     {
@@ -240,7 +247,7 @@
             [
                 "web"
             ],
-            "duration": 23,
+            "duration": 23000000,
             "id": "T3BXZFS0F0CJ40PX",
             "kind": "event",
             "type":
@@ -266,7 +273,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/?publicAccessBlock",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -318,6 +324,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "publicAccessBlock"
         }
     },
     {
@@ -347,7 +358,7 @@
             [
                 "web"
             ],
-            "duration": 24,
+            "duration": 24000000,
             "id": "KJX92DPG7K2DVRKW",
             "kind": "event",
             "type":
@@ -373,7 +384,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/wazuh-cloudtrail?object-lock=",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -425,6 +435,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "object-lock="
         }
     },
     {
@@ -454,7 +469,7 @@
             [
                 "web"
             ],
-            "duration": 26,
+            "duration": 26000000,
             "id": "4PV7SD39WB656ZKZ",
             "kind": "event",
             "type":
@@ -480,7 +495,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/?publicAccessBlock",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -532,6 +546,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "publicAccessBlock"
         }
     },
     {
@@ -561,7 +580,7 @@
             [
                 "web"
             ],
-            "duration": 1000000000,
+            "duration": 10000000,
             "id": "T3BXXQXXXA2C8CTM",
             "kind": "event",
             "type":
@@ -587,7 +606,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/wazuh-cloudtrail?object-lock=",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -639,6 +657,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "object-lock="
         }
     },
     {
@@ -668,7 +691,7 @@
             [
                 "web"
             ],
-            "duration": 54,
+            "duration": 54000000,
             "id": "M6XS2MGJ5FDA6VTJ",
             "kind": "event",
             "type":
@@ -694,7 +717,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/?versions&max-keys=1&encoding-type=url",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -746,6 +768,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "versions&max-keys=1&encoding-type=url"
         }
     },
     {
@@ -775,7 +802,7 @@
             [
                 "web"
             ],
-            "duration": 28,
+            "duration": 28000000,
             "id": "T3BJ3QVNEB2XNQZ6",
             "kind": "event",
             "type":
@@ -801,7 +828,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/wazuh-cloudtrail?encryption=",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -853,6 +879,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "encryption="
         }
     },
     {
@@ -882,7 +913,7 @@
             [
                 "web"
             ],
-            "duration": 219,
+            "duration": 219000000,
             "id": "3AJB6PD273RD52X6",
             "kind": "event",
             "type":
@@ -904,7 +935,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -955,6 +985,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz"
         }
     },
     {
@@ -984,7 +1018,7 @@
             [
                 "web"
             ],
-            "duration": 54,
+            "duration": 54000000,
             "id": "M6XS2MGJ5FDA6VTJ",
             "kind": "event",
             "type":
@@ -1010,7 +1044,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/?versions&max-keys=1&encoding-type=url",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1062,6 +1095,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "versions&max-keys=1&encoding-type=url"
         }
     },
     {
@@ -1091,7 +1129,7 @@
             [
                 "web"
             ],
-            "duration": 417,
+            "duration": 417000000,
             "id": "7MS7B8RJRST6P5TR",
             "kind": "event",
             "type":
@@ -1113,7 +1151,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1164,6 +1201,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz"
         }
     },
     {
@@ -1193,7 +1234,7 @@
             [
                 "web"
             ],
-            "duration": 103,
+            "duration": 103000000,
             "id": "WF1XB03CFCAN420K",
             "kind": "event",
             "type":
@@ -1215,7 +1256,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1266,6 +1306,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz"
         }
     },
     {
@@ -1295,7 +1339,7 @@
             [
                 "web"
             ],
-            "duration": 800000000,
+            "duration": 8000000,
             "id": "4PV3AP5MWB9MR2PB",
             "kind": "event",
             "type":
@@ -1321,7 +1365,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/?website",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1373,6 +1416,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "website"
         }
     },
     {
@@ -1402,7 +1450,7 @@
             [
                 "web"
             ],
-            "duration": 77,
+            "duration": 77000000,
             "id": "6CAEB7DA04Q1TF4Y",
             "kind": "event",
             "type":
@@ -1424,7 +1472,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1475,6 +1522,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz"
         }
     },
     {
@@ -1504,7 +1555,7 @@
             [
                 "web"
             ],
-            "duration": 32,
+            "duration": 32000000,
             "id": "T3BVCZYFQWJ71SMQ",
             "kind": "event",
             "type":
@@ -1530,7 +1581,6 @@
                 "status_code": "404"
             }
         },
-        "~http_url_original": "/wazuh-cloudtrail?tagging=",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1582,6 +1632,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "tagging="
         }
     },
     {
@@ -1611,7 +1666,7 @@
             [
                 "web"
             ],
-            "duration": 103,
+            "duration": 103000000,
             "id": "WF1XB03CFCAN420K",
             "kind": "event",
             "type":
@@ -1633,7 +1688,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/AWSLogs/266148451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1684,6 +1738,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/266148451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz"
         }
     },
     {
@@ -1713,7 +1771,7 @@
             [
                 "web"
             ],
-            "duration": 29,
+            "duration": 29000000,
             "id": "T3BW07JM2HMSJH17",
             "kind": "event",
             "type":
@@ -1735,7 +1793,6 @@
                 "status_code": "200"
             }
         },
-        "~http_url_original": "/wazuh-cloudtrail",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1787,6 +1844,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail"
         }
     },
     {
@@ -1816,7 +1877,7 @@
             [
                 "web"
             ],
-            "duration": 22,
+            "duration": 22000000,
             "id": "QNRZ5RHSF6D8QQ7Q",
             "kind": "event",
             "type":
@@ -1842,7 +1903,6 @@
                 "status_code": "403"
             }
         },
-        "~http_url_original": "/",
         "~authentication_type": "AuthHeader",
         "~bucket": "wazuh-cloudtrail",
         "~signature_version": "SigV4",
@@ -1894,6 +1954,10 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/"
         }
     },
     {
@@ -1944,7 +2008,6 @@
                 "status_code": 200
             }
         },
-        "~http_url_original": "/awsexamplebucket1/photos/2019/08/perri.jpg?x-foo=bar",
         "~authentication_type": "AuthHeader",
         "~bucket": "awsexamplebucket1",
         "~signature_version": "SigV2",
@@ -1996,6 +2059,11 @@
             "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
             "version_protocol": "TLS",
             "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/awsexamplebucket1/photos/2019/08/perri.jpg",
+            "query": "x-foo=bar"
         }
     }
 ]

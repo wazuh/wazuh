@@ -62,7 +62,7 @@ normalize:
       - error.code: $~json.aws.error_code
       # from ms to nanoseconds
       - event.duration: +parse_long/$~json.aws.total_time
-      # this can cause an overflown error, if so then it stores ms
+      # TODO: this can cause an overflown error, if so then it stores ms
       - event.duration: +int_calculate/mul/1000000
       - event.id: $~json.aws.request_id
       - event.kind: event
@@ -76,6 +76,9 @@ normalize:
       - tls.cipher: $~json.aws.cipher_suite
 
   - logpar:
+    - ~http_url_original: <url.path>(?\?<url.query>)
+
+  - logpar:
     - ~json.aws.host_header: <?~>s3.<cloud.region>.<~>
 
   - logpar:
@@ -83,3 +86,4 @@ normalize:
 
   - map:
       - ~json: +delete
+      - ~http_url_original: +delete
