@@ -87,7 +87,8 @@ void KVDBManager::initializeMainDB()
 
     if (!hasDefaultCF)
     {
-        auto newDescriptor = rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
+        auto newDescriptor =
+            rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
         cfDescriptors.push_back(newDescriptor);
     }
 
@@ -235,30 +236,31 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
         return base::Error {fmt::format("An error occurred while opening the file '{}'", path.c_str())};
     }
 
-    json::Json jKv;
+    json::Json fileContentsJson;
     try
     {
-        jKv = json::Json {contents.c_str()};
+        fileContentsJson = json::Json {contents.c_str()};
     }
     catch (const std::exception& e)
     {
         return base::Error {fmt::format("An error occurred while parsing the JSON file '{}'", path.c_str())};
     }
 
-    if (!jKv.isObject())
+    if (!fileContentsJson.isObject())
     {
         return base::Error {
             fmt::format("An error occurred while parsing the JSON file '{}': JSON is not an object", path.c_str())};
     }
 
-    entries = jKv.getObject().value();
+    entries = fileContentsJson.getObject().value();
 
     for (const auto& [key, value] : entries)
     {
         auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle, key, value.str());
         if (!status.ok())
         {
-            // TODO check error
+            return base::Error {fmt::format(
+                "An error occurred while inserting data key {}, value {}: ", key, value.str(), status.ToString())};
         }
     }
 
@@ -319,9 +321,9 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
 
     for (auto& entry : refCounterMap)
     {
-        auto scopeName = entry.first;
-        auto refCounter = entry.second;
-        auto refInfo = refCounter.getRefMap();
+        const auto& scopeName = entry.first;
+        const auto& refCounter = entry.second;
+        const auto& refInfo = refCounter.getRefMap();
         retValue.emplace(scopeName, refInfo);
     }
 
