@@ -181,6 +181,12 @@ private:
     std::map<std::string, rocksdb::ColumnFamilyHandle*> m_mapCFHandles;
 
     /**
+     * @brief Default Column Family Handle
+     *
+     */
+    rocksdb::ColumnFamilyHandle* m_pDefaultCFHandle;
+
+    /**
      * @brief Syncronization object for Scopes Collection (m_mapScopes).
      *
      */

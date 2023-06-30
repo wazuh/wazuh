@@ -316,7 +316,7 @@ TEST_F(KVDBApiTest, managerPostWithPathEmpty)
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, {""}));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The DB was created but loading data returned: The path is empty.."})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The DB was created but loading data returned: The path is empty."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);

@@ -8,8 +8,8 @@ set(ENGINE_KVDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/kvdb/include)
 CPMAddPackage(
   NAME rocksdb
   GITHUB_REPOSITORY facebook/rocksdb
-  GIT_TAG v6.29.3
-  VERSION 6.29.3
+  GIT_TAG v8.3.2
+  VERSION 8.3.2
   OPTIONS
     "WITH_GFLAGS OFF"
     "WITH_TESTS OFF"
