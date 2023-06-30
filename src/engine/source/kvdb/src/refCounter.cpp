@@ -3,7 +3,7 @@
 namespace kvdbManager
 {
 
-void RefCounter::addRef(const std::string& name, const unsigned int times)
+void RefCounter::addRef(const std::string& name, const uint32_t times)
 {
     m_refMap[name] += times;
 }
@@ -21,7 +21,7 @@ void RefCounter::removeRef(const std::string& name)
     }
 }
 
-unsigned int RefCounter::count(const std::string& name) const
+uint32_t RefCounter::count(const std::string& name) const
 {
     auto it = m_refMap.find(name);
 
