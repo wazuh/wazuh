@@ -45,7 +45,6 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules import ALL_DAEMON_HANDLER
 from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils import configuration, callbacks
@@ -56,15 +55,15 @@ from . import CONFIGS_PATH, TEST_CASES_PATH, RULES_SAMPLE_PATH
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
 # Configuration and cases data.
-test_configs_path = Path(CONFIGS_PATH, 'config_signature_id_values.yaml')
+test_configs_path = Path(CONFIGS_PATH, 'configuration_signature_id_values.yaml')
 test_cases_path = Path(TEST_CASES_PATH, 'cases_invalid_signature_id.yaml')
 
 # Test configurations.
-config_parameters, metadata, cases_ids = configuration.get_test_cases_data(cases_path)
-test_configuration = configuration.load_configuration_template(configs_path, config_parameters, metadata)
+test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
+test_configuration = configuration.load_configuration_template(test_configs_path, test_configuration, test_metadata)
 
 # Test daemons to restart.
-daemons_handler_configuration = ALL_DAEMON_HANDLER
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test function.
@@ -95,7 +94,7 @@ def test_invalid_signature_id(test_configuration, test_metadata, set_wazuh_confi
     parameters:
         - test_configuration:
             type: dict
-            brief: Configuration loaded from `config_templates`.
+            brief: Configuration loaded from `configuration_templates`.
         - test_metadata:
             type: dict
             brief: Test case metadata.
@@ -117,7 +116,7 @@ def test_invalid_signature_id(test_configuration, test_metadata, set_wazuh_confi
         - Check ".*wazuh-testrule.*Empty 'if_sid' value. Rule '(\\d*)' will be ignored.*"
 
     input_description:
-        - The `config_signature_id_values.yaml` file provides the module configuration for
+        - The `configuration_signature_id_values.yaml` file provides the module configuration for
           this test.
         - The `cases_invalid_signature_id.yaml` file provides the test cases.
     '''
