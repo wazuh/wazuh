@@ -16,19 +16,19 @@ std::string timeToString(opentelemetry::common::SystemTimestamp time_stamp)
 {
   std::time_t epoch_time = std::chrono::system_clock::to_time_t(time_stamp);
 
-  struct tm *tm_ptr = nullptr;
+  struct tm tm_buf;
+  struct tm* tm_ptr = nullptr;
 #if defined(_MSC_VER)
-  struct tm buf_tm;
-  if (!gmtime_s(&buf_tm, &epoch_time))
+  if (gmtime_s(&tm_buf, &epoch_time) == 0)
   {
-    tm_ptr = &buf_tm;
+    tm_ptr = &tm_buf;
   }
 #else
-  tm_ptr = std::gmtime(&epoch_time);
+  tm_ptr = gmtime_r(&epoch_time, &tm_buf);
 #endif
 
   char buf[100];
-  char *date_str = nullptr;
+  char* date_str = nullptr;
   if (tm_ptr == nullptr)
   {
     OTEL_INTERNAL_LOG_ERROR("[OStream Metric] gmtime failed for " << epoch_time);
@@ -42,8 +42,9 @@ std::string timeToString(opentelemetry::common::SystemTimestamp time_stamp)
     OTEL_INTERNAL_LOG_ERROR("[OStream Metric] strftime failed for " << epoch_time);
   }
 
-  return std::string{date_str};
+  return std::string {date_str};
 }
+
 std::string getInstrumentTypeName(opentelemetry::sdk::metrics::InstrumentType type) noexcept
 {
   switch(type)
