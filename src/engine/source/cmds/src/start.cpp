@@ -218,7 +218,7 @@ void runStart(ConfHandler confManager)
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
-            g_exitHanlder.add(
+            exitHandler.add(
                 [kvdbManager]()
                 {
                     LOG_INFO("KVDB terminated.");
