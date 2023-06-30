@@ -79,4 +79,4 @@ def fill_monitored_file(request: pytest.FixtureRequest, test_metadata: dict) -> 
 
     yield
 
-    file.delete_file(getattr(request.module, 'file_created_by_script'))
+    file.remove_file(getattr(request.module, 'file_created_by_script'))

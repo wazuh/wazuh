@@ -45,7 +45,7 @@ def configure_ar_conf(request: pytest.FixtureRequest) -> None:
     if backup:
         file.write_file(AR_CONF, backup)
     else:
-        file.delete_file(AR_CONF)
+        file.remove_file(AR_CONF)
 
 
 @pytest.fixture()
