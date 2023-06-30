@@ -181,7 +181,9 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
             f"docker inspect env_nginx-lb_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
         if not health.startswith(b'"healthy"'):
             return False
-
+    else:
+        raise ValueError(f"Invalid node_type value: '{node_type}'.")
+        
     return True
 
 
