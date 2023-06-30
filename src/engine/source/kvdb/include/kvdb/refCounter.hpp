@@ -33,7 +33,7 @@ public:
      * @param name Reference name to increase
      * @param times How many times to increase the reference. Default is 1.
      */
-    void addRef(const std::string& name, const uint times = 1);
+    void addRef(const std::string& name, const uint32_t times = 1);
 
     /**
      * @brief Remove 1 reference from the counter.
@@ -46,9 +46,9 @@ public:
      * @brief Get the number of references for a given name.
      *
      * @param name Reference name to get the count.
-     * @return unsigned int Number of references for the given name.
+     * @return uint32_t Number of references for the given name.
      */
-    unsigned int count(const std::string& name) const;
+    uint32_t count(const std::string& name) const;
 
     /**
      * @brief Checks if there are no references to any name.
