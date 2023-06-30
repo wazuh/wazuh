@@ -69,17 +69,29 @@ void KVDBManager::initializeMainDB()
     std::vector<rocksdb::ColumnFamilyDescriptor> cfDescriptors;
     std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
+    bool hasDefaultCF = false;
     auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
     if (listStatus.ok())
     {
         for (const auto& cfName : columnNames)
         {
+            if (cfName == rocksdb::kDefaultColumnFamilyName)
+            {
+                hasDefaultCF = true;
+            }
+
             auto newDescriptor = rocksdb::ColumnFamilyDescriptor(cfName, rocksdb::ColumnFamilyOptions());
             cfDescriptors.push_back(newDescriptor);
         }
     }
 
-    auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
+    if (!hasDefaultCF)
+    {
+        auto newDescriptor = rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
+        cfDescriptors.push_back(newDescriptor);
+    }
+
+    rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
     // rocksdb::DB::Open returns two vectors.
     // One with the descriptors containing the names of the DBs. (cfDescriptors)
@@ -87,7 +99,15 @@ void KVDBManager::initializeMainDB()
     // In this procedure we join these vectors into a map.
     for (std::size_t cfDescriptorIndex = 0; cfDescriptorIndex < cfDescriptors.size(); cfDescriptorIndex++)
     {
-        m_mapCFHandles.emplace(cfDescriptors[cfDescriptorIndex].name, cfHandles[cfDescriptorIndex]);
+        const auto& dbName = cfDescriptors[cfDescriptorIndex].name;
+        if (dbName != rocksdb::kDefaultColumnFamilyName) // Do not expose default CF. Kept for BW compatibility.
+        {
+            m_mapCFHandles.emplace(dbName, cfHandles[cfDescriptorIndex]);
+        }
+        else
+        {
+            m_pDefaultCFHandle = cfHandles[cfDescriptorIndex];
+        }
     }
 }
 
@@ -102,9 +122,8 @@ void KVDBManager::finalizeMainDB()
         opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
     }
 
+    m_pRocksDB->DestroyColumnFamilyHandle(m_pDefaultCFHandle);
     m_mapCFHandles.clear();
-
-    opStatus = m_pRocksDB->Close();
 
     delete m_pRocksDB;
     m_pRocksDB = nullptr;
