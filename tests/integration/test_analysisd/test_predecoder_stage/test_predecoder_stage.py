@@ -60,6 +60,9 @@ test_cases_path = Path(TEST_CASES_PATH, 'cases_syslog_socket_input.yaml')
 # Test configurations.
 _, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
+
 # Test variables.
 receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
@@ -68,7 +71,7 @@ receiver_sockets = None  # Set in the fixtures
 
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_integrity_messages(test_metadata, connect_to_sockets):
+def test_precoder_supported_formats(test_metadata, daemons_handler, connect_to_sockets):
     '''
     description: Check that the predecoder returns the correct fields when receives different sets of syslog formats.
                  To do this, it receives syslog format and checks that the predecoder JSON responses
@@ -82,6 +85,9 @@ def test_integrity_messages(test_metadata, connect_to_sockets):
         - test_metadata:
             type: dict
             brief: Test case metadata.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
         - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
