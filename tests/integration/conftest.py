@@ -107,6 +107,24 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 # - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
+@pytest.fixture(scope='session')
+def load_wazuh_basic_configuration():
+    """Load a new basic configuration to the manager"""
+    # Load ossec.conf with all disabled settings
+    minimal_configuration = configuration.get_minimal_configuration()
+
+    # Make a backup from current configuration
+    backup_ossec_configuration = configuration.get_wazuh_conf()
+
+    # Write new configuration
+    configuration.write_wazuh_conf(minimal_configuration)
+
+    yield
+
+    # Restore the ossec.conf backup
+    configuration.write_wazuh_conf(backup_ossec_configuration)
+
+
 @pytest.fixture()
 def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
@@ -384,6 +402,16 @@ def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
     yield from connect_to_sockets_implementation(request)
+
+
+@pytest.fixture(scope='module')
+def mock_agent_module():
+    """Fixture to create a mocked agent in wazuh databases"""
+    agent_id = mocking.create_mocked_agent(name='mocked_agent')
+
+    yield agent_id
+
+    mocking.delete_mocked_agent(agent_id)
 
 
 @pytest.fixture
