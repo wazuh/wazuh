@@ -1639,7 +1639,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get rules files using an invalid query
+  - name: Try to get rules files using an invalid query
     request:
       verify: False
       <<: *files_rules_request

@@ -2734,7 +2734,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get groups using an invalid query
+  - name: Try to get groups using an invalid query
     request:
       verify: False
       <<: *get_agents_groups
@@ -3586,7 +3586,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get groups using an invalid query
+  - name: Try to get groups using an invalid query
     request:
       verify: False
       <<: *groups_id_files_request
