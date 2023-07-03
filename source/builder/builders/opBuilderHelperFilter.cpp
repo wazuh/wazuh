@@ -61,19 +61,19 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
     const std::string& targetField, Operator op, const helper::base::Parameter& rightParameter, const std::string& name)
 {
     // Depending on rValue type we store the reference or the integer value
-    std::variant<std::string, int> rValue {};
+    std::variant<std::string, int64_t> rValue {};
     auto rValueType {rightParameter.m_type};
     switch (rightParameter.m_type)
     {
         case helper::base::Parameter::Type::VALUE:
             try
             {
-                rValue = std::stoi(rightParameter.m_value);
+                rValue = std::stoll(rightParameter.m_value);
             }
             catch (const std::exception& e)
             {
                 throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" "
-                                                     "could not be converted to int: {}.",
+                                                     "could not be converted to int64_t: {}.",
                                                      name,
                                                      rightParameter.m_value,
                                                      e.what()));
@@ -87,45 +87,45 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
             throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" has an invalid type ({}).",
                                                  name,
                                                  rightParameter.m_value,
-                                                 static_cast<int>(rightParameter.m_type)));
+                                                 static_cast<int64_t>(rightParameter.m_type)));
     }
 
     // Depending on the operator we return the correct function
-    std::function<bool(int l, int r)> cmpFunction;
+    std::function<bool(int64_t l, int64_t r)> cmpFunction;
     switch (op)
     {
         case Operator::EQ:
-            cmpFunction = [](int l, int r)
+            cmpFunction = [](int64_t l, int64_t r)
             {
                 return l == r;
             };
             break;
         case Operator::NE:
-            cmpFunction = [](int l, int r)
+            cmpFunction = [](int64_t l, int64_t r)
             {
                 return l != r;
             };
             break;
         case Operator::GT:
-            cmpFunction = [](int l, int r)
+            cmpFunction = [](int64_t l, int64_t r)
             {
                 return l > r;
             };
             break;
         case Operator::GE:
-            cmpFunction = [](int l, int r)
+            cmpFunction = [](int64_t l, int64_t r)
             {
                 return l >= r;
             };
             break;
         case Operator::LT:
-            cmpFunction = [](int l, int r)
+            cmpFunction = [](int64_t l, int64_t r)
             {
                 return l < r;
             };
             break;
         case Operator::LE:
-            cmpFunction = [](int l, int r)
+            cmpFunction = [](int64_t l, int64_t r)
             {
                 return l <= r;
             };
@@ -148,16 +148,16 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        std::optional<int> lValue {event->getInt(targetField)};
+        std::optional<int64_t> lValue {event->getInt64(targetField)};
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
         }
 
-        int resolvedValue {0};
+        int64_t resolvedValue {0};
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
-            std::optional<int> resolvedRValue {event->getInt(std::get<std::string>(rValue))};
+            std::optional<int64_t> resolvedRValue {event->getInt64(std::get<std::string>(rValue))};
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -166,7 +166,7 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
         }
         else
         {
-            resolvedValue = std::get<int>(rValue);
+            resolvedValue = std::get<int64_t>(rValue);
         }
 
         if (cmpFunction(lValue.value(), resolvedValue))
