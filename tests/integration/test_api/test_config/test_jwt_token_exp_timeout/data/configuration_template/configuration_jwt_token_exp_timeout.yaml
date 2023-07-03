@@ -1,0 +1,2 @@
+- blocks:
+    auth_token_exp_timeout: AUTH_TOKEN_EXP_TIMEOUT

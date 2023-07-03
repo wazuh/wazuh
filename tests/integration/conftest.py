@@ -1,6 +1,8 @@
-# Copyright (C) 2015-2023, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+"""
 import os
 import subprocess
 import pytest
@@ -9,9 +11,10 @@ from typing import List
 
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
-from wazuh_testing.constants.daemons import WAZUH_MANAGER
+from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
+from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -153,7 +156,7 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
 def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH]
+        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 
@@ -203,7 +206,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         daemons_handler_configuration = getattr(request.module, 'daemons_handler_configuration')
         if 'daemons' in daemons_handler_configuration and not all_daemons:
             daemons = daemons_handler_configuration['daemons']
-            if not daemons or (type(daemons) == list and len(daemons) == 0):
+            if not daemons or (type(daemons) == list and len(daemons) == 0) or type(daemons) != list:
                 logger.error('Daemons list is not set')
                 raise ValueError
 
@@ -244,6 +247,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         logger.debug('Stopping wazuh using wazuh-control')
         services.control_service('stop')
     else:
+        if daemons == API_DAEMONS_REQUIREMENTS: daemons.reverse() # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
             services.control_service('stop', daemon=daemon)
@@ -363,7 +367,8 @@ def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
     # Create the SocketControllers
     receiver_sockets = list()
     for address, family, protocol in receiver_sockets_params:
-        receiver_sockets.append(socket_controller.SocketController(address=address, family=family, connection_protocol=protocol))
+        receiver_sockets.append(socket_controller.SocketController(address=address, family=family,
+                                                                   connection_protocol=protocol))
 
     setattr(request.module, 'receiver_sockets', receiver_sockets)
 
@@ -452,3 +457,22 @@ def authd_simulator() -> AuthdSimulator:
     yield authd
 
     authd.shutdown()
+
+
+@pytest.fixture
+def prepare_test_files(request: pytest.FixtureRequest) -> None:
+    """Create the files/directories required by the test, and then delete them to clean up the environment.
+
+    The test module must define a variable called `test_files` which is a list of files (defined as str or os.PathLike)
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    files_required = request.module.test_files
+
+    created_files = file.create_files(files_required)
+
+    yield
+
+    # Reverse to delete in the correct order
+    file.delete_files(created_files.reverse())
