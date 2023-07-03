@@ -11,11 +11,7 @@ from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
-<<<<<<< HEAD
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
-=======
-from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH, ALERTS_JSON_PATH
->>>>>>> 0547bf8f31 (feat(#17426): add fixture to wait for the agent to connect)
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import queue_monitor, socket_controller
 from wazuh_testing.utils import configuration, database, file, mocking, services
