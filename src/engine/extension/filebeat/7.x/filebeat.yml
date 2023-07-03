@@ -64,3 +64,9 @@ processors:
       fields: ["log.offset", "log.file.path"]
   - drop_fields:
       fields: ["agent.ephemeral_id", "agent.hostname", "agent.version", "input.type"]
+  - drop_fields:
+      when:
+        not:
+          equals:
+            agent.type: wazuh-agent
+      fields: ["agent.type"]
