@@ -1,0 +1,168 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "affected_items": {
+            "type": "array",
+            "items": [
+              {
+                "type": "object",
+                "properties": {
+                  "timestamp": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "pattern": "^wazuh-remoted$"
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "uptime": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "integer"
+                          },
+                          "metrics": {
+                            "type": "object",
+                            "properties": {
+                              "messages": {
+                                "type": "object",
+                                "properties": {
+                                  "received_breakdown": {
+                                    "type": "object",
+                                    "properties": {
+                                      "control": {
+                                        "type": "integer"
+                                      },
+                                      "control_breakdown": {
+                                        "type": "object",
+                                        "properties": {
+                                          "keepalive": {
+                                            "type": "integer"
+                                          },
+                                          "request": {
+                                            "type": "integer"
+                                          },
+                                          "shutdown": {
+                                            "type": "integer"
+                                          },
+                                          "startup": {
+                                            "type": "integer"
+                                          }
+                                        },
+                                        "required": [
+                                          "keepalive",
+                                          "request",
+                                          "shutdown",
+                                          "startup"
+                                        ]
+                                      },
+                                      "event": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "control",
+                                      "control_breakdown",
+                                      "event"
+                                    ]
+                                  },
+                                  "sent_breakdown": {
+                                    "type": "object",
+                                    "properties": {
+                                      "ack": {
+                                        "type": "integer"
+                                      },
+                                      "ar": {
+                                        "type": "integer"
+                                      },
+                                      "discarded": {
+                                        "type": "integer"
+                                      },
+                                      "request": {
+                                        "type": "integer"
+                                      },
+                                      "sca": {
+                                        "type": "integer"
+                                      },
+                                      "shared": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "ack",
+                                      "ar",
+                                      "discarded",
+                                      "request",
+                                      "sca",
+                                      "shared"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "received_breakdown",
+                                  "sent_breakdown"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "messages"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "uptime",
+                          "id",
+                          "metrics"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "timestamp",
+                  "name",
+                  "agents"
+                ]
+              }
+            ]
+          },
+          "total_affected_items": {
+            "type": "integer"
+          },
+          "total_failed_items": {
+            "type": "integer"
+          },
+          "failed_items": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "affected_items",
+          "total_affected_items",
+          "total_failed_items",
+          "failed_items"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "error": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "data",
+      "message",
+      "error"
+    ]
+  }
