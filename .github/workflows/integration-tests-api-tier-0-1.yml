@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-api-tier-0-1.yml"
-        - "framework/wazuh/**"
+        - "api/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_api/**"
