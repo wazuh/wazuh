@@ -19,11 +19,12 @@ class CommandsManager:
                 print(f'Executing {idx}')
                 pair[0]()
             except Exception as err_inst:
-                if idx == 0:
-                    return 1
                 self.last_command = idx - 1
-                print(f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
-                self.undo()
+                if idx == 0:
+                    print(f'Finishing proccess due to error: "{err_inst}"')
+                else:
+                    print(f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
+                    self.undo()
                 return 1
         return 0
 
@@ -94,7 +95,7 @@ def run(args, resource_handler: rs.ResourceHandler):
         for entry in path.rglob('*.json'):
                 pos = cm.add_command(func_to_func_create_kvdb(api_socket, entry.stem, str(entry)),
                                      func_to_func_delete_kvdb(api_socket, entry.stem, str(entry)))
-                print(f'[{pos}]\tKvdbs [{entry.stem}] will be added')
+                print(f'{pos}: {entry.stem} Kvdb addition')
 
     asset_type = ['decoders', 'rules', 'outputs', 'filters']
     # get decoder from directory and clasiffy if present in store
@@ -109,7 +110,7 @@ def run(args, resource_handler: rs.ResourceHandler):
                     pos = cm.add_command(func_to_add_catalog(api_socket, type_name[:-1], full_name,
                                         new_content, rs.Format.YML),
                                         func_to_delete_catalog(api_socket, type_name[:-1], full_name))
-                    print(f'{type_name}[{pos}] {full_name} will be added.')
+                    print(f'{pos}: {full_name} addition.')
 
     if args['dry-run']:
         print(f'Finished test run.')
