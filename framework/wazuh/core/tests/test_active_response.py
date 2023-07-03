@@ -88,16 +88,16 @@ def test_correct_builder_is_used(agent_version, builder_type):
     assert isinstance(builder, builder_type)
 
 
-@pytest.mark.parametrize('expected_exception, command, arguments, custom', [
-    (1650, None, [], False),
-    (1652, 'random', [], False),
-    (1652, 'invalid_cmd', [], False),
-    (None, 'restart-wazuh0', [], False),
-    (None, 'restart-wazuh0', [], True),
-    (None, 'restart-wazuh0', ["arg1", "arg2"], False)
+@pytest.mark.parametrize('expected_exception, command, arguments', [
+    (1650, None, []),
+    (1652, 'random', []),
+    (1652, 'invalid_cmd', []),
+    (None, 'restart-wazuh0', []),
+    (None, '!restart-wazuh0', []),
+    (None, 'restart-wazuh0', ["arg1", "arg2"])
 ])
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
-def test_create_message(expected_exception, command, arguments, custom):
+def test_create_message(expected_exception, command, arguments):
     """Check if the returned message is correct.
 
     Checks if message returned by create_message(...) contains the command, arguments and '!' symbol
@@ -116,14 +116,12 @@ def test_create_message(expected_exception, command, arguments, custom):
     """
     if expected_exception:
         with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-            active_response.ARStrMessage().create_message(command=command, arguments=arguments, custom=custom)
+            active_response.ARStrMessage().create_message(command=command, arguments=arguments)
     else:
-        ret = active_response.ARStrMessage().create_message(command=command, arguments=arguments, custom=custom)
+        ret = active_response.ARStrMessage().create_message(command=command, arguments=arguments)
         assert command in ret, f'Command not being returned'
         if arguments:
             assert (arg in ret for arg in arguments), f'Arguments not being added'
-        if custom:
-            assert '!' in ret, f'! symbol not being added when custom command'
 
 
 @pytest.mark.parametrize('expected_exception, command, arguments, alert', [

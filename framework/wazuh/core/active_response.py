@@ -69,7 +69,7 @@ class ARMessageBuilder:
         """
         raise NotImplementedError
 
-    def create_message(self, command: str = '', custom: bool = False, arguments: list = None, alert: dict = None) -> str:
+    def create_message(self, command: str = '', arguments: list = None, alert: dict = None) -> str:
         """Create the message with the Active Response format that will be sent to the socket.
 
         Parameters
@@ -77,8 +77,6 @@ class ARMessageBuilder:
         command : str
             Command running in the agent. If this value starts with !, then it refers to a script name instead of a
             command name.
-        custom : bool
-            Whether the specified command is a custom command or not.
         arguments : list
             Command arguments.
         alert : dict
@@ -135,7 +133,7 @@ class ARStrMessage(ARMessageBuilder):
         """
         return WazuhVersion(agent_version) < WazuhVersion(common.AR_LEGACY_VERSION)
 
-    def create_message(self, command: str = '', custom: bool = False, arguments: list = None, alert: dict = None) -> str:
+    def create_message(self, command: str = '', arguments: list = None, alert: dict = None) -> str:
         """Create the message with the Active Response format that will be sent to the socket.
 
         Parameters
@@ -143,8 +141,6 @@ class ARStrMessage(ARMessageBuilder):
         command : str
             Command running in the agent. If this value starts with !, then it refers to a script name instead of a command
             name.
-        custom : bool
-            Whether the specified command is a custom command or not.
         arguments : list
             Command arguments.
         alert : dict
@@ -166,10 +162,10 @@ class ARStrMessage(ARMessageBuilder):
             raise WazuhError(1650)
 
         commands = get_commands()
-        if not custom and command not in commands:
+        if not command.startswith('!') and command not in commands:
             raise WazuhError(1652)
 
-        msg_queue = "!{}".format(command) if custom else command
+        msg_queue = command
         msg_queue += " " + " ".join(shell_escape(str(x)) for x in arguments) if arguments else " - -"
 
         return msg_queue
@@ -192,7 +188,7 @@ class ARJsonMessage(ARMessageBuilder):
         """
         return WazuhVersion(agent_version) >= WazuhVersion(common.AR_LEGACY_VERSION)
 
-    def create_message(self, command: str = '', custom: bool = False, arguments: list = None, alert: dict = None) -> str:
+    def create_message(self, command: str = '', arguments: list = None, alert: dict = None) -> str:
         """Create the message with the Active Response format that will be sent to the socket.
 
         Parameters
@@ -231,7 +227,7 @@ class ARJsonMessage(ARMessageBuilder):
 
 
 def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = '', arguments: list = None,
-                    custom: bool = False, alert: dict = None) -> None:
+                    alert: dict = None) -> None:
     """Send the active response message to the agent.
 
     Parameters
@@ -274,7 +270,7 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
 
     # Create classic msg or JSON msg depending on the agent version
     message_builder = ARMessageBuilder.choose_builder(agent_version)
-    msg_queue = message_builder.create_message(command=command, custom=custom, arguments=arguments, alert=alert)
+    msg_queue = message_builder.create_message(command=command, arguments=arguments, alert=alert)
 
     wq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE)
 

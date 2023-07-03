@@ -27,19 +27,19 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 
 # Tests
 
-@pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom, alert, version', [
-    (1701, None, ['999'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
-    (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
-    (1650, None, ['001'], None, [], False, None, 'Wazuh v4.0.0'),
-    (1652, None, ['002'], 'random', [], False, None, 'Wazuh v4.0.0'),
-    (None, 1707, ['003'], 'restart-wazuh0', [], False, None, None),
-    (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
-    (None, None, ['005'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
-    (None, None, ['006'], 'custom-ar', [], True, None, 'Wazuh v4.0.0'),
-    (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.0.0'),
-    (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
-    (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.2.0'),
-    (None, None, ['002'], 'restart-wazuh0', [], False, None, 'Wazuh v4.2.1'),
+@pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, alert, version', [
+    (1701, None, ['999'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
+    (1703, None, ['000'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
+    (1650, None, ['001'], None, [], None, 'Wazuh v4.0.0'),
+    (1652, None, ['002'], 'random', [], None, 'Wazuh v4.0.0'),
+    (None, 1707, ['003'], 'restart-wazuh0', [], None, None),
+    (None, 1750, ['004'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
+    (None, None, ['005'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
+    (None, None, ['006'], '!custom-ar', [], None, 'Wazuh v4.0.0'),
+    (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], None, 'Wazuh v4.0.0'),
+    (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
+    (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], None, 'Wazuh v4.2.0'),
+    (None, None, ['002'], 'restart-wazuh0', [], None, 'Wazuh v4.2.1'),
 ])
 @patch("wazuh.core.wazuh_queue.WazuhQueue._connect")
 @patch("wazuh.syscheck.WazuhQueue._send", return_value='1')
@@ -47,7 +47,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
 @patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
 def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, message_exception,
-                     send_exception, agent_id, command, arguments, custom, alert, version):
+                     send_exception, agent_id, command, arguments, alert, version):
     """Verify the proper operation of active_response module.
 
     Parameters
@@ -71,10 +71,10 @@ def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, mes
                return_value=agent_info_exception_and_version(send_exception, version)):
         with patch('wazuh.core.agent.Agent.get_config', return_value=agent_config(send_exception)):
             if message_exception:
-                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, alert=alert)
                 assert ret.render()['data']['failed_items'][0]['error']['code'] == message_exception
             else:
-                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, alert=alert)
                 if send_exception:
                     assert ret.render()['message'] == 'AR command was not sent to any agent'
                     assert ret.render()['data']['failed_items'][0]['error']['code'] == send_exception
