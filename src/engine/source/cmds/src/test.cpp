@@ -16,7 +16,7 @@
 namespace
 {
 
-using std::string;
+constexpr auto DEFAULT_SESSION_LIFESPAN = 0; ///< Default session lifespan
 
 std::atomic<bool> gs_doRun {true};
 cmd::details::StackExecutor g_exitHanlder {};
@@ -72,7 +72,7 @@ inline bool clear_icanon(const bool& doClearIcanon)
  * @return std::optional<YAML::Node> YAML node
  */
 inline std::optional<YAML::Node>
-processJson(const json::Json& jsonObject, const string& jsonPath, const string& rootName)
+processJson(const json::Json& jsonObject, const std::string& jsonPath, const std::string& rootName)
 {
     const auto jsonValue = jsonObject.getJson(jsonPath);
 
@@ -109,7 +109,7 @@ inline void printYML(const YAML::Node& node)
  *
  * @param strJsonObject Json value
  */
-inline void printJsonAsYML(const string& strJsonObject)
+inline void printJsonAsYML(const std::string& strJsonObject)
 {
     std::optional<YAML::Node> outputNode;
     try
@@ -150,7 +150,7 @@ void processEvent(const std::string& eventStr,
 {
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
-    const string command {api::test::handlers::TEST_RUN_API_CMD};
+    const std::string command {api::test::handlers::TEST_RUN_API_CMD};
 
     // Set event
     json::Json jsonEvent {};
@@ -181,7 +181,7 @@ void processEvent(const std::string& eventStr,
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print results
-    string jsonOutputAndTrace;
+    std::string jsonOutputAndTrace;
     google::protobuf::util::MessageToJsonString(eResponse, &jsonOutputAndTrace);
     if (parameters.jsonFormat)
     {
@@ -195,15 +195,14 @@ void processEvent(const std::string& eventStr,
 
 void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
-    using RequestTypeList = eTest::SessionsGet_Request;
-    using ResponseTypeList = eTest::SessionsGet_Response;
-    const string commandList {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+    const std::string commandList {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
 
     // Check that the session exists before executing the run command
-    RequestTypeList eRequestList;
-    const auto requestList = utils::apiAdapter::toWazuhRequest<RequestTypeList>(commandList, details::ORIGIN_NAME, eRequestList);
-    const auto responseList = client->send(requestList);
-    const auto eResponseList = utils::apiAdapter::fromWazuhResponse<ResponseTypeList>(responseList);
+    eTest::SessionsGet_Request eListRequest;
+    const auto listRequest =
+        utils::apiAdapter::toWazuhRequest<eTest::SessionsGet_Request>(commandList, details::ORIGIN_NAME, eListRequest);
+    const auto responseList = client->send(listRequest);
+    const auto eResponseList = utils::apiAdapter::fromWazuhResponse<eTest::SessionsGet_Response>(responseList);
 
     auto foundSession {false};
     for (const auto& session : eResponseList.list())
@@ -216,17 +215,16 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 
     if (!foundSession)
     {
-        std::cout <<  fmt::format("Session '{}' could not be found", parameters.sessionName) << std::endl;
+        std::cout << fmt::format("Session '{}' could not be found", parameters.sessionName) << std::endl;
         return;
     }
 
     // Call run command
-    using RequestType = eTest::RunPost_Request;
-    using ResponseType = eTest::RunPost_Response;
-    const string command {api::test::handlers::TEST_RUN_API_CMD};
 
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
+
+    const std::string command {api::test::handlers::TEST_RUN_API_CMD};
 
     // Set policy name
     RequestType eRequest;
@@ -267,7 +265,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         }
 
         // Stdin loop
-        string line;
+        std::string line;
         while (gs_doRun && std::getline(std::cin, line))
         {
             if (!line.empty())
@@ -296,7 +294,7 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 {
     using RequestType = eTest::SessionPost_Request;
     using ResponseType = eTest::SessionPost_Response;
-    const string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
+    const std::string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
 
     RequestType eRequest;
 
@@ -324,7 +322,7 @@ void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 {
     using RequestType = eTest::SessionsDelete_Request;
     using ResponseType = eTest::SessionsDelete_Response;
-    const string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
+    const std::string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
 
     RequestType eRequest;
 
@@ -355,7 +353,7 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
 {
     using RequestType = eTest::SessionGet_Request;
     using ResponseType = eTest::SessionGet_Response;
-    const string command {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
+    const std::string command {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
 
     RequestType eRequest;
 
@@ -383,7 +381,7 @@ void sessionList(std::shared_ptr<apiclnt::Client> client)
 {
     using RequestType = eTest::SessionsGet_Request;
     using ResponseType = eTest::SessionsGet_Response;
-    const string command {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+    const std::string command {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
 
     // Call the API
     RequestType eRequest;
@@ -415,10 +413,8 @@ void configure(CLI::App_p app)
     // API test session create
     auto testSessionCreateApp = testSessionApp->add_subcommand("create", "Create a new session.");
     testSessionCreateApp->add_option("-n, --name", parameters->sessionName, "Name of the new session.")->required();
-    testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.")
-        ->default_val(api::test::handlers::DEFAULT_POLICY_FULL_NAME);
-    testSessionCreateApp->add_option("-l, --lifespan", parameters->lifespan, "Lifespan of the session in minutes.")
-        ->default_val(api::test::handlers::DEFAULT_SESSION_LIFESPAN);
+    testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.");
+    testSessionCreateApp->add_option("-l, --lifespan", parameters->lifespan, "Lifespan of the session in minutes.");
     testSessionCreateApp->add_option("-d, --description", parameters->description, "Description of the session.");
     testSessionCreateApp->callback([parameters, client]() { sessionCreate(client, *parameters); });
 
@@ -445,7 +441,7 @@ void configure(CLI::App_p app)
     testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
-        ->default_val(string {ENGINE_PROTOCOL_DEFAULT_QUEUE});
+        ->default_val(std::string {ENGINE_PROTOCOL_DEFAULT_QUEUE});
     testRunApp->add_flag("-d, --debug",
                          parameters->debugLevel,
                          "Enable debug mode [0-3]. Flag can appear multiple times. "
