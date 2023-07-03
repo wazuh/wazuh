@@ -11,10 +11,10 @@
 using namespace base;
 namespace bld = builder::internals::builders;
 
-// INT_MAX = 2147483647
-constexpr auto almostMaxNum = INT_MAX - 1;
-// INT_MIN =-2147483648
-constexpr auto almostMinNum = INT_MIN + 1;
+// INT64_MAX = 
+constexpr auto almostMaxNum = INT64_MAX - 1;
+// INT64_MIN =-
+constexpr auto almostMinNum = INT64_MIN + 1;
 
 TEST(opBuilderHelperIntCalc, Builds)
 {
@@ -77,7 +77,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(20, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(20, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sub)
@@ -95,7 +95,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(0, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(0, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_mul)
@@ -113,7 +113,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(100, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(100, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_div)
@@ -131,7 +131,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_div)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(1, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(1, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_field_not_exist)
@@ -167,7 +167,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sum)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(20, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(20, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sub)
@@ -186,7 +186,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sub)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(0, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(0, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_mul)
@@ -205,7 +205,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_mul)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(100, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(100, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_division_by_zero)
@@ -241,7 +241,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_div)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(1, result.payload()->getInt("/field2check").value());
+    ASSERT_EQ(1, result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_field_not_exist)
@@ -293,7 +293,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sum)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(20, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(20, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sub)
@@ -320,7 +320,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sub)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(0, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(0, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_mul)
@@ -347,7 +347,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_mul)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(100, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(100, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_div)
@@ -374,7 +374,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_div)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(1, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(1, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_field_not_exist)
@@ -418,7 +418,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sum)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(20, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(20, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sub)
@@ -445,7 +445,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sub)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(0, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(0, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_mul)
@@ -471,7 +471,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_mul)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(100, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(100, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_division_by_zero)
@@ -523,7 +523,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_div)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(1, result.payload()->getInt("/parentObjt_1/field2check").value());
+    ASSERT_EQ(1, result.payload()->getInt64("/parentObjt_1/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters)
@@ -541,7 +541,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ((1 + 10 + 20 + 30), result.payload()->getInt("/field2check").value());
+    ASSERT_EQ((1 + 10 + 20 + 30), result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_multiple_parameters)
@@ -559,7 +559,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_multiple_parameters)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ((1 - 10 - 20 - 30), result.payload()->getInt("/field2check").value());
+    ASSERT_EQ((1 - 10 - 20 - 30), result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_multiple_parameters)
@@ -577,7 +577,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_multiple_parameters)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ((1 * 10 * 20 * 30), result.payload()->getInt("/field2check").value());
+    ASSERT_EQ((1 * 10 * 20 * 30), result.payload()->getInt64("/field2check").value());
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_div_multiple_parameters)
@@ -595,7 +595,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_div_multiple_parameters)
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ((1 / 10 / 20 / 30), result.payload()->getInt("/field2check").value());
+    ASSERT_EQ((1 / 10 / 20 / 30), result.payload()->getInt64("/field2check").value());
 }
 
 // Division by zero by value and reference with multiple arguments
@@ -699,7 +699,7 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters_values_and_re
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ((10 + 10 + 10 + 30), result.payload()->getInt("/field2check").value());
+    ASSERT_EQ((10 + 10 + 10 + 30), result.payload()->getInt64("/field2check").value());
 }
 
 // Failing on several non existing references

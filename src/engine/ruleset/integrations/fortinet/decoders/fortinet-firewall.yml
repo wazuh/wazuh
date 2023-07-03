@@ -97,7 +97,6 @@ normalize:
     - event.kind: event
     - event.timezone: $~tmp.tz
     - event.code: $~tmp.logid
-    # due to type value limitations, multiplying by a large number can cause an overflow on the result
     - event.duration: $~tmp.duration
     - event.duration: +int_calculate/mul/100000000
     - event.reference: $~tmp.ref
