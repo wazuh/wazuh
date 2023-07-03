@@ -195,13 +195,13 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
     // iterating again through values inside lambda
     for (const auto& param : parameters)
     {
-        int rValue {};
+        int64_t rValue {};
         switch (param.m_type)
         {
             case helper::base::Parameter::Type::VALUE:
                 try
                 {
-                    rValue = std::stoi(param.m_value);
+                    rValue = std::stoll(param.m_value);
                 }
                 catch (const std::exception& e)
                 {
@@ -238,17 +238,17 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
         fmt::format(R"([{}] -> Failure: operation result in integer Underflown)", name);
 
     // Depending on the operator we return the correct function
-    std::function<int(int l, int r)> transformFunction;
+    std::function<int64_t(int64_t l, int64_t r)> transformFunction;
     switch (op)
     {
         case IntOperator::SUM:
-            transformFunction = [overflowFailureTrace, underflowFailureTrace](int l, int r)
+            transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r > 0) && (l > INT_MAX - r))
+                if ((r > 0) && (l > INT64_MAX - r))
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r < 0) && (l < INT_MIN - r))
+                else if ((r < 0) && (l < INT64_MIN - r))
                 {
                     throw std::runtime_error(underflowFailureTrace);
                 }
@@ -259,13 +259,13 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
             };
             break;
         case IntOperator::SUB:
-            transformFunction = [overflowFailureTrace, underflowFailureTrace](int l, int r)
+            transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r < 0) && (l > INT_MAX + r))
+                if ((r < 0) && (l > INT64_MAX + r))
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r > 0) && (l < INT_MIN + r))
+                else if ((r > 0) && (l < INT64_MIN + r))
                 {
                     throw std::runtime_error(underflowFailureTrace);
                 }
@@ -276,13 +276,13 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
             };
             break;
         case IntOperator::MUL:
-            transformFunction = [overflowFailureTrace, underflowFailureTrace](int l, int r)
+            transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r != 0) && (l > INT_MAX / r))
+                if ((r != 0) && (l > INT64_MAX / r))
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r != 0) && (l < INT_MIN * r))
+                else if ((r != 0) && (l < INT64_MIN * r))
                 {
                     throw std::runtime_error(underflowFailureTrace);
                 }
@@ -293,7 +293,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
             };
             break;
         case IntOperator::DIV:
-            transformFunction = [name, overflowFailureTrace, underflowFailureTrace](int l, int r)
+            transformFunction = [name, overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if (0 == r)
                 {
@@ -316,10 +316,10 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
          rReferenceVector = std::move(rReferenceVector),
          targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
         {
-            std::vector<int> auxVector {};
+            std::vector<int64_t> auxVector {};
             auxVector.insert(auxVector.begin(), rValueVector.begin(), rValueVector.end());
 
-            const auto lValue {event->getInt(targetField)};
+            const auto lValue {event->getInt64(targetField)};
             if (!lValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -328,7 +328,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
             // Iterate throug all references and append them values to the value vector
             for (const auto& rValueItem : rReferenceVector)
             {
-                const auto resolvedRValue {event->getInt(rValueItem)};
+                const auto resolvedRValue {event->getInt64(rValueItem)};
                 if (!resolvedRValue.has_value())
                 {
                     return base::result::makeFailure(event,
@@ -346,7 +346,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
                 }
             }
 
-            int res;
+            int64_t res;
             try
             {
                 res = std::accumulate(auxVector.begin(), auxVector.end(), lValue.value(), transformFunction);
@@ -356,7 +356,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
                 return base::result::makeFailure(event, e.what());
             }
 
-            event->setInt(res, targetField);
+            event->setInt64(res, targetField);
             return base::result::makeSuccess(event, successTrace);
         });
 }
@@ -562,9 +562,9 @@ base::Expression opBuilderHelperStringConcat(const std::string& targetField,
                     {
                         resolvedField = std::to_string(event->getDouble(parameter.m_value).value());
                     }
-                    else if (event->isInt(parameter.m_value))
+                    else if (event->isInt64(parameter.m_value))
                     {
-                        resolvedField = std::to_string(event->getInt(parameter.m_value).value());
+                        resolvedField = std::to_string(event->getInt64(parameter.m_value).value());
                     }
                     else if (event->isString(parameter.m_value))
                     {
@@ -1563,11 +1563,11 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
                     .count();
             // TODO: Delete this and dd SetInt64 or SetIntAny to JSON class, get
             // Number of any type (fix concat helper)
-            if (sec > std::numeric_limits<int>::max())
+            if (sec > std::numeric_limits<int64_t>::max())
             {
                 return base::result::makeFailure(event, failureTrace);
             }
-            event->setInt(sec, targetField);
+            event->setInt64(sec, targetField);
             return base::result::makeSuccess(event, successTrace);
         });
 }
@@ -1620,13 +1620,8 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
                 }
                 else
                 {
-                    const auto paramValue = event->getInt(parameter.m_value);
-                    if (!paramValue.has_value())
-                    {
-                        return base::result::makeFailure(
-                            event, (!event->exists(parameter.m_value) ? failureTrace1 : failureTrace2));
-                    }
-                    IntResolvedParameter = paramValue.value();
+                    return base::result::makeFailure(
+                        event, (!event->exists(parameter.m_value) ? failureTrace1 : failureTrace2));
                 }
             }
             else
