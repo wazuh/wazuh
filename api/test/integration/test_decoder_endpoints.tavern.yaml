@@ -747,7 +747,7 @@ stages:
           total_affected_items: 1
           total_failed_items: !anyint
     
-  - name: Get decoders files using an invalid query
+  - name: Try to get decoders files using an invalid query
     request:
       verify: False
       <<: *get_decoders_files

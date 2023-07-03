@@ -369,7 +369,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get security roles using an invalid query
+  - name: Try to get security roles using an invalid query
     request:
       verify: False
       <<: *all_roles_request
@@ -688,7 +688,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get security policies using an invalid query
+  - name: Try to get security policies using an invalid query
     request:
       verify: False
       <<: *all_policies_request
@@ -1045,7 +1045,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get security rules using an invalid query
+  - name: Try to get security rules using an invalid query
     request:
       verify: False
       <<: *all_rules_request
@@ -1536,7 +1536,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
     
-  - name: Get security users using an invalid query
+  - name: Try to get security users using an invalid query
     request:
       verify: False
       <<: *all_users_request

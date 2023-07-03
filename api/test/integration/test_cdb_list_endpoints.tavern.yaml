@@ -306,7 +306,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Filter CDB list using an invalid query
+  - name: Try to filter CDB list using an invalid query
     request:
       verify: False
       method: GET
