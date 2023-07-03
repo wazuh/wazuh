@@ -1640,7 +1640,7 @@ stages:
           failed_items: []
           total_failed_items: 0
 
-  - name: Show rules files using invalid select
+  - name: Try to show rules files using invalid select
     request:
       verify: False
       <<: *files_rules_request

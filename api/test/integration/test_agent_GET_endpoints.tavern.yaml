@@ -3559,7 +3559,7 @@ stages:
           failed_items: []
           total_failed_items: 0
 
-  - name: Get groups using invalid select
+  - name: Try to get groups using invalid select
     request:
       verify: False
       <<: *groups_id_files_request
