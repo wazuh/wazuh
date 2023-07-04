@@ -428,7 +428,8 @@ std::optional<base::Error> Router::subscribeOutputAndTraces(const std::string& p
 }
 
 const std::variant<std::tuple<std::string, std::string>, base::Error> Router::getData(const std::string& policyName,
-                                                                                      router::DebugMode debugMode)
+                                                                                      router::DebugMode debugMode,
+                                                                                      const std::string& assetTrace)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
 
@@ -437,7 +438,7 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> Router::ge
     std::variant<std::tuple<std::string, std::string>, base::Error> data;
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
-        data = m_policyManager->getData(policyName, i, debugMode);
+        data = m_policyManager->getData(policyName, i, debugMode, assetTrace);
         if (std::holds_alternative<base::Error>(data))
         {
             return std::get<base::Error>(data);

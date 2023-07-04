@@ -154,7 +154,7 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::st
 }
 
 const std::variant<std::tuple<std::string, std::string>, base::Error>
-PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode)
+PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode, const std::string& assetTrace)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
 
@@ -172,7 +172,7 @@ PolicyManager::getData(const std::string& name, std::size_t instance, router::De
     auto& env = it->second[instance];
 
     // Output and Traces
-    const auto& data = env->getData(name, debugMode);
+    const auto& data = env->getData(name, debugMode, assetTrace);
     if (std::holds_alternative<base::Error>(data))
     {
         return std::get<base::Error>(data);

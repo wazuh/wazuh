@@ -111,7 +111,8 @@ message RunPost_Request
     optional google.protobuf.Value event = 2; // Event to be process
     optional string protocol_queue = 3;       // Protocol queue
     optional DebugMode debug_mode = 4;        // Debug mode
-    optional string protocol_location = 5;    // Protocol location
+    optional string asset_trace = 5;
+    optional string protocol_location = 6; // Protocol location
 }
 
 message RunPost_Response
