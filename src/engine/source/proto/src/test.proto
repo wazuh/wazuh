@@ -5,27 +5,59 @@ import "google/protobuf/struct.proto"; // For Value
 
 package com.wazuh.api.engine.test;
 
+/* Client-facing representation of a Session exposed in APIs */
+message Session
+{
+    string name = 1;          // test session name
+    uint32 id = 2;            // test session id
+    uint32 creation_date = 3; // test session creation date
+    string policy = 4;        // test policy name
+    string filter = 5;        // test filter name
+    string route = 6;         // test route name
+    uint32 lifespan = 7;      // test session lifespan
+    string description = 8;   // test session description
+}
+
+/* Client-facing representation of a test run in APIs */
+message Run
+{
+    optional google.protobuf.Value output = 1; // test output
+    optional google.protobuf.Value traces = 2; // test rules
+}
+
+enum DebugMode
+{
+    OUTPUT_ONLY = 0;       // Only the decoders that were able to decode the event will be seen
+    OUTPUT_AND_TRACES = 1; // Will see all the decoders through which the event happened and also its result
+    OUTPUT_AND_TRACES_WITH_DETAILS = 2; // Will see all the decoders through which the event happened with their
+                                        // respective results and extra information that explains that result
+}
+
+/***************************************************
+ * Get a session's data from the session manager
+ *
+ * command: test.session/get
+ **************************************************/
 message SessionGet_Request
 {
-    optional string name = 1; // test session name
+    string name = 1; // test session name
 }
 
 message SessionGet_Response
 {
-    ReturnStatus status = 1;           // Status of the query
-    optional string error = 2;         // Error message if status is ERROR
-    optional uint32 id = 3;            // test session id
-    optional uint32 creation_date = 4; // test session creation date
-    optional string policy = 5;        // test policy name
-    optional string filter = 6;        // test filter name
-    optional string route = 7;         // test route name
-    optional uint32 lifespan = 8;      // test session lifespan
-    optional string description = 9;   // test session description
+    ReturnStatus status = 1;      // Status of the query
+    optional string error = 2;    // Error message if status is ERROR
+    optional Session session = 3; // Session data
 }
 
+/***************************************************
+ * Create a new session
+ *
+ * command: test.session/post
+ **************************************************/
 message SessionPost_Request
 {
-    optional string name = 1;        // test session name
+    string name = 1;                 // test session name
     optional string policy = 2;      // test policy name
     optional uint32 lifespan = 3;    // test session lifespan
     optional string description = 4; // test session description
@@ -37,6 +69,11 @@ message SessionPost_Response
     optional string error = 2; // Error message if status is ERROR
 }
 
+/***************************************************
+ * Get the active sessions list
+ *
+ * command: test.sessions/get
+ **************************************************/
 message SessionsGet_Request {}
 
 message SessionsGet_Response
@@ -46,6 +83,11 @@ message SessionsGet_Response
     repeated string list = 3;  // test sessions list
 }
 
+/***************************************************
+ * Delete a session
+ *
+ * command: test.session/delete
+ **************************************************/
 message SessionsDelete_Request
 {
     optional string name = 1;     // test session name
@@ -58,17 +100,14 @@ message SessionsDelete_Response
     optional string error = 2; // Error message if status is ERROR
 }
 
-enum DebugMode
-{
-    OUTPUT_ONLY = 0;       // Only the decoders that were able to decode the event will be seen
-    OUTPUT_AND_TRACES = 1; // Will see all the decoders through which the event happened and also its result
-    OUTPUT_AND_TRACES_WITH_DETAILS = 2; // Will see all the decoders through which the event happened with their
-                                        // respective results and extra information that explains that result
-}
-
+/***************************************************
+ * Run a test
+ *
+ * command: test.run/post
+ **************************************************/
 message RunPost_Request
 {
-    optional string name = 1;                 // Name of session
+    string name = 1;                          // Name of session
     optional google.protobuf.Value event = 2; // Event to be process
     optional string protocol_queue = 3;       // Protocol queue
     optional DebugMode debug_mode = 4;        // Debug mode
@@ -77,8 +116,7 @@ message RunPost_Request
 
 message RunPost_Response
 {
-    ReturnStatus status = 1;                   // Status of the query
-    optional string error = 2;                 // Error message if status is ERROR
-    optional google.protobuf.Value output = 3; // test output
-    optional google.protobuf.Value traces = 4; // test rules
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional Run run = 3;      // Test run data
 }

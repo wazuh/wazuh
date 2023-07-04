@@ -67,7 +67,7 @@ void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr)
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print as JSON the entry
-    const auto& route = eResponse.rute();
+    const auto& route = eResponse.route();
     const auto result = eMessage::eMessageToJson<eRouter::Entry>(route);
     const auto& json = std::get<std::string>(result);
     std::cout << json << std::endl;

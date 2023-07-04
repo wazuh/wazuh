@@ -428,13 +428,6 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         }
         const auto& eRequest = std::get<RequestType>(res);
 
-        // Field name is required
-        const auto parametersError = (!eRequest.has_name()) ? std::make_optional("Missing /name field") : std::nullopt;
-        if (parametersError.has_value())
-        {
-            return genericError<ResponseType>(parametersError.value());
-        }
-
         if (eRequest.name().empty())
         {
             return genericError<ResponseType>("Session name cannot be empty");
@@ -443,6 +436,16 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         auto& sessionManager = SessionManager::getInstance();
 
         const auto& sessionName = eRequest.name();
+
+        // Check if the session name is valid
+        for (char c : sessionName)
+        {
+            if (!std::isalnum(c) && '_' != c)
+            {
+                return genericError<ResponseType>(fmt::format(
+                    "Session name ('{}') can only contain alphanumeric characters and underscores", sessionName));
+            }
+        }
 
         // Check if the session already exists
         if (sessionManager.doesSessionExist(sessionName))
@@ -663,12 +666,6 @@ api::Handler sessionGet()
 
         const auto& eRequest = std::get<RequestType>(res);
 
-        const auto errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name field") : std::nullopt;
-        if (errorMsg.has_value())
-        {
-            return genericError<ResponseType>(errorMsg.value());
-        }
-
         auto& sessionManager = SessionManager::getInstance();
         const auto session = sessionManager.getSession(eRequest.name());
         if (!session.has_value())
@@ -679,13 +676,14 @@ api::Handler sessionGet()
         ResponseType eResponse;
 
         // TODO: improve creation date representation
-        eResponse.set_creation_date(session->getCreationDate());
-        eResponse.set_description(session->getDescription());
-        eResponse.set_filter(session->getFilterName());
-        eResponse.set_id(session->getSessionID());
-        eResponse.set_lifespan(session->getLifespan());
-        eResponse.set_policy(session->getPolicyName());
-        eResponse.set_route(session->getRouteName());
+        eResponse.mutable_session()->set_name(session->getSessionName());
+        eResponse.mutable_session()->set_creation_date(session->getCreationDate());
+        eResponse.mutable_session()->set_description(session->getDescription());
+        eResponse.mutable_session()->set_filter(session->getFilterName());
+        eResponse.mutable_session()->set_id(session->getSessionID());
+        eResponse.mutable_session()->set_lifespan(session->getLifespan());
+        eResponse.mutable_session()->set_policy(session->getPolicyName());
+        eResponse.mutable_session()->set_route(session->getRouteName());
 
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -805,9 +803,7 @@ api::Handler runPost(const std::shared_ptr<Router>& router)
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        const auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /name field")
-                              : !eRequest.has_event() ? std::make_optional("Missing /event field")
-                                                      : std::nullopt;
+        const auto errorMsg = !eRequest.has_event() ? std::make_optional("Missing /event field") : std::nullopt;
 
         if (errorMsg.has_value())
         {
@@ -900,7 +896,7 @@ api::Handler runPost(const std::shared_ptr<Router>& router)
         else
         {
             const auto jsonOutput = std::get<google::protobuf::Value>(output);
-            eResponse.mutable_output()->CopyFrom(jsonOutput);
+            eResponse.mutable_run()->mutable_output()->CopyFrom(jsonOutput);
         }
 
         // Get traces
@@ -913,7 +909,7 @@ api::Handler runPost(const std::shared_ptr<Router>& router)
                 return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(trace).message);
             }
             const auto jsonTrace = std::get<google::protobuf::Value>(trace);
-            eResponse.mutable_traces()->CopyFrom(jsonTrace);
+            eResponse.mutable_run()->mutable_traces()->CopyFrom(jsonTrace);
         }
 
         eResponse.set_status(eEngine::ReturnStatus::OK);

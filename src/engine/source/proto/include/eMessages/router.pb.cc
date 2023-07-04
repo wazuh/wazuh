@@ -61,7 +61,7 @@ PROTOBUF_CONSTEXPR RouteGet_Response::RouteGet_Response(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.rute_)*/nullptr
+  , /*decltype(_impl_.route_)*/nullptr
   , /*decltype(_impl_.status_)*/0} {}
 struct RouteGet_ResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR RouteGet_ResponseDefaultTypeInternal()
@@ -195,7 +195,7 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.status_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.error_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.rute_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::RouteGet_Response, _impl_.route_),
   ~0u,
   0,
   1,
@@ -281,30 +281,30 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "\001(\tH\002\210\001\001\022\025\n\010priority\030\004 \001(\005H\003\210\001\001B\007\n\005_name"
   "B\t\n\007_filterB\t\n\007_policyB\013\n\t_priority\".\n\020R"
   "outeGet_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_n"
-  "ame\"\245\001\n\021RouteGet_Response\0222\n\006status\030\001 \001("
+  "ame\"\247\001\n\021RouteGet_Response\0222\n\006status\030\001 \001("
   "\0162\".com.wazuh.api.engine.ReturnStatus\022\022\n"
-  "\005error\030\002 \001(\tH\000\210\001\001\0225\n\004rute\030\003 \001(\0132\".com.wa"
-  "zuh.api.engine.router.EntryH\001\210\001\001B\010\n\006_err"
-  "orB\007\n\005_rute\"U\n\021RoutePost_Request\0226\n\005rout"
-  "e\030\001 \001(\0132\".com.wazuh.api.engine.router.En"
-  "tryH\000\210\001\001B\010\n\006_route\"V\n\022RoutePatch_Request"
-  "\0226\n\005route\030\001 \001(\0132\".com.wazuh.api.engine.r"
-  "outer.EntryH\000\210\001\001B\010\n\006_route\"1\n\023RouteDelet"
-  "e_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\022\n"
-  "\020TableGet_Request\"\230\001\n\021TableGet_Response\022"
-  "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
-  "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0221\n\005table"
-  "\030\003 \003(\0132\".com.wazuh.api.engine.router.Ent"
-  "ryB\010\n\006_error\"J\n\021QueuePost_Request\022\030\n\013waz"
-  "uh_event\030\001 \001(\tH\000\210\001\001B\016\n\014_wazuh_eventJ\004\010\002\020"
-  "\003R\005eventb\006proto3"
+  "\005error\030\002 \001(\tH\000\210\001\001\0226\n\005route\030\003 \001(\0132\".com.w"
+  "azuh.api.engine.router.EntryH\001\210\001\001B\010\n\006_er"
+  "rorB\010\n\006_route\"U\n\021RoutePost_Request\0226\n\005ro"
+  "ute\030\001 \001(\0132\".com.wazuh.api.engine.router."
+  "EntryH\000\210\001\001B\010\n\006_route\"V\n\022RoutePatch_Reque"
+  "st\0226\n\005route\030\001 \001(\0132\".com.wazuh.api.engine"
+  ".router.EntryH\000\210\001\001B\010\n\006_route\"1\n\023RouteDel"
+  "ete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\""
+  "\022\n\020TableGet_Request\"\230\001\n\021TableGet_Respons"
+  "e\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engine"
+  ".ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0221\n\005tab"
+  "le\030\003 \003(\0132\".com.wazuh.api.engine.router.E"
+  "ntryB\010\n\006_error\"J\n\021QueuePost_Request\022\030\n\013w"
+  "azuh_event\030\001 \001(\tH\000\210\001\001B\016\n\014_wazuh_eventJ\004\010"
+  "\002\020\003R\005eventb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 896, descriptor_table_protodef_router_2eproto,
+    false, false, 898, descriptor_table_protodef_router_2eproto,
     "router.proto",
     &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 9,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,
@@ -914,15 +914,15 @@ class RouteGet_Response::_Internal {
   static void set_has_error(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static const ::com::wazuh::api::engine::router::Entry& rute(const RouteGet_Response* msg);
-  static void set_has_rute(HasBits* has_bits) {
+  static const ::com::wazuh::api::engine::router::Entry& route(const RouteGet_Response* msg);
+  static void set_has_route(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
 };
 
 const ::com::wazuh::api::engine::router::Entry&
-RouteGet_Response::_Internal::rute(const RouteGet_Response* msg) {
-  return *msg->_impl_.rute_;
+RouteGet_Response::_Internal::route(const RouteGet_Response* msg) {
+  return *msg->_impl_.route_;
 }
 RouteGet_Response::RouteGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
@@ -937,7 +937,7 @@ RouteGet_Response::RouteGet_Response(const RouteGet_Response& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.rute_){nullptr}
+    , decltype(_impl_.route_){nullptr}
     , decltype(_impl_.status_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -949,8 +949,8 @@ RouteGet_Response::RouteGet_Response(const RouteGet_Response& from)
     _this->_impl_.error_.Set(from._internal_error(), 
       _this->GetArenaForAllocation());
   }
-  if (from._internal_has_rute()) {
-    _this->_impl_.rute_ = new ::com::wazuh::api::engine::router::Entry(*from._impl_.rute_);
+  if (from._internal_has_route()) {
+    _this->_impl_.route_ = new ::com::wazuh::api::engine::router::Entry(*from._impl_.route_);
   }
   _this->_impl_.status_ = from._impl_.status_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.RouteGet_Response)
@@ -964,7 +964,7 @@ inline void RouteGet_Response::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.rute_){nullptr}
+    , decltype(_impl_.route_){nullptr}
     , decltype(_impl_.status_){0}
   };
   _impl_.error_.InitDefault();
@@ -985,7 +985,7 @@ RouteGet_Response::~RouteGet_Response() {
 inline void RouteGet_Response::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.error_.Destroy();
-  if (this != internal_default_instance()) delete _impl_.rute_;
+  if (this != internal_default_instance()) delete _impl_.route_;
 }
 
 void RouteGet_Response::SetCachedSize(int size) const {
@@ -1004,8 +1004,8 @@ void RouteGet_Response::Clear() {
       _impl_.error_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      GOOGLE_DCHECK(_impl_.rute_ != nullptr);
-      _impl_.rute_->Clear();
+      GOOGLE_DCHECK(_impl_.route_ != nullptr);
+      _impl_.route_->Clear();
     }
   }
   _impl_.status_ = 0;
@@ -1039,10 +1039,10 @@ const char* RouteGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseCont
         } else
           goto handle_unusual;
         continue;
-      // optional .com.wazuh.api.engine.router.Entry rute = 3;
+      // optional .com.wazuh.api.engine.router.Entry route = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          ptr = ctx->ParseMessage(_internal_mutable_rute(), ptr);
+          ptr = ctx->ParseMessage(_internal_mutable_route(), ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -1094,11 +1094,11 @@ uint8_t* RouteGet_Response::_InternalSerialize(
         2, this->_internal_error(), target);
   }
 
-  // optional .com.wazuh.api.engine.router.Entry rute = 3;
-  if (_internal_has_rute()) {
+  // optional .com.wazuh.api.engine.router.Entry route = 3;
+  if (_internal_has_route()) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(3, _Internal::rute(this),
-        _Internal::rute(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(3, _Internal::route(this),
+        _Internal::route(this).GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1126,11 +1126,11 @@ size_t RouteGet_Response::ByteSizeLong() const {
           this->_internal_error());
     }
 
-    // optional .com.wazuh.api.engine.router.Entry rute = 3;
+    // optional .com.wazuh.api.engine.router.Entry route = 3;
     if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-          *_impl_.rute_);
+          *_impl_.route_);
     }
 
   }
@@ -1164,8 +1164,8 @@ void RouteGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, cons
       _this->_internal_set_error(from._internal_error());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_mutable_rute()->::com::wazuh::api::engine::router::Entry::MergeFrom(
-          from._internal_rute());
+      _this->_internal_mutable_route()->::com::wazuh::api::engine::router::Entry::MergeFrom(
+          from._internal_route());
     }
   }
   if (from._internal_status() != 0) {
@@ -1198,9 +1198,9 @@ void RouteGet_Response::InternalSwap(RouteGet_Response* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(RouteGet_Response, _impl_.status_)
       + sizeof(RouteGet_Response::_impl_.status_)
-      - PROTOBUF_FIELD_OFFSET(RouteGet_Response, _impl_.rute_)>(
-          reinterpret_cast<char*>(&_impl_.rute_),
-          reinterpret_cast<char*>(&other->_impl_.rute_));
+      - PROTOBUF_FIELD_OFFSET(RouteGet_Response, _impl_.route_)>(
+          reinterpret_cast<char*>(&_impl_.route_),
+          reinterpret_cast<char*>(&other->_impl_.route_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RouteGet_Response::GetMetadata() const {
