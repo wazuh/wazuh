@@ -111,10 +111,11 @@ void RuntimePolicy::listenAllTrace()
 }
 
 const std::variant<std::tuple<std::string, std::string>, base::Error>
-RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
+RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const std::string& assetTrace)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutexData};
     auto trace = json::Json {R"({})"};
+    auto enableAssetTrace = assetTrace.empty();
     if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
         if (m_history[policyName].empty())
@@ -123,29 +124,75 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
                 "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
 
-        for (const auto& [asset, condition] : m_history[policyName])
+        if (!assetTrace.empty())
         {
-            if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
+            bool assetTraceFound = false; // Flag to track if assetTrace is found
+            for (const auto& [asset, condition] : m_history[policyName])
             {
-                return base::Error {fmt::format(
-                    "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+                if (assetTrace == asset)
+                {
+                    assetTraceFound = true;
+                    if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
+                    {
+                        return base::Error {fmt::format(
+                            "Policy '{}' has not been configured for trace tracking and output subscription",
+                            policyName)};
+                    }
+                    auto& tracePair = m_traceBuffer[policyName];
+                    if (tracePair.find(asset) != tracePair.end())
+                    {
+                        auto& traceVector = tracePair[asset];
+                        std::set<std::string> uniqueTraces; // Set for warehouses single traces
+                        for (const auto& traceStream : traceVector)
+                        {
+                            uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
+                        }
+                        std::stringstream combinedTrace;
+                        for (const auto& uniqueTrace : uniqueTraces)
+                        {
+                            combinedTrace << uniqueTrace;
+                        }
+                        trace.setString(combinedTrace.str(), std::string("/") + asset);
+                        tracePair[asset].clear();
+                    }
+                }
+                else
+                {
+                    trace.setString(condition, std::string("/") + asset);
+                }
             }
-            auto& tracePair = m_traceBuffer[policyName];
-            if (tracePair.find(asset) != tracePair.end())
+
+            if (!assetTraceFound)
             {
-                auto& traceVector = tracePair[asset];
-                std::set<std::string> uniqueTraces; // Set for warehouses single traces
-                for (const auto& traceStream : traceVector)
+                return base::Error {fmt::format("Asset trace '{}' not found", assetTrace)};
+            }
+        }
+        else
+        {
+            for (const auto& [asset, condition] : m_history[policyName])
+            {
+                if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
                 {
-                    uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
+                    return base::Error {fmt::format(
+                        "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
                 }
-                std::stringstream combinedTrace;
-                for (const auto& uniqueTrace : uniqueTraces)
+                auto& tracePair = m_traceBuffer[policyName];
+                if (tracePair.find(asset) != tracePair.end())
                 {
-                    combinedTrace << uniqueTrace;
+                    auto& traceVector = tracePair[asset];
+                    std::set<std::string> uniqueTraces; // Set for warehouses single traces
+                    for (const auto& traceStream : traceVector)
+                    {
+                        uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
+                    }
+                    std::stringstream combinedTrace;
+                    for (const auto& uniqueTrace : uniqueTraces)
+                    {
+                        combinedTrace << uniqueTrace;
+                    }
+                    trace.setString(combinedTrace.str(), std::string("/") + asset);
+                    tracePair[asset].clear();
                 }
-                trace.setString(combinedTrace.str(), std::string("/") + asset);
-                tracePair[asset].clear();
             }
         }
         m_history[policyName].clear();
@@ -153,6 +200,11 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
     }
     else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
     {
+        if (!assetTrace.empty())
+        {
+            return base::Error {"The '-t' flag is only accepted in -dd mode"};
+        }
+
         if (m_history[policyName].empty())
         {
             return base::Error {fmt::format(
@@ -166,7 +218,11 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
         m_history[policyName].clear();
         return std::make_tuple(m_output[policyName], trace.prettyStr());
     }
-
+    m_history[policyName].clear();
+    if (!assetTrace.empty())
+    {
+        return base::Error {"The '-t' flag is only accepted in -dd mode"};
+    }
     return std::make_tuple(m_output[policyName], std::string());
 }
 

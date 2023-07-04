@@ -29,6 +29,7 @@ struct Parameters
     bool jsonFormat;
     int32_t debugLevel;
     std::string apiEndpoint;
+    std::string assetTrace;
     std::string description;
     std::string event;
     std::string policy;
