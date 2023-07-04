@@ -41,10 +41,10 @@ api::Handler routeGet(std::shared_ptr<::router::Router> router)
         const auto& [name, priority, filterName, envName] = entry.value();
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
-        eResponse.mutable_rute()->set_name(name);
-        eResponse.mutable_rute()->set_filter(filterName);
-        eResponse.mutable_rute()->set_policy(envName);
-        eResponse.mutable_rute()->set_priority(priority);
+        eResponse.mutable_route()->set_name(name);
+        eResponse.mutable_route()->set_filter(filterName);
+        eResponse.mutable_route()->set_policy(envName);
+        eResponse.mutable_route()->set_priority(priority);
 
         // Adapt the response to wazuh api
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
