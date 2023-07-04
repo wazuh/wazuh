@@ -2235,12 +2235,12 @@ ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
 endif
 
 install_framework: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
+	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET} && rm -rf build/
 	chown -R root:${WAZUH_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}
 
 install_api: install_python
-	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR}
+	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} && rm -rf build/
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
