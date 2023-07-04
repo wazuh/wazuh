@@ -36,7 +36,6 @@ protected:
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
 
-
     void SetUp() override
     {
         initLogging();
@@ -48,7 +47,7 @@ protected:
         }
 
         m_manager = std::make_shared<MetricsManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {DB_DIR, DB_NAME};
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
 
         kvdbManager->initialize();
@@ -77,44 +76,42 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithValues)
 {
-    ASSERT_NO_THROW(KVDBSet("/output",
+    ASSERT_NO_THROW(KVDBSet(kvdbManager,
+                            "builder_test",
+                            "/output",
                             "",
                             {DB_NAME_1, "key", "value"},
-                            std::make_shared<defs::mocks::FailDef>(),
-                            kvdbManager,
-                            "builder_test"));
+                            std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
 {
-    ASSERT_THROW(KVDBSet("/output",
+    ASSERT_THROW(KVDBSet(kvdbManager,
+                         "builder_test",
+                         "/output",
                          "",
                          {"$SOME_DB_NAME_1", "$key", "$value"},
-                         std::make_shared<defs::mocks::FailDef>(),
-                         kvdbManager,
-                         "builder_test"),
+                         std::make_shared<defs::mocks::FailDef>()),
                  std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
 {
-    ASSERT_THROW(
-        KVDBSet("/output", "", {}, std::make_shared<defs::mocks::FailDef>(), kvdbManager, "builder_test"),
-        std::runtime_error);
-    ASSERT_THROW(
-        KVDBSet("/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), kvdbManager, "builder_test"),
-        std::runtime_error);
-    ASSERT_THROW(KVDBSet("/output",
-                         "",
-                         {DB_NAME_1, "key"},
-                         std::make_shared<defs::mocks::FailDef>(),
-                         kvdbManager, "builder_test"),
+    ASSERT_THROW(KVDBSet(kvdbManager, "builder_test", "/output", "", {}, std::make_shared<defs::mocks::FailDef>()),
                  std::runtime_error);
-    ASSERT_THROW(KVDBSet("/output",
+    ASSERT_THROW(
+        KVDBSet(kvdbManager, "builder_test", "/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>()),
+        std::runtime_error);
+    ASSERT_THROW(
+        KVDBSet(
+            kvdbManager, "builder_test", "/output", "", {DB_NAME_1, "key"}, std::make_shared<defs::mocks::FailDef>()),
+        std::runtime_error);
+    ASSERT_THROW(KVDBSet(kvdbManager,
+                         "builder_test",
+                         "/output",
                          "",
                          {DB_NAME_1, "key", "value", "unexpected"},
-                         std::make_shared<defs::mocks::FailDef>(),
-                         kvdbManager, "builder_test"),
+                         std::make_shared<defs::mocks::FailDef>()),
                  std::runtime_error);
 }
 
