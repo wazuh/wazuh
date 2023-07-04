@@ -110,7 +110,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
     } else if (elements == 1) {
         snprintf(*os_name, size, "%s", distr);
     } else {
-        free(*os_name);
+        os_free(*os_name);
         return OS_INVALID;
     }
 
@@ -120,7 +120,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
         *ver_end = '\0';
     }
     if (size = strlen(ver), size >= 20) {
-        free(*os_name);
+        os_free(*os_name);
         return OS_INVALID;
     }
     os_strdup(ver, *os_ver);
