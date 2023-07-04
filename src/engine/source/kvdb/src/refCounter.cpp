@@ -14,7 +14,7 @@ void RefCounter::removeRef(const std::string& name)
     if (it != m_refMap.end())
     {
         it->second--;
-        if (it->second == 0)
+        if (0 == it->second)
         {
             m_refMap.erase(it);
         }

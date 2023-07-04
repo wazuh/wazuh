@@ -26,13 +26,13 @@ using namespace kvdbManager;
  * @param merge
  * @return base::Expression
  */
-base::Expression KVDBGet(const std::string& targetField,
+base::Expression KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
+                         const std::string& kvdbScopeName,
+                         const std::string& targetField,
                          const std::string& rawName,
                          const std::vector<std::string>& rawParameters,
                          std::shared_ptr<defs::IDefinitions> definitions,
-                         bool merge,
-                         std::shared_ptr<IKVDBManager> kvdbManager,
-                         const std::string& kvdbScopeName);
+                         bool merge);
 
 /**
  * @brief Builder for KVDB set operation
@@ -44,12 +44,12 @@ base::Expression KVDBGet(const std::string& targetField,
  * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression KVDBSet(const std::string& targetField,
+base::Expression KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
+                         const std::string& kvdbScopeName,
+                         const std::string& targetField,
                          const std::string& rawName,
                          const std::vector<std::string>& rawParameters,
-                         std::shared_ptr<defs::IDefinitions> definitions,
-                         std::shared_ptr<IKVDBManager> kvdbManager,
-                         const std::string& kvdbScopeName);
+                         std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Builder for KVDB delete operation
@@ -62,12 +62,12 @@ base::Expression KVDBSet(const std::string& targetField,
  * @param definitions handler with definitions
  * @return base::Expression
  */
-base::Expression KVDBDelete(const std::string& targetField,
+base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
+                            const std::string& kvdbScopeName,
+                            const std::string& targetField,
                             const std::string& rawName,
                             const std::vector<std::string>& rawParameters,
-                            std::shared_ptr<defs::IDefinitions> definitions,
-                            std::shared_ptr<IKVDBManager> kvdbManager,
-                            const std::string& kvdbScopeName);
+                            std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Builds KVDB extract function helper
