@@ -119,26 +119,25 @@ public:
                 m_loop->stop();
             });
 
-        auto timer = m_loop->resource<uvw::TimerHandle>();
-        timer->on<uvw::TimerEvent>(
-            [&clientHandle, &timer, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+        m_timer->on<uvw::TimerEvent>(
+            [&clientHandle, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
             {
                 if (!clientHandle->closing())
                 {
                     clientHandle->close();
                 }
-                timer->close();
+                timerRef.close();
                 error = "Connection timeout";
             });
 
-        timer->on<uvw::ErrorEvent>(
-            [&timer, &error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
+        m_timer->on<uvw::ErrorEvent>(
+            [&error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
             {
-                timer->close();
+                timerRef.close();
                 error = errorUvw.what();
             });
 
-        timer->on<uvw::CloseEvent>(
+        m_timer->on<uvw::CloseEvent>(
             [this](const uvw::CloseEvent&, uvw::TimerHandle& timer)
             {
                 // Stop loop only after first run
@@ -149,12 +148,12 @@ public:
             });
 
         clientHandle->once<uvw::ConnectEvent>(
-            [this, &timer](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            [this](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
             {
                 // Start timer for first run only
                 if (m_isFirstExecution)
                 {
-                    timer->start(uvw::TimerHandle::Time {DEFAULT_TIMEOUT}, uvw::TimerHandle::Time {DEFAULT_TIMEOUT});
+                    m_timer->start(uvw::TimerHandle::Time {DEFAULT_TIMEOUT}, uvw::TimerHandle::Time {DEFAULT_TIMEOUT});
                 }
             });
 
