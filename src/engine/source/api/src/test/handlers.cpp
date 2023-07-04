@@ -845,6 +845,8 @@ api::Handler runPost(const std::shared_ptr<Router>& router)
             default: routerDebugMode = router::DebugMode::OUTPUT_ONLY;
         }
 
+        const auto assetTrace = eRequest.has_asset_trace() ? eRequest.asset_trace() : std::string();
+
         // Get session
         auto& sessionManager = SessionManager::getInstance();
         const auto session = sessionManager.getSession(eRequest.name());
@@ -878,7 +880,7 @@ api::Handler runPost(const std::shared_ptr<Router>& router)
         }
 
         // Get payload (output and traces)
-        const auto payload = router->getData(session.value().getPolicyName(), routerDebugMode);
+        const auto payload = router->getData(session.value().getPolicyName(), routerDebugMode, assetTrace);
         if (std::holds_alternative<base::Error>(payload))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(payload).message);
