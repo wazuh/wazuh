@@ -75,7 +75,7 @@ void KVDBManager::initializeMainDB()
     {
         for (const auto& cfName : columnNames)
         {
-            if (cfName == rocksdb::kDefaultColumnFamilyName)
+            if (rocksdb::kDefaultColumnFamilyName == cfName)
             {
                 hasDefaultCF = true;
             }
@@ -213,7 +213,7 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
     }
 
     // TODO: to improve
-    if (std::empty(path))
+    if (path.empty())
     {
         return base::Error {fmt::format("The path is empty.")};
     }
