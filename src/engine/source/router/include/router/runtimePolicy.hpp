@@ -109,10 +109,11 @@ public:
      * @param policyName Name of the policy to which you want to obtain output and trace.
      * @param debugMode Establishes the level of verbosity with which the information of outputs and traces of a certain
      * policy will be exposed.
+     * @param assetTrace Name of the asset to filter by.
      * @return const std::variant<std::tuple<std::string,std::string>,base::Error>
      */
-    const std::variant<std::tuple<std::string, std::string>, base::Error> getData(const std::string& policyName,
-                                                                                  DebugMode debugMode);
+    const std::variant<std::tuple<std::string, std::string>, base::Error>
+    getData(const std::string& policyName, DebugMode debugMode, const std::string& assetTrace);
 };
 
 } // namespace router

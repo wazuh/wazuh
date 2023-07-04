@@ -248,6 +248,9 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     // Set location
     eRequest.set_protocol_location(parameters.protocolLocation);
 
+    // Set asset trace
+    eRequest.set_asset_trace(parameters.assetTrace);
+
     if (!parameters.event.empty())
     {
         processEvent(parameters.event, parameters, client, eRequest);
@@ -444,11 +447,18 @@ void configure(CLI::App_p app)
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
         ->default_val(std::string {ENGINE_PROTOCOL_DEFAULT_QUEUE});
-    testRunApp->add_flag("-d, --debug",
-                         parameters->debugLevel,
-                         "Enable debug mode [0-3]. Flag can appear multiple times. "
-                         "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
-                         "Full tracing, ddd[3]: 2 + detailed parser trace.");
+    auto debug = testRunApp->add_flag("-d, --debug",
+                                      parameters->debugLevel,
+                                      "Enable debug mode [0-2]. Flag can appear multiple times. "
+                                      "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
+                                      "Full tracing");
+    testRunApp
+        ->add_option("-t, --trace",
+                     parameters->assetTrace,
+                     "List of specific assets to be traced, separated by commas. By "
+                     "default traces every asset. This only works "
+                     "when debug=2.")
+        ->needs(debug);
     testRunApp->add_option("--protocol_location", parameters->protocolLocation, "Protocol location.")
         ->default_val(ENGINE_PROTOCOL_LOCATION);
     testRunApp->add_flag("-j, --json",
