@@ -153,7 +153,7 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
                             combinedTrace << uniqueTrace;
                         }
                         trace.setString(combinedTrace.str(), std::string("/") + asset);
-                        tracePair[asset].clear();
+                        m_traceBuffer[policyName].clear();
                     }
                 }
                 else

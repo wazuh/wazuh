@@ -196,29 +196,15 @@ void processEvent(const std::string& eventStr,
 
 void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
-    const std::string commandList {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+    const std::string commandGet {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
 
     // Check that the session exists before executing the run command
-    eTest::SessionsGet_Request eListRequest;
-    const auto listRequest =
-        utils::apiAdapter::toWazuhRequest<eTest::SessionsGet_Request>(commandList, details::ORIGIN_NAME, eListRequest);
-    const auto responseList = client->send(listRequest);
-    const auto eResponseList = utils::apiAdapter::fromWazuhResponse<eTest::SessionsGet_Response>(responseList);
-
-    auto foundSession {false};
-    for (const auto& session : eResponseList.list())
-    {
-        if (parameters.sessionName == session)
-        {
-            foundSession = true;
-        }
-    }
-
-    if (!foundSession)
-    {
-        std::cout << fmt::format("Session '{}' could not be found", parameters.sessionName) << std::endl;
-        return;
-    }
+    eTest::SessionGet_Request eGetRequest;
+    eGetRequest.set_name(parameters.sessionName);
+    const auto getRequest =
+        utils::apiAdapter::toWazuhRequest<eTest::SessionGet_Request>(commandGet, details::ORIGIN_NAME, eGetRequest);
+    const auto responseGet = client->send(getRequest);
+    const auto eResponseGet = utils::apiAdapter::fromWazuhResponse<eTest::SessionsGet_Response>(responseGet);
 
     // Call run command
 
