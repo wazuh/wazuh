@@ -182,7 +182,8 @@ void processEvent(const std::string& eventStr,
 
     // Print results
     std::string jsonOutputAndTrace;
-    google::protobuf::util::MessageToJsonString(eResponse, &jsonOutputAndTrace);
+    const auto& run = eResponse.run();
+    google::protobuf::util::MessageToJsonString(run, &jsonOutputAndTrace);
     if (parameters.jsonFormat)
     {
         std::cout << jsonOutputAndTrace << std::endl;
@@ -302,10 +303,16 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
     eRequest.set_name(parameters.sessionName);
 
     // Set policy name
-    eRequest.set_policy(parameters.policy);
+    if (!parameters.policy.empty())
+    {
+        eRequest.set_policy(parameters.policy);
+    }
 
     // Set lifespan
-    eRequest.set_lifespan(parameters.lifespan);
+    if (0 != parameters.lifespan)
+    {
+        eRequest.set_lifespan(parameters.lifespan);
+    }
 
     if (!parameters.description.empty())
     {
@@ -365,16 +372,11 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
-    const auto output = fmt::format(SESSION_GET_DATA_FORMAT,
-                                    eResponse.id(),
-                                    eResponse.creation_date(),
-                                    eResponse.policy(),
-                                    eResponse.filter(),
-                                    eResponse.route(),
-                                    eResponse.lifespan(),
-                                    eResponse.description());
+    const auto& session = eResponse.session();
+    const auto result = eMessage::eMessageToJson<eTest::Session>(session);
+    const auto& json = std::get<std::string>(result);
 
-    std::cout << output << std::endl;
+    std::cout << json << std::endl;
 }
 
 void sessionList(std::shared_ptr<apiclnt::Client> client)
