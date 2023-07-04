@@ -11,7 +11,7 @@
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <eMessages/test.pb.h>
-#include <utilsYml.hpp>
+#include <yml/yml.hpp>
 
 namespace
 {
@@ -81,7 +81,7 @@ processJson(const json::Json& jsonObject, const std::string& jsonPath, const std
         rapidjson::Document doc;
         doc.Parse(jsonValue.value().str().c_str());
 
-        const auto yaml = utilsYml::Converter::json2yaml(doc);
+        const auto yaml = yml::Converter::json2yaml(doc);
 
         YAML::Node rootNode;
         rootNode[rootName] = yaml;

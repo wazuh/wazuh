@@ -4,19 +4,19 @@
 #include <json/json.hpp>
 #include <limits>
 #include <string>
-#include <utilsYml.hpp>
+#include <yml/yml.hpp>
 
 #include "rapidjson/prettywriter.h"
 
 constexpr auto FILE_PATH {"test/source/dataStruct/yml/testFile.yml"};
 
-class UtilsYmlTest : public ::testing::Test
+class YmlTest : public ::testing::Test
 {
 };
 
-TEST_F(UtilsYmlTest, ParseScalarTestAllocator)
+TEST_F(YmlTest, ParseScalarTestAllocator)
 {
-    YAML::Node quotedStringNode = YAML::Node(utilsYml::QUOTED_TAG);
+    YAML::Node quotedStringNode = YAML::Node(yml::QUOTED_TAG);
     quotedStringNode = "hello";
     YAML::Node intNode(42);
     YAML::Node doubleNode(3.14);
@@ -26,12 +26,12 @@ TEST_F(UtilsYmlTest, ParseScalarTestAllocator)
 
     rapidjson::Document::AllocatorType allocator;
 
-    auto quotedStringResult = utilsYml::Converter::parse_scalar(quotedStringNode, allocator);
-    auto intResult = utilsYml::Converter::parse_scalar(intNode, allocator);
-    auto doubleResult = utilsYml::Converter::parse_scalar(doubleNode, allocator);
-    auto boolResult = utilsYml::Converter::parse_scalar(boolNode, allocator);
-    auto stringResult = utilsYml::Converter::parse_scalar(stringNode, allocator);
-    auto invalidResult = utilsYml::Converter::parse_scalar(invalidNode, allocator);
+    auto quotedStringResult = yml::Converter::parse_scalar(quotedStringNode, allocator);
+    auto intResult = yml::Converter::parse_scalar(intNode, allocator);
+    auto doubleResult = yml::Converter::parse_scalar(doubleNode, allocator);
+    auto boolResult = yml::Converter::parse_scalar(boolNode, allocator);
+    auto stringResult = yml::Converter::parse_scalar(stringNode, allocator);
+    auto invalidResult = yml::Converter::parse_scalar(invalidNode, allocator);
 
     EXPECT_TRUE(quotedStringResult.IsString());
     EXPECT_STREQ(quotedStringResult.GetString(), "hello");
@@ -46,7 +46,7 @@ TEST_F(UtilsYmlTest, ParseScalarTestAllocator)
     EXPECT_TRUE(invalidResult.IsNull());
 }
 
-TEST_F(UtilsYmlTest, ParseScalarTest)
+TEST_F(YmlTest, ParseScalarTest)
 {
     rapidjson::Value stringNode("hello");
     rapidjson::Value intNode(42);
@@ -54,11 +54,11 @@ TEST_F(UtilsYmlTest, ParseScalarTest)
     rapidjson::Value boolNode(true);
     rapidjson::Value invalidNode;
 
-    auto stringResult = utilsYml::Converter::parse_scalar(stringNode);
-    auto intResult = utilsYml::Converter::parse_scalar(intNode);
-    auto doubleResult = utilsYml::Converter::parse_scalar(doubleNode);
-    auto boolResult = utilsYml::Converter::parse_scalar(boolNode);
-    auto invalidResult = utilsYml::Converter::parse_scalar(invalidNode);
+    auto stringResult = yml::Converter::parse_scalar(stringNode);
+    auto intResult = yml::Converter::parse_scalar(intNode);
+    auto doubleResult = yml::Converter::parse_scalar(doubleNode);
+    auto boolResult = yml::Converter::parse_scalar(boolNode);
+    auto invalidResult = yml::Converter::parse_scalar(invalidNode);
 
     EXPECT_EQ(stringResult.Scalar(), "hello");
     EXPECT_EQ(intResult.as<int>(), 42);
@@ -67,7 +67,7 @@ TEST_F(UtilsYmlTest, ParseScalarTest)
     EXPECT_TRUE(invalidResult.IsNull());
 }
 
-TEST_F(UtilsYmlTest, JsonToYamlTest)
+TEST_F(YmlTest, JsonToYamlTest)
 {
     const char* jsonString = R"({
         "person": {
@@ -84,7 +84,7 @@ TEST_F(UtilsYmlTest, JsonToYamlTest)
     rapidjson::Document document;
     document.Parse(jsonString);
 
-    auto resultNode = utilsYml::Converter::json2yaml(document);
+    auto resultNode = yml::Converter::json2yaml(document);
 
     YAML::Emitter resultEmitter;
     YAML::Emitter expectedEmitter;
@@ -109,7 +109,7 @@ TEST_F(UtilsYmlTest, JsonToYamlTest)
     EXPECT_STREQ(resultYaml, expectedYaml);
 }
 
-TEST_F(UtilsYmlTest, YamlToJsonTest)
+TEST_F(YmlTest, YamlToJsonTest)
 {
     const char* yamlStr = R"(
         person:
@@ -129,7 +129,7 @@ TEST_F(UtilsYmlTest, YamlToJsonTest)
     rapidjson::Document document;
     auto& allocator = document.GetAllocator();
 
-    const auto& resultValue = utilsYml::Converter::yaml2json(yamlNode, allocator);
+    const auto& resultValue = yml::Converter::yaml2json(yamlNode, allocator);
 
     rapidjson::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
@@ -156,7 +156,7 @@ TEST_F(UtilsYmlTest, YamlToJsonTest)
     EXPECT_TRUE(expected == result);
 }
 
-TEST_F(UtilsYmlTest, LoadYMLfromStringTest)
+TEST_F(YmlTest, LoadYMLfromStringTest)
 {
     std::string yamlStr = R"(
         person:
@@ -185,7 +185,7 @@ TEST_F(UtilsYmlTest, LoadYMLfromStringTest)
         }
     )";
 
-    auto resultValue = utilsYml::Converter::loadYMLfromString(yamlStr);
+    auto resultValue = yml::Converter::loadYMLfromString(yamlStr);
     rapidjson::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
     auto result = json::Json {std::move(resultValueDocument)};
@@ -194,7 +194,7 @@ TEST_F(UtilsYmlTest, LoadYMLfromStringTest)
     EXPECT_TRUE(expected == result);
 }
 
-TEST_F(UtilsYmlTest, LoadYMLfromFileTest)
+TEST_F(YmlTest, LoadYMLfromFileTest)
 {
     std::filesystem::path currentPath = std::filesystem::current_path();
 
@@ -209,7 +209,7 @@ TEST_F(UtilsYmlTest, LoadYMLfromFileTest)
     }
 
     auto testFilepath = currentPath / FILE_PATH;
-    auto resultValue = utilsYml::Converter::loadYMLfromFile(testFilepath);
+    auto resultValue = yml::Converter::loadYMLfromFile(testFilepath);
     rapidjson::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
     auto result = json::Json {std::move(resultValueDocument)};
