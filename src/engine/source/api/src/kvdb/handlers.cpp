@@ -97,7 +97,8 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 
             if (resultLoad)
             {
-                std::string message = fmt::format("The DB was created but loading data returned: {}", resultLoad.value().message);
+                const std::string message =
+                    fmt::format("The DB was created but loading data returned: {}", resultLoad.value().message);
                 return ::api::adapter::genericError<ResponseType>(message);
             }
         }
@@ -137,7 +138,8 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
 
         if (!resultExists)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("The KVDB {} does not exist.", eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("The KVDB {} does not exist.", eRequest.name()));
         }
 
         const auto resultDelete = kvdbManager->deleteDB(eRequest.name());
@@ -151,8 +153,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
     };
 }
 
-api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                         const std::string& kvdbScopeName)
+api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -181,7 +182,8 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         if (!resultExists)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("The KVDB {} does not exist.", eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("The KVDB {} does not exist.", eRequest.name()));
         }
 
         const auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -193,7 +195,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         auto handler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler);
 
-        auto dumpRes = handler->dump();
+        const auto dumpRes = handler->dump();
 
         if (std::holds_alternative<base::Error>(dumpRes))
         {
@@ -226,8 +228,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 }
 
 /* Specific DB endpoint */
-api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                   const std::string& kvdbScopeName)
+api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -265,7 +266,8 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         if (!resultExists)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("The KVDB {} does not exist.", eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("The KVDB {} does not exist.", eRequest.name()));
         }
 
         const auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -300,8 +302,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
     };
 }
 
-api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                      const std::string& kvdbScopeName)
+api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -339,7 +340,8 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         if (!resultExists)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("The KVDB {} does not exist.", eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("The KVDB {} does not exist.", eRequest.name()));
         }
 
         const auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -362,8 +364,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
     };
 }
 
-api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                   const std::string& kvdbScopeName)
+api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -414,7 +415,8 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         if (!resultExists)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("The KVDB {} does not exist.", eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("The KVDB {} does not exist.", eRequest.name()));
         }
 
         const auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);

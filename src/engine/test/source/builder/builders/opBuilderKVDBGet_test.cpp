@@ -41,7 +41,7 @@ protected:
         }
 
         m_manager = std::make_shared<MetricsManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {DB_DIR, DB_NAME};
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
 
         kvdbManager->initialize();
@@ -73,57 +73,44 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBGetTest, BuildsGetI)
 {
-    ASSERT_NO_THROW(bld::KVDBGet("/field",
+    ASSERT_NO_THROW(bld::KVDBGet(kvdbManager,
+                                 "builder_test",
+                                 "/field",
                                  "",
                                  {DB_NAME_1, "key"},
                                  std::make_shared<defs::mocks::FailDef>(),
-                                 false,
-                                 kvdbManager,
-                                 "builder_test"));
-    ASSERT_NO_THROW(bld::KVDBGet("/field",
-                                 "",
-                                 {DB_NAME_1, "key"},
-                                 std::make_shared<defs::mocks::FailDef>(),
-                                 true,
-                                 kvdbManager,
-                                 "builder_test"));
+                                 false));
+    ASSERT_NO_THROW(bld::KVDBGet(
+        kvdbManager, "builder_test", "/field", "", {DB_NAME_1, "key"}, std::make_shared<defs::mocks::FailDef>(), true));
 }
 
 TEST_F(opBuilderKVDBGetTest, BuildsGetII)
 {
-    ASSERT_NO_THROW(bld::KVDBGet("/field",
+    ASSERT_NO_THROW(bld::KVDBGet(kvdbManager,
+                                 "builder_test",
+                                 "/field",
                                  "",
                                  {DB_NAME_1, "$key"},
                                  std::make_shared<defs::mocks::FailDef>(),
-                                 false,
-                                 kvdbManager,
-                                 "builder_test"));
-    ASSERT_NO_THROW(bld::KVDBGet("/field",
+                                 false));
+    ASSERT_NO_THROW(bld::KVDBGet(kvdbManager,
+                                 "builder_test",
+                                 "/field",
                                  "",
                                  {DB_NAME_1, "$key"},
                                  std::make_shared<defs::mocks::FailDef>(),
-                                 true,
-                                 kvdbManager,
-                                 "builder_test"));
+                                 true));
 }
 
 TEST_F(opBuilderKVDBGetTest, WrongNumberOfParameters)
 {
-    ASSERT_THROW(bld::KVDBGet("/field",
-                              "",
-                              {DB_NAME_1},
-                              std::make_shared<defs::mocks::FailDef>(),
-                              false,
-                              kvdbManager,
-                              "builder_test"),
-                 std::runtime_error);
     ASSERT_THROW(
         bld::KVDBGet(
-            "/field", "", {DB_NAME_1}, 
-            std::make_shared<defs::mocks::FailDef>(), 
-            true,
-            kvdbManager,
-            "builder_test"),
+            kvdbManager, "builder_test", "/field", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), false),
+        std::runtime_error);
+    ASSERT_THROW(
+        bld::KVDBGet(
+            kvdbManager, "builder_test", "/field", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), true),
         std::runtime_error);
 }
 
