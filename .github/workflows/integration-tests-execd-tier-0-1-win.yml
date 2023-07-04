@@ -1,0 +1,75 @@
+name: Execd integration tests tier 0 and 1 on Windows
+
+on:
+  pull_request:
+    paths:
+        - ".github/workflows/integration-tests-execd-tier-0-1-win.yml"
+        - "src/execd/**"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_execd/**"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install mingw
+        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: make deps
+        run: make -C src deps TARGET=winagent -j2
+      - name: make
+        run: make -C src TARGET=winagent -j2
+      - name: compress
+        run: cd .. && zip -r wazuh.zip wazuh
+        # Make folder and upload as artifacts.
+      - name: Copy libraries
+        run: |
+          mkdir -p src/shared_libraries
+          cp ../wazuh.zip src/shared_libraries/wazuh.zip
+      # Upload build artifacts for the shared libraries.
+      - name: Upload Artifact shared_libraries
+        uses: actions/upload-artifact@v3
+        with:
+          name: shared_libraries
+          path: src/shared_libraries
+
+  run-on-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version-it"
+          architecture: x64
+      - name: Download Artifact shared_libraries
+        uses: actions/download-artifact@v3
+        with:
+          name: shared_libraries
+          path: C:\shared_libraries\
+      - name: Decompress wazuh
+        run: |
+          Expand-Archive -LiteralPath C:\shared_libraries\wazuh.zip -DestinationPath C:\wazuh
+      - name: Build wazuh installer
+        run: |
+          cd  C:\wazuh\wazuh\src\win32
+          Echo test test Y | .\wazuh-installer-build-msi.bat
+
+      - name: Install wazuh
+        run: |
+          cd  C:\wazuh\wazuh\src\win32
+          .\wazuh-agent-test-test.msi /q WAZUH_MANAGER="10.0.0.2"
+      # Download and install integration tests framework.
+      - name: Download and install integration tests framework
+        run: |
+          $BRANCH_NAME = "main"
+          git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
+          pip install qa-integration-framework/
+          pip install pywin32>=306
+      # Run execd integration tests.
+      - name: Run execd integration tests
+        run: |
+          cd C:\wazuh\wazuh\tests\integration
+          python -m pytest --tier 0 --tier 1 test_execd\

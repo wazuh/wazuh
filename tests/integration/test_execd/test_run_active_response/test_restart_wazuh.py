@@ -63,7 +63,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_execd_restart.yaml')
@@ -74,7 +74,7 @@ test_configuration = load_configuration_template(config_path, test_configuration
 # Test internal options and configurations.
 local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == 'win32' else EXECD_DEBUG_CONFIG: '2'} 
 daemons_handler_configuration = {'all_daemons': True}
-ar_conf = 'restart-wazuh0 - restart-wazuh - 0'
+ar_conf = 'restart-wazuh0 - restart-wazuh - 0\nrestart-wazuh0 - restart-wazuh.exe - 0'
 
 
 # Test Function.
