@@ -197,6 +197,7 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
+static bool file_exists(const char *filename);
 
 int wdb_parse(char * input, char * output, int peer) {
     char * actor;
@@ -204,6 +205,7 @@ int wdb_parse(char * input, char * output, int peer) {
     char * query;
     char * sql;
     char * next;
+    char path[PATH_MAX + 1];
     int agent_id = 0;
     char sagent_id[64] = "000";
     wdb_t * wdb;
@@ -740,10 +742,14 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
-        if (result == OS_INVALID && wdb) {
-            w_mutex_lock(&pool_mutex);
-            wdb_close(wdb, FALSE);
-            w_mutex_unlock(&pool_mutex);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
+            if (!file_exists(path)) {
+                mdebug2("DB(%s) not found.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
         }
         return result;
     } else if (strcmp(actor, "wazuhdb") == 0) {
@@ -6755,3 +6761,14 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     cJSON_Delete(data);
     return ret;
 }
+
+static bool file_exists(const char *filename) {
+    FILE *fp = fopen(filename, "r");
+    bool is_exist = false;
+    if (fp != NULL) {
+        is_exist = true;
+        fclose(fp);
+    }
+    return is_exist;
+}
+
