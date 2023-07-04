@@ -17,7 +17,7 @@ CPMAddPackage(
 # Sources - Includes
 # ###################################################################################################
 add_library(yml STATIC
-    ${CMAKE_CURRENT_LIST_DIR}/src/utilsYml.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/yml.cpp
 )
 
 target_link_libraries(yml fmt yaml-cpp json base)
