@@ -1,10 +1,7 @@
 #include <iostream>
-#include <utilsYml.hpp>
+#include <yml/yml.hpp>
 
-// #TODO Adds a thread-safe mechanism (?)
-// #TODO Adds test
-// #TODO Convert to static class
-namespace utilsYml
+namespace yml
 {
 
 rapidjson::Document Converter::loadYMLfromFile(const std::string& filepath)

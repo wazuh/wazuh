@@ -1,5 +1,5 @@
-#ifndef _UTILS_YML_H
-#define _UTILS_YML_H
+#ifndef _YML_H
+#define _YML_H
 
 #include <iostream>
 
@@ -9,7 +9,7 @@
 #include <yaml-cpp/yaml.h>
 
 // #TODO Adds a thread-safe mechanism (?)
-namespace utilsYml
+namespace yml
 {
 constexpr auto QUOTED_TAG = "!";
 
@@ -72,4 +72,4 @@ public:
 };
 } // namespace yml
 
-#endif // _UTILS_YML_H
+#endif // _YML_H
