@@ -21,58 +21,21 @@ class SessionManagerTest : public ::testing::Test
 TEST_F(SessionManagerTest, GetNewSessionIDTest)
 {
     // Act
-    SessionManager& instance = SessionManager::getInstance();
-    uint32_t sessionID = instance.getNewSessionID();
+    auto sessionManager = SessionManager();
 
-    // Assert
-    EXPECT_EQ(sessionID, 1); // Debe haber una sesión registrada
-}
-
-TEST_F(SessionManagerTest, GetInstance)
-{
-    // Get the instance of SessionManager
-    SessionManager& instance1 = SessionManager::getInstance();
-    SessionManager& instance2 = SessionManager::getInstance();
-
-    // Verify that both instances refer to the same object
-    ASSERT_EQ(&instance1, &instance2) << "Multiple instances of SessionManager created";
-
-    // Verify that the instance is not null
-    ASSERT_NE(&instance1, nullptr) << "SessionManager instance is null";
-}
-
-TEST_F(SessionManagerTest, GetInstanceMultiThreaded)
-{
-    constexpr int numThreads = 10;
-    std::vector<std::thread> threads;
-    std::vector<SessionManager*> instances(numThreads, nullptr);
-
-    // Create multiple threads that call getInstance
-    for (int i = 0; i < numThreads; ++i)
-    {
-        threads.emplace_back([&instances, i]() { instances[i] = &SessionManager::getInstance(); });
-    }
-
-    // Wait for all threads to finish
-    for (auto& thread : threads)
-    {
-        thread.join();
-    }
-
-    // Verify that all instances are the same and not null
-    SessionManager* firstInstance = instances[0];
-    ASSERT_NE(firstInstance, nullptr) << "SessionManager instance is null";
-
-    for (int i = 1; i < numThreads; ++i)
-    {
-        ASSERT_EQ(instances[i], firstInstance) << "Multiple instances of SessionManager created";
-    }
+    EXPECT_EQ(sessionManager.getNewSessionID(), 1);
+    sessionManager.getNewSessionID();
+    EXPECT_EQ(sessionManager.getNewSessionID(), 3);
+    sessionManager.getNewSessionID();
+    EXPECT_EQ(sessionManager.getNewSessionID(), 5);
+    sessionManager.getNewSessionID();
+    EXPECT_EQ(sessionManager.getNewSessionID(), 7);
 }
 
 TEST_F(SessionManagerTest, ListSessions)
 {
-    auto& instance = SessionManager::getInstance();
-    ASSERT_NE(&instance, nullptr) << "SessionManager instance is null";
+    auto sessionManager = std::make_shared<SessionManager>();
+    ASSERT_NE(sessionManager, nullptr) << "SessionManager instance is null";
 
     constexpr auto numSessions {3};
     for (int i = 1; i <= numSessions; i++)
@@ -82,34 +45,37 @@ TEST_F(SessionManagerTest, ListSessions)
         const auto& currentFilterName = FILTER_NAME + std::to_string(i);
         const auto& currentRouteName = ROUTE_NAME + std::to_string(i);
 
-        const auto createSession = instance.createSession(
-            currentSessionName, currentPolicyName, currentFilterName, currentRouteName, instance.getNewSessionID());
+        const auto createSession = sessionManager->createSession(currentSessionName,
+                                                                 currentPolicyName,
+                                                                 currentFilterName,
+                                                                 currentRouteName,
+                                                                 sessionManager->getNewSessionID());
         ASSERT_FALSE(createSession.has_value());
     }
 
     auto i {numSessions};
-    for (const auto& session : instance.getSessionsList())
+    for (const auto& session : sessionManager->getSessionsList())
     {
         const auto& expectedSessionName = SESSION_NAME + std::to_string(i);
         ASSERT_STREQ(expectedSessionName.c_str(), session.c_str());
         i--;
     }
 
-    instance.deleteSessions(true);
+    sessionManager->deleteSessions(true);
 }
 
 TEST_F(SessionManagerTest, GetSession)
 {
-    auto& instance = SessionManager::getInstance();
-    ASSERT_NE(&instance, nullptr) << "SessionManager instance is null";
+    auto sessionManager = std::make_shared<SessionManager>();
+    ASSERT_NE(sessionManager, nullptr) << "SessionManager instance is null";
 
-    const uint32_t sessionID = instance.getNewSessionID();
+    const uint32_t sessionID = sessionManager->getNewSessionID();
 
-    const auto createSession = instance.createSession(
+    const auto createSession = sessionManager->createSession(
         SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, sessionID, SESSION_LIFESPAM, SESSION_DESCRIPTION);
     ASSERT_FALSE(createSession.has_value());
 
-    auto session = instance.getSession(SESSION_NAME);
+    auto session = sessionManager->getSession(SESSION_NAME);
     ASSERT_TRUE(session.has_value());
 
     ASSERT_EQ(session.value().getLifespan(), SESSION_LIFESPAM);
@@ -120,16 +86,16 @@ TEST_F(SessionManagerTest, GetSession)
     ASSERT_STREQ(session.value().getRouteName().c_str(), ROUTE_NAME);
     ASSERT_STREQ(session.value().getSessionName().c_str(), SESSION_NAME);
 
-    auto sessionNotFound = instance.getSession(POLICY_NAME);
+    auto sessionNotFound = sessionManager->getSession(POLICY_NAME);
     ASSERT_FALSE(sessionNotFound.has_value());
 
-    instance.deleteSessions(true);
+    sessionManager->deleteSessions(true);
 }
 
 TEST_F(SessionManagerTest, DeleteSessions)
 {
-    auto& instance = SessionManager::getInstance();
-    ASSERT_NE(&instance, nullptr) << "SessionManager instance is null";
+    auto sessionManager = std::make_shared<SessionManager>();
+    ASSERT_NE(sessionManager, nullptr) << "SessionManager instance is null";
 
     constexpr auto numSessions {3};
     for (auto i = 0; i < numSessions; i++)
@@ -139,25 +105,28 @@ TEST_F(SessionManagerTest, DeleteSessions)
         const auto& currentFilterName = FILTER_NAME + std::to_string(i);
         const auto& currentRouteName = ROUTE_NAME + std::to_string(i);
 
-        const auto createSession = instance.createSession(
-            currentSessionName, currentPolicyName, currentFilterName, currentRouteName, instance.getNewSessionID());
+        const auto createSession = sessionManager->createSession(currentSessionName,
+                                                                 currentPolicyName,
+                                                                 currentFilterName,
+                                                                 currentRouteName,
+                                                                 sessionManager->getNewSessionID());
         ASSERT_FALSE(createSession.has_value());
     }
 
     for (auto i = 0; i < numSessions; i++)
     {
         const auto& expectedSessionName = SESSION_NAME + std::to_string(i);
-        ASSERT_TRUE(instance.deleteSessions(false, expectedSessionName));
+        ASSERT_TRUE(sessionManager->deleteSessions(false, expectedSessionName));
     }
 
-    ASSERT_TRUE(instance.getSessionsList().empty());
+    ASSERT_TRUE(sessionManager->getSessionsList().empty());
 
-    const auto createSession =
-        instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, instance.getNewSessionID());
-    ASSERT_FALSE(instance.getSessionsList().empty());
+    const auto createSession = sessionManager->createSession(
+        SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, sessionManager->getNewSessionID());
+    ASSERT_FALSE(sessionManager->getSessionsList().empty());
 
-    ASSERT_TRUE(instance.deleteSessions(true));
-    ASSERT_TRUE(instance.getSessionsList().empty());
+    ASSERT_TRUE(sessionManager->deleteSessions(true));
+    ASSERT_TRUE(sessionManager->getSessionsList().empty());
 }
 
 class SessionManagerParameterizedTest
@@ -170,19 +139,22 @@ TEST_P(SessionManagerParameterizedTest, CreateSession)
 {
     auto [sessionNameParameter, policyNameParameter, filterNameParameter, routeNameParameter, output] = GetParam();
 
-    auto& instance = SessionManager::getInstance();
-    ASSERT_NE(&instance, nullptr) << "SessionManager instance is null";
+    auto sessionManager = std::make_shared<SessionManager>();
+    ASSERT_NE(sessionManager, nullptr) << "SessionManager instance is null";
 
-    const auto createSessionWithoutError =
-        instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, instance.getNewSessionID());
+    const auto createSessionWithoutError = sessionManager->createSession(
+        SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, sessionManager->getNewSessionID());
     ASSERT_FALSE(createSessionWithoutError.has_value());
 
-    const auto createSessionWithError = instance.createSession(
-        sessionNameParameter, policyNameParameter, filterNameParameter, routeNameParameter, instance.getNewSessionID());
+    const auto createSessionWithError = sessionManager->createSession(sessionNameParameter,
+                                                                      policyNameParameter,
+                                                                      filterNameParameter,
+                                                                      routeNameParameter,
+                                                                      sessionManager->getNewSessionID());
     ASSERT_TRUE(createSessionWithError.has_value());
     ASSERT_STREQ(output.c_str(), createSessionWithError.value().message.c_str());
 
-    instance.deleteSessions(true);
+    sessionManager->deleteSessions(true);
 }
 
 INSTANTIATE_TEST_SUITE_P(

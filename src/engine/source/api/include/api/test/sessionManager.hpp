@@ -39,17 +39,19 @@ private:
     std::unordered_set<std::string> m_routeSet;                ///< Set of active routes
     std::unordered_set<uint32_t> m_idSet;                      ///< Set of active filter
 
-    static uint32_t m_sessionIDCounter; ///< This counter is used to provide a unique ID to each session
+    uint32_t m_sessionIDCounter;      ///< This counter is used to provide a unique ID to each session
 
-    std::shared_mutex m_sessionMutex;   ///< Mutex to protect the sessions resources usage
+    std::shared_mutex m_sessionMutex; ///< Mutex to protect the sessions resources usage
 
 public:
     /**
-     * @brief Get a Session Manager instance.
+     * @brief Construct a new Session Manager object
      *
-     * @return SessionManager&
      */
-    static SessionManager& getInstance(void);
+    SessionManager()
+        : m_sessionIDCounter {0}
+    {
+    }
 
     /**
      * @brief Create a session.
