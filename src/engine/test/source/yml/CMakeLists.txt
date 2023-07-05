@@ -11,3 +11,8 @@ target_include_directories(yml_test
 # TODO check if it's ok to add base for the json dep
 target_link_libraries(yml_test test_mocks gtest_main base yml)
 gtest_discover_tests(yml_test)
+
+set(TEST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/testFile.yml")
+target_compile_definitions(yml_test PRIVATE
+  TEST_FILE="${TEST_FILE}"
+)

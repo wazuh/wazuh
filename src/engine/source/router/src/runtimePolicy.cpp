@@ -115,7 +115,6 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
 {
     std::unique_lock<std::shared_mutex> lock {m_mutexData};
     auto trace = json::Json {R"({})"};
-    auto enableAssetTrace = assetTrace.empty();
     if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
         if (m_history[policyName].empty())
@@ -191,20 +190,13 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
                         combinedTrace << uniqueTrace;
                     }
                     trace.setString(combinedTrace.str(), std::string("/") + asset);
-                    tracePair[asset].clear();
+                    tracePair[policyName].clear();
                 }
             }
         }
-        m_history[policyName].clear();
-        return std::make_tuple(m_output[policyName], trace.prettyStr());
     }
     else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
     {
-        if (!assetTrace.empty())
-        {
-            return base::Error {"The '-t' flag is only accepted in -dd mode"};
-        }
-
         if (m_history[policyName].empty())
         {
             return base::Error {fmt::format(
@@ -215,15 +207,23 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
         {
             trace.setString(condition, std::string("/") + asset);
         }
-        m_history[policyName].clear();
-        return std::make_tuple(m_output[policyName], trace.prettyStr());
+        m_traceBuffer[policyName].clear();
     }
-    m_history[policyName].clear();
-    if (!assetTrace.empty())
+
+    m_traceBuffer[policyName].clear();
+    auto outputIt = m_output.find(policyName);
+    if (outputIt != m_output.end())
     {
-        return base::Error {"The '-t' flag is only accepted in -dd mode"};
+        std::string outputValue = outputIt->second;
+        m_output.erase(outputIt); // Remove the item from the map after getting it
+        if (R"({})" == trace.prettyStr())
+        {
+            return std::make_tuple(outputValue, std::string());
+        }
+        return std::make_tuple(outputValue, trace.prettyStr());
     }
-    return std::make_tuple(m_output[policyName], std::string());
+
+    return base::Error{fmt::format("The Policy '{}' not found", policyName)};
 }
 
 } // namespace router

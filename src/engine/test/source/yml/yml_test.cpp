@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <json/json.hpp>
@@ -7,8 +6,6 @@
 #include <yml/yml.hpp>
 
 #include "rapidjson/prettywriter.h"
-
-constexpr auto FILE_PATH {"test/source/dataStruct/yml/testFile.yml"};
 
 class YmlTest : public ::testing::Test
 {
@@ -196,20 +193,7 @@ TEST_F(YmlTest, LoadYMLfromStringTest)
 
 TEST_F(YmlTest, LoadYMLfromFileTest)
 {
-    std::filesystem::path currentPath = std::filesystem::current_path();
-
-    while (!currentPath.empty())
-    {
-        if (currentPath.filename() == "engine")
-        {
-            break;
-        }
-
-        currentPath = currentPath.parent_path();
-    }
-
-    auto testFilepath = currentPath / FILE_PATH;
-    auto resultValue = yml::Converter::loadYMLfromFile(testFilepath);
+    auto resultValue = yml::Converter::loadYMLfromFile(TEST_FILE);
     rapidjson::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
     auto result = json::Json {std::move(resultValueDocument)};
