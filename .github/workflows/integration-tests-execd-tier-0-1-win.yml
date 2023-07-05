@@ -33,7 +33,7 @@ jobs:
           name: shared_libraries
           path: src/shared_libraries
 
-  run-on-windows:
+  run-test:
     needs: build
     runs-on: windows-latest
     steps:
@@ -65,9 +65,11 @@ jobs:
       - name: Download and install integration tests framework
         run: |
           $BRANCH_NAME = "main"
+          if ((git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:GITHUB_HEAD_REF) -ne "X") {
+              $BRANCH_NAME = $env:GITHUB_HEAD_REF
+          }
           git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
-          pip install pywin32>=306
       # Run execd integration tests.
       - name: Run execd integration tests
         run: |
