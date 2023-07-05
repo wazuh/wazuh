@@ -119,7 +119,6 @@ void KVDBManager::finalizeMainDB()
     for (const auto& entry : m_mapCFHandles)
     {
         const auto& cfHandle = entry.second;
-        opStatus = m_pRocksDB->DropColumnFamily(cfHandle);
         opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
     }
 
