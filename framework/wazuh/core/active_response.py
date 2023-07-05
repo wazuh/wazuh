@@ -30,7 +30,7 @@ def get_commands() -> list:
     return commands
 
 
-def shell_escape(command: str = '') -> str:
+def shell_escape(command: str) -> str:
     """Escape some characters in the command before sending it.
 
     Parameters
@@ -46,8 +46,10 @@ def shell_escape(command: str = '') -> str:
     """
     shell_escapes = \
         ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
-    for shell_esc_char in shell_escapes:
-        command = command.replace(shell_esc_char, "\\" + shell_esc_char)
+
+    if any(special_char in command for special_char in shell_escapes):
+        for shell_esc_char in shell_escapes:
+            command = command.replace(shell_esc_char, "\\" + shell_esc_char)
 
     return command
 
