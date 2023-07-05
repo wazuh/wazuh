@@ -123,7 +123,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["nice"]       = process->nice;
     jsProcessInfo["size"]       = process->size;
     jsProcessInfo["vm_size"]    = process->vm_size;
-    jsProcessInfo["resident"]   = process->resident;
+    jsProcessInfo["resident"]   = process->vm_rss;
     jsProcessInfo["share"]      = process->share;
     jsProcessInfo["start_time"] = Utils::timeTick2unixTime(process->start_time);
     jsProcessInfo["pgrp"]       = process->pgrp;
