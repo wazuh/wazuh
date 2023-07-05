@@ -4,7 +4,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-github-tier-0.yml"
-        - "src/modulesd/**"
+        - "src/wazuh_modules/wm_github.h"
+        - "src/wazuh_modules/wm_github.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_github/**"
