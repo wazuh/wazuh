@@ -107,7 +107,7 @@ message SessionsDelete_Response
  **************************************************/
 message RunPost_Request
 {
-    string name = 1;                          // Name of session
+    optional string name = 1;                 // Name of session
     optional google.protobuf.Value event = 2; // Event to be process
     optional string protocol_queue = 3;       // Protocol queue
     optional DebugMode debug_mode = 4;        // Debug mode

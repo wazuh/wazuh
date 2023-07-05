@@ -798,7 +798,9 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        const auto errorMsg = !eRequest.has_event() ? std::make_optional("Missing /event field") : std::nullopt;
+        const auto errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name field")
+                              : !eRequest.has_event() ? std::make_optional("Missing /event field")
+                                                      : std::nullopt;
 
         if (errorMsg.has_value())
         {
