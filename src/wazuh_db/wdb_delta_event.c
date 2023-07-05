@@ -249,7 +249,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                 case cJSON_String: {
                     char * endptr;
                     const int integer_number = (int) strtol(value->valuestring, &endptr, 10);
-                    int sqlite3_bind = true;
+                    int sqlite3_bind = SQLITE_ERROR;
                     if (NULL != endptr && '\0' == *endptr) {
                         if (IS_VALID_VALUE(table_name, field_name, integer_number)) {
                             sqlite3_bind = sqlite3_bind_int(stmt, index, integer_number);
@@ -265,7 +265,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                     break;
                 }
                 case cJSON_Number: {
-                    int sqlite3_bind = true;
+                    int sqlite3_bind = SQLITE_ERROR;
                     if (IS_VALID_VALUE(table_name, field_name, value->valueint)) {
                         sqlite3_bind = sqlite3_bind_int(stmt, index, value->valueint);
                     } else {
@@ -284,7 +284,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                 case cJSON_String: {
                     char * endptr;
                     const double real_value = strtod(value->valuestring, &endptr);
-                    int sqlite3_bind = true;
+                    int sqlite3_bind = SQLITE_ERROR;
                     if (NULL != endptr && '\0' == *endptr) {
                         if (IS_VALID_VALUE(table_name, field_name, real_value)) {
                             sqlite3_bind = sqlite3_bind_double(stmt, index, real_value);
@@ -299,7 +299,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                     break;
                 }
                 case cJSON_Number: {
-                    int sqlite3_bind = true;
+                    int sqlite3_bind = SQLITE_ERROR;
                     if (IS_VALID_VALUE(table_name, field_name, value->valuedouble)) {
                         sqlite3_bind = sqlite3_bind_double(stmt, index, value->valuedouble);
                     } else {
