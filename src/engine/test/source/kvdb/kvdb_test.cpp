@@ -1,5 +1,8 @@
 #include <filesystem>
 #include <gtest/gtest.h>
+#include <iostream>
+#include <random>
+
 #include <kvdb/kvdbManager.hpp>
 #include <testsCommon.hpp>
 
@@ -18,20 +21,23 @@ class KVDBTest : public ::testing::Test
 
 protected:
     std::shared_ptr<kvdbManager::KVDBManager> m_spKVDBManager;
+    std::string kvdbPath;
 
     void SetUp() override
     {
         initLogging();
 
         // cleaning directory in order to start without garbage.
-        if (std::filesystem::exists(KVDB_PATH))
+        kvdbPath = generateRandomStringWithPrefix(6, KVDB_PATH) + "/";
+
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(KVDB_PATH);
+            std::filesystem::remove_all(kvdbPath);
         }
 
         std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
 
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions { KVDB_PATH, KVDB_DB_FILENAME };
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
 
         m_spKVDBManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
 
@@ -49,13 +55,13 @@ protected:
             FAIL() << "Exception: " << e.what();
         }
 
-        if (std::filesystem::exists(KVDB_PATH))
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(KVDB_PATH);
+            std::filesystem::remove_all(kvdbPath);
         }
     };
 
-    void dumpScopeInfo(std::map<std::string, kvdbManager::RefInfo>  & scopeInfo)
+    void dumpScopeInfo(std::map<std::string, kvdbManager::RefInfo>& scopeInfo)
     {
         std::cout << "Dump Scopes Information: " << std::endl;
 
@@ -96,7 +102,6 @@ TEST_F(KVDBTest, ScopeTest)
     ASSERT_TRUE(std::holds_alternative<std::string>(result3));
     ASSERT_EQ(std::get<std::string>(result3), "value");
 }
-
 
 TEST_F(KVDBTest, ScopeInfoEmpty)
 {
