@@ -35,19 +35,22 @@ protected:
 
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::string kvdbPath;
 
     void SetUp() override
     {
         initLogging();
 
         // cleaning directory in order to start without garbage.
-        if (std::filesystem::exists(DB_DIR))
+        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
+
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(DB_DIR);
+            std::filesystem::remove_all(kvdbPath);
         }
 
         m_manager = std::make_shared<MetricsManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {DB_DIR, DB_NAME};
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
 
         kvdbManager->initialize();
@@ -69,9 +72,9 @@ protected:
             FAIL() << "Exception: " << e.what();
         }
 
-        if (std::filesystem::exists(DB_DIR))
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(DB_DIR);
+            std::filesystem::remove_all(kvdbPath);
         }
     }
 };
