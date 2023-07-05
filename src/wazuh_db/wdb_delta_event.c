@@ -264,7 +264,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
 
                     break;
                 }
-                case cJSON_Number:
+                case cJSON_Number: {
                     int sqlite3_bind = true;
                     if (IS_VALID_VALUE(table_name, field_name, value->valueint)) {
                         sqlite3_bind = sqlite3_bind_int(stmt, index, value->valueint);
@@ -276,6 +276,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                         ret_val = true;
                     }
                     break;
+                }
                 }
                 break;
             case FIELD_REAL:
@@ -297,7 +298,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                     }
                     break;
                 }
-                case cJSON_Number:
+                case cJSON_Number: {
                     int sqlite3_bind = true;
                     if (IS_VALID_VALUE(table_name, field_name, value->valuedouble)) {
                         sqlite3_bind = sqlite3_bind_double(stmt, index, value->valuedouble);
@@ -308,6 +309,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                         ret_val = true;
                     }
                     break;
+                }
                 }
                 break;
             case FIELD_INTEGER_LONG:
