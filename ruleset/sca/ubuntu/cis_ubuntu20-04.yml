@@ -3311,8 +3311,15 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minlen\s*=\s*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minclass\s*=\s*(\d+) compare >= 4'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:dcredit = -1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ucredit = -1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:lcredit = -1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ocredit = -1'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*# && n:password\s*requisite\s*pam_pwquality.so\s*retry=(\d+) compare <=3'
 
   # 4.4.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 31186
@@ -3327,8 +3334,12 @@ checks:
       - mitre_mitigations: ["M1027"]
       - mitre_tactics: ["TA0006"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d+ && r:unlock_time\s*=\s*\d+'
+      - 'f:/etc/pam.d/common-auth -> n:deny\s*=\s*(\d+) compare <=5'
+      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*requisite\s*\t*pam_deny.so'
+      - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_tally2.so'
 
   # 4.4.3 Ensure password reuse is limited. (Automated)
   - id: 31187
@@ -3350,8 +3361,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix.so && r:use_authtok'
 
   # 4.4.4 Ensure strong password hashing algorithm is configured. (Automated)
   - id: 31188
@@ -3373,32 +3386,11 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_unix.so && r:sha512"
 
-  # 4.4.5 Ensure all current passwords uses the configured hashing algorithm. (Manual)
-  - id: 31189
-    title: "Ensure all current passwords uses the configured hashing algorithm."
-    description: "Currently used passwords with out of date hashing algorithms may pose a security risk to the system."
-    rationale: "In use passwords should always match the configured hashing algorithm for the system."
-    impact: "If the administrator forces a password change, this could cause a large spike in CPU usage if a large number of users change their password during the same time."
-    remediation: "If the administrator wish to force an immediate change on all users as per the output of the audit, execute: #!/usr/bin/env bash { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) awk -F: -v UID_MIN=\"${UID_MIN}\" '( $3 >= UID_MIN && $1 != \"nfsnobody\" ) { print $1 }' /etc/passwd | xargs -n 1 chage -d 0 } NOTE: This could cause significant temporary CPU load on the system if a large number of users reset their passwords at the same time."
-    compliance:
-      - cis: ["4.4.5"]
-      - cis_csc_v8: ["3.11"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - mitre_mitigations: ["M1041"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
-      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
-      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
-      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
-      - soc_2: ["CC6.1"]
-    condition:
-    rules:
+  # 4.4.5 Ensure all current passwords uses the configured hashing algorithm. (Manual) - Not Implemented
 
   # 4.5.1.1 Ensure minimum days between password changes is configured. (Automated)
   - id: 31190
@@ -3417,8 +3409,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+) compare < 1'
 
   # 4.5.1.2 Ensure password expiration is 365 days or less. (Automated)
   - id: 31191
@@ -3439,8 +3433,11 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 4.5.1.3 Ensure password expiration warning days is 7 or more. (Automated)
   - id: 31192
@@ -3459,8 +3456,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
   # 4.5.1.4 Ensure inactive password lock is 30 days or less. (Automated)
   - id: 31193
@@ -3479,28 +3478,13 @@ checks:
       - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
+      - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 30'
 
-  # 4.5.1.5 Ensure all users last password change date is in the past. (Automated)
-  - id: 31194
-    title: "Ensure all users last password change date is in the past."
-    description: "All users should have a password change date in the past."
-    rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
-    compliance:
-      - cis: ["4.5.1.5"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
-    condition:
-    rules:
+  # 4.5.1.5 Ensure all users last password change date is in the past. (Automated) - Not Implemented
 
   # 4.5.1.6 Ensure the number of changed characters in a new password is configured. (Automated)
   - id: 31195
@@ -3516,8 +3500,9 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:difok\s*\t*=\s*\t*(\d+) compare => 2'
 
   # 4.5.1.7 Ensure preventing the use of dictionary words for passwords is configured. (Automated)
   - id: 31196
@@ -3533,31 +3518,11 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare = 1'
 
-  # 4.5.2 Ensure system accounts are secured. (Automated)
-  - id: 31197
-    title: "Ensure system accounts are secured."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    remediation: "Set the shell for any accounts returned by the audit to nologin: # usermod -s $(which nologin) <user> Lock any non root accounts returned by the audit: # usermod -L <user> The following script will: - Set the shell for any accounts returned by the audit to nologin - Lock any non root system accounts returned by the audit: #!/usr/bin/env bash { l_output=\"\" l_output2=\"\" l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" a_users=(); a_ulock=() # initialize arrays while read -r l_user; do # change system accounts that have a valid login shell to nolog shell echo -e \" - System account \\\"$l_user\\\" has a valid logon shell, changing shell to \\\"$(which nologin)\\\"\" usermod -s \"$(which nologin)\" \"$l_user\" done < <(awk -v pat=\"$l_valid_shells\" -F: '($1!~/(root|sync|shutdown|halt|^\\+)/ && $3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' && $(NF) ~ pat) { print $1 }' /etc/passwd) while read -r l_ulock; do # Lock system accounts that aren't locked echo -e \" - System account \\\"$l_ulock\\\" is not locked, locking account\" usermod -L \"$l_ulock\" done < <(awk -v pat=\"$l_valid_shells\" -F: '($1!~/(root|^\\+)/ && $2!~/LK?/ && $3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' && $(NF) ~ pat) { print $1 }' /etc/passwd) }."
-    compliance:
-      - cis: ["4.5.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.5.2 Ensure system accounts are secured. (Automated) - Not Implemented
 
   # 4.5.3 Ensure default group for the root account is GID 0. (Automated)
   - id: 31198
@@ -3579,53 +3544,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
 
-  # 4.5.4 Ensure default user umask is 027 or more restrictive. (Automated)
-  - id: 31199
-    title: "Ensure default user umask is 027 or more restrictive."
-    description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): ▪ will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary group name ▪ userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc User Shell Configuration Files: - ~/.profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login."
-    rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
-    impact: "Setting USERGROUPS_ENAB no in /etc/login.defs may change the expected behavior of useradd and userdel. Setting USERGROUPS_ENAB yes in /etc/login.defs - userdel will remove the user's group if it contains no more members - useradd will create by default a group with the name of the user."
-    remediation: "Run the following command and remove or modify the umask of any returned files: # grep -RPi '(^|^[^#]*)\\s*umask\\s+([0-7][0-7][01][0-7]\\b|[0-7][0-7][0-7][0- 6]\\b|[0-7][01][0-7]\\b|[0-7][0-7][0- 6]\\b|(u=[rwx]{0,3},)?(g=[rwx]{0,3},)?o=[rwx]+\\b|(u=[rwx]{1,3},)?g=[^rx]{1,3}( ,o=[rwx]{0,3})?\\b)' /etc/login.defs /etc/profile* /etc/bash.bashrc* Follow one of the following methods to set the default user umask: Edit /etc/login.defs and edit the UMASK and USERGROUPS_ENAB lines as follows: UMASK 027 USERGROUPS_ENAB no Edit /etc/pam.d/common-session and add or edit the following: session optional pam_umask.so OR Configure umask in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bash.bashrc Example: /etc/profile.d/set_umask.sh umask 027 Note: this method only applies to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked."
-    compliance:
-      - cis: ["4.5.4"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1565", "T1565.001"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.5.4 Ensure default user umask is 027 or more restrictive. (Automated) - Not Implemented
 
-  # 4.5.5 Ensure default user shell timeout is configured. (Automated)
-  - id: 31200
-    title: "Ensure default user shell timeout is configured."
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. Is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bash.bashrc - System wide version of bash.bashrc. etc/bash.bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
-    remediation: "Review /etc/bash.bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should: - Be configured once, as multiple lines, or a single line, in one and only one of the following locations: o A file in the /etc/profile.d/ directory ending in .sh o /etc/profile o /etc/bash.bashrc - Not exceed 900 - Not be equal to 0 Multiple line example: TMOUT=900 readonly TMOUT export TMOUT Single line example: readonly TMOUT=900 ; export TMOUT."
-    compliance:
-      - cis: ["4.5.5"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
+  # 4.5.5 Ensure default user shell timeout is configured. (Automated) - Not Implemented
 
   # 4.5.6 Ensure nologin is not listed in /etc/shells. (Automated)
   - id: 31201
@@ -3635,8 +3560,9 @@ checks:
     remediation: "Edit /etc/shells and remove any lines that include nologin."
     compliance:
       - cis: ["4.5.6"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/shells -> !r:^# && r:nologins"
 
   # 4.5.7 Ensure maximum number of same consecutive characters in a password is configured. (Automated)
   - id: 31202
@@ -3652,8 +3578,10 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.1.1.1.1 Ensure systemd-journal-remote is installed. (Automated)
   - id: 31203
