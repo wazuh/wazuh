@@ -1,14 +1,12 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <iostream>
-#include <random>
 #include <string>
-#include <testsCommon.hpp>
 
 #include <api/kvdb/handlers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <metrics/metricsManager.hpp>
+#include <testsCommon.hpp>
 
 using namespace api::kvdb::handlers;
 using namespace metricsManager;
@@ -48,28 +46,6 @@ const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyD
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
-std::string getRandomNumber(int length)
-{
-    const std::string digits = "0123456789";
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::uniform_int_distribution<int> distribution(0, digits.size() - 1);
-
-    std::string randomNumber;
-    for (int i = 0; i < length; ++i)
-    {
-        randomNumber += digits[distribution(generator)];
-    }
-
-    return randomNumber;
-}
-
-std::string generateRandomStringWithPrefix(const std::string& prefix)
-{
-    std::string randomNumber = getRandomNumber(6);
-    return prefix + randomNumber;
-}
-
 class KVDBApiTest : public ::testing::Test
 {
 
@@ -82,7 +58,7 @@ protected:
         initLogging();
 
         // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(KVDB_PATH) + "/";
+        kvdbPath = generateRandomStringWithPrefix(6, KVDB_PATH) + "/";
 
         if (std::filesystem::exists(kvdbPath))
         {
