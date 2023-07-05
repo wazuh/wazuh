@@ -1,6 +1,7 @@
 name: Analisysd integration tests tier 0 and 1
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-analysisd-tier-0-1.yml"

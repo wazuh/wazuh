@@ -135,7 +135,7 @@ def test_execd_restart(test_configuration, test_metadata, configure_local_intern
         ar_monitor.start(callback=callback)
         assert ar_monitor.callback_result, 'AR `wazuh-restart` did not fail.'
         return
-    wazuh_log_monitor.start(callback=generate_callback(EXECD_SHUTDOWN_RECEIVED), timeout=60)
+    wazuh_log_monitor.start(callback=generate_callback(EXECD_SHUTDOWN_RECEIVED))
     assert wazuh_log_monitor.callback_result, 'Execd `shutdown` log not raised.'
 
     ar_monitor.start(callback=generate_callback(ACTIVE_RESPONSE_RESTART_WAZUH))
