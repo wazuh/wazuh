@@ -11,7 +11,6 @@
 
 #include <api/adapter.hpp>
 #include <api/catalog/resource.hpp>
-#include <api/test/sessionManager.hpp>
 #include <json/json.hpp>
 
 namespace
@@ -65,11 +64,11 @@ namespace api::test::handlers
 namespace eEngine = ::com::wazuh::api::engine;
 namespace eTest = ::com::wazuh::api::engine::test;
 
-std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<Catalog>& catalog,
+std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionManager>& sessionManager,
+                                                const std::shared_ptr<Catalog>& catalog,
                                                 const std::shared_ptr<Router>& router,
                                                 const json::Json& jsonSessions)
 {
-    auto& sessionManager = SessionManager::getInstance();
 
     if (!jsonSessions.isArray())
     {
@@ -132,14 +131,14 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<Catalog>& 
                                 + missingFields};
         }
 
-        const auto createSessionError = sessionManager.createSession(sessionName.value(),
-                                                                     policyName.value(),
-                                                                     filterName.value(),
-                                                                     routeName.value(),
-                                                                     sessionID.value(),
-                                                                     lifespan.value(),
-                                                                     description.value(),
-                                                                     creationDate.value());
+        const auto createSessionError = sessionManager->createSession(sessionName.value(),
+                                                                      policyName.value(),
+                                                                      filterName.value(),
+                                                                      routeName.value(),
+                                                                      sessionID.value(),
+                                                                      lifespan.value(),
+                                                                      description.value(),
+                                                                      creationDate.value());
         if (createSessionError.has_value())
         {
             return createSessionError;
@@ -151,7 +150,7 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<Catalog>& 
         {
             std::string errorMsg {subscriptionError.value().message};
 
-            if (!sessionManager.deleteSession(sessionName.value()))
+            if (!sessionManager->deleteSession(sessionName.value()))
             {
                 errorMsg += std::string(". ") + fmt::format(SESSION_NOT_REMOVED_MSG, sessionName.value());
             }
@@ -186,17 +185,16 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<Catalog>& 
     return std::nullopt;
 }
 
-json::Json getSessionsAsJson()
+json::Json getSessionsAsJson(const std::shared_ptr<SessionManager>& sessionManager)
 {
     json::Json jsonSessions;
     jsonSessions.setArray();
 
-    auto& sessionManager = SessionManager::getInstance();
-    auto list = sessionManager.getSessionsList();
-    std::sort(list.begin(), list.end());
+    auto list = sessionManager->getSessionsList();
+
     for (auto& sessionName : list)
     {
-        const auto session = sessionManager.getSession(sessionName);
+        const auto session = sessionManager->getSession(sessionName);
         auto jsonSession = json::Json(API_SESSIONS_DATA_FORMAT);
 
         jsonSession.setInt(session->getCreationDate(), "/creationdate");
@@ -214,9 +212,10 @@ json::Json getSessionsAsJson()
     return jsonSessions;
 }
 
-std::optional<base::Error> saveSessionsToStore(const std::shared_ptr<store::IStore>& store)
+std::optional<base::Error> saveSessionsToStore(const std::shared_ptr<SessionManager>& sessionManager,
+                                               const std::shared_ptr<store::IStore>& store)
 {
-    const auto sessionsJson = getSessionsAsJson();
+    const auto sessionsJson = getSessionsAsJson(sessionManager);
     return store->update(API_SESSIONS_TABLE_NAME, sessionsJson);
 }
 
@@ -373,13 +372,13 @@ inline std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<Ro
     return deleteRouteFromRouterError;
 }
 
-inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Router>& router,
+inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<SessionManager>& sessionManager,
+                                                      const std::shared_ptr<Router>& router,
                                                       const std::shared_ptr<Catalog>& catalog,
                                                       const std::string& sessionName)
 {
-    auto& sessionManager = SessionManager::getInstance();
 
-    const auto session = sessionManager.getSession(sessionName);
+    const auto session = sessionManager->getSession(sessionName);
     if (!session.has_value())
     {
         return base::Error {fmt::format(SESSION_NOT_FOUND_MSG, sessionName)};
@@ -403,7 +402,7 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Rout
         return deletePolicyError;
     }
 
-    if (!sessionManager.deleteSession(sessionName))
+    if (!sessionManager->deleteSession(sessionName))
     {
         return base::Error {fmt::format(SESSION_NOT_REMOVED_MSG, sessionName)};
     }
@@ -411,11 +410,12 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Rout
     return std::nullopt;
 }
 
-api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
+api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
+                         const std::shared_ptr<Catalog>& catalog,
                          const std::shared_ptr<Router>& router,
                          const std::shared_ptr<store::IStore>& store)
 {
-    return [catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager, catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionPost_Request;
         using ResponseType = eTest::SessionPost_Response;
@@ -433,8 +433,6 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
             return genericError<ResponseType>("Session name cannot be empty");
         }
 
-        auto& sessionManager = SessionManager::getInstance();
-
         const auto& sessionName = eRequest.name();
 
         // Check if the session name is valid
@@ -448,7 +446,7 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         }
 
         // Check if the session already exists
-        if (sessionManager.doesSessionExist(sessionName))
+        if (sessionManager->doesSessionExist(sessionName))
         {
             return genericError<ResponseType>(fmt::format("Session '{}' already exists", sessionName));
         }
@@ -468,7 +466,7 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         // Set up the test session's filter
 
         // A session ID is obtained, which will be used to create the filter
-        const uint32_t sessionID {sessionManager.getNewSessionID()};
+        const uint32_t sessionID {sessionManager->getNewSessionID()};
 
         const auto filterName = fmt::format(TEST_FILTER_FULL_NAME_FORMAT, sessionName);
 
@@ -543,7 +541,7 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         // If the lifespan is not set, use 0 (no expiration). TODO: review what to do in this case
         const uint32_t lifespan {eRequest.has_lifespan() ? eRequest.lifespan() : 0};
 
-        const auto createSessionError = sessionManager.createSession(
+        const auto createSessionError = sessionManager->createSession(
             sessionName, policyName, filterName, routeName, sessionID, lifespan, description);
         if (createSessionError.has_value())
         {
@@ -579,7 +577,7 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         {
             std::string errorMsg {subscriptionError.value().message};
 
-            if (!sessionManager.deleteSession(sessionName))
+            if (!sessionManager->deleteSession(sessionName))
             {
                 errorMsg += std::string(". ") + fmt::format(SESSION_NOT_REMOVED_MSG, sessionName);
             }
@@ -609,12 +607,12 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
         }
 
         // Save the sessions to the store
-        const auto saveSessionsToStoreError = saveSessionsToStore(store);
+        const auto saveSessionsToStoreError = saveSessionsToStore(sessionManager, store);
         if (saveSessionsToStoreError.has_value())
         {
             std::string errorMsg {saveSessionsToStoreError.value().message};
 
-            if (!sessionManager.deleteSession(sessionName))
+            if (!sessionManager->deleteSession(sessionName))
             {
                 errorMsg += fmt::format(SESSION_NOT_REMOVED_MSG, sessionName);
             }
@@ -650,9 +648,9 @@ api::Handler sessionPost(const std::shared_ptr<Catalog>& catalog,
     };
 }
 
-api::Handler sessionGet()
+api::Handler sessionGet(const std::shared_ptr<SessionManager>& sessionManager)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionGet_Request;
         using ResponseType = eTest::SessionGet_Response;
@@ -666,8 +664,7 @@ api::Handler sessionGet()
 
         const auto& eRequest = std::get<RequestType>(res);
 
-        auto& sessionManager = SessionManager::getInstance();
-        const auto session = sessionManager.getSession(eRequest.name());
+        const auto session = sessionManager->getSession(eRequest.name());
         if (!session.has_value())
         {
             return genericError<ResponseType>(fmt::format(SESSION_NOT_FOUND_MSG, eRequest.name()));
@@ -691,9 +688,9 @@ api::Handler sessionGet()
     };
 }
 
-api::Handler sessionsGet()
+api::Handler sessionsGet(const std::shared_ptr<SessionManager>& sessionManager)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsGet_Request;
         using ResponseType = eTest::SessionsGet_Response;
@@ -707,8 +704,7 @@ api::Handler sessionsGet()
 
         const auto& eRequest = std::get<RequestType>(res);
 
-        auto& sessionManager = SessionManager::getInstance();
-        const auto list = sessionManager.getSessionsList();
+        const auto list = sessionManager->getSessionsList();
 
         ResponseType eResponse;
         for (const auto& sessionName : list)
@@ -721,11 +717,12 @@ api::Handler sessionsGet()
     };
 }
 
-api::Handler sessionsDelete(const std::shared_ptr<Catalog>& catalog,
+api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManager,
+                            const std::shared_ptr<Catalog>& catalog,
                             const std::shared_ptr<Router>& router,
                             const std::shared_ptr<store::IStore>& store)
 {
-    return [catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager, catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsDelete_Request;
         using ResponseType = eTest::SessionsDelete_Response;
@@ -748,13 +745,11 @@ api::Handler sessionsDelete(const std::shared_ptr<Catalog>& catalog,
             return genericError<ResponseType>(errorMsg.value());
         }
 
-        auto& sessionManager = SessionManager::getInstance();
-
         if (eRequest.has_delete_all() && eRequest.delete_all())
         {
-            for (auto& sessionName : sessionManager.getSessionsList())
+            for (auto& sessionName : sessionManager->getSessionsList())
             {
-                const auto deleteSessionError = handleDeleteSession(router, catalog, sessionName);
+                const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, sessionName);
                 if (deleteSessionError.has_value())
                 {
                     return genericError<ResponseType>(deleteSessionError.value().message);
@@ -763,7 +758,7 @@ api::Handler sessionsDelete(const std::shared_ptr<Catalog>& catalog,
         }
         else if (eRequest.has_name())
         {
-            const auto deleteSessionError = handleDeleteSession(router, catalog, eRequest.name());
+            const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, eRequest.name());
             if (deleteSessionError.has_value())
             {
                 return genericError<ResponseType>(deleteSessionError.value().message);
@@ -774,7 +769,7 @@ api::Handler sessionsDelete(const std::shared_ptr<Catalog>& catalog,
             return genericError<ResponseType>("Invalid request");
         }
 
-        const auto saveSessionsToStoreError = saveSessionsToStore(store);
+        const auto saveSessionsToStoreError = saveSessionsToStore(sessionManager, store);
         if (saveSessionsToStoreError.has_value())
         {
             return genericError<ResponseType>(saveSessionsToStoreError.value().message);
@@ -787,9 +782,9 @@ api::Handler sessionsDelete(const std::shared_ptr<Catalog>& catalog,
     };
 }
 
-api::Handler runPost(const std::shared_ptr<Router>& router)
+api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, const std::shared_ptr<Router>& router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager, router](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::RunPost_Request;
         using ResponseType = eTest::RunPost_Response;
@@ -848,8 +843,7 @@ api::Handler runPost(const std::shared_ptr<Router>& router)
         const auto assetTrace = eRequest.has_asset_trace() ? eRequest.asset_trace() : std::string();
 
         // Get session
-        auto& sessionManager = SessionManager::getInstance();
-        const auto session = sessionManager.getSession(eRequest.name());
+        const auto session = sessionManager->getSession(eRequest.name());
         if (!session.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(fmt::format(SESSION_NOT_FOUND_MSG, eRequest.name()));
@@ -924,11 +918,13 @@ void registerHandlers(const Config& config, std::shared_ptr<api::Api> api)
 {
     try
     {
-        api->registerHandler(TEST_GET_SESSION_DATA_API_CMD, sessionGet());
-        api->registerHandler(TEST_POST_SESSION_API_CMD, sessionPost(config.catalog, config.router, config.store));
-        api->registerHandler(TEST_DELETE_SESSIONS_API_CMD, sessionsDelete(config.catalog, config.router, config.store));
-        api->registerHandler(TEST_GET_SESSIONS_LIST_API_CMD, sessionsGet());
-        api->registerHandler(TEST_RUN_API_CMD, runPost(config.router));
+        api->registerHandler(TEST_GET_SESSION_DATA_API_CMD, sessionGet(config.sessionManager));
+        api->registerHandler(TEST_POST_SESSION_API_CMD,
+                             sessionPost(config.sessionManager, config.catalog, config.router, config.store));
+        api->registerHandler(TEST_DELETE_SESSIONS_API_CMD,
+                             sessionsDelete(config.sessionManager, config.catalog, config.router, config.store));
+        api->registerHandler(TEST_GET_SESSIONS_LIST_API_CMD, sessionsGet(config.sessionManager));
+        api->registerHandler(TEST_RUN_API_CMD, runPost(config.sessionManager, config.router));
     }
     catch (const std::exception& e)
     {

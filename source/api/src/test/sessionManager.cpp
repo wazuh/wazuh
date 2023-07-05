@@ -12,20 +12,6 @@ using std::string;
 namespace api::sessionManager
 {
 
-// Initialize session ID counter to 0
-uint32_t SessionManager::m_sessionIDCounter = 0;
-
-SessionManager& SessionManager::getInstance(void)
-{
-    static std::once_flag flag;
-    static std::unique_ptr<SessionManager> instance;
-
-    // Thread-safe initialization.
-    std::call_once(flag, []() { instance = std::make_unique<SessionManager>(); });
-
-    return *instance;
-}
-
 std::optional<base::Error> SessionManager::createSession(const string& sessionName,
                                                          const string& policyName,
                                                          const string& filterName,

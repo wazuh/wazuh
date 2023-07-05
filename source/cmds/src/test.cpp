@@ -380,7 +380,11 @@ void sessionList(std::shared_ptr<apiclnt::Client> client)
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
-    for (const auto& str : eResponse.list())
+    auto orderedList = eResponse.list();
+    // Sort the list by name
+    std::sort(orderedList.begin(), orderedList.end());
+
+    for (const auto& str : orderedList)
     {
         std::cout << str << std::endl;
     }
