@@ -55,12 +55,12 @@ jobs:
       - name: Build wazuh installer
         run: |
           cd  C:\wazuh\wazuh\src\win32
-          Echo test test Y | .\wazuh-installer-build-msi.bat
+          .\wazuh-installer-build-msi.bat
 
       - name: Install wazuh
         run: |
           cd  C:\wazuh\wazuh\src\win32
-          .\wazuh-agent-test-test.msi /q WAZUH_MANAGER="10.0.0.2"
+          .\wazuh-agent-4.7.0-1.msi /q WAZUH_MANAGER="10.0.0.2"
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -74,4 +74,4 @@ jobs:
       - name: Run execd integration tests
         run: |
           cd C:\wazuh\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_execd\
+          python -m pytest -m win32 --tier 0 --tier 1 test_execd\
