@@ -19,6 +19,7 @@
 #include <api/metrics/handlers.hpp>
 #include <api/router/handlers.hpp>
 #include <api/test/handlers.hpp>
+#include <api/test/sessionManager.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -361,6 +362,8 @@ void runStart(ConfHandler confManager)
 
         // Test
         {
+            auto sessionManager = std::make_shared<api::sessionManager::SessionManager>();
+
             // Try to load the sessions from the store
             const auto strJsonSessions = store->get(api::test::handlers::API_SESSIONS_TABLE_NAME);
             if (std::holds_alternative<base::Error>(strJsonSessions))
@@ -370,7 +373,8 @@ void runStart(ConfHandler confManager)
                             std::get<base::Error>(strJsonSessions).message);
 
                 // Create the sessions table
-                auto storeSetSessionsTable = store->add(api::test::handlers::API_SESSIONS_TABLE_NAME, json::Json("[]"));
+                const auto storeSetSessionsTable =
+                    store->add(api::test::handlers::API_SESSIONS_TABLE_NAME, json::Json("[]"));
                 if (storeSetSessionsTable.has_value())
                 {
                     LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);
@@ -380,8 +384,8 @@ void runStart(ConfHandler confManager)
             }
             else
             {
-                auto loadError =
-                    api::test::handlers::loadSessionsFromJson(catalog, router, std::get<json::Json>(strJsonSessions));
+                const auto loadError = api::test::handlers::loadSessionsFromJson(
+                    sessionManager, catalog, router, std::get<json::Json>(strJsonSessions));
                 if (loadError.has_value())
                 {
                     LOG_ERROR("API sessions loading could not be completed: {}", loadError.value().message);
@@ -390,6 +394,7 @@ void runStart(ConfHandler confManager)
 
             // Register the Test command
             api::test::handlers::Config testConfig;
+            testConfig.sessionManager = sessionManager;
             testConfig.catalog = catalog;
             testConfig.router = router;
             testConfig.store = store;
