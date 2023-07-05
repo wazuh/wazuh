@@ -54,6 +54,7 @@ private:
         if (std::filesystem::exists(outputFolderPath))
         {
             // Delete the output folder to avoid conflicts.
+            std::cout << "The previous output folder: " << outputFolderPath << " will be removed." << std::endl;
             std::filesystem::remove_all(outputFolderPath);
         }
 
