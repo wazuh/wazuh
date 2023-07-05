@@ -118,15 +118,14 @@ OSList *w_os_get_process_list()
 
 #endif
 /* Check if a file exists */
-int w_is_file(const char * const file)
-{
-    FILE *fp;
-    fp = fopen(file, "r");
-    if (fp) {
+int w_is_file(const char * const file) {
+    FILE *fp = fopen(file, "r");
+    int is_exist = 0;
+    if (fp != NULL) {
+        is_exist = 1;
         fclose(fp);
-        return (1);
     }
-    return (0);
+    return is_exist;
 }
 
 /* Delete the process list */
