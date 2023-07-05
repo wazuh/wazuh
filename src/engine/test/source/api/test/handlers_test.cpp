@@ -402,8 +402,7 @@ TEST_P(TestSessionListCommand, Functionality)
         EXPECT_FALSE(response.message().has_value());
 
         tmp = json::Json {response.toString().c_str()};
-        tmp.erase("/data/creation_date");
-        tmp.erase("/data/id");
+        tmp.erase("/data/session/creation_date");
         EXPECT_EQ(tmp, expectedData) << "Response: " << tmp.prettyStr() << std::endl
                                      << "Expected: " << expectedData.prettyStr() << std::endl;
     }
@@ -423,32 +422,30 @@ TEST_P(TestSessionListCommand, Functionality)
     m_spRouter->stop();
 }
 
-INSTANTIATE_TEST_SUITE_P(Functionality,
-                         TestSessionListCommand,
-                         ::testing::Values(std::make_tuple(1,
-                                                           R"({"name":"dummy"})",
-                                                           R"({
-                                                                "data": {
-                                                                    "status": "OK",
-                                                                    "session": {
-                                                                        "name": "dummy",
-                                                                        "policy": "policy/dummy_policy/0",
-                                                                        "filter": "filter/dummy_filter/0",
-                                                                        "route": "dummy_route",
-                                                                        "lifespan": 0,
-                                                                        "description": ""
-                                                                    },
-                                                                },
-                                                                "error": 0
-                                                            })"),
-                                           std::make_tuple(2,
-                                                           R"({})",
-                                                           R"({
-                                                                "status": "OK",
-                                                                "list": [
-                                                                    "dummy"
-                                                                ]
-                                                            })")));
+INSTANTIATE_TEST_SUITE_P(
+    Functionality,
+    TestSessionListCommand,
+    ::testing::Values(std::make_tuple(1, R"({"name":"dummy"})", R"({
+            "data": {
+                "status": "OK",
+                "session": {
+                    "name": "dummy",
+                    "id": 1,
+                    "policy": "policy/dummy_policy/0",
+                    "filter": "filter/dummy_filter/0",
+                    "route": "dummy_route",
+                    "lifespan": 0,
+                    "description": ""
+                }
+            },
+            "error": 0
+        })"),
+        std::make_tuple(2, R"({})", R"({
+            "status": "OK",
+            "list": [
+                "dummy"
+            ]
+        })")));
 
 class TestSessionPostCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
@@ -625,7 +622,7 @@ TEST_P(TestSessionPostCommand, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     Functionality,
     TestSessionPostCommand,
-    ::testing::Values(std::make_tuple(1, R"({})", R"({"status":"ERROR","error":"Missing /name field"})"),
+    ::testing::Values(std::make_tuple(1, R"({})", R"({"status":"ERROR","error":"Session name cannot be empty"})"),
                       std::make_tuple(2, R"({"name":"dummy"})", R"({
                         "status": "OK"
                     })"),
@@ -842,12 +839,12 @@ INSTANTIATE_TEST_SUITE_P(
                         "status": "OK",
                         "run": {
                             "output": {
+                                "~TestSessionID": 1,
                                 "wazuh": {
                                     "message": "hello world!",
                                     "location": "api.test",
                                     "queue": 1
-                                },
-                                "~TestSessionID": 1
+                                }
                             }
                         }
                     })"),

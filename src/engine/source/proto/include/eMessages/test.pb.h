@@ -2073,7 +2073,11 @@ class RunPost_Request final :
     kEventFieldNumber = 2,
     kDebugModeFieldNumber = 4,
   };
-  // string name = 1;
+  // optional string name = 1;
+  bool has_name() const;
+  private:
+  bool _internal_has_name() const;
+  public:
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -3793,9 +3797,17 @@ inline void SessionsDelete_Response::set_allocated_error(std::string* error) {
 
 // RunPost_Request
 
-// string name = 1;
+// optional string name = 1;
+inline bool RunPost_Request::_internal_has_name() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool RunPost_Request::has_name() const {
+  return _internal_has_name();
+}
 inline void RunPost_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& RunPost_Request::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.name)
@@ -3804,7 +3816,7 @@ inline const std::string& RunPost_Request::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RunPost_Request::set_name(ArgT0&& arg0, ArgT... args) {
- 
+ _impl_._has_bits_[0] |= 0x00000001u;
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.name)
 }
@@ -3817,22 +3829,32 @@ inline const std::string& RunPost_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void RunPost_Request::_internal_set_name(const std::string& value) {
-  
+  _impl_._has_bits_[0] |= 0x00000001u;
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::_internal_mutable_name() {
-  
+  _impl_._has_bits_[0] |= 0x00000001u;
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.name)
-  return _impl_.name_.Release();
+  if (!_internal_has_name()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.name_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
 }
 inline void RunPost_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    
+    _impl_._has_bits_[0] |= 0x00000001u;
   } else {
-    
+    _impl_._has_bits_[0] &= ~0x00000001u;
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3845,7 +3867,7 @@ inline void RunPost_Request::set_allocated_name(std::string* name) {
 
 // optional .google.protobuf.Value event = 2;
 inline bool RunPost_Request::_internal_has_event() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
   PROTOBUF_ASSUME(!value || _impl_.event_ != nullptr);
   return value;
 }
@@ -3868,14 +3890,14 @@ inline void RunPost_Request::unsafe_arena_set_allocated_event(
   }
   _impl_.event_ = event;
   if (event) {
-    _impl_._has_bits_[0] |= 0x00000008u;
+    _impl_._has_bits_[0] |= 0x00000010u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000008u;
+    _impl_._has_bits_[0] &= ~0x00000010u;
   }
   // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.RunPost_Request.event)
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::release_event() {
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000010u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.event_;
   _impl_.event_ = nullptr;
 #ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
@@ -3891,13 +3913,13 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::release_event() {
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::unsafe_arena_release_event() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.event)
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000010u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.event_;
   _impl_.event_ = nullptr;
   return temp;
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::_internal_mutable_event() {
-  _impl_._has_bits_[0] |= 0x00000008u;
+  _impl_._has_bits_[0] |= 0x00000010u;
   if (_impl_.event_ == nullptr) {
     auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
     _impl_.event_ = p;
@@ -3922,9 +3944,9 @@ inline void RunPost_Request::set_allocated_event(::PROTOBUF_NAMESPACE_ID::Value*
       event = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
           message_arena, event, submessage_arena);
     }
-    _impl_._has_bits_[0] |= 0x00000008u;
+    _impl_._has_bits_[0] |= 0x00000010u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000008u;
+    _impl_._has_bits_[0] &= ~0x00000010u;
   }
   _impl_.event_ = event;
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.event)
@@ -3932,7 +3954,7 @@ inline void RunPost_Request::set_allocated_event(::PROTOBUF_NAMESPACE_ID::Value*
 
 // optional string protocol_queue = 3;
 inline bool RunPost_Request::_internal_has_protocol_queue() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
 inline bool RunPost_Request::has_protocol_queue() const {
@@ -3940,7 +3962,7 @@ inline bool RunPost_Request::has_protocol_queue() const {
 }
 inline void RunPost_Request::clear_protocol_queue() {
   _impl_.protocol_queue_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
 inline const std::string& RunPost_Request::protocol_queue() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.protocol_queue)
@@ -3949,7 +3971,7 @@ inline const std::string& RunPost_Request::protocol_queue() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RunPost_Request::set_protocol_queue(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_._has_bits_[0] |= 0x00000002u;
  _impl_.protocol_queue_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.protocol_queue)
 }
@@ -3962,11 +3984,11 @@ inline const std::string& RunPost_Request::_internal_protocol_queue() const {
   return _impl_.protocol_queue_.Get();
 }
 inline void RunPost_Request::_internal_set_protocol_queue(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   _impl_.protocol_queue_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::_internal_mutable_protocol_queue() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_._has_bits_[0] |= 0x00000002u;
   return _impl_.protocol_queue_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::release_protocol_queue() {
@@ -3974,7 +3996,7 @@ inline std::string* RunPost_Request::release_protocol_queue() {
   if (!_internal_has_protocol_queue()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
   auto* p = _impl_.protocol_queue_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.protocol_queue_.IsDefault()) {
@@ -3985,9 +4007,9 @@ inline std::string* RunPost_Request::release_protocol_queue() {
 }
 inline void RunPost_Request::set_allocated_protocol_queue(std::string* protocol_queue) {
   if (protocol_queue != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    _impl_._has_bits_[0] |= 0x00000002u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    _impl_._has_bits_[0] &= ~0x00000002u;
   }
   _impl_.protocol_queue_.SetAllocated(protocol_queue, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -4000,7 +4022,7 @@ inline void RunPost_Request::set_allocated_protocol_queue(std::string* protocol_
 
 // optional .com.wazuh.api.engine.test.DebugMode debug_mode = 4;
 inline bool RunPost_Request::_internal_has_debug_mode() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000020u) != 0;
   return value;
 }
 inline bool RunPost_Request::has_debug_mode() const {
@@ -4008,7 +4030,7 @@ inline bool RunPost_Request::has_debug_mode() const {
 }
 inline void RunPost_Request::clear_debug_mode() {
   _impl_.debug_mode_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000010u;
+  _impl_._has_bits_[0] &= ~0x00000020u;
 }
 inline ::com::wazuh::api::engine::test::DebugMode RunPost_Request::_internal_debug_mode() const {
   return static_cast< ::com::wazuh::api::engine::test::DebugMode >(_impl_.debug_mode_);
@@ -4018,7 +4040,7 @@ inline ::com::wazuh::api::engine::test::DebugMode RunPost_Request::debug_mode() 
   return _internal_debug_mode();
 }
 inline void RunPost_Request::_internal_set_debug_mode(::com::wazuh::api::engine::test::DebugMode value) {
-  _impl_._has_bits_[0] |= 0x00000010u;
+  _impl_._has_bits_[0] |= 0x00000020u;
   _impl_.debug_mode_ = value;
 }
 inline void RunPost_Request::set_debug_mode(::com::wazuh::api::engine::test::DebugMode value) {
@@ -4028,7 +4050,7 @@ inline void RunPost_Request::set_debug_mode(::com::wazuh::api::engine::test::Deb
 
 // optional string asset_trace = 5;
 inline bool RunPost_Request::_internal_has_asset_trace() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool RunPost_Request::has_asset_trace() const {
@@ -4036,7 +4058,7 @@ inline bool RunPost_Request::has_asset_trace() const {
 }
 inline void RunPost_Request::clear_asset_trace() {
   _impl_.asset_trace_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
 inline const std::string& RunPost_Request::asset_trace() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
@@ -4045,7 +4067,7 @@ inline const std::string& RunPost_Request::asset_trace() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RunPost_Request::set_asset_trace(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_._has_bits_[0] |= 0x00000004u;
  _impl_.asset_trace_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
 }
@@ -4058,11 +4080,11 @@ inline const std::string& RunPost_Request::_internal_asset_trace() const {
   return _impl_.asset_trace_.Get();
 }
 inline void RunPost_Request::_internal_set_asset_trace(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   _impl_.asset_trace_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::_internal_mutable_asset_trace() {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   return _impl_.asset_trace_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::release_asset_trace() {
@@ -4070,7 +4092,7 @@ inline std::string* RunPost_Request::release_asset_trace() {
   if (!_internal_has_asset_trace()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
   auto* p = _impl_.asset_trace_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.asset_trace_.IsDefault()) {
@@ -4081,9 +4103,9 @@ inline std::string* RunPost_Request::release_asset_trace() {
 }
 inline void RunPost_Request::set_allocated_asset_trace(std::string* asset_trace) {
   if (asset_trace != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
+    _impl_._has_bits_[0] |= 0x00000004u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
+    _impl_._has_bits_[0] &= ~0x00000004u;
   }
   _impl_.asset_trace_.SetAllocated(asset_trace, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -4096,7 +4118,7 @@ inline void RunPost_Request::set_allocated_asset_trace(std::string* asset_trace)
 
 // optional string protocol_location = 6;
 inline bool RunPost_Request::_internal_has_protocol_location() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool RunPost_Request::has_protocol_location() const {
@@ -4104,7 +4126,7 @@ inline bool RunPost_Request::has_protocol_location() const {
 }
 inline void RunPost_Request::clear_protocol_location() {
   _impl_.protocol_location_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline const std::string& RunPost_Request::protocol_location() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.protocol_location)
@@ -4113,7 +4135,7 @@ inline const std::string& RunPost_Request::protocol_location() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RunPost_Request::set_protocol_location(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_._has_bits_[0] |= 0x00000008u;
  _impl_.protocol_location_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.protocol_location)
 }
@@ -4126,11 +4148,11 @@ inline const std::string& RunPost_Request::_internal_protocol_location() const {
   return _impl_.protocol_location_.Get();
 }
 inline void RunPost_Request::_internal_set_protocol_location(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.protocol_location_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::_internal_mutable_protocol_location() {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   return _impl_.protocol_location_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::release_protocol_location() {
@@ -4138,7 +4160,7 @@ inline std::string* RunPost_Request::release_protocol_location() {
   if (!_internal_has_protocol_location()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
   auto* p = _impl_.protocol_location_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.protocol_location_.IsDefault()) {
@@ -4149,9 +4171,9 @@ inline std::string* RunPost_Request::release_protocol_location() {
 }
 inline void RunPost_Request::set_allocated_protocol_location(std::string* protocol_location) {
   if (protocol_location != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
+    _impl_._has_bits_[0] |= 0x00000008u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
+    _impl_._has_bits_[0] &= ~0x00000008u;
   }
   _impl_.protocol_location_.SetAllocated(protocol_location, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING

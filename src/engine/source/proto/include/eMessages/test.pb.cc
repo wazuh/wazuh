@@ -340,12 +340,12 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Request, _impl_.debug_mode_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Request, _impl_.asset_trace_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Request, _impl_.protocol_location_),
-  ~0u,
-  3,
   0,
   4,
   1,
+  5,
   2,
+  3,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -419,21 +419,21 @@ const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "\013_delete_all\"k\n\027SessionsDelete_Response\022"
   "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
   "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001B\010\n\006_erro"
-  "r\"\263\002\n\017RunPost_Request\022\014\n\004name\030\001 \001(\t\022*\n\005e"
-  "vent\030\002 \001(\0132\026.google.protobuf.ValueH\000\210\001\001\022"
-  "\033\n\016protocol_queue\030\003 \001(\tH\001\210\001\001\022=\n\ndebug_mo"
-  "de\030\004 \001(\0162$.com.wazuh.api.engine.test.Deb"
-  "ugModeH\002\210\001\001\022\030\n\013asset_trace\030\005 \001(\tH\003\210\001\001\022\036\n"
-  "\021protocol_location\030\006 \001(\tH\004\210\001\001B\010\n\006_eventB"
-  "\021\n\017_protocol_queueB\r\n\013_debug_modeB\016\n\014_as"
-  "set_traceB\024\n\022_protocol_location\"\236\001\n\020RunP"
-  "ost_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh"
-  ".api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH"
-  "\000\210\001\001\0220\n\003run\030\003 \001(\0132\036.com.wazuh.api.engine"
-  ".test.RunH\001\210\001\001B\010\n\006_errorB\006\n\004_run*W\n\tDebu"
-  "gMode\022\017\n\013OUTPUT_ONLY\020\000\022\025\n\021OUTPUT_AND_TRA"
-  "CES\020\001\022\"\n\036OUTPUT_AND_TRACES_WITH_DETAILS\020"
-  "\002b\006proto3"
+  "r\"\301\002\n\017RunPost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001"
+  "\022*\n\005event\030\002 \001(\0132\026.google.protobuf.ValueH"
+  "\001\210\001\001\022\033\n\016protocol_queue\030\003 \001(\tH\002\210\001\001\022=\n\ndeb"
+  "ug_mode\030\004 \001(\0162$.com.wazuh.api.engine.tes"
+  "t.DebugModeH\003\210\001\001\022\030\n\013asset_trace\030\005 \001(\tH\004\210"
+  "\001\001\022\036\n\021protocol_location\030\006 \001(\tH\005\210\001\001B\007\n\005_n"
+  "ameB\010\n\006_eventB\021\n\017_protocol_queueB\r\n\013_deb"
+  "ug_modeB\016\n\014_asset_traceB\024\n\022_protocol_loc"
+  "ation\"\236\001\n\020RunPost_Response\0222\n\006status\030\001 \001"
+  "(\0162\".com.wazuh.api.engine.ReturnStatus\022\022"
+  "\n\005error\030\002 \001(\tH\000\210\001\001\0220\n\003run\030\003 \001(\0132\036.com.wa"
+  "zuh.api.engine.test.RunH\001\210\001\001B\010\n\006_errorB\006"
+  "\n\004_run*W\n\tDebugMode\022\017\n\013OUTPUT_ONLY\020\000\022\025\n\021"
+  "OUTPUT_AND_TRACES\020\001\022\"\n\036OUTPUT_AND_TRACES"
+  "_WITH_DETAILS\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_test_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -441,7 +441,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_test_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_test_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_test_2eproto = {
-    false, false, 1729, descriptor_table_protodef_test_2eproto,
+    false, false, 1743, descriptor_table_protodef_test_2eproto,
     "test.proto",
     &descriptor_table_test_2eproto_once, descriptor_table_test_2eproto_deps, 2, 12,
     schemas, file_default_instances, TableStruct_test_2eproto::offsets,
@@ -3177,21 +3177,24 @@ void SessionsDelete_Response::InternalSwap(SessionsDelete_Response* other) {
 class RunPost_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<RunPost_Request>()._impl_._has_bits_);
-  static const ::PROTOBUF_NAMESPACE_ID::Value& event(const RunPost_Request* msg);
-  static void set_has_event(HasBits* has_bits) {
-    (*has_bits)[0] |= 8u;
-  }
-  static void set_has_protocol_queue(HasBits* has_bits) {
+  static void set_has_name(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static void set_has_debug_mode(HasBits* has_bits) {
+  static const ::PROTOBUF_NAMESPACE_ID::Value& event(const RunPost_Request* msg);
+  static void set_has_event(HasBits* has_bits) {
     (*has_bits)[0] |= 16u;
   }
-  static void set_has_asset_trace(HasBits* has_bits) {
+  static void set_has_protocol_queue(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
-  static void set_has_protocol_location(HasBits* has_bits) {
+  static void set_has_debug_mode(HasBits* has_bits) {
+    (*has_bits)[0] |= 32u;
+  }
+  static void set_has_asset_trace(HasBits* has_bits) {
     (*has_bits)[0] |= 4u;
+  }
+  static void set_has_protocol_location(HasBits* has_bits) {
+    (*has_bits)[0] |= 8u;
   }
 };
 
@@ -3201,7 +3204,7 @@ RunPost_Request::_Internal::event(const RunPost_Request* msg) {
 }
 void RunPost_Request::clear_event() {
   if (_impl_.event_ != nullptr) _impl_.event_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000010u;
 }
 RunPost_Request::RunPost_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
@@ -3227,7 +3230,7 @@ RunPost_Request::RunPost_Request(const RunPost_Request& from)
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_name().empty()) {
+  if (from._internal_has_name()) {
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
@@ -3322,19 +3325,21 @@ void RunPost_Request::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.name_.ClearToEmpty();
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000000fu) {
+  if (cached_has_bits & 0x0000001fu) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.protocol_queue_.ClearNonDefaultToEmpty();
+      _impl_.name_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.asset_trace_.ClearNonDefaultToEmpty();
+      _impl_.protocol_queue_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000004u) {
-      _impl_.protocol_location_.ClearNonDefaultToEmpty();
+      _impl_.asset_trace_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000008u) {
+      _impl_.protocol_location_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000010u) {
       GOOGLE_DCHECK(_impl_.event_ != nullptr);
       _impl_.event_->Clear();
     }
@@ -3351,7 +3356,7 @@ const char* RunPost_Request::_InternalParse(const char* ptr, ::_pbi::ParseContex
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // string name = 1;
+      // optional string name = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
           auto str = _internal_mutable_name();
@@ -3438,8 +3443,8 @@ uint8_t* RunPost_Request::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string name = 1;
-  if (!this->_internal_name().empty()) {
+  // optional string name = 1;
+  if (_internal_has_name()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
@@ -3508,45 +3513,45 @@ size_t RunPost_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // string name = 1;
-  if (!this->_internal_name().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_name());
-  }
-
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
-    // optional string protocol_queue = 3;
+  if (cached_has_bits & 0x0000003fu) {
+    // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_name());
+    }
+
+    // optional string protocol_queue = 3;
+    if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_protocol_queue());
     }
 
     // optional string asset_trace = 5;
-    if (cached_has_bits & 0x00000002u) {
+    if (cached_has_bits & 0x00000004u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_asset_trace());
     }
 
     // optional string protocol_location = 6;
-    if (cached_has_bits & 0x00000004u) {
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_protocol_location());
     }
 
     // optional .google.protobuf.Value event = 2;
-    if (cached_has_bits & 0x00000008u) {
+    if (cached_has_bits & 0x00000010u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
           *_impl_.event_);
     }
 
     // optional .com.wazuh.api.engine.test.DebugMode debug_mode = 4;
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000020u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_debug_mode());
     }
@@ -3570,25 +3575,25 @@ void RunPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const 
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (!from._internal_name().empty()) {
-    _this->_internal_set_name(from._internal_name());
-  }
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
+  if (cached_has_bits & 0x0000003fu) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_protocol_queue(from._internal_protocol_queue());
+      _this->_internal_set_name(from._internal_name());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_asset_trace(from._internal_asset_trace());
+      _this->_internal_set_protocol_queue(from._internal_protocol_queue());
     }
     if (cached_has_bits & 0x00000004u) {
-      _this->_internal_set_protocol_location(from._internal_protocol_location());
+      _this->_internal_set_asset_trace(from._internal_asset_trace());
     }
     if (cached_has_bits & 0x00000008u) {
+      _this->_internal_set_protocol_location(from._internal_protocol_location());
+    }
+    if (cached_has_bits & 0x00000010u) {
       _this->_internal_mutable_event()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
           from._internal_event());
     }
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000020u) {
       _this->_impl_.debug_mode_ = from._impl_.debug_mode_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;

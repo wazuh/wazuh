@@ -22,6 +22,8 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     , m_builder {builder}
 {
 
+    m_dataState.isDataReady = false;
+
     if (0 == threads || 128 < threads)
     {
         throw std::runtime_error("Router: The number of threads must be between 1 and 128");
@@ -436,13 +438,21 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> Router::ge
     m_dataState.dataReady.wait(lock, [this]() { return m_dataState.isDataReady; });
 
     std::variant<std::tuple<std::string, std::string>, base::Error> data;
+    auto anyError {false};
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         data = m_policyManager->getData(policyName, i, debugMode, assetTrace);
-        if (std::holds_alternative<base::Error>(data))
+        if (!std::holds_alternative<base::Error>(data))
         {
-            return std::get<base::Error>(data);
+            anyError = false;
+            break;
         }
+        anyError = true;
+    }
+
+    if (anyError)
+    {
+        return std::get<base::Error>(data);
     }
 
     auto payload = std::get<std::tuple<std::string, std::string>>(data);
