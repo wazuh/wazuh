@@ -23,7 +23,7 @@ jobs:
       - name: compress
         run: cd .. && zip -r wazuh.zip wazuh
         # Make folder and upload as artifacts.
-      - name: Copy libraries
+      - name: Save compiled agent files
         run: |
           mkdir -p src/shared_libraries
           cp ../wazuh.zip src/shared_libraries/wazuh.zip
@@ -69,8 +69,9 @@ jobs:
           if ((git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:GITHUB_HEAD_REF) -ne "X") {
               $BRANCH_NAME = $env:GITHUB_HEAD_REF
           }
-          git clone -b 17747_windows_tests_execution --single-branch https://github.com/wazuh/qa-integration-framework.git
+          git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
+          rm qa-integration-framework/ -r -force
       # Run execd integration tests.
       - name: Run execd integration tests
         run: |
