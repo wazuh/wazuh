@@ -1,10 +1,13 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <kvdb/kvdbManager.hpp>
+#include <iostream>
+#include <random>
+#include <string>
 #include <testsCommon.hpp>
 
 #include <api/kvdb/handlers.hpp>
+#include <kvdb/kvdbManager.hpp>
 #include <metrics/metricsManager.hpp>
 
 using namespace api::kvdb::handlers;
@@ -45,25 +48,50 @@ const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyD
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
+std::string getRandomNumber(int length)
+{
+    const std::string digits = "0123456789";
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<int> distribution(0, digits.size() - 1);
+
+    std::string randomNumber;
+    for (int i = 0; i < length; ++i)
+    {
+        randomNumber += digits[distribution(generator)];
+    }
+
+    return randomNumber;
+}
+
+std::string generateRandomStringWithPrefix(const std::string& prefix)
+{
+    std::string randomNumber = getRandomNumber(6);
+    return prefix + randomNumber;
+}
+
 class KVDBApiTest : public ::testing::Test
 {
 
 protected:
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::string kvdbPath;
 
     void SetUp() override
     {
         initLogging();
 
         // cleaning directory in order to start without garbage.
-        if (std::filesystem::exists(KVDB_PATH))
+        kvdbPath = generateRandomStringWithPrefix(KVDB_PATH) + "/";
+
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(KVDB_PATH);
+            std::filesystem::remove_all(kvdbPath);
         }
 
         std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
 
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {KVDB_PATH, KVDB_DB_FILENAME};
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
 
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
 
@@ -77,9 +105,9 @@ protected:
     {
         kvdbManager->finalize();
 
-        if (std::filesystem::exists(KVDB_PATH))
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(KVDB_PATH);
+            std::filesystem::remove_all(kvdbPath);
         }
     };
 
@@ -316,7 +344,8 @@ TEST_F(KVDBApiTest, managerPostWithPathEmpty)
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, {""}));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The DB was created but loading data returned: The path is empty."})"};
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"The DB was created but loading data returned: The path is empty."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
