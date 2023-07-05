@@ -346,7 +346,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->dist_tag_ref = FEED_NVD;
         upd->dist_ext = vu_feed_ext[FEED_NVD];
         upd->dist_ref = FEED_NVD;
-        upd->update_from_year = NVD_REPO_DEFAULT_MIN_YEAR;
         upd->json_format = 1;
         upd->interval = WM_VULNDETECTOR_NVD_UPDATE_INTERVAL;
         // Set the Wazuh CPE dictionary
