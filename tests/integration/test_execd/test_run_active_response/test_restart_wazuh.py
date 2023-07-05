@@ -57,6 +57,7 @@ from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG_CONFIG
 from wazuh_testing.modules.execd.patterns import EXECD_SHUTDOWN_RECEIVED
 from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -134,8 +135,7 @@ def test_execd_restart(test_configuration, test_metadata, configure_local_intern
         ar_monitor.start(callback=callback)
         assert ar_monitor.callback_result, 'AR `wazuh-restart` did not fail.'
         return
-
-    wazuh_log_monitor.start(callback=generate_callback(EXECD_SHUTDOWN_RECEIVED))
+    wazuh_log_monitor.start(callback=generate_callback(EXECD_SHUTDOWN_RECEIVED), timeout=60)
     assert wazuh_log_monitor.callback_result, 'Execd `shutdown` log not raised.'
 
     ar_monitor.start(callback=generate_callback(ACTIVE_RESPONSE_RESTART_WAZUH))

@@ -60,7 +60,7 @@ jobs:
       - name: Install wazuh
         run: |
           cd  C:\wazuh\wazuh\src\win32
-          .\wazuh-agent-4.7.0-1.msi /q WAZUH_MANAGER="10.0.0.2"
+          .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -68,7 +68,7 @@ jobs:
           if ((git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:GITHUB_HEAD_REF) -ne "X") {
               $BRANCH_NAME = $env:GITHUB_HEAD_REF
           }
-          git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
+          git clone -b 17747_windows_tests_execution --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
       # Run execd integration tests.
       - name: Run execd integration tests
