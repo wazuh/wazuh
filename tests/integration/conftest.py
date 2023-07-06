@@ -14,6 +14,8 @@ from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
 
 
@@ -407,3 +409,45 @@ def mock_agent_module():
     yield agent_id
 
     mocking.delete_mocked_agent(agent_id)
+
+
+@pytest.fixture()
+def remoted_simulator() -> RemotedSimulator:
+    """
+    Fixture for an RemotedSimulator instance.
+
+    This fixture creates an instance of the RemotedSimulator and starts it.
+    The simulator is yielded to the test function, allowing to interact
+    with it. After the test function finishes, the simulator is shut down.
+
+    Returns:
+        RemotedSimulator: An instance of the RemotedSimulator.
+
+    """
+    remoted = RemotedSimulator()
+    remoted.start()
+
+    yield remoted
+
+    remoted.shutdown()
+
+
+@pytest.fixture()
+def authd_simulator() -> AuthdSimulator:
+    """
+    Fixture for an AuthdSimulator instance.
+
+    This fixture creates an instance of the AuthdSimulator and starts it.
+    The simulator is yielded to the test function, allowing to interact
+    with it. After the test function finishes, the simulator is shut down.
+
+    Returns:
+        AuthdSimulator: An instance of the AuthdSimulator.
+
+    """
+    authd = AuthdSimulator()
+    authd.start()
+
+    yield authd
+
+    authd.shutdown()
