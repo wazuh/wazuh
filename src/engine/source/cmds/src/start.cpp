@@ -197,8 +197,8 @@ void runStart(ConfHandler confManager)
             exitHandler.add(
                 [api]()
                 {
-                    LOG_INFO("API terminated.");
                     eMessage::ShutdownEMessageLibrary();
+                    LOG_INFO("API terminated.");
                 });
         }
 
@@ -221,8 +221,8 @@ void runStart(ConfHandler confManager)
             exitHandler.add(
                 [kvdbManager]()
                 {
-                    LOG_INFO("KVDB terminated.");
                     kvdbManager->finalize();
+                    LOG_INFO("KVDB terminated.");
                 });
 
             api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
