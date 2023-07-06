@@ -11,6 +11,7 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "shared_modules/indexer_connector/src/serverSelector.hpp"
 
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
 constexpr auto DATABASE_WORKERS = 1;
@@ -18,13 +19,13 @@ constexpr auto DATABASE_WORKERS = 1;
 IndexerConnector::IndexerConnector(const nlohmann::json& config)
 {
     // Initialize publisher.
-    m_selector = std::make_unique<RoundRobinSelector<std::string>>(config.at("servers"));
+    auto selector = std::make_shared<ServerSelector>(config.at("servers"));
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
-        [&](std::queue<std::string>& dataQueue)
+        [&, selector](std::queue<std::string>& dataQueue)
         {
             try
             {
-                auto server = m_selector->getNext();
+                auto server = selector->getNext();
                 auto url = server;
                 nlohmann::json bulkData;
                 url.append("/_bulk");

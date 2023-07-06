@@ -18,7 +18,6 @@
 #define EXPORTED
 #endif
 
-#include "roundRobinSelector.hpp"
 #include "threadEventDispatcher.hpp"
 #include <json.hpp>
 #include <string>
@@ -27,9 +26,6 @@ using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<voi
 
 class EXPORTED IndexerConnector final
 {
-private:
-    std::unique_ptr<RoundRobinSelector<std::string>> m_selector;
-
 public:
     explicit IndexerConnector(const nlohmann::json& config);
     ~IndexerConnector();
