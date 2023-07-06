@@ -10,7 +10,7 @@
 
 #include <logging/logging.hpp>
 
-namespace base::utils::socketInterface
+namespace sockiface
 {
 
 // Private
@@ -22,7 +22,7 @@ bool unixInterface::setSocketSize() const noexcept
 
     for (const auto optName : optNames)
     {
-        int len;
+        uint32_t len;
         socklen_t optlen {sizeof(len)};
         /* Get current maximum size */
         if (getsockopt(m_sock, SOL_SOCKET, optName, (void*)&len, &optlen) == -1)
@@ -46,9 +46,7 @@ bool unixInterface::setSocketSize() const noexcept
 }
 
 // Protect
-unixInterface::unixInterface(std::string_view path,
-                             const Protocol protocol,
-                             const uint32_t maxMsgSize)
+unixInterface::unixInterface(std::string_view path, const Protocol protocol, const uint32_t maxMsgSize)
     : m_path(path)
     , m_protocol(protocol)
     , m_maxMsgSize(maxMsgSize)
@@ -144,4 +142,4 @@ void unixInterface::socketConnect()
     LOG_DEBUG("Engine Unix interface utils: Connected to '{}'.", m_path);
 }
 
-} // namespace base::utils::socketInterface
+} // namespace sockiface

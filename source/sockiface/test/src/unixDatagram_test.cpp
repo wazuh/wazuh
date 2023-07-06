@@ -3,13 +3,11 @@
 
 #include <gtest/gtest.h>
 
-#include <testsCommon.hpp>
-
-#include <utils/socketInterface/unixDatagram.hpp>
+#include <sockiface/unixDatagram.hpp>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
-using namespace base::utils::socketInterface;
+using namespace sockiface;
 
 class unixDatagramSocket : public ::testing::Test
 {
@@ -28,11 +26,9 @@ TEST_F(unixDatagramSocket, build)
 
 TEST_F(unixDatagramSocket, SetMaxMsgSizeError)
 {
-    ASSERT_THROW({ unixDatagram uDgram(TEST_DGRAM_SOCK_PATH, 0); },
-                 std::invalid_argument);
+    ASSERT_THROW({ unixDatagram uDgram(TEST_DGRAM_SOCK_PATH, 0); }, std::invalid_argument);
 
-    ASSERT_THROW({ unixDatagram uDgram(TEST_DGRAM_SOCK_PATH, {}); },
-                 std::invalid_argument);
+    ASSERT_THROW({ unixDatagram uDgram(TEST_DGRAM_SOCK_PATH, {}); }, std::invalid_argument);
 }
 
 TEST_F(unixDatagramSocket, GetMaxMsgSize)
@@ -200,7 +196,7 @@ TEST_F(unixDatagramSocket, ErrorSendEmptyMessage)
     auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_NO_THROW(ASSERT_EQ(uDgram.sendMsg(msg), SendRetval::SIZE_ZERO));
+    ASSERT_NO_THROW(ASSERT_EQ(uDgram.sendMsg(msg), ISockHandler::SendRetval::SIZE_ZERO));
 
     close(serverSocketFD);
 
@@ -219,7 +215,7 @@ TEST_F(unixDatagramSocket, ErrorSendLongMessage)
     auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_NO_THROW(ASSERT_EQ(uDgram.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG));
+    ASSERT_NO_THROW(ASSERT_EQ(uDgram.sendMsg(msg.data()), ISockHandler::SendRetval::SIZE_TOO_LONG));
 
     close(serverSocketFD);
 
