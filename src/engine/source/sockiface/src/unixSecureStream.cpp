@@ -7,7 +7,7 @@
 
 #include <logging/logging.hpp>
 
-namespace base::utils::socketInterface
+namespace sockiface
 {
 
 ssize_t unixSecureStream::recvWaitAll(void* buf, size_t size) const noexcept
@@ -29,7 +29,7 @@ ssize_t unixSecureStream::recvWaitAll(void* buf, size_t size) const noexcept
     return offset;
 }
 
-SendRetval unixSecureStream::sendMsg(const std::string& msg)
+ISockHandler::SendRetval unixSecureStream::sendMsg(const std::string& msg)
 {
     auto result {SendRetval::SOCKET_ERROR};
     auto payloadSize {static_cast<uint32_t>(msg.size())};
@@ -53,11 +53,8 @@ SendRetval unixSecureStream::sendMsg(const std::string& msg)
     {
         payloadSize++; // send the null terminator
         // MSG_NOSIGNAL prevent broken pipe signal
-        auto success {send(getFD(), &payloadSize, HEADER_SIZE, MSG_NOSIGNAL)
-                      == HEADER_SIZE};
-        success =
-            success
-            && (send(getFD(), msg.c_str(), payloadSize, MSG_NOSIGNAL) == payloadSize);
+        auto success {send(getFD(), &payloadSize, HEADER_SIZE, MSG_NOSIGNAL) == HEADER_SIZE};
+        success = success && (send(getFD(), msg.c_str(), payloadSize, MSG_NOSIGNAL) == payloadSize);
 
         if (success)
         {
@@ -123,9 +120,4 @@ std::vector<char> unixSecureStream::recvMsg()
     return recvMsg;
 }
 
-std::string unixSecureStream::recvString()
-{
-    return std::string(recvMsg().data());
-}
-
-} // namespace base::utils::socketInterface
+} // namespace sockiface

@@ -3,13 +3,11 @@
 
 #include <gtest/gtest.h>
 
-#include <testsCommon.hpp>
-
-#include <utils/socketInterface/unixSecureStream.hpp>
+#include <sockiface/unixSecureStream.hpp>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
-using namespace base::utils::socketInterface;
+using namespace sockiface;
 
 class unixSecureStreamSocket : public ::testing::Test
 {
@@ -28,11 +26,9 @@ TEST_F(unixSecureStreamSocket, build)
 
 TEST_F(unixSecureStreamSocket, SetMaxMsgSizeError)
 {
-    ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, 0); },
-                 std::invalid_argument);
+    ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, 0); }, std::invalid_argument);
 
-    ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, {}); },
-                 std::invalid_argument);
+    ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, {}); }, std::invalid_argument);
 }
 
 TEST_F(unixSecureStreamSocket, GetMaxMsgSize)
@@ -197,7 +193,7 @@ TEST_F(unixSecureStreamSocket, ErrorSendEmptyMessage)
     auto serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_NO_THROW(ASSERT_EQ(uStream.sendMsg(msg), SendRetval::SIZE_ZERO));
+    ASSERT_NO_THROW(ASSERT_EQ(uStream.sendMsg(msg), ISockHandler::SendRetval::SIZE_ZERO));
 
     close(serverSocketFD);
 
@@ -216,7 +212,7 @@ TEST_F(unixSecureStreamSocket, ErrorSendLongMessage)
     auto serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_NO_THROW(ASSERT_EQ(uStream.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG));
+    ASSERT_NO_THROW(ASSERT_EQ(uStream.sendMsg(msg.data()), ISockHandler::SendRetval::SIZE_TOO_LONG));
 
     close(serverSocketFD);
 
@@ -236,8 +232,7 @@ TEST_F(unixSecureStreamSocket, SendMessage)
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data()));
-    ASSERT_NO_THROW(ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(),
-                                 TEST_SEND_MESSAGE.data()));
+    ASSERT_NO_THROW(ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(), TEST_SEND_MESSAGE.data()));
 
     close(acceptSocketFd);
     close(serverSocketFD);
@@ -257,8 +252,7 @@ TEST_F(unixSecureStreamSocket, SendMessageDisconnected)
     auto serverSocketFD {testAcceptConnection(acceptSocketFd)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_NO_THROW(ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(),
-                                 TEST_SEND_MESSAGE.data()));
+    ASSERT_NO_THROW(ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(), TEST_SEND_MESSAGE.data()));
 
     close(acceptSocketFd);
     close(serverSocketFD);
@@ -336,7 +330,7 @@ TEST_F(unixSecureStreamSocket, SendLongestMessage)
     const int serverSocketFD {testAcceptConnection(acceptSocketFD)};
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_EQ(uStream.sendMsg(msg), SendRetval::SUCCESS);
+    ASSERT_EQ(uStream.sendMsg(msg), ISockHandler::SendRetval::SUCCESS);
 
     auto payload {testRecvString(serverSocketFD, SOCK_STREAM)};
     ASSERT_EQ(strlen(payload.c_str()), uStream.getMaxMsgSize());
@@ -425,7 +419,7 @@ TEST_F(unixSecureStreamSocket, LocalSendremoteCloseBeforeRcv)
     ASSERT_GT(clientRemote, 0);
 
     // Send to remote
-    ASSERT_EQ(uStream.sendMsg(TEST_SEND_MESSAGE.data()), SendRetval::SUCCESS);
+    ASSERT_EQ(uStream.sendMsg(TEST_SEND_MESSAGE.data()), ISockHandler::SendRetval::SUCCESS);
     // Remote dont read and close the socket
     close(clientRemote);
 

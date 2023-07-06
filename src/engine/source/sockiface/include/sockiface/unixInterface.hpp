@@ -1,5 +1,5 @@
-#ifndef _SOCKETINTERFACE_UNIX_H
-#define _SOCKETINTERFACE_UNIX_H
+#ifndef _ISOCKFACE_UNIXINTERFACE_HPP
+#define _ISOCKFACE_UNIXINTERFACE_HPP
 
 #include <stdexcept>
 #include <string>
@@ -8,43 +8,10 @@
 
 #include <unistd.h>
 
-namespace base::utils::socketInterface
-{
+#include <sockiface/isockHandler.hpp>
 
-/**
- * @brief Specifies the protocol used by the socket.
- */
-enum class Protocol
+namespace sockiface
 {
-    STREAM,
-    DATAGRAM,
-};
-
-/**
- * @brief Send operation result codes.
- */
-enum class SendRetval
-{
-    SUCCESS,
-    SIZE_ZERO,
-    SIZE_TOO_LONG,
-    SOCKET_ERROR,
-};
-
-/**
- * @brief Exeption thrown when the socket is not connected but a reconnection is possible.
- *
- * E.g: The socket is closed remotely, the socket is full, broken pipe, connection reset,
- * etc.
- */
-class RecoverableError : public std::runtime_error
-{
-public:
-    RecoverableError(const std::string& msg)
-        : std::runtime_error(msg)
-    {
-    }
-};
 
 /**
  * @brief Base class to interface with both, stream and datagram, UNIX sockets.
@@ -52,7 +19,7 @@ public:
  * @note This class needs to be inherited by a class that implements the actual socket
  * interface.
  */
-class unixInterface
+class unixInterface : public ISockHandler
 {
 
 private:
@@ -85,9 +52,7 @@ protected:
      * @param protocol protocol type.
      * @param maxMsgSize maximum message size.
      */
-    unixInterface(std::string_view path,
-                  const Protocol protocol,
-                  const uint32_t maxMsgSize);
+    unixInterface(std::string_view path, const Protocol protocol, const uint32_t maxMsgSize);
 
     /**
      * @brief Close the socket and destroy the object.
@@ -121,44 +86,30 @@ public:
     };
 
     /**
-     * @brief Get the Maximum message size.
-     *
-     * @return maximum message size.
+     * @copydoc ISockHandler::getMaxMsgSize
      */
-    const auto getMaxMsgSize() const noexcept { return m_maxMsgSize; }
+    uint32_t getMaxMsgSize() const noexcept override { return m_maxMsgSize; }
 
     /**
-     * @brief Get the Path to the socket.
-     *
-     * @return path to the socket.
+     * @copydoc ISockHandler::getPath
      */
-    const auto& getPath() const noexcept { return m_path; }
+    std::string getPath() const noexcept override { return m_path; }
 
     /**
-     * @brief Connect to the socket, reconnect if already connected.
-     *
-     * @throws std::runtime_error if the connection fails.
+     * @copydoc ISockHandler::socketConnect
      */
-    void socketConnect();
+    void socketConnect() override;
 
     /**
-     * @brief Disconnect from the socket, if connected.
+     * @copydoc ISockHandler::socketDisconnect
      */
-    void socketDisconnect();
+    void socketDisconnect() override;
 
     /**
-     * @brief Check if the socket is connected.
-     *
-     * @return true if the socket is connected, false otherwise.
+     * @copydoc ISockHandler::isConnected
      */
-    bool isConnected() const noexcept;
-
-    /*
-     * The following methods should be implemented in the derived classes.
-     */
-    virtual SendRetval sendMsg(const std::string& msg) = 0;
-    virtual std::vector<char> recvMsg() = 0;
+    bool isConnected() const noexcept override;
 };
 
-} // namespace base::utils::socketInterface
-#endif // _SOCKETINTERFACE_UNIX_H
+} // namespace sockiface
+#endif // _ISOCKFACE_UNIXINTERFACE_HPP

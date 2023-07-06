@@ -5,8 +5,6 @@
 
 #include <gtest/gtest.h>
 
-#include <testsCommon.hpp>
-
 #include "socketAuxiliarFunctions.hpp"
 
 // Note: server DGRAM sockets are only able to receive and clients are only able to send.

@@ -1,22 +1,33 @@
-set(ENGINE_WDB_SOURCE_DIR ${ENGINE_SOURCE_DIR}/wdb/src)
-set(ENGINE_WDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/wdb/include)
+# Defs
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 
-####################################################################################################
-# Sources - Includes
-####################################################################################################
+add_library(wdb_iwdb INTERFACE)
+target_include_directories(wdb_iwdb INTERFACE ${IFACE_DIR})
+add_library(wdb::iwdb ALIAS wdb_iwdb)
+
 add_library(wdb STATIC
-    ${ENGINE_WDB_SOURCE_DIR}/wdb.cpp
+    ${SRC_DIR}/wdbHandler.cpp
 )
-
-
-target_link_libraries(wdb PRIVATE base)
-
+target_link_libraries(wdb PUBLIC wdb::iwdb sockiface::isock PRIVATE base)
 target_include_directories(wdb
     PRIVATE
-    ${ENGINE_WDB_SOURCE_DIR}
-    ${ENGINE_SOURCE_DIR}/json
-    # TODO Remove this whens isolate rxcpp from base types
-    ${RxCpp_SOURCE_DIR}/Rx/v2/src
+    ${SRC_DIR}
+    ${INC_DIR}/wdb
     PUBLIC
-    ${ENGINE_WDB_INCLUDE_DIR}
+    ${INC_DIR}
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+
+add_executable(wdb_test
+    ${TEST_SRC_DIR}/wdb_test.cpp
+)
+
+target_link_libraries(wdb_test gtest_main base wdb sockiface::mocks)
+gtest_discover_tests(wdb_test)
+endif(ENGINE_BUILD_TEST)

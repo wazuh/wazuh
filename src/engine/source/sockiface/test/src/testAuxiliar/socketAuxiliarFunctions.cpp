@@ -9,9 +9,9 @@
 
 #include <logging/logging.hpp>
 
-#include <utils/socketInterface/unixDatagram.hpp>
+#include <sockiface/unixDatagram.hpp>
 
-using base::utils::socketInterface::DATAGRAM_MAX_MSG_SIZE;
+using sockiface::DATAGRAM_MAX_MSG_SIZE;
 
 int testBindUnixSocket(std::string_view path, const int socketType)
 {

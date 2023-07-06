@@ -3,7 +3,7 @@
 
 #include "unixInterface.hpp"
 
-namespace base::utils::socketInterface
+namespace sockiface
 {
 
 constexpr int DATAGRAM_MAX_MSG_SIZE {65536};
@@ -31,21 +31,13 @@ public:
     ~unixDatagram() = default; // Close de socket in the base class
 
     /**
-     * @brief Send a message to the socket. Open the socket if it is not already open.
-     *
-     * @param msg message to send.
-     *
-     * @return SendRetval::SUCCESS on success.
-     * @return SendRetval::SIZE_ZERO if msg is empty.
-     * @return SendRetval::SIZE_TOO_LONG if msg is too long.
-     * @return SendRetval::SOCKET_ERROR if the socket cannot be written to. (errno is
-     * set).
-     *
-     * @throws std::runtime_error if not connected and the socket cannot be connected.
-     *
-     */
+     * @copydoc ISockHandler::sendMsg
+    */
     SendRetval sendMsg(const std::string& msg) override;
 
+    /**
+     * @copydoc ISockHandler::recvMsg
+    */
     std::vector<char> recvMsg(void) override;
 };
 } // namespace base::utils::socketInterface
