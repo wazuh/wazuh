@@ -23,15 +23,21 @@ KVDBManager::KVDBManager(const KVDBManagerOptions& options,
 
 void KVDBManager::initialize()
 {
-    initializeOptions();
-    initializeMainDB();
-    m_isInitialized = true;
+    if (!m_isInitialized)
+    {
+        initializeOptions();
+        initializeMainDB();
+        m_isInitialized = true;
+    }
 }
 
 void KVDBManager::finalize()
 {
-    finalizeMainDB();
-    m_isInitialized = false;
+    if (m_isInitialized)
+    {
+        finalizeMainDB();
+        m_isInitialized = false;
+    }
 }
 
 std::variant<rocksdb::ColumnFamilyHandle*, base::Error> KVDBManager::createColumnFamily(const std::string& name)
@@ -92,41 +98,57 @@ void KVDBManager::initializeMainDB()
         cfDescriptors.push_back(newDescriptor);
     }
 
-    rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
+    auto statusOpen = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
-    // rocksdb::DB::Open returns two vectors.
-    // One with the descriptors containing the names of the DBs. (cfDescriptors)
-    // Plus one with the internal handles to the DB. (cfHandles)
-    // In this procedure we join these vectors into a map.
-    for (std::size_t cfDescriptorIndex = 0; cfDescriptorIndex < cfDescriptors.size(); cfDescriptorIndex++)
+    if (statusOpen.ok())
     {
-        const auto& dbName = cfDescriptors[cfDescriptorIndex].name;
-        if (dbName != rocksdb::kDefaultColumnFamilyName) // Do not expose default CF. Kept for BW compatibility.
+        // rocksdb::DB::Open returns two vectors.
+        // One with the descriptors containing the names of the DBs. (cfDescriptors)
+        // Plus one with the internal handles to the DB. (cfHandles)
+        // In this procedure we join these vectors into a map.
+        for (std::size_t cfDescriptorIndex = 0; cfDescriptorIndex < cfDescriptors.size(); cfDescriptorIndex++)
         {
-            m_mapCFHandles.emplace(dbName, cfHandles[cfDescriptorIndex]);
+            const auto& dbName = cfDescriptors[cfDescriptorIndex].name;
+            if (dbName != rocksdb::kDefaultColumnFamilyName) // Do not expose default CF. Kept for BW compatibility.
+            {
+                m_mapCFHandles.emplace(dbName, cfHandles[cfDescriptorIndex]);
+            }
+            else
+            {
+                m_pDefaultCFHandle = cfHandles[cfDescriptorIndex];
+            }
         }
-        else
-        {
-            m_pDefaultCFHandle = cfHandles[cfDescriptorIndex];
-        }
+    }
+    else
+    {
+        throw std::runtime_error(
+            fmt::format("An error occurred while trying to open the database: {}", statusOpen.ToString()));
     }
 }
 
 void KVDBManager::finalizeMainDB()
 {
-    rocksdb::Status opStatus;
-
-    for (const auto& entry : m_mapCFHandles)
+    if (m_pRocksDB != nullptr)
     {
-        const auto& cfHandle = entry.second;
-        opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
+        rocksdb::Status opStatus;
+
+        for (const auto& entry : m_mapCFHandles)
+        {
+            const auto& cfHandle = entry.second;
+            opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
+        }
+
+        m_pRocksDB->DestroyColumnFamilyHandle(m_pDefaultCFHandle);
+        m_mapCFHandles.clear();
+
+        delete m_pRocksDB;
+        m_pRocksDB = nullptr;
     }
-
-    m_pRocksDB->DestroyColumnFamilyHandle(m_pDefaultCFHandle);
-    m_mapCFHandles.clear();
-
-    delete m_pRocksDB;
-    m_pRocksDB = nullptr;
+    else
+    {
+        throw std::runtime_error(
+            fmt::format("An error occurred while trying to close the database: not yet open."));
+    }
 }
 
 std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHandler(const std::string& dbName,
