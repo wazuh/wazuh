@@ -4090,11 +4090,9 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
-      - "d:/etc/audit"
-      - "f:/etc/audit/auditd.conf"
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*action_mail_acct\s*\t*=\s*\t*root'
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*space_left_action\s*\t*=\s*\t*email'
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*admin_space_left_action\s*\t*=\s*\t*halt'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*halt|^\s*admin_space_left_action\s*=\s*single'
 
   # 5.2.3.1 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 31228
@@ -4117,10 +4115,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
 
   # 5.2.3.2 Ensure actions as another user are always logged. (Automated)
   - id: 31229
@@ -4143,10 +4143,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-S execve && r:-k user_emulation'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
   # 5.2.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
 
@@ -4171,11 +4173,14 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 5.2.3.5 Ensure events that modify the system's network environment are collected. (Automated)
   - id: 31232
@@ -4198,15 +4203,22 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks/ && r:-p wa && r:-k system-locale|key=system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale"
 
   # 5.2.3.6 Ensure use of privileged commands are collected. (Automated) - Not Implemented
   # 5.2.3.7 Ensure unsuccessful file access attempts are collected. (Automated) - Not Implemented
@@ -4232,13 +4244,18 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
 
   # 5.2.3.9 Ensure discretionary access control permission modification events are collected. (Automated) - Not Implemented
 
@@ -4261,8 +4278,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
   # 5.2.3.11 Ensure session initiation information is collected. (Automated)
   - id: 31238
@@ -4283,8 +4306,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
 
   # 5.2.3.12 Ensure login and logout events are collected. (Automated)
   - id: 31239
@@ -4305,8 +4336,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
+      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
 
   # 5.2.3.13 Ensure file deletion events by users are collected. (Automated)
   - id: 31240
@@ -4327,8 +4364,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
   # 5.2.3.14 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 31241
@@ -4349,8 +4392,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor.d && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
   # 5.2.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded. (Automated)
   - id: 31242
@@ -4371,8 +4420,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
 
   # 5.2.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded. (Automated)
   - id: 31243
@@ -4393,8 +4446,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 5.2.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded. (Automated)
   - id: 31244
@@ -4415,8 +4472,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 5.2.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated)
   - id: 31245
@@ -4437,8 +4498,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
 
   # 5.2.3.19 Ensure kernel module loading unloading and modification is collected. (Automated)
   - id: 31246
@@ -4459,13 +4524,25 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modinfo -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modprobe -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/depmod -> r:/bin/kmod"
 
   # 5.2.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 31247
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- \"-e 2 \" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
     compliance:
@@ -4482,8 +4559,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "grep -iEh ''^\s*\t*-e 2\s*$'' /etc/audit/rules.d/*.rules | tail -1" -> r:^\s*\t*-e 2\s*$'
 
   # 5.2.3.21 Ensure the running and on disk configuration is the same. (Manual)
   - id: 31248
@@ -4501,54 +4579,12 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:augenrules --check -> r:^\s*/usr/sbin/augenrules && r:No change$'
 
-  # 5.2.4.1 Ensure audit log files are mode 0640 or less permissive. (Automated)
-  - id: 31249
-    title: "Ensure audit log files are mode 0640 or less permissive."
-    description: "Audit log files contain information about the system and system activity."
-    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-    remediation: "Run the following command to remove more permissive mode than 0640 from audit log files: # [ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F \"=\" '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f -perm /0137 -exec chmod u-x,g-wx,o-rwx {} +."
-    compliance:
-      - cis: ["5.2.4.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1047"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.2.4.2 Ensure only authorized users own audit log files. (Automated)
-  - id: 31250
-    title: "Ensure only authorized users own audit log files."
-    description: "Audit log files contain information about the system and system activity."
-    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-    remediation: "Run the following command to configure the audit log files to be owned by the root user: # [ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F \"=\" '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f ! -user root -exec chown root {} +."
-    compliance:
-      - cis: ["5.2.4.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022", "M1047"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.2.4.1 Ensure audit log files are mode 0640 or less permissive. (Automated) - Not Implemented
+  # 5.2.4.2 Ensure only authorized users own audit log files. (Automated) - Not Implemented
 
   # 5.2.4.3 Ensure only authorized groups are assigned ownership of audit log files. (Automated)
   - id: 31251
@@ -4570,31 +4606,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*log_group\s*\t*=\s*\t*adm|^\s*\t*log_group\s*\t*=\s*\t*root'
 
-  # 5.2.4.4 Ensure the audit log directory is 0750 or more restrictive. (Automated)
-  - id: 31252
-    title: "Ensure the audit log directory is 0750 or more restrictive."
-    description: "The audit log directory contains audit log files."
-    rationale: "Audit information includes all information including: audit records, audit settings and audit reports. This information is needed to successfully audit system activity. This information must be protected from unauthorized modification or deletion. If this information were to be compromised, forensic analysis and discovery of the true source of potentially malicious system activity is impossible to achieve."
-    remediation: "Run the following command to configure the audit log directory to have a mode of \"0750\" or less permissive: # chmod g-w,o-rwx \"$(dirname $(awk -F\"=\" '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf))\"."
-    compliance:
-      - cis: ["5.2.4.4"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1047"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.2.4.4 Ensure the audit log directory is 0750 or more restrictive. (Automated) - Not Implemented
 
   # 5.2.4.5 Ensure audit configuration files are 640 or more restrictive. (Automated)
   - id: 31253
@@ -4616,8 +4632,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "stat -Lc \"%n %a\" /etc/audit/*.rules" -> r:^/etc/audit && !r:640|600|400'
+      - 'not c:sh -c "stat -Lc \"%n %a\" /etc/audit/*.conf" -> r:^/etc/audit && !r:640|600|400'
 
   # 5.2.4.6 Ensure audit configuration files are owned by root. (Automated)
   - id: 31254
@@ -4639,8 +4657,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
 
   # 5.2.4.7 Ensure audit configuration files belong to group root. (Automated)
   - id: 31255
@@ -4662,8 +4682,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
 
   # 5.2.4.8 Ensure audit tools are 755 or more restrictive. (Automated)
   - id: 31256
@@ -4685,8 +4707,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 5.2.4.9 Ensure audit tools are owned by root. (Automated)
   - id: 31257
@@ -4708,8 +4731,14 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl -> r:^/sbin && !r:0 root 0 root'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/aureport -> r:^/sbin && !r:0 root 0 root'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/ausearch -> r:^/sbin && !r:0 root 0 root'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/autrace -> r:^/sbin && !r:0 root 0 root'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditd -> r:^/sbin && !r:0 root 0 root'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
 
   # 5.2.4.10 Ensure audit tools belong to group root. (Automated)
   - id: 31258
@@ -4731,8 +4760,14 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %a %U %G" /sbin/aureport -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %a %U %G" /sbin/ausearch -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %a %U %G" /sbin/autrace -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditd -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %a %U %G" /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 5.2.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated)
   - id: 31259
@@ -4745,8 +4780,14 @@ checks:
       - mitre_mitigations: ["M1047"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
 
   # 6.1.1 Ensure permissions on /etc/passwd are configured. (Automated)
   - id: 31260
