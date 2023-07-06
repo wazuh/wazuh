@@ -13,7 +13,8 @@ import subprocess
 import multiprocessing
 from pathlib import Path
 from ci import build_tools
-
+import functools
+print = functools.partial(print, flush=True)
 
 # Constant values
 CURRENT_DIR = Path(__file__).parent
