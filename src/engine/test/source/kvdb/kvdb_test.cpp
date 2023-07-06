@@ -81,6 +81,25 @@ TEST_F(KVDBTest, Startup)
     ASSERT_NE(m_spKVDBManager, nullptr);
 }
 
+TEST_F(KVDBTest, InitializeDBInUseWithSameManager)
+{
+    // First initialize in setup
+    ASSERT_NO_THROW(m_spKVDBManager->initialize());
+}
+
+TEST_F(KVDBTest, InitializeDBInUseWithOtherManager)
+{
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+    ASSERT_NE(spMetrics, nullptr);
+
+    // Open a locked DB
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
+
+    auto kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    ASSERT_THROW(kvdbManager->initialize(), std::runtime_error);
+}
+
 TEST_F(KVDBTest, ScopeTest)
 {
     ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
