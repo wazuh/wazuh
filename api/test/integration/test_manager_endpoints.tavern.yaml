@@ -1152,6 +1152,24 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Show the config of monitor/reports in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/reports"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - reports: !anything
+          failed_items: [ ]
+          total_affected_items: 1
+          total_failed_items: 0
+
   - name: Show the config of request/remote in the manager
     request:
       verify: False
