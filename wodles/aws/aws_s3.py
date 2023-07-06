@@ -143,6 +143,8 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
+            if options.subscriber.lower() != 'security_lake':
+                raise Exception("Invalid type of subscriber")
             asl_queue = subscribers.sqs_queue.AWSSQSQueue(external_id=options.external_id,
                                                           iam_role_arn=options.iam_role_arn,
                                                           iam_role_duration=options.iam_role_duration,

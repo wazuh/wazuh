@@ -61,7 +61,8 @@ def test_main(mock_arguments, args: list[str], class_):
 
 @pytest.mark.parametrize('args', [
     ['main', '--bucket', 'bucket-name', '--type', 'invalid'],
-    ['main', '--service', 'invalid']
+    ['main', '--service', 'invalid'],
+    ['main', '--subscriber', 'invalid']
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main_type_ko(mock_arguments, args: list[str]):
