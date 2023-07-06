@@ -25,14 +25,14 @@ jobs:
         # Make folder and upload as artifacts.
       - name: Save compiled agent files
         run: |
-          mkdir -p src/shared_libraries
-          cp ../wazuh.zip src/shared_libraries/wazuh.zip
+          mkdir -p src/wazuh_compilation
+          cp ../wazuh.zip src/wazuh_compilation/wazuh.zip
       # Upload build artifacts for the shared libraries.
-      - name: Upload Artifact shared_libraries
+      - name: Upload Artifact wazuh_compilation
         uses: actions/upload-artifact@v3
         with:
-          name: shared_libraries
-          path: src/shared_libraries
+          name: wazuh_compilation
+          path: src/wazuh_compilation
 
   run-test:
     needs: build
@@ -45,22 +45,21 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Download Artifact shared_libraries
+      - name: Download Artifact wazuh_compilation
         uses: actions/download-artifact@v3
         with:
-          name: shared_libraries
-          path: C:\shared_libraries\
+          name: wazuh_compilation
+          path: C:\wazuh_compilation\
       - name: Decompress wazuh
         run: |
-          Expand-Archive -LiteralPath C:\shared_libraries\wazuh.zip -DestinationPath C:\wazuh
+          Expand-Archive -LiteralPath C:\wazuh_compilation\wazuh.zip -DestinationPath C:\
       - name: Build wazuh installer
         run: |
-          cd  C:\wazuh\wazuh\src\win32
+          cd  C:\wazuh\src\win32
           .\wazuh-installer-build-msi.bat
-
       - name: Install wazuh
         run: |
-          cd  C:\wazuh\wazuh\src\win32
+          cd  C:\wazuh\src\win32
           .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
@@ -75,5 +74,5 @@ jobs:
       # Run execd integration tests.
       - name: Run execd integration tests
         run: |
-          cd C:\wazuh\wazuh\tests\integration
+          cd C:\wazuh\tests\integration
           python -m pytest -m win32 --tier 0 --tier 1 test_execd\
