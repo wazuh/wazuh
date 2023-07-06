@@ -1312,7 +1312,7 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
         DWORD i, retCode;
 
         // Get the class name and the value count.
-        RegQueryInfoKey(
+        retCode = RegQueryInfoKey(
             keyhandle,               // key handle
             achClass,                // buffer for class name
             &cchClassName,           // size of class string
@@ -1326,8 +1326,9 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
             &cbSecurityDescriptor,   // security descriptor
             &ftLastWriteTime);       // last write time
 
-        if (cSubKeys) {
-            os_calloc(cSubKeys + 1, sizeof(char*),key_list);
+        if (retCode == ERROR_SUCCESS) {
+            if (cSubKeys) {
+            os_calloc(cSubKeys + 1, sizeof(char*), key_list);
             for (i = 0; i < cSubKeys; i++) {
                 cbName = OS_SIZE_256;
                 retCode = RegEnumKeyEx(keyhandle, i,
@@ -1339,11 +1340,11 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
                     &ftLastWriteTime);
                 if (retCode == ERROR_SUCCESS) {
                     os_strdup(achKey, *(key_list + i));
+                    }
                 }
+                *(key_list + i) = NULL;
             }
-            *(key_list + i) = NULL;
         }
-
     }
     RegCloseKey(keyhandle);
     return key_list;
@@ -1391,7 +1392,10 @@ void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
     }
 
     //Take the remainder part of the path.
-    char* second_part           = strchr(strchr((*array_struct)->path, wildcard_chr), '\\');
+    char* second_part       = NULL;
+    if ((*array_struct)->path != NULL) {
+        second_part         = strchr(strchr((*array_struct)->path, wildcard_chr), '\\');
+    }
 
     //Duplicate key part
     char* temp = NULL;
