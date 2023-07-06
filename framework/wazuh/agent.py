@@ -551,7 +551,7 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
 def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort: dict = None,
-                     search: dict = None, hash_algorithm: str = 'md5', q: str = None) -> AffectedItemsWazuhResult:
+                     search: dict = None, hash_algorithm: str = 'md5') -> AffectedItemsWazuhResult:
     """Gets the existing groups.
 
     Parameters
@@ -591,7 +591,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
         with WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort,
-                                search=search, **rbac_filters, query=q) as group_query:
+                                search=search, **rbac_filters) as group_query:
             query_data = group_query.run()
 
         for group in query_data['items']:
