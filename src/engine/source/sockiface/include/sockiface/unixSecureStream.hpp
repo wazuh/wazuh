@@ -3,7 +3,7 @@
 
 #include "unixInterface.hpp"
 
-namespace base::utils::socketInterface
+namespace sockiface
 {
 /*
     Wazuh TCP protocol format
@@ -63,45 +63,14 @@ public:
     ~unixSecureStream() = default; // Close de socket in the base class.
 
     /**
-     * @brief Send a message to the socket. Open the socket if it is not already open.
-     *
-     * @param msg message to send.
-     *
-     * @return SendRetval::SUCCESS on success.
-     * @return SendRetval::size_zero if msg is empty.
-     * @return SendRetval::size_too_long if msg is too long
-     * @return SendRetval::SOCKET_ERROR if the socket cannot be written to. (errno is
-     * set).
-     *
-     * @throws recoverableError if a broken pipe error occurs (EPIPE). Log the
-     * warning and disconnect the socket.
-     * @throws std::runtime_error if not connected and the socket cannot be connected.
-     */
+     * @copydoc ISockHandler::sendMsg
+    */
     SendRetval sendMsg(const std::string& msg) override;
 
     /**
-     * @brief  Receive a message from the socket.
-     *
-     * @return vector of bytes (char) received terminated by an '\0' character.
-     *
-     * @throws recoverableError if connection is reset by peer (ECONNRESET), timeout
-     * or disconnected (errno is not set).
-     * @note This method no try connect if the socket is not connected.
-     * @warning this method blocks until the message is received or the socket is
-     * disconnected.
-     */
+     * @copydoc ISockHandler::recvMsg
+    */
     std::vector<char> recvMsg() override;
-
-    /**
-     * @brief Receive a message from the socket and store it in a string.
-     *
-     * This method is a wrapper around \ref recvMsg.
-     * @return string containing the message received.
-     * @note This method no try connect if the socket is not connected.
-     * @warning this method blocks until the message is received or the socket is
-     * disconnected.
-     */
-    std::string recvString(); // override;
 };
 } // namespace base::utils::socketInterface
 

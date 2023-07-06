@@ -4,10 +4,10 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-namespace base::utils::socketInterface
+namespace sockiface
 {
 
-SendRetval unixDatagram::sendMsg(const std::string& msg)
+ISockHandler::SendRetval unixDatagram::sendMsg(const std::string& msg)
 {
     auto result {SendRetval::SOCKET_ERROR};
     auto payloadSize {msg.size()};
@@ -30,7 +30,7 @@ SendRetval unixDatagram::sendMsg(const std::string& msg)
     {
         // Send the message
         const auto sent {send(getFD(), msg.data(), payloadSize, MSG_NOSIGNAL)};
-        if (sent == (int64_t) payloadSize)
+        if (sent == (int64_t)payloadSize)
         {
             result = SendRetval::SUCCESS;
         }
@@ -41,9 +41,9 @@ SendRetval unixDatagram::sendMsg(const std::string& msg)
 
 // TODO: Are we sure about this?
 // This Unix datagram socket implementation is not able to receive messages.
-std::vector<char> unixDatagram::recvMsg(void)
+std::vector<char> unixDatagram::recvMsg()
 {
     return {};
 };
 
-} // namespace base::utils::socketInterface
+} // namespace sockiface

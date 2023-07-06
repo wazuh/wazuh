@@ -133,6 +133,22 @@ CPMAddPackage(
   VERSION 2.2.0
   DOWNLOAD_ONLY YES
 )
+
+# Build test
+if(ENGINE_BUILD_TEST)
+enable_testing()
+CPMAddPackage(
+    NAME googletest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG release-1.11.0
+    VERSION 1.11.0
+    OPTIONS
+    "INSTALL_GTEST OFF"
+    EXCLUDE_FROM_ALL YES
+)
+include(GoogleTest)
+endif(ENGINE_BUILD_TEST)
+
 ####################################################################################################
 # Targets
 ####################################################################################################
@@ -144,8 +160,9 @@ target_include_directories(main
     ${CLI11_SOURCE_DIR}/include
 )
 
-add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
+add_subdirectory(${ENGINE_SOURCE_DIR}/sockiface)
+add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/schemf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
@@ -171,7 +188,6 @@ target_link_libraries(main base cmds api)
 
 # Build test
 if(ENGINE_BUILD_TEST)
-enable_testing()
 add_subdirectory(${ENGINE_TEST_DIR})
 endif(ENGINE_BUILD_TEST)
 

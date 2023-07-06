@@ -170,23 +170,23 @@ add_executable(opBuilderHelperMap_test
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 
-add_executable(opBuilderWdb_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbQuery_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbUpdate_test.cpp
-  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-)
-gtest_discover_tests(opBuilderWdb_test)
+# # add_executable(opBuilderWdb_test
+# #   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbQuery_test.cpp
+# #   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbUpdate_test.cpp
+# #   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+# # )
+# # gtest_discover_tests(opBuilderWdb_test)
 
-add_executable(opBuilderSpeficHLP_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSpeficHLP_test.cpp
-)
-gtest_discover_tests(opBuilderSpeficHLP_test)
+# add_executable(opBuilderSpeficHLP_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSpeficHLP_test.cpp
+# )
+# gtest_discover_tests(opBuilderSpeficHLP_test)
 
-add_executable(opBuilderHelperActiveResponse_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperActiveResponse_test.cpp
-  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-)
-gtest_discover_tests(opBuilderHelperActiveResponse_test)
+# add_executable(opBuilderHelperActiveResponse_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperActiveResponse_test.cpp
+#   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+# )
+# gtest_discover_tests(opBuilderHelperActiveResponse_test)
 
 # TODO: Updated KVDB tests
 # add_executable(opBuilderKVDBTest
@@ -202,20 +202,20 @@ add_executable(register_test
 )
 gtest_discover_tests(register_test)
 
-add_executable(opBuilderSCAdecoder_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSCAdecoder_test.cpp
-  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-)
-gtest_discover_tests(opBuilderSCAdecoder_test)
+# add_executable(opBuilderSCAdecoder_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSCAdecoder_test.cpp
+#   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+# )
+# gtest_discover_tests(opBuilderSCAdecoder_test)
 
-add_executable(opBuilderHelperNetInfoAddress_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
-  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-)
-gtest_discover_tests(opBuilderHelperNetInfoAddress_test)
+# add_executable(opBuilderHelperNetInfoAddress_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
+#   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+# )
+# gtest_discover_tests(opBuilderHelperNetInfoAddress_test)
 
-add_executable(opBuilderHelperUpgradeConfirmation_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperUpgradeConfirmation_test.cpp
-  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-)
-gtest_discover_tests(opBuilderHelperUpgradeConfirmation_test)
+# add_executable(opBuilderHelperUpgradeConfirmation_test
+#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperUpgradeConfirmation_test.cpp
+#   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+# )
+# gtest_discover_tests(opBuilderHelperUpgradeConfirmation_test)

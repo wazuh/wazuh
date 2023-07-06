@@ -72,12 +72,6 @@ CPMAddPackage(
 
 add_library(base STATIC
     logging/logging.hpp
-    utils/socketInterface/unixInterface.cpp
-    utils/socketInterface/unixInterface.hpp
-    utils/socketInterface/unixSecureStream.hpp
-    utils/socketInterface/unixSecureStream.cpp
-    utils/socketInterface/unixDatagram.cpp
-    utils/socketInterface/unixDatagram.hpp
     utils/wazuhProtocol/wazuhResponse.hpp
     utils/wazuhProtocol/wazuhRequest.hpp
     utils/wazuhProtocol/wazuhRequest.cpp
