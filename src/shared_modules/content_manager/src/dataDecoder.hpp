@@ -12,8 +12,6 @@
 #ifndef _DATA_DECODER_HPP
 #define _DATA_DECODER_HPP
 
-#include <nlohmann/json.hpp>
-
 class DataDecoder
 {
 public:

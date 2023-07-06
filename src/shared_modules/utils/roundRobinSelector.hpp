@@ -16,7 +16,7 @@
 #include <vector>
 
 template<typename T>
-class RoundRobinSelector final
+class RoundRobinSelector
 {
 public:
     explicit RoundRobinSelector(std::vector<T> values)
