@@ -268,13 +268,17 @@ write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\
 Start-Sleep 10
 
 # Check status file
-$status = Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+function Get-AgentStatus {
+    Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+}
+
+$status = Get-AgentStatus
 $counter = 30
 while($status -ne "connected"  -And $counter -gt 0)
 {
     $counter--
     Start-Sleep 2
-    $status = Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+    $status = Get-AgentStatus
 }
 Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
