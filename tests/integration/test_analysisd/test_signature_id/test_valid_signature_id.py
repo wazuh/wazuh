@@ -123,18 +123,16 @@ def test_valid_signature_id(test_configuration, test_metadata, set_wazuh_configu
         - The `cases_valid_signature_id.yaml` file provides the test cases.
     '''
     # Start monitors
-    monitor_not_found = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    monitor_not_found.start(callback=callbacks.generate_callback(patterns.SID_NOT_FOUND))
-
-    monitor_empty = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    monitor_empty.start(callback=callbacks.generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
-
-    monitor_invalid = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    monitor_invalid.start(callback=callbacks.generate_callback(patterns.INVALID_IF_SID_RULE_IGNORED))
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Check that no log appears for rules if_sid field pointing to a non existent SID
-    assert not monitor_not_found.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SID_NOT_FOUND))
+    assert not log_monitor.callback_result
+
     # Check that no log appears for rules if_sid field being empty string
-    assert not monitor_empty.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
+    assert not log_monitor.callback_result
+
     # Check that no log appears for rules if_sid field being invalid
-    assert not monitor_invalid.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.INVALID_IF_SID_RULE_IGNORED))
+    assert not log_monitor.callback_result

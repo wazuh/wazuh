@@ -137,8 +137,8 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
     assert ar_monitor.callback_result, 'AR `firewall-drop` program not used.'
 
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_ADD_COMMAND))
-    assert '"command":"add"' in ar_monitor.callback_result, 'AR `add` command not executed.'
+    assert ar_monitor.callback_result, 'AR `add` command not executed.'
     assert '"srcip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `srcip` value is not correct.'
 
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_DELETE_COMMAND))
-    assert '"command":"delete"' in ar_monitor.callback_result, 'AR `delete` command not executed.'
+    assert ar_monitor.callback_result, 'AR `delete` command not executed.'

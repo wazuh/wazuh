@@ -257,27 +257,25 @@ def test_missing_configuration(test_configuration, test_metadata, load_wazuh_bas
         - The `configuration_missing_values` file provides the module configuration for this test.
         - The `cases_missing_values` file provides the test cases.
     """
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     if test_metadata['behavior'] == 'works':
         # Start monitor
-        monitor_enabled = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-        monitor_enabled.start(callback=callbacks.generate_callback(patterns.ANALYSISD_EPS_ENABLED, {
-                                  'maximum': str(test_metadata['maximum']),
-                                  'timeframe': str(10)
-                              }))
+        log_monitor.start(callback=callbacks.generate_callback(patterns.ANALYSISD_EPS_ENABLED, {
+                                'maximum': str(test_metadata['maximum']),
+                                'timeframe': str(10)
+                            }))
 
         # Check that expected log appears for rules if_sid field being invalid
-        assert monitor_enabled.callback_result
+        assert log_monitor.callback_result
     elif test_metadata['behavior'] == 'missing_maximum':
         # Start monitor
-        monitor_missing = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-        monitor_missing.start(callback=callbacks.generate_callback(patterns.ANALYSISD_EPS_MISSING_MAX))
+        log_monitor.start(callback=callbacks.generate_callback(patterns.ANALYSISD_EPS_MISSING_MAX))
 
         # Check that expected log appears for rules if_sid field being invalid
-        assert monitor_missing.callback_result
+        assert log_monitor.callback_result
     else:
         # Start monitor
-        monitor_error = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-        monitor_error.start(callback=callbacks.generate_callback(patterns.ANALYSISD_CONFIGURATION_ERROR))
+        log_monitor.start(callback=callbacks.generate_callback(patterns.ANALYSISD_CONFIGURATION_ERROR))
 
         # Check that expected log appears for rules if_sid field being invalid
-        assert monitor_error.callback_result
+        assert log_monitor.callback_result
