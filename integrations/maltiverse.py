@@ -73,7 +73,9 @@ SOCKET_ADDR: str = f"{pwd}/queue/sockets/queue"
 class Maltiverse:
     """This class is a simplification of maltiverse pypi package."""
 
-    def __init__(self, endpoint="https://api.maltiverse.com", auth_token=None):
+    def __init__(
+        self, endpoint: str = "https://api.maltiverse.com", auth_token: str = None
+    ):
         self.endpoint = endpoint
         self.auth_token = auth_token
         self.headers = {
@@ -81,23 +83,23 @@ class Maltiverse:
             "Authorization": f"Bearer {self.auth_token}",
         }
 
-    def ip_get(self, ip_addr):
+    def ip_get(self, ip_addr: str) -> dict:
         return requests.get(
             f"{self.endpoint}/ip/{ip_addr}", headers=self.headers
         ).json()
 
-    def hostname_get(self, hostname):
+    def hostname_get(self, hostname: str) -> dict:
         return requests.get(
             f"{self.endpoint}/hostname/{hostname}", headers=self.headers
         ).json()
 
-    def url_get(self, url):
+    def url_get(self, url: str) -> dict:
         urlchecksum = hashlib.sha256(url.encode("utf-8")).hexdigest()
         return requests.get(
             f"{self.endpoint}/url/{urlchecksum}", headers=self.headers
         ).json()
 
-    def sample_get(self, sample, algorithm="md5"):
+    def sample_get(self, sample: str, algorithm: str = "md5") -> dict:
         """Requests a sample"""
         mapping = {
             "md5": self.sample_get_by_md5,
@@ -105,20 +107,20 @@ class Maltiverse:
         }
         return mapping.get(algorithm, mapping.get("md5"))()
 
-    def sample_get_by_md5(self, md5):
+    def sample_get_by_md5(self, md5: str):
         """Requests a sample by MD5"""
         return requests.get(
             f"{self.endpoint}/sample/md5/{md5}", headers=self.headers
         ).json()
 
-    def sample_get_by_sha1(self, sha1):
+    def sample_get_by_sha1(self, sha1: str):
         """Requests a sample by SHA1"""
         return requests.get(
             f"{self.endpoint}/sample/sha1/{sha1}", headers=self.headers
         ).json()
 
 
-def main(args):
+def main(args: list):
     global debug_enabled
     try:
         # Read arguments
@@ -152,7 +154,7 @@ def main(args):
         raise
 
 
-def process_args(args):
+def process_args(args: list):
     debug("# Starting")
 
     alert_file_location = args[1]
@@ -184,7 +186,7 @@ def process_args(args):
         send_event(msg, json_alert["agent"])
 
 
-def debug(msg):
+def debug(msg: str):
     if debug_enabled:
         msg = "{0}: {1}\n".format(now, msg)
         print(msg)
@@ -192,7 +194,7 @@ def debug(msg):
             f.write(msg)
 
 
-def get_ioc_confidence(ioc):
+def get_ioc_confidence(ioc: dict) -> str:
     """Get vendor-neutral confidence rating
 
     using the None/Low/Medium/High scale defined in Appendix A
@@ -336,7 +338,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
     return results
 
 
-def send_event(msg, agent=None):
+def send_event(msg: str, agent: dict = None):
     if not agent or agent["id"] == "000":
         string = f"1:maltiverse:{json.dumps(msg)}"
     else:
