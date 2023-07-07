@@ -45,7 +45,7 @@ namespace
 {
 std::shared_ptr<engineserver::EngineServer> g_engineServer {};
 
-void sigint_handler(const int signum)
+void sigintHandler(const int signum)
 {
     if (g_engineServer)
     {
@@ -163,14 +163,24 @@ void runStart(ConfHandler confManager)
     const auto routePolicy = policy[3];
     const auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
 
-    // Set Crt+C handler
+    // Set signal [SIGINT]: Crt+C handler
     {
         // Set the signal handler for SIGINT
         struct sigaction sigIntHandler;
-        sigIntHandler.sa_handler = sigint_handler;
+        sigIntHandler.sa_handler = sigintHandler;
         sigemptyset(&sigIntHandler.sa_mask);
         sigIntHandler.sa_flags = 0;
         sigaction(SIGINT, &sigIntHandler, nullptr);
+    }
+    // Set signal [EPIPE]: Broken pipe handler
+    {
+        // Set the signal handler for EPIPE (uvw/libuv/libev)
+        // https://github.com/skypjack/uvw/issues/291
+        struct sigaction sigPipeHandler;
+        sigPipeHandler.sa_handler = SIG_IGN;
+        sigemptyset(&sigPipeHandler.sa_mask);
+        sigPipeHandler.sa_flags = 0;
+        sigaction(SIGPIPE, &sigPipeHandler, nullptr);
     }
 
     // Init modules
@@ -401,7 +411,6 @@ void runStart(ConfHandler confManager)
         LOG_ERROR("An error occurred while running the server: {}.", utils::getExceptionStack(e));
     }
     exitHandler.execute();
-    return;
 }
 
 void configure(CLI::App_p app)
