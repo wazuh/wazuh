@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.4.4]
+## [v4.4.5]
+
+
+## [v4.4.4] - 2023-06-14
 
 ### Manager
 
@@ -23,7 +26,7 @@ All notable changes to this project will be documented in this file.
 - Updated all current rule descriptions from "Ossec" to "Wazuh". ([#17211](https://github.com/wazuh/wazuh/pull/17211))
 
 
-## [v4.4.3]
+## [v4.4.3] - 2023-05-26
 
 ### Agent
 
