@@ -40,20 +40,6 @@ void KVDBManager::finalize()
     }
 }
 
-std::variant<rocksdb::ColumnFamilyHandle*, base::Error> KVDBManager::createColumnFamily(const std::string& name)
-{
-    rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
-    rocksdb::Status s {m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle)};
-
-    if (s.ok())
-    {
-        m_mapCFHandles.insert(std::make_pair(name, cfHandle));
-        return cfHandle;
-    }
-
-    return base::Error {fmt::format("Could not create DB {}, RocksDB Status: {}", name, s.ToString())};
-}
-
 void KVDBManager::initializeOptions()
 {
     m_rocksDBOptions = rocksdb::Options();
@@ -98,10 +84,13 @@ void KVDBManager::initializeMainDB()
         cfDescriptors.push_back(newDescriptor);
     }
 
-    auto statusOpen = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
+    rocksdb::DB* rawRocksDBPtr {nullptr};
+    auto statusOpen = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &rawRocksDBPtr);
 
     if (statusOpen.ok())
     {
+        m_pRocksDB = std::shared_ptr<rocksdb::DB>(rawRocksDBPtr);
+
         // rocksdb::DB::Open returns two vectors.
         // One with the descriptors containing the names of the DBs. (cfDescriptors)
         // Plus one with the internal handles to the DB. (cfHandles)
@@ -109,13 +98,13 @@ void KVDBManager::initializeMainDB()
         for (std::size_t cfDescriptorIndex = 0; cfDescriptorIndex < cfDescriptors.size(); cfDescriptorIndex++)
         {
             const auto& dbName = cfDescriptors[cfDescriptorIndex].name;
-            if (dbName != rocksdb::kDefaultColumnFamilyName) // Do not expose default CF. Kept for BW compatibility.
+            if (rocksdb::kDefaultColumnFamilyName != dbName)
             {
-                m_mapCFHandles.emplace(dbName, cfHandles[cfDescriptorIndex]);
+                m_mapCFHandles.emplace(dbName, createSharedCFHandle(cfHandles[cfDescriptorIndex]));
             }
             else
             {
-                m_pDefaultCFHandle = cfHandles[cfDescriptorIndex];
+                m_pDefaultCFHandle = createSharedCFHandle(cfHandles[cfDescriptorIndex]);
             }
         }
     }
@@ -128,33 +117,15 @@ void KVDBManager::initializeMainDB()
 
 void KVDBManager::finalizeMainDB()
 {
-    if (m_pRocksDB != nullptr)
-    {
-        rocksdb::Status opStatus;
-
-        for (const auto& entry : m_mapCFHandles)
-        {
-            const auto& cfHandle = entry.second;
-            opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
-        }
-
-        m_pRocksDB->DestroyColumnFamilyHandle(m_pDefaultCFHandle);
-        m_mapCFHandles.clear();
-
-        delete m_pRocksDB;
-        m_pRocksDB = nullptr;
-    }
-    else
-    {
-        throw std::runtime_error(
-            fmt::format("An error occurred while trying to close the database: not yet open."));
-    }
+    m_mapCFHandles.clear();
+    m_pDefaultCFHandle.reset();
+    m_pRocksDB.reset();
 }
 
 std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHandler(const std::string& dbName,
                                                                                      const std::string& scopeName)
 {
-    rocksdb::ColumnFamilyHandle* cfHandle;
+    std::shared_ptr<rocksdb::ColumnFamilyHandle> cfHandle;
 
     if (m_mapCFHandles.count(dbName))
     {
@@ -162,7 +133,7 @@ std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHan
     }
     else
     {
-        return base::Error {fmt::format("The DB {} not exists.", dbName)};
+        return base::Error {fmt::format("The DB {} does not exists.", dbName)};
     }
 
     m_kvdbHandlerCollection->addKVDBHandler(dbName, scopeName);
@@ -199,20 +170,18 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     if (it != m_mapCFHandles.end())
     {
         auto cfHandle = it->second;
-        auto opStatus = m_pRocksDB->DropColumnFamily(cfHandle);
-        if (opStatus.ok())
+        try
         {
             m_mapCFHandles.erase(it);
         }
-        else
+        catch (const std::runtime_error& e)
         {
-            return base::Error {
-                fmt::format("Could not remove the DB {}. RocksDB Status: {}", name, opStatus.ToString())};
+            return base::Error {fmt::format("Could not remove the DB {}. RocksDB Status: {}", name, e.what())};
         }
     }
     else
     {
-        return base::Error {fmt::format("The DB not exists.")};
+        return base::Error {fmt::format("The DB {} does not exists.", name)};
     }
 
     return std::nullopt;
@@ -221,7 +190,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, const std::string& path)
 {
     std::vector<std::tuple<std::string, json::Json>> entries {};
-    rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
+    std::shared_ptr<rocksdb::ColumnFamilyHandle> cfHandle;
 
     if (m_mapCFHandles.count(name))
     {
@@ -230,7 +199,7 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
 
     if (!cfHandle)
     {
-        return base::Error {fmt::format("The DB not exists.")};
+        return base::Error {fmt::format("The DB {} does not exists.", name)};
     }
 
     // TODO: to improve
@@ -277,7 +246,7 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
 
     for (const auto& [key, value] : entries)
     {
-        auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle, key, value.str());
+        auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle.get(), key, value.str());
         if (!status.ok())
         {
             return base::Error {fmt::format(
@@ -295,16 +264,7 @@ std::optional<base::Error> KVDBManager::createDB(const std::string& name)
         return std::nullopt;
     }
 
-    auto createResult = createColumnFamily(name);
-
-    if (std::holds_alternative<base::Error>(createResult))
-    {
-        return std::get<base::Error>(createResult);
-    }
-
-    auto cfHandle = std::get<rocksdb::ColumnFamilyHandle*>(createResult);
-
-    return std::nullopt;
+    return createColumnFamily(name);
 }
 
 bool KVDBManager::existsDB(const std::string& name)
@@ -362,6 +322,35 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBHandlersInfo() c
         retValue.insert(std::make_pair(dbName, refInfo));
     }
     return retValue;
+}
+
+std::optional<base::Error> KVDBManager::createColumnFamily(const std::string& name)
+{
+    rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
+    rocksdb::Status s {m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle)};
+
+    if (s.ok())
+    {
+        m_mapCFHandles.emplace(name, createSharedCFHandle(cfHandle));
+        return std::nullopt;
+    }
+
+    return base::Error {fmt::format("Could not create DB {}, RocksDB Status: {}", name, s.ToString())};
+}
+
+std::shared_ptr<rocksdb::ColumnFamilyHandle> KVDBManager::createSharedCFHandle(rocksdb::ColumnFamilyHandle* cfRawPtr)
+{
+    return std::shared_ptr<rocksdb::ColumnFamilyHandle>(
+        cfRawPtr,
+        [pRocksDB = m_pRocksDB](rocksdb::ColumnFamilyHandle* ptr)
+        {
+            auto opStatus = pRocksDB->DestroyColumnFamilyHandle(ptr);
+            if (!opStatus.ok())
+            {
+                throw std::runtime_error(
+                    fmt::format("An error occurred while trying to destroy CF: {}", opStatus.ToString()));
+            }
+        });
 }
 
 } // namespace kvdbManager

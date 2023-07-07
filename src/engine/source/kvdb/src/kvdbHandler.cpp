@@ -10,13 +10,13 @@
 namespace kvdbManager
 {
 
-KVDBHandler::KVDBHandler(rocksdb::DB* db,
-                         rocksdb::ColumnFamilyHandle* cfHandle,
+KVDBHandler::KVDBHandler(std::weak_ptr<rocksdb::DB> weakDB,
+                         std::weak_ptr<rocksdb::ColumnFamilyHandle> weakCFHandle,
                          std::shared_ptr<IKVDBHandlerCollection> collection,
                          const std::string& spaceName,
                          const std::string& scopeName)
-    : m_pRocksDB(db)
-    , m_pCFhandle(cfHandle)
+    : m_weakDB(weakDB)
+    , m_weakCFHandle(weakCFHandle)
     , m_dbName(spaceName)
     , m_scopeName(scopeName)
     , m_spCollection(collection)
@@ -30,14 +30,34 @@ KVDBHandler::~KVDBHandler()
 
 std::optional<base::Error> KVDBHandler::set(const std::string& key, const std::string& value)
 {
-    auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key), rocksdb::Slice(value));
-
-    if (status.ok())
+    auto pRocksDB = m_weakDB.lock();
+    if (pRocksDB)
     {
-        return std::nullopt;
-    }
+        auto pCFhandle = m_weakCFHandle.lock();
+        if (pCFhandle)
+        {
+            auto status =
+                pRocksDB->Put(rocksdb::WriteOptions(), pCFhandle.get(), rocksdb::Slice(key), rocksdb::Slice(value));
 
-    return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
+            if (status.ok())
+            {
+                return std::nullopt;
+            }
+            else
+            {
+                return base::Error {
+                    fmt::format("Can't save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
+            }
+        }
+        else
+        {
+            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+        }
+    }
+    else
+    {
+        return base::Error {fmt::format("Can't access RocksDB::DB")};
+    }
 }
 
 std::optional<base::Error> KVDBHandler::set(const std::string& key, const json::Json& value)
@@ -52,59 +72,132 @@ std::optional<base::Error> KVDBHandler::add(const std::string& key)
 
 std::optional<base::Error> KVDBHandler::remove(const std::string& key)
 {
-    auto status = m_pRocksDB->Delete(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key));
-
-    if (status.ok())
+    auto pRocksDB = m_weakDB.lock();
+    if (pRocksDB)
     {
-        return std::nullopt;
-    }
+        auto pCFhandle = m_weakCFHandle.lock();
+        if (pCFhandle)
+        {
+            auto status = pRocksDB->Delete(rocksdb::WriteOptions(), pCFhandle.get(), rocksdb::Slice(key));
 
-    return base::Error {fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState())};
+            if (status.ok())
+            {
+                return std::nullopt;
+            }
+            else
+            {
+                return base::Error {fmt::format("Can't remove key '{}'. Error: {}", key, status.getState())};
+            }
+        }
+        else
+        {
+            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+        }
+    }
+    else
+    {
+        return base::Error {fmt::format("Can't access RocksDB::DB")};
+    }
 }
 
 std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
 {
-    try
+    auto pRocksDB = m_weakDB.lock();
+    if (pRocksDB)
     {
-        std::string value;
-        return m_pRocksDB->KeyMayExist(rocksdb::ReadOptions(), m_pCFhandle, rocksdb::Slice(key), &value);
+        auto pCFhandle = m_weakCFHandle.lock();
+        if (pCFhandle)
+        {
+            try
+            {
+                std::string value; // mandatory to pass to KeyMayExist.
+                bool valueFound;
+
+                pRocksDB->KeyMayExist(
+                    rocksdb::ReadOptions(), pCFhandle.get(), rocksdb::Slice(key), &value, &valueFound);
+
+                return valueFound;
+            }
+            catch (const std::exception& ex)
+            {
+                return base::Error {fmt::format("Can't validate existance of key {}. Error: {}", key, ex.what())};
+            }
+        }
+        else
+        {
+            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+        }
     }
-    catch(const std::exception& ex)
+    else
     {
-        return base::Error {fmt::format("{Can not validate key {}. Error: {}}", key, ex.what())};
+        return base::Error {fmt::format("Can't access RocksDB::DB")};
     }
 }
 
 std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
 {
-    std::string value;
-    auto status = m_pRocksDB->Get(rocksdb::ReadOptions(), m_pCFhandle, rocksdb::Slice(key), &value);
-
-    if (status.ok())
+    auto pRocksDB = m_weakDB.lock();
+    if (pRocksDB)
     {
-        return value;
-    }
+        auto pCFhandle = m_weakCFHandle.lock();
+        if (pCFhandle)
+        {
+            std::string value;
+            auto status = pRocksDB->Get(rocksdb::ReadOptions(), pCFhandle.get(), rocksdb::Slice(key), &value);
 
-    return base::Error {fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState())};
+            if (status.ok())
+            {
+                return value;
+            }
+            else
+            {
+                return base::Error {fmt::format("Can't get key '{}'. Error: {}", value, key, status.getState())};
+            }
+        }
+        else
+        {
+            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+        }
+    }
+    else
+    {
+        return base::Error {fmt::format("Can't access RocksDB::DB")};
+    }
 }
 
 std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHandler::dump()
 {
-    std::unordered_map<std::string, std::string> content {};
-    std::shared_ptr<rocksdb::Iterator> iter(m_pRocksDB->NewIterator(rocksdb::ReadOptions(), m_pCFhandle));
-
-    for (iter->SeekToFirst(); iter->Valid(); iter->Next())
+    auto pRocksDB = m_weakDB.lock();
+    if (pRocksDB)
     {
-        content[iter->key().ToString()] = iter->value().ToString();
-    }
+        auto pCFhandle = m_weakCFHandle.lock();
+        if (pCFhandle)
+        {
+            std::unordered_map<std::string, std::string> content {};
+            std::shared_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
 
-    if (!iter->status().ok())
+            for (iter->SeekToFirst(); iter->Valid(); iter->Next())
+            {
+                content[iter->key().ToString()] = iter->value().ToString();
+
+                if (!iter->status().ok())
+                {
+                    return base::Error {fmt::format(
+                        "Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
+                }
+            }
+
+            return content;
+        }
+        else
+        {
+            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+        }
+    }
+    else
     {
-        return base::Error {
-            fmt::format("Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
+        return base::Error {fmt::format("Can't access RocksDB::DB")};
     }
-
-    return content;
 }
 
 } // namespace kvdbManager
