@@ -15,7 +15,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -536,86 +536,6 @@ async def get_stats_weekly_node(request, node_id: str, pretty: bool = False,
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=stats.weekly,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-@deprecate_endpoint()
-async def get_stats_analysisd_node(request, node_id: str, pretty: bool = False,
-                                   wait_for_complete: bool = False) -> web.Response:
-    """Get a specified node's analysisd statistics.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool, optional
-        Whether to disable response timeout or not. Default `False`
-
-    Returns
-    -------
-    web.Response
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.ANALYSISD_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-@deprecate_endpoint()
-async def get_stats_remoted_node(request, node_id: str, pretty: bool = False,
-                                 wait_for_complete: bool = False) -> web.Response:
-    """Get a specified node's remoted statistics.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool, optional
-        Whether to disable response timeout or not. Default `False`
-
-    Returns
-    -------
-    web.Response
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.REMOTED_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

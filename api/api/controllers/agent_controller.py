@@ -13,7 +13,7 @@ from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.models.group_added_model import GroupAddedModel
-from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
+from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
@@ -413,42 +413,6 @@ async def delete_single_agent_multiple_groups(request, agent_id: str, groups_lis
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
 
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-@deprecate_endpoint()
-async def get_sync_agent(request, agent_id: str, pretty: bool = False, wait_for_complete=False) -> web.Response:
-    """Get agent configuration sync status.
-
-    Return whether the agent group configuration has been synchronized with the agent or not.
-
-    Parameters
-    ----------
-    request : connexion.request
-    agent_id : str
-        Agent ID.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    web.Reponse
-        API response with the agent configuration sync status.
-    """
-    f_kwargs = {'agent_list': [agent_id]}
-
-    dapi = DistributedAPI(f=agent.get_agents_sync_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

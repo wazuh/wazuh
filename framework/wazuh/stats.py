@@ -227,32 +227,6 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def deprecated_get_daemons_stats(filename):
-    """Get daemons stats from an input file.
-
-    Parameters
-    ----------
-    filename: str
-        Full path of the file to get information.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Dictionary with the stats of the input file.
-    """
-    result = AffectedItemsWazuhResult(
-        all_msg='Statistical information for each node was successfully read',
-        some_msg='Could not read statistical information for some nodes',
-        none_msg='Could not read statistical information for any node'
-    )
-    result.affected_items = get_daemons_stats_(filename)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_component_stats_json(agent_list: list = None, component: str = None) -> AffectedItemsWazuhResult:
     """Get statistics of an agent's component.
