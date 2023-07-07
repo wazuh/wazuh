@@ -50,7 +50,7 @@ from wazuh_testing.modules.active_response import patterns as ar_patterns
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.execd import patterns as execd_paterns
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG_CONFIG
-from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 

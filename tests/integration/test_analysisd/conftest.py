@@ -16,7 +16,7 @@ from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH, CUST
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.users import WAZUH_UNIX_GROUP, WAZUH_UNIX_USER
 from wazuh_testing.modules.analysisd import patterns
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, file
 
 
