@@ -26,8 +26,9 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.decorators as decorator
-                    reload(decorator)
+
     init_db('schema_security_test.sql', test_data_path)
+    reload(decorator)
 
     yield decorator
 
