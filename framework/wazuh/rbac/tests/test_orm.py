@@ -29,8 +29,6 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as rbac
-                    # Clear mappers
-                    sqlalchemy_orm.clear_mappers()
 
     init_db('schema_security_test.sql', test_data_path)
 
@@ -982,7 +980,7 @@ def test_databasemanager_get_table(fresh_in_memory_db):
     current_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(
         session, fresh_in_memory_db.User))))
     with patch("wazuh.rbac.orm._new_columns", new={"new_column"}):
-        updated_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session, 
+        updated_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session,
                                                                                                    EnhancedUser))))
 
     assert current_columns == updated_columns
