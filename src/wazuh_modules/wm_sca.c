@@ -555,13 +555,9 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const c
     }
 
     const cJSON * const id = cJSON_GetObjectItem(policy, "id");
-    if(!id) {
-        mwarn("Field 'id' not found in policy header.");
-        return 1;
-    }
 
-    if(!id->valuestring){
-        mwarn("Invalid format for field 'id'");
+    if(!cJSON_IsString(id)) {
+        mwarn("'id' field invalid or not found in policy header.");
         return 1;
     }
 
@@ -572,41 +568,26 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const c
     }
 
     const cJSON * const name = cJSON_GetObjectItem(policy, "name");
-    if(!name) {
-        mwarn("Field 'name' not found in policy header.");
-        return 1;
-    }
-
-    if(!name->valuestring){
-        mwarn("Invalid format for field 'name'");
+    if(!cJSON_IsString(name)) {
+        mwarn("'name' field invalid or not found in policy header.");
         return 1;
     }
 
     const cJSON * const file = cJSON_GetObjectItem(policy, "file");
-    if(!file) {
-        mwarn("Field 'file' not found in policy header.");
+    if(!cJSON_IsString(file)) {
+        mwarn("'file' field invalid or not found in policy header.");
         return 1;
     }
-
-    if(!file->valuestring){
-        mwarn("Invalid format for field 'file'");
-        return 1;
-    }
-
+    
     const cJSON * const description = cJSON_GetObjectItem(policy, "description");
-    if(!description) {
-        mwarn("Field 'description' not found in policy header.");
+    if(!cJSON_IsString(description)) {
+        mwarn("'description' field invalid or not found in policy header.");
         return 1;
     }
 
     const cJSON * const regex_type = cJSON_GetObjectItem(policy, "regex_type");
     if(!regex_type) {
         mdebug1("Field 'regex_type' not found in policy header. The OS_REGEX engine shall be used.");
-    }
-
-    if(!description->valuestring) {
-        mwarn("Invalid format for field 'description'");
-        return 1;
     }
 
     // Check for policy rules with duplicated IDs */
@@ -622,7 +603,7 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const c
     const cJSON *check;
     cJSON_ArrayForEach(check, checks) {
         const cJSON * const check_id = cJSON_GetObjectItem(check, "id");
-        if (check_id == NULL) {
+        if (!cJSON_IsNumber(check_id)) {
             mwarn("Check ID not found.");
             free(read_id);
             return 1;
@@ -985,7 +966,7 @@ static int wm_sca_do_scan(cJSON * checks,
         }
 
         const cJSON * const c_title = cJSON_GetObjectItem(check, "title");
-        if (!c_title || !c_title->valuestring) {
+        if(!cJSON_IsString(c_title)){
             merror("Skipping check with %s: Check name is invalid.", _check_id_str);
             if (requirements_scan) {
                 ret_val = 1;
@@ -995,7 +976,7 @@ static int wm_sca_do_scan(cJSON * checks,
         }
 
         const cJSON * const c_condition = cJSON_GetObjectItem(check, "condition");
-        if (!c_condition || !c_condition->valuestring) {
+        if(!cJSON_IsString(c_condition)){
             merror("Skipping check '%s: %s': Check condition not found.", _check_id_str, c_title->valuestring);
             if (requirements_scan) {
                 ret_val = 1;
@@ -1064,7 +1045,7 @@ static int wm_sca_do_scan(cJSON * checks,
             the loop 'continues', i.e, does not reach the end of its block. */
             os_free(rule_cp);
 
-            if(!rule_ref->valuestring) {
+            if(!cJSON_IsString(rule_ref)) {
                 mdebug1("Field 'rule' must be a string.");
                 ret_val = 1;
                 os_free(regex_engine);
@@ -2633,57 +2614,41 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
     cJSON *condition = cJSON_GetObjectItem(check, "condition");
     cJSON *rules = cJSON_GetObjectItem(check, "rules");
 
-    if(!pm_id) {
-        mdebug1("No 'id' field found on check.");
-        goto error;
-    }
-
-    if(!pm_id->valueint) {
-        mdebug1("Field 'id' must be a number.");
+    if(!cJSON_IsNumber(pm_id)) {
+        mdebug1("'id' field invalid or not found on check.");
         goto error;
     }
 
     cJSON_AddNumberToObject(check_information, "id", pm_id->valueint);
 
-    if(title){
-        if(!title->valuestring) {
-            mdebug1("Field 'title' must be a string.");
-            goto error;
-        }
-        cJSON_AddStringToObject(check_information, "title", title->valuestring);
-    } else {
-        mdebug1("No 'title' field found on check '%d'", pm_id->valueint);
+    if(!cJSON_IsString(title)) {
+        mdebug1("'title' field invalid or not found on check.");
         goto error;
     }
+    cJSON_AddStringToObject(check_information, "title", title->valuestring);
 
     if(!policy_id){
         mdebug1("No 'id' field found on policy.");
         goto error;
     }
 
-    if(description){
-        if(!description->valuestring) {
-            mdebug1("Field 'description' must be a string.");
-            goto error;
-        }
-        cJSON_AddStringToObject(check_information, "description", description->valuestring);
+    if(!cJSON_IsString(description)) {
+        mdebug1("'description' field invalid or not found on check.");
+        goto error;
     }
+    cJSON_AddStringToObject(check_information, "description", description->valuestring);
 
-    if(rationale){
-        if(!rationale->valuestring) {
-            mdebug1("Field 'rationale' must be a string.");
-            goto error;
-        }
-        cJSON_AddStringToObject(check_information, "rationale", rationale->valuestring);
+    if(!cJSON_IsString(rationale)) {
+        mdebug1("'rationale' field invalid or not found on check.");
+        goto error;
     }
+    cJSON_AddStringToObject(check_information, "rationale", rationale->valuestring);
 
-    if(remediation){
-        if(!remediation->valuestring) {
-            mdebug1("Field 'remediation' must be a string.");
-            goto error;
-        }
-        cJSON_AddStringToObject(check_information, "remediation", remediation->valuestring);
+    if(cJSON_IsString(remediation)) {
+        mdebug1("'remediation' field invalid or not found on check.");
+        goto error;
     }
+    cJSON_AddStringToObject(check_information, "remediation", remediation->valuestring);
 
     cJSON *compliances = cJSON_GetObjectItem(check, "compliance");
 
@@ -2701,7 +2666,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
             cJSON *version;
             char *compliance_value = NULL;
             cJSON_ArrayForEach(version, policy){
-                if(!version->valuestring){
+                if(!cJSON_IsString(version)){
                     mwarn("Invalid compliance format in policy: %s (check %d)", policy_id->valuestring, pm_id->valueint);
                     continue;
                 }
@@ -2717,16 +2682,10 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
 
     cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
 
-    if(!condition) {
-        mdebug1("No 'condition' field found on check.");
+    if(!cJSON_IsString(condition)) {
+        mdebug1("'condition' field invalid or not found on check.");
         goto error;
     }
-
-    if(!condition->valuestring) {
-        mdebug1("Field 'condition' must be a string.");
-        goto error;
-    }
-
     cJSON_AddStringToObject(check_information, "condition", condition->valuestring);
 
     cJSON *references = cJSON_GetObjectItem(check, "references");
@@ -2837,7 +2796,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
         cJSON_AddStringToObject(check_information, "result", result);
     }
 
-    if(!policy_id->valuestring) {
+    if(!cJSON_IsString(policy_id)){
         mdebug1("Field 'id' must be a string.");
         goto error;
     }
@@ -2865,11 +2824,7 @@ static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const resu
     cJSON *pm_id = cJSON_GetObjectItem(check, "id");
     int alert = 1;
 
-    if(!pm_id) {
-        return 0;
-    }
-
-    if(!pm_id->valueint) {
+    if(!cJSON_IsNumber(pm_id)){
         return 0;
     }
 
