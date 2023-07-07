@@ -1,0 +1,8 @@
+<group name="maltiverse,">
+    <rule id="99500" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="integration">maltiverse</field>
+        <description>Maltiverse integration messages</description>
+        <options>no_full_log</options>
+    </rule>
+</group>
