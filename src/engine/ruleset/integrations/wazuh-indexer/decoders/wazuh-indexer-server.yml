@@ -1,0 +1,60 @@
+name: decoder/wazuh-indexer-server/0
+
+metadata:
+  module: wazuh-indexer
+  title: Wazuh indexer server logs
+  description: Decoder for Wazuh indexer server logs
+  compatibility: This decoder has been tested with logs from Wazuh version 4.4
+  versions:
+    - "4.4"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-07-03
+  references:
+    - "https://documentation.wazuh.com/current/getting-started/components/wazuh-indexer.html"
+    - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
+
+sources:
+  - decoder/integrations/0
+
+check:
+  - ~json.type: server
+  #- ~json.cluster\.name: +exists
+  # TODO: Once the events arrive tagged, uncomment the following two lines
+  # - event.module: wazuh-indexer
+  # - event.dataset: wazuh-indexer-server
+
+definitions:
+  isError: log.level==FATAL OR log.level==ERROR
+  isInfo: log.level!=FATAL AND log.level!=ERROR
+
+normalize:
+  - map:
+      - event.module: wazuh-indexer
+      - event.dataset: wazuh-indexer-server
+      - wazuh.decoders: +array_append/wazuh-indexer-server
+      - '@timestamp': $~json.timestamp
+      - event.created: $~json.timestamp
+      - event.kind: event
+      - event.category: +array_append/database
+      - log.level: $~json.level
+      - log.logger: $~json.component
+
+  - check: $isError
+    map:
+      - event.type: +array_append/error
+
+  - check: $isInfo
+    map:
+      - event.type: +array_append/info
+
+  - map:
+      - host.name: $~json.node.name
+      - host.id: $~json.node.id
+      - ~cluster.name: $~json.cluster.name
+      - ~cluster.uuid: $~json.cluster.uuid
+      - ~node.name: $~json.node.name
+      - ~node.id: $~json.node.id
+      - message: $~json.message
+      # - ~json: +delete
