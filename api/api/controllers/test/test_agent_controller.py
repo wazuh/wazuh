@@ -751,7 +751,8 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'group_list': None,
                 'sort': None,
                 'search': None,
-                'hash_algorithm': hash_
+                'hash_algorithm': hash_,
+                'q': None
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agent_groups,
                                       f_kwargs=mock_remove.return_value,

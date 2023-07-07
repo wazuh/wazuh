@@ -1088,7 +1088,7 @@ async def delete_groups(request, groups_list: str = None, pretty: bool = False,
 
 async def get_list_group(request, pretty: bool = False, wait_for_complete: bool = False,
                         groups_list: str = None, offset: int = 0, limit: int = None,
-                        sort: str = None, search: str = None) -> web.Response:
+                        sort: str = None, search: str = None, q: str = None) -> web.Response:
     """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
@@ -1112,6 +1112,8 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
         ascending or descending order.
     search : str
         Look for elements with the specified string.
+    q : str
+        Query to filter results by.
 
     Returns
     -------
@@ -1124,7 +1126,8 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
                 'group_list': groups_list,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'hash_algorithm': hash_}
+                'hash_algorithm': hash_,
+                'q': q}
     dapi = DistributedAPI(f=agent.get_agent_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
