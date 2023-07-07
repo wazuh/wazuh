@@ -1,7 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.4.5]
+## [v4.4.5] - 2023-07-07
+
+### Changed
+
+- Support empty ruleset/SCA directories. ([#2256](https://github.com/wazuh/wazuh-packages/pull/2256))
+- Remove service requirement from RPM packages. ([#2257](https://github.com/wazuh/wazuh-packages/pull/2257))
 
 
 ## [v4.4.4] - 2023-06-14
