@@ -12,8 +12,8 @@
 #include <error.hpp>
 
 #include <kvdb/iKVDBManager.hpp>
-#include <kvdb/kvdbHandlerCollection.hpp>
 #include <kvdb/kvdbHandler.hpp>
+#include <kvdb/kvdbHandlerCollection.hpp>
 
 namespace metricsManager
 {
@@ -40,8 +40,7 @@ struct KVDBManagerOptions
  * @brief KVDBManager Entry Point class.
  *
  */
-class KVDBManager final
-    : public IKVDBManager
+class KVDBManager final : public IKVDBManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
@@ -84,7 +83,8 @@ public:
      * @copydoc IKVDBManager::getKVDBHandler
      *
      */
-    std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName,
+                                                                            const std::string& scopeName) override;
 
     /**
      * @copydoc IKVDBManager::listDBs
@@ -136,6 +136,14 @@ private:
     void finalizeMainDB();
 
     /**
+     * @brief Create a Shared Column Family Shared Pointer with custom delete function.
+     *
+     * @param cfRawPtr Raw pointer to the Column Family Handle.
+     * @return std::shared_ptr<rocksdb::ColumnFamilyHandle> Shared Pointer to the Column Family Handle.
+     */
+    std::shared_ptr<rocksdb::ColumnFamilyHandle> createSharedCFHandle(rocksdb::ColumnFamilyHandle* cfRawPtr);
+
+    /**
      * @brief Custom Collection Object to wrap maps, searchs, references, related to handlers and scopes.
      *
      */
@@ -151,9 +159,9 @@ private:
      * @brief Create a Column Family object and store in map.
      *
      * @param name Name of the DB -> mapped to Column Family.
-     * @return std::variant<rocksdb::ColumnFamilyHandle*, base::Error> Column Family Handle or specific error.
+     * @return std::optional<base::Error> Specific error.
      */
-    std::variant<rocksdb::ColumnFamilyHandle*, base::Error> createColumnFamily(const std::string& name);
+    std::optional<base::Error> createColumnFamily(const std::string& name);
 
     /**
      * @brief Options the Manager was built with.
@@ -171,20 +179,19 @@ private:
      * @brief Internal rocksdb::DB object. This is the main object through which all operations are done.
      *
      */
-    rocksdb::DB* m_pRocksDB;
-
+    std::shared_ptr<rocksdb::DB> m_pRocksDB;
     /**
      * @brief Internal map of Column Family Handles.
      * This is the loaded CFs or KVDBs.
      *
      */
-    std::map<std::string, rocksdb::ColumnFamilyHandle*> m_mapCFHandles;
+    std::map<std::string, std::shared_ptr<rocksdb::ColumnFamilyHandle>> m_mapCFHandles;
 
     /**
      * @brief Default Column Family Handle
      *
      */
-    rocksdb::ColumnFamilyHandle* m_pDefaultCFHandle;
+    std::shared_ptr<rocksdb::ColumnFamilyHandle> m_pDefaultCFHandle;
 
     /**
      * @brief Syncronization object for Scopes Collection (m_mapScopes).

@@ -11,7 +11,7 @@ namespace rocksdb
 {
 class DB;
 class ColumnFamilyHandle;
-};
+}; // namespace rocksdb
 
 namespace kvdbManager
 {
@@ -21,8 +21,7 @@ class IKVDBHandlerCollection;
 /**
  * @brief This is the concrete implementation of a KVDB Handler.
  */
-class KVDBHandler
-    : public IKVDBHandler
+class KVDBHandler : public IKVDBHandler
 {
 public:
     /**
@@ -34,8 +33,8 @@ public:
      * @param scopeName Name of the Scope.
      *
      */
-    KVDBHandler(rocksdb::DB* db,
-                rocksdb::ColumnFamilyHandle* cfHandle,
+    KVDBHandler(std::weak_ptr<rocksdb::DB> weakDB,
+                std::weak_ptr<rocksdb::ColumnFamilyHandle> weakCFHandle,
                 std::shared_ptr<IKVDBHandlerCollection> collection,
                 const std::string& spaceName,
                 const std::string& scopeName);
@@ -90,16 +89,16 @@ public:
 
 protected:
     /**
-     * @brief Pointer to the RocksDB:ColumnFamilyHandle instance.
+     *  @brief Weak Pointer to the RocksDB:ColumnFamilyHandle instance.
      *
      */
-    rocksdb::ColumnFamilyHandle* m_pCFhandle;
+    std::weak_ptr<rocksdb::ColumnFamilyHandle> m_weakCFHandle;
 
     /**
-     * @brief Pointer to the RocksDB:DB instance.
+     * @brief Weak Pointer to the RocksDB:DB instance.
      *
      */
-    rocksdb::DB* m_pRocksDB;
+    std::weak_ptr<rocksdb::DB> m_weakDB;
 
     /**
      * @brief Name of the Database. Kept reference to remove handler from collection.
