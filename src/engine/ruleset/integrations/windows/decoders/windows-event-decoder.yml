@@ -1,6 +1,7 @@
 name: decoder/windows-event-decoder/0
 
 parents:
+  - decoder/integrations/0
   - decoder/windows-json/0
 
 metadata:
@@ -17,11 +18,11 @@ metadata:
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
-  - ~json.Event: +exists
+  - wazuh.origin: EventChannel
 
 parse:
   logpar:
-    - ~json.Event: <~windows/xml/windows>
+    - event.original: <~windows/xml/windows>
 
 normalize:
  - map:
@@ -66,7 +67,3 @@ normalize:
     - ~windows.Event.System.Level.#text: "5"
    map:
     - log.level: "Verbose"
-
-# Cleanup
- - map:
-   - ~json: +delete

@@ -383,7 +383,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     DWORD count = 0;
     int result = 0;
     wchar_t *wprovider_name = NULL;
-    char *msg_sent = NULL;
     char *provider_name = NULL;
     char *msg_from_prov = NULL;
     char *xml_event = NULL;
@@ -391,8 +390,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *end_prov = NULL;
     char *find_prov = NULL;
     size_t num;
-
-    cJSON *event_json = cJSON_CreateObject();
 
     os_malloc(OS_MAXSTR, provider_name);
 
@@ -471,19 +468,13 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                 "Could not get message for (%s)",
                 channel->evt_log);
         }
-        else {
-            cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
-        }
     }
 
     win_format_event_string(xml_event);
 
-    cJSON_AddStringToObject(event_json, "Event", xml_event);
-    msg_sent = cJSON_PrintUnformatted(event_json);
+    w_logcollector_state_update_file(channel->evt_log, strlen(xml_event));
 
-    w_logcollector_state_update_file(channel->evt_log, strlen(msg_sent));
-
-    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
     } else {
@@ -497,11 +488,9 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 cleanup:
     os_free(msg_from_prov);
     os_free(xml_event);
-    os_free(msg_sent);
     os_free(properties_values);
     os_free(provider_name);
     os_free(wprovider_name);
-    cJSON_Delete(event_json);
 
     return;
 }
