@@ -454,15 +454,18 @@ def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, 
         assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
 
-@pytest.mark.parametrize('group_list, expected_result', [
-    (['group-1', 'group-2'], ['group-1', 'group-2']),
-    (['invalid_group'], [])
+@pytest.mark.parametrize('group_list, q, expected_result', [
+    (['group-1', 'group-2'], None, ['group-1', 'group-2']),
+    (['invalid_group'], None, []),
+    ([], 'name=group-empty', ['group-empty']),
+    ([], 'mergedSum=a336982f3c020cd558a16113f752fd5b', ['group-1', 'group-2']),
+    ([], 'count=0', ['group-empty'])
 ])
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_groups(socket_mock, send_mock, group_list, expected_result):
+def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_result):
     """Test `get_agent_groups` from agent module.
 
     This will check if the provided groups exists.
@@ -474,7 +477,7 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, expected_res
     expected_result : List of str
         List of expected groups to be returned by 'get_agent_groups'.
     """
-    group_result = get_agent_groups(group_list)
+    group_result = get_agent_groups(group_list, q=q)
     assert len(group_result.affected_items) == len(expected_result)
     for item, group_name in zip(group_result.affected_items, group_list):
         assert item['name'] == group_name
