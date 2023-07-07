@@ -10,7 +10,8 @@ from typing import Union
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
-    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command
+    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
+    GROUP_SORT_FIELDS
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -581,35 +582,43 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
                                       some_msg='Some groups information was not returned',
                                       none_msg='No group information was returned'
                                       )
-    if group_list:
 
+    if group_list:
         system_groups = get_groups()
         # Add failed items
         for invalid_group in set(group_list) - system_groups:
             result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
+    else:
+        rbac_filters = dict()
 
-        with WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort,
-                                search=search, **rbac_filters, query=q) as group_query:
-            query_data = group_query.run()
+    with WazuhDBQueryGroup(**rbac_filters) as group_query:
+        query_data = group_query.run()
 
         for group in query_data['items']:
+            if group_list and group['name'] not in group_list:
+                continue
+
             full_entry = path.join(common.SHARED_PATH, group['name'])
 
             # merged.mg and agent.conf sum
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
-
             if merged_sum:
                 group['mergedSum'] = merged_sum
 
+            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
             if conf_sum:
                 group['configSum'] = conf_sum
+
             affected_groups.append(group)
 
-        result.affected_items = affected_groups
-        result.total_affected_items = query_data['totalItems']
+    print(affected_groups)
+    data = process_array(affected_groups, offset=offset, limit=limit,
+                         allowed_sort_fields=GROUP_SORT_FIELDS, sort_by=sort,
+                         search_text=search, q=q)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
