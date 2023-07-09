@@ -73,7 +73,7 @@ pytestmark = pytest.mark.server
 
 # Generic vars
 TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
+CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_templates')
 TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 STATISTICS_TEMPLATE_PATH = os.path.join(TEST_DATA_PATH, 'statistics_template')
 daemons_handler_configuration = {'all_daemons': True}

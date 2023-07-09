@@ -71,7 +71,7 @@ configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configuration_folder_path = os.path.join(test_data_path, 'configuration_template')
+configuration_folder_path = os.path.join(test_data_path, 'configuration_templates')
 cases_folder_path = os.path.join(test_data_path, 'test_cases')
 test_configuration_path = os.path.join(configuration_folder_path, 'configuration_max_upload_size.yaml')
 test_cases_path = os.path.join(cases_folder_path, 'cases_max_upload_size.yaml')
