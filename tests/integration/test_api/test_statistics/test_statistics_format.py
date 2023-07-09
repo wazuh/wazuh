@@ -68,7 +68,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils.file import read_json_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
-pytestmark = pytest.mark.server
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 
 # Generic vars
@@ -99,7 +99,6 @@ t2_statistics_template_path = os.path.join(STATISTICS_TEMPLATE_PATH, 'agent_stat
 test2_configuration, test2_metadata, test2_cases_ids = get_test_cases_data(t2_cases_path)
 
 
-@pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test1_configuration, test1_metadata),
                          ids=test1_cases_ids)
 def test_manager_statistics_format(test_configuration, test_metadata, load_wazuh_basic_configuration,
@@ -159,7 +158,6 @@ def test_manager_statistics_format(test_configuration, test_metadata, load_wazuh
     jsonschema.validate(instance=response.json(), schema=stats_schema)
 
 
-@pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_metadata', test2_metadata, ids=test2_cases_ids)
 def test_agent_statistics_format(test_metadata, daemons_handler):
     """
