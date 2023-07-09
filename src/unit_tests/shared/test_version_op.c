@@ -1750,7 +1750,8 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(20), "Big Sur");
     assert_string_equal(OSX_ReleaseName(21), "Monterey");
     assert_string_equal(OSX_ReleaseName(22), "Ventura");
-    assert_string_equal(OSX_ReleaseName(23), "Unknown");
+    assert_string_equal(OSX_ReleaseName(23), "Sonoma");
+    assert_string_equal(OSX_ReleaseName(24), "Unknown");
 }
 
 #endif
