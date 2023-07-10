@@ -28,22 +28,16 @@ platform in order to enrich the original alert with threat Intel information
 Installation Guide
 ##################
 
-1. Move this file ``maltiverse.py`` to ``/var/ossec/integrations/custom-maltiverse.py``
-   and make sure the file has the right perms:
+Add this to the ossec.conf file, inside <ossec_config></ossec_config> block:
 
-   chmod +x /var/ossec/integrations/custom-maltiverse.py
-   chown root.wazuh /var/ossec/integrations/custom-maltiverse.py
+    <integration>
+        <name>maltiverse</name>
+        <hook_url>https://api.maltiverse.com</hook_url>
+        <api_key><YOUR_MALTIVERSE_AUTH_TOKEN></api_key>
+        <alert_format>json</alert_format>
+    </integration>
 
-2. Add this to the ossec.conf file, inside <ossec_config></ossec_config> block:
-
-<integration>
-     <name>custom-maltiverse</name>
-     <hook_url>https://api.maltiverse.com</hook_url>
-     <api_key><YOUR_MALTIVERSE_AUTH_TOKEN></api_key>
-     <alert_format>json</alert_format>
-</integration>
-
-3. Restart Wazuh Manager:
+And restart Wazuh Manager:
 
     /etc/init.d/wazuh-manager restart
 
