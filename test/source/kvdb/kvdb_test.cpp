@@ -100,6 +100,73 @@ TEST_F(KVDBTest, InitializeDBInUseWithOtherManager)
     ASSERT_THROW(kvdbManager->initialize(), std::runtime_error);
 }
 
+TEST_F(KVDBTest, DeleteDB)
+{
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+    ASSERT_NE(spMetrics, nullptr);
+
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, "TEST_DB2"};
+
+    auto kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    ASSERT_NO_THROW(kvdbManager->initialize());
+
+    // Create a DB
+    ASSERT_EQ(kvdbManager->createDB("test"), std::nullopt);
+
+    // Delete the DB
+    ASSERT_EQ(kvdbManager->deleteDB("test"), std::nullopt);
+
+    // Try to get the DB
+    auto result = kvdbManager->getKVDBHandler("test", "ut");
+    ASSERT_TRUE(std::holds_alternative<base::Error>(result));
+    ASSERT_EQ(std::get<base::Error>(result).message, "The DB test does not exists.");
+}
+
+TEST_F(KVDBTest, DoubleDeleteDB)
+{
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+    ASSERT_NE(spMetrics, nullptr);
+
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, "TEST_DB2"};
+
+    auto kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    ASSERT_NO_THROW(kvdbManager->initialize());
+
+    // Create a DB
+    ASSERT_EQ(kvdbManager->createDB("test"), std::nullopt);
+
+    // Delete the DB
+    ASSERT_EQ(kvdbManager->deleteDB("test"), std::nullopt);
+
+    // Double delete the DB
+    auto result = kvdbManager->deleteDB("test");
+    ASSERT_NE(result, std::nullopt);
+    ASSERT_EQ(result->message, "The DB test does not exists.");
+}
+
+TEST_F(KVDBTest, DeleteAndCreateSameDB)
+{
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+    ASSERT_NE(spMetrics, nullptr);
+
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, "TEST_DB3"};
+
+    auto kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    ASSERT_NO_THROW(kvdbManager->initialize());
+
+    // Create a DB
+    ASSERT_EQ(kvdbManager->createDB("test"), std::nullopt);
+
+    // Delete the DB
+    ASSERT_EQ(kvdbManager->deleteDB("test"), std::nullopt);
+
+    // Create a same DB
+    ASSERT_EQ(kvdbManager->createDB("test"), std::nullopt);
+}
+
 TEST_F(KVDBTest, ScopeTest)
 {
     ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
