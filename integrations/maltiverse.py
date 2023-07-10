@@ -157,6 +157,19 @@ def main(args: list):
         raise
 
 
+def load_alert(file_path: str) -> dict:
+    """Parse alert file location to load and return JSON object."""
+    try:
+        with open(file_path) as alert_file:
+            return json.load(alert_file)
+    except FileNotFoundError:
+        debug("# Alert file %s doesn't exist" % file_path)
+        sys.exit(3)
+    except json.decoder.JSONDecodeError as e:
+        debug(f"Failed getting json_alert: {e}")
+        sys.exit(4)
+
+
 def process_args(args: list):
     debug("# Starting")
 
@@ -168,17 +181,7 @@ def process_args(args: list):
     debug(f"# API Key: {api_key}")
     debug(f"# Hook Url: {hook_url}")
 
-    # Load alert. Parse JSON object.
-    try:
-        with open(alert_file_location) as alert_file:
-            json_alert = json.load(alert_file)
-    except FileNotFoundError:
-        debug("# Alert file %s doesn't exist" % alert_file_location)
-        sys.exit(3)
-    except json.decoder.JSONDecodeError as e:
-        debug(f"Failed getting json_alert: {e}")
-        sys.exit(4)
-
+    json_alert = load_alert(alert_file_location)
     debug(f"# Processing alert: {json_alert}")
 
     maltiverse_api = Maltiverse(endpoint=hook_url, auth_token=api_key)
