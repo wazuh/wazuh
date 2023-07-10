@@ -1,4 +1,4 @@
-#!/var/ossec/framework/python/bin/python3.9
+#!/var/ossec/framework/python/bin/python3
 
 """
 
