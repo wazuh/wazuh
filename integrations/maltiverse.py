@@ -223,6 +223,21 @@ def get_ioc_confidence(ioc: dict) -> str:
         return "Low" if sightings > 1 else "None"
 
 
+def match_ecs_type(maltiverse_type: str) -> str:
+    """Converts maltiverse type to ECS Threat type.
+
+    # Expected values for threat.indicator.type field:
+    # https://www.elastic.co/guide/en/ecs/current/ecs-threat.html#field-threat-indicator-type
+    """
+    mapping = {
+        "ip": "ipv4-addr",
+        "hostname": "domain-name",
+        "sample": "file",
+        "url": "url",
+    }
+    return mapping.get(maltiverse_type)
+
+
 def maltiverse_alert(
     alert_id: int,
     ioc_dict: dict,
@@ -257,7 +272,7 @@ def maltiverse_alert(
         "threat": {
             "indicator": {
                 "name": ioc_name,
-                "type": _type,
+                "type": match_ecs_type(_type),
                 "description": ", ".join(
                     set([b.get("description") for b in _blacklist]),
                 ),
@@ -269,10 +284,13 @@ def maltiverse_alert(
                 "last_seen": ioc_dict.get("modification_time"),
                 "confidence": get_ioc_confidence(ioc_dict),
                 "sightings": len(_blacklist),
-                "reference": f"https://maltiverse.com/{_type}/{_ref}",
+                "reference": f"https://maltiverse.com/{_type}/{_ref}" if _type else "",
             }
         },
     }
+
+    if _type == "ip":
+        alert["threat"]["indicator"]["ip"] = ioc_name
 
     if not include_full_source:
         alert.pop("maltiverse")
