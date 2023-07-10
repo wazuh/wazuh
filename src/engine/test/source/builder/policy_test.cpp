@@ -65,7 +65,7 @@ TEST_F(PolicyTest, OneDecoderPolicy)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     registerHelperBuilders(helperRegistry);
-    builder::internals::dependencies deps;
+    builder::internals::dependencies deps {};
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
@@ -94,7 +94,7 @@ TEST_F(PolicyTest, OneRulePolicy)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     registerHelperBuilders(helperRegistry);
-    builder::internals::dependencies deps;
+    builder::internals::dependencies deps {};
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
@@ -123,7 +123,7 @@ TEST_F(PolicyTest, OneOutputPolicy)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     registerHelperBuilders(helperRegistry);
-    builder::internals::dependencies deps;
+    builder::internals::dependencies deps {};
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
@@ -152,7 +152,7 @@ TEST_F(PolicyTest, OneFilterPolicy)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     registerHelperBuilders(helperRegistry);
-    builder::internals::dependencies deps;
+    builder::internals::dependencies deps {};
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
@@ -166,7 +166,7 @@ TEST_F(PolicyTest, OrphanAsset)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     registerHelperBuilders(helperRegistry);
-    builder::internals::dependencies deps;
+    builder::internals::dependencies deps {};
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
@@ -190,7 +190,7 @@ TEST_F(PolicyTest, CompletePolicy)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     registerHelperBuilders(helperRegistry);
-    builder::internals::dependencies deps;
+    builder::internals::dependencies deps {};
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
