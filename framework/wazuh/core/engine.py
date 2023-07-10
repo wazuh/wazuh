@@ -46,7 +46,7 @@ def get_runtime_config(name: str = None) -> dict[str, Any]:
 
     return resp
 
-def update_runtime_config(name: str, content: str, save: bool = False) -> dict[str, Any]:
+def update_runtime_config(name: str, content: str, save: bool = False):
     """Update the runtime configuration of the manager.
 
     Parameters
@@ -64,41 +64,34 @@ def update_runtime_config(name: str, content: str, save: bool = False) -> dict[s
         Engine response.
     """
     # TODO: use socket to send the command instead of the mock
-    resp = {'status': 'OK', 'error': None}
-
-    try:
-        ENGINE.update_config(name, content, save)
-    except Exception as exc:
-        resp = {'status': 'ERROR', 'error': f'Failed reading configuration file: {exc}'}
-
-    return resp
+    ENGINE.update_config(name, content, save)
 
 def parse_content(content: str) -> str:
-        """Parse the Engine runtime configuration to JSON
+    """Parse the Engine runtime configuration to JSON
 
-        Parameters
-        ----------
-        content : str
-            Engine runtime configuration content.
+    Parameters
+    ----------
+    content : str
+        Engine runtime configuration content.
         
-        Returns
-        -------
-        str
-            JSON-encoded object.
-        """
-        # Parse the data string and create a dictionary
-        pattern = r'([\w.]+)=("[^"]*"|\d+)'
-        content_dict = dict(re.findall(pattern, content.strip()))
-        result = {}
+    Returns
+    -------
+    str
+        JSON-encoded object.
+    """
+    # Parse the data string and create a dictionary
+    pattern = r'([\w.]+)=("[^"]*"|\d+)'
+    content_dict = dict(re.findall(pattern, content.strip()))
+    result = {}
 
-        for keys, value in content_dict.items():
-            # Remove double quotes and convert strings to numbers
-            value = value.replace('"', '')
-            if value.isdigit():
-                value = int(value)
-            dotted_str_to_dict(result, keys, value)
+    for keys, value in content_dict.items():
+        # Remove double quotes and convert strings to numbers
+        value = value.replace('"', '')
+        if value.isdigit():
+            value = int(value)
+        dotted_str_to_dict(result, keys, value)
 
-        return json.dumps(result)
+    return json.dumps(result)
 
 def dotted_str_to_dict(result: dict, keys: str, value: Any):
     """Coverts dot delimited string to a dictionary
