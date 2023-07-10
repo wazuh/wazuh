@@ -1,8 +1,18 @@
 <group name="maltiverse,">
+
     <rule id="99500" level="10">
         <decoded_as>json</decoded_as>
         <field name="integration">maltiverse</field>
         <description>Maltiverse integration messages</description>
         <options>no_full_log</options>
     </rule>
+
+    <rule id="99501" level="12">
+        <if_sid>99500</if_sid>
+        <decoded_as>json</decoded_as>
+        <field name="threat.indicator.confidence">Low|Medium|High</field>
+        <description>Maltiverse: Alert $(threat.indicator.name) - Detected IoC of type $(threat.indicator.type) with [$(threat.indicator.confidence)] confidence</description>
+        <options>no_full_log</options>
+    </rule>
+
 </group>
