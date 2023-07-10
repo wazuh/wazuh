@@ -128,11 +128,11 @@ CREATE TABLE IF NOT EXISTS sys_hwinfo (
     scan_time TEXT,
     board_serial TEXT,
     cpu_name TEXT,
-    cpu_cores INTEGER CHECK (cpu_cores > 0),
-    cpu_mhz REAL CHECK (cpu_mhz > 0),
-    ram_total INTEGER CHECK (ram_total > 0),
-    ram_free INTEGER CHECK (ram_free > 0),
-    ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+    cpu_cores INTEGER,
+    cpu_mhz REAL,
+    ram_total INTEGER,
+    ram_free INTEGER,
+    ram_usage INTEGER,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, board_serial)
 );
@@ -397,7 +397,7 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '10');
+INSERT INTO metadata (key, value) VALUES ('db_version', '11');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
