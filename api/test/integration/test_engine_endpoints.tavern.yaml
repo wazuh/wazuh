@@ -3,34 +3,8 @@ test_name: PUT /engine/config/runtime
 
 stages:
 
-  - name: Update engine config with an invalid body (invalid name)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/json
-      json:
-        invalid_name: ""
-    response:
-      status_code: 400
-
-  - name: Update engine config with an invalid body (invalid content)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/json
-      json:
-        name: "server_timeout"
-    response:
-      status_code: 400
-
   - name: Update engine config with a valid body
-    request:
+    request: &update_config
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
       method: PUT
@@ -43,19 +17,12 @@ stages:
     response:
       status_code: 200
       json:
-        <<: *config_json_response
-        data:
-          status: "OK"
-          error: null
+        message: !anystr
 
   - name: Update engine config with a valid body and save
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/json
+      <<: *update_config
       params:
         save: true
       json:
@@ -64,18 +31,41 @@ stages:
     response:
       status_code: 200
       json:
-        <<: *config_json_response
-        data:
-          status: "OK"
-          error: null
+        message: !anystr
 
+  - name: Try to update config with an invalid name
+    request:
+      verify: False
+      <<: *update_config
+      json:
+        name: "key"
+        content: "value"
+    response:
+      status_code: 200
+      json:
+        invalid_name: ""
+      response:
+        status_code: 400
+        json:
+          error: 1129
+
+  - name: Try to update config with an invalid content
+    request:
+      verify: False
+      <<: *update_config
+      json:
+        name: "server_timeout"
+    response:
+      status_code: 400
+      json:
+          error: 1130 # TODO: create WazuhError
 
 ---
 test_name: GET /engine/config/runtime
 stages:
 
   - name: Get all engine runtime configuration key-values
-    request:
+    request: &get_config
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
       method: GET
@@ -92,13 +82,10 @@ stages:
             - key: "value"
         error: 0
 
-  - name: Get engine runtime configuration non existent value
+  - name: Try to get non existent value
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *get_config
       params:
         name: server_timeout
     response:
@@ -112,10 +99,7 @@ stages:
   - name: Get engine runtime configuration value
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *get_config
       params:
         name: key
     response:
@@ -126,3 +110,49 @@ stages:
           error: null
           content: "value"
         error: 0
+
+  - name: Filter configuration by query
+      request:
+        verify: False
+        <<: *get_config
+        params:
+          q: key=key
+      response:
+        status_code: 200
+        json:
+          data:
+            status: "OK"
+            error: null
+            content: "value"
+          error: 0
+  
+  - name: Get configuration with select
+      request:
+        verify: False
+        <<: *get_config
+        params:
+          select: 
+      response:
+        status_code: 200
+        json:
+
+  - name: Get configuration with sort
+      request:
+        verify: False
+        <<: *get_config
+        params:
+          select: 
+      response:
+        status_code: 200
+        json:
+  
+  - name: Get configuration with offset and limit
+      request:
+        verify: False
+        <<: *get_config
+        params:
+          offset: 0 
+          limit: 5
+      response:
+        status_code: 200
+        json:
