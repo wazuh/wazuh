@@ -400,8 +400,6 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
          targetField = std::move(targetField),
          kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
         {
-            event->setBool(false, targetField);
-
             std::string resolvedKey;
             if (Parameter::Type::REFERENCE == key.m_type)
             {
@@ -412,6 +410,7 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
                 }
                 else
                 {
+                    event->setBool(false, targetField);
                     return base::result::makeFailure(event, failureTrace1);
                 }
             }
@@ -424,6 +423,7 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
 
             if (resultValue)
             {
+                event->setBool(false, targetField);
                 return base::result::makeFailure(event, failureTrace2);
             }
 
