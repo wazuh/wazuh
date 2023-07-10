@@ -7,11 +7,24 @@
         <options>no_full_log</options>
     </rule>
 
+    <!-- mitre attack software related -->
     <rule id="99501" level="12">
         <if_sid>99500</if_sid>
         <decoded_as>json</decoded_as>
+        <field name="threat.software.id" type="pcre2">^S\d{4}$</field>
+        <description>Maltiverse: Alert Software $(threat.software.name) - Detected IoC $(threat.indicator.name) of type $(threat.indicator.type) with [$(threat.indicator.confidence)] that is related to $(threat.software.id)-$(threat.software.name) software known attack</description>
+        <mitre>
+            <id>$(threat.software.id)</id>
+        </mitre>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- threat indicator confidence higher than low -->
+    <rule id="99502" level="12">
+        <if_sid>99500</if_sid>
+        <decoded_as>json</decoded_as>
         <field name="threat.indicator.confidence">Low|Medium|High</field>
-        <description>Maltiverse: Alert $(threat.indicator.name) - Detected IoC of type $(threat.indicator.type) with [$(threat.indicator.confidence)] confidence</description>
+        <description>Maltiverse: Alert Indicator $(threat.indicator.name) - Detected IoC of type $(threat.indicator.type) with [$(threat.indicator.confidence)] confidence</description>
         <options>no_full_log</options>
     </rule>
 
