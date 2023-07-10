@@ -14,6 +14,7 @@
 #ifdef WIN32
 #include <tlhelp32.h>
 #include <psapi.h>
+#include <windows.h>
 #endif
 
 #ifndef WIN32
@@ -323,4 +324,19 @@ OSList *w_os_get_process_list()
     CloseHandle(hsnap);
     return (p_list);
 }
+
+typedef BOOL (WINAPI *LPFN_WOW64DISABLEWOW64FSREDIRECTION)(PVOID *OldValue);
+ 
+void SafeWow64DisableWow64FsRedirection(PVOID *oldValue) {
+    LPFN_WOW64DISABLEWOW64FSREDIRECTION Wow64DisableWow64FsRedirection = NULL;
+    HMODULE kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
+    if (kernel32) {
+        Wow64DisableWow64FsRedirection = (LPFN_WOW64DISABLEWOW64FSREDIRECTION)GetProcAddress(kernel32, "Wow64DisableWow64FsRedirection");
+    }
+    if (Wow64DisableWow64FsRedirection) {
+        // The Wow64DisableWow64FsRedirection function is supported
+        Wow64DisableWow64FsRedirection(oldValue);
+    }
+}
+
 #endif
