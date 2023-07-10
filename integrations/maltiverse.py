@@ -223,6 +223,25 @@ def get_ioc_confidence(ioc: dict) -> str:
         return "Low" if sightings > 1 else "None"
 
 
+def get_mitre_information(ioc: dict) -> dict:
+    """Returns mitre information following the ECS Threat format."""
+    mitre_info = {}
+    for indicator in ioc.get("blacklist", []):
+        for external_references in indicator.get("external_references", []):
+            # filter by mitre known attacks
+            if external_references.get("source_name") != "mitre-attack":
+                continue
+
+            # get the last occurrence since it should be more updated
+            if external_references.get("external_id", "").startswith("S"):
+                mitre_info["software"] = {
+                    "id": external_references.get("external_id"),
+                    "reference": external_references.get("url"),
+                    "name": external_references.get("description"),
+                }
+    return mitre_info
+
+
 def match_ecs_type(maltiverse_type: str) -> str:
     """Converts maltiverse type to ECS Threat type.
 
@@ -291,6 +310,9 @@ def maltiverse_alert(
 
     if _type == "ip":
         alert["threat"]["indicator"]["ip"] = ioc_name
+
+    if (mitre_info := get_mitre_information(ioc_dict)) and "software" in mitre_info:
+        alert["threat"]["software"] = mitre_info["software"]
 
     if not include_full_source:
         alert.pop("maltiverse")
