@@ -56,6 +56,7 @@ import os
 from socket import socket, AF_UNIX, SOCK_DGRAM
 import sys
 import time
+from urllib.parse import urlsplit
 
 import requests
 
@@ -123,6 +124,12 @@ class Maltiverse:
         ).json()
 
 
+def is_valid_url(url):
+    """Simple URL Validator."""
+    split_url = urlsplit(url)
+    return bool(split_url.scheme and split_url.netloc)
+
+
 def main(args: list):
     global debug_enabled
     try:
@@ -177,11 +184,15 @@ def process_args(args: list):
     api_key: str = args[2]
     hook_url: str = args[3]
 
+    if not is_valid_url(hook_url):
+        debug(f"# Hook URL argument seems to be invalid: {hook_url}")
+        sys.exit(3)
+
+    json_alert = load_alert(alert_file_location)
+
     debug(f"# File location: {alert_file_location}")
     debug(f"# API Key: {api_key}")
     debug(f"# Hook Url: {hook_url}")
-
-    json_alert = load_alert(alert_file_location)
     debug(f"# Processing alert: {json_alert}")
 
     maltiverse_api = Maltiverse(endpoint=hook_url, auth_token=api_key)
