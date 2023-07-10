@@ -118,7 +118,7 @@ class Maltiverse:
         ).json()
 
 
-def is_valid_url(url):
+def is_valid_url(url: str) -> bool:
     """Simple URL Validator."""
     split_url = urlsplit(url)
     return bool(split_url.scheme and split_url.netloc)
