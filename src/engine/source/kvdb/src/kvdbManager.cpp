@@ -170,13 +170,23 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     if (it != m_mapCFHandles.end())
     {
         auto cfHandle = it->second;
+
         try
         {
-            m_mapCFHandles.erase(it);
+            auto opStatus = m_pRocksDB->DropColumnFamily(cfHandle.get());
+            if (opStatus.ok())
+            {
+                m_mapCFHandles.erase(it);
+            }
+            else
+            {
+                return base::Error {
+                    fmt::format("Could not remove the DB {}: {}", name, opStatus.ToString())};
+            }
         }
         catch (const std::runtime_error& e)
         {
-            return base::Error {fmt::format("Could not remove the DB {}. RocksDB Status: {}", name, e.what())};
+            return base::Error {fmt::format("Could not remove the DB {}: {}", name, e.what())};
         }
     }
     else
