@@ -50,7 +50,7 @@ from wazuh_testing.modules.active_response import patterns as ar_patterns
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.execd import patterns as execd_paterns
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG_CONFIG
-from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -137,8 +137,8 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
     assert ar_monitor.callback_result, 'AR `firewall-drop` program not used.'
 
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_ADD_COMMAND))
-    assert '"command":"add"' in ar_monitor.callback_result, 'AR `add` command not executed.'
+    assert ar_monitor.callback_result, 'AR `add` command not executed.'
     assert '"srcip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `srcip` value is not correct.'
 
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_DELETE_COMMAND))
-    assert '"command":"delete"' in ar_monitor.callback_result, 'AR `delete` command not executed.'
+    assert ar_monitor.callback_result, 'AR `delete` command not executed.'

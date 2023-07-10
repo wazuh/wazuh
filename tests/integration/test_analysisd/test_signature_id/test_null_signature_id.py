@@ -46,7 +46,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.analysisd.testrule import patterns
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
 
 from . import CONFIGS_PATH, TEST_CASES_PATH, RULES_SAMPLE_PATH
@@ -121,14 +121,13 @@ def test_null_signature_id(test_configuration, test_metadata, set_wazuh_configur
           this test.
         - The `cases_null_signature_id.yaml` file provides the test cases.
     '''
-    # Start monitors
-    monitor_not_found = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    monitor_not_found.start(callback=callbacks.generate_callback(patterns.SID_NOT_FOUND))
-
-    monitor_empty = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    monitor_empty.start(callback=callbacks.generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
+    # Instance monitor.
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Check that expected log appears for rules if_sid field pointing to a non existent SID
-    assert monitor_not_found.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SID_NOT_FOUND))
+    assert log_monitor.callback_result
+
     # Check that expected log appears for rules if_sid field being empty (empty since non-existent SID is ignored)
-    assert monitor_empty.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
+    assert log_monitor.callback_result

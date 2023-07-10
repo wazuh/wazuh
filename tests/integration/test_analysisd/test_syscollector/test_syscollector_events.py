@@ -49,7 +49,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
 from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.modules.analysisd import utils, configuration as analysisd_config
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH, RULES_SAMPLE_PATH

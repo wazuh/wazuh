@@ -55,7 +55,8 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.modules.analysisd import patterns, configuration as analysisd_config
 from wazuh_testing.modules.monitord import configuration as monitord_config
-from wazuh_testing.tools import file_monitor, mitm
+from wazuh_testing.tools import mitm
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import configuration, callbacks
 
 from . import TEST_CASES_PATH

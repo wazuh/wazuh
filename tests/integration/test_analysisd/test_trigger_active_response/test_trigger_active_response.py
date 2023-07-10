@@ -55,7 +55,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
-from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template

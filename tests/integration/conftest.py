@@ -13,7 +13,8 @@ from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
 from wazuh_testing.logger import logger
-from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.tools import socket_controller
+from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
@@ -325,7 +326,7 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
         )
         daemon_first and mitm is not None and mitm.start()
         if mitm is not None:
-            monitored_sockets.append(queue_monitor.QueueMonitor(monitored_queue=mitm.queue))
+            monitored_sockets.append(queue_monitor.QueueMonitor(monitored_object=mitm.queue))
             mitm_list.append(mitm)
 
     setattr(request.module, 'monitored_sockets', monitored_sockets)
