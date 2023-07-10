@@ -219,17 +219,26 @@ def maltiverse_alert(
     alert_id: int,
     ioc_dict: dict,
     ioc_name: str,
-    ioc_ref: str,
+    ioc_ref: str = None,
     include_full_source: bool = True,
 ) -> dict:
-    """Generate a new alert using Elastic Common Schema (ECS) Threat Fields
+    """Generate a new alert using Elastic Common Schema (ECS) Threat Fields.
 
-    If ``include_full_source`` is True, the complete
-    Maltiverse API response is also included.
+    This is just a template used to build the generated alert using
+    the following arguments:
+
+    alert_id: the generated alert id
+    ioc_dict: raw information returned by Maltiverse API
+    ioc_name: the representative name of the indicator
+    ioc_ref: (optional) an indicator reference used to build a reference url
+      ioc_name is used by dafault if ioc_ref is not set
+    include_full_source: (optional) if True (default), the complete API
+      response is also included.
     """
 
     _blacklist = ioc_dict.get("blacklist", [])
     _type = ioc_dict.get("type")
+    _ref = ioc_ref if ioc_ref else ioc_name
 
     alert = {
         "integration": "maltiverse",
@@ -252,7 +261,7 @@ def maltiverse_alert(
                 "last_seen": ioc_dict.get("modification_time"),
                 "confidence": get_ioc_confidence(ioc_dict),
                 "sightings": len(_blacklist),
-                "reference": f"https://maltiverse.com/{_type}/{ioc_ref}",
+                "reference": f"https://maltiverse.com/{_type}/{_ref}",
             }
         },
     }
@@ -276,7 +285,6 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
                     alert_id=alert["id"],
                     ioc_dict=md5_ioc,
                     ioc_name=md5,
-                    ioc_ref=md5,
                 )
             )
 
@@ -290,7 +298,6 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
                     alert_id=alert["id"],
                     ioc_dict=sha1_ioc,
                     ioc_name=sha1,
-                    ioc_ref=sha1,
                 )
             )
 
@@ -305,7 +312,6 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
                         alert_id=alert["id"],
                         ioc_dict=ipv4_ioc,
                         ioc_name=ipv4,
-                        ioc_ref=ipv4,
                     )
                 )
 
@@ -319,7 +325,6 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
                     alert_id=alert["id"],
                     ioc_dict=hostname_ioc,
                     ioc_name=hostname,
-                    ioc_ref=hostname,
                 )
             )
 
