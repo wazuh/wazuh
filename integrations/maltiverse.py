@@ -84,23 +84,26 @@ class Maltiverse:
         }
 
     def ip_get(self, ip_addr: str) -> dict:
+        """Requests a Maltiverse Ipv4 via API."""
         return requests.get(
             f"{self.endpoint}/ip/{ip_addr}", headers=self.headers
         ).json()
 
     def hostname_get(self, hostname: str) -> dict:
+        """Requests a Maltiverse hostname via API."""
         return requests.get(
             f"{self.endpoint}/hostname/{hostname}", headers=self.headers
         ).json()
 
     def url_get(self, url: str) -> dict:
+        """Requests a Maltiverse url via API."""
         urlchecksum = hashlib.sha256(url.encode("utf-8")).hexdigest()
         return requests.get(
             f"{self.endpoint}/url/{urlchecksum}", headers=self.headers
         ).json()
 
     def sample_get(self, sample: str, algorithm: str = "md5") -> dict:
-        """Requests a sample"""
+        """Requests a Maltiverse sample via API."""
         mapping = {
             "md5": self.sample_get_by_md5,
             "sha1": self.sample_get_by_sha1,
@@ -108,13 +111,13 @@ class Maltiverse:
         return mapping.get(algorithm, mapping.get("md5"))()
 
     def sample_get_by_md5(self, md5: str):
-        """Requests a sample by MD5"""
+        """Requests a Maltiverse MD5 sample via API."""
         return requests.get(
             f"{self.endpoint}/sample/md5/{md5}", headers=self.headers
         ).json()
 
     def sample_get_by_sha1(self, sha1: str):
-        """Requests a sample by SHA1"""
+        """Requests a Maltiverse SHA1 sample via API."""
         return requests.get(
             f"{self.endpoint}/sample/sha1/{sha1}", headers=self.headers
         ).json()
@@ -195,9 +198,9 @@ def debug(msg: str):
 
 
 def get_ioc_confidence(ioc: dict) -> str:
-    """Get vendor-neutral confidence rating
+    """Get vendor-neutral confidence rating.
 
-    using the None/Low/Medium/High scale defined in Appendix A
+    Returns the None/Low/Medium/High scale defined in Appendix A
     of the STIX 2.1 framework
     """
     if not (classification := ioc.get("classification")):
