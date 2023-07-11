@@ -27,11 +27,14 @@ check:
 
 normalize:
   - map:
+      - ~json.timestamp: +replace/,/.
+  - logpar:
+      - ~json.timestamp: <@timestamp/%FT%TZ>
+  - map:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-deprecation
       - wazuh.decoders: +array_append/wazuh-indexer-deprecation
-      - '@timestamp': $~json.timestamp
-      - event.created: $~json.timestamp
+      - event.created: $@timestamp
       - event.kind: event
       - event.category: +array_append/database
       - event.type: +array_append/info
