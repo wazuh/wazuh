@@ -22,16 +22,22 @@
 #define OFFSET_CLOSING_TAGS (2)
 #define AMOUNT_CLOSING_TAGS (4)
 
+#define TAG_ERROR           "{\"error\""
+#define TAG_DATA            "\"data\""
+#define TAG_GLOBAL          "\"global\""
+#define TAG_FILES           "\"files\""
+#define TAG_INTERVAL        "\"interval\""
+#define TAG_LOCATION        "\"location\""
+
 bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj );
 uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, size_t *ptrs, char *output, size_t *sizeOutput);
 void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader);
-void addHeaderGlobal(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader);
 void addClosingTags(char *strJson);
-void addHeaderInterval(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader);
 void extractHeadersFromJson(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t *LenHeaderInterval, size_t *LenHeaderData, size_t *LenHeaderGlobal);
 void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t LenHeaderInterval, size_t LenHeaderData, size_t LenHeaderGlobal, size_t counter, bool getNextPage);
 bool isJsonUpdated(void);
 uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage);
+void replaceBoolToStr(char *buffer, char *match, bool value);
 
 size_t lccom_dispatch(char * command, char ** output){
 
@@ -78,7 +84,7 @@ bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amou
     ptrs[i++] = (size_t)outjson_aux;   //ptrs[0] inicio de estadisticas sin 1er location
 
     while (outjson_aux != NULL) {
-        outjson_aux = strstr(outjson_aux, "\"location\"");
+        outjson_aux = strstr(outjson_aux, TAG_LOCATION);
         if (outjson_aux == NULL) {
             isReadyIndex =  true;
             break;
@@ -112,7 +118,7 @@ uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, 
             size_t len = ptrs[currentIndex] - ptrs[currentIndex-1];
             size_t currentLength = len;
             counter += currentLength;
-            if ( counter < OS_MAXSTR - SIZE_1KB) {
+            if (counter < OS_MAXSTR - SIZE_1KB) {
                 currentIndex++;
             } else {
                 memset(output, 0, OS_MAXSTR);
@@ -154,20 +160,6 @@ void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeade
 }
 
 /**
- * @brief add global header tag to json block
- *
- * @param strJson json string split without closing and opening tags, no greater than 64KB
- * @param bufferTmp temporal buffer for store closing and opening tags
- * @param headerData header tag to object data
- * @param lenHeaderData header tag length for object data
- * @param header header tag to object global
- * @param lenHeader header tag length for object global
- */
-void addHeaderGlobal(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader) {
-    addHeader(strJson, bufferTmp, headerData, lenHeaderData, header, lenHeader);
-}
-
-/**
  * @brief add closing tags
  *
  * @param strJson json string split with opening tags but without closing tags, no greater than 64k
@@ -176,20 +168,6 @@ void addClosingTags(char *strJson) {
     if (strJson != NULL) {
         memcpy(strJson + strlen(strJson) - OFFSET_CLOSING_TAGS, "]}}}", AMOUNT_CLOSING_TAGS);
     }
-}
-
-/**
- * @brief add interval header tag to json block
- *
- * @param strJson json string split without closing and opening tags, no greater than 64KB
- * @param bufferTmp temporal buffer for store closing and opening tags
- * @param headerData header tag to object data
- * @param lenHeaderData header tag length for object data
- * @param header header tag to object interval
- * @param lenHeader header tag length for object interval
- */
-void addHeaderInterval(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader) {
-    addHeader(strJson, bufferTmp, headerData, lenHeaderData, header, lenHeader);
 }
 
 /**
@@ -212,26 +190,26 @@ void extractHeadersFromJson(char *buffJson, char *headerGlobal, char *headerInte
 
     if (buffJson != NULL) {
         if (headerGlobal != NULL && headerInterval != NULL) {
-            if ((ptrGlobal = strstr(buffJson, "\"global\"")) != NULL) {
-                if ((ptrFilesGlobal = strstr(ptrGlobal, "\"files\"")) != NULL) {
-                    *LenHeaderGlobal = ptrFilesGlobal - ptrGlobal + strlen("\"files\"") + OFFSET_HEADER_TAGS;
+            if ((ptrGlobal = strstr(buffJson, TAG_GLOBAL)) != NULL) {
+                if ((ptrFilesGlobal = strstr(ptrGlobal, TAG_FILES)) != NULL) {
+                    *LenHeaderGlobal = ptrFilesGlobal - ptrGlobal + strlen(TAG_FILES) + OFFSET_HEADER_TAGS;
                     memcpy(headerGlobal, ptrGlobal, *LenHeaderGlobal);
                 }
             }
         }
 
         if (headerInterval != NULL && LenHeaderInterval != NULL) {
-            if ((ptrInterval = strstr(buffJson, "\"interval\"")) != NULL) {
-                if ((ptrFilesInterval = strstr(ptrInterval, "\"files\"")) != NULL) {
-                    *LenHeaderInterval = ptrFilesInterval - ptrInterval + strlen("\"files\"") + OFFSET_HEADER_TAGS;
+            if ((ptrInterval = strstr(buffJson, TAG_INTERVAL)) != NULL) {
+                if ((ptrFilesInterval = strstr(ptrInterval, TAG_FILES)) != NULL) {
+                    *LenHeaderInterval = ptrFilesInterval - ptrInterval + strlen(TAG_FILES) + OFFSET_HEADER_TAGS;
                     memcpy(headerInterval, ptrInterval, *LenHeaderInterval);
                 }
             }
         }
 
         if (headerData != NULL && LenHeaderData != NULL) {
-            if ((ptrData = strstr(buffJson, "\"data\"")) != NULL) {
-                *LenHeaderData = ptrData + strlen("\"files\"") - buffJson + 1;
+            if ((ptrData = strstr(buffJson, TAG_DATA)) != NULL) {
+                *LenHeaderData = ptrData + strlen(TAG_FILES) - buffJson + 1;
                 memcpy(headerData, buffJson, *LenHeaderData);
             }
         }
@@ -265,12 +243,12 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
 
     if (buffJson != NULL && headerGlobal != NULL && headerInterval != NULL && headerData != NULL) {
         if (flag_global == false) {
-            if (strstr(buffJson, "{\"error\"") != NULL) {
-                if (strstr(buffJson, "\"data\"") != NULL) {
-                    if (strstr(buffJson, "\"global\"") != NULL) {
+            if (strstr(buffJson, TAG_ERROR) != NULL) {
+                if (strstr(buffJson, TAG_DATA) != NULL) {
+                    if (strstr(buffJson, TAG_GLOBAL) != NULL) {
                         flag_global = true;
-                        if (strstr(buffJson, "\"files\"") != NULL) {
-                            if (strstr(buffJson, "\"interval\"") != NULL) {
+                        if (strstr(buffJson, TAG_FILES) != NULL) {
+                            if (strstr(buffJson, TAG_INTERVAL) != NULL) {
                                 flag_interval = true;
                                 if (counter == 0) {
                                     /* 1: find error,data,global,files,intervals,files
@@ -295,24 +273,24 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
                         }
                     } else {
                         flag_global = false;
-                        mwarn("global no found\r\n");
+                        mwarn("'global' tag no found in logcollector JSON stats");
                     }
                 }
             }
         } else if (flag_interval == false && flag_global == true) {
-            if (strstr(buffJson, "\"interval\"") != NULL) {
+            if (strstr(buffJson, TAG_INTERVAL) != NULL) {
                 flag_interval = true;
                 if (counter == 0 ) {
                     /* 4: remainder of first block onwards, already find global
                     find intervals,files y greather than 64k
                     */
                     addClosingTags(buffJson);
-                    addHeaderGlobal(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
+                    addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                 } else  {
                     /* 5: remainder of first block onwards, already find global
                     find intervals,files y lower than 64k, it closes self
                     */
-                    addHeaderGlobal(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
+                    addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                     flag_interval = false;
                 }
             } else {
@@ -321,7 +299,7 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
                 always  global and interval are full json therefore dont is need lower than 64k
                 */
                 addClosingTags(buffJson);
-                addHeaderGlobal(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
+                addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                 flag_interval = false;
             }
         } else if (flag_interval == true && flag_global == true) {
@@ -331,15 +309,13 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
                 greather than 64k
                 */
                 addClosingTags(buffJson);
-                addHeaderInterval(buffJson, bufferTmp, headerData, LenHeaderData, headerInterval, LenHeaderInterval);
-
-
+                addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerInterval, LenHeaderInterval);
             } else {
                 /* 8:
                 remainder of interval block onwards
                 lower than 64k, it closes self
                 */
-                addHeaderInterval(buffJson, bufferTmp, headerData, LenHeaderData, headerInterval, LenHeaderInterval);
+                addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerInterval, LenHeaderInterval);
                 flag_interval = false;
                 flag_global = false;
             }
@@ -371,7 +347,7 @@ bool isJsonUpdated(void) {
     }
 
     if (difftime(mtime_current, mtime_prev) != 0 && mtime_prev != 0) {
-        mdebug2("cJSON has updated");
+        mdebug2("Logcollector JSON stats have been updated.");
         isJsonUpdated = true;
     }
     mtime_prev = mtime_current;
@@ -460,8 +436,11 @@ size_t lccom_getstate(char ** output, bool getNextPage) {
     *output = cJSON_PrintUnformatted(w_packet);
     cJSON_Delete(w_packet);
 
-    if (strlen(*output) > OS_MAXSTR) {
+    /* '*output' point to the global json without split*/
+    if (strlen(*output) >= OS_MAXSTR) {
         retval = getJsonStr64kBlockFromLatestIndex(output, getNextPage);
+
+        /* '*output' point to the block of length <= 64k*/
         replaceBoolToStr(*output, "\"remaining\":", strlen(*output) >= OS_MAXSTR - (2*SIZE_1KB));
         replaceBoolToStr(*output, "\"json_updated\":", isJsonUpdated());
     } else {
