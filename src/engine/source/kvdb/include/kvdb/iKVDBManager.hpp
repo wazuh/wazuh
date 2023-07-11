@@ -15,7 +15,6 @@
 namespace kvdbManager
 {
 
-
 /**
  * @brief Reference information for a KVDB Scope or Handler.
  * Typically used to get the number of references to a Scope or Handler.
@@ -104,6 +103,15 @@ public:
      */
     virtual std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName,
                                                                                     const std::string& scopeName) = 0;
+
+    /**
+     * @brief Returns count of handlers for a given database.
+     *
+     * @param dbName Name of the DB.
+     * @return uint32_t count of handlers.
+     *
+     */
+    virtual uint32_t getKVDBHandlersCount(const std::string& dbName) const = 0;
 };
 
 } // namespace kvdbManager
