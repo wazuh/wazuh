@@ -307,7 +307,8 @@ def get_requirement(requirement: str = None, offset: int = 0, limit: int = commo
     return result
 
 
-def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool = True) -> Union[str, AffectedItemsWazuhResult]:
+def get_rule_file(filename: str = None, raw: bool = False, 
+                  relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
 
     Parameters
@@ -316,8 +317,8 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
         Name of the rule file. Default `None`.
     raw : bool, optional
         Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format).
-    default_ruleset : bool
-        Whether the file is in the default or custom ruleset directory
+    relative_direname : str
+        relative directory where de rule is found. Default None.
 
     Returns
     -------
@@ -327,21 +328,11 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='Selected rule was returned')
 
-    rules_path = common.RULES_PATH if default_ruleset else common.USER_RULES_PATH
-    full_path = normpath(join(rules_path, filename))
-    if commonpath([common.WAZUH_PATH, full_path]) != common.WAZUH_PATH:
-        # validate path traversal, the file must be inside WAZUH_PATH
-        result.add_failed_item(id_=filename,
-                               error=WazuhError(1414, extra_message=f"{filename}"))
-        return result
-    
-    base_filename = basename(filename)
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
-    rel_dir = relpath(full_path, common.WAZUH_PATH).replace(f"/{base_filename}", '')
-    rules = get_rules_files(filename=[base_filename], 
-                                  relative_dirname=None if base_filename == filename \
-                                                        else rel_dir).affected_items
+    rel_dir = relative_dirname if relative_dirname else ''
+    rules = get_rules_files(filename=[filename], 
+                                  relative_dirname=relative_dirname).affected_items
     if len(rules) == 0:
         result.add_failed_item(id_=filename, 
                                error=WazuhError(1415, extra_message=f"{filename}"))
@@ -353,13 +344,10 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
         # relative path length
         rules = list(filter(lambda x: x['relative_dirname'].startswith(rel_dir), rules))
         rule = min(rules, key=lambda x: len(x['relative_dirname']))
-        full_path = join(common.WAZUH_PATH, rule['relative_dirname'], base_filename)
-    elif not rules[0]['relative_dirname'].startswith(rel_dir):
-        # Found only one rule file but it is not inside
-        # the default_ruleset path
-        result.add_failed_item(id_=filename, 
-                               error=WazuhError(1415, extra_message=f"{filename}"))
-        return result
+        full_path = join(common.WAZUH_PATH, rule['relative_dirname'], filename)
+    else:
+        full_path = normpath(join(common.WAZUH_PATH, rules[0]['relative_dirname'], filename))
+        
     try:
         with open(full_path) as f:
             content = f.read()

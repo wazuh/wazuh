@@ -167,7 +167,7 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
         result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
                     'raw': False,
-                    'default_ruleset': True
+                    'relative_dirname': None
                     }
         mock_dapi.assert_called_once_with(f=rule_framework.get_rule_file,
                                           f_kwargs=mock_remove.return_value,

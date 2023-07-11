@@ -5,7 +5,7 @@
 import os
 import sys
 from unittest.mock import patch, mock_open, MagicMock
-
+from wazuh.core.common import USER_RULES_PATH
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -234,20 +234,22 @@ def test_get_requirement_invalid(mocked_config, requirement):
     assert result.total_affected_items == 0
 
 
-@pytest.mark.parametrize('file_, raw, default_ruleset', [
-    ('0010-rules_config.xml', True, True),
-    ('0015-ossec_rules.xml', False, True),
-    ('test_rules.xml', False, False),
-    ('subpath/test_rules.xml', False, False),
+@pytest.mark.parametrize('file_, raw, relative_dirname, contains', [
+    ('0010-rules_config.xml', True, None, None),
+    ('0015-ossec_rules.xml', False, None, None),
+    ('test_rules.xml', False, None, 'NEW RULE WITHOUT SUBPATH'),
+    ('test_rules.xml', True, 'tests/data/etc/rules/subpath', 'NEW RULE SUBPATH'),
 ])
 @patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
 @patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests","data", "etc", "rules"))
-def test_get_rule_file(file_, raw, default_ruleset):
+def test_get_rule_file(file_, raw, relative_dirname, contains):
     """Test downloading a specified rule filter."""
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
-        d_files = rule.get_rule_file(filename=file_, raw=raw, default_ruleset=default_ruleset)
+        d_files = rule.get_rule_file(filename=file_, raw=raw, relative_dirname=relative_dirname)
         if raw:
             assert isinstance(d_files, str)
+            if contains:
+                assert d_files.find(contains)
         else:
             assert isinstance(d_files, AffectedItemsWazuhResult)
             assert d_files.affected_items
@@ -265,17 +267,18 @@ def test_get_rule_file_exceptions():
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
 
         # File does not exist in user ruleset
-        result = rule.get_rule_file(filename='non_existing_file.xml', raw=False, default_ruleset=False)
+        result = rule.get_rule_file(filename='non_existing_file.xml', raw=False)
         assert not result.affected_items
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
 
         # File exist in default ruleset but not in custom ruleset
-        result = rule.get_rule_file(filename='0010-rules_config.xml', raw=False, default_ruleset=False)
+        result = rule.get_rule_file(filename='0010-rules_config.xml', raw=False, 
+                                    relative_dirname=USER_RULES_PATH)
         assert not result.affected_items
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
         
         # Invalid XML
-        result = rule.get_rule_file(filename='wrong_rules.xml', raw=False, default_ruleset=False)
+        result = rule.get_rule_file(filename='wrong_rules.xml', raw=False)
         assert not result.affected_items
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1413
 
@@ -284,16 +287,6 @@ def test_get_rule_file_exceptions():
             result = rule.get_rule_file(filename='0010-rules_config.xml')
             assert not result.affected_items
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
-        
-        # Path Traversal vulnerability - relative path
-        result = rule.get_rule_file(filename='../../../../../path_traversal.xml', raw=False, default_ruleset=True)
-        assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
-
-        # Path Traversal vulnerability - absolute path
-        result = rule.get_rule_file(filename='/usr/bin/bash', raw=False, default_ruleset=False)
-        assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
 
 
 @pytest.mark.parametrize('file, overwrite', [

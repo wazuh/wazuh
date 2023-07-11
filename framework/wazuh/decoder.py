@@ -179,7 +179,8 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     return result
 
 
-def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = True) -> Union[str, AffectedItemsWazuhResult]:
+def get_decoder_file(filename: str, raw: bool = False, 
+                     relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of a specified file.
 
     Parameters
@@ -188,33 +189,22 @@ def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = T
         List of one element with the complete relative path of the decoder file.
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
-    default_ruleset : bool
-        Whether the file is in the default or custom ruleset directory
+    relative_direname : str
+        relative directory where de decoder is found. Default None.
 
     Returns
     -------
     str or AffectedItemsWazuhResult
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
-
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       all_msg='Selected decoder was returned')
 
-    decoders_path = common.DECODERS_PATH if default_ruleset else common.USER_DECODERS_PATH
-    full_path = normpath(join(decoders_path, filename))
-    if commonpath([common.WAZUH_PATH, full_path]) != common.WAZUH_PATH:
-        # validate path traversal, the file must be inside WAZUH_PATH
-        result.add_failed_item(id_=filename, 
-                               error=WazuhError(1504, extra_message=f"{filename}"))
-        return result
-    
-    base_filename = basename(filename)
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
-    rel_dir = relpath(full_path, common.WAZUH_PATH).replace(f"/{base_filename}", '')
-    decoders = get_decoders_files(filename=[base_filename], 
-                                  relative_dirname=None if base_filename == filename \
-                                                        else rel_dir).affected_items
+    rel_dir = relative_dirname if relative_dirname else ''
+    decoders = get_decoders_files(filename=[filename], 
+                                  relative_dirname=relative_dirname).affected_items
     if len(decoders) == 0:
         result.add_failed_item(id_=filename, 
                                error=WazuhError(1503, extra_message=f"{filename}"))
@@ -226,13 +216,9 @@ def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = T
         # relative path length
         decoders = list(filter(lambda x: x['relative_dirname'].startswith(rel_dir), decoders))
         decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
-        full_path = join(common.WAZUH_PATH, decoder['relative_dirname'], base_filename)
-    elif not decoders[0]['relative_dirname'].startswith(rel_dir):
-        # Found only one decoder but it is not inside
-        # the default_ruleset path
-        result.add_failed_item(id_=filename, 
-                               error=WazuhError(1503, extra_message=f"{filename}"))
-        return result
+        full_path = join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
+    else:
+        full_path = normpath(join(common.WAZUH_PATH,  decoders[0]['relative_dirname'], filename))
         
     try:
         with open(full_path) as f:
