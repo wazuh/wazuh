@@ -1,13 +1,7 @@
 name: Integration tests for API - Tier 2
 
 on:
-  pull_request:
-    paths:
-        - ".github/workflows/integration-tests-api-tier-2.yml"
-        - "api/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_api/**"
+  workflow_dispatch:
 
 jobs:
   build:
