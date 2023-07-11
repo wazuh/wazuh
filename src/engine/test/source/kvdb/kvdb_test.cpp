@@ -167,6 +167,54 @@ TEST_F(KVDBTest, DeleteAndCreateSameDB)
     ASSERT_EQ(kvdbManager->createDB("test"), std::nullopt);
 }
 
+TEST_F(KVDBTest, DeleteDataBaseNoRestart)
+{
+    m_spKVDBManager->createDB("db_test");
+    auto dbList = m_spKVDBManager->listDBs(true);
+    ASSERT_EQ(dbList.size(), 1);
+    ASSERT_EQ(dbList[0], "db_test");
+    auto createResult = m_spKVDBManager->createDB("db_test");
+    ASSERT_FALSE(createResult.has_value());
+    m_spKVDBManager->deleteDB("db_test");
+    dbList = m_spKVDBManager->listDBs(true);
+    ASSERT_EQ(dbList.size(), 0);
+}
+
+TEST_F(KVDBTest, DeleteDataBaseWithRestart)
+{
+    m_spKVDBManager->createDB("db_test");
+    auto dbList = m_spKVDBManager->listDBs(true);
+    ASSERT_EQ(dbList.size(), 1);
+    ASSERT_EQ(dbList[0], "db_test");
+    auto createResult = m_spKVDBManager->createDB("db_test");
+    ASSERT_FALSE(createResult.has_value());
+    m_spKVDBManager->deleteDB("db_test");
+    dbList = m_spKVDBManager->listDBs(true);
+    ASSERT_EQ(dbList.size(), 0);
+
+    try
+    {
+        m_spKVDBManager->finalize();
+    }
+    catch (const std::exception& e)
+    {
+        FAIL() << "Exception: " << e.what();
+    }
+
+    m_spKVDBManager.reset();
+    ASSERT_EQ(m_spKVDBManager.use_count(), 0);
+
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
+    m_spKVDBManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    m_spKVDBManager->initialize();
+
+    dbList = m_spKVDBManager->listDBs(true);
+    ASSERT_EQ(dbList.size(), 0);
+}
+
 TEST_F(KVDBTest, ScopeTest)
 {
     ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
