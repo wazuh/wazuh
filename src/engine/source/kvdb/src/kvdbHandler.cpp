@@ -46,18 +46,16 @@ std::optional<base::Error> KVDBHandler::set(const std::string& key, const std::s
             else
             {
                 return base::Error {
-                    fmt::format("Can't save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
+                    fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
             }
         }
         else
         {
-            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+            return base::Error {"Cannot access RocksDB Column Family Handle"};
         }
     }
-    else
-    {
-        return base::Error {fmt::format("Can't access RocksDB::DB")};
-    }
+
+    return base::Error {"Cannot access RocksDB::DB"};
 }
 
 std::optional<base::Error> KVDBHandler::set(const std::string& key, const json::Json& value)
@@ -86,18 +84,16 @@ std::optional<base::Error> KVDBHandler::remove(const std::string& key)
             }
             else
             {
-                return base::Error {fmt::format("Can't remove key '{}'. Error: {}", key, status.getState())};
+                return base::Error {fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState())};
             }
         }
         else
         {
-            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+            return base::Error {"Cannot access RocksDB Column Family Handle"};
         }
     }
-    else
-    {
-        return base::Error {fmt::format("Can't access RocksDB::DB")};
-    }
+
+    return base::Error {"Cannot access RocksDB::DB"};
 }
 
 std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
@@ -120,18 +116,16 @@ std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
             }
             catch (const std::exception& ex)
             {
-                return base::Error {fmt::format("Can't validate existance of key {}. Error: {}", key, ex.what())};
+                return base::Error {fmt::format("Cannot validate existance of key {}. Error: {}", key, ex.what())};
             }
         }
         else
         {
-            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+            return base::Error {"Cannot access RocksDB Column Family Handle"};
         }
     }
-    else
-    {
-        return base::Error {fmt::format("Can't access RocksDB::DB")};
-    }
+
+    return base::Error {"Cannot access RocksDB::DB"};
 }
 
 std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
@@ -151,18 +145,16 @@ std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
             }
             else
             {
-                return base::Error {fmt::format("Can't get key '{}'. Error: {}", value, key, status.getState())};
+                return base::Error {fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState())};
             }
         }
         else
         {
-            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+            return base::Error {"Cannot access RocksDB Column Family Handle"};
         }
     }
-    else
-    {
-        return base::Error {fmt::format("Can't access RocksDB::DB")};
-    }
+
+    return base::Error {"Cannot access RocksDB::DB"};
 }
 
 std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHandler::dump()
@@ -191,13 +183,11 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHand
         }
         else
         {
-            return base::Error {fmt::format("Can't access RocksDB Column Family Handle")};
+            return base::Error {"Cannot access RocksDB Column Family Handle"};
         }
     }
-    else
-    {
-        return base::Error {fmt::format("Can't access RocksDB::DB")};
-    }
+
+    return base::Error {"Cannot access RocksDB::DB"};
 }
 
 } // namespace kvdbManager
