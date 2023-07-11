@@ -61,7 +61,8 @@ import pytest
 import requests
 from pathlib import Path
 
-from . import TEST_DATA_PATH, CONFIGURATION_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from . import CONFIGURATION_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from wazuh_testing import DATA_PATH
 from wazuh_testing.constants.api import DAEMONS_STATS_ROUTE
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
@@ -69,11 +70,12 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils.file import read_json_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
+
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 
 # Variables
-STATISTICS_TEMPLATE_PATH = Path(TEST_DATA_PATH, 'statistics_template')
+STATISTICS_TEMPLATE_PATH = Path(DATA_PATH, 'statistics_template')
 daemons_handler_configuration = {'all_daemons': True}
 
 # ------------------------------------------- TEST_MANAGER_STATISTICS_FORMAT -------------------------------------------
@@ -144,7 +146,7 @@ def test_manager_statistics_format(test_configuration, test_metadata, load_wazuh
         - The `cases_manager_statistics_format` file provides the test cases.
     """
     endpoint = test_metadata['endpoint']
-    statistics_schema_path = Path(t1_statistics_template_path).joinpath(f"{endpoint}_template.json")
+    statistics_schema_path = Path(t1_statistics_template_path, f"{endpoint}_template.json")
     params = f"?daemons_list={endpoint}"
     url = get_base_url() + DAEMONS_STATS_ROUTE + params
     authentication_headers, _ = login()
