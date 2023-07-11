@@ -139,7 +139,7 @@ api::Handler routePatch(std::shared_ptr<::router::Router> router)
         if (::router::USER_ROUTE_MINIMUM_PRIORITY < eRequest.route().priority())
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Route priority ({}) must be lower than or equal to {}",
+                fmt::format("Route priority ({}) must be less than or equal to {}",
                             eRequest.route().priority(),
                             ::router::USER_ROUTE_MINIMUM_PRIORITY));
         }
