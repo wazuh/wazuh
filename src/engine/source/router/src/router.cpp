@@ -54,7 +54,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
         const auto table = std::get<json::Json>(result).getArray();
         if (!table.has_value())
         {
-            throw std::runtime_error("Can not get routes table from store. Invalid table format");
+            throw std::runtime_error("Cannot get routes table from store. Invalid table format");
         }
 
         for (const auto& jRoute : *table)
@@ -71,7 +71,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
             const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
             if (err.has_value())
             {
-                LOG_WARNING("Router: couldn't add route '{}' to the router: {}.", name.value(), err.value().message);
+                LOG_WARNING("Router: could not add route '{}' to the router: {}.", name.value(), err.value().message);
             }
         }
     }

@@ -2,14 +2,12 @@
 #define _ROUTER_ROUTER_HPP
 
 #include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <optional>
 #include <shared_mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
-
-#include <condition_variable>
 #include <unordered_map>
 
 #include <baseTypes.hpp>
