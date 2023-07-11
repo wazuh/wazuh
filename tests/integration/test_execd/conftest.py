@@ -46,7 +46,7 @@ def configure_ar_conf(request: pytest.FixtureRequest) -> None:
         file.write_file(AR_CONF, backup)
     else:
         file.remove_file(AR_CONF)
-
+# TEST
 
 @pytest.fixture()
 def send_execd_message(test_metadata: dict, remoted_simulator: RemotedSimulator) -> None:
