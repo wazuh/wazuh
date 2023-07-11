@@ -31,6 +31,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
         from wazuh.core.utils import get_utc_strptime
+        from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 # Global variables
 
@@ -412,16 +413,23 @@ def test_master_handler_process_request(logger_mock):
     with patch("wazuh.core.cluster.common.end_sending_agent_information",
                return_value=b'ok') as end_sending_agent_information_mock:
         master_handler.task_loggers['Agent-groups send'] = logging.getLogger('Agent-groups send')
+        master_handler.send_agent_groups_status['date_start'] = '1970-01-01T00:00:00.0Z'
+
         assert master_handler.process_request(command=b'syn_w_g_e', data=b"data") == b"ok"
-        end_sending_agent_information_mock.assert_called_once_with(logging.getLogger('Agent-groups send'), 0.0, "data")
+        end_sending_agent_information_mock.assert_called_once_with(
+            logging.getLogger('Agent-groups send'), 
+            datetime.strptime(master_handler.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT), "data")
 
     # Test the sixth condition
     with patch("wazuh.core.cluster.common.end_sending_agent_information",
                return_value=b'ok') as end_sending_agent_information_mock:
         master_handler.task_loggers['Agent-groups send full'] = logging.getLogger('Agent-groups send full')
+        master_handler.send_full_agent_groups_status['date_start'] = '1970-01-01T00:00:00.0Z'
+
         assert master_handler.process_request(command=b'syn_wgc_e', data=b"data") == b"ok"
         end_sending_agent_information_mock.assert_called_once_with(
-            logging.getLogger('Agent-groups send full'), 0.0, "data")
+            logging.getLogger('Agent-groups send full'),
+            datetime.strptime(master_handler.send_full_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT), "data")
 
     # Test the seventh condition
     with patch("wazuh.core.cluster.common.error_receiving_agent_information",
