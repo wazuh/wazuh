@@ -120,7 +120,7 @@ TEST_F(KVDBTest, DeleteDB)
     // Try to get the DB
     auto result = kvdbManager->getKVDBHandler("test", "ut");
     ASSERT_TRUE(std::holds_alternative<base::Error>(result));
-    ASSERT_EQ(std::get<base::Error>(result).message, "The DB test does not exists.");
+    ASSERT_EQ(std::get<base::Error>(result).message, "The DB 'test' does not exists.");
 }
 
 TEST_F(KVDBTest, DoubleDeleteDB)
@@ -143,7 +143,7 @@ TEST_F(KVDBTest, DoubleDeleteDB)
     // Double delete the DB
     auto result = kvdbManager->deleteDB("test");
     ASSERT_NE(result, std::nullopt);
-    ASSERT_EQ(result->message, "The DB test does not exists.");
+    ASSERT_EQ(result->message, "The DB 'test' does not exists.");
 }
 
 TEST_F(KVDBTest, DeleteAndCreateSameDB)
