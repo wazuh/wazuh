@@ -26,26 +26,39 @@ private:
     void parse()
     {
         m_parts.clear();
-        size_t pos = 0;
-        auto prev = pos;
-        while ((pos = m_str.find('.', prev)) != std::string::npos)
-        {
-            auto part = m_str.substr(prev, pos - prev);
-            if (part.empty())
-            {
-                throw std::runtime_error("DotPath cannot have empty parts");
-            }
+        std::string part;
+        bool escaped = false;
 
-            m_parts.push_back(part);
-            prev = pos + 1;
+        for (char c : m_str) {
+            if (escaped)
+            {
+                part += c;
+                escaped = false;
+            }
+            else if (c == '\\')
+            {
+                escaped = true;
+            }
+            else if (c == '.')
+            {
+                if (part.empty())
+                {
+                    throw std::runtime_error("DotPath cannot have empty parts");
+                }
+                m_parts.push_back(part);
+                part.clear();
+            }
+            else
+            {
+                part += c;
+            }
         }
 
-        auto part = m_str.substr(prev);
         if (part.empty())
         {
             throw std::runtime_error("DotPath cannot have empty parts");
         }
-        m_parts.push_back(part);
+        m_parts.push_back(part); // Last name added to the list
     }
 
     void copy(const DotPath& rhs)
