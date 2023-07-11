@@ -1621,7 +1621,7 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /rules/files/{filename}
+test_name: GET /rules/files/(filename)
 
 stages:
 
@@ -1682,7 +1682,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        default_ruleset: false
+        relative_dirname: 'etc/rules'
     response:
       status_code: 200
       json:
