@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import socket
 import sqlite3
 import sys
@@ -7,15 +11,21 @@ try:
 except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
-import botocore
-import json
-import re
-from os import path
-import operator
-from datetime import datetime
-from datetime import timezone
 
 import aws_tools
+import botocore
+import configparser
+import gzip
+import io
+import json
+import operator
+import re
+import zipfile
+import zlib
+
+from datetime import datetime
+from datetime import timezone
+from os import path
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
@@ -46,10 +56,10 @@ class WazuhIntegration:
 
         self.wazuh_path = utils.find_wazuh_path()
         self.wazuh_version = utils.get_wazuh_version()
-        self.wazuh_queue = f'{self.wazuh_path}/queue/sockets/queue'
-        self.wazuh_wodle = f'{self.wazuh_path}/wodles/aws'
+        self.wazuh_queue = path.join(self.wazuh_path, "queue", "sockets", "queue")
+        self.wazuh_wodle = path.join(self.wazuh_path, "wodles", "aws")
 
-        self.connection_config = self.default_config()
+        self.connection_config = self.default_config(profile=profile)
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
                                       profile=profile,
@@ -68,16 +78,115 @@ class WazuhIntegration:
         self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
     @staticmethod
-    def default_config():
+    def default_config(profile: str) -> dict:
+        """Set the parameters found in user config file as a default configuration for client.
+
+        This method is called when Wazuh Integration is instantiated and sets a default config using .aws/config file
+        using the profile received from parameter.
+
+        If .aws/config file exist the file is retrieved and read to check for the existence of retry parameters mode and
+        max attempts if they exist and empty dictionary is returned and config is handled by botocore but if they don't
+        exist a botocore Config object is created and default configuration is set using user config for received
+        profile and retries parameters are set to avoid a throttling exception.
+
+        Parameters
+        ----------
+        profile : string
+                Aws profile configuration to use.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary.
+
+        Raises
+        ------
+        KeyError
+            KeyError when there is no region in user config file.
+
+        ValueError
+            ValueError when there is an error parsing config file.
+
+        NoSectionError
+            configparser error when given profile does not exist in user config file.
+        """
         args = {}
-        if not path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
-            args['config'] = botocore.config.Config(retries=WAZUH_DEFAULT_RETRY_CONFIGURATION.copy())
+
+        if path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
+            # Create boto Config object
+            args['config'] = botocore.config.Config()
+
+            # Get User Aws Config
+            aws_config = aws_tools.get_aws_config_params()
+
+            # Set profile
+            profile = profile if profile is not None else 'default'
+
+            try:
+                # Get profile config dictionary
+                profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
+
+            except configparser.NoSectionError:
+                print(f"No profile named: '{profile}' was found in the user config file")
+                sys.exit(23)
+
+            # Map Primary Botocore Config parameters with profile config file
+            try:
+                # Checks for retries config in profile config and sets it if not found to avoid throttling exception
+                if aws_tools.RETRY_ATTEMPTS_KEY in profile_config \
+                        or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
+                    retries = {
+                        aws_tools.RETRY_ATTEMPTS_KEY: int(profile_config.get(aws_tools.RETRY_ATTEMPTS_KEY, 10)),
+                        aws_tools.RETRY_MODE_BOTO_KEY: profile_config.get(aws_tools.RETRY_MODE_CONFIG_KEY, 'standard')
+                    }
+                    aws_tools.debug(
+                        f"Retries parameters found in user profile. Using profile '{profile}' retries configuration",
+                        2)
+
+                else:
+                    # Set retry config
+                    retries = {
+                        aws_tools.RETRY_ATTEMPTS_KEY: 10,
+                        aws_tools.RETRY_MODE_BOTO_KEY: 'standard'
+                    }
+                    aws_tools.debug(
+                        "No retries configuration found in profile config. Generating default configuration for "
+                        f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
+                        2)
+
+                args['config'].retries = retries
+
+                # Set signature version
+                signature_version = profile_config.get('signature_version', 's3v4')
+                args['config'].signature_version = signature_version
+
+                # Set profile dictionaries configuration
+                aws_tools.set_profile_dict_config(boto_config=args,
+                                                  profile=profile,
+                                                  profile_config=profile_config)
+
+            except (KeyError, ValueError) as e:
+                print('Invalid key or value found in config '.format(e))
+                sys.exit(17)
+
             aws_tools.debug(
-                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                f"Created Config object using profile: '{profile}' configuration",
                 2)
+
         else:
+            # Set retries parameters to avoid a throttling exception
+            args['config'] = botocore.config.Config(
+                retries={
+                    aws_tools.RETRY_ATTEMPTS_KEY: 10,
+                    aws_tools.RETRY_MODE_BOTO_KEY: 'standard'
+                }
+            )
             aws_tools.debug(
-                f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}', 2)
+                f"Generating default configuration for retries: {aws_tools.RETRY_MODE_BOTO_KEY} "
+                f"{args['config'].retries[aws_tools.RETRY_MODE_BOTO_KEY]} - "
+                f"{aws_tools.RETRY_ATTEMPTS_KEY} {args['config'].retries[aws_tools.RETRY_ATTEMPTS_KEY]}",
+                2)
+
         return args
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region=None,
@@ -151,6 +260,30 @@ class WazuhIntegration:
 
         return sts_client
 
+    def event_should_be_skipped(self, event_):
+        def _check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
+            field_list = nested_field.split('.', 1)
+            try:
+                expression_to_evaluate = json_item[field_list[0]]
+            except TypeError:
+                if isinstance(json_item, list):
+                    return any(_check_recursive(i, field_list[0], regex=regex) for i in json_item)
+                return False
+            except KeyError:
+                return False
+            if len(field_list) == 1:
+                def check_regex(exp):
+                    try:
+                        return re.match(regex, exp) is not None
+                    except TypeError:
+                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
+
+                return check_regex(expression_to_evaluate)
+            return _check_recursive(expression_to_evaluate, field_list[1], regex=regex)
+
+        return self.discard_field and self.discard_regex \
+            and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+
     def send_msg(self, msg, dump_json=True):
         """
         Sends an AWS event to the Wazuh Queue
@@ -179,6 +312,73 @@ class WazuhIntegration:
         except Exception as e:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
+
+    def _decompress_gzip(self, raw_object: io.BytesIO):
+        """Method that decompress gzip compressed data.
+
+        Parameters
+        ----------
+        raw_object : io.BytesIO
+            Buffer with the gzip compressed object.
+
+        Returns
+        -------
+        file_object
+            Decompressed object.
+        """
+        try:
+            gzip_file = gzip.open(filename=raw_object, mode='rt')
+            # Ensure that the file is not corrupted by reading from it
+            gzip_file.read()
+            gzip_file.seek(0)
+            return gzip_file
+        except (gzip.BadGzipFile, zlib.error, TypeError):
+            print(f'ERROR: invalid gzip file received.')
+            if not self.skip_on_error:
+                sys.exit(8)
+
+    def _decompress_zip(self, raw_object: io.BytesIO):
+        """Method that decompress zip compressed data.
+
+        Parameters
+        ----------
+        raw_object : io.BytesIO
+            Buffer with the zip compressed object.
+
+        Returns
+        -------
+        file_object
+            Decompressed object.
+        """
+        try:
+            zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
+            return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
+        except zipfile.BadZipFile:
+            print('ERROR: invalid zip file received.')
+        if not self.skip_on_error:
+            sys.exit(8)
+
+    def decompress_file(self, bucket: str, log_key: str):
+        """Method that returns a file stored in a bucket decompressing it if necessary.
+
+        Parameters
+        ----------
+        bucket : str
+            Path of the bucket to get the log file from.
+        log_key : str
+            Name of the file that should be returned.
+        """
+        raw_object = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_key)['Body'].read())
+        if log_key[-3:] == '.gz':
+            return self._decompress_gzip(raw_object)
+        elif log_key[-4:] == '.zip':
+            return self._decompress_zip(raw_object)
+        elif log_key[-7:] == '.snappy':
+            print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
+            if not self.skip_on_error:
+                sys.exit(8)
+        else:
+            return io.TextIOWrapper(raw_object)
 
 
 class WazuhAWSDatabase(WazuhIntegration):

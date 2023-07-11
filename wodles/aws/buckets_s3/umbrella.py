@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import csv
 from aws_bucket import AWSCustomBucket
 
@@ -12,7 +16,7 @@ class CiscoUmbrella(AWSCustomBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a Cisco Umbrella log file."""
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             if 'dnslogs' in self.prefix:
                 fieldnames = ('timestamp', 'most_granular_identity',
                               'identities', 'internal_ip', 'external_ip',

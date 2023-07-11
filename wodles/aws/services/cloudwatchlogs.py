@@ -1,9 +1,16 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+import json
+import re
 import sqlite3
 import sys
-from os import path
+
 import botocore
 from datetime import datetime
 from datetime import timezone
+from os import path
 
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
@@ -251,6 +258,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         A dict containing the Token for the next set of logs, the timestamp of the first fetched log and the timestamp
         of the latest one.
         """
+        sent_events = 0
         response = None
         min_start_time = start_time
         max_end_time = end_time if end_time is not None else start_time
@@ -289,9 +297,26 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             if response['events']:
                 aws_tools.debug('+++ Sending events to Analysisd...', 1)
                 for event in response['events']:
-                    aws_tools.debug('The message is "{}"'.format(event['message']), 3)
+                    event_msg = event['message']
+                    try:
+                        json_event = json.loads(event_msg)
+                        if self.event_should_be_skipped(json_event):
+                            aws_tools.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
+                                f'field. The event will be skipped.', 2)
+                            continue
+                    except ValueError:
+                        # event_msg is not a JSON object, check if discard_regex.pattern matches the given string
+                        aws_tools.debug(f"+++ Retrieved log event is not a JSON object.", 3)
+                        if re.match(self.discard_regex, event_msg):
+                            aws_tools.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex found a match. The event will be skipped.',
+                                2)
+                            continue
+                    aws_tools.debug('The message is "{}"'.format(event_msg), 2)
                     aws_tools.debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
-                    self.send_msg(event['message'], dump_json=False)
+                    self.send_msg(event_msg, dump_json=False)
+                    sent_events += 1
 
                     if min_start_time is None:
                         min_start_time = event['timestamp']
@@ -302,7 +327,12 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                         max_end_time = event['timestamp']
                     elif event['timestamp'] > max_end_time:
                         max_end_time = event['timestamp']
-                aws_tools.debug(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
+
+            if sent_events:
+                aws_tools.debug(f"+++ Sent {sent_events} events to Analysisd", 1)
+                sent_events = 0
+            else:
+                aws_tools.debug(f'+++ There are no new events in the "{log_group}" group', 1)
 
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 

@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import sys
 import csv
 from os import path
@@ -40,7 +44,7 @@ class AWSALBBucket(AWSLBBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a ALB access log file."""
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             fieldnames = (
                 "type", "time", "elb", "client_port", "target_port", "request_processing_time",
                 "target_processing_time", "response_processing_time", "elb_status_code", "target_status_code",
@@ -80,7 +84,7 @@ class AWSCLBBucket(AWSLBBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a CLB access log file."""
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             fieldnames = (
                 "time", "elb", "client_port", "backend_port", "request_processing_time", "backend_processing_time",
                 "response_processing_time", "elb_status_code", "backend_status_code", "received_bytes", "sent_bytes",
@@ -98,7 +102,7 @@ class AWSNLBBucket(AWSLBBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a NLB access log file."""
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             fieldnames = (
                 "type", "version", "time", "elb", "listener", "client_port", "destination_port", "connection_time",
                 "tls_handshake_time", "received_bytes", "sent_bytes", "incoming_tls_alert", "chosen_cert_arn",

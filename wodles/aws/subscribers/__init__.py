@@ -1,7 +1,9 @@
 from subscribers import sqs_queue
-from subscribers import sl_subscriber_bucket
+from subscribers import s3_log_handler
+from subscribers import sqs_message_processor
 
 __all__ = [
     "sqs_queue",
-    "sl_subscriber_bucket"
+    "s3_log_handler",
+    "sqs_message_processor",
 ]

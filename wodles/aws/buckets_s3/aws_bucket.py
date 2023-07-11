@@ -1,15 +1,16 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import copy
 import sys
 import botocore
 import json
 import csv
-import gzip
 import zipfile
 import re
-import io
-import zlib
 from os import path
-import operator
+
 from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
@@ -358,7 +359,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 sys.exit(1)
 
         except KeyError:
-            print("ERROR")
             print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
                   f"the logs for the bucket type '{aws_tools.get_script_arguments().type.lower()}'")
             sys.exit(18)
@@ -451,74 +451,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
         return event
 
-    def _decompress_gzip(self, raw_object: io.BytesIO):
-        """
-        Method that decompress gzip compressed data.
-
-        Parameters
-        ----------
-        raw_object : io.BytesIO
-            Buffer with the gzip compressed object.
-
-        Returns
-        -------
-        file_object
-            Decompressed object.
-        """
-        try:
-            gzip_file = gzip.open(filename=raw_object, mode='rt')
-            # Ensure that the file is not corrupted by reading from it
-            gzip_file.read()
-            gzip_file.seek(0)
-            return gzip_file
-        except (gzip.BadGzipFile, zlib.error, TypeError):
-            print(f'ERROR: invalid gzip file received.')
-            if not self.skip_on_error:
-                sys.exit(8)
-
-    def _decompress_zip(self, raw_object: io.BytesIO):
-        """
-        Method that decompress zip compressed data.
-
-        Parameters
-        ----------
-        raw_object : io.BytesIO
-            Buffer with the zip compressed object.
-
-        Returns
-        -------
-        file_object
-            Decompressed object.
-        """
-        try:
-            zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
-            return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
-        except zipfile.BadZipFile:
-            print('ERROR: invalid zip file received.')
-        if not self.skip_on_error:
-            sys.exit(8)
-
-    def decompress_file(self, log_key: str):
-        """
-        Method that returns a file stored in a bucket decompressing it if necessary.
-
-        Parameters
-        ----------
-        log_key : str
-            Name of the file that should be returned.
-        """
-        raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
-        if log_key[-3:] == '.gz':
-            return self._decompress_gzip(raw_object)
-        elif log_key[-4:] == '.zip':
-            return self._decompress_zip(raw_object)
-        elif log_key[-7:] == '.snappy':
-            print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
-            if not self.skip_on_error:
-                sys.exit(8)
-        else:
-            return io.TextIOWrapper(raw_object)
-
     def load_information_from_file(self, log_key):
         """
         AWS logs are stored in different formats depending on the service:
@@ -584,33 +516,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.send_msg(event_msg)
 
     def iter_events(self, event_list, log_key, aws_account_id):
-        def _check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
-            field_list = nested_field.split('.', 1)
-            try:
-                expression_to_evaluate = json_item[field_list[0]]
-            except TypeError:
-                if isinstance(json_item, list):
-                    return any(_check_recursive(i, field_list[0], regex=regex) for i in json_item)
-                return False
-            except KeyError:
-                return False
-            if len(field_list) == 1:
-                def check_regex(exp):
-                    try:
-                        return re.match(regex, exp) is not None
-                    except TypeError:
-                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
-
-                return check_regex(expression_to_evaluate)
-            return _check_recursive(expression_to_evaluate, field_list[1], regex=regex)
-
-        def _event_should_be_skipped(event_):
-            return self.discard_field and self.discard_regex \
-                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
-                if _event_should_be_skipped(event):
+                if self.event_should_be_skipped(event):
                     aws_tools.debug(
                         f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                         f'field. The event will be skipped.', 2)
@@ -792,7 +701,7 @@ class AWSLogsBucket(AWSBucket):
         return alert_msg
 
     def load_information_from_file(self, log_key):
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             json_file = json.load(f)
             return None if self.field_to_load not in json_file else [dict(x, source=self.service.lower()) for x in
                                                                      json_file[self.field_to_load]]
@@ -905,7 +814,7 @@ class AWSCustomBucket(AWSBucket):
                 data = data[json_index:]
                 yield json_data
 
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             if f.read(1) == '{':
                 decoder = json.JSONDecoder()
                 return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in

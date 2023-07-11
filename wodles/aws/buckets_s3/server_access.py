@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import sys
 from os import path
 import botocore
@@ -180,7 +184,7 @@ class AWSServerAccess(AWSCustomBucket):
                 pass
             return value_list
 
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             fieldnames = (
                 "bucket_owner", "bucket", "time", "remote_ip", "requester", "request_id", "operation", "key",
                 "request_uri", "http_status", "error_code", "bytes_sent", "object_sent", "total_time",

@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import csv
 import sys
 from os import path
@@ -13,6 +17,7 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
+
 
 class AWSVPCFlowBucket(AWSLogsBucket):
     """
@@ -120,7 +125,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 flow_log_id=:flow_log_id;"""
 
     def load_information_from_file(self, log_key):
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(self.bucket, log_key=log_key) as f:
             fieldnames = (
                 "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
                 "packets", "bytes", "start", "end", "action", "log_status")

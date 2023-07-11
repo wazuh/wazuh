@@ -3,8 +3,7 @@
 #
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute
-# it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """This module contains generic functions for this wodle."""
 
@@ -12,6 +11,7 @@ import argparse
 import configparser
 from os import path
 from datetime import datetime
+from typing import Optional
 import sys
 import re
 
@@ -19,12 +19,73 @@ DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
+SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/current/cloud-security/amazon/services/' \
+                                        'supported-services/security-lake.html#configuring-an-iam-role'
 
 ALL_REGIONS = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2',
                'ap-southeast-2', 'ap-south-1', 'eu-central-1', 'eu-west-1']
 
+RETRY_ATTEMPTS_KEY: str = "max_attempts"
+RETRY_MODE_CONFIG_KEY: str = "retry_mode"
+RETRY_MODE_BOTO_KEY: str = "mode"
+
 # Enable/disable debug mode
 debug_level = 0
+
+
+def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
+    """Create a botocore.config.Config object with the specified profile and profile_config.
+
+    This function reads the profile configuration from the provided profile_config object and extracts the necessary
+    parameters to create a botocore.config.Config object.
+    It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file for the
+    specified profile. If a setting is not found, a default value is used based on the boto3 documentation and config is
+    set into the boto_config.
+
+    Parameters
+    ----------
+    boto_config: dict
+        The config dictionary where the Boto Config will be set.
+
+    profile : str
+        The AWS profile name to use for the configuration.
+
+    profile_config : dict
+        The user config dict containing the profile configuration.
+    """
+    # Set s3 config
+    if f'{profile}.s3' in str(profile_config):
+        s3_config = {
+            "max_concurrent_requests": int(profile_config.get(f'{profile}.s3.max_concurrent_requests', 10)),
+            "max_queue_size": int(profile_config.get(f'{profile}.s3.max_queue_size', 10)),
+            "multipart_threshold": profile_config.get(f'{profile}.s3.multipart_threshold', '8MB'),
+            "multipart_chunksize": profile_config.get(f'{profile}.s3.multipart_chunksize', '8MB'),
+            "max_bandwidth": profile_config.get(f'{profile}.s3.max_bandwidth'),
+            "use_accelerate_endpoint": (
+                True if profile_config.get(f'{profile}.s3.use_accelerate_endpoint') == 'true' else False
+            ),
+            "addressing_style": profile_config.get(f'{profile}.s3.addressing_style', 'auto'),
+        }
+        boto_config['config'].s3 = s3_config
+
+    # Set Proxies configuration
+    if f'{profile}.proxy' in str(profile_config):
+        proxy_config = {
+            "host": profile_config.get(f'{profile}.proxy.host'),
+            "port": int(profile_config.get(f'{profile}.proxy.port')),
+            "username": profile_config.get(f'{profile}.proxy.username'),
+            "password": profile_config.get(f'{profile}.proxy.password'),
+        }
+        boto_config['config'].proxies = proxy_config
+
+        proxies_config = {
+            "ca_bundle": profile_config.get(f'{profile}.proxy.ca_bundle'),
+            "client_cert": profile_config.get(f'{profile}.proxy.client_cert'),
+            "use_forwarding_for_https": (
+                True if profile_config.get(f'{profile}.proxy.use_forwarding_for_https') == 'true' else False
+            )
+        }
+        boto_config['config'].proxies_config = proxies_config
 
 
 def handler(signal, frame):
@@ -115,9 +176,19 @@ def arg_valid_iam_role_duration(arg_string):
         If the number provided is not in the expected range.
     """
     # Session duration must be between 15m and 12h
-    if not (arg_string is None or (900 <= int(arg_string) <= 3600)):
+    if arg_string is None:
+        return None
+
+    # Validate if the argument is a number
+    if not arg_string.isdigit():
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be a valid number.")
+
+    # Convert to integer and check range
+    num_seconds = int(arg_string)
+    if not (900 <= num_seconds <= 3600):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
-    return int(arg_string)
+
+    return num_seconds
 
 
 def arg_valid_bucket_name(arg: str) -> str:
@@ -142,6 +213,74 @@ def arg_valid_bucket_name(arg: str) -> str:
     if not re.match(r'(?!(^xn--|.+-s3alias$|.+--ol-s3$))^[a-z0-9][a-z0-9-.]{1,61}[a-z0-9]$', arg):
         raise argparse.ArgumentTypeError(f"'{arg}' isn't a valid bucket name.")
     return arg
+
+
+def args_valid_iam_role_arn(iam_role_arn):
+    """Checks if the IAM role ARN specified is a valid parameter.
+
+    Parameters
+    ----------
+    iam_role_arn : str
+        The IAM role ARN to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the ARN provided is not in the expected format.
+    """
+    pattern = r'^arn:(?P<Partition>[^:\n]*):(?P<Service>[^:\n]*):(?P<Region>[^:\n]*):(?P<AccountID>[^:\n]*):(?P<Ignore>(?P<ResourceType>[^:\/\n]*)[:\/])?(?P<Resource>.*)$'
+
+    if not re.match(pattern, iam_role_arn):
+        raise argparse.ArgumentTypeError("Invalid ARN Role specified. Value must be a valid ARN Role.")
+
+    return iam_role_arn
+
+
+def args_valid_sqs_name(sqs_name):
+    """Checks if the SQS name specified is a valid parameter.
+
+    Parameters
+    ----------
+    sqs_name : str
+        The SQS name to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the SQS name provided is not in the expected format.
+    """
+    pattern = r'^[a-zA-Z0-9-_]{1,80}$'
+
+    if not re.match(pattern, sqs_name):
+        raise argparse.ArgumentTypeError("Invalid SQS Name specified. Value must be up to 80 characters and the valid "
+                                         "values are alphanumeric characters, hyphens (-), and underscores (_)")
+
+    return sqs_name
+
+
+def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Optional[str], iam_role_arn: Optional[str]):
+    """
+    Validate the Securit Lake authentication arguments.
+
+    Parameters
+    ----------
+    external_id : Optional[str]
+        The name of the External ID to use.
+    name: Optional[str]
+        Name of the SQS Queue.
+    iam_role_arn : Optional[str]
+        IAM Role.
+    """
+
+    if iam_role_arn is None:
+        print('ERROR: Used a subscriber but no --iam_role_arn provided.')
+        sys.exit(21)
+    if name is None:
+        print('ERROR: Used a subscriber but no --queue provided.')
+        sys.exit(21)
+    if external_id is None:
+        print('ERROR: Used a subscriber but no --external_id provided.')
+        sys.exit(21)
 
 
 def get_aws_config_params() -> configparser.RawConfigParser:
@@ -171,7 +310,7 @@ def get_script_arguments():
     group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the type of the subscriber',
                        action='store')
     parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
-                        action='store')
+                        type=args_valid_sqs_name, action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -193,6 +332,7 @@ def get_script_arguments():
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
+                        type=args_valid_iam_role_arn,
                         default=None)
     parser.add_argument('-n', '--aws_account_alias', dest='aws_account_alias',
                         help='AWS Account ID Alias', default='')

@@ -1,8 +1,11 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import pytest
 import os
 import sys
 import re
-from datetime import datetime
 from unittest.mock import patch, MagicMock, mock_open
 import botocore
 

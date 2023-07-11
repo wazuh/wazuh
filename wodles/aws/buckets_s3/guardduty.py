@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import sys
 from os import path
 import json
@@ -84,7 +88,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
 
     def load_information_from_file(self, log_key):
         if log_key.endswith('.jsonl.gz'):
-            with self.decompress_file(log_key=log_key) as f:
+            with self.decompress_file(self.bucket, log_key=log_key) as f:
                 json_list = list(f)
                 result = []
                 for json_item in json_list:

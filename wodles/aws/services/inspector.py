@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import sys
 from os import path
 from datetime import datetime
@@ -62,10 +66,14 @@ class AWSInspector(aws_service.AWSService):
         """
         if len(arn_list) != 0:
             response = self.client.describe_findings(findingArns=arn_list)['findings']
-            self.sent_events += len(response)
             aws_tools.debug(f"+++ Processing {len(response)} events", 3)
             for elem in response:
+                if self.event_should_be_skipped(elem):
+                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the '
+                                    f'"{self.discard_field}" field. The event will be skipped.', 2)
+                    continue
                 self.send_msg(self.format_message(elem))
+                self.sent_events += 1
 
     def get_alerts(self):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
