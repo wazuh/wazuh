@@ -147,13 +147,14 @@ def test_get_decoder_file(filename, raw, relative_dirname, contains):
     Parameters
     ----------
     filename : str
-        Decoder filename
+        Decoder filename.
     raw: bool
-        if the file content is returned raw or not
+        If raw is True, assert that the content is string.
+        If raw is False, assert that a structure is returned.
     relative_dirname: str
-        relative path of the file
+        Relative path of the file.
     contains: str
-        Content to find in the file
+        Assert that contains parameter is found in the file content. Only used when raw is True.
     """
     result = decoder.get_decoder_file(filename=filename, raw=raw, relative_dirname=relative_dirname)
 

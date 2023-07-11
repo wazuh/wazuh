@@ -234,7 +234,7 @@ def test_get_requirement_invalid(mocked_config, requirement):
     assert result.total_affected_items == 0
 
 
-@pytest.mark.parametrize('file_, raw, relative_dirname, contains', [
+@pytest.mark.parametrize('filename, raw, relative_dirname, contains', [
     ('0010-rules_config.xml', True, None, None),
     ('0015-ossec_rules.xml', False, None, None),
     ('test_rules.xml', False, None, 'NEW RULE WITHOUT SUBPATH'),
@@ -242,10 +242,10 @@ def test_get_requirement_invalid(mocked_config, requirement):
 ])
 @patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
 @patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests","data", "etc", "rules"))
-def test_get_rule_file(file_, raw, relative_dirname, contains):
+def test_get_rule_file(filename, raw, relative_dirname, contains):
     """Test downloading a specified rule filter."""
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
-        d_files = rule.get_rule_file(filename=file_, raw=raw, relative_dirname=relative_dirname)
+        d_files = rule.get_rule_file(filename=filename, raw=raw, relative_dirname=relative_dirname)
         if raw:
             assert isinstance(d_files, str)
             if contains:

@@ -274,14 +274,14 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     ----------
     request : connexion.request
     pretty : bool, optional
-        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`.
     wait_for_complete : bool, optional
-        Disable response timeout or not. Default `False`
+        Disable response timeout or not. Default `False`.
     filename : str
         Filename to download.
     raw : bool, optional
-        Whether to return the file content in raw or JSON format. Default `False`
-    relative_dirname : bool
+        Whether to return the file content in raw or JSON format. Default `False`.
+    relative_dirname : str
         relative directory where the rule is located. Default None.
 
     Returns
