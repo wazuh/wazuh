@@ -57,10 +57,11 @@ tags:
     - api
 """
 import jsonschema
-import os
 import pytest
 import requests
+from pathlib import Path
 
+from . import TEST_DATA_PATH, CONFIGURATION_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import DAEMONS_STATS_ROUTE
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
@@ -71,19 +72,16 @@ from wazuh_testing.utils.manage_agents import remove_agents
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 
-# Generic vars
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_templates')
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
-STATISTICS_TEMPLATE_PATH = os.path.join(TEST_DATA_PATH, 'statistics_template')
+# Variables
+STATISTICS_TEMPLATE_PATH = Path(TEST_DATA_PATH, 'statistics_template')
 daemons_handler_configuration = {'all_daemons': True}
 
 # ------------------------------------------- TEST_MANAGER_STATISTICS_FORMAT -------------------------------------------
 # Configuration and cases data
-t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_manager_statistics_format.yaml')
-t1_cases_path = os.path.join(TEST_CASES_PATH, 'manager_statistics_format_test_module',
-                             'cases_manager_statistics_format.yaml')
-t1_statistics_template_path = os.path.join(STATISTICS_TEMPLATE_PATH, 'manager_statistics_format_test_module')
+t1_configurations_path = Path(CONFIGURATION_FOLDER_PATH, 'configuration_manager_statistics_format.yaml')
+t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'manager_statistics_format_test_module',
+                     'cases_manager_statistics_format.yaml')
+t1_statistics_template_path = Path(STATISTICS_TEMPLATE_PATH, 'manager_statistics_format_test_module')
 
 # Manager statistics format test configurations (t1)
 test1_configuration, test1_metadata, test1_cases_ids = get_test_cases_data(t1_cases_path)
@@ -91,14 +89,15 @@ test1_configuration = load_configuration_template(t1_configurations_path, test1_
 
 # -------------------------------------------- TEST_AGENT_STATISTICS_FORMAT --------------------------------------------
 # Configuration and cases data
-t2_cases_path = os.path.join(TEST_CASES_PATH, 'agent_statistics_format_test_module',
-                             'cases_agent_statistics_format.yaml')
-t2_statistics_template_path = os.path.join(STATISTICS_TEMPLATE_PATH, 'agent_statistics_format_test_module')
+t2_cases_path = Path(TEST_CASES_FOLDER_PATH, 'agent_statistics_format_test_module',
+                     'cases_agent_statistics_format.yaml')
+t2_statistics_template_path = Path(STATISTICS_TEMPLATE_PATH, 'agent_statistics_format_test_module')
 
 # Agent statistics format test configurations (t2)
 test2_configuration, test2_metadata, test2_cases_ids = get_test_cases_data(t2_cases_path)
 
 
+# Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test1_configuration, test1_metadata),
                          ids=test1_cases_ids)
 def test_manager_statistics_format(test_configuration, test_metadata, load_wazuh_basic_configuration,
@@ -145,7 +144,7 @@ def test_manager_statistics_format(test_configuration, test_metadata, load_wazuh
         - The `cases_manager_statistics_format` file provides the test cases.
     """
     endpoint = test_metadata['endpoint']
-    statistics_schema_path = os.path.join(t1_statistics_template_path, f"{endpoint}_template.json")
+    statistics_schema_path = Path(t1_statistics_template_path).joinpath(f"{endpoint}_template.json")
     params = f"?daemons_list={endpoint}"
     url = get_base_url() + DAEMONS_STATS_ROUTE + params
     authentication_headers, _ = login()
@@ -191,7 +190,7 @@ def test_agent_statistics_format(test_metadata, daemons_handler):
         - The `cases_agent_statistics_format` file provides the test cases.
     """
     endpoint = test_metadata['endpoint']
-    stats_schema_path = os.path.join(t2_statistics_template_path, f"{endpoint}_template.json")
+    stats_schema_path = Path(t2_statistics_template_path).joinpath(f"{endpoint}_template.json")
     agents = create_agents(1, 'localhost')
     _, injector = connect(agents[0])
 

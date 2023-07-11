@@ -49,12 +49,12 @@ references:
 tags:
     - api
 """
-import os
 import time
 import pytest
 import requests
 from pathlib import Path
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import RULES_FILES_ROUTE, CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths.analysisd import DEFAULT_RULES_PATH
@@ -67,16 +67,13 @@ from wazuh_testing.utils.file import write_file, delete_file
 pytestmark = pytest.mark.server
 
 # Variables
-test_file = Path(DEFAULT_RULES_PATH).joinpath('api_test.xml')
+test_file = Path(DEFAULT_RULES_PATH, 'api_test.xml')
 # Used by add_configuration to select the target configuration file
 configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configuration_folder_path = os.path.join(test_data_path, 'configuration_templates')
-cases_folder_path = os.path.join(test_data_path, 'test_cases')
-test_configuration_path = os.path.join(configuration_folder_path, 'configuration_cache.yaml')
-test_cases_path = os.path.join(cases_folder_path, 'cases_cache.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_cache.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_cache.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)

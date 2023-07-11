@@ -53,7 +53,9 @@ tags:
 import os
 import pwd
 import pytest
+from pathlib import Path
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths.api import WAZUH_API_SCRIPT
@@ -69,11 +71,8 @@ pytestmark = pytest.mark.server
 configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configuration_folder_path = os.path.join(test_data_path, 'configuration_templates')
-cases_folder_path = os.path.join(test_data_path, 'test_cases')
-test_configuration_path = os.path.join(configuration_folder_path, 'configuration_drop_privileges.yaml')
-test_cases_path = os.path.join(cases_folder_path, 'cases_drop_privileges.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_drop_privileges.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_drop_privileges.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)

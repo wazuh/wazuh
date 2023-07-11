@@ -50,12 +50,13 @@ references:
 tags:
     - api
 """
-import os
 import string
 import pytest
 import requests
+from pathlib import Path
 from random import choices
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import CONFIGURATION_TYPES, GROUPS_ROUTE, CDB_LIST_ROUTE
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.helpers import login, get_base_url
@@ -70,11 +71,8 @@ pytestmark = pytest.mark.server
 configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configuration_folder_path = os.path.join(test_data_path, 'configuration_templates')
-cases_folder_path = os.path.join(test_data_path, 'test_cases')
-test_configuration_path = os.path.join(configuration_folder_path, 'configuration_max_upload_size.yaml')
-test_cases_path = os.path.join(cases_folder_path, 'cases_max_upload_size.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_max_upload_size.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_max_upload_size.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)

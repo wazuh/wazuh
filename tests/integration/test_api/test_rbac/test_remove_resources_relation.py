@@ -50,9 +50,10 @@ references:
 tags:
     - api
 """
-import os
 import pytest
+from pathlib import Path
 
+from . import TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import TARGET_ROUTE_MAP
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.helpers import manage_security_resources, remove_resources_relationship
@@ -62,9 +63,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data
 pytestmark = pytest.mark.server
 
 # Paths
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-cases_folder_path = os.path.join(test_data_path, 'test_cases')
-test_cases_path = os.path.join(cases_folder_path, 'cases_remove_resources_relation.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_remove_resources_relation.yaml')
 
 # Configurations
 _, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
