@@ -143,4 +143,3 @@ INSERT INTO 'vpcflow' (
     'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T110Z_c23ab7.log.gz',
     DATETIME('now'),
     '20230101');
-

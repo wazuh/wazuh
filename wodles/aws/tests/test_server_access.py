@@ -40,7 +40,8 @@ def test_aws_server_access_initializes_properly(mock_custom_bucket):
 def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
                                                 same_prefix_result: bool, delete_file: bool, reparse: bool,
                                                 object_list: dict):
-    """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
+    """Test 'iter_files_in_bucket' method makes the necessary
+    method calls in order to process the logs inside the bucket.
 
     Parameters
     ----------
@@ -161,7 +162,8 @@ def test_aws_server_access_marker_only_logs_after(mock_sts):
     instance.date_format = '%Y-%m-%d'
 
     marker = instance.marker_only_logs_after(aws_region=utils.TEST_REGION, aws_account_id=utils.TEST_ACCOUNT_ID)
-    assert marker == f"{instance.prefix}{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-{test_only_logs_after[6:8]}"
+    assert marker == f"{instance.prefix}" \
+                     f"{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-{test_only_logs_after[6:8]}"
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -185,7 +187,8 @@ def test_aws_server_access_check_bucket_handles_exceptions_when_empty_bucket(moc
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_server_access_check_bucket_handles_exceptions_on_client_error(mock_sts,
                                                                            error_code: str, exit_code: int):
-    """Test 'check_bucket' method handles the different botocore exception and exits with the expected code when an exception is raised accessing to AWS.
+    """Test 'check_bucket' method handles the different botocore exception and
+    exits with the expected code when an exception is raised accessing to AWS.
 
     Parameters
     ----------
@@ -210,8 +213,8 @@ def test_aws_server_access_load_information_from_file(mock_custom_bucket):
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
 
     data = 'bucket_owner test_bucket [29/Apr/2025:08:47:53 +0000] 0.0.0.0 arn:aws:iam::123456789123:user/test.user ' \
-           'request_id operation - "GET /test_bucket?website= HTTP/1.1" 404 NoSuchWebsiteConfiguration 343 - 85 - "-" ' \
-           '"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 ' \
+           'request_id operation - "GET /test_bucket?website= HTTP/1.1" 404 NoSuchWebsiteConfiguration 343 - 85 - ' \
+           '"-" "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 ' \
            'OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy" - ' \
            'host_id signature_version cipher_suite authentication_type s3.amazonaws.com TLSv1.2 '
     expected_information = [
@@ -222,7 +225,10 @@ def test_aws_server_access_load_information_from_file(mock_custom_bucket):
          "error_code": "NoSuchWebsiteConfiguration", "bytes_sent": "343",
          "object_sent": "-", "total_time": "85",
          "turn_around_time": "-", "referer": "-",
-         "user_agent": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy",
+         "user_agent": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 "
+                       "Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 "
+                       "OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation "
+                       "cfg/retry-mode/legacy",
          "version_id": "-", "host_id": "host_id",
          "signature_version": "signature_version", "cipher_suite": "cipher_suite",
          "authentication_type": "authentication_type", "host_header": "s3.amazonaws.com",

@@ -62,12 +62,12 @@ def test_aws_waf_bucket_load_information_from_file(mock_custom_bucket, mock_buck
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
-def test_aws_waf_bucket_load_information_from_file_handles_exceptions_on_invalid_arguments(mock_custom_bucket,
-                                                                                           mock_bucket, mock_sts,
-                                                                                           mock_integration,
-                                                                                           log_file: str,
-                                                                                           skip_on_error: bool,
-                                                                                           expected_exception: Exception):
+def test_aws_waf_bucket_load_information_from_file_handles_exception_on_invalid_argument(mock_custom_bucket,
+                                                                                         mock_bucket, mock_sts,
+                                                                                         mock_integration,
+                                                                                         log_file: str,
+                                                                                         skip_on_error: bool,
+                                                                                         expected_exception: Exception):
     """Test that AWSWAFBucket's implementation of the load_information_from_file method raises
     an exception when called with invalid arguments.
 

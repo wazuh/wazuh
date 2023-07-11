@@ -25,7 +25,8 @@ TEST_EMPTY_TABLE_SCHEMA = "schema_empty_vpc_table.sql"
 
 TEST_FLOW_LOG_ID = 'fl-1234'
 TEST_TABLE_NAME = 'vpcflow'
-TEST_LOG_KEY = 'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_fl-1234_20190415T0945Z_c23ab7.log.gz'
+TEST_LOG_KEY = 'vpc/AWSLogs/123456789/vpcflowlogs/us-east-1/2019/04/15/123456789_vpcflowlogs_us-east-1_' \
+               'fl-1234_20190415T0945Z_c23ab7.log.gz'
 TEST_DATE = "2023/01/01"
 
 SQL_GET_DATE_LAST_LOG_PROCESSED = """SELECT created_date FROM {table_name} ORDER BY log_key DESC LIMIT 1;"""
@@ -264,7 +265,8 @@ def test_aws_vpc_flow_bucket_get_vpc_prefix():
     """Test 'get_vpc_prefix' method returns the prefix with the expected format."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
-    expected_vpc_prefix = utils.TEST_FULL_PREFIX + TEST_DATE + '/' + utils.TEST_ACCOUNT_ID + '_vpcflowlogs_' + utils.TEST_REGION + '_' + TEST_FLOW_LOG_ID
+    expected_vpc_prefix = utils.TEST_FULL_PREFIX + TEST_DATE + '/' + utils.TEST_ACCOUNT_ID + '_vpcflowlogs_' + \
+                          utils.TEST_REGION + '_' + TEST_FLOW_LOG_ID
 
     with patch('aws_bucket.AWSLogsBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX):
         vpc_prefix = instance.get_vpc_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION,

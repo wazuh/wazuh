@@ -49,11 +49,14 @@ TEST_EXTERNAL_ID = "external-id-Sec-Lake"
 TEST_SERVICE_ENDPOINT = 'test_service_endpoint'
 TEST_STS_ENDPOINT = "test_sts_endpoint"
 
-TEST_LOG_FULL_PATH_CLOUDTRAIL_1 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0030Z_aaaa.json.gz'
-TEST_LOG_FULL_PATH_CLOUDTRAIL_2 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz'
+TEST_LOG_FULL_PATH_CLOUDTRAIL_1 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_' \
+                                  '20190401T0030Z_aaaa.json.gz'
+TEST_LOG_FULL_PATH_CLOUDTRAIL_2 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_' \
+                                  '20190401T00015Z_aaaa.json.gz'
 TEST_LOG_FULL_PATH_CUSTOM_1 = 'custom/2019/04/15/07/firehose_custom-1-2019-04-15-09-16-03.zip'
 TEST_LOG_FULL_PATH_CUSTOM_2 = 'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-19-03.zip'
-TEST_LOG_FULL_PATH_CONFIG_1 = 'AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020500Z.json.gz'
+TEST_LOG_FULL_PATH_CONFIG_1 = 'AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_' \
+                              'ConfigHistory_20190415T020500Z.json.gz'
 
 LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{TEST_REGION}/'},
                                      {'Prefix': f'AWSLogs/prefix/{TEST_REGION}/'}]}
@@ -351,8 +354,8 @@ def get_aws_sqs_queue_parameters(name: str = TEST_SQS_NAME, external_id: str = T
 
 def get_aws_sl_subscriber_bucket_parameters(iam_role_arn: str = None, iam_role_duration: str = None,
                                             service_endpoint: str = None, sts_endpoint: str = None):
-    """Return a dict containing every parameter supported by AWSSLSubscriberBucket. Used to simulate different ossec.conf
-    configurations.
+    """Return a dict containing every parameter supported by AWSSLSubscriberBucket.
+    Used to simulate different ossec.conf configurations.
 
     Parameters
     ----------

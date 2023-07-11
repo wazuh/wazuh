@@ -431,8 +431,8 @@ def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
         if custom_delimiter:
             prefix_len = len(expected_filter_args['Prefix'])
             expected_filter_args['StartAfter'] = expected_filter_args['StartAfter'][:prefix_len] + \
-                                                 expected_filter_args['StartAfter'][prefix_len:].replace('/',
-                                                                                                         custom_delimiter)
+                                                 expected_filter_args['StartAfter'][prefix_len:]. \
+                                                     replace('/', custom_delimiter)
 
     assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
                                                                custom_delimiter)
@@ -490,7 +490,9 @@ def test_aws_bucket_decompress_file(mock_io):
 
 @patch('io.BytesIO')
 def test_aws_bucket_decompress_file_handles_exceptions_when_decompress_fails(mock_io):
-    """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and exits with the expected exit code."""
+    """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and
+    exits with the expected exit code.
+    """
     bucket = utils.get_mocked_aws_bucket()
     bucket.client = MagicMock()
 
@@ -510,7 +512,8 @@ def test_aws_bucket_decompress_file_handles_exceptions_when_decompress_fails(moc
 
 
 def test_aws_bucket_load_information_from_file():
-    """Test 'load_information_from_file' method properly raise a NotImplementedError exception when being directly called."""
+    """Test 'load_information_from_file' method properly raise a NotImplementedError exception
+    when being directly called."""
     bucket = utils.get_mocked_aws_bucket()
 
     with pytest.raises(NotImplementedError):
@@ -541,8 +544,10 @@ def test_aws_bucket_get_log_file(mock_load_from_file, expected_result):
 @pytest.mark.parametrize('skip_on_error', [True, False])
 @patch('aws_bucket.AWSBucket.load_information_from_file')
 def test_aws_bucket_get_log_file_handles_exceptions_when_information_cannot_be_loaded(mock_load_from_file,
-                                    skip_on_error: bool,
-                                    exception: Exception, error_message: str, exit_code: int):
+                                                                                      skip_on_error: bool,
+                                                                                      exception: Exception,
+                                                                                      error_message: str,
+                                                                                      exit_code: int):
     """Test 'get_log_file' method handles exceptions raised according to their type.
 
     Parameters
@@ -673,7 +678,8 @@ def test_aws_bucket_iter_events(mock_debug, mock_send_event, mock_get_alert,
 @patch('aws_bucket.AWSBucket.build_s3_filter_args')
 def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                                          delete_file: bool, check_prefix: bool, reparse: bool, object_list: dict):
-    """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
+    """Test 'iter_files_in_bucket' method makes the necessary method calls
+    in order to process the logs inside the bucket.
 
     Parameters
     ----------
@@ -869,17 +875,22 @@ def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_databa
 @pytest.mark.parametrize('organization_id', [utils.TEST_ORGANIZATION_ID, None])
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_logs_bucket_get_base_prefix(mock_wazuh_aws_database, organization_id):
-    """Test 'get_base_prefix' returns the expected prefix with the format <prefix>/AWSLogs/<suffix>/<organization_id>/"""
+    """Test 'get_base_prefix' returns the expected prefix with the format
+    <prefix>/AWSLogs/<suffix>/<organization_id>/.
+    """
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, aws_organization_id=organization_id,
                                        prefix=f'{utils.TEST_PREFIX}/', suffix=f'{utils.TEST_SUFFIX}/')
-    expected_base_prefix = os.path.join(utils.TEST_PREFIX, 'AWSLogs', utils.TEST_SUFFIX, (organization_id if organization_id else ""), '')
+    expected_base_prefix = os.path.join(utils.TEST_PREFIX, 'AWSLogs', utils.TEST_SUFFIX,
+                                        (organization_id if organization_id else ""), '')
     assert instance.get_base_prefix() == expected_base_prefix
 
 
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')
 def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_wazuh_aws_database):
-    """Test 'get_service_prefix' method returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
+    """Test 'get_service_prefix' method returns the expected prefix with the format
+    <base_prefix>/<account_id>/<service>.
+    """
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
     instance.service = utils.TEST_SERVICE_NAME
     expected_base_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, utils.TEST_SERVICE_NAME, '')
@@ -959,7 +970,8 @@ def test_aws_logs_bucket_load_information_from_file(mock_wazuh_aws_database, moc
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, mock_sts, access_key, secret_key, profile):
+def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, mock_sts, access_key, secret_key,
+                                                profile):
     """Test if the instances of AWSCustomBucket are created properly."""
 
     mock_client = MagicMock()
@@ -1184,7 +1196,8 @@ def test_aws_custom_bucket_mark_complete():
 @pytest.mark.parametrize('aws_account_id', [utils.TEST_ACCOUNT_ID, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
-def test_aws_custom_bucket_db_count_custom(mock_wazuh_aws_database, mock_sts, custom_database, aws_account_id: str or None):
+def test_aws_custom_bucket_db_count_custom(mock_wazuh_aws_database, mock_sts, custom_database,
+                                           aws_account_id: str or None):
     """Test 'db_count_region' method returns the number of rows in DB for an AWS account id.
 
     Parameters
@@ -1233,7 +1246,8 @@ def test_aws_custom_bucket_db_maintenance(mock_wazuh_aws_database, mock_sts, aws
 @patch('builtins.print')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
-def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_database, mock_sts, mock_print, custom_database):
+def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_database, mock_sts, mock_print,
+                                                             custom_database):
     """Test 'db_maintenance' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 

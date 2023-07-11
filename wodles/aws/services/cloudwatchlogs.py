@@ -175,7 +175,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                                             db_values['start_time'] if db_values else None,
                                                             db_values['end_time'] if db_values else None), 2)
                     result_before = None
-                    start_time = self.only_logs_after_millis if self.only_logs_after_millis else self.default_date_millis
+                    start_time = self.only_logs_after_millis if self.only_logs_after_millis else \
+                        self.default_date_millis
                     end_time = None
                     token = None
 
@@ -410,8 +411,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 result['start_time'] = max_end_time
 
             if values['end_time'] is not None:
-                result['end_time'] = max_end_time if max_end_time is not None and max_end_time > values['end_time'] else \
-                    values['end_time']
+                result['end_time'] = max_end_time if max_end_time is not None and max_end_time > values['end_time'] \
+                    else values['end_time']
             else:
                 result['end_time'] = max_end_time
             return result

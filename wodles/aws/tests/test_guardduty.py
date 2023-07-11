@@ -76,7 +76,8 @@ def test_aws_guardduty_bucket_check_guardduty_type_handles_exceptions(mock_wazuh
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_aws_guardduty_bucket_get_service_prefix(mock_custom_bucket, mock_type, mock_base_prefix):
-    """Test 'get_service_prefix' method returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
+    """Test 'get_service_prefix' method returns the expected prefix with the format
+    <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
     expected_base_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, instance.service, '')
@@ -100,8 +101,8 @@ def test_aws_guardduty_bucket_get_full_prefix(mock_wazuh_aws_integration, mock_s
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
         if instance.type == "GuardDutyNative":
-            assert os.path.join(instance.get_service_prefix(utils.TEST_ACCOUNT_ID), utils.TEST_REGION, '') == instance.get_full_prefix(
-                utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+            assert os.path.join(instance.get_service_prefix(utils.TEST_ACCOUNT_ID), utils.TEST_REGION, '') == \
+                   instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
         else:
             assert instance.prefix == instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
 

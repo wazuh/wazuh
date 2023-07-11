@@ -126,4 +126,3 @@ INSERT INTO 'config' (
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020535Z.json.gz',
     DATETIME('now'),
     '20230101');
-

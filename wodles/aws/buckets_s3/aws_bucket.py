@@ -22,7 +22,8 @@ PATH_DATE_FORMAT = "%Y/%m/%d"
 DB_DATE_FORMAT = "%Y%m%d"
 DEFAULT_DATABASE_NAME = "s3_cloudtrail"
 
-RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
+RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
+                          'considerations.html#Connection-configuration-for-retries'
 
 INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
 INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
@@ -30,9 +31,9 @@ THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
 
 INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
 INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
-THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. If the problem persists" \
-                                     " check the following link to learn how to use the Retry configuration to avoid it: " \
-                                     f"'{RETRY_CONFIGURATION_URL}'"
+THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
+                                     "If the problem persists check the following link to learn how to use " \
+                                     f"the Retry configuration to avoid it: '{RETRY_CONFIGURATION_URL}'"
 
 AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
                            'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
@@ -454,8 +455,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     def load_information_from_file(self, log_key):
         """
         AWS logs are stored in different formats depending on the service:
-        * A JSON with an unique field "Records" which is an array of jsons. The filename has .json extension. (Cloudtrail)
-        * Multiple JSONs stored in the same line and with no separation. The filename has no extension. (GuardDuty, IAM, Macie, Inspector)
+        * A JSON with a unique field "Records" which is an array of jsons. The filename has .json extension.
+        (Cloudtrail)
+        * Multiple JSONs stored in the same line and with no separation. The filename has no extension.
+        (GuardDuty, IAM, Macie, Inspector)
         * TSV format. The filename has no extension. Has multiple lines. (VPC)
         :param log_key: name of the log file
         :return: list of events in json format.
@@ -691,7 +694,8 @@ class AWSLogsBucket(AWSBucket):
 
     def get_creation_date(self, log_file):
         # An example of cloudtrail filename would be
-        # AWSLogs/11111111/CloudTrail/ap-northeast-1/2018/08/10/111111_CloudTrail_ap-northeast-1_20180810T0115Z_DgrtLuV9YQvGGdN6.json.gz
+        # AWSLogs/11111111/CloudTrail/ap-northeast-1/2018/08/10/
+        # 111111_CloudTrail_ap-northeast-1_20180810T0115Z_DgrtLuV9YQvGGdN6.json.gz
         # the following line extracts this part -> 20180810
         return int(path.basename(log_file['Key']).split('_')[-2].split('T')[0])
 

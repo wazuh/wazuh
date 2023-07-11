@@ -126,4 +126,3 @@ INSERT INTO 'cloudtrail' (
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz',
     DATETIME('now'),
     '');
-

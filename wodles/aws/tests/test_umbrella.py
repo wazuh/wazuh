@@ -112,4 +112,5 @@ def test_cisco_umbrella_marker_only_logs_after(mock_integration, mock_sts):
     instance.date_format = '%Y-%m-%d'
 
     marker = instance.marker_only_logs_after(aws_region=utils.TEST_REGION, aws_account_id=utils.TEST_ACCOUNT_ID)
-    assert marker == f"{instance.prefix}{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-{test_only_logs_after[6:8]}"
+    assert marker == f"{instance.prefix}{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-" \
+                     f"{test_only_logs_after[6:8]}"

@@ -138,7 +138,8 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream(mock_debug, mock_sts_client):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('cloudwatchlogs.aws_tools.debug')
 def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug, mock_sts_client):
-    """Test 'remove_aws_log_stream' method handles exceptions raised when trying to remove a log stream from a log group.
+    """Test 'remove_aws_log_stream' method handles exceptions raised when trying
+    to remove a log stream from a log group.
     This could be due to a botocore ClientError or another type of Exception.
     """
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
@@ -169,8 +170,8 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug,
 def test_aws_cloudwatchlogs_get_alerts_within_range(mock_debug, mock_sts_client, mock_send_msg,
                                                     token: str or None, timestamp: int,
                                                     start_time: int or None, end_time: int or None):
-    """Test 'get_alerts_within_range' method makes the necessary calls in order to get the events from AWS CloudWatch Logs,
-    send them to Analysisd and return the expected token and timestamps.
+    """Test 'get_alerts_within_range' method makes the necessary calls in order
+    to get the events from AWS CloudWatch Logs, send them to Analysisd and return the expected token and timestamps.
 
 
     Parameters

@@ -57,7 +57,8 @@ def test_aws_lb_bucket_iter_regions_and_accounts(mock_custom_bucket, mock_iter_r
 def test_aws_lb_bucket_get_full_prefix(mock_custom_bucket, mock_service_prefix):
     """Test 'get_full_prefix' returns the expected prefix with the format <service_prefix>/<region>."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSLBBucket)
-    expected_full_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, 'elasticloadbalancing', utils.TEST_REGION, '')
+    expected_full_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, 'elasticloadbalancing',
+                                        utils.TEST_REGION, '')
     assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == expected_full_prefix
 
 
@@ -82,7 +83,9 @@ def test_aws_alb_bucket_initializes_properly(mock_lb_bucket):
 
 @patch('load_balancers.AWSLBBucket.__init__')
 def test_aws_alb_bucket_load_information_from_file(mock_lb_bucket):
-    """Test 'load_information_from_file' method returns the expected information or logs the appropriate error message."""
+    """Test 'load_information_from_file' method returns the expected information or logs
+    the appropriate error message.
+    """
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
 
     with patch('aws_bucket.AWSBucket.decompress_file'), \

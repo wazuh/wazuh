@@ -169,9 +169,7 @@ class WazuhIntegration:
                 print('Invalid key or value found in config '.format(e))
                 sys.exit(17)
 
-            aws_tools.debug(
-                f"Created Config object using profile: '{profile}' configuration",
-                2)
+            aws_tools.debug(f"Created Config object using profile: '{profile}' configuration", 2)
 
         else:
             # Set retries parameters to avoid a throttling exception

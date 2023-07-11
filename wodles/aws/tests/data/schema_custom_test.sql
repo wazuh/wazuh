@@ -109,4 +109,3 @@ INSERT INTO 'custom' (
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-18-03.zip',
     DATETIME('now'),
     '');
-
