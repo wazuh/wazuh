@@ -1,3 +1,4 @@
+#TODO: Once the issue https://github.com/opensearch-project/OpenSearch/issues/8528 has been resolved, replace this decoder with another one that handles events in JSON format. See commit: 372b5ce250c89c8f856841c1c9b4d9bd92ce43bc
 name: decoder/wazuh-indexer-task-plain/0
 
 metadata:
