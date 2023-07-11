@@ -10,3 +10,4 @@ from pathlib import Path
 TEST_DATA_PATH = Path(Path(__file__).parent, 'data')
 TEST_CASES_FOLDER_PATH = Path(TEST_DATA_PATH, 'test_cases')
 CONFIGURATIONS_FOLDER_PATH = Path(TEST_DATA_PATH, 'configuration_templates')
+DB_SCHEMAS_FOLDER_PATH = Path(TEST_DATA_PATH, 'db_schemas')
