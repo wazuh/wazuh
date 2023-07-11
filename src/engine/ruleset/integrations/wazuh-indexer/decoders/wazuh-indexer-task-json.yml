@@ -1,9 +1,9 @@
-name: decoder/wazuh-indexer-task/0
+name: decoder/wazuh-indexer-task-json/0
 
 metadata:
   module: wazuh-indexer
   title: Wazuh indexer task logs
-  description: Decoder for Wazuh indexer task logs
+  description: Decoder for Wazuh indexer task logs in JSON format
   compatibility: This decoder has been tested with logs from Wazuh version 4.4
   versions:
     - "4.4"
@@ -29,7 +29,7 @@ normalize:
   - map:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-task
-      - wazuh.decoders: +array_append/wazuh-indexer-task
+      - wazuh.decoders: +array_append/wazuh-indexer-task-json
       - '@timestamp': $~json.timestamp
       - event.created: $~json.timestamp
       - event.kind: event
@@ -51,4 +51,4 @@ normalize:
       - ~task.start_time_millis: $~json.start_time_millis
       - ~task.resource_stats: $~json.resource_stats
       - ~task.metadata: $~json.metadata
-      # - ~json: +delete
+      - ~json: +delete
