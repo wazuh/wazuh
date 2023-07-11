@@ -57,10 +57,10 @@ from pathlib import Path
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import RULES_FILES_ROUTE, CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
-from wazuh_testing.constants.paths.analysisd import DEFAULT_RULES_PATH
+from wazuh_testing.constants.paths.ruleset import DEFAULT_RULES_PATH
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.file import write_file, delete_file
+from wazuh_testing.utils.file import write_file
 
 
 # Marks
@@ -79,17 +79,6 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_cache.yaml')
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
-
-
-# Fixtures
-@pytest.fixture
-def remove_test_file():
-    """Remove the file before and after the test execution."""
-    delete_file(test_file)
-
-    yield
-
-    delete_file(test_file)
 
 
 # Tests
