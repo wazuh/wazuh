@@ -439,11 +439,14 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
     api::Handler cmd;
     ASSERT_FALSE(kvdbManager->createDB("test2"));
     auto handler = kvdbManager->getKVDBHandler("test2", "test");
+    auto handler2 = kvdbManager->getKVDBHandler("test2", "test2");
+    auto handler3 = kvdbManager->getKVDBHandler("test2", "test3");
+
     ASSERT_TRUE(std::holds_alternative<std::shared_ptr<kvdbManager::IKVDBHandler>>(handler));
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest("test2"));
     const auto expectedData =
-        json::Json {R"({"status":"ERROR","error":"Could not remove the DB 'test2'. Usage Reference Count: 1."})"};
+        json::Json {R"({"status":"ERROR","error":"Could not remove the DB 'test2'. Usage Reference Count: 3."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);

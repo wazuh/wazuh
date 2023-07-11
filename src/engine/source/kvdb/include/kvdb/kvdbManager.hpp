@@ -80,6 +80,12 @@ public:
     std::map<std::string, RefInfo> getKVDBHandlersInfo() const override;
 
     /**
+     * @copydoc IKVDBManager::getKVDBHandlersCount
+     *
+     */
+    uint32_t getKVDBHandlersCount(const std::string& dbName) const override;
+
+    /**
      * @copydoc IKVDBManager::getKVDBHandler
      *
      */

@@ -98,7 +98,7 @@ public:
      * @param scopeName Name of the Scope.
      *
      */
-    void removeKVDBHandler(const std::string& dbName, 
+    void removeKVDBHandler(const std::string& dbName,
                            const std::string& scopeName) override;
 
     /**
