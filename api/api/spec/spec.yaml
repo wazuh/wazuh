@@ -2063,6 +2063,33 @@ components:
       - stopped
       - running
 
+    # Engine Models
+    # Router Module
+
+    RouterEntry:
+      type: object
+      properties:
+        name:
+          description: "Route name"
+          type: string
+        filter:
+          description: "Router filter"
+          type: string
+        policy:
+          description: "Router policy"
+          type: string
+        priority:
+          description: "Router priority"
+          type: integer
+
+    RouterResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouterEntry'
+
     # Logtest models
     LogtestRequest:
       type: object
@@ -6990,6 +7017,20 @@ components:
       schema:
         type: boolean
         default: true
+    route_name:
+      in: query
+      name: name
+      description: "Search for the given route name"
+      required: false
+      schema:
+        type: string
+    required_route_name:
+      in: query
+      name: name
+      description: "Search for the given route name"
+      required: true
+      schema:
+        type: string
 
 
 tags:
@@ -8246,6 +8287,217 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /engine/routes:
+    get:
+      tags:
+        - Engine
+      summary: "Get all or one route"
+      description: "Return a list of routes"
+      operationId: api.controllers.engine_controller.get_routes
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+        - $ref: '#/components/parameters/route_name'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "List of routes"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RouterResponse'
+              example:
+                data:
+                  - name: default
+                    filter: filter/allow-all/0
+                    policy: policy/wazuh/0
+                    priority: 255
+                message: ''
+                error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - Engine
+      summary: "Creates a route"
+      description: "Return the status of the operation"
+      operationId: api.controllers.engine_controller.create_route
+      # TODO Change RBAC
+      x-rbac-actions:
+         - $ref: '#/x-rbac-catalog/actions/agent:read'
+         - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+         - $ref: '#/components/parameters/wait_for_complete'
+         - $ref: '#/components/parameters/pretty'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: "Router name"
+                  type: string
+                policy:
+                  description: "Router policy"
+                  type: string
+                filter:
+                  description: "Router policy"
+                  type: string
+                priority:
+                  description: "Priority"
+                  type: integer
+              required:
+                - name
+                - policy
+                - filter
+                - priority
+            example:
+              name: default
+              filter: filter/allow-all/0
+              policy: policy/wazuh/0
+              priority: 255
+      responses:
+        '200':
+        description: "Status of operation"
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+            example:
+              message: ''
+              error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    patch:
+      tags:
+        - Engine
+      summary: "Updates a route priority"
+      description: "Return the status of the operation"
+      operationId: api.controllers.engine_controller.update_route
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/pretty'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: "Router name"
+                  type: string
+                priority:
+                  description: "Priority"
+                  type: integer
+              required:
+                - name
+                - priority
+            example:
+              name: default
+              priority: 255
+      responses:
+        '200':
+        description: "Status of operation"
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+            example:
+              message: ''
+              error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - Engine
+      summary: "Delete a route"
+      description: "Return the status of the operation"
+      operationId: api.controllers.engine_controller.delete_route
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+         - $ref: '#/components/parameters/route_name'
+         - $ref: '#/components/parameters/wait_for_complete'
+         - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "Status of operation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: ''
+                error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /groups:
     delete:
