@@ -5,7 +5,7 @@ overview: |
   The logs include valuable information for monitoring cluster operations and troubleshooting issues:
     - **Server logs:** These logs record events related to cluster configuration and status, such as changes in cluster topology, node startup or shutdown, shard allocation, etc.
     - **Slow logs:** These logs record operations that exceed certain predefined time thresholds, such as slow searches or slow indexings. Slow logs are useful for identifying and troubleshooting performance issues.
-      - Search slow
+      - Search slow log
       - Indexing slow log
     - **Task logs:** Wazuh indexer can log CPU time and memory utilization for the top N memory-expensive search tasks when task resource consumers are enabled. By default, task resource consumers will log the top 10 search tasks at 60 second intervals.
     - **Deprecation logs:** Deprecation logs record when clients make deprecated API calls to your cluster. These logs can help you identify and fix issues prior to upgrading to a new major version.
@@ -41,8 +41,8 @@ configuration: |
   </localfile>
 
   <localfile>
-    <location>/var/log/wazuh-indexer/wazuh-cluster_task_detailslog.json</location>
-    <log_format>json</log_format>
+    <location>/var/log/wazuh-indexer/wazuh-cluster_task_detailslog.log</location>
+    <log_format>syslog</log_format>
   </localfile>
   ```
 
