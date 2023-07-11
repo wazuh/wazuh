@@ -158,8 +158,7 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
 
 std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
-    auto handlersInfo = getKVDBHandlersInfo();
-    const auto refCount = handlersInfo.count(name);
+    const auto refCount = getKVDBHandlersCount(name);
 
     if (refCount)
     {
@@ -331,6 +330,23 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBHandlersInfo() c
         auto refInfo = m_kvdbHandlerCollection->getRefMap(dbName);
         retValue.insert(std::make_pair(dbName, refInfo));
     }
+    return retValue;
+}
+
+uint32_t KVDBManager::getKVDBHandlersCount(const std::string& dbName) const
+{
+    const auto handlersInfo = getKVDBHandlersInfo();
+    uint32_t retValue = 0;
+
+    if (handlersInfo.count(dbName))
+    {
+        auto scopes = handlersInfo.at(dbName);
+        for(const auto& [key, value] : scopes)
+        {
+            retValue += value;
+        }
+    }
+
     return retValue;
 }
 
