@@ -18,6 +18,34 @@ HARDCODED_ORIGIN_MODULE = "routes"
 def get_routes(limit: int, name: Optional[str] = None, select: Optional[List] = None, sort_by: dict = None,
                sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
                offset: int = 0, ):
+    """
+    Retrieves routes based on the specified parameters.
+
+    Parameters
+    ---------
+    limit: int
+        Maximum number of routes to retrieve.
+    name: Optional[str]
+        Name of the route.
+    select: Optional[str]
+        Fields to return (separated by comma).
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    offset: int
+        Number of elements to skip before returning the collection.
+
+    Returns
+    ---------
+    WazuhResult
+        WazuhResult with the results of the command
+    """
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     if name:
         msg = create_wazuh_socket_message(origin, 'router.route/get', {'name': name})
@@ -45,6 +73,26 @@ def get_routes(limit: int, name: Optional[str] = None, select: Optional[List] = 
 
 
 def create_route(name: str, filter: str, policy: str, priority: int):
+    """
+    Creates a new route
+
+    Parameters
+    ---------
+    name: str
+        Name of the new route to create.
+    filter: str
+        Filter of the new route.
+    policy: str
+        Policy of the new route.
+    priority:
+        Priority of the new route.
+
+
+    Returns
+    ---------
+    WazuhResult
+        WazuhResult with the results of the command
+    """
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     route = {'route': {'name': name, 'filter': filter, 'policy': policy, 'priority': priority}}
     msg = create_wazuh_socket_message(origin, 'router.route/post', route)
@@ -69,6 +117,21 @@ def create_route(name: str, filter: str, policy: str, priority: int):
 
 
 def update_route(name: str, priority: int):
+    """
+    Updates a route priority.
+
+    Parameters
+    ---------
+    name: str
+        Name of the existing route.
+    priority:
+        The new priority value.
+
+    Returns
+    ---------
+    WazuhResult
+        WazuhResult with the results of the command
+    """
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     msg = create_wazuh_socket_message(origin, 'router.route/patch', {'route': {'name': name, 'priority': priority}})
 
@@ -88,6 +151,19 @@ def update_route(name: str, priority: int):
 
 
 def delete_route(name: str):
+    """
+    Deletes a route
+
+    Parameters
+    ---------
+    name: str
+        Name of the route to delete.
+
+    Returns
+    ---------
+    WazuhResult
+        WazuhResult with the results of the command
+    """
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     msg = create_wazuh_socket_message(origin, 'router.route/delete', {'name': name})
 

@@ -23,6 +23,34 @@ async def get_routes(request, name: Optional[str] = None,
                       select: Optional[str] = None, sort: Optional[str] = None, search: Optional[str] = None,
                       offset: int = 0, limit: int = HARDCODED_VALUE_TO_SPECIFY, pretty: bool = False,
                       wait_for_complete: bool = False):
+    """Get all the routes or the one specified.
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return. Default: HARDCODED_VALUE_TO_SPECIFY
+    name : str
+        Filter by route name.
+
+    Returns
+    -------
+    web.Response
+        All the routes or the specified route.
+    """
 
     f_kwargs = {
         'name': name,
@@ -49,6 +77,21 @@ async def get_routes(request, name: Optional[str] = None,
 
 
 async def create_route(request, pretty: bool = False, wait_for_complete: bool = False):
+    """Creates a new route
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    web.Response
+        The status of the operation
+    """
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await RouteCreateModel.get_kwargs(request)
 
@@ -66,6 +109,21 @@ async def create_route(request, pretty: bool = False, wait_for_complete: bool = 
 
 
 async def update_route(request, pretty: bool = False, wait_for_complete: bool = False):
+    """Updates the priority of the specified route
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    web.Response
+        The status of the operation
+    """
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await RouteUpdateModel.get_kwargs(request)
 
@@ -83,6 +141,23 @@ async def update_route(request, pretty: bool = False, wait_for_complete: bool = 
 
 
 async def delete_route(request, name: Optional[str] = None, pretty: bool = False, wait_for_complete: bool = False):
+    """Deletes the specified route
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    name : str
+        The name of the route to delete.
+
+    Returns
+    -------
+    web.Response
+        The status of the operation
+    """
     f_kwargs = {'name': name}
 
     dapi = DistributedAPI(f=engine_router.delete_route,
