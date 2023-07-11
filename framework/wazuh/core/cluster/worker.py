@@ -176,6 +176,22 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if not os.path.exists(worker_tmp_files):
                 utils.mkdir_with_mode(worker_tmp_files)
 
+    def connection_lost(self, exc):
+        """Define process of closing connection with the server.
+
+        Cancel all tasks and set 'on_con_lost' as True if not already.
+
+        Parameters
+        ----------
+        exc : Exception, None
+            'None' means a regular EOF is received, or the connection was aborted or closed
+            by this side of the connection.
+        """
+        super().connection_lost(exc)
+
+        # Clean cluster files from previous executions 
+        cluster.clean_up(node_name=self.name)
+
     def process_request(self, command: bytes, data: bytes) -> Union[bytes, Tuple[bytes, bytes]]:
         """Define all commands that a worker can receive from the master.
 

@@ -1381,7 +1381,8 @@ def test_master_handler_get_logger():
 
 @patch.object(logging.getLogger("wazuh"), "info")
 @patch("wazuh.core.cluster.master.server.AbstractServerHandler.connection_lost")
-def test_master_handler_connection_lost(connection_lost_mock, logger_mock):
+@patch("wazuh.core.cluster.master.cluster.clean_up") 
+def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
 
     master_handler = get_master_handler()
@@ -1405,6 +1406,8 @@ def test_master_handler_connection_lost(connection_lost_mock, logger_mock):
 
     master_handler.sync_tasks = {"key": PendingTaskMock()}
     master_handler.connection_lost(Exception())
+
+    clean_up_mock.assert_called_once_with(node_name=master_handler.name)
 
 
 # Test Master class
