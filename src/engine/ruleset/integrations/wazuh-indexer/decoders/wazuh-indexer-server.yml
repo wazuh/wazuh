@@ -57,4 +57,4 @@ normalize:
       - ~node.name: $~json.node\.name
       - ~node.id: $~json.node\.id
       - message: $~json.message
-      # - ~json: +delete
+      - ~json: +delete
