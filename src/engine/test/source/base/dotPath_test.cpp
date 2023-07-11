@@ -124,4 +124,7 @@ INSTANTIATE_TEST_SUITE_P(DotPathTest,
                                            BuildsStrTuple("", {}, false),
                                            BuildsStrTuple("a.", {}, false),
                                            BuildsStrTuple(".a", {}, false),
-                                           BuildsStrTuple("a..b", {}, false)));
+                                           BuildsStrTuple("a..b", {}, false),
+                                           BuildsStrTuple("a\\.b", {"a.b"}, true),
+                                           BuildsStrTuple("a\\.b.c", {"a.b", "c"}, true),
+                                           BuildsStrTuple("a.b\\.c", {"a", "b.c"}, true)));

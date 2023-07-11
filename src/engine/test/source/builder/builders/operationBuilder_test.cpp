@@ -31,6 +31,20 @@ Json operations {R"([
     {"nested.boolF": false},
     {"nested.null": null},
 
+    {"escaped\\.string": "value"},
+    {"escaped\\.int": 1},
+    {"escaped\\.double": 1.0},
+    {"escaped\\.boolT": true},
+    {"escaped\\.boolF": false},
+    {"escaped\\.null": null},
+
+    {"nested.escaped\\.string": "value"},
+    {"nested.escaped\\.int": 1},
+    {"nested.escaped\\.double": 1.0},
+    {"nested.escaped\\.boolT": true},
+    {"nested.escaped\\.boolF": false},
+    {"nested.escaped\\.null": null},
+
     {"stringRef": "$string"},
     {"intRef": "$int"},
     {"doubleRef": "$double"},
@@ -55,7 +69,33 @@ Json operations {R"([
     {"nested.boolFRef": "$nested.boolF"},
     {"nested.arrayRef": "$nested.array"},
     {"nested.objectRef": "$nested.object"},
-    {"nested.nullRef": "$nested.null"}
+    {"nested.nullRef": "$nested.null"},
+
+    {"escapedStringRef": "$escaped\\.string"},
+    {"escapedIntRef": "$escaped\\.int"},
+    {"escapedDoubleRef": "$escaped\\.double"},
+    {"escapedBoolTRef": "$escaped\\.boolT"},
+    {"escapedBoolFRef": "$escaped\\.boolF"},
+    {"escapedArrayRef": "$escaped\\.array"},
+    {"escapedObjectRef": "$escaped\\.object"},
+    {"escapedNullRef": "$escaped\\.null"},
+
+    {"nestedEscapedStringRef": "$nested.escaped\\.string"},
+    {"nestedEscapedIntRef": "$nested.escaped\\.int"},
+    {"nestedEscapedDoubleRef": "$nested.escaped\\.double"},
+    {"nestedEscapedBoolTRef": "$nested.escaped\\.boolT"},
+    {"nestedEscapedBoolFRef": "$nested.escaped\\.boolF"},
+    {"nestedEscapedArrayRef": "$nested.escaped\\.array"},
+    {"nestedEscapedObjectRef": "$nested.escaped\\.object"},
+
+    {"nested.escaped\\.stringRef": "$nested.escaped\\.string"},
+    {"nested.escaped\\.intRef": "$nested.escaped\\.int"},
+    {"nested.escaped\\.doubleRef": "$nested.escaped\\.double"},
+    {"nested.escaped\\.boolTRef": "$nested.escaped\\.boolT"},
+    {"nested.escaped\\.boolFRef": "$nested.escaped\\.boolF"},
+    {"nested.escaped\\.arrayRef": "$nested.escaped\\.array"},
+    {"nested.escaped\\.objectRef": "$nested.escaped\\.object"},
+    {"nested.escaped\\.nullRef": "$nested.escaped\\.null"}
 
 ])"};
 
@@ -65,7 +105,11 @@ Json helperFunctionsCases {R"([
     {"target": "+array_append/argument"},
     {"nested.target": "+array_append/argument"},
     {"referenceArg": "+array_append/argument/$target"},
-    {"nestedreferenceArg": "+array_append/argument/$nested.target"}
+    {"nestedreferenceArg": "+array_append/argument/$nested.target"},
+    {"escaped\\.target": "+array_append/argument"},
+    {"nested.escaped\\.target": "+array_append/argument"},
+    {"referenceArg": "+array_append/argument/$escaped\\.target"},
+    {"nestedreferenceArg": "+array_append/argument/$nested.escaped\\.target"}
 ])"};
 
 auto helperFunctionArray {helperFunctionsCases.getArray().value()};
@@ -105,6 +149,15 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
         "array": [1, 2, 3],
         "object": {"a": 1, "b": 2},
 
+        "escaped.string": "value",
+        "escaped.int": 1,
+        "escaped.double": 1.0,
+        "escaped.boolT": true,
+        "escaped.boolF": false,
+        "escaped.null": null,
+        "escaped.array": [1, 2, 3],
+        "escaped.object": {"a": 1, "b": 2},
+
         "nested": {
             "string": "value",
             "int": 1,
@@ -122,7 +175,25 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
             "boolFRef": false,
             "arrayRef": [1, 2, 3],
             "objectRef": {"a": 1, "b": 2},
-            "nullRef": null
+            "nullRef": null,
+
+            "escaped.string": "value",
+            "escaped.int": 1,
+            "escaped.double": 1.0,
+            "escaped.boolT": true,
+            "escaped.boolF": false,
+            "escaped.null": null,
+            "escaped.array": [1, 2, 3],
+            "escaped.object": {"a": 1, "b": 2},
+
+            "escaped.stringRef": "value",
+            "escaped.intRef": 1,
+            "escaped.doubleRef": 1.0,
+            "escaped.boolTRef": true,
+            "escaped.boolFRef": false,
+            "escaped.arrayRef": [1, 2, 3],
+            "escaped.objectRef": {"a": 1, "b": 2},
+            "escaped.nullRef": null
         },
 
         "stringRef": "value",
@@ -140,7 +211,25 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
         "nestedBoolTRef": true,
         "nestedBoolFRef": false,
         "nestedArrayRef": [1, 2, 3],
-        "nestedObjectRef": {"a": 1, "b": 2}
+        "nestedObjectRef": {"a": 1, "b": 2},
+
+        "escapedStringRef": "value",
+        "escapedIntRef": 1,
+        "escapedDoubleRef": 1.0,
+        "escapedBoolTRef": true,
+        "escapedBoolFRef": false,
+        "escapedArrayRef": [1, 2, 3],
+        "escapedObjectRef": {"a": 1, "b": 2},
+        "escapedNullRef": null,
+
+        "nestedEscapedStringRef": "value",
+        "nestedEscapedIntRef": 1,
+        "nestedEscapedDoubleRef": 1.0,
+        "nestedEscapedBoolTRef": true,
+        "nestedEscapedBoolFRef": false,
+        "nestedEscapedArrayRef": [1, 2, 3],
+        "nestedEscapedObjectRef": {"a": 1, "b": 2},
+        "nestedEscapedNullRef": null
 
 })");
 
@@ -153,6 +242,15 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
         "null": "null",
         "array": [1],
         "object": {"a": 1},
+
+        "escaped.string": "values",
+        "escaped.int": 2,
+        "escaped.double": 2.0,
+        "escaped.boolT": false,
+        "escaped.boolF": true,
+        "escaped.null": "null",
+        "escaped.array": [1],
+        "escaped.object": {"a": 1},
 
         "nested": {
             "string": 1,
@@ -170,7 +268,24 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
             "boolFRef": true,
             "arrayRef": ["1"],
             "objectRef": {"a": 1},
-            "nullRef": ["null"]
+            "nullRef": ["null"],
+
+            "escaped.string": 1,
+            "escaped.int": "2",
+            "escaped.double": "2.0",
+            "escaped.boolT": "false",
+            "escaped.boolF": "true",
+            "escaped.array": [1, 3],
+            "escaped.object": {"n": 1},
+
+            "escaped.stringRef": "1",
+            "escaped.intRef": "value",
+            "escaped.doubleRef": null,
+            "escaped.boolTRef": 1,
+            "escaped.boolFRef": true,
+            "escaped.arrayRef": ["1"],
+            "escaped.objectRef": {"a": 1},
+            "escaped.nullRef": ["null"]
         },
 
         "stringRef": 1,
@@ -189,8 +304,25 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
         "nestedBoolFRef": false,
         "nestedArrayRef": ["1"],
         "nestedObjectRef": {"a": 1},
-        "nestedNullRef": ["1"]
+        "nestedNullRef": ["1"],
 
+        "escapedStringRef": 1,
+        "escapedIntRef": "value",
+        "escapedDoubleRef": null,
+        "escapedBoolTRef": 1,
+        "escapedBoolFRef": "true",
+        "escapedArrayRef": ["1"],
+        "escapedObjectRef": {"n": 1},
+        "escapedNullRef": ["null"],
+
+        "nestedEscapedStringRef": "a value",
+        "nestedEscapedIntRef": "value",
+        "nestedEscapedDoubleRef": null,
+        "nestedEscapedBoolTRef": 1,
+        "nestedEscapedBoolFRef": false,
+        "nestedEscapedArrayRef": ["1"],
+        "nestedEscapedObjectRef": {"a": 1},
+        "nestedEscapedNullRef": ["1"]
 })");
 
     auto eventNull = std::make_shared<Json>(R"({})");
@@ -492,6 +624,15 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
         "array": [1, 2, 3],
         "object": {"a": 1, "b": 2},
 
+        "escaped.string": "value",
+        "escaped.int": 1,
+        "escaped.double": 1.0,
+        "escaped.boolT": true,
+        "escaped.boolF": false,
+        "escaped.null": null,
+        "escaped.array": [1, 2, 3],
+        "escaped.object": {"a": 1, "b": 2},
+
         "nested": {
             "string": "value",
             "int": 1,
@@ -502,6 +643,15 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
             "array": [1, 2, 3],
             "object": {"a": 1, "b": 2},
 
+            "escaped.string": "value",
+            "escaped.int": 1,
+            "escaped.double": 1.0,
+            "escaped.boolT": true,
+            "escaped.boolF": false,
+            "escaped.null": null,
+            "escaped.array": [1, 2, 3],
+            "escaped.object": {"a": 1, "b": 2},
+
             "stringRef": "value",
             "intRef": 1,
             "doubleRef": 1.0,
@@ -509,7 +659,16 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
             "boolFRef": false,
             "arrayRef": [1, 2, 3],
             "objectRef": {"a": 1, "b": 2},
-            "nullRef": null
+            "nullRef": null,
+
+            "escaped.stringRef": "value",
+            "escaped.intRef": 1,
+            "escaped.doubleRef": 1.0,
+            "escaped.boolTRef": true,
+            "escaped.boolFRef": false,
+            "escaped.arrayRef": [1, 2, 3],
+            "escaped.objectRef": {"a": 1, "b": 2},
+            "escaped.nullRef": null
         },
 
         "stringRef": "value",
@@ -527,15 +686,36 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
         "nestedBoolTRef": true,
         "nestedBoolFRef": false,
         "nestedArrayRef": [1, 2, 3],
-        "nestedObjectRef": {"a": 1, "b": 2}
+        "nestedObjectRef": {"a": 1, "b": 2},
+
+        "escapedStringRef": "value",
+        "escapedIntRef": 1,
+        "escapedDoubleRef": 1.0,
+        "escapedBoolTRef": true,
+        "escapedBoolFRef": false,
+        "escapedArrayRef": [1, 2, 3],
+        "escapedObjectRef": {"a": 1, "b": 2},
+        "escapedNullRef": null,
+
+        "nestedEscapedStringRef": "value",
+        "nestedEscapedIntRef": 1,
+        "nestedEscapedDoubleRef": 1.0,
+        "nestedEscapedBoolTRef": true,
+        "nestedEscapedBoolFRef": false,
+        "nestedEscapedArrayRef": [1, 2, 3],
+        "nestedEscapedObjectRef": {"a": 1, "b": 2}
 
 })");
     auto eventOk = std::make_shared<Json>(R"({
         "array": [1, 2, 3],
         "object": {"a": 1, "b": 2},
+        "escaped.array": [1, 2, 3],
+        "escaped.object": {"a": 1, "b": 2},
         "nested": {
             "array": [1, 2, 3],
-            "object": {"a": 1, "b": 2}
+            "object": {"a": 1, "b": 2},
+            "escaped.array": [1, 2, 3],
+            "escaped.object": {"a": 1, "b": 2}
         }
     })");
 

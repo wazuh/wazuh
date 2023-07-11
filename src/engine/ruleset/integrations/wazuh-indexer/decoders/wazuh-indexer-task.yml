@@ -20,7 +20,7 @@ sources:
 
 check:
   - ~json.type: direct
-  #- ~json.cluster\.name: +exists
+  - ~json.cluster\.name: +exists
   # TODO: Once the events arrive tagged, uncomment the following two lines
   # - event.module: wazuh-indexer
   # - event.dataset: wazuh-indexer-task
@@ -37,12 +37,12 @@ normalize:
       - event.type: +array_append/info
       - log.level: $~json.level
       - log.logger: $~json.component
-      - host.name: $~json.node.name
-      - host.id: $~json.node.id
-      - ~cluster.name: $~json.cluster.name
-      - ~cluster.uuid: $~json.cluster.uuid
-      - ~node.name: $~json.node.name
-      - ~node.id: $~json.node.id
+      - host.name: $~json.node\.name
+      - host.id: $~json.node\.id
+      - ~cluster.name: $~json.cluster\.name
+      - ~cluster.uuid: $~json.cluster\.uuid
+      - ~node.name: $~json.node\.name
+      - ~node.id: $~json.node\.id
       - message: $~json.message
       - ~task.type: $~json.type
       - ~task.id: $~json.taskId

@@ -100,7 +100,19 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
         // Replace . with /
         if (!skipDot)
         {
-            std::replace(std::begin(ptrPath), std::end(ptrPath), '.', '/');
+            for (auto pos = ptrPath.find('.'); pos != std::string::npos; pos = ptrPath.find('.', pos + 1))
+            {
+                if(ptrPath[pos - 1] == '\\')
+                {
+                    // Escape: Replace \. with .
+                    ptrPath.replace(pos - 1, 1, "");
+                }
+                else
+                {
+                    // Replace . with /
+                    ptrPath.replace(pos, 1, "/");
+                }
+            }
         }
 
         // Add / at the beginning
