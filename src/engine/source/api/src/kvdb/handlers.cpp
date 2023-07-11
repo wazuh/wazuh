@@ -131,7 +131,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
 
         if (eRequest.name().empty())
         {
-            return ::api::adapter::genericError<ResponseType>("/name is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
         const auto resultExists = kvdbManager->existsDB(eRequest.name());
@@ -183,7 +183,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB {} does not exist.", eRequest.name()));
+                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
         }
 
         const auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -267,7 +267,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB {} does not exist.", eRequest.name()));
+                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
         }
 
         const auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -278,17 +278,17 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         }
 
         auto handler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler);
-        auto result = handler->get(eRequest.key());
+        const auto resultGet = handler->get(eRequest.key());
 
-        if (std::holds_alternative<base::Error>(result))
+        if (std::holds_alternative<base::Error>(resultGet))
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(resultGet).message);
         }
 
-        const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(result));
+        const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(resultGet));
         if (std::holds_alternative<base::Error>(protoVal)) // Should not happen but just in case
         {
-            const auto msj = std::get<base::Error>(protoVal).message + ". For value " + std::get<std::string>(result);
+            const auto msj = std::get<base::Error>(protoVal).message + ". For value " + std::get<std::string>(resultGet);
             return ::api::adapter::genericError<ResponseType>(msj);
         }
 

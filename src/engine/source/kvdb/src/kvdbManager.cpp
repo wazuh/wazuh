@@ -50,7 +50,7 @@ void KVDBManager::initializeOptions()
 
 void KVDBManager::initializeMainDB()
 {
-    auto dbStoragePath = m_ManagerOptions.dbStoragePath.string();
+    const auto dbStoragePath = m_ManagerOptions.dbStoragePath.string();
 
     std::filesystem::create_directories(dbStoragePath);
 
@@ -62,7 +62,7 @@ void KVDBManager::initializeMainDB()
     std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
     bool hasDefaultCF = false;
-    auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
+    const auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
     if (listStatus.ok())
     {
         for (const auto& cfName : columnNames)
@@ -133,7 +133,7 @@ std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHan
     }
     else
     {
-        return base::Error {fmt::format("The DB {} does not exists.", dbName)};
+        return base::Error {fmt::format("The DB '{}' does not exists.", dbName)};
     }
 
     m_kvdbHandlerCollection->addKVDBHandler(dbName, scopeName);
@@ -159,11 +159,11 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
 std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
     auto handlersInfo = getKVDBHandlersInfo();
+    const auto refCount = handlersInfo.count(name);
 
-    auto refCount = handlersInfo.count(name);
     if (refCount)
     {
-        return base::Error {fmt::format("Could not remove the DB {}. Usage Reference Count: {}.", name, refCount)};
+        return base::Error {fmt::format("Could not remove the DB '{}'. Usage Reference Count: {}.", name, refCount)};
     }
 
     auto it = m_mapCFHandles.find(name);
@@ -173,7 +173,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 
         try
         {
-            auto opStatus = m_pRocksDB->DropColumnFamily(cfHandle.get());
+            const auto opStatus = m_pRocksDB->DropColumnFamily(cfHandle.get());
             if (opStatus.ok())
             {
                 m_mapCFHandles.erase(it);
@@ -181,17 +181,17 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
             else
             {
                 return base::Error {
-                    fmt::format("Could not remove the DB {}: {}", name, opStatus.ToString())};
+                    fmt::format("Could not remove the DB '{}': {}", name, opStatus.ToString())};
             }
         }
         catch (const std::runtime_error& e)
         {
-            return base::Error {fmt::format("Could not remove the DB {}: {}", name, e.what())};
+            return base::Error {fmt::format("Could not remove the DB '{}': {}", name, e.what())};
         }
     }
     else
     {
-        return base::Error {fmt::format("The DB {} does not exists.", name)};
+        return base::Error {fmt::format("The DB '{}' does not exists.", name)};
     }
 
     return std::nullopt;
@@ -209,13 +209,13 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
 
     if (!cfHandle)
     {
-        return base::Error {fmt::format("The DB {} does not exists.", name)};
+        return base::Error {fmt::format("The DB '{}' does not exists.", name)};
     }
 
     // TODO: to improve
     if (path.empty())
     {
-        return base::Error {fmt::format("The path is empty.")};
+        return base::Error {"The path is empty."};
     }
 
     // Open file and read content
@@ -345,7 +345,7 @@ std::optional<base::Error> KVDBManager::createColumnFamily(const std::string& na
         return std::nullopt;
     }
 
-    return base::Error {fmt::format("Could not create DB {}, RocksDB Status: {}", name, s.ToString())};
+    return base::Error {fmt::format("Could not create DB '{}', RocksDB Status: {}", name, s.ToString())};
 }
 
 std::shared_ptr<rocksdb::ColumnFamilyHandle> KVDBManager::createSharedCFHandle(rocksdb::ColumnFamilyHandle* cfRawPtr)
