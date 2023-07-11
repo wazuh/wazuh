@@ -1,7 +1,5 @@
 #include <api/test/handlers.hpp>
-#include <api/test/sessionManager.hpp>
-#include <builders/baseHelper.hpp>
-#include <cmds/src/defaultSettings.hpp>
+
 #include <regex>
 
 #include <gtest/gtest.h>
@@ -12,21 +10,28 @@
 #include <schemf/mocks/emptySchema.hpp>
 #include <testsCommon.hpp>
 
+#include <api/test/sessionManager.hpp>
+#include <builders/baseHelper.hpp>
+#include <cmds/src/defaultSettings.hpp>
+
 using namespace api::test::handlers;
 using namespace api::sessionManager;
+
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
-constexpr auto SIZE_QUEUE {100};
-constexpr auto ASSET_PATH {"test/source/api/test/assets/"};
-constexpr auto ROUTER_TABLE {"internal/router_table/0"};
-constexpr auto JSON_DECODER {"decoder/core-hostinfo/0"};
-constexpr auto JSON_FILTER {"filter/allow-all/0"};
-constexpr auto JSON_DUMMY_FILTER {"filter/dummy_filter/0"};
-constexpr auto JSON_DUMMY_POLICY {"policy/dummy_policy/0"};
-constexpr auto JSON_POLICY {"policy/wazuh/0"};
-constexpr auto JSON_INTEGRATION {"integration/wazuh-core/0"};
-constexpr auto JSON_SCHEMA_ASSET {"schema/wazuh-asset/0"};
-constexpr auto JSON_SCHEMA_POLICY {"schema/wazuh-policy/0"};
+
+constexpr auto SIZE_QUEUE = 100;
+constexpr auto ASSET_PATH = "test/source/api/test/assets/";
+constexpr auto ROUTER_TABLE = "internal/router_table/0";
+constexpr auto JSON_DECODER = "decoder/core-hostinfo/0";
+constexpr auto JSON_FILTER = "filter/allow-all/0";
+constexpr auto JSON_DUMMY_FILTER = "filter/dummy_filter/0";
+constexpr auto JSON_DUMMY_POLICY = "policy/dummy_policy/0";
+constexpr auto JSON_POLICY = "policy/wazuh/0";
+constexpr auto JSON_INTEGRATION = "integration/wazuh-core/0";
+constexpr auto JSON_SCHEMA_ASSET = "schema/wazuh-asset/0";
+constexpr auto JSON_SCHEMA_POLICY = "schema/wazuh-policy/0";
+
 const auto PATH_ROUTER_TABLE = ASSETS_PATH_TEST + std::string(ROUTER_TABLE);
 const auto PATH_POLICY = ASSETS_PATH_TEST + std::string(JSON_POLICY);
 const auto PATH_DECODER = ASSETS_PATH_TEST + std::string(JSON_DECODER);
@@ -422,10 +427,9 @@ TEST_P(TestSessionListCommand, Functionality)
     m_spRouter->stop();
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Functionality,
-    TestSessionListCommand,
-    ::testing::Values(std::make_tuple(1, R"({"name":"dummy"})", R"({
+INSTANTIATE_TEST_SUITE_P(Functionality,
+                         TestSessionListCommand,
+                         ::testing::Values(std::make_tuple(1, R"({"name":"dummy"})", R"({
             "data": {
                 "status": "OK",
                 "session": {
@@ -440,7 +444,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             "error": 0
         })"),
-        std::make_tuple(2, R"({})", R"({
+                                           std::make_tuple(2, R"({})", R"({
             "status": "OK",
             "list": [
                 "dummy"

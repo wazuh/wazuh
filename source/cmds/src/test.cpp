@@ -32,9 +32,17 @@ void sigint_handler(const int signalNumber)
 }
 
 /**
- * @brief Signal handler for SIGTERM
+ * @brief Toggles the canonical mode of the terminal.
  *
- * @param signum Signal number
+ * This function modifies the terminal settings to enable or disable canonical mode,
+ * depending on the value of the parameter 'doClearIcanon'. When canonical mode is enabled,
+ * input is processed line by line; when disabled, input is processed character by character.
+ *
+ * @param doClearIcanon Flag indicating whether to clear or set the ICANON flag.
+ *        - 'true' clears the ICANON flag, disabling canonical mode.
+ *        - 'false' sets the ICANON flag, enabling canonical mode.
+ *
+ * @return Returns 'true' if the operation succeeds and 'false' otherwise.
  */
 inline bool clear_icanon(const bool& doClearIcanon)
 {
@@ -66,9 +74,10 @@ inline bool clear_icanon(const bool& doClearIcanon)
 /**
  * @brief Process a json value and return it as a YAML node
  *
- * @param tmp Json value
+ * @param jsonObject Json object
  * @param jsonPath Json path
  * @param rootName Root name
+ *
  * @return std::optional<YAML::Node> YAML node
  */
 inline std::optional<YAML::Node>

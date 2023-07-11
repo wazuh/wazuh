@@ -34,10 +34,10 @@ enum class DebugMode
 class RuntimePolicy
 {
 private:
-    std::string m_asset;
-    std::shared_ptr<rxbk::Controller> m_spController;
-    builder::Policy m_environment;
-    std::shared_mutex m_mutexData;
+    std::string m_asset;                              ///< Asset of the policy
+    std::shared_ptr<rxbk::Controller> m_spController; ///< Controller of the policy
+    builder::Policy m_environment;                    ///< Environment of the policy
+    std::shared_mutex m_mutexData;                    ///< Mutex to protect the data
 
     std::unordered_map<std::string, std::string> m_output;
     std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> m_history;
