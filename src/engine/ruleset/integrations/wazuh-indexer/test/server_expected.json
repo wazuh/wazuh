@@ -16,7 +16,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:25,439Z\",\"level\":\"INFO\",\"component\":\"o.o.n.Node\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"JVM home [/usr/share/wazuh-indexer/jdk], using bundled JDK [true]\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:25,439Z",
+            "created": "2023-07-03T17:18:25.439Z",
             "kind": "event",
             "category": [
                 "database"
@@ -28,7 +28,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:25,439Z",
+        "@timestamp": "2023-07-03T17:18:25.439Z",
         "log": {
             "level": "INFO",
             "logger": "o.o.n.Node"
@@ -61,7 +61,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:26,252Z\",\"level\":\"INFO\",\"component\":\"o.o.s.OpenSearchSecurityPlugin\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"OpenSearch Config path is /etc/wazuh-indexer\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:26,252Z",
+            "created": "2023-07-03T17:18:26.252Z",
             "kind": "event",
             "category": [
                 "database"
@@ -73,7 +73,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:26,252Z",
+        "@timestamp": "2023-07-03T17:18:26.252Z",
         "log": {
             "level": "INFO",
             "logger": "o.o.s.OpenSearchSecurityPlugin"
@@ -106,7 +106,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:27,948Z\",\"level\":\"INFO\",\"component\":\"o.o.p.PluginsService\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"loaded module [geo]\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:27,948Z",
+            "created": "2023-07-03T17:18:27.948Z",
             "kind": "event",
             "category": [
                 "database"
@@ -118,7 +118,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:27,948Z",
+        "@timestamp": "2023-07-03T17:18:27.948Z",
         "log": {
             "level": "INFO",
             "logger": "o.o.p.PluginsService"
@@ -151,7 +151,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T19:00:00,652Z\",\"level\":\"INFO\",\"component\":\"o.o.c.m.MetadataUpdateSettingsService\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"updating number_of_replicas to [0] for indices [wazuh-monitoring-2023.27w]\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T19:00:00,652Z",
+            "created": "2023-07-03T19:00:00.652Z",
             "kind": "event",
             "category": [
                 "database"
@@ -163,7 +163,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T19:00:00,652Z",
+        "@timestamp": "2023-07-03T19:00:00.652Z",
         "log": {
             "level": "INFO",
             "logger": "o.o.c.m.MetadataUpdateSettingsService"
@@ -199,7 +199,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:30,074Z\",\"level\":\"WARN\",\"component\":\"o.o.s.c.Salt\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"If you plan to use field masking pls configure compliance salt e1ukloTsQlOgPquJ to be a random string of 16 chars length identical on all nodes\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:30,074Z",
+            "created": "2023-07-03T17:18:30.074Z",
             "kind": "event",
             "category": [
                 "database"
@@ -211,7 +211,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:30,074Z",
+        "@timestamp": "2023-07-03T17:18:30.074Z",
         "log": {
             "level": "WARN",
             "logger": "o.o.s.c.Salt"
@@ -244,7 +244,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:32,818Z\",\"level\":\"WARN\",\"component\":\"o.o.o.i.ObservabilityIndex\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"message: index [.opensearch-observability/71zzJpNtRFOYFip7K_jSCw] already exists\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:32,818Z",
+            "created": "2023-07-03T17:18:32.818Z",
             "kind": "event",
             "category": [
                 "database"
@@ -256,7 +256,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:32,818Z",
+        "@timestamp": "2023-07-03T17:18:32.818Z",
         "log": {
             "level": "WARN",
             "logger": "o.o.o.i.ObservabilityIndex"
@@ -292,7 +292,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:30,098Z\",\"level\":\"WARN\",\"component\":\"o.o.s.a.r.AuditMessageRouter\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"No default storage available, audit log may not work properly. Please check configuration.\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:30,098Z",
+            "created": "2023-07-03T17:18:30.098Z",
             "kind": "event",
             "category": [
                 "database"
@@ -304,7 +304,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:30,098Z",
+        "@timestamp": "2023-07-03T17:18:30.098Z",
         "log": {
             "level": "WARN",
             "logger": "o.o.s.a.r.AuditMessageRouter"
@@ -337,7 +337,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:30,097Z\",\"level\":\"ERROR\",\"component\":\"o.o.s.a.s.SinkProvider\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"Default endpoint could not be created, auditlog will not work properly.\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:30,097Z",
+            "created": "2023-07-03T17:18:30.097Z",
             "kind": "event",
             "category": [
                 "database"
@@ -349,7 +349,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:30,097Z",
+        "@timestamp": "2023-07-03T17:18:30.097Z",
         "log": {
             "level": "ERROR",
             "logger": "o.o.s.a.s.SinkProvider"
@@ -382,7 +382,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-06T18:51:19,018Z\",\"level\":\"ERROR\",\"component\":\"o.o.a.a.AlertIndices\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"info deleteOldIndices\",\"cluster.uuid\":\"jxetIsP6RpCuyH0CP5RWgw\",\"node.id\":\"D_qEUaEIRDu1bjHOmintVQ\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-06T18:51:19,018Z",
+            "created": "2023-07-06T18:51:19.018Z",
             "kind": "event",
             "category": [
                 "database"
@@ -394,7 +394,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-06T18:51:19,018Z",
+        "@timestamp": "2023-07-06T18:51:19.018Z",
         "log": {
             "level": "ERROR",
             "logger": "o.o.a.a.AlertIndices"
@@ -430,7 +430,7 @@
             "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:34,886Z\",\"level\":\"ERROR\",\"component\":\"o.o.s.a.BackendRegistry\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"Not yet initialized (you may need to run securityadmin)\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
             "module": "wazuh-indexer",
             "dataset": "wazuh-indexer-server",
-            "created": "2023-07-03T17:18:34,886Z",
+            "created": "2023-07-03T17:18:34.886Z",
             "kind": "event",
             "category": [
                 "database"
@@ -442,7 +442,7 @@
         "ecs": {
             "version": "8.8"
         },
-        "@timestamp": "2023-07-03T17:18:34,886Z",
+        "@timestamp": "2023-07-03T17:18:34.886Z",
         "log": {
             "level": "ERROR",
             "logger": "o.o.s.a.BackendRegistry"
