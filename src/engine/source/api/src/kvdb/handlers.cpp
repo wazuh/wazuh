@@ -353,11 +353,11 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
 
         auto handler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler);
 
-        const auto result = handler->remove(eRequest.key());
+        const auto removeError = handler->remove(eRequest.key());
 
-        if (result)
+        if (removeError)
         {
-            return ::api::adapter::genericError<ResponseType>(result.value().message);
+            return ::api::adapter::genericError<ResponseType>(removeError.value().message);
         }
 
         return ::api::adapter::genericSuccess<ResponseType>();
@@ -427,11 +427,11 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-        const auto result = handler->set(eRequest.entry().key(), std::get<std::string>(value));
+        const auto setError = handler->set(eRequest.entry().key(), std::get<std::string>(value));
 
-        if (result)
+        if (setError)
         {
-            return ::api::adapter::genericError<ResponseType>(result.value().message);
+            return ::api::adapter::genericError<ResponseType>(setError.value().message);
         }
 
         return ::api::adapter::genericSuccess<ResponseType>();

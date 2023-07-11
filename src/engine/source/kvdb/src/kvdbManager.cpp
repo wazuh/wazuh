@@ -181,12 +181,12 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
             else
             {
                 return base::Error {
-                    fmt::format("Could not remove the DB '{}': {}", name, opStatus.ToString())};
+                    fmt::format("Database '{}' could not be removed: {}", name, opStatus.ToString())};
             }
         }
         catch (const std::runtime_error& e)
         {
-            return base::Error {fmt::format("Could not remove the DB '{}': {}", name, e.what())};
+            return base::Error {fmt::format("Database '{}' could not be removed: {}", name, e.what())};
         }
     }
     else
@@ -256,7 +256,7 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
 
     for (const auto& [key, value] : entries)
     {
-        auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle.get(), key, value.str());
+        const auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle.get(), key, value.str());
         if (!status.ok())
         {
             return base::Error {fmt::format(
@@ -354,7 +354,7 @@ std::shared_ptr<rocksdb::ColumnFamilyHandle> KVDBManager::createSharedCFHandle(r
         cfRawPtr,
         [pRocksDB = m_pRocksDB](rocksdb::ColumnFamilyHandle* ptr)
         {
-            auto opStatus = pRocksDB->DestroyColumnFamilyHandle(ptr);
+            const auto opStatus = pRocksDB->DestroyColumnFamilyHandle(ptr);
             if (!opStatus.ok())
             {
                 throw std::runtime_error(
