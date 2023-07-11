@@ -553,7 +553,8 @@ class WazuhException(Exception):
         9004: {'message': 'Route not found'},
         9005: {'message': 'Priority already taken'},
         9006: {'message': 'Route name already taken'},
-        9007: {'message': 'Policy already exists'}
+        9007: {'message': 'Policy already exists'},
+        9008: {'message': 'Invalid policy'}
     }
 
     # Reserve agent upgrade custom errors

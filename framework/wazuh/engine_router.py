@@ -39,9 +39,9 @@ def get_routes(limit: int, name: Optional[str] = None, select: Optional[List] = 
     else:
         final_result = process_array(result['table'], limit=limit, offset=offset, select=select, sort_by=sort_by,
                                      sort_ascending=sort_ascending, search_text=search_text,
-                                     complementary_search=complementary_search)
+                                     complementary_search=complementary_search)['items']
 
-    return WazuhResult({'data': final_result['items']})
+    return WazuhResult({'data': final_result})
 
 
 def create_route(name: str, filter: str, policy: str, priority: int):
@@ -61,8 +61,9 @@ def create_route(name: str, filter: str, policy: str, priority: int):
         elif result['error'] == f"Policy '{policy}' already exists":
             raise WazuhNotAcceptable(9007)
         elif "Invalid policy name" in result['error']:
-            pass
-        pass
+            raise WazuhNotAcceptable(9008, extra_message=result['error'])
+        else:
+            raise WazuhInternalError(9002)
 
     return WazuhResult({'message': result['status']})
 
