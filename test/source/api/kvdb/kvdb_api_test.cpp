@@ -398,7 +398,7 @@ TEST_F(KVDBApiTest, managerDeleteNameEmpty)
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest(""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/name is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -443,7 +443,7 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest("test2"));
     const auto expectedData =
-        json::Json {R"({"status":"ERROR","error":"Could not remove the DB test2. Usage Reference Count: 1."})"};
+        json::Json {R"({"status":"ERROR","error":"Could not remove the DB 'test2'. Usage Reference Count: 1."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -671,7 +671,7 @@ TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
 
     ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB default2 does not exist."})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'default2' does not exist."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
