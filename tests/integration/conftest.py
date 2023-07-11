@@ -23,8 +23,6 @@ from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
 from wazuh_testing.utils.manage_agents import remove_agents
-from wazuh_testing.tools import queue_monitor, socket_controller
-from wazuh_testing.utils import mocking, configuration, database, file, services
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
