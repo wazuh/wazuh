@@ -56,7 +56,6 @@ references:
 tags:
     - api
 """
-import jsonschema
 import pytest
 import requests
 from pathlib import Path
@@ -65,10 +64,8 @@ from . import CONFIGURATION_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing import DATA_PATH
 from wazuh_testing.constants.api import DAEMONS_STATS_ROUTE
 from wazuh_testing.modules.api.helpers import get_base_url, login
-from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
+from wazuh_testing.modules.api.utils import validate_statistics
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.file import read_json_file
-from wazuh_testing.utils.manage_agents import remove_agents
 
 
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
@@ -153,14 +150,13 @@ def test_manager_statistics_format(test_configuration, test_metadata, load_wazuh
 
     # Get daemon statistics
     response = requests.get(url, headers=authentication_headers, verify=False)
-    stats_schema = read_json_file(statistics_schema_path)
 
     # Check if the API statistics response data meets the expected schema. Raise an exception if not.
-    jsonschema.validate(instance=response.json(), schema=stats_schema)
+    validate_statistics(response, statistics_schema_path)
 
 
 @pytest.mark.parametrize('test_metadata', test2_metadata, ids=test2_cases_ids)
-def test_agent_statistics_format(test_metadata, daemons_handler):
+def test_agent_statistics_format(test_metadata, daemons_handler, simulate_agent):
     """
     description: Check if the statistics returned by the API have the expected format.
 
@@ -192,22 +188,16 @@ def test_agent_statistics_format(test_metadata, daemons_handler):
         - The `cases_agent_statistics_format` file provides the test cases.
     """
     endpoint = test_metadata['endpoint']
-    stats_schema_path = Path(t2_statistics_template_path).joinpath(f"{endpoint}_template.json")
-    agents = create_agents(1, 'localhost')
-    _, injector = connect(agents[0])
+    statistics_schema_path = Path(t2_statistics_template_path, f"{endpoint}_template.json")
+    agent = simulate_agent
 
-    route = f"/agents/{agents[0].id}/daemons/stats"
+    route = f"/agents/{agent.id}/daemons/stats"
     params = f"?daemons_list={endpoint}"
     url = get_base_url() + route + params
     authentication_headers, _ = login()
 
     # Get Agent's daemon stats
     response = requests.get(url, headers=authentication_headers, verify=False)
-    stats_schema = read_json_file(stats_schema_path)
 
     # Check if the API statistics response data meets the expected schema. Raise an exception if not.
-    jsonschema.validate(instance=response.json(), schema=stats_schema)
-
-    # Stop and delete simulated agent
-    injector.stop_receive()
-    remove_agents(agents[0].id, 'api')
+    validate_statistics(response, statistics_schema_path)

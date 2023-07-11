@@ -18,9 +18,13 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
+from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
+from wazuh_testing.utils.manage_agents import remove_agents
+from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.utils import mocking, configuration, database, file, services
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -476,3 +480,16 @@ def prepare_test_files(request: pytest.FixtureRequest) -> None:
 
     # Reverse to delete in the correct order
     file.delete_files(created_files.reverse())
+
+
+@pytest.fixture
+def simulate_agent():
+    """Simulate an agent and remove it using the API."""
+    agent = create_agents(1, 'localhost')[0]
+    _, injector = connect(agent)
+
+    yield agent
+
+    # Stop and delete simulated agent
+    injector.stop_receive()
+    remove_agents(agent.id, 'api')
