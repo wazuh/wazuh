@@ -26,8 +26,7 @@ constexpr auto SESSION_DEBUG_MSG = "Session created: ID={}, Name={}, Creation Da
                                    "Route Name={}, Life Span={}, Description='{}'\n";
 
 /**
- * @brief Session Manager class. Implements the ISessionManager interface.
- *
+ * @brief Session Manager class.
  */
 class SessionManager
 {

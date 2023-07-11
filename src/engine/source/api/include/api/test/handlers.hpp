@@ -31,11 +31,12 @@ struct Config
 };
 
 /**
- * @brief Loads the sessions from a JSON string.
+ * @brief Loads the stored sessions from a JSON string.
  *
- * @param json JSON string.
- * @param router Router instance.
+ * @param sessionManager Session Manager instance.
  * @param catalog Catalog instance.
+ * @param router Router instance.
+ * @param jsonSessions JSON string containing the sessions.
  *
  * @return optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
@@ -48,6 +49,8 @@ loadSessionsFromJson(const std::shared_ptr<api::sessionManager::SessionManager>&
 /**
  * @brief Get the sessions as a JSON object.
  *
+ * @param sessionManager Session Manager instance.
+ *
  * @return json::Json
  */
 json::Json getSessionsAsJson(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager);
@@ -55,7 +58,9 @@ json::Json getSessionsAsJson(const std::shared_ptr<api::sessionManager::SessionM
 /**
  * @brief Get the sessions as a JSON string.
  *
+ * @param sessionManager Session Manager instance.
  * @param store Store instance.
+ *
  * @return optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error>
@@ -66,6 +71,7 @@ saveSessionsToStore(const std::shared_ptr<api::sessionManager::SessionManager>& 
  * @brief Get the maximum available priority for a route.
  *
  * @param router Router instance.
+ *
  * @return int32_t Maximum available priority.
  */
 int32_t getMaximumAvailablePriority(const std::shared_ptr<::router::Router>& router);
@@ -74,8 +80,9 @@ int32_t getMaximumAvailablePriority(const std::shared_ptr<::router::Router>& rou
  * @brief Add an asset to the catalog.
  *
  * @param catalog Catalog instance.
- * @param assetName Asset name.
- * @param assetContent Asset content.
+ * @param assetType Asset type string.
+ * @param assetContent Asset content as a string.
+ *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error> addAssetToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
@@ -88,6 +95,7 @@ std::optional<base::Error> addAssetToCatalog(const std::shared_ptr<catalog::Cata
  * @param catalog Catalog instance.
  * @param sessionName Session name.
  * @param filterName Filter name.
+ *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error> addTestFilterToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
@@ -100,6 +108,7 @@ std::optional<base::Error> addTestFilterToCatalog(const std::shared_ptr<catalog:
  * @param catalog Catalog instance.
  * @param sessionName Session name.
  * @param policyName Policy name.
+ *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error> addTestPolicyToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
@@ -109,8 +118,9 @@ std::optional<base::Error> addTestPolicyToCatalog(const std::shared_ptr<catalog:
 /**
  * @brief Delete a route from the router.
  *
- * @param routeName Route name.
  * @param router Router instance.
+ * @param routeName Route name.
+ *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<::router::Router>& router,
@@ -119,8 +129,9 @@ std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<::router:
 /**
  * @brief Delete an asset from the catalog.
  *
- * @param assetName Asset name.
  * @param catalog Catalog instance.
+ * @param assetName Asset name.
+ *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
@@ -129,9 +140,11 @@ std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog:
 /**
  * @brief Delete a session and the resources created along with it.
  *
- * @param sessionName Session name.
+ * @param sessionManager Session Manager instance.
  * @param router Router instance.
  * @param catalog Catalog instance.
+ * @param sessionName Session name.
+ *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 std::optional<base::Error> deleteSession(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
@@ -142,6 +155,8 @@ std::optional<base::Error> deleteSession(const std::shared_ptr<api::sessionManag
 /**
  * @brief API command handler to get the parameters of an active session.
  *
+ * @param sessionManager Session Manager instance.
+ *
  * @return api::Handler
  */
 api::Handler sessionGet(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager);
@@ -149,9 +164,11 @@ api::Handler sessionGet(const std::shared_ptr<api::sessionManager::SessionManage
 /**
  * @brief API command handler to create a new session.
  *
+ * @param sessionManager Session Manager instance.
  * @param catalog Catalog instance.
  * @param router Router instance.
  * @param store Store instance.
+ *
  * @return api::Handler
  */
 api::Handler sessionPost(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
@@ -162,9 +179,11 @@ api::Handler sessionPost(const std::shared_ptr<api::sessionManager::SessionManag
 /**
  * @brief API command handler to delete a session or all the sessions.
  *
+ * @param sessionManager Session Manager instance.
  * @param catalog Catalog instance.
  * @param router Router instance.
  * @param store Store instance.
+ *
  * @return api::Handler
  */
 api::Handler sessionsDelete(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
@@ -175,6 +194,8 @@ api::Handler sessionsDelete(const std::shared_ptr<api::sessionManager::SessionMa
 /**
  * @brief API command handler to get the list of active sessions.
  *
+ * @param sessionManager Session Manager instance.
+ *
  * @return api::Handler
  */
 api::Handler sessionsGet(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager);
@@ -182,7 +203,9 @@ api::Handler sessionsGet(const std::shared_ptr<api::sessionManager::SessionManag
 /**
  * @brief API command handler to test an event in a certain session.
  *
+ * @param sessionManager Session Manager instance.
  * @param router Router instance.
+ *
  * @return api::Handler
  */
 api::Handler runPost(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
@@ -193,6 +216,7 @@ api::Handler runPost(const std::shared_ptr<api::sessionManager::SessionManager>&
  *
  * @param config Test configuration.
  * @param api API instance.
+ *
  * @throw std::runtime_error If the command registration fails for any reason and at any
  */
 void registerHandlers(const Config& config, std::shared_ptr<api::Api> api);
