@@ -162,6 +162,7 @@ target_include_directories(main
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/sockiface)
+add_subdirectory(${ENGINE_SOURCE_DIR}/rbac)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/schemf)
