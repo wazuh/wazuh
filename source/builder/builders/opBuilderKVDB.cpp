@@ -419,7 +419,7 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
                 resolvedKey = key.m_value;
             }
 
-            auto resultValue = kvdbHandler->remove(resolvedKey);
+            const auto resultValue = kvdbHandler->remove(resolvedKey);
 
             if (resultValue)
             {
