@@ -21,7 +21,7 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.utils import get_utc_now, get_utc_strptime
+from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
 DEFAULT_DATE: str = 'n/a'
@@ -265,23 +265,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_sync_error_from_worker(data)
         elif command == b'syn_w_g_e':
             logger = self.task_loggers['Agent-groups send']
-            start_time = self.send_agent_groups_status['date_start']
-            if isinstance(start_time, str):
-                if start_time == DEFAULT_DATE:
-                    start_time = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
-                else:
-                    start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
-            start_time = start_time.timestamp()
+            start_time = datetime.strptime(self.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT)
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_wgc_e':
             logger = self.task_loggers['Agent-groups send full']
-            start_time = self.send_full_agent_groups_status['date_start']
-            if isinstance(start_time, str):
-                if start_time == DEFAULT_DATE:
-                    start_time = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
-                else:
-                    start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
-            start_time = start_time.timestamp()
+            start_time = datetime.strptime(self.send_full_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT)
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_w_g_err':
             logger = self.task_loggers['Agent-groups send']
