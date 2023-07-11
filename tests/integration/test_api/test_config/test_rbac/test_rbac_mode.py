@@ -58,10 +58,8 @@ from pathlib import Path
 from . import DB_SCHEMAS_FOLDER_PATH, CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_INFORMATION_ROUTE
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
-from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.modules.api.helpers import login, get_base_url
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.database import run_sql_script
 
 
 # Marks
@@ -75,25 +73,13 @@ test_user = 'test_user'
 # Paths
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_rbac_mode.yaml')
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_rbac_mode.yaml')
+add_user_sql_script = Path(DB_SCHEMAS_FOLDER_PATH, 'schema_add_user.sql')
+delete_user_sql_script = Path(DB_SCHEMAS_FOLDER_PATH, 'schema_delete_user.sql')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
-
-
-# Fixtures
-@pytest.fixture
-def add_user_in_rbac():
-    """Add a new user in the RBAC database."""
-    add_user_sql_script = Path(DB_SCHEMAS_FOLDER_PATH, 'schema_add_user.sql')
-    delete_user_sql_script = Path(DB_SCHEMAS_FOLDER_PATH, 'schema_delete_user.sql')
-
-    run_sql_script(RBAC_DATABASE_PATH, add_user_sql_script)
-
-    yield
-
-    run_sql_script(RBAC_DATABASE_PATH, delete_user_sql_script)
 
 
 # Tests

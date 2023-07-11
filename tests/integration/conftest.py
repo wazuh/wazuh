@@ -13,7 +13,7 @@ from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
-from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH, RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
@@ -502,3 +502,14 @@ def remove_test_file(request):
     yield
 
     delete_file(request.module.test_file)
+
+
+@pytest.fixture
+def add_user_in_rbac(request):
+    """Add a new user in the RBAC database."""
+
+    database.run_sql_script(RBAC_DATABASE_PATH, request.module.add_user_sql_script)
+
+    yield
+
+    database.run_sql_script(RBAC_DATABASE_PATH, request.module.delete_user_sql_script)
