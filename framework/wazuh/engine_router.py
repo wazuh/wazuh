@@ -6,6 +6,7 @@ from typing import Optional, List
 
 from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.results import WazuhResult
+from wazuh.core.exception import WazuhInternalError, WazuhResourceNotFound, WazuhNotAcceptable
 from wazuh.core.utils import process_array
 from wazuh.core.common import ENGINE_SOCKET
 
@@ -28,8 +29,10 @@ def get_routes(limit: int, name: Optional[str] = None, select: Optional[List] = 
     result = engine_socket.receive()
 
     if result['status'] == 'ERROR':
-        #TODO Handle error
-        pass
+        if name and result['error'] == 'Route not found':
+            raise WazuhResourceNotFound(9004)
+        else:
+            raise WazuhInternalError(9002)
 
     if name:
         final_result = result['rute']
@@ -51,7 +54,14 @@ def create_route(name: str, filter: str, policy: str, priority: int):
     result = engine_socket.receive()
 
     if result['status'] == 'ERROR':
-        #TODO Handle error
+        if result['error'] == f"Route '{name}' already exists":
+            raise WazuhNotAcceptable(9006)
+        elif result['error'] == f"Priority '{priority}' already taken":
+            raise WazuhNotAcceptable(9005)
+        elif result['error'] == f"Policy '{policy}' already exists":
+            raise WazuhNotAcceptable(9007)
+        elif "Invalid policy name" in result['error']:
+            pass
         pass
 
     return WazuhResult({'message': result['status']})
@@ -66,8 +76,12 @@ def update_route(name: str, priority: int):
     result = engine_socket.receive()
 
     if result['status'] == 'ERROR':
-        #TODO Handle error
-        pass
+        if result['error'] == 'Route not found':
+            raise WazuhResourceNotFound(9004)
+        elif result['error'] == f"Priority '{priority}' already taken":
+            raise WazuhNotAcceptable(9005)
+        else:
+            raise WazuhInternalError(9002)
 
     return WazuhResult({'message': result['status']})
 
@@ -81,7 +95,9 @@ def delete_route(name: str):
     result = engine_socket.receive()
 
     if result['status'] == 'ERROR':
-        #TODO Handle error
-        pass
+        if result['error'] == 'Route not found':
+            raise WazuhResourceNotFound(9004)
+        else:
+            raise WazuhInternalError(9002)
 
     return WazuhResult({'message': result['status']})

@@ -544,7 +544,16 @@ class WazuhException(Exception):
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # Vulnerability detector
-        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
+        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'},
+
+        # Engine
+        9002: {'message': 'Unexpected error trying to request data from the engine'},
+
+        # Engine Router Module
+        9004: {'message': 'Route not found'},
+        9005: {'message': 'Priority already taken'},
+        9006: {'message': 'Route name already taken'},
+        9007: {'message': 'Policy already exists'}
     }
 
     # Reserve agent upgrade custom errors
