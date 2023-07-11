@@ -31,7 +31,7 @@ public:
      * @param scopeName Name of the Scope.
      *
      */
-    virtual void removeKVDBHandler(const std::string& dbName, 
+    virtual void removeKVDBHandler(const std::string& dbName,
                                    const std::string& scopeName) = 0;
 };
 
