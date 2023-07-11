@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 ## [v4.5.0]
 
 
-## [v4.4.4]
+## [v4.4.5] - 2023-07-10
+
+### Installer
+
+#### Fixed
+
+- Fixed an error in the DEB package that prevented the agent and manager from being installed on Debian 12. ([#2256](https://github.com/wazuh/wazuh-packages/pull/2256))
+- Fixed a service requirement in the RPM package that prevented the agent and manager from being installed on Oracle Linux 9. ([#2257](https://github.com/wazuh/wazuh-packages/pull/2257))
+
+
+## [v4.4.4] - 2023-06-14
 
 ### Manager
 
@@ -26,7 +36,7 @@ All notable changes to this project will be documented in this file.
 - Updated all current rule descriptions from "Ossec" to "Wazuh". ([#17211](https://github.com/wazuh/wazuh/pull/17211))
 
 
-## [v4.4.3]
+## [v4.4.3] - 2023-05-26
 
 ### Agent
 
