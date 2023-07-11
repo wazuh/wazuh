@@ -1,6 +1,7 @@
 name: integration/wazuh-indexer/0
 decoders:
 - decoder/wazuh-indexer-slowlog/0
-- decoder/wazuh-indexer-task/0
+- decoder/wazuh-indexer-task-json/0
 - decoder/wazuh-indexer-server/0
+- decoder/wazuh-indexer-task-plain/0
 - decoder/wazuh-indexer-deprecation/0

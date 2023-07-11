@@ -18,9 +18,7 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - ~json.type: index_search_slowlog
-  - ~json.cluster\.name: +exists
+check: ~json.type==index_search_slowlog OR ~json.type==index_indexing_slowlog
   # TODO: Once the events arrive tagged, uncomment the following two lines
   # - event.module: wazuh-indexer
   # - event.dataset: wazuh-indexer-slowlog
@@ -68,4 +66,4 @@ normalize:
       - ~slowlog.total_shards: $~json.total_shards
       - ~slowlog.source: $~json.source
       - ~slowlog.id: $~json.id
-      # - ~json: +delete
+      - ~json: +delete

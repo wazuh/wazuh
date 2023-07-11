@@ -104,7 +104,7 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
             {
                 if(ptrPath[pos - 1] == '\\')
                 {
-                    // Escape: Replace \. with .
+                    // Escaped: Replace \. with .
                     ptrPath.replace(pos - 1, 1, "");
                 }
                 else
