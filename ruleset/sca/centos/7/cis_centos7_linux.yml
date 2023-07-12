@@ -684,13 +684,6 @@ checks:
     description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
     remediation: "Run the following command to restore binaries to normal: # prelink -ua Run the following command to uninstall prelink: # yum remove prelink."
-    references:
-      - "http://www.nsa.gov/research/selinux"
-      - "http://www.nsa.gov/research/selinux/list.shtml"
-      - "http://docs.fedoraproject.org/selinux-faq"
-      - "http://docs.fedoraproject.org/selinux-user-guide"
-      - "http://docs.fedoraproject.org/selinux-managing-"
-      - "http://www.selinuxproject.org"
     compliance:
       - cis: ["1.5.4"]
       - cis_csc_v8: ["4.1"]
@@ -1227,7 +1220,7 @@ checks:
     impact: "Disabling CUPS will prevent printing from the system, a common task for workstation systems."
     remediation: "Run the following command to remove cups: # yum remove cups."
     references:
-      - "http://www.cups.org."
+      - "http://www.cups.org"
     compliance:
       - cis: ["2.2.4"]
       - cis_csc_v8: ["4.8"]
@@ -1267,7 +1260,7 @@ checks:
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove openldap-servers: # yum remove openldap-servers."
     references:
-      - "http://www.openldap.org."
+      - "http://www.openldap.org"
     compliance:
       - cis: ["2.2.6"]
       - cis_csc_v8: ["4.8"]
@@ -3167,7 +3160,7 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.1"]
       - cis_csc_v8: ["8.9"]
@@ -3187,7 +3180,7 @@ checks:
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.2"]
       - cis_csc_v8: ["8.3"]
@@ -3206,7 +3199,7 @@ checks:
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.3"]
       - cis_csc_v8: ["8.2"]
