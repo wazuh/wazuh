@@ -65,8 +65,7 @@ std::optional<base::Error> FileDriver::del(const base::Name& name)
 
         // Remove empty parent directories
         bool next = true;
-        for (path = path.parent_path();
-             next && path != m_path && std::filesystem::is_empty(path);
+        for (path = path.parent_path(); next && path != m_path && std::filesystem::is_empty(path);
              path = path.parent_path())
         {
             if (!std::filesystem::remove(path, ec))
@@ -84,8 +83,7 @@ std::optional<base::Error> FileDriver::del(const base::Name& name)
     return error;
 }
 
-std::optional<base::Error> FileDriver::add(const base::Name& name,
-                                           const json::Json& content)
+std::optional<base::Error> FileDriver::add(const base::Name& name, const json::Json& content)
 {
     std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
@@ -106,8 +104,7 @@ std::optional<base::Error> FileDriver::add(const base::Name& name,
     else
     {
         std::error_code ec;
-        if (!std::filesystem::create_directories(path.parent_path(), ec)
-            && ec.value() != 0)
+        if (!std::filesystem::create_directories(path.parent_path(), ec) && ec.value() != 0)
         {
             error = base::Error {fmt::format(
                 "Directory '{}' could not be created: ({}) {}", path.parent_path().string(), ec.value(), ec.message())};
@@ -174,8 +171,7 @@ std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) co
     return result;
 }
 
-std::optional<base::Error> FileDriver::update(const base::Name& name,
-                                              const json::Json& content)
+std::optional<base::Error> FileDriver::update(const base::Name& name, const json::Json& content)
 {
     std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
@@ -189,6 +185,36 @@ std::optional<base::Error> FileDriver::update(const base::Name& name,
     else if (!std::filesystem::exists(path))
     {
         error = base::Error {fmt::format("File '{}' does not exist", path.string())};
+    }
+    else
+    {
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            error = base::Error {fmt::format("File '{}' could not be opened on writing mode", path.string())};
+        }
+        else
+        {
+            file << content.str();
+        }
+    }
+    return error;
+}
+
+std::optional<base::Error> FileDriver::addUpdate(const base::Name& name, const json::Json& content)
+{
+    std::optional<base::Error> error = std::nullopt;
+    auto path = nameToPath(name);
+
+    auto duplicateError = content.checkDuplicateKeys();
+    if (duplicateError)
+    {
+        error = base::Error {
+            fmt::format("File '{}' has duplicate keys: {}", name.fullName(), duplicateError.value().message)};
+    }
+    else if (!std::filesystem::exists(path))
+    {
+        return add(name, content);
     }
     else
     {

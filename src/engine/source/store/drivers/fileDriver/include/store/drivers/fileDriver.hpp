@@ -45,11 +45,10 @@ public:
     FileDriver& operator=(const FileDriver&) = delete;
 
     std::optional<base::Error> del(const base::Name& name) override;
-    std::optional<base::Error> add(const base::Name& name,
-                                   const json::Json& content) override;
+    std::optional<base::Error> add(const base::Name& name, const json::Json& content) override;
     std::variant<json::Json, base::Error> get(const base::Name& name) const override;
-    std::optional<base::Error> update(const base::Name& name,
-                                      const json::Json& content) override;
+    std::optional<base::Error> update(const base::Name& name, const json::Json& content) override;
+    std::optional<base::Error> addUpdate(const base::Name& name, const json::Json& content) override;
 };
 } // namespace store
 

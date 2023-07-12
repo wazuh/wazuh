@@ -1,5 +1,5 @@
-#ifndef _STORE_MOCK_STORE_H
-#define _STORE_MOCK_STORE_H
+#ifndef _STORE_MOCK_STORE_HPP
+#define _STORE_MOCK_STORE_HPP
 
 #include <gmock/gmock.h>
 
@@ -8,46 +8,40 @@
 namespace store::mocks
 {
 
-inline std::variant<json::Json, base::Error> getJson(const char* jsonStr)
+std::variant<json::Json, base::Error> getError = base::Error {"Mocked get error"};
+inline std::variant<json::Json, base::Error> getSuccess(json::Json& expected)
 {
-    return json::Json(jsonStr);
+    return expected;
 }
 
-inline std::variant<json::Json, base::Error> getJson(const json::Json& json)
-{
-    return json;
-}
+std::optional<base::Error> addError = base::Error {"Mocked add error"};
+std::optional<base::Error> addSuccess = std::nullopt;
 
-inline std::variant<json::Json, base::Error> getError(const std::string& errorStr = "")
-{
-    return base::Error {errorStr};
-}
+std::optional<base::Error> delError = base::Error {"Mocked del error"};
+std::optional<base::Error> delSuccess = std::nullopt;
 
-inline std::optional<base::Error> errorRes(const std::string& errorStr = "")
-{
-    return base::Error {errorStr};
-}
+std::optional<base::Error> updateError = base::Error {"Mocked update error"};
+std::optional<base::Error> updateSuccess = std::nullopt;
 
-inline std::optional<base::Error> okRes()
-{
-    return std::nullopt;
-}
+std::optional<base::Error> addUpdateError = base::Error {"Mocked addUpdate error"};
+std::optional<base::Error> addUpdateSuccess = std::nullopt;
 
-class MockStoreRead : public IStoreRead
+class MockStoreRead : public store::IStoreRead
 {
 public:
     MOCK_METHOD((std::variant<json::Json, base::Error>), get, (const base::Name&), (const, override));
 };
 
-class MockStore : public IStore
+class MockStore : public store::IStore
 {
 public:
     MOCK_METHOD((std::variant<json::Json, base::Error>), get, (const base::Name&), (const, override));
-    MOCK_METHOD(std::optional<base::Error>, add, (const base::Name&, const json::Json&), (override));
-    MOCK_METHOD(std::optional<base::Error>, del, (const base::Name&), (override));
-    MOCK_METHOD(std::optional<base::Error>, update, (const base::Name&, const json::Json&), (override));
+    MOCK_METHOD((std::optional<base::Error>), add, (const base::Name&, const json::Json&), (override));
+    MOCK_METHOD((std::optional<base::Error>), del, (const base::Name&), (override));
+    MOCK_METHOD((std::optional<base::Error>), update, (const base::Name&, const json::Json&), (override));
+    MOCK_METHOD((std::optional<base::Error>), addUpdate, (const base::Name&, const json::Json&), (override));
 };
 
 } // namespace store::mocks
 
-#endif // _STORE_MOCK_STORE_H
+#endif // _STORE_MOCK_STORE_HPP

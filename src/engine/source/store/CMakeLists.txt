@@ -1,9 +1,12 @@
+# Defs
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 
-add_library(store_interface INTERFACE)
-target_include_directories(store_interface INTERFACE ${IFACE_DIR})
-target_link_libraries(store_interface INTERFACE fmt base json)
-add_library(store::istore ALIAS store_interface)
+add_library(store_istore INTERFACE)
+target_include_directories(store_istore INTERFACE ${IFACE_DIR})
+target_link_libraries(store_istore INTERFACE fmt base json)
+add_library(store::istore ALIAS store_istore)
 
 add_library(store_fileDriver STATIC
     ${CMAKE_CURRENT_LIST_DIR}/drivers/fileDriver/src/fileDriver.cpp
