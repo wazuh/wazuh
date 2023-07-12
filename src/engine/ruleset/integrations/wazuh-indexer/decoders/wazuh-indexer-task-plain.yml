@@ -43,4 +43,6 @@ normalize:
       - event.category: +array_append/database
       - event.type: +array_append/info
       - host.name: $~node.name
+      - log.level: "+trim/end/ "
+      - log.logger: "+trim/end/ "
       - ~timestamp: +delete
