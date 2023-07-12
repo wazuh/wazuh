@@ -62,6 +62,9 @@ void stop_wmodules()
 /* Locally start (after service/win init) */
 int local_start()
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
@@ -75,8 +78,6 @@ int local_start()
         nowDebug();
         debug_level--;
     }
-
-    enable_dll_verification();
 
     if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
     {
