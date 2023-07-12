@@ -2,6 +2,7 @@
 #define _RBAC_PERMISSION_HPP
 
 #include <string>
+#include <variant>
 
 #include <json/json.hpp>
 #include <rbac/irbac.hpp>
@@ -50,17 +51,17 @@ public:
         return json;
     }
 
-    static Permission fromJson(const json::Json& json)
+    static std::variant<Permission, base::Error> fromJson(const json::Json& json)
     {
         auto res = json.getString(detail::RES_JPATH);
         if (!res)
         {
-            throw std::runtime_error("Permission::fromJson: " + std::string(detail::RES_JPATH) + " not found");
+            return base::Error {"Permission::fromJson: " + std::string(detail::RES_JPATH) + " not found"};
         }
         auto op = json.getString(detail::OP_JPATH);
         if (!op)
         {
-            throw std::runtime_error("Permission::fromJson: " + std::string(detail::OP_JPATH) + " not found");
+            return base::Error {"Permission::fromJson: " + std::string(detail::OP_JPATH) + " not found"};
         }
         return Permission(strToRes(res.value()), strToOp(op.value()));
     }
