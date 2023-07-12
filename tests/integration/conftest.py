@@ -23,7 +23,7 @@ from wazuh_testing.tools.simulators.agent_simulator import create_agents, connec
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
-from wazuh_testing.utils.file import delete_file
+from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
 
@@ -498,11 +498,11 @@ def simulate_agent():
 @pytest.fixture
 def remove_test_file(request):
     """Remove a test file before and after the test execution."""
-    delete_file(request.module.test_file)
+    remove_file(request.module.test_file)
 
     yield
 
-    delete_file(request.module.test_file)
+    remove_file(request.module.test_file)
 
 
 @pytest.fixture
