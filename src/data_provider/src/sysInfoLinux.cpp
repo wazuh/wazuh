@@ -28,7 +28,8 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 #include "linuxInfoHelper.h"
-#include <filesystem>
+
+using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
 struct ProcTableDeleter
 {
@@ -410,11 +411,11 @@ nlohmann::json SysInfo::getNetworks() const
     return networks;
 }
 
-std::string parseProcessInfo(const std::filesystem::path& path)
+std::string getProcessName(const std::string filePath)
 {
     // Get stat file content.
     std::string processInfo { UNKNOWN_VALUE };
-    const auto statContent {Utils::getFileContent(path)};
+    std::string statContent {Utils::getFileContent(filePath)};
 
     const auto openParenthesisPos {statContent.find("(")};
     const auto closeParenthesisPos {statContent.find(")")};
@@ -427,83 +428,91 @@ std::string parseProcessInfo(const std::filesystem::path& path)
     return processInfo;
 }
 
-void findInodeMatch(const std::filesystem::path& path, std::vector<int64_t>& inodes, bool& matchInode, const nlohmann::json& portsInfo)
+int64_t findInode(const std::string filePath)
 {
-    const auto fdFileContent {std::filesystem::read_symlink(path)};
+    size_t MAX_LENGTH {256};
+    char buffer[MAX_LENGTH];
+    auto ret {readlink(filePath.c_str(), buffer, MAX_LENGTH)};
+    int64_t inode {-1};
 
-    if (!fdFileContent.empty())
+    if (-1 != ret)
     {
-        // Parse inode from symbolic link. The expected format is: socket[<inode_number>].
-        const auto openBracketPos {fdFileContent.string().find("[")};
-        const auto closeBracketPos {fdFileContent.string().find("]")};
-        const auto match {fdFileContent.string().substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1)};
-        const int64_t matchN {std::stoi(match)};
+        const auto openBracketPos {std::string(buffer).find("[")};
+        const auto closeBracketPos {std::string(buffer).find("]")};
+        const auto match {std::string(buffer).substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1)};
+        int64_t matchN;
 
-        if (std::any_of(portsInfo.cbegin(), portsInfo.cend(), [&](const auto it)
-    {
-        return it.at("inode") == matchN;
-        }))
+        try
         {
-            matchInode = true;
-            inodes.push_back(matchN);
+            matchN = std::stoi(match);
+            inode = matchN;
         }
+        catch (...)
+        {}
     }
+
+    return inode;
 }
 
-void parseProcFS(nlohmann::json& portsInfo)
+ProcessInfo portProcessInfo(const std::string& procPath, const std::vector<int64_t>& inodes)
 {
-    const auto Procpath {WM_SYS_PROC_DIR};
+    ProcessInfo ret;
 
-    if (std::filesystem::is_directory(Procpath))
+    if (Utils::existsDir(procPath))
     {
-        // Iterate over proc directory.
-        for (const auto& procFile : std::filesystem::directory_iterator(Procpath))
+        std::vector<std::string> procFiles = Utils::enumerateDir(procPath);
+
+        // Iterate proc directory.
+        for (const auto& procFile : procFiles)
         {
-            const auto procFileName {procFile.path().filename().string()};
-
             // Only directories that represent a PID are inspected.
-            if (Utils::isNumber(procFileName) && std::filesystem::is_directory(procFile.path()))
+            const std::string procFilePath = procPath + "/" + procFile;
+
+            if (Utils::isNumber(procFile) && Utils::existsDir(procFilePath))
             {
-                std::vector<int64_t> inodes;
-                bool matchInode{false};
+                std::vector<std::string> pidFiles = Utils::enumerateDir(procFilePath);
 
-                // Iterate over PID directory.
-                for (const auto& pidFile : std::filesystem::directory_iterator(procFile.path()))
+                // Iterate PID directory.
+                for (const auto& pidFile : pidFiles)
                 {
-                    const auto pidFileName {pidFile.path().filename().string()};
-
                     // Only fd directory is inspected.
-                    if (pidFileName.compare("fd") == 0 && std::filesystem::is_directory(pidFile.path()))
+                    const std::string pidFilePath = procFilePath + "/" + pidFile;
+
+                    if (pidFile.compare("fd") == 0 && Utils::existsDir(pidFilePath))
                     {
-                        // Iterate over fd directory.
-                        for (const auto& fdFile : std::filesystem::directory_iterator(pidFile.path()))
+                        std::vector<std::string> fdFiles = Utils::enumerateDir(pidFilePath);
+
+                        // Iterate fd directory.
+                        for (const auto& fdFile : fdFiles)
                         {
-                            // Only symlinks that represent a socket are read.
-                            std::error_code ec;
-                            const auto status { fdFile.status(ec) };
+                            // Only sysmlinks that represent a socket are read.
+                            const std::string fdFilePath = pidFilePath + "/" + fdFile;
 
-                            if (!ec && std::filesystem::is_socket(status))
+                            if (!Utils::startsWith(fdFile, ".") && Utils::existsSocket(fdFilePath))
                             {
-                                findInodeMatch(fdFile.path(), inodes, matchInode, portsInfo);
-                            }
-                        }
-                    }
-                }
+                                int64_t inode = findInode(fdFilePath);
 
-                // stat file is accessed only when inode information matches with the fd directory files content.
-                if (matchInode)
-                {
-                    const auto statFilePath = procFile.path() / "stat";
+                                if (-1 != inode)
+                                {
+                                    if (std::any_of(inodes.cbegin(), inodes.cend(), [&](const auto it)
+                                {
+                                    return it == inode;
+                                }))
+                                    {
+                                        std::string statPath = procFilePath + "/" + "stat";
+                                        std::string processName = getProcessName(statPath);
+                                        int32_t pid {0};
 
-                    if (std::filesystem::exists(statFilePath))
-                    {
-                        // Add information to original JSON object.
-                        for (auto& it : portsInfo)
-                        {
-                            if (std::find(inodes.begin(), inodes.end(), it.at("inode")) != inodes.end())
-                            {
-                                it["pid"] = std::stoi(procFileName);
-                                it["process"] = parseProcessInfo(statFilePath);
+                                        try
+                                        {
+                                            pid = std::stoi(procFile);
+                                        }
+                                        catch (...)
+                                        {}
+
+                                        ret.emplace(std::make_pair(inode, std::make_pair(pid, processName)));
+                                    }
+                                }
                             }
                         }
                     }
@@ -511,6 +520,8 @@ void parseProcFS(nlohmann::json& portsInfo)
             }
         }
     }
+
+    return ret;
 }
 
 nlohmann::json SysInfo::getPorts() const
@@ -540,7 +551,34 @@ nlohmann::json SysInfo::getPorts() const
         }
     }
 
-    parseProcFS(ports);
+    std::vector<int64_t> inodes;
+
+    for (const auto& port : ports)
+    {
+        try
+        {
+            inodes.push_back(port.at("inode"));
+        }
+        catch (...) {}
+    }
+
+    ProcessInfo ret;
+
+    if (0 < inodes.size())
+    {
+        ret = portProcessInfo(WM_SYS_PROC_DIR, inodes);
+
+        for (auto& port : ports)
+        {
+            try
+            {
+                std::pair<int32_t, std::string> processPair = ret.at(port.at("inode"));
+                port.at("pid") = processPair.first;
+                port.at("process") = processPair.second;
+            }
+            catch (...) {}
+        }
+    }
 
     return ports;
 }

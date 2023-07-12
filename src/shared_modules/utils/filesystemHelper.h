@@ -38,6 +38,11 @@ namespace Utils
         struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
+    static bool existsSocket(const std::string& path)
+    {
+        struct stat info {};
+        return !stat(path.c_str(), &info) && (S_ISSOCK(info.st_mode));
+    }
     struct DirSmartDeleter
     {
         void operator()(DIR* dir)
