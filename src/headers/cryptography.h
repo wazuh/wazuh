@@ -14,6 +14,7 @@
 
 #ifdef WIN32
 #include <windows.h>
+#include "os_err.h"
 
 /**
  * @brief Verify the signature of a PE file.

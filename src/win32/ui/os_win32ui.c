@@ -12,6 +12,7 @@
 #include "../../src/headers/string_op.h"
 #include "os_win32ui.h"
 #include "../os_win.h"
+#include "dll_load_notify.h"
 
 ossec_config config_inst;
 HWND hStatus;
@@ -386,6 +387,9 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevInstance,
         __attribute__((unused))LPSTR lpCmdLine, __attribute__((unused))int nCmdShow)
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     WSADATA wsaData;
 
     /* Start Winsock -- for name resolution */

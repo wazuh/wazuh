@@ -8,8 +8,14 @@
  */
 
 #include "active_responses.h"
+#include "dll_load_notify.h"
 
 int main (int argc, char **argv) {
+#ifdef WIN32
+    // This must be always the first instruction
+    enable_dll_verification();
+#endif
+
     (void)argc;
     int action = OS_INVALID;
 
