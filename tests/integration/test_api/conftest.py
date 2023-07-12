@@ -5,7 +5,7 @@ This program is free software; you can redistribute it and/or modify it under th
 """
 import pytest
 
-from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.modules.api.callbacks import search_api_startup
 from wazuh_testing.modules.api.configuration import get_configuration, append_configuration, delete_configuration_file
 from wazuh_testing.constants.api import WAZUH_API_PORT, CONFIGURATION_TYPES
