@@ -29,15 +29,15 @@ target_include_directories(rbac_mocks INTERFACE ${TEST_MOCK_DIR})
 target_link_libraries(rbac_mocks INTERFACE gmock rbac::irbac)
 add_library(rbac::mocks ALIAS rbac_mocks)
 
-add_executable(rbac_test
-  ${TEST_SRC_DIR}/
-)
-
-target_include_directories(rbac_test
-    PRIVATE
-    ${TEST_SRC_DIR}
-)
-
-target_link_libraries(rbac_test gtest_main base rbac)
-gtest_discover_tests(rbac_test)
+# add_executable(rbac_test
+#   ${TEST_SRC_DIR}/
+# )
+#
+# target_include_directories(rbac_test
+#     PRIVATE
+#     ${TEST_SRC_DIR}
+# )
+#
+# target_link_libraries(rbac_test gtest_main base rbac)
+# gtest_discover_tests(rbac_test)
 endif(ENGINE_BUILD_TEST)

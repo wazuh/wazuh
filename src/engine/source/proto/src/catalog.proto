@@ -6,6 +6,7 @@ package com.wazuh.api.engine.catalog;
 
 /*
  * This API is used to manage the catalog of the Wazuh manager
+ * TODO: Make all roles required (and remove the default value)
  */
 
 /* Supported formats for the resources (Case sensitive) */
@@ -44,6 +45,7 @@ message ResourcePost_Request
     optional ResourceType type = 1;     // Type of the resource (rule, decoder, etc)
     optional ResourceFormat format = 2; // Format of the resource
     optional string content = 3;        // Content of the resource
+    optional string role = 4;           // Role of the user
 }
 
 // message ResourcePost_Response -> Return a GenericStatus_Response
@@ -57,6 +59,7 @@ message ResourceGet_Request
 {
     optional string name = 1;           // Name of the resource
     optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional string role = 3;           // Role of the user
 }
 
 message ResourceGet_Response
@@ -76,6 +79,7 @@ message ResourcePut_Request
     optional string name = 1;           // Name of the resource
     optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
     optional string content = 3;        // Content of the resource
+    optional string role = 4;           // Role of the user
 }
 
 // message ResourcePut_Response -> Return a GenericStatus_Response
@@ -88,6 +92,7 @@ message ResourcePut_Request
 message ResourceDelete_Request
 {
     optional string name = 1; // Name of the resource
+    optional string role = 2; // Role of the user
 }
 
 // message ResourceDelete_Response -> Return a GenericStatus_Response
@@ -102,6 +107,7 @@ message ResourceValidate_Request
     optional string name = 1;           // Name of the resource
     optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
     optional string content = 3;        // Content of the resource
+    optional string role = 4;           // Role of the user
 }
 
 // message ResourceValidate_Response -> Return a GenericStatus_Response

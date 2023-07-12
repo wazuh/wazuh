@@ -46,6 +46,7 @@ target_link_libraries(api
     store::istore
     yml
     schemf
+    rbac::irbac
 )
 
 # Tests
