@@ -48,7 +48,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH
 from wazuh_testing.modules.execd.active_response import patterns as ar_patterns
 from wazuh_testing.modules.execd import patterns as execd_paterns
-from wazuh_testing.modules.execd.configuration import EXECD_DEBUG_CONFIG
+from wazuh_testing.modules.execd.configuration import EXECD_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -66,7 +66,7 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Test internal options and configurations.
-local_internal_options = {EXECD_DEBUG_CONFIG: '2'}
+local_internal_options = {EXECD_DEBUG: '2'} 
 daemons_handler_configuration = {'all_daemons': True}
 ar_conf = 'firewall-drop5 - firewall-drop - 5'
 

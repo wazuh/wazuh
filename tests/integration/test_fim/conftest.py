@@ -12,3 +12,12 @@ def file_to_monitor(test_metadata: dict) -> Any:
     yield
     
     file.remove_file(path)
+
+@pytest.fixture()
+def folder_to_monitor(test_metadata: dict) -> None:
+    path = test_metadata['folder_to_monitor']
+    file.create_folder(folder_to_monitor)
+    
+    yield
+    
+    file.delete_path_recursively(path)
