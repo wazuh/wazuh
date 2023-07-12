@@ -3289,7 +3289,7 @@ class AWSCloudWatchLogs(AWSService):
                             f'+++ The "{self.discard_regex.pattern}" regex found a match. The event will be skipped.',
                             2)
                         continue
-                debug('The message is "{}"'.format(event_msg), 3)
+                debug('The message is "{}"'.format(event_msg), 2)
                 debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
                 self.send_msg(event_msg, dump_json=False)
                 sent_events += 1
@@ -3306,6 +3306,7 @@ class AWSCloudWatchLogs(AWSService):
 
             if sent_events:
                 debug(f"+++ Sent {sent_events} events to Analysisd", 1)
+                sent_events = 0
             else:
                 debug(f'+++ There are no new events in the "{log_group}" group', 1)
 
