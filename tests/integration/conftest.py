@@ -135,8 +135,8 @@ def load_wazuh_basic_configuration():
 @pytest.fixture()
 def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
+
     Args:
-    
         test_configuration (dict): Configuration template data to write in the ossec.conf
     """
     # Save current configuration
