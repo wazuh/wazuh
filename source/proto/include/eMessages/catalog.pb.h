@@ -270,6 +270,7 @@ class ResourcePost_Request final :
 
   enum : int {
     kContentFieldNumber = 3,
+    kRoleFieldNumber = 4,
     kTypeFieldNumber = 1,
     kFormatFieldNumber = 2,
   };
@@ -289,6 +290,24 @@ class ResourcePost_Request final :
   const std::string& _internal_content() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_content(const std::string& value);
   std::string* _internal_mutable_content();
+  public:
+
+  // optional string role = 4;
+  bool has_role() const;
+  private:
+  bool _internal_has_role() const;
+  public:
+  void clear_role();
+  const std::string& role() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_role(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_role();
+  PROTOBUF_NODISCARD std::string* release_role();
+  void set_allocated_role(std::string* role);
+  private:
+  const std::string& _internal_role() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_role(const std::string& value);
+  std::string* _internal_mutable_role();
   public:
 
   // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
@@ -328,6 +347,7 @@ class ResourcePost_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr role_;
     int type_;
     int format_;
   };
@@ -458,6 +478,7 @@ class ResourceGet_Request final :
 
   enum : int {
     kNameFieldNumber = 1,
+    kRoleFieldNumber = 3,
     kFormatFieldNumber = 2,
   };
   // optional string name = 1;
@@ -476,6 +497,24 @@ class ResourceGet_Request final :
   const std::string& _internal_name() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
   std::string* _internal_mutable_name();
+  public:
+
+  // optional string role = 3;
+  bool has_role() const;
+  private:
+  bool _internal_has_role() const;
+  public:
+  void clear_role();
+  const std::string& role() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_role(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_role();
+  PROTOBUF_NODISCARD std::string* release_role();
+  void set_allocated_role(std::string* role);
+  private:
+  const std::string& _internal_role() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_role(const std::string& value);
+  std::string* _internal_mutable_role();
   public:
 
   // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
@@ -502,6 +541,7 @@ class ResourceGet_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr role_;
     int format_;
   };
   union { Impl_ _impl_; };
@@ -821,6 +861,7 @@ class ResourcePut_Request final :
   enum : int {
     kNameFieldNumber = 1,
     kContentFieldNumber = 3,
+    kRoleFieldNumber = 4,
     kFormatFieldNumber = 2,
   };
   // optional string name = 1;
@@ -859,6 +900,24 @@ class ResourcePut_Request final :
   std::string* _internal_mutable_content();
   public:
 
+  // optional string role = 4;
+  bool has_role() const;
+  private:
+  bool _internal_has_role() const;
+  public:
+  void clear_role();
+  const std::string& role() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_role(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_role();
+  PROTOBUF_NODISCARD std::string* release_role();
+  void set_allocated_role(std::string* role);
+  private:
+  const std::string& _internal_role() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_role(const std::string& value);
+  std::string* _internal_mutable_role();
+  public:
+
   // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
   bool has_format() const;
   private:
@@ -884,6 +943,7 @@ class ResourcePut_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr role_;
     int format_;
   };
   union { Impl_ _impl_; };
@@ -1013,6 +1073,7 @@ class ResourceDelete_Request final :
 
   enum : int {
     kNameFieldNumber = 1,
+    kRoleFieldNumber = 2,
   };
   // optional string name = 1;
   bool has_name() const;
@@ -1032,6 +1093,24 @@ class ResourceDelete_Request final :
   std::string* _internal_mutable_name();
   public:
 
+  // optional string role = 2;
+  bool has_role() const;
+  private:
+  bool _internal_has_role() const;
+  public:
+  void clear_role();
+  const std::string& role() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_role(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_role();
+  PROTOBUF_NODISCARD std::string* release_role();
+  void set_allocated_role(std::string* role);
+  private:
+  const std::string& _internal_role() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_role(const std::string& value);
+  std::string* _internal_mutable_role();
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.ResourceDelete_Request)
  private:
   class _Internal;
@@ -1043,6 +1122,7 @@ class ResourceDelete_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr role_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -1172,6 +1252,7 @@ class ResourceValidate_Request final :
   enum : int {
     kNameFieldNumber = 1,
     kContentFieldNumber = 3,
+    kRoleFieldNumber = 4,
     kFormatFieldNumber = 2,
   };
   // optional string name = 1;
@@ -1210,6 +1291,24 @@ class ResourceValidate_Request final :
   std::string* _internal_mutable_content();
   public:
 
+  // optional string role = 4;
+  bool has_role() const;
+  private:
+  bool _internal_has_role() const;
+  public:
+  void clear_role();
+  const std::string& role() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_role(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_role();
+  PROTOBUF_NODISCARD std::string* release_role();
+  void set_allocated_role(std::string* role);
+  private:
+  const std::string& _internal_role() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_role(const std::string& value);
+  std::string* _internal_mutable_role();
+  public:
+
   // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
   bool has_format() const;
   private:
@@ -1235,6 +1334,7 @@ class ResourceValidate_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr role_;
     int format_;
   };
   union { Impl_ _impl_; };
@@ -1253,7 +1353,7 @@ class ResourceValidate_Request final :
 
 // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
 inline bool ResourcePost_Request::_internal_has_type() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_type() const {
@@ -1261,7 +1361,7 @@ inline bool ResourcePost_Request::has_type() const {
 }
 inline void ResourcePost_Request::clear_type() {
   _impl_.type_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceType ResourcePost_Request::_internal_type() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceType >(_impl_.type_);
@@ -1271,7 +1371,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceType ResourcePost_Request::ty
   return _internal_type();
 }
 inline void ResourcePost_Request::_internal_set_type(::com::wazuh::api::engine::catalog::ResourceType value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   _impl_.type_ = value;
 }
 inline void ResourcePost_Request::set_type(::com::wazuh::api::engine::catalog::ResourceType value) {
@@ -1281,7 +1381,7 @@ inline void ResourcePost_Request::set_type(::com::wazuh::api::engine::catalog::R
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourcePost_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_format() const {
@@ -1289,7 +1389,7 @@ inline bool ResourcePost_Request::has_format() const {
 }
 inline void ResourcePost_Request::clear_format() {
   _impl_.format_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePost_Request::_internal_format() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
@@ -1299,7 +1399,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePost_Request::
   return _internal_format();
 }
 inline void ResourcePost_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.format_ = value;
 }
 inline void ResourcePost_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
@@ -1373,6 +1473,74 @@ inline void ResourcePost_Request::set_allocated_content(std::string* content) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.content)
+}
+
+// optional string role = 4;
+inline bool ResourcePost_Request::_internal_has_role() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool ResourcePost_Request::has_role() const {
+  return _internal_has_role();
+}
+inline void ResourcePost_Request::clear_role() {
+  _impl_.role_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& ResourcePost_Request::role() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.role)
+  return _internal_role();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void ResourcePost_Request::set_role(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.role_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.role)
+}
+inline std::string* ResourcePost_Request::mutable_role() {
+  std::string* _s = _internal_mutable_role();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePost_Request.role)
+  return _s;
+}
+inline const std::string& ResourcePost_Request::_internal_role() const {
+  return _impl_.role_.Get();
+}
+inline void ResourcePost_Request::_internal_set_role(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.role_.Set(value, GetArenaForAllocation());
+}
+inline std::string* ResourcePost_Request::_internal_mutable_role() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.role_.Mutable(GetArenaForAllocation());
+}
+inline std::string* ResourcePost_Request::release_role() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePost_Request.role)
+  if (!_internal_has_role()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.role_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void ResourcePost_Request::set_allocated_role(std::string* role) {
+  if (role != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.role_.SetAllocated(role, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.role)
 }
 
 // -------------------------------------------------------------------
@@ -1449,7 +1617,7 @@ inline void ResourceGet_Request::set_allocated_name(std::string* name) {
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourceGet_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool ResourceGet_Request::has_format() const {
@@ -1457,7 +1625,7 @@ inline bool ResourceGet_Request::has_format() const {
 }
 inline void ResourceGet_Request::clear_format() {
   _impl_.format_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceGet_Request::_internal_format() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
@@ -1467,12 +1635,80 @@ inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceGet_Request::f
   return _internal_format();
 }
 inline void ResourceGet_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   _impl_.format_ = value;
 }
 inline void ResourceGet_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
   _internal_set_format(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
+}
+
+// optional string role = 3;
+inline bool ResourceGet_Request::_internal_has_role() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool ResourceGet_Request::has_role() const {
+  return _internal_has_role();
+}
+inline void ResourceGet_Request::clear_role() {
+  _impl_.role_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& ResourceGet_Request::role() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceGet_Request.role)
+  return _internal_role();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void ResourceGet_Request::set_role(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.role_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceGet_Request.role)
+}
+inline std::string* ResourceGet_Request::mutable_role() {
+  std::string* _s = _internal_mutable_role();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourceGet_Request.role)
+  return _s;
+}
+inline const std::string& ResourceGet_Request::_internal_role() const {
+  return _impl_.role_.Get();
+}
+inline void ResourceGet_Request::_internal_set_role(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.role_.Set(value, GetArenaForAllocation());
+}
+inline std::string* ResourceGet_Request::_internal_mutable_role() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.role_.Mutable(GetArenaForAllocation());
+}
+inline std::string* ResourceGet_Request::release_role() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourceGet_Request.role)
+  if (!_internal_has_role()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.role_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void ResourceGet_Request::set_allocated_role(std::string* role) {
+  if (role != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.role_.SetAllocated(role, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceGet_Request.role)
 }
 
 // -------------------------------------------------------------------
@@ -1709,7 +1945,7 @@ inline void ResourcePut_Request::set_allocated_name(std::string* name) {
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourcePut_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool ResourcePut_Request::has_format() const {
@@ -1717,7 +1953,7 @@ inline bool ResourcePut_Request::has_format() const {
 }
 inline void ResourcePut_Request::clear_format() {
   _impl_.format_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePut_Request::_internal_format() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
@@ -1727,7 +1963,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePut_Request::f
   return _internal_format();
 }
 inline void ResourcePut_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.format_ = value;
 }
 inline void ResourcePut_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
@@ -1803,6 +2039,74 @@ inline void ResourcePut_Request::set_allocated_content(std::string* content) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePut_Request.content)
 }
 
+// optional string role = 4;
+inline bool ResourcePut_Request::_internal_has_role() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool ResourcePut_Request::has_role() const {
+  return _internal_has_role();
+}
+inline void ResourcePut_Request::clear_role() {
+  _impl_.role_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline const std::string& ResourcePut_Request::role() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePut_Request.role)
+  return _internal_role();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void ResourcePut_Request::set_role(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_.role_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePut_Request.role)
+}
+inline std::string* ResourcePut_Request::mutable_role() {
+  std::string* _s = _internal_mutable_role();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePut_Request.role)
+  return _s;
+}
+inline const std::string& ResourcePut_Request::_internal_role() const {
+  return _impl_.role_.Get();
+}
+inline void ResourcePut_Request::_internal_set_role(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.role_.Set(value, GetArenaForAllocation());
+}
+inline std::string* ResourcePut_Request::_internal_mutable_role() {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  return _impl_.role_.Mutable(GetArenaForAllocation());
+}
+inline std::string* ResourcePut_Request::release_role() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePut_Request.role)
+  if (!_internal_has_role()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000004u;
+  auto* p = _impl_.role_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void ResourcePut_Request::set_allocated_role(std::string* role) {
+  if (role != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000004u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000004u;
+  }
+  _impl_.role_.SetAllocated(role, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePut_Request.role)
+}
+
 // -------------------------------------------------------------------
 
 // ResourceDelete_Request
@@ -1873,6 +2177,74 @@ inline void ResourceDelete_Request::set_allocated_name(std::string* name) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceDelete_Request.name)
+}
+
+// optional string role = 2;
+inline bool ResourceDelete_Request::_internal_has_role() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool ResourceDelete_Request::has_role() const {
+  return _internal_has_role();
+}
+inline void ResourceDelete_Request::clear_role() {
+  _impl_.role_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& ResourceDelete_Request::role() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceDelete_Request.role)
+  return _internal_role();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void ResourceDelete_Request::set_role(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.role_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceDelete_Request.role)
+}
+inline std::string* ResourceDelete_Request::mutable_role() {
+  std::string* _s = _internal_mutable_role();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourceDelete_Request.role)
+  return _s;
+}
+inline const std::string& ResourceDelete_Request::_internal_role() const {
+  return _impl_.role_.Get();
+}
+inline void ResourceDelete_Request::_internal_set_role(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.role_.Set(value, GetArenaForAllocation());
+}
+inline std::string* ResourceDelete_Request::_internal_mutable_role() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.role_.Mutable(GetArenaForAllocation());
+}
+inline std::string* ResourceDelete_Request::release_role() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourceDelete_Request.role)
+  if (!_internal_has_role()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.role_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void ResourceDelete_Request::set_allocated_role(std::string* role) {
+  if (role != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.role_.SetAllocated(role, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceDelete_Request.role)
 }
 
 // -------------------------------------------------------------------
@@ -1949,7 +2321,7 @@ inline void ResourceValidate_Request::set_allocated_name(std::string* name) {
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourceValidate_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool ResourceValidate_Request::has_format() const {
@@ -1957,7 +2329,7 @@ inline bool ResourceValidate_Request::has_format() const {
 }
 inline void ResourceValidate_Request::clear_format() {
   _impl_.format_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceValidate_Request::_internal_format() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
@@ -1967,7 +2339,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceValidate_Reque
   return _internal_format();
 }
 inline void ResourceValidate_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.format_ = value;
 }
 inline void ResourceValidate_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
@@ -2041,6 +2413,74 @@ inline void ResourceValidate_Request::set_allocated_content(std::string* content
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceValidate_Request.content)
+}
+
+// optional string role = 4;
+inline bool ResourceValidate_Request::_internal_has_role() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool ResourceValidate_Request::has_role() const {
+  return _internal_has_role();
+}
+inline void ResourceValidate_Request::clear_role() {
+  _impl_.role_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline const std::string& ResourceValidate_Request::role() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceValidate_Request.role)
+  return _internal_role();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void ResourceValidate_Request::set_role(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_.role_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceValidate_Request.role)
+}
+inline std::string* ResourceValidate_Request::mutable_role() {
+  std::string* _s = _internal_mutable_role();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourceValidate_Request.role)
+  return _s;
+}
+inline const std::string& ResourceValidate_Request::_internal_role() const {
+  return _impl_.role_.Get();
+}
+inline void ResourceValidate_Request::_internal_set_role(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.role_.Set(value, GetArenaForAllocation());
+}
+inline std::string* ResourceValidate_Request::_internal_mutable_role() {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  return _impl_.role_.Mutable(GetArenaForAllocation());
+}
+inline std::string* ResourceValidate_Request::release_role() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourceValidate_Request.role)
+  if (!_internal_has_role()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000004u;
+  auto* p = _impl_.role_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void ResourceValidate_Request::set_allocated_role(std::string* role) {
+  if (role != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000004u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000004u;
+  }
+  _impl_.role_.SetAllocated(role, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.role_.IsDefault()) {
+    _impl_.role_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceValidate_Request.role)
 }
 
 #ifdef __GNUC__
