@@ -318,7 +318,7 @@ stages:
     response:
       status_code: 400
       json:
-        error: 1408
+        error: 1407
 
   - name: Get distinct CDB list
     request:

@@ -1838,7 +1838,7 @@ stages:
       json: &invalid_select
         error: 1724
 
- - name: Get distinct cluster node logs
+  - name: Get distinct cluster node logs
     request:
       verify: False
       <<: *get_cluster_logs
