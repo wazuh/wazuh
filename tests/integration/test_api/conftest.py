@@ -9,7 +9,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH, WAZUH_AP
 from wazuh_testing.constants.api import WAZUH_API_PORT, CONFIGURATION_TYPES
 from wazuh_testing.modules.api.configuration import get_configuration, append_configuration, delete_configuration_file
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.callbacks import generate_callback
 
 
