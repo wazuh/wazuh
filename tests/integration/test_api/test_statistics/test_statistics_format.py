@@ -63,8 +63,7 @@ from pathlib import Path
 from . import CONFIGURATION_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing import DATA_PATH
 from wazuh_testing.constants.api import DAEMONS_STATS_ROUTE
-from wazuh_testing.modules.api.helpers import get_base_url, login
-from wazuh_testing.modules.api.utils import validate_statistics
+from wazuh_testing.modules.api.utils import get_base_url, login, validate_statistics
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 

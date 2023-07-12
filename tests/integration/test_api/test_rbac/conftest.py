@@ -5,7 +5,7 @@ This program is free software; you can redistribute it and/or modify it under th
 """
 import pytest
 
-from wazuh_testing.modules.api.helpers import add_resources, relate_resources, remove_resources
+from wazuh_testing.modules.api.utils import add_resources, relate_resources, remove_resources
 
 
 @pytest.fixture

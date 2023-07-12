@@ -56,7 +56,7 @@ from pathlib import Path
 from . import TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import TARGET_ROUTE_MAP
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
-from wazuh_testing.modules.api.helpers import manage_security_resources
+from wazuh_testing.modules.api.utils import manage_security_resources
 from wazuh_testing.utils.configuration import get_test_cases_data
 
 

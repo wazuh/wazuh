@@ -60,8 +60,8 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths.logs import WAZUH_API_JSON_LOG_FILE_PATH
-from wazuh_testing.modules.api.helpers import login
 from wazuh_testing.modules.api.callbacks import search_timeout_error, search_login_request
+from wazuh_testing.modules.api.utils import login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
