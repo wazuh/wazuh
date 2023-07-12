@@ -1,6 +1,7 @@
 name: Integration tests for API - Tier 0 and 1
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-api-tier-0-1.yml"
