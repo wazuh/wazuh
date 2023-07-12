@@ -57,11 +57,13 @@ import pytest
 from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES
+from wazuh_testing.constants.api import CONFIGURATION_TYPES, WAZUH_API_USER, LOGIN_ROUTE
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
-from wazuh_testing.constants.paths.logs import WAZUH_API_JSON_LOG_FILE_PATH
-from wazuh_testing.modules.api.callbacks import search_timeout_error, search_login_request
+from wazuh_testing.constants.paths.logs import WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_API_LOG_FILE_PATH
+from wazuh_testing.modules.api.patterns import API_TIMEOUT_ERROR_MSG, API_LOGIN_REQUEST_MSG
 from wazuh_testing.modules.api.utils import login
+from wazuh_testing.tools import file_monitor
+from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
@@ -160,13 +162,33 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
 
     # Check whether the expected event exists in the log files according to the configured levels
     if 'json' in current_formats:
+        json_file_monitor = file_monitor.FileMonitor(WAZUH_API_JSON_LOG_FILE_PATH)
         if current_level == 'error':
-            search_timeout_error(WAZUH_API_JSON_LOG_FILE_PATH)
+            json_file_monitor.start(callback=generate_callback(API_TIMEOUT_ERROR_MSG))
+            assert json_file_monitor.callback_result is not None, f"The message '{API_TIMEOUT_ERROR_MSG}' " \
+                                                                  'did not appear in the logs.'
         else:
-            search_login_request(WAZUH_API_JSON_LOG_FILE_PATH)
+            json_file_monitor.start(callback=generate_callback(API_LOGIN_REQUEST_MSG, {
+                    'user': WAZUH_API_USER,
+                    'host': '127.0.0.1',
+                    'login_route': LOGIN_ROUTE
+                })
+            )
+            assert json_file_monitor.callback_result is not None, f"The message '{API_LOGIN_REQUEST_MSG}' " \
+                                                                  'did not appear in the logs.'
 
     if 'plain' in current_formats:
+        plain_file_monitor = file_monitor.FileMonitor(WAZUH_API_LOG_FILE_PATH)
         if current_level == 'error':
-            search_timeout_error()
+            plain_file_monitor.start(callback=generate_callback(API_TIMEOUT_ERROR_MSG))
+            assert plain_file_monitor.callback_result is not None, f"The message '{API_TIMEOUT_ERROR_MSG}' " \
+                                                                   'did not appear in the logs.'
         else:
-            search_login_request()
+            plain_file_monitor.start(callback=generate_callback(API_LOGIN_REQUEST_MSG, {
+                    'user': WAZUH_API_USER,
+                    'host': '127.0.0.1',
+                    'login_route': LOGIN_ROUTE
+                })
+            )
+            assert plain_file_monitor.callback_result is not None, f"The message '{API_LOGIN_REQUEST_MSG}' " \
+                                                                   'did not appear in the logs.'
