@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for CentOS 7
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) 2023, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -1178,7 +1178,6 @@ checks:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^server\.+|^pool\.+'
       - 'f:/etc/sysconfig/ntpd -> r:^OPTIONS\s*=\s* && r:-u ntp:ntp'
-      - 'f:/usr/lib/systemd/system/ntpd.service -> r:^Execstart\s*=\s*/usr/sbin/ntpd\s+-u\s+ntp:ntp'
 
   # 2.2.2 Ensure X11 Server components are not installed. (Automated)
   - id: 31218
@@ -2758,8 +2757,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/localtime && r:-p wa && r:-k time-change'
 
   # 4.1.4 Ensure events that modify user/group information are collected. (Automated)
@@ -2802,9 +2801,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/issue && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/issue.net && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/hosts && r:-p wa && r:-k system-locale'
@@ -2893,9 +2892,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
 
   # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected. (Automated)
   - id: 31304
@@ -2915,8 +2914,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
 
   # 4.1.11 Ensure use of privileged commands is collected. (Automated) - Not Implemented
 
@@ -2938,7 +2937,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
 
   # 4.1.13 Ensure file deletion events by users are collected. (Automated)
   - id: 31307
@@ -2958,7 +2957,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 31308
@@ -3022,7 +3021,7 @@ checks:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/insmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/rmmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/modprobe && r:-p x && r:-k modules'
-      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b\d\d && r:-S init_module && r:-S delete_module && r:-k modules'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b\d\d && r:-S init_module && r:-S delete_module && r:-k modules'
 
   # 4.1.17 Ensure the audit configuration is immutable. (Automated)
   - id: 31311
@@ -3239,9 +3238,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
+      - 'c:find /var/log -type f -ls -> r:^$'
 
   # 4.2.4 Ensure logrotate is configured. (Manual) - Not Implemented
   ####################################################
@@ -3577,7 +3576,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
-      - "f:/etc/ssh/sshd_config -> r:loglevel"
+      - 'f:/etc/ssh/sshd_config ->!r:^# && r:loglevel\s*(VERBOSE|INFO)'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 31340
