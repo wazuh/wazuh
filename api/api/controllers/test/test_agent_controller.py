@@ -753,7 +753,8 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'group_list': None,
                 'sort_by': ['name'],
                 'sort_ascending': True,
-                'search': None,
+                'search_text': None,
+                'complementary_search': None,
                 'hash_algorithm': hash_,
                 'q': None,
                 'distinct': False

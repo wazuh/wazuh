@@ -1131,7 +1131,8 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
                 'group_list': groups_list,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search': parse_api_param(search, 'search'),
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'hash_algorithm': hash_,
                 'q': q,
                 'distinct': distinct}
