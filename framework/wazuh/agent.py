@@ -556,8 +556,8 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
-def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort: dict = None,
-                     search: dict = None, hash_algorithm: str = 'md5', q: str = None,
+def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort_by: list = None,
+                     sort_ascending: bool = True, search: dict = None, hash_algorithm: str = 'md5', q: str = None,
                      distinct: bool = False) -> AffectedItemsWazuhResult:
     """Gets the existing groups.
 
@@ -569,8 +569,10 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         First element to return in the collection.
     limit : int
         Maximum number of elements to return. Default: common.DATABASE_LIMIT
-    sort : dict
-        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    sort_by : list
+        Fields to sort the items by.
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order. Default: True
     search : dict
         Look for elements with the specified string. Format: {"fields": ["field1","field2"]}
     hash_algorithm : str
@@ -621,9 +623,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
             affected_groups.append(group)
 
-    data = process_array(affected_groups, offset=offset, limit=limit,
-                         allowed_sort_fields=GROUP_SORT_FIELDS, sort_by=sort,
-                         search_text=search, q=q, distinct=distinct)
+    data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_SORT_FIELDS,
+                         sort_by=sort_by, sort_ascending=sort_ascending, search_text=search, q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
