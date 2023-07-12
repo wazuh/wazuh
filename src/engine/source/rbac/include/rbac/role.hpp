@@ -3,6 +3,7 @@
 
 #include <string>
 #include <unordered_set>
+#include <variant>
 
 #include <rbac/permission.hpp>
 
@@ -30,7 +31,6 @@ public:
     {
     }
 
-
     const std::string& getName() const { return m_name; }
 
     const std::unordered_set<Permission>& getPermissions() const { return m_permissions; }
@@ -56,18 +56,24 @@ public:
         return json;
     }
 
-    static Role fromJson(const std::string& key, const json::Json& permissions)
+    static std::variant<Role, base::Error> fromJson(const std::string& key, const json::Json& permissions)
     {
         std::unordered_set<Permission> perms;
-        auto permsArray = permissions.getArray(key);
+        auto permsArray = permissions.getArray();
         if (!permsArray)
         {
-            throw std::runtime_error("Role::fromJson: " + key + " not found");
+            return base::Error {fmt::format("Expected permissions to be an array for role {}", key)};
         }
 
         for (const auto& jPerm : *permsArray)
         {
-            perms.emplace(Permission::fromJson(jPerm));
+            auto perm = Permission::fromJson(jPerm);
+            if (std::holds_alternative<base::Error>(perm))
+            {
+                return std::get<base::Error>(perm);
+            }
+
+            perms.emplace(std::get<Permission>(perm));
         }
 
         return Role(key, perms);

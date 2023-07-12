@@ -93,6 +93,21 @@ static inline void loggingInit(LoggingConfig& cfg)
     getDefaultLogger()->set_pattern(cfg.headerFormat);
 }
 
+inline void testInit()
+{
+    static bool initialized = false;
+
+    if (!initialized)
+    {
+        // Logging setup
+        LoggingConfig logConfig;
+        logConfig.logLevel = "off";
+        logConfig.filePath = "";
+        loggingInit(logConfig);
+        initialized = true;
+    }
+}
+
 } // namespace logging
 
 /**

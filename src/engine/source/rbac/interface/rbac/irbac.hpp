@@ -18,9 +18,9 @@ auto constexpr opToStr(Operation op)
 {
     switch (op)
     {
-        case Operation::READ: return "READ";
-        case Operation::WRITE: return "WRITE";
-        default: return "UNKNOWN";
+        case Operation::READ: return "read";
+        case Operation::WRITE: return "write";
+        default: return "unknown";
     }
 }
 
@@ -49,9 +49,9 @@ auto constexpr resToStr(Resource res)
 {
     switch (res)
     {
-        case Resource::SYSTEM_ASSET: return "SYSTEM_ASSET";
-        case Resource::ASSET: return "ASSET";
-        default: return "UNKNOWN";
+        case Resource::SYSTEM_ASSET: return "system_asset";
+        case Resource::ASSET: return "asset";
+        default: return "unknown";
     }
 }
 
