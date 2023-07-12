@@ -41,7 +41,7 @@ constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 
 
-enum OSType
+enum OSPlatformType
 {
     LINUX,
     BSDBASED,
@@ -97,6 +97,12 @@ enum RPMFields
     RPM_FIELDS_INSTALLTIME,
     RPM_FIELDS_GROUPS,
     RPM_FIELDS_SIZE
+};
+
+enum MacOSArchitecture
+{
+    X86_64,
+    ARM64
 };
 
 #endif //_SHARED_DEFS_H

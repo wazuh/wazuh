@@ -42,6 +42,8 @@ static int test_teardown(void **state) {
 
 #define ALLOW_ZERO      true
 #define NOT_ALLOW_ZERO  false
+#define ALLOW_OVER_ONEHUNDRED true
+#define NOT_ALLOW_OVER_ONEHUNDRED false
 
 typedef struct test_struct {
     wdb_t *wdb;
@@ -2952,7 +2954,7 @@ void test_wdb_hardware_save_success(void **state) {
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_hardware_save(data, "scan_id", "scan_time", "serial", "cpu_name", -1, -1, 0, 0, -1, "checksum", false);
+    output = wdb_hardware_save(data, "scan_id", "scan_time", "serial", "cpu_name", 0, 0, 0, 0, 0, "checksum", false);
     assert_int_equal(output, 0);
 }
 
@@ -2999,7 +3001,7 @@ void test_wdb_hardware_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_int64, value, 6144);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 9);
-    expect_value(__wrap_sqlite3_bind_int, value, 2048);
+    expect_value(__wrap_sqlite3_bind_int, value, 100);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 10);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
@@ -3009,7 +3011,7 @@ void test_wdb_hardware_insert_sql_fail(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "at wdb_hardware_insert(): sqlite3_step(): ERROR");
 
-    output = wdb_hardware_insert(data, "scan_id", "scan_time", "serial", "cpu_name", 4, 2900, 8192, 6144, 2048, "checksum", false);
+    output = wdb_hardware_insert(data, "scan_id", "scan_time", "serial", "cpu_name", 4, 2900, 8192, 6144, 100, "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -4314,6 +4316,15 @@ void configure_sqlite3_bind_int64(int position, int number, bool allow_zero) {
     }
 }
 
+void configure_sqlite3_bind_int_ex(int position, int number, bool allow_zero, bool allow_over_one_hundred) {
+    if (!allow_over_one_hundred && number > 100) {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
+    } else {
+        configure_sqlite3_bind_int(position, number, allow_zero);
+    }
+}
+
 void configure_sqlite3_bind_int(int position, int number, bool allow_zero) {
     if (number > 0 || (0 == number && allow_zero)) {
         will_return(__wrap_sqlite3_bind_int, OS_SUCCESS);
@@ -4478,7 +4489,7 @@ void configure_wdb_hardware_insert(hardware_object test_hardware, int sqlite_cod
     configure_sqlite3_bind_double(6, test_hardware.cpu_mhz, NOT_ALLOW_ZERO);
     configure_sqlite3_bind_int64(7, test_hardware.ram_total, NOT_ALLOW_ZERO);
     configure_sqlite3_bind_int64(8, test_hardware.ram_free, NOT_ALLOW_ZERO);
-    configure_sqlite3_bind_int(9, test_hardware.ram_usage, NOT_ALLOW_ZERO);
+    configure_sqlite3_bind_int_ex(9, test_hardware.ram_usage, NOT_ALLOW_ZERO, NOT_ALLOW_OVER_ONEHUNDRED);
     configure_sqlite3_bind_text(10, test_hardware.checksum);
 
     will_return(__wrap_sqlite3_step, 0);
@@ -5152,7 +5163,7 @@ static void test_wdb_hardware_insert_success_null_values(void **state) {
     hardware_object temp_hardware = hardware;
     temp_hardware.cpu_cores = -1;
     temp_hardware.cpu_mhz = -1;
-    temp_hardware.ram_usage = -1;
+    temp_hardware.ram_usage = 101;
     temp_hardware.ram_total = 0;
     temp_hardware.ram_free = 0;
 

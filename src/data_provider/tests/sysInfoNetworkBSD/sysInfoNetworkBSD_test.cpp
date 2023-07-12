@@ -51,7 +51,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET_THROW)
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
@@ -64,7 +64,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(" "));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv4"))
     {
@@ -82,7 +82,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6_THROW)
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
@@ -95,7 +95,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:0000"));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return(" "));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv6"))
     {
@@ -121,7 +121,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("8.8.4.4"));
     EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return(""));
 
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
     EXPECT_EQ("eth01", ifaddr.at("name").get_ref<const std::string&>());
     EXPECT_EQ("ethernet", ifaddr.at("type").get_ref<const std::string&>());
@@ -144,5 +144,5 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
 TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json ifaddr {};
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(nullptr)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(nullptr)->buildNetworkData(ifaddr));
 }

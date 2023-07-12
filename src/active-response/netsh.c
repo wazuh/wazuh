@@ -10,6 +10,7 @@
 #ifdef WIN32
 
 #include "active_responses.h"
+#include "dll_load_notify.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
 #define NETSH     "C:\\Windows\\System32\\netsh.exe"
@@ -60,6 +61,9 @@ static void getFirewallProfile(const char * output_buf, firewallData_t *firewall
 static void getStatusFirewallProfile(const char * output_buf, firewallData_t *firewallData);
 
 int main (int argc, char **argv) {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     (void)argc;
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
