@@ -30,8 +30,8 @@
         },
         "@timestamp": "2023-07-03T21:22:29.799Z",
         "log": {
-            "level": "INFO ",
-            "logger": "t.d.search               "
+            "level": "INFO",
+            "logger": "t.d.search"
         },
         "~node": {
             "name": "node-1"
@@ -79,8 +79,8 @@
         },
         "@timestamp": "2023-07-03T21:51:23.773Z",
         "log": {
-            "level": "INFO ",
-            "logger": "t.d.search               "
+            "level": "INFO",
+            "logger": "t.d.search"
         },
         "~node": {
             "name": "node-1"
@@ -128,8 +128,8 @@
         },
         "@timestamp": "2023-07-04T12:23:25.083Z",
         "log": {
-            "level": "INFO ",
-            "logger": "t.d.search               "
+            "level": "INFO",
+            "logger": "t.d.search"
         },
         "~node": {
             "name": "node-1"

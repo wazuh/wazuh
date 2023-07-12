@@ -77,7 +77,7 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
     // TODO: Handle array indices and pointer path operators.
     std::string ptrPath {dotPath};
 
-    // Some helpers may indiate that the field is root element
+    // Some helpers may indicate that the field is root element
     // In this case the path will be defined as "."
     if ("." == ptrPath)
     {
@@ -100,19 +100,23 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
         // Replace . with /
         if (!skipDot)
         {
-            for (auto pos = ptrPath.find('.'); pos != std::string::npos; pos = ptrPath.find('.', pos + 1))
+            std::string result;
+            result.reserve(ptrPath.size()); // To avoid unnecessary relocations
+            bool prevCharWasSlash = false;
+
+            for (char c : ptrPath)
             {
-                if(ptrPath[pos - 1] == '\\')
+                if (c == '.' && !prevCharWasSlash)
                 {
-                    // Escaped: Replace \. with .
-                    ptrPath.replace(pos - 1, 1, "");
+                    result += '/';
                 }
-                else
+                else if (c != '\\' || ((c == '.' || c == '\\') && prevCharWasSlash))
                 {
-                    // Replace . with /
-                    ptrPath.replace(pos, 1, "/");
+                    result += c;
                 }
+                prevCharWasSlash = (c == '\\');
             }
+            ptrPath = std::move(result);
         }
 
         // Add / at the beginning
