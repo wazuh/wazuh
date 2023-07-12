@@ -29,6 +29,7 @@
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
+#include <rbac/rbac.hpp>
 #include <router/router.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <schemf/schema.hpp>
@@ -201,14 +202,27 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
+    std::shared_ptr<rbac::RBAC> rbac;
 
     try
     {
         metrics = std::make_shared<metricsManager::MetricsManager>();
 
+        // Store
+        {
+            store = std::make_shared<store::FileDriver>(fileStorage);
+            LOG_INFO("Store initialized.");
+        }
+
+        // RBAC
+        {
+            rbac = std::make_shared<rbac::RBAC>(store);
+            LOG_INFO("RBAC initialized.");
+        }
+
         // API
         {
-            api = std::make_shared<api::Api>();
+            api = std::make_shared<api::Api>(rbac);
             LOG_DEBUG("API created.");
             exitHandler.add(
                 [api]()
@@ -244,11 +258,6 @@ void runStart(ConfHandler confManager)
             api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
 
             LOG_DEBUG("KVDB API registered.");
-        }
-        // Store
-        {
-            store = std::make_shared<store::FileDriver>(fileStorage);
-            LOG_INFO("Store initialized.");
         }
 
         // Schema
@@ -322,6 +331,13 @@ void runStart(ConfHandler confManager)
 
             api::catalog::handlers::registerHandlers(catalog, api);
             LOG_DEBUG("Catalog API registered.");
+        }
+
+        // Integration manager
+        {
+            auto integration = std::make_shared<api::integration::Integration>(catalog);
+            api::integration::handlers::registerHandlers(integration, api);
+            LOG_DEBUG("Integration manager API registered.");
         }
 
         // Router
@@ -406,14 +422,11 @@ void runStart(ConfHandler confManager)
         api::metrics::handlers::registerHandlers(metrics, api);
         LOG_DEBUG("Metrics API registered.");
 
-        // Register Configuration API commands
-        api::config::handlers::registerHandlers(api, confManager);
-        LOG_DEBUG("Configuration manager API registered.");
-
-        // Register Integration API commands
-        auto integration = std::make_shared<api::integration::Integration>(catalog);
-        api::integration::handlers::registerHandlers(integration, api);
-        LOG_DEBUG("Integration manager API registered.");
+        // Configuration manager
+        {
+            api::config::handlers::registerHandlers(api, confManager);
+            LOG_DEBUG("Configuration manager API registered.");
+        }
 
         // Server
         {

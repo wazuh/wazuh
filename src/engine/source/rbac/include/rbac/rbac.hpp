@@ -24,11 +24,17 @@ private:
     std::unordered_map<std::string, Role> m_roles;
     // std::unordered_map<std::string, Subject> m_subjects;
 
-    std::shared_ptr<store::IStore> m_store;
+    std::weak_ptr<store::IStore> m_store;
 
     void loadModel()
     {
-        auto model = m_store->get(detail::MODEL_NAME);
+        const auto store = m_store.lock();
+        if (!store)
+        {
+            throw std::runtime_error("Error loading model: Store is expired");
+        }
+
+        auto model = store->get(detail::MODEL_NAME);
         if (std::holds_alternative<base::Error>(model))
         {
             throw std::runtime_error(fmt::format("Error loading model: {}", std::get<base::Error>(model).message));
@@ -56,17 +62,53 @@ private:
         for (const auto& [roleName, role] : m_roles)
         {
             auto roleJson = role.toJson();
-            modelJson.merge(false, roleJson, "/");
+            modelJson.merge(false, roleJson);
         }
 
-        auto error = m_store->update(detail::MODEL_NAME, modelJson);
+        const auto store = m_store.lock();
+        if (!store)
+        {
+            throw std::runtime_error("Error saving model: Store is expired");
+        }
+
+        auto error = store->update(detail::MODEL_NAME, modelJson);
         if (error)
         {
             throw std::runtime_error(fmt::format("Error saving model: {}", error.value().message));
         }
     }
 
+    void defaultModel()
+    {
+        auto permissions = std::unordered_set<Permission>();
+
+        permissions.insert(Permission(Resource::ASSET, Operation::READ));
+        m_roles["user-consumer"] = Role("user-consumer", permissions);
+
+
+        permissions.insert(Permission(Resource::ASSET, Operation::WRITE));
+        m_roles["user-developer"] = Role("user-developer", permissions);
+
+        permissions.insert(Permission(Resource::SYSTEM_ASSET, Operation::READ));
+        permissions.insert(Permission(Resource::SYSTEM_ASSET, Operation::WRITE));
+        m_roles["system"] = Role("system", permissions);
+    }
+
 public:
+
+    RBAC(std::weak_ptr<store::IStore> store)
+        : m_store(store)
+    {
+        try {
+            loadModel();
+        } catch (const std::runtime_error& e) {
+            LOG_WARNING("Error loading model: {}. Loading default model", e.what());
+            defaultModel();
+            // saveModel();
+        }
+
+    }
+
     AuthFn getAuthFn(Resource res, Operation op) const override
     {
         auto permission = Permission(res, op);

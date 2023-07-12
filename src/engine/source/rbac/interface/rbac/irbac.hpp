@@ -9,9 +9,9 @@ namespace rbac
 
 enum class Operation
 {
+    UNKNOWN,
     READ,
-    WRITE,
-    UNKNOWN
+    WRITE
 };
 
 auto constexpr opToStr(Operation op)
@@ -40,9 +40,9 @@ auto constexpr strToOp(std::string_view str)
 
 enum class Resource
 {
+    UNKNOWN,
     SYSTEM_ASSET,
-    ASSET,
-    UNKNOWN
+    ASSET
 };
 
 auto constexpr resToStr(Resource res)
@@ -72,6 +72,13 @@ auto constexpr strToRes(std::string_view str)
 class IRBAC
 {
 public:
+    /**
+     * @brief Function to autorize a role to perform an operation on a resource.
+     *
+     * @param role Role to authorize
+     * @return true If the role is authorized to perform the operation on the resource
+     * @return false If the role is not authorized to perform the operation on the resource
+     */
     using AuthFn = std::function<bool(const std::string&)>;
 
     virtual ~IRBAC() = default;
