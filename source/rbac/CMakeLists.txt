@@ -25,19 +25,23 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 
 add_library(rbac_mocks INTERFACE)
+
 target_include_directories(rbac_mocks INTERFACE ${TEST_MOCK_DIR})
 target_link_libraries(rbac_mocks INTERFACE gmock rbac::irbac)
 add_library(rbac::mocks ALIAS rbac_mocks)
 
-# add_executable(rbac_test
-#   ${TEST_SRC_DIR}/
-# )
-#
-# target_include_directories(rbac_test
-#     PRIVATE
-#     ${TEST_SRC_DIR}
-# )
-#
-# target_link_libraries(rbac_test gtest_main base rbac)
-# gtest_discover_tests(rbac_test)
+add_executable(rbac_test
+  ${TEST_SRC_DIR}/rbac_test.cpp
+  ${TEST_SRC_DIR}/permission_test.cpp
+  ${TEST_SRC_DIR}/role_test.cpp
+)
+
+target_include_directories(rbac_test
+    PRIVATE
+    ${TEST_SRC_DIR}
+)
+
+target_link_libraries(rbac_test gtest_main base rbac store::mocks)
+gtest_discover_tests(rbac_test)
+
 endif(ENGINE_BUILD_TEST)

@@ -54,8 +54,7 @@ public:
      * @param content Json to add.
      * @return std::optional<base::Error> An error if the operation failed.
      */
-    virtual std::optional<base::Error> add(const base::Name& name,
-                                           const json::Json& content) = 0;
+    virtual std::optional<base::Error> add(const base::Name& name, const json::Json& content) = 0;
 
     /**
      * @brief Delete a json from the store.
@@ -72,8 +71,16 @@ public:
      * @param content Json to update.
      * @return std::optional<base::Error> An error if the operation failed.
      */
-    virtual std::optional<base::Error> update(const base::Name& name,
-                                              const json::Json& content) = 0;
+    virtual std::optional<base::Error> update(const base::Name& name, const json::Json& content) = 0;
+
+    /**
+     * @brief Update a json in the store, creating it if it doesn't exist.
+     *
+     * @param name base::Name of the json to update.
+     * @param content Json to update.
+     * @return std::optional<base::Error> An error if the operation failed.
+     */
+    virtual std::optional<base::Error> addUpdate(const base::Name& name, const json::Json& content) = 0;
 };
 
 } // namespace store

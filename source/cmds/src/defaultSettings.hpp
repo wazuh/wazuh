@@ -61,6 +61,9 @@ constexpr auto ENGINE_QUEUE_FLOOD_ATTEMPTS_ENV = "WZE_QUEUE_FLOOD_ATTEMPTS";
 constexpr auto ENGINE_QUEUE_FLOOD_SLEEP = 100;
 constexpr auto ENGINE_QUEUE_FLOOD_SLEEP_ENV = "WZE_QUEUE_FLOOD_SLEEP";
 
+// RBAC Module
+constexpr auto ENGINE_RBAC_ROLE = "user-developer";
+
 /******************************************************************************
  *  Test
  ******************************************************************************/
