@@ -18,11 +18,18 @@ private:
 public:
     Role() = default;
 
-    Role(std::string name, std::unordered_set<Permission> permissions)
+    Role(const std::string& name, const std::unordered_set<Permission>& permissions)
         : m_name(name)
         , m_permissions(permissions)
     {
     }
+
+    Role(const std::string& name, std::unordered_set<Permission>&& permissions)
+        : m_name(name)
+        , m_permissions(std::move(permissions))
+    {
+    }
+
 
     const std::string& getName() const { return m_name; }
 

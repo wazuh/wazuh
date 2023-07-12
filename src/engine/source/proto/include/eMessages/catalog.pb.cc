@@ -30,6 +30,7 @@ PROTOBUF_CONSTEXPR ResourcePost_Request::ResourcePost_Request(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.content_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.role_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.type_)*/0
   , /*decltype(_impl_.format_)*/0} {}
 struct ResourcePost_RequestDefaultTypeInternal {
@@ -46,6 +47,7 @@ PROTOBUF_CONSTEXPR ResourceGet_Request::ResourceGet_Request(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.role_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.format_)*/0} {}
 struct ResourceGet_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ResourceGet_RequestDefaultTypeInternal()
@@ -78,6 +80,7 @@ PROTOBUF_CONSTEXPR ResourcePut_Request::ResourcePut_Request(
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.content_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.role_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.format_)*/0} {}
 struct ResourcePut_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ResourcePut_RequestDefaultTypeInternal()
@@ -92,7 +95,8 @@ PROTOBUF_CONSTEXPR ResourceDelete_Request::ResourceDelete_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.role_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
 struct ResourceDelete_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ResourceDelete_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -108,6 +112,7 @@ PROTOBUF_CONSTEXPR ResourceValidate_Request::ResourceValidate_Request(
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.content_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.role_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.format_)*/0} {}
 struct ResourceValidate_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ResourceValidate_RequestDefaultTypeInternal()
@@ -137,9 +142,11 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.type_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.format_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.content_),
-  1,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePost_Request, _impl_.role_),
   2,
+  3,
   0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -148,7 +155,9 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_.format_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_.role_),
   0,
+  2,
   1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Response, _internal_metadata_),
@@ -171,9 +180,11 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePut_Request, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePut_Request, _impl_.format_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePut_Request, _impl_.content_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourcePut_Request, _impl_.role_),
   0,
-  2,
+  3,
   1,
+  2,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceDelete_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceDelete_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -181,7 +192,9 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceDelete_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceDelete_Request, _impl_.role_),
   0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -191,17 +204,19 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.format_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.content_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.role_),
   0,
-  2,
+  3,
   1,
+  2,
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 9, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePost_Request)},
-  { 12, 20, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Request)},
-  { 22, 31, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Response)},
-  { 34, 43, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePut_Request)},
-  { 46, 53, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceDelete_Request)},
-  { 54, 63, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceValidate_Request)},
+  { 0, 10, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePost_Request)},
+  { 14, 23, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Request)},
+  { 26, 35, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Response)},
+  { 38, 48, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePut_Request)},
+  { 52, 60, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceDelete_Request)},
+  { 62, 72, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceValidate_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -215,40 +230,44 @@ static const ::_pb::Message* const file_default_instances[] = {
 
 const char descriptor_table_protodef_catalog_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\rcatalog.proto\022\034com.wazuh.api.engine.ca"
-  "talog\032\014engine.proto\"\316\001\n\024ResourcePost_Req"
+  "talog\032\014engine.proto\"\352\001\n\024ResourcePost_Req"
   "uest\022=\n\004type\030\001 \001(\0162*.com.wazuh.api.engin"
   "e.catalog.ResourceTypeH\000\210\001\001\022A\n\006format\030\002 "
   "\001(\0162,.com.wazuh.api.engine.catalog.Resou"
-  "rceFormatH\001\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005"
-  "_typeB\t\n\007_formatB\n\n\010_content\"\177\n\023Resource"
-  "Get_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006format"
-  "\030\002 \001(\0162,.com.wazuh.api.engine.catalog.Re"
-  "sourceFormatH\001\210\001\001B\007\n\005_nameB\t\n\007_format\"\212\001"
-  "\n\024ResourceGet_Response\0222\n\006status\030\001 \001(\0162\""
-  ".com.wazuh.api.engine.ReturnStatus\022\022\n\005er"
-  "ror\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010\n\006"
-  "_errorB\n\n\010_content\"\241\001\n\023ResourcePut_Reque"
-  "st\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006format\030\002 \001(\0162,."
-  "com.wazuh.api.engine.catalog.ResourceFor"
-  "matH\001\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB"
-  "\t\n\007_formatB\n\n\010_content\"4\n\026ResourceDelete"
-  "_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\246\001\n"
-  "\030ResourceValidate_Request\022\021\n\004name\030\001 \001(\tH"
-  "\000\210\001\001\022A\n\006format\030\002 \001(\0162,.com.wazuh.api.eng"
-  "ine.catalog.ResourceFormatH\001\210\001\001\022\024\n\007conte"
-  "nt\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_formatB\n\n\010_co"
-  "ntent*1\n\016ResourceFormat\022\010\n\004json\020\000\022\010\n\004yam"
-  "l\020\001\022\007\n\003yml\020\001\032\002\020\001*\203\001\n\014ResourceType\022\013\n\007UNK"
-  "NOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filter\020"
-  "\003\022\n\n\006output\020\004\022\n\n\006policy\020\005\022\n\n\006schema\020\006\022\016\n"
-  "\ncollection\020\007\022\017\n\013integration\020\010b\006proto3"
+  "rceFormatH\001\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001\022\021\n\004"
+  "role\030\004 \001(\tH\003\210\001\001B\007\n\005_typeB\t\n\007_formatB\n\n\010_"
+  "contentB\007\n\005_role\"\233\001\n\023ResourceGet_Request"
+  "\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006format\030\002 \001(\0162,.co"
+  "m.wazuh.api.engine.catalog.ResourceForma"
+  "tH\001\210\001\001\022\021\n\004role\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_f"
+  "ormatB\007\n\005_role\"\212\001\n\024ResourceGet_Response\022"
+  "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
+  "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\024\n\007conte"
+  "nt\030\003 \001(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_content\"\275\001\n\023"
+  "ResourcePut_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A"
+  "\n\006format\030\002 \001(\0162,.com.wazuh.api.engine.ca"
+  "talog.ResourceFormatH\001\210\001\001\022\024\n\007content\030\003 \001"
+  "(\tH\002\210\001\001\022\021\n\004role\030\004 \001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_"
+  "formatB\n\n\010_contentB\007\n\005_role\"P\n\026ResourceD"
+  "elete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\021\n\004role"
+  "\030\002 \001(\tH\001\210\001\001B\007\n\005_nameB\007\n\005_role\"\302\001\n\030Resour"
+  "ceValidate_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n"
+  "\006format\030\002 \001(\0162,.com.wazuh.api.engine.cat"
+  "alog.ResourceFormatH\001\210\001\001\022\024\n\007content\030\003 \001("
+  "\tH\002\210\001\001\022\021\n\004role\030\004 \001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_f"
+  "ormatB\n\n\010_contentB\007\n\005_role*1\n\016ResourceFo"
+  "rmat\022\010\n\004json\020\000\022\010\n\004yaml\020\001\022\007\n\003yml\020\001\032\002\020\001*\203\001"
+  "\n\014ResourceType\022\013\n\007UNKNOWN\020\000\022\013\n\007decoder\020\001"
+  "\022\010\n\004rule\020\002\022\n\n\006filter\020\003\022\n\n\006output\020\004\022\n\n\006po"
+  "licy\020\005\022\n\n\006schema\020\006\022\016\n\ncollection\020\007\022\017\n\013in"
+  "tegration\020\010b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_catalog_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_catalog_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_catalog_2eproto = {
-    false, false, 1118, descriptor_table_protodef_catalog_2eproto,
+    false, false, 1259, descriptor_table_protodef_catalog_2eproto,
     "catalog.proto",
     &descriptor_table_catalog_2eproto_once, descriptor_table_catalog_2eproto_deps, 1, 6,
     schemas, file_default_instances, TableStruct_catalog_2eproto::offsets,
@@ -308,13 +327,16 @@ class ResourcePost_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<ResourcePost_Request>()._impl_._has_bits_);
   static void set_has_type(HasBits* has_bits) {
-    (*has_bits)[0] |= 2u;
+    (*has_bits)[0] |= 4u;
   }
   static void set_has_format(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
+    (*has_bits)[0] |= 8u;
   }
   static void set_has_content(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
+  }
+  static void set_has_role(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
   }
 };
 
@@ -331,6 +353,7 @@ ResourcePost_Request::ResourcePost_Request(const ResourcePost_Request& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.type_){}
     , decltype(_impl_.format_){}};
 
@@ -341,6 +364,14 @@ ResourcePost_Request::ResourcePost_Request(const ResourcePost_Request& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_content()) {
     _this->_impl_.content_.Set(from._internal_content(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_role()) {
+    _this->_impl_.role_.Set(from._internal_role(), 
       _this->GetArenaForAllocation());
   }
   ::memcpy(&_impl_.type_, &from._impl_.type_,
@@ -357,12 +388,17 @@ inline void ResourcePost_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.type_){0}
     , decltype(_impl_.format_){0}
   };
   _impl_.content_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.content_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -378,6 +414,7 @@ ResourcePost_Request::~ResourcePost_Request() {
 inline void ResourcePost_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.content_.Destroy();
+  _impl_.role_.Destroy();
 }
 
 void ResourcePost_Request::SetCachedSize(int size) const {
@@ -391,10 +428,15 @@ void ResourcePost_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    _impl_.content_.ClearNonDefaultToEmpty();
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.content_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.role_.ClearNonDefaultToEmpty();
+    }
   }
-  if (cached_has_bits & 0x00000006u) {
+  if (cached_has_bits & 0x0000000cu) {
     ::memset(&_impl_.type_, 0, static_cast<size_t>(
         reinterpret_cast<char*>(&_impl_.format_) -
         reinterpret_cast<char*>(&_impl_.type_)) + sizeof(_impl_.format_));
@@ -435,6 +477,16 @@ const char* ResourcePost_Request::_InternalParse(const char* ptr, ::_pbi::ParseC
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourcePost_Request.content"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string role = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_role();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourcePost_Request.role"));
         } else
           goto handle_unusual;
         continue;
@@ -492,6 +544,16 @@ uint8_t* ResourcePost_Request::_InternalSerialize(
         3, this->_internal_content(), target);
   }
 
+  // optional string role = 4;
+  if (_internal_has_role()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_role().data(), static_cast<int>(this->_internal_role().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.catalog.ResourcePost_Request.role");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_role(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -509,7 +571,7 @@ size_t ResourcePost_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     // optional string content = 3;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -517,14 +579,21 @@ size_t ResourcePost_Request::ByteSizeLong() const {
           this->_internal_content());
     }
 
-    // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
+    // optional string role = 4;
     if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_role());
+    }
+
+    // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
+    if (cached_has_bits & 0x00000004u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_type());
     }
 
     // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
-    if (cached_has_bits & 0x00000004u) {
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_format());
     }
@@ -549,14 +618,17 @@ void ResourcePost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, c
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_content(from._internal_content());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_impl_.type_ = from._impl_.type_;
+      _this->_internal_set_role(from._internal_role());
     }
     if (cached_has_bits & 0x00000004u) {
+      _this->_impl_.type_ = from._impl_.type_;
+    }
+    if (cached_has_bits & 0x00000008u) {
       _this->_impl_.format_ = from._impl_.format_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -585,6 +657,10 @@ void ResourcePost_Request::InternalSwap(ResourcePost_Request* other) {
       &_impl_.content_, lhs_arena,
       &other->_impl_.content_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.role_, lhs_arena,
+      &other->_impl_.role_, rhs_arena
+  );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(ResourcePost_Request, _impl_.format_)
       + sizeof(ResourcePost_Request::_impl_.format_)
@@ -608,6 +684,9 @@ class ResourceGet_Request::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_format(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
+  static void set_has_role(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
 };
@@ -625,6 +704,7 @@ ResourceGet_Request::ResourceGet_Request(const ResourceGet_Request& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.format_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -634,6 +714,14 @@ ResourceGet_Request::ResourceGet_Request(const ResourceGet_Request& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_name()) {
     _this->_impl_.name_.Set(from._internal_name(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_role()) {
+    _this->_impl_.role_.Set(from._internal_role(), 
       _this->GetArenaForAllocation());
   }
   _this->_impl_.format_ = from._impl_.format_;
@@ -648,11 +736,16 @@ inline void ResourceGet_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.format_){0}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -668,6 +761,7 @@ ResourceGet_Request::~ResourceGet_Request() {
 inline void ResourceGet_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
+  _impl_.role_.Destroy();
 }
 
 void ResourceGet_Request::SetCachedSize(int size) const {
@@ -681,8 +775,13 @@ void ResourceGet_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    _impl_.name_.ClearNonDefaultToEmpty();
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.name_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.role_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_.format_ = 0;
   _impl_._has_bits_.Clear();
@@ -712,6 +811,16 @@ const char* ResourceGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
           _internal_set_format(static_cast<::com::wazuh::api::engine::catalog::ResourceFormat>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string role = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_role();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceGet_Request.role"));
         } else
           goto handle_unusual;
         continue;
@@ -762,6 +871,16 @@ uint8_t* ResourceGet_Request::_InternalSerialize(
       2, this->_internal_format(), target);
   }
 
+  // optional string role = 3;
+  if (_internal_has_role()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_role().data(), static_cast<int>(this->_internal_role().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.catalog.ResourceGet_Request.role");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_role(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -779,7 +898,7 @@ size_t ResourceGet_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -787,8 +906,15 @@ size_t ResourceGet_Request::ByteSizeLong() const {
           this->_internal_name());
     }
 
-    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    // optional string role = 3;
     if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_role());
+    }
+
+    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    if (cached_has_bits & 0x00000004u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_format());
     }
@@ -813,11 +939,14 @@ void ResourceGet_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_name(from._internal_name());
     }
     if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_role(from._internal_role());
+    }
+    if (cached_has_bits & 0x00000004u) {
       _this->_impl_.format_ = from._impl_.format_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -845,6 +974,10 @@ void ResourceGet_Request::InternalSwap(ResourceGet_Request* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.name_, lhs_arena,
       &other->_impl_.name_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.role_, lhs_arena,
+      &other->_impl_.role_, rhs_arena
   );
   swap(_impl_.format_, other->_impl_.format_);
 }
@@ -1173,10 +1306,13 @@ class ResourcePut_Request::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_format(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
+    (*has_bits)[0] |= 8u;
   }
   static void set_has_content(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
+  }
+  static void set_has_role(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
   }
 };
 
@@ -1194,6 +1330,7 @@ ResourcePut_Request::ResourcePut_Request(const ResourcePut_Request& from)
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.format_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -1213,6 +1350,14 @@ ResourcePut_Request::ResourcePut_Request(const ResourcePut_Request& from)
     _this->_impl_.content_.Set(from._internal_content(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_role()) {
+    _this->_impl_.role_.Set(from._internal_role(), 
+      _this->GetArenaForAllocation());
+  }
   _this->_impl_.format_ = from._impl_.format_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.catalog.ResourcePut_Request)
 }
@@ -1226,6 +1371,7 @@ inline void ResourcePut_Request::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.format_){0}
   };
   _impl_.name_.InitDefault();
@@ -1235,6 +1381,10 @@ inline void ResourcePut_Request::SharedCtor(
   _impl_.content_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.content_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -1251,6 +1401,7 @@ inline void ResourcePut_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.content_.Destroy();
+  _impl_.role_.Destroy();
 }
 
 void ResourcePut_Request::SetCachedSize(int size) const {
@@ -1264,12 +1415,15 @@ void ResourcePut_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.name_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       _impl_.content_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _impl_.role_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.format_ = 0;
@@ -1310,6 +1464,16 @@ const char* ResourcePut_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourcePut_Request.content"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string role = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_role();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourcePut_Request.role"));
         } else
           goto handle_unusual;
         continue;
@@ -1370,6 +1534,16 @@ uint8_t* ResourcePut_Request::_InternalSerialize(
         3, this->_internal_content(), target);
   }
 
+  // optional string role = 4;
+  if (_internal_has_role()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_role().data(), static_cast<int>(this->_internal_role().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.catalog.ResourcePut_Request.role");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_role(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -1387,7 +1561,7 @@ size_t ResourcePut_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -1402,8 +1576,15 @@ size_t ResourcePut_Request::ByteSizeLong() const {
           this->_internal_content());
     }
 
-    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    // optional string role = 4;
     if (cached_has_bits & 0x00000004u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_role());
+    }
+
+    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_format());
     }
@@ -1428,7 +1609,7 @@ void ResourcePut_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_name(from._internal_name());
     }
@@ -1436,6 +1617,9 @@ void ResourcePut_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
       _this->_internal_set_content(from._internal_content());
     }
     if (cached_has_bits & 0x00000004u) {
+      _this->_internal_set_role(from._internal_role());
+    }
+    if (cached_has_bits & 0x00000008u) {
       _this->_impl_.format_ = from._impl_.format_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -1468,6 +1652,10 @@ void ResourcePut_Request::InternalSwap(ResourcePut_Request* other) {
       &_impl_.content_, lhs_arena,
       &other->_impl_.content_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.role_, lhs_arena,
+      &other->_impl_.role_, rhs_arena
+  );
   swap(_impl_.format_, other->_impl_.format_);
 }
 
@@ -1485,6 +1673,9 @@ class ResourceDelete_Request::_Internal {
   static void set_has_name(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
+  static void set_has_role(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
 };
 
 ResourceDelete_Request::ResourceDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
@@ -1499,7 +1690,8 @@ ResourceDelete_Request::ResourceDelete_Request(const ResourceDelete_Request& fro
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}};
+    , decltype(_impl_.name_){}
+    , decltype(_impl_.role_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.name_.InitDefault();
@@ -1508,6 +1700,14 @@ ResourceDelete_Request::ResourceDelete_Request(const ResourceDelete_Request& fro
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_name()) {
     _this->_impl_.name_.Set(from._internal_name(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_role()) {
+    _this->_impl_.role_.Set(from._internal_role(), 
       _this->GetArenaForAllocation());
   }
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.catalog.ResourceDelete_Request)
@@ -1521,10 +1721,15 @@ inline void ResourceDelete_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
+    , decltype(_impl_.role_){}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -1540,6 +1745,7 @@ ResourceDelete_Request::~ResourceDelete_Request() {
 inline void ResourceDelete_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
+  _impl_.role_.Destroy();
 }
 
 void ResourceDelete_Request::SetCachedSize(int size) const {
@@ -1553,8 +1759,13 @@ void ResourceDelete_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    _impl_.name_.ClearNonDefaultToEmpty();
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.name_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.role_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -1574,6 +1785,16 @@ const char* ResourceDelete_Request::_InternalParse(const char* ptr, ::_pbi::Pars
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceDelete_Request.name"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string role = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_role();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceDelete_Request.role"));
         } else
           goto handle_unusual;
         continue;
@@ -1617,6 +1838,16 @@ uint8_t* ResourceDelete_Request::_InternalSerialize(
         1, this->_internal_name(), target);
   }
 
+  // optional string role = 2;
+  if (_internal_has_role()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_role().data(), static_cast<int>(this->_internal_role().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.catalog.ResourceDelete_Request.role");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_role(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -1633,14 +1864,23 @@ size_t ResourceDelete_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // optional string name = 1;
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_name());
-  }
+  if (cached_has_bits & 0x00000003u) {
+    // optional string name = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_name());
+    }
 
+    // optional string role = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_role());
+    }
+
+  }
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -1659,8 +1899,14 @@ void ResourceDelete_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg,
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from._internal_has_name()) {
-    _this->_internal_set_name(from._internal_name());
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_name(from._internal_name());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_role(from._internal_role());
+    }
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -1686,6 +1932,10 @@ void ResourceDelete_Request::InternalSwap(ResourceDelete_Request* other) {
       &_impl_.name_, lhs_arena,
       &other->_impl_.name_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.role_, lhs_arena,
+      &other->_impl_.role_, rhs_arena
+  );
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata ResourceDelete_Request::GetMetadata() const {
@@ -1703,10 +1953,13 @@ class ResourceValidate_Request::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_format(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
+    (*has_bits)[0] |= 8u;
   }
   static void set_has_content(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
+  }
+  static void set_has_role(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
   }
 };
 
@@ -1724,6 +1977,7 @@ ResourceValidate_Request::ResourceValidate_Request(const ResourceValidate_Reques
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.format_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -1743,6 +1997,14 @@ ResourceValidate_Request::ResourceValidate_Request(const ResourceValidate_Reques
     _this->_impl_.content_.Set(from._internal_content(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_role()) {
+    _this->_impl_.role_.Set(from._internal_role(), 
+      _this->GetArenaForAllocation());
+  }
   _this->_impl_.format_ = from._impl_.format_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.catalog.ResourceValidate_Request)
 }
@@ -1756,6 +2018,7 @@ inline void ResourceValidate_Request::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.role_){}
     , decltype(_impl_.format_){0}
   };
   _impl_.name_.InitDefault();
@@ -1765,6 +2028,10 @@ inline void ResourceValidate_Request::SharedCtor(
   _impl_.content_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.content_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.role_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.role_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -1781,6 +2048,7 @@ inline void ResourceValidate_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.content_.Destroy();
+  _impl_.role_.Destroy();
 }
 
 void ResourceValidate_Request::SetCachedSize(int size) const {
@@ -1794,12 +2062,15 @@ void ResourceValidate_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.name_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       _impl_.content_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _impl_.role_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.format_ = 0;
@@ -1840,6 +2111,16 @@ const char* ResourceValidate_Request::_InternalParse(const char* ptr, ::_pbi::Pa
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceValidate_Request.content"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string role = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_role();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceValidate_Request.role"));
         } else
           goto handle_unusual;
         continue;
@@ -1900,6 +2181,16 @@ uint8_t* ResourceValidate_Request::_InternalSerialize(
         3, this->_internal_content(), target);
   }
 
+  // optional string role = 4;
+  if (_internal_has_role()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_role().data(), static_cast<int>(this->_internal_role().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.catalog.ResourceValidate_Request.role");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_role(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -1917,7 +2208,7 @@ size_t ResourceValidate_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -1932,8 +2223,15 @@ size_t ResourceValidate_Request::ByteSizeLong() const {
           this->_internal_content());
     }
 
-    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    // optional string role = 4;
     if (cached_has_bits & 0x00000004u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_role());
+    }
+
+    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_format());
     }
@@ -1958,7 +2256,7 @@ void ResourceValidate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_ms
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_name(from._internal_name());
     }
@@ -1966,6 +2264,9 @@ void ResourceValidate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_ms
       _this->_internal_set_content(from._internal_content());
     }
     if (cached_has_bits & 0x00000004u) {
+      _this->_internal_set_role(from._internal_role());
+    }
+    if (cached_has_bits & 0x00000008u) {
       _this->_impl_.format_ = from._impl_.format_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -1997,6 +2298,10 @@ void ResourceValidate_Request::InternalSwap(ResourceValidate_Request* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.content_, lhs_arena,
       &other->_impl_.content_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.role_, lhs_arena,
+      &other->_impl_.role_, rhs_arena
   );
   swap(_impl_.format_, other->_impl_.format_);
 }

@@ -4,6 +4,7 @@
 #include "registry.hpp"
 
 #include <json/json.hpp>
+#include <rbac/irbac.hpp>
 
 namespace api
 {
@@ -18,14 +19,19 @@ class Api
 
 private:
     std::shared_ptr<api::Registry> m_registry; ///< Registry of handlers
+    std::weak_ptr<rbac::IRBAC> m_rbac;         ///< RBAC instance
 
 public:
     /**
      * @brief Construct a new Api
      */
     Api()
-        : m_registry(std::make_shared<api::Registry>()) {};
+        : m_registry(std::make_shared<api::Registry>())
+        , m_rbac(std::weak_ptr<rbac::IRBAC>()) {};
 
+    Api(std::weak_ptr<rbac::IRBAC> rbac)
+        : m_registry(std::make_shared<api::Registry>())
+        , m_rbac(rbac) {};
     /**
      * @brief Register a handler for a command
      *
@@ -81,6 +87,13 @@ public:
         }
         return wresponse.toString();
     }
+
+    /**
+     * @brief Get the RBAC instance
+     *
+     * @return std::weak_ptr<rbac::IRBAC> RBAC instance
+     */
+    std::weak_ptr<rbac::IRBAC> getRBAC() const { return m_rbac; }
 };
 } // namespace api
 

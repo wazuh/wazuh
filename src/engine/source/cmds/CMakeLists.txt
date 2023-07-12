@@ -29,6 +29,7 @@ target_link_libraries(cmds
     schemf
     wdb
     sockiface
+    rbac
 )
 
 target_include_directories(cmds
