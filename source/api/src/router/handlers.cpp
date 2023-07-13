@@ -11,7 +11,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 api::Handler routeGet(std::shared_ptr<::router::Router> router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -44,7 +44,7 @@ api::Handler routeGet(std::shared_ptr<::router::Router> router)
         eResponse.mutable_route()->set_name(name);
         eResponse.mutable_route()->set_filter(filterName);
         eResponse.mutable_route()->set_policy(envName);
-        eResponse.mutable_route()->set_priority(priority);
+        eResponse.mutable_route()->set_priority(static_cast<int32_t>(priority));
 
         // Adapt the response to wazuh api
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
@@ -53,7 +53,7 @@ api::Handler routeGet(std::shared_ptr<::router::Router> router)
 
 api::Handler routePost(std::shared_ptr<::router::Router> router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::RoutePost_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -104,7 +104,7 @@ api::Handler routePost(std::shared_ptr<::router::Router> router)
 
 api::Handler routePatch(std::shared_ptr<::router::Router> router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::RoutePatch_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -161,7 +161,7 @@ api::Handler routePatch(std::shared_ptr<::router::Router> router)
 
 api::Handler routeDelete(std::shared_ptr<::router::Router> router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::RouteDelete_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -187,7 +187,7 @@ api::Handler routeDelete(std::shared_ptr<::router::Router> router)
 
 api::Handler tableGet(std::shared_ptr<::router::Router> router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
@@ -208,7 +208,7 @@ api::Handler tableGet(std::shared_ptr<::router::Router> router)
             eEntry.mutable_name()->assign(name);
             eEntry.mutable_filter()->assign(filter);
             eEntry.mutable_policy()->assign(policy);
-            eEntry.set_priority(priority);
+            eEntry.set_priority(static_cast<int32_t>(priority));
             eTable->Add(std::move(eEntry));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -220,7 +220,7 @@ api::Handler tableGet(std::shared_ptr<::router::Router> router)
 
 api::Handler queuePost(std::shared_ptr<::router::Router> router)
 {
-    return [router](api::wpRequest wRequest) -> api::wpResponse
+    return [router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::QueuePost_Request;
         using ResponseType = eEngine::GenericStatus_Response;

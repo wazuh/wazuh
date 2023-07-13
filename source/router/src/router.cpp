@@ -382,7 +382,7 @@ json::Json Router::tableToJson()
     {
         json::Json entry {};
         entry.setString(name, JSON_PATH_NAME);
-        entry.setInt(priority, JSON_PATH_PRIORITY);
+        entry.setInt(static_cast<int>(priority), JSON_PATH_PRIORITY);
         entry.setString(filterName, JSON_PATH_FILTER);
         entry.setString(policyName, JSON_PATH_TARGET);
         data.appendJson(entry);
@@ -429,7 +429,7 @@ std::optional<base::Error> Router::subscribeOutputAndTraces(const std::string& p
     return std::nullopt;
 }
 
-const std::variant<std::tuple<std::string, std::string>, base::Error> Router::getData(const std::string& policyName,
+std::variant<std::tuple<std::string, std::string>, base::Error> Router::getData(const std::string& policyName,
                                                                                       router::DebugMode debugMode,
                                                                                       const std::string& assetTrace)
 {

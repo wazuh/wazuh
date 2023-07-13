@@ -3,11 +3,12 @@
 namespace router
 {
 
-Route::Route(const std::string& name, builder::Asset assetRoute, const std::string& target, int priority)
+Route::Route(const std::string& name, builder::Asset& assetRoute, const std::string& target, int priority)
     : m_name {name}
     , m_filter {assetRoute.getExpression()}
     , m_filterName {assetRoute.m_name}
     , m_target {target}
+    , m_priority {ROUTE_MINIMUM_PRIORITY}
 {
     // TODO Add a check for the name of the route (it should be alfanumeric) when the asset also has a check name
     setPriority(priority);

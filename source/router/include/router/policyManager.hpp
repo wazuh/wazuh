@@ -121,9 +121,9 @@ public:
      * @param debugMode Establishes the level of verbosity with which the information of outputs and traces of a certain
      * @param assetTrace Name of the asset to filter by.
      * policy will be exposed.
-     * @return const std::variant<std::tuple<std::string, std::string>,base::Error>
+     * @return std::variant<std::tuple<std::string, std::string>,base::Error>
      */
-    const std::variant<std::tuple<std::string, std::string>, base::Error>
+    std::variant<std::tuple<std::string, std::string>, base::Error>
     getData(const std::string& name, std::size_t instance, router::DebugMode debugMode, const std::string& assetTrace);
 };
 } // namespace router

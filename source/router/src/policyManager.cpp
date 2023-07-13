@@ -153,7 +153,7 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::st
     return std::nullopt;
 }
 
-const std::variant<std::tuple<std::string, std::string>, base::Error>
+std::variant<std::tuple<std::string, std::string>, base::Error>
 PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode, const std::string& assetTrace)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);

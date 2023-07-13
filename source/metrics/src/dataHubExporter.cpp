@@ -12,11 +12,11 @@
 
 namespace
 {
-std::string timeToString(opentelemetry::common::SystemTimestamp time_stamp)
+std::string timeToString(opentelemetry::common::SystemTimestamp timestamp)
 {
-  std::time_t epoch_time = std::chrono::system_clock::to_time_t(time_stamp);
+  std::time_t epoch_time = std::chrono::system_clock::to_time_t(timestamp);
 
-  struct tm tm_buf;
+  struct tm tm_buf = {};
   struct tm* tm_ptr = nullptr;
 #if defined(_MSC_VER)
   if (gmtime_s(&tm_buf, &epoch_time) == 0)
@@ -69,23 +69,22 @@ std::string getInstrumentTypeName(opentelemetry::sdk::metrics::InstrumentType ty
 }  // namespace
 
 OPENTELEMETRY_BEGIN_NAMESPACE
-namespace exporter
-{
-namespace metrics
+
+namespace exporter::metrics
 {
 
 using namespace metricsManager;
 
 DataHubExporter::DataHubExporter(
     std::shared_ptr<metricsManager::IDataHub> dataHub,
-    sdk::metrics::AggregationTemporality aggregation_temporality) noexcept
-    : m_dataHub(dataHub), aggregation_temporality_(aggregation_temporality)
+    sdk::metrics::AggregationTemporality aggregationTemporality) noexcept
+    : m_dataHub(dataHub), aggregationTemporality_(aggregationTemporality)
 {}
 
 sdk::metrics::AggregationTemporality DataHubExporter::GetAggregationTemporality(
     sdk::metrics::InstrumentType /* instrument_type */) const noexcept
 {
-  return aggregation_temporality_;
+  return aggregationTemporality_;
 }
 
 sdk::common::ExportResult DataHubExporter::Export(
@@ -109,15 +108,15 @@ sdk::common::ExportResult DataHubExporter::Export(
 
 
 void DataHubExporter::printInstrumentationInfoMetricData(
-    const sdk::metrics::ScopeMetrics &info_metric,
+    const sdk::metrics::ScopeMetrics &infoMetric,
     const sdk::metrics::ResourceMetrics &data)
 {
 
   const std::lock_guard<opentelemetry::common::SpinLockMutex> locked(lock_);
 
-  auto scopeName = info_metric.scope_->GetName();
-  auto schemaUrl = info_metric.scope_->GetSchemaURL();
-  auto version   = info_metric.scope_->GetVersion();
+  auto scopeName = infoMetric.scope_->GetName();
+  auto schemaUrl = infoMetric.scope_->GetSchemaURL();
+  auto version   = infoMetric.scope_->GetVersion();
 
   json::Json jMetricData;
 
@@ -126,7 +125,7 @@ void DataHubExporter::printInstrumentationInfoMetricData(
 
   json::Json jDataRecords;
 
-  for (const auto &record : info_metric.metric_data_)
+  for (const auto &record : infoMetric.metric_data_)
   {
     json::Json jRecord;
 
@@ -165,11 +164,11 @@ void DataHubExporter::printInstrumentationInfoMetricData(
   m_dataHub->setResource(scopeName, jMetricData);
 }
 
-void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::sdk::metrics::PointType &point_data)
+void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::sdk::metrics::PointType &pointData)
 {
-  if (nostd::holds_alternative<sdk::metrics::SumPointData>(point_data))
+  if (nostd::holds_alternative<sdk::metrics::SumPointData>(pointData))
   {
-    auto sum_point_data = nostd::get<sdk::metrics::SumPointData>(point_data);
+    auto sum_point_data = nostd::get<sdk::metrics::SumPointData>(pointData);
     jsonObj.setString("SumPointData", "/type");
 
     if (nostd::holds_alternative<double>(sum_point_data.value_))
@@ -183,9 +182,9 @@ void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::s
       jsonObj.setInt64(valueData, "/value");
     }
   }
-  else if (nostd::holds_alternative<sdk::metrics::HistogramPointData>(point_data))
+  else if (nostd::holds_alternative<sdk::metrics::HistogramPointData>(pointData))
   {
-    auto histogram_point_data = nostd::get<sdk::metrics::HistogramPointData>(point_data);
+    auto histogram_point_data = nostd::get<sdk::metrics::HistogramPointData>(pointData);
     auto count = histogram_point_data.count_;
     jsonObj.setString("HistogramPointData", "/type");
     jsonObj.setInt64(count, "/count");
@@ -254,9 +253,9 @@ void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::s
 
 
   }
-  else if (nostd::holds_alternative<sdk::metrics::LastValuePointData>(point_data))
+  else if (nostd::holds_alternative<sdk::metrics::LastValuePointData>(pointData))
   {
-    auto last_point_data = nostd::get<sdk::metrics::LastValuePointData>(point_data);
+    auto last_point_data = nostd::get<sdk::metrics::LastValuePointData>(pointData);
     jsonObj.setString("LastValuePointData", "/type");
     auto timestamp = std::to_string(last_point_data.sample_ts_.time_since_epoch().count());
     jsonObj.setString(timestamp, "/timestamp");
@@ -275,13 +274,13 @@ void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::s
   }
 }
 
-bool DataHubExporter::ForceFlush(std::chrono::microseconds /* timeout */) noexcept
+bool DataHubExporter::ForceFlush(std::chrono::microseconds timeout) noexcept
 {
   const std::lock_guard<opentelemetry::common::SpinLockMutex> locked(lock_);
   return true;
 }
 
-bool DataHubExporter::Shutdown(std::chrono::microseconds /* timeout */) noexcept
+bool DataHubExporter::Shutdown(std::chrono::microseconds timeout) noexcept
 {
   const std::lock_guard<opentelemetry::common::SpinLockMutex> locked(lock_);
   is_shutdown_ = true;
@@ -294,6 +293,5 @@ bool DataHubExporter::isShutdown() const noexcept
   return is_shutdown_;
 }
 
-}  // namespace metrics
-}  // namespace exporter
+}  // namespace exporter::metrics
 OPENTELEMETRY_END_NAMESPACE
