@@ -9,13 +9,13 @@ rapidjson::Document Converter::loadYMLfromFile(const std::string& filepath)
     YAML::Node root = YAML::LoadFile(filepath);
     rapidjson::Document doc;
 
-    rapidjson::Value val = yaml2json(root, doc.GetAllocator());
+    rapidjson::Value val = yamlToJson(root, doc.GetAllocator());
     doc.CopyFrom(val, doc.GetAllocator());
 
     return doc;
 }
 
-rapidjson::Value Converter::parse_scalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator)
+rapidjson::Value Converter::parseScalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator)
 {
     rapidjson::Value v;
     if (QUOTED_TAG == node.Tag())
@@ -46,7 +46,7 @@ rapidjson::Value Converter::parse_scalar(const YAML::Node& node, rapidjson::Docu
     return v;
 }
 
-YAML::Node Converter::parse_scalar(const rapidjson::Value& node)
+YAML::Node Converter::parseScalar(const rapidjson::Value& node)
 {
     YAML::Node n;
     if (node.IsString())
@@ -78,38 +78,38 @@ rapidjson::Document Converter::loadYMLfromString(const std::string& yamlStr)
     YAML::Node root = YAML::Load(yamlStr);
     rapidjson::Document doc;
 
-    rapidjson::Value val = yaml2json(root, doc.GetAllocator());
+    rapidjson::Value val = yamlToJson(root, doc.GetAllocator());
     doc.CopyFrom(val, doc.GetAllocator());
 
     return doc;
 }
 
-YAML::Node Converter::json2yaml(const rapidjson::Value& value)
+YAML::Node Converter::jsonToYaml(const rapidjson::Value& value)
 {
     YAML::Node node;
     if (value.IsObject())
     {
         for (auto& m : value.GetObject())
         {
-            node[m.name.GetString()] = json2yaml(m.value);
+            node[m.name.GetString()] = jsonToYaml(m.value);
         }
     }
     else if (value.IsArray())
     {
         for (auto& v : value.GetArray())
         {
-            node.push_back(json2yaml(v));
+            node.push_back(jsonToYaml(v));
         }
     }
     else
     {
-        node = parse_scalar(value);
+        node = parseScalar(value);
     }
 
     return node;
 }
 
-rapidjson::Value Converter::yaml2json(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator)
+rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator)
 {
     rapidjson::Value v;
 
@@ -120,7 +120,7 @@ rapidjson::Value Converter::yaml2json(const YAML::Node& root, rapidjson::Documen
             break;
 
         case YAML::NodeType::Scalar:
-            v = parse_scalar(root, allocator);
+            v = parseScalar(root, allocator);
             break;
 
         case YAML::NodeType::Sequence:
@@ -128,7 +128,7 @@ rapidjson::Value Converter::yaml2json(const YAML::Node& root, rapidjson::Documen
 
             for (const auto& node : root)
             {
-                v.PushBack(yaml2json(node, allocator), allocator);
+                v.PushBack(yamlToJson(node, allocator), allocator);
             }
 
             break;
@@ -140,7 +140,7 @@ rapidjson::Value Converter::yaml2json(const YAML::Node& root, rapidjson::Documen
             {
                 v.AddMember(
                     rapidjson::Value(it.first.as<std::string>().c_str(), allocator),
-                    yaml2json(it.second, allocator),
+                    yamlToJson(it.second, allocator),
                     allocator);
             }
 

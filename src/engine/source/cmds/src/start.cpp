@@ -170,7 +170,7 @@ void runStart(ConfHandler confManager)
     // Set signal [SIGINT]: Crt+C handler
     {
         // Set the signal handler for SIGINT
-        struct sigaction sigIntHandler;
+        struct sigaction sigIntHandler = {};
         sigIntHandler.sa_handler = sigintHandler;
         sigemptyset(&sigIntHandler.sa_mask);
         sigIntHandler.sa_flags = 0;
@@ -180,7 +180,7 @@ void runStart(ConfHandler confManager)
     {
         // Set the signal handler for EPIPE (uvw/libuv/libev)
         // https://github.com/skypjack/uvw/issues/291
-        struct sigaction sigPipeHandler;
+        struct sigaction sigPipeHandler = {};
         sigPipeHandler.sa_handler = SIG_IGN;
         sigemptyset(&sigPipeHandler.sa_mask);
         sigPipeHandler.sa_flags = 0;

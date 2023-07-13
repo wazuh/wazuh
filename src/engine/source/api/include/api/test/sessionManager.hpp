@@ -79,14 +79,14 @@ public:
      *
      * @return uint32_t Available session ID
      */
-    uint32_t getNewSessionID(void);
+    uint32_t getNewSessionID();
 
     /**
      * @brief Get the sessions List
      *
      * @return std::vector<std::string>
      */
-    std::vector<std::string> getSessionsList(void);
+    std::vector<std::string> getSessionsList();
 
     /**
      * @brief Get a session's data.
@@ -113,7 +113,7 @@ public:
      * @return true If the sessions were deleted
      * @return false If the sessions were not deleted
      */
-    bool deleteSessions(const bool removeAll, const std::string sessionName = "");
+    bool deleteSessions(const bool removeAll, const std::string& sessionName = "");
 
     /**
      * @brief Delete a session.

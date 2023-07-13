@@ -55,7 +55,7 @@ Catalog::Catalog(const Config& config)
         }
         catch (const std::exception& e)
         {
-            LOG_DEBUG("Engine catalog: '{}' method: Config: '{}'.", __func__, str);
+            LOG_DEBUG("Engine catalog: Config: '{}'.", str);
             result = base::Error {e.what()};
         }
 
@@ -71,7 +71,7 @@ Catalog::Catalog(const Config& config)
             // TODO: Expose internals on json::Json ??
             rapidjson::Document doc;
             doc.Parse(json.str().c_str());
-            auto yaml = yml::Converter::json2yaml(doc);
+            auto yaml = yml::Converter::jsonToYaml(doc);
             YAML::Emitter out;
             out << yaml;
             result = out.c_str();
