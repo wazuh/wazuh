@@ -415,7 +415,7 @@ std::string getProcessName(const std::string filePath)
 {
     // Get stat file content.
     std::string processInfo { UNKNOWN_VALUE };
-    std::string statContent {Utils::getFileContent(filePath)};
+    const std::string statContent {Utils::getFileContent(filePath)};
 
     const auto openParenthesisPos {statContent.find("(")};
     const auto closeParenthesisPos {statContent.find(")")};
@@ -430,11 +430,12 @@ std::string getProcessName(const std::string filePath)
 
 int64_t findInode(const std::string filePath)
 {
-    size_t MAX_LENGTH {256};
+    const size_t MAX_LENGTH {256};
     char buffer[MAX_LENGTH];
-    auto ret {readlink(filePath.c_str(), buffer, MAX_LENGTH)};
+    const auto ret {readlink(filePath.c_str(), buffer, MAX_LENGTH)};
     int64_t inode {-1};
 
+    // ret format is "socket:[<num>]".
     if (-1 != ret)
     {
         const auto openBracketPos {std::string(buffer).find("[")};
@@ -466,7 +467,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::vector<int64
         for (const auto& procFile : procFiles)
         {
             // Only directories that represent a PID are inspected.
-            const std::string procFilePath = procPath + "/" + procFile;
+            const std::string procFilePath {procPath + "/" + procFile};
 
             if (Utils::isNumber(procFile) && Utils::existsDir(procFilePath))
             {
@@ -476,7 +477,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::vector<int64
                 for (const auto& pidFile : pidFiles)
                 {
                     // Only fd directory is inspected.
-                    const std::string pidFilePath = procFilePath + "/" + pidFile;
+                    const std::string pidFilePath {procFilePath + "/" + pidFile};
 
                     if (pidFile.compare("fd") == 0 && Utils::existsDir(pidFilePath))
                     {
@@ -486,11 +487,11 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::vector<int64
                         for (const auto& fdFile : fdFiles)
                         {
                             // Only sysmlinks that represent a socket are read.
-                            const std::string fdFilePath = pidFilePath + "/" + fdFile;
+                            const std::string fdFilePath {pidFilePath + "/" + fdFile};
 
                             if (!Utils::startsWith(fdFile, ".") && Utils::existsSocket(fdFilePath))
                             {
-                                int64_t inode = findInode(fdFilePath);
+                                int64_t inode {findInode(fdFilePath)};
 
                                 if (-1 != inode)
                                 {
@@ -499,7 +500,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::vector<int64
                                     return it == inode;
                                 }))
                                     {
-                                        std::string statPath = procFilePath + "/" + "stat";
+                                        std::string statPath {procFilePath + "/" + "stat"};
                                         std::string processName = getProcessName(statPath);
                                         int32_t pid {0};
 
@@ -572,9 +573,9 @@ nlohmann::json SysInfo::getPorts() const
         {
             try
             {
-                std::pair<int32_t, std::string> processPair = ret.at(port.at("inode"));
-                port.at("pid") = processPair.first;
-                port.at("process") = processPair.second;
+                std::pair<int32_t, std::string> processInfoPair = ret.at(port.at("inode"));
+                port["pid"] = processInfoPair.first;
+                port["process"] = processInfoPair.second;
             }
             catch (...) {}
         }
