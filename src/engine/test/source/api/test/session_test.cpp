@@ -3,8 +3,6 @@
 #include <testsCommon.hpp>
 
 using namespace api::sessionManager;
-const std::string rCommand {"dummy cmd"};
-const std::string rOrigin {"Dummy org module"};
 
 const auto& SESSION_NAME {"sessionDummy"};
 const auto& POLICY_NAME {"policyDummy"};

@@ -75,11 +75,12 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
     return std::nullopt;
 }
 
-std::vector<string> SessionManager::getSessionsList(void)
+std::vector<string> SessionManager::getSessionsList()
 {
     std::shared_lock<std::shared_mutex> lock(m_sessionMutex);
 
     std::vector<string> sessionNames;
+    sessionNames.reserve(m_activeSessions.size());
 
     for (const auto& pair : m_activeSessions)
     {
@@ -100,7 +101,7 @@ std::optional<Session> SessionManager::getSession(const string& sessionName)
     return std::nullopt;
 }
 
-bool SessionManager::deleteSessions(const bool removeAll, const string sessionName)
+bool SessionManager::deleteSessions(const bool removeAll, const string& sessionName)
 {
     std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
@@ -161,7 +162,7 @@ bool SessionManager::doesSessionExist(const std::string& sessionName)
     return doesExist;
 }
 
-uint32_t SessionManager::getNewSessionID(void)
+uint32_t SessionManager::getNewSessionID()
 {
     std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
