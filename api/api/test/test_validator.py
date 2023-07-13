@@ -14,7 +14,7 @@ from api.validator import (check_exp, check_xml, _alphanumeric_param, _array_num
                            _get_dirnames_path, allowed_fields, is_safe_path, _wazuh_version,
                            _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
                            _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename,
-                           check_component_configuration_pair, _active_response_command)
+                           check_component_configuration_pair, _active_response_command, _wpk_path)
 from wazuh import WazuhError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -87,7 +87,8 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('wazuh 4.4.0', _wazuh_version),
     ('wazuh v4.4.0', _wazuh_version),
     # miscellaneous
-    ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64)
+    ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64),
+    ('correct.wpk', _wpk_path)
 ])
 def test_validation_check_exp_ok(exp, regex_name):
     """Verify that check_exp() returns True with correct params"""
@@ -159,7 +160,9 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('wazuh 4.4', _wazuh_version),
     ('wazuh v4.4', _wazuh_version),
     # miscellaneous
-    ('aDhjasdh3=', _base64)
+    ('aDhjasdh3=', _base64),
+    ('incorrect.txt', _wpk_path),
+    ('.wpk', _wpk_path)
 ])
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
@@ -305,3 +308,5 @@ def test_check_component_configuration_pair(component, configuration, expected_r
         assert response.code == expected_response.code
     else:
         assert response is expected_response
+
+
