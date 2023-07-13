@@ -38,7 +38,6 @@ normalize:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-task
       - wazuh.decoders: +array_append/wazuh-indexer-task-plain
-      - event.created: $@timestamp
       - event.kind: event
       - event.category: +array_append/database
       - event.type: +array_append/info

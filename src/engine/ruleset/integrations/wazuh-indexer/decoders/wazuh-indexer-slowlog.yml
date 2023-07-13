@@ -36,7 +36,6 @@ normalize:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-slowlog
       - wazuh.decoders: +array_append/wazuh-indexer-slowlog
-      - event.created: $@timestamp
       - event.kind: event
       - event.category: +array_append/database
       - log.level: $~json.level

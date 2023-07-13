@@ -34,7 +34,6 @@ normalize:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-deprecation
       - wazuh.decoders: +array_append/wazuh-indexer-deprecation
-      - event.created: $@timestamp
       - event.kind: event
       - event.category: +array_append/database
       - event.type: +array_append/info
