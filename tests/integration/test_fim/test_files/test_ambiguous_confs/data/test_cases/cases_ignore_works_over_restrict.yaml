@@ -6,7 +6,7 @@
     RESTRICT: testfile$
     TEST_DIR: /test_dir_1
   metadata:
-    path_to_monitor: /test_dir_1
+    folder_to_monitor: /test_dir_1
     file_to_monitor: /test_dir_1/testfile
     is_pattern: true
     regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
@@ -20,7 +20,7 @@
     RESTRICT: testfile$
     TEST_DIR: /test_dir_1
   metadata:
-    path_to_monitor: /test_dir_1
+    folder_to_monitor: /test_dir_1
     file_to_monitor: /test_dir_1/testfile
     is_pattern: true
     regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
@@ -34,7 +34,7 @@
     RESTRICT: testfile$
     TEST_DIR: /test_dir_1
   metadata:
-    path_to_monitor: /test_dir_1
+    folder_to_monitor: /test_dir_1
     file_to_monitor: /test_dir_1/testfile
     is_pattern: true
     regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
@@ -48,7 +48,7 @@
     RESTRICT: testfile$
     TEST_DIR: /test_dir_1
   metadata:
-    path_to_monitor: /test_dir_1
+    folder_to_monitor: /test_dir_1
     file_to_monitor: /test_dir_1/regex_testfile
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
@@ -62,7 +62,7 @@
     RESTRICT: testfile$
     TEST_DIR: /test_dir_1
   metadata:
-    path_to_monitor: /test_dir_1
+    folder_to_monitor: /test_dir_1
     file_to_monitor: /test_dir_1/regex_testfile
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
@@ -76,7 +76,7 @@
     RESTRICT: testfile$
     TEST_DIR: /test_dir_1
   metadata:
-    path_to_monitor: /test_dir_1
+    folder_to_monitor: /test_dir_1
     file_to_monitor: /test_dir_1/regex_testfile
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
@@ -90,7 +90,7 @@
     RESTRICT: regex_testfile$
     TEST_DIR: /test_dir_2
   metadata:
-    path_to_monitor: /test_dir_2
+    folder_to_monitor: /test_dir_2
     file_to_monitor: /test_dir_2/regex_testfile
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
@@ -104,7 +104,7 @@
     RESTRICT: regex_testfile$
     TEST_DIR: /test_dir_2
   metadata:
-    path_to_monitor: /test_dir_2
+    folder_to_monitor: /test_dir_2
     file_to_monitor: /test_dir_2/regex_testfile
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
@@ -118,7 +118,7 @@
     RESTRICT: regex_testfile$
     TEST_DIR: /test_dir_2
   metadata:
-    path_to_monitor: /test_dir_2
+    folder_to_monitor: /test_dir_2
     file_to_monitor: /test_dir_2/regex_testfile
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
