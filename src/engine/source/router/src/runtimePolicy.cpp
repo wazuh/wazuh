@@ -36,7 +36,7 @@ std::optional<base::Error> RuntimePolicy::processEvent(base::Event event)
     {
         return base::Error {fmt::format("Policy '{}' is not built", m_asset)};
     }
-    auto result = base::result::makeSuccess(event);
+    auto result = base::result::makeSuccess(std::move(event));
     m_spController->ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
 
     return std::nullopt;
@@ -69,7 +69,7 @@ void RuntimePolicy::listenAllTrace()
             std::smatch match;
             if (std::regex_search(trace, match, opRegex))
             {
-                m_history[m_asset].push_back({match[1].str(), match[2].str()});
+                m_history[m_asset].emplace_back(std::make_pair(match[1].str(), match[2].str()));
             }
             constexpr auto opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
             const std::regex opRegexVerbose(opPatternTraceVerbose);
@@ -110,7 +110,7 @@ void RuntimePolicy::listenAllTrace()
         }));
 }
 
-const std::variant<std::tuple<std::string, std::string>, base::Error>
+std::variant<std::tuple<std::string, std::string>, base::Error>
 RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const std::string& assetTrace)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutexData};
@@ -119,20 +119,20 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
     {
         if (m_history[policyName].empty())
         {
+            m_traceBuffer[policyName].clear();
             return base::Error {fmt::format(
                 "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
 
         if (!assetTrace.empty())
         {
-            bool assetTraceFound = false; // Flag to track if assetTrace is found
             for (const auto& [asset, condition] : m_history[policyName])
             {
                 if (assetTrace == asset)
                 {
-                    assetTraceFound = true;
                     if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
                     {
+                        m_traceBuffer[policyName].clear();
                         return base::Error {fmt::format(
                             "Policy '{}' has not been configured for trace tracking and output subscription",
                             policyName)};
@@ -160,11 +160,6 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
                     trace.setString(condition, std::string("/") + asset);
                 }
             }
-
-            if (!assetTraceFound)
-            {
-                return base::Error {fmt::format("Asset trace '{}' not found", assetTrace)};
-            }
         }
         else
         {
@@ -172,6 +167,7 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
             {
                 if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
                 {
+                    m_traceBuffer[policyName].clear();
                     return base::Error {fmt::format(
                         "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
                 }
@@ -199,6 +195,7 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
     {
         if (m_history[policyName].empty())
         {
+            m_traceBuffer[policyName].clear();
             return base::Error {fmt::format(
                 "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
@@ -218,6 +215,7 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode, const
         m_output.erase(outputIt); // Remove the item from the map after getting it
         if (R"({})" == trace.prettyStr())
         {
+            m_traceBuffer[policyName].clear();
             return std::make_tuple(outputValue, std::string());
         }
         return std::make_tuple(outputValue, trace.prettyStr());

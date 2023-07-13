@@ -32,7 +32,7 @@ public:
      * @param aggregation_temporality How new samples are processed with existing ones.
      */
     explicit DataHubExporter(std::shared_ptr<metricsManager::IDataHub> dataHub,
-                             sdk::metrics::AggregationTemporality aggregation_temporality =
+                             sdk::metrics::AggregationTemporality aggregationTemporality =
                                  sdk::metrics::AggregationTemporality::kCumulative) noexcept;
 
     /**
@@ -59,7 +59,7 @@ public:
      * @return true If flush was done
      * @return false If flush was timeout
      */
-    bool ForceFlush(std::chrono::microseconds timeout = (std::chrono::microseconds::max)()) noexcept override;
+    bool ForceFlush(std::chrono::microseconds timeout) noexcept override;
 
     /**
      * @brief Shuts Down the exporter.
@@ -68,7 +68,7 @@ public:
      * @return true If shutdown succeeded.
      * @return false Otherwise.
      */
-    bool Shutdown(std::chrono::microseconds timeout = (std::chrono::microseconds::max)()) noexcept override;
+    bool Shutdown(std::chrono::microseconds timeout) noexcept override;
 
 private:
     /**
@@ -89,7 +89,7 @@ private:
     /**
      * @brief Aggregation Temporality that represent how new samples are processed with existing ones.
      */
-    sdk::metrics::AggregationTemporality aggregation_temporality_;
+    sdk::metrics::AggregationTemporality aggregationTemporality_;
 
     /**
      * @brief Check if the program is in the process of shutting down.
@@ -99,13 +99,13 @@ private:
     /**
      * @brief Print instrumentation info metric data.
      */
-    void printInstrumentationInfoMetricData(const sdk::metrics::ScopeMetrics& info_metrics,
+    void printInstrumentationInfoMetricData(const sdk::metrics::ScopeMetrics& infoMetrics,
                                             const sdk::metrics::ResourceMetrics& data);
 
     /**
      * @brief Print point data in JSON format.
      */
-    void printPointData(json::Json& jsonObj, const opentelemetry::sdk::metrics::PointType& point_data);
+    void printPointData(json::Json& jsonObj, const opentelemetry::sdk::metrics::PointType& pointdata);
 
     /**
      * @brief Print point attributes in JSON format.

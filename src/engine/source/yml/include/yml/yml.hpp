@@ -45,7 +45,7 @@ public:
      *
      * @return rapidjson::Value Converted RapidJSON value.
      */
-    static rapidjson::Value yaml2json(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator);
+    static rapidjson::Value yamlToJson(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator);
 
     /**
      * @brief Convert a RapidJSON scalar node to a YAML node.
@@ -54,7 +54,7 @@ public:
      *
      * @return YAML::Node Converted YAML node.
      */
-    static YAML::Node parse_scalar(const rapidjson::Value& node);
+    static YAML::Node parseScalar(const rapidjson::Value& node);
 
     /**
      * @brief Convert a YAML node to a RapidJSON value.
@@ -64,7 +64,7 @@ public:
      *
      * @return rapidjson::Value Converted RapidJSON value.
      */
-    static rapidjson::Value parse_scalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator);
+    static rapidjson::Value parseScalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator);
 
     /**
      * @brief Convert a RapidJSON value to a YAML node.
@@ -73,7 +73,7 @@ public:
      *
      * @return YAML::Node Converted YAML node.
      */
-    static YAML::Node json2yaml(const rapidjson::Value& value);
+    static YAML::Node jsonToYaml(const rapidjson::Value& value);
 };
 
 } // namespace yml

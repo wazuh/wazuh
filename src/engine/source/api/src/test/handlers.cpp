@@ -131,7 +131,7 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionMan
                                 + missingFields};
         }
 
-        const auto createSessionError = sessionManager->createSession(sessionName.value(),
+        auto&& createSessionError = sessionManager->createSession(sessionName.value(),
                                                                       policyName.value(),
                                                                       filterName.value(),
                                                                       routeName.value(),
@@ -197,9 +197,9 @@ json::Json getSessionsAsJson(const std::shared_ptr<SessionManager>& sessionManag
         const auto session = sessionManager->getSession(sessionName);
         auto jsonSession = json::Json(API_SESSIONS_DATA_FORMAT);
 
-        jsonSession.setInt(session->getCreationDate(), "/creationdate");
-        jsonSession.setInt(session->getLifespan(), "/lifespan");
-        jsonSession.setInt(session->getSessionID(), "/id");
+        jsonSession.setInt(static_cast<int>(session->getCreationDate()), "/creationdate");
+        jsonSession.setInt(static_cast<int>(session->getLifespan()), "/lifespan");
+        jsonSession.setInt(static_cast<int>(session->getSessionID()), "/id");
         jsonSession.setString(session->getDescription(), "/description");
         jsonSession.setString(session->getFilterName(), "/filtername");
         jsonSession.setString(session->getPolicyName(), "/policyname");
@@ -377,6 +377,7 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Sess
                                                       const std::shared_ptr<Catalog>& catalog,
                                                       const std::string& sessionName)
 {
+    std::string errorMsg {};
 
     const auto session = sessionManager->getSession(sessionName);
     if (!session.has_value())
@@ -387,27 +388,39 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Sess
     const auto deleteRouteError = deleteRouteFromRouter(router, session->getRouteName());
     if (deleteRouteError.has_value())
     {
-        return deleteRouteError;
+        errorMsg += fmt::format(ROUTE_NOT_REMOVED_MSG, session->getRouteName(), deleteRouteError.value().message);
     }
 
     const auto deleteFilterError = deleteAssetFromCatalog(catalog, session->getFilterName());
     if (deleteFilterError.has_value())
     {
-        return deleteFilterError;
+        if (!errorMsg.empty())
+        {
+            errorMsg += ". ";
+        }
+        errorMsg += fmt::format(FILTER_NOT_REMOVED_MSG, session->getFilterName(), deleteFilterError.value().message);
     }
 
     const auto deletePolicyError = deleteAssetFromCatalog(catalog, session->getPolicyName());
     if (deletePolicyError.has_value())
     {
-        return deletePolicyError;
+        if (!errorMsg.empty())
+        {
+            errorMsg += ". ";
+        }
+        errorMsg += fmt::format(POLICY_NOT_REMOVED_MSG, session->getPolicyName(), deletePolicyError.value().message);
     }
 
     if (!sessionManager->deleteSession(sessionName))
     {
-        return base::Error {fmt::format(SESSION_NOT_REMOVED_MSG, sessionName)};
+        if (!errorMsg.empty())
+        {
+            errorMsg += ". ";
+        }
+        errorMsg += fmt::format(SESSION_NOT_REMOVED_MSG, sessionName);
     }
 
-    return std::nullopt;
+    return (errorMsg.empty() ? std::nullopt : std::optional<base::Error> {base::Error {errorMsg}});
 }
 
 api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
@@ -415,7 +428,7 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                          const std::shared_ptr<Router>& router,
                          const std::shared_ptr<store::IStore>& store)
 {
-    return [sessionManager, catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager, catalog, router, store](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionPost_Request;
         using ResponseType = eTest::SessionPost_Response;
@@ -650,7 +663,7 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
 
 api::Handler sessionGet(const std::shared_ptr<SessionManager>& sessionManager)
 {
-    return [sessionManager](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionGet_Request;
         using ResponseType = eTest::SessionGet_Response;
@@ -690,7 +703,7 @@ api::Handler sessionGet(const std::shared_ptr<SessionManager>& sessionManager)
 
 api::Handler sessionsGet(const std::shared_ptr<SessionManager>& sessionManager)
 {
-    return [sessionManager](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsGet_Request;
         using ResponseType = eTest::SessionsGet_Response;
@@ -722,7 +735,7 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
                             const std::shared_ptr<Router>& router,
                             const std::shared_ptr<store::IStore>& store)
 {
-    return [sessionManager, catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager, catalog, router, store](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsDelete_Request;
         using ResponseType = eTest::SessionsDelete_Response;
@@ -784,7 +797,7 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
 
 api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, const std::shared_ptr<Router>& router)
 {
-    return [sessionManager, router](api::wpRequest wRequest) -> api::wpResponse
+    return [sessionManager, router](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::RunPost_Request;
         using ResponseType = eTest::RunPost_Response;
@@ -793,12 +806,12 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
         {
-            return std::move(std::get<api::wpResponse>(res));
+            return std::get<api::wpResponse>(res);
         }
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        const auto errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name field")
+        const auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /name field")
                               : !eRequest.has_event() ? std::make_optional("Missing /event field")
                                                       : std::nullopt;
 
@@ -866,7 +879,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
 
         // Add session ID to the event to filter it on the route
         const auto sessionID = session.value().getSessionID();
-        event->setInt(sessionID, TEST_FIELD_TO_CHECK_IN_FILTER);
+        event->setInt(static_cast<int>(sessionID), TEST_FIELD_TO_CHECK_IN_FILTER);
 
         // Enqueue event
         const auto enqueueEventError = router->enqueueEvent(std::move(event));

@@ -26,7 +26,7 @@ cmd::details::StackExecutor g_exitHanlder {};
  *
  * @param signum Signal number
  */
-void sigint_handler(const int signalNumber)
+void sigintHandler(const int signalNumber)
 {
     gs_doRun = false;
 }
@@ -44,10 +44,10 @@ void sigint_handler(const int signalNumber)
  *
  * @return Returns 'true' if the operation succeeds and 'false' otherwise.
  */
-inline bool clear_icanon(const bool& doClearIcanon)
+inline bool clearIcanon(const bool& doClearIcanon)
 {
     bool retval {false};
-    struct termios settings;
+    struct termios settings = {};
 
     if (tcgetattr(STDIN_FILENO, &settings) >= 0)
     {
@@ -90,7 +90,7 @@ processJson(const json::Json& jsonObject, const std::string& jsonPath, const std
         rapidjson::Document doc;
         doc.Parse(jsonValue.value().str().c_str());
 
-        const auto yaml = yml::Converter::json2yaml(doc);
+        const auto yaml = yml::Converter::jsonToYaml(doc);
 
         YAML::Node rootNode;
         rootNode[rootName] = yaml;
@@ -247,7 +247,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         std::cout << std::endl << std::endl << "Type one log per line (Crtl+C to exit):" << std::endl << std::endl;
 
         // Only set non-canonical mode when connected to terminal
-        if (isatty(fileno(stdin)) && !clear_icanon(true))
+        if (isatty(fileno(stdin)) && !clearIcanon(true))
         {
             std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
                          "processed correctly."
@@ -274,7 +274,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 
         if (isatty(fileno(stdin)))
         {
-            clear_icanon(false);
+            clearIcanon(false);
         }
 
         g_exitHanlder.execute();

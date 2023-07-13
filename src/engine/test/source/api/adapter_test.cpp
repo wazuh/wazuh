@@ -7,8 +7,8 @@ using namespace api::adapter;
 namespace eEngine = ::com::wazuh::api::engine;
 using RequestType = eEngine::test::Request;
 using ResponseType = eEngine::test::Response;
-using wazuhRequest = base::utils::wazuhProtocol::WazuhRequest;
-using wazuhResponse = base::utils::wazuhProtocol::WazuhResponse;
+using WazuhRequest = base::utils::wazuhProtocol::WazuhRequest;
+using WazuhResponse = base::utils::wazuhProtocol::WazuhResponse;
 
 TEST(Adapter_toWazuhResponse, succees_ok)
 {
@@ -43,7 +43,7 @@ TEST(Adapter_toWazuhResponse, succees_inside_error)
 TEST(Adapter_fromWazuhRequest, success_empty)
 {
     const auto json = json::Json {R"({})"};
-    const auto wRequest = wazuhRequest {json};
+    const auto wRequest = WazuhRequest {json};
 
     const auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
@@ -59,7 +59,7 @@ TEST(Adapter_fromWazuhRequest, success_empty)
 TEST(Adapter_fromWazuhRequest, success)
 {
     const auto params = json::Json {R"({"valueString":"test value", "defaultBool":true, "defaultInt":1, "anyJson":{}})"};
-    const auto wRequest = wazuhRequest::create("testCmd", "test origin", params);
+    const auto wRequest = WazuhRequest::create("testCmd", "test origin", params);
 
     const auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
@@ -78,13 +78,13 @@ TEST(Adapter_fromWazuhRequest, success)
 TEST(Adapter_fromWazuhRequest, fail_eMessageFormat)
 {
     const auto params = json::Json {R"({"valueString":null, "defaultBool":"true", "defaultInt":{}})"};
-    const auto wRequest = wazuhRequest::create("testCmd", "test origin", params);
+    const auto wRequest = WazuhRequest::create("testCmd", "test origin", params);
 
     const auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
     // Fail because the json is not valid for the eMessage, return a wResponse with the error
-    ASSERT_TRUE(std::holds_alternative<wazuhResponse>(res));
-    const auto& wResponse = std::get<wazuhResponse>(res);
+    ASSERT_TRUE(std::holds_alternative<WazuhResponse>(res));
+    const auto& wResponse = std::get<WazuhResponse>(res);
     ASSERT_FALSE(wResponse.error());
 
     ASSERT_EQ(wResponse.data(),

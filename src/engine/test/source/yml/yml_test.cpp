@@ -23,12 +23,12 @@ TEST_F(YmlTest, ParseScalarTestAllocator)
 
     rapidjson::Document::AllocatorType allocator;
 
-    auto quotedStringResult = yml::Converter::parse_scalar(quotedStringNode, allocator);
-    auto intResult = yml::Converter::parse_scalar(intNode, allocator);
-    auto doubleResult = yml::Converter::parse_scalar(doubleNode, allocator);
-    auto boolResult = yml::Converter::parse_scalar(boolNode, allocator);
-    auto stringResult = yml::Converter::parse_scalar(stringNode, allocator);
-    auto invalidResult = yml::Converter::parse_scalar(invalidNode, allocator);
+    auto quotedStringResult = yml::Converter::parseScalar(quotedStringNode, allocator);
+    auto intResult = yml::Converter::parseScalar(intNode, allocator);
+    auto doubleResult = yml::Converter::parseScalar(doubleNode, allocator);
+    auto boolResult = yml::Converter::parseScalar(boolNode, allocator);
+    auto stringResult = yml::Converter::parseScalar(stringNode, allocator);
+    auto invalidResult = yml::Converter::parseScalar(invalidNode, allocator);
 
     EXPECT_TRUE(quotedStringResult.IsString());
     EXPECT_STREQ(quotedStringResult.GetString(), "hello");
@@ -51,11 +51,11 @@ TEST_F(YmlTest, ParseScalarTest)
     rapidjson::Value boolNode(true);
     rapidjson::Value invalidNode;
 
-    auto stringResult = yml::Converter::parse_scalar(stringNode);
-    auto intResult = yml::Converter::parse_scalar(intNode);
-    auto doubleResult = yml::Converter::parse_scalar(doubleNode);
-    auto boolResult = yml::Converter::parse_scalar(boolNode);
-    auto invalidResult = yml::Converter::parse_scalar(invalidNode);
+    auto stringResult = yml::Converter::parseScalar(stringNode);
+    auto intResult = yml::Converter::parseScalar(intNode);
+    auto doubleResult = yml::Converter::parseScalar(doubleNode);
+    auto boolResult = yml::Converter::parseScalar(boolNode);
+    auto invalidResult = yml::Converter::parseScalar(invalidNode);
 
     EXPECT_EQ(stringResult.Scalar(), "hello");
     EXPECT_EQ(intResult.as<int>(), 42);
@@ -81,7 +81,7 @@ TEST_F(YmlTest, JsonToYamlTest)
     rapidjson::Document document;
     document.Parse(jsonString);
 
-    auto resultNode = yml::Converter::json2yaml(document);
+    auto resultNode = yml::Converter::jsonToYaml(document);
 
     YAML::Emitter resultEmitter;
     YAML::Emitter expectedEmitter;
@@ -126,7 +126,7 @@ TEST_F(YmlTest, YamlToJsonTest)
     rapidjson::Document document;
     auto& allocator = document.GetAllocator();
 
-    const auto& resultValue = yml::Converter::yaml2json(yamlNode, allocator);
+    const auto& resultValue = yml::Converter::yamlToJson(yamlNode, allocator);
 
     rapidjson::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
