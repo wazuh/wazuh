@@ -154,15 +154,7 @@ void processEvent(const std::string& eventStr,
 
     // Set event
     json::Json jsonEvent {};
-    try
-    {
-        jsonEvent = json::Json {eventStr.c_str()};
-    }
-    catch (const std::exception& e)
-    {
-        // If not, set it as a string
-        jsonEvent.setString(eventStr);
-    }
+    jsonEvent.setString(eventStr);
 
     // Convert the value to protobuf value
     const auto protoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(jsonEvent.str());
@@ -173,7 +165,7 @@ void processEvent(const std::string& eventStr,
     }
 
     const auto& event = std::get<google::protobuf::Value>(protoEvent);
-    *eRequest.mutable_event() = event;
+    eRequest.mutable_event()->CopyFrom(event);
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
