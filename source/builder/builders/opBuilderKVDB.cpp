@@ -40,7 +40,7 @@ base::Expression KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
     // Extract parameters
     const auto dbName = parameters[0].m_value;
-    const auto key = parameters[1];
+    const auto& key = parameters[1];
 
     // Trace messages
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -62,7 +62,7 @@ base::Expression KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     return base::Term<base::EngineOp>::create(
         name,
         [=,
-         targetField = std::move(targetField),
+         targetField = targetField,
          kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
         {
             // Get DB key
@@ -174,7 +174,7 @@ base::Expression existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     return base::Term<base::EngineOp>::create(
         name,
         [=,
-         targetField = std::move(targetField),
+         targetField = targetField,
          kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
         {
             bool found = false;
@@ -252,8 +252,8 @@ base::Expression KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto name = formatHelperName(targetField, rawName, parameters);
 
     auto dbName = parameters[0].m_value;
-    const auto key = parameters[1];
-    const auto value = parameters[2];
+    const auto& key = parameters[1];
+    const auto& value = parameters[2];
 
     // Trace messages
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -275,7 +275,7 @@ base::Expression KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
     return base::Term<base::EngineOp>::create(
         name,
         [=,
-         targetField = std::move(targetField),
+         targetField = targetField,
          kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
         {
             event->setBool(false, targetField);
@@ -376,8 +376,8 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
     checkParametersSize(rawName, parameters, 2);
     const auto name = formatHelperName(targetField, rawName, parameters);
 
-    const auto dbName = parameters[0].m_value;
-    const auto key = parameters[1];
+    const auto& dbName = parameters[0].m_value;
+    const auto& key = parameters[1];
 
     // Trace messages
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -397,7 +397,7 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
     return base::Term<base::EngineOp>::create(
         name,
         [=,
-         targetField = std::move(targetField),
+         targetField = targetField,
          kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
         {
             std::string resolvedKey;
