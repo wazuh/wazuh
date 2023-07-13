@@ -239,6 +239,7 @@ def test_get_requirement_invalid(mocked_config, requirement):
     ('0015-ossec_rules.xml', False, None, None),
     ('test_rules.xml', False, None, 'NEW RULE WITHOUT SUBPATH'),
     ('test_rules.xml', True, 'tests/data/etc/rules/subpath', 'NEW RULE SUBPATH'),
+    ('test_rules.xml', True, 'tests/data/etc/rules/subpath/', 'NEW RULE SUBPATH'),
 ])
 @patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
 @patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests","data", "etc", "rules"))

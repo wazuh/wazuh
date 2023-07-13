@@ -282,7 +282,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`.
     relative_dirname : str
-        relative directory where the rule is located. Default None.
+        Relative directory where the rule is located. Default None.
 
     Returns
     -------

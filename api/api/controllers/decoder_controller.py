@@ -220,7 +220,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     raw : bool
         Whether to return the file content in raw or JSON format.
      relative_dirname : str
-        relative directory where the decoder is located. Default None.
+        Relative directory where the decoder is located. Default None.
 
     Returns
     -------

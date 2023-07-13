@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import remove
-from os.path import exists, join, abspath, commonpath, basename, relpath, normpath
+from os.path import exists, join, normpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -330,19 +330,20 @@ def get_rule_file(filename: str = None, raw: bool = False,
 
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
-    rel_dir = relative_dirname if relative_dirname else ''
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
     rules = get_rules_files(filename=[filename], 
-                                  relative_dirname=relative_dirname).affected_items
+                            relative_dirname=relative_dirname).affected_items
     if len(rules) == 0:
         result.add_failed_item(id_=filename, 
                                error=WazuhError(1415, extra_message=f"{filename}"))
         return result
     elif len(rules) > 1:
         # if many files match the filename criteria, 
-        # filter decoders that starts with rel_dir of the file
-        # and from the result, select the decoder with the shorter
+        # filter rules that starts with rel_dir of the file
+        # and from the result, select the rule with the shorter
         # relative path length
-        rules = list(filter(lambda x: x['relative_dirname'].startswith(rel_dir), rules))
+        relative_dirname = relative_dirname if relative_dirname else ''
+        rules = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), rules))
         rule = min(rules, key=lambda x: len(x['relative_dirname']))
         full_path = join(common.WAZUH_PATH, rule['relative_dirname'], filename)
     else:

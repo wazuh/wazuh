@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
-from os.path import join, exists, commonpath, basename, relpath, normpath
+from os.path import join, exists, normpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -189,8 +189,8 @@ def get_decoder_file(filename: str, raw: bool = False,
         List of one element with the complete relative path of the decoder file.
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
-    relative_direname : str
-        relative directory where de decoder is found. Default None.
+    relative_dirname : str
+        Relative directory where de decoder is found. Default None.
 
     Returns
     -------
@@ -202,7 +202,7 @@ def get_decoder_file(filename: str, raw: bool = False,
 
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
-    rel_dir = relative_dirname if relative_dirname else ''
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
     decoders = get_decoders_files(filename=[filename], 
                                   relative_dirname=relative_dirname).affected_items
     if len(decoders) == 0:
@@ -214,7 +214,8 @@ def get_decoder_file(filename: str, raw: bool = False,
         # filter decoders that starts with rel_dir of the file
         # and from the result, select the decoder with the shorter
         # relative path length
-        decoders = list(filter(lambda x: x['relative_dirname'].startswith(rel_dir), decoders))
+        relative_dirname = relative_dirname if relative_dirname else ''
+        decoders = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), decoders))
         decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
         full_path = join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
     else:

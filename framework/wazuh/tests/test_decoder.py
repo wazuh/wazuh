@@ -138,6 +138,7 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
     ('test3_decoders.xml', True, None, 'DECODER IN USER_DECODERS_PATH.'),
     ('test2_decoders.xml', True, 'tests/data/etc/decoders/subpath', None),
     ('test3_decoders.xml', True, 'tests/data/etc/decoders/subpath', 'DECODER IN USER_DECODERS_PATH/subpath'),
+    ('test3_decoders.xml', True, 'tests/data/etc/decoders/subpath/', 'DECODER IN USER_DECODERS_PATH/subpath'),
 ])
 @patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders"))
 @patch('wazuh.core.common.USER_DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "etc", "decoders"))
