@@ -63,7 +63,7 @@ def get_routes(limit: int, name: Optional[str] = None, select: Optional[List] = 
             raise WazuhInternalError(9002)
 
     if name:
-        final_result = result['rute']
+        final_result = [result['rute']]
     else:
         final_result = process_array(result['table'], limit=limit, offset=offset, select=select, sort_by=sort_by,
                                      sort_ascending=sort_ascending, search_text=search_text,
