@@ -63,7 +63,6 @@ Adding to the ossec.conf file in the monitored node the following blocks:
 | Name | Description |
 |---|---|
 | decoder/wazuh-indexer-slowlog/0 | Decoder for Wazuh indexer search and indexing slow logs |
-| decoder/wazuh-indexer-task-json/0 | Decoder for Wazuh indexer task logs in JSON format |
 | decoder/wazuh-indexer-server/0 | Decoder for Wazuh indexer server logs |
 | decoder/wazuh-indexer-task-plain/0 | Decoder for Wazuh indexer task logs in plain text |
 | decoder/wazuh-indexer-deprecation/0 | Decoder for Wazuh indexer deprecation logs |
@@ -83,4 +82,4 @@ Adding to the ossec.conf file in the monitored node the following blocks:
 
 | Version | Description | Details |
 |---|---|---|
-| 0.0.1-dev | Created integration for Wazuh indexer |  |
+| 0.0.1-dev | Created integration for Wazuh indexer | [#17873](https://github.com/wazuh/wazuh/pull/17873) |
