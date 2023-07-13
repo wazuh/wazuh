@@ -17,7 +17,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=2)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_ignore_works_over_restrict.yaml')
@@ -33,7 +33,7 @@ if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_ignore_works_over_restrict(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                    truncate_monitored_files, path_to_monitor, daemons_handler, file_to_monitor):
+                                    truncate_monitored_files, folder_to_monitor, daemons_handler, file_to_monitor):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=generate_callback(test_metadata['regex']))
 
