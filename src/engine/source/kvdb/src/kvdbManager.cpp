@@ -179,8 +179,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
             }
             else
             {
-                return base::Error {
-                    fmt::format("Database '{}' could not be removed: {}", name, opStatus.ToString())};
+                return base::Error {fmt::format("Database '{}' could not be removed: {}", name, opStatus.ToString())};
             }
         }
         catch (const std::runtime_error& e)
@@ -227,7 +226,7 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
         in.seekg(0, std::ios::end);
         contents.resize(in.tellg());
         in.seekg(0, std::ios::beg);
-        in.read(&contents[0], contents.size());
+        in.read(&contents[0], static_cast<std::streamsize>(contents.size()));
         in.close();
     }
     else
@@ -341,7 +340,7 @@ uint32_t KVDBManager::getKVDBHandlersCount(const std::string& dbName) const
     if (handlersInfo.count(dbName))
     {
         auto scopes = handlersInfo.at(dbName);
-        for(const auto& [key, value] : scopes)
+        for (const auto& [key, value] : scopes)
         {
             retValue += value;
         }

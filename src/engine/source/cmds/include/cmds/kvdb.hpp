@@ -37,7 +37,7 @@ void runInsertKV(std::shared_ptr<apiclnt::Client> client,
                  const std::string& kvdbValue);
 void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey);
 
-void configure(CLI::App_p app);
+void configure(const CLI::App_p& app);
 
 } // namespace cmd::kvdb
 

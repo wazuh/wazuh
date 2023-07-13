@@ -10,12 +10,12 @@ namespace
 {
 struct Options
 {
-    std::string serverApiSock;
+    std::string serverApiSock {};
     bool loaded {false};
-    std::string kvdbName;
-    std::string kvdbInputFilePath;
-    std::string kvdbKey;
-    std::string kvdbValue;
+    std::string kvdbName {};
+    std::string kvdbInputFilePath {};
+    std::string kvdbKey {};
+    std::string kvdbValue {};
 };
 
 } // namespace
@@ -196,7 +196,7 @@ void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvd
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void configure(CLI::App_p app)
+void configure(const CLI::App_p& app)
 {
     auto kvdbApp = app->add_subcommand("kvdb", "Manage the key-value databases (KVDBs).");
     kvdbApp->require_subcommand(1);

@@ -29,15 +29,22 @@ public:
      *
      * @param db Pointer to the RocksDB:DB instance.
      * @param cfHandle Pointer to the RocksDB:ColumnFamilyHandle instance.
-     * @param spaceName Name of the Space.
+     * @param dbName Name of the DB.
      * @param scopeName Name of the Scope.
      *
      */
     KVDBHandler(std::weak_ptr<rocksdb::DB> weakDB,
                 std::weak_ptr<rocksdb::ColumnFamilyHandle> weakCFHandle,
                 std::shared_ptr<IKVDBHandlerCollection> collection,
-                const std::string& spaceName,
-                const std::string& scopeName);
+                const std::string& dbName,
+                const std::string& scopeName)
+        : m_weakDB {weakDB}
+        , m_weakCFHandle {weakCFHandle}
+        , m_dbName {dbName}
+        , m_scopeName {scopeName}
+        , m_spCollection {collection}
+    {
+    }
 
     /**
      * @brief Destroy the KVDBHandler object

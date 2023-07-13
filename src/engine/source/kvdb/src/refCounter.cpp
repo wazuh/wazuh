@@ -41,6 +41,8 @@ bool RefCounter::empty() const
 std::vector<std::string> RefCounter::getRefNames() const
 {
     std::vector<std::string> refNames;
+    refNames.reserve(m_refMap.size());
+
     for (const auto& ref : m_refMap)
     {
         refNames.push_back(ref.first);

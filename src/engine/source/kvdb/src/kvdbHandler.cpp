@@ -10,19 +10,6 @@
 namespace kvdbManager
 {
 
-KVDBHandler::KVDBHandler(std::weak_ptr<rocksdb::DB> weakDB,
-                         std::weak_ptr<rocksdb::ColumnFamilyHandle> weakCFHandle,
-                         std::shared_ptr<IKVDBHandlerCollection> collection,
-                         const std::string& spaceName,
-                         const std::string& scopeName)
-    : m_weakDB(weakDB)
-    , m_weakCFHandle(weakCFHandle)
-    , m_dbName(spaceName)
-    , m_scopeName(scopeName)
-    , m_spCollection(collection)
-{
-}
-
 KVDBHandler::~KVDBHandler()
 {
     m_spCollection->removeKVDBHandler(m_dbName, m_scopeName);
