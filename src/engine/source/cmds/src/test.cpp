@@ -408,7 +408,7 @@ void configure(CLI::App_p app)
 
     // API test session create
     auto testSessionCreateApp = testSessionApp->add_subcommand("create", "Create a new session.");
-    testSessionCreateApp->add_option("-n, --name", parameters->sessionName, "Name of the new session.")->required();
+    testSessionCreateApp->add_option("name", parameters->sessionName, "Name of the new session.")->required();
     testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.");
     testSessionCreateApp->add_option("-l, --lifespan", parameters->lifespan, "Lifespan of the session in minutes.");
     testSessionCreateApp->add_option("-d, --description", parameters->description, "Description of the session.");
@@ -422,8 +422,7 @@ void configure(CLI::App_p app)
 
     // API test session data get
     auto testSessionGetApp = testSessionApp->add_subcommand("get", "Get a session data.");
-    testSessionGetApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be obtained.")
-        ->required();
+    testSessionGetApp->add_option("name", parameters->sessionName, "Name of the session to be obtained.")->required();
     testSessionGetApp->callback([parameters, client]() { sessionGet(client, *parameters); });
 
     // API test session list
@@ -432,7 +431,7 @@ void configure(CLI::App_p app)
 
     // API test Run
     auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
-    testRunApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be used.")->required();
+    testRunApp->add_option("name", parameters->sessionName, "Name of the session to be used.")->required();
     testRunApp->add_option("-e, --event", parameters->event, "Event to be processed");
     testRunApp
         ->add_option(
