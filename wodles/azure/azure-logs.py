@@ -829,8 +829,9 @@ def send_message(message: str):
     """
     s = socket(AF_UNIX, SOCK_DGRAM)
 
-    # Logs warning if event is bigger than max size
     encoded_msg = f'{SOCKET_HEADER}{message}'.encode(errors='replace')
+
+    # Logs warning if event is bigger than max size
     if len(encoded_msg) > MAX_EVENT_SIZE:
         logging.warning(f"ERROR: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
 
