@@ -10,7 +10,7 @@ def file_to_monitor(test_metadata: dict) -> Any:
     path = test_metadata.get('file_to_monitor')
     file.write_file(path) if path else None
 
-    yield
+    yield path
 
     file.remove_file(path) if path else None
 
@@ -20,6 +20,6 @@ def folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
     file.create_folder(path) if path else None
 
-    yield
+    yield path
 
     file.delete_path_recursively(path) if path else None
