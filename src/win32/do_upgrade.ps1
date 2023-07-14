@@ -254,7 +254,7 @@ write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgra
 
 # Check process status
 $process_id = (Get-Process wazuh-agent).id
-$counter = 5
+$counter = 10
 while($process_id -eq $null -And $counter -gt 0)
 {
     $counter--
@@ -268,17 +268,21 @@ write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\
 Start-Sleep 10
 
 # Check status file
-$status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
-$counter = 5
-while($status -eq $null -And $counter -gt 0)
+function Get-AgentStatus {
+    Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+}
+
+$status = Get-AgentStatus
+$counter = 30
+while($status -ne "connected"  -And $counter -gt 0)
 {
     $counter--
     Start-Sleep 2
-    $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
+    $status = Get-AgentStatus
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
+Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-If ($status -eq $null)
+If ($status -ne "connected")
 {
     Get-Service -Name "Wazuh" | Stop-Service
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring former installation." >> .\upgrade\upgrade.log
