@@ -96,7 +96,7 @@ class WazuhGCloudIntegration:
 
         # Logs warning if event is bigger than max size
         if len(event_json) > MAX_EVENT_SIZE:
-            logging.warning(f"ERROR: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+            logging.warning(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
 
         self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
         try:
