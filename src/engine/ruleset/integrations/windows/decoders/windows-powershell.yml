@@ -17,7 +17,7 @@ metadata:
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
-  - ~windows.Event.System.Channel.#text: +string_equal/Windows PowerShell
+  - ~windows.System.Channel.#text: +string_equal/Windows PowerShell
 
 normalize:
  - map:
@@ -26,22 +26,22 @@ normalize:
    - event.kind: event
    - event.category: +array_append/process
    - event.type: +array_append/info
-   - event.sequence: $~windows.Event.EventData.SequenceNumber
+   - event.sequence: $~windows.EventData.SequenceNumber
 
   ## Process fields.
-   - process.entity_id: $~windows.Event.EventData.HostId
-   - process.command_line: $~windows.Event.EventData.HostApplication
-   - process.title: $~windows.Event.EventData.HostName
-   - process.executable: $~windows.Event.EventData.ScriptName
+   - process.entity_id: $~windows.EventData.HostId
+   - process.command_line: $~windows.EventData.HostApplication
+   - process.title: $~windows.EventData.HostName
+   - process.executable: $~windows.EventData.ScriptName
 
   ## User fields.
-   - ~temp.user_parts: +split/$~windows.Event.EventData.UserId/\
+   - ~temp.user_parts: +split/$~windows.EventData.UserId/\
    - user.domain: $~temp.user_parts.0
    - user.name: $~temp.user_parts.1
    - related.user: +array_append/$user.name
 
   # Add file information.
-   - file.path: $~windows.Event.EventData.ScriptName
+   - file.path: $~windows.EventData.ScriptName
    - ~temp.file_data: +parse_file/$file.path
    - file.directory: $~temp.file_data.path
    - file.extension: $~temp.file_data.ext
