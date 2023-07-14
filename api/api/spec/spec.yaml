@@ -6985,7 +6985,6 @@ components:
         type: string
         format: xml_filename_path
 
-
 tags:
   - name: API Info
     description: "Wazuh API information"
@@ -13986,6 +13985,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Rule content"
@@ -14762,6 +14762,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Decoder content"

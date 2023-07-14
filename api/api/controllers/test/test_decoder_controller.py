@@ -127,7 +127,8 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
     with patch('api.controllers.decoder_controller.isinstance', return_value=mock_bool) as mock_isinstance:
         result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
-                    'raw': False
+                    'raw': False,
+                    'relative_dirname': None
                     }
         mock_dapi.assert_called_once_with(f=decoder_framework.get_decoder_file,
                                           f_kwargs=mock_remove.return_value,

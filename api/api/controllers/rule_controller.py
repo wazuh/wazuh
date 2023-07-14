@@ -265,7 +265,8 @@ async def get_rules_files(request, pretty: bool = False, wait_for_complete: bool
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
+async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, 
+                   filename: str = None, relative_dirname: str = None, 
                    raw: bool = False) -> Union[web.Response, ConnexionResponse]:
     """Get rule file content.
 
@@ -273,13 +274,15 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     ----------
     request : connexion.request
     pretty : bool, optional
-        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`.
     wait_for_complete : bool, optional
-        Disable response timeout or not. Default `False`
+        Disable response timeout or not. Default `False`.
     filename : str
         Filename to download.
     raw : bool, optional
-        Whether to return the file content in raw or JSON format. Default `False`
+        Whether to return the file content in raw or JSON format. Default `False`.
+    relative_dirname : str
+        Relative directory where the rule is located. Default None.
 
     Returns
     -------
@@ -289,7 +292,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
             raw=False (default) -> web.Response      (application/json)
         If any exception was raised, it will return a web.Response with details.
     """
-    f_kwargs = {'filename': filename, 'raw': raw}
+    f_kwargs = {'filename': filename, 'raw': raw, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=rule_framework.get_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

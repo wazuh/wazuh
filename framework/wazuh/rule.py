@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import remove
-from os.path import exists, join
+from os.path import exists, join, normpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -307,15 +307,18 @@ def get_requirement(requirement: str = None, offset: int = 0, limit: int = commo
     return result
 
 
-def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
+def get_rule_file(filename: str = None, raw: bool = False, 
+                  relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
 
     Parameters
     ----------
     filename : str, optional
-        Name of the rule file. Default `None`
+        Name of the rule file. Default `None`.
     raw : bool, optional
-        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format)
+        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format).
+    relative_direname : str
+        relative directory where de rule is found. Default None.
 
     Returns
     -------
@@ -324,30 +327,43 @@ def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, Affecte
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='Selected rule was returned')
-    files = get_rules_files(filename=filename).affected_items
 
-    if len(files) > 0:
-        rules_path = files[0]['relative_dirname']
-        try:
-            full_path = join(common.WAZUH_PATH, rules_path, filename)
-            with open(full_path) as f:
-                content = f.read()
-            if raw:
-                result = content
-            else:
-                # Missing root tag in rule file
-                result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
-                result.total_affected_items = 1
-        except ExpatError as e:
-            result.add_failed_item(id_=filename,
-                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"
-                                                                        f" {str(e)}"))
-        except OSError:
-            result.add_failed_item(id_=filename,
-                                   error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
-
+    # if the filename doesn't have a relative path, the search is only by name
+    # relative_dirname parameter is set to None.
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
+    rules = get_rules_files(filename=[filename], 
+                            relative_dirname=relative_dirname).affected_items
+    if len(rules) == 0:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1415, extra_message=f"{filename}"))
+        return result
+    elif len(rules) > 1:
+        # if many files match the filename criteria, 
+        # filter rules that starts with rel_dir of the file
+        # and from the result, select the rule with the shorter
+        # relative path length
+        relative_dirname = relative_dirname if relative_dirname else ''
+        rules = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), rules))
+        rule = min(rules, key=lambda x: len(x['relative_dirname']))
+        full_path = join(common.WAZUH_PATH, rule['relative_dirname'], filename)
     else:
-        result.add_failed_item(id_=filename, error=WazuhError(1415))
+        full_path = normpath(join(common.WAZUH_PATH, rules[0]['relative_dirname'], filename))
+        
+    try:
+        with open(full_path) as f:
+            content = f.read()
+        if raw:
+            result = content
+        else:
+            # Missing root tag in rule file
+            result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
+            result.total_affected_items = 1
+    except ExpatError as e:
+        result.add_failed_item(id_=filename,
+                               error=WazuhError(1413, extra_message=f"{filename}: {str(e)}"))
+    except OSError:
+        result.add_failed_item(id_=filename,
+                               error=WazuhError(1414, extra_message=f"{filename}"))
 
     return result
 

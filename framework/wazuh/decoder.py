@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
-from os.path import join, exists
+from os.path import join, exists, normpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -179,15 +179,18 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     return result
 
 
-def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
+def get_decoder_file(filename: str, raw: bool = False, 
+                     relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of a specified file.
 
     Parameters
     ----------
-    filename : str
-        Name of the decoder file.
+    filename : list. Mandatory.
+        List of one element with the complete relative path of the decoder file.
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
+    relative_dirname : str
+        Relative directory where de decoder is found. Default None.
 
     Returns
     -------
@@ -196,30 +199,43 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
     """
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       all_msg='Selected decoder was returned')
-    decoders = get_decoders_files(filename=filename).affected_items
 
-    if len(decoders) > 0:
-        decoder_path = decoders[0]['relative_dirname']
-        try:
-            full_path = join(common.WAZUH_PATH, decoder_path, filename)
-            with open(full_path) as f:
-                file_content = f.read()
-            if raw:
-                result = file_content
-            else:
-                # Missing root tag in decoder file
-                result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
-                result.total_affected_items = 1
-        except ExpatError as e:
-            result.add_failed_item(id_=filename,
-                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"
-                                                                        f" {str(e)}"))
-        except OSError:
-            result.add_failed_item(id_=filename,
-                                   error=WazuhError(1502, extra_message=join('WAZUH_HOME', decoder_path, filename)))
-
+    # if the filename doesn't have a relative path, the search is only by name
+    # relative_dirname parameter is set to None.
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
+    decoders = get_decoders_files(filename=[filename], 
+                                  relative_dirname=relative_dirname).affected_items
+    if len(decoders) == 0:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1503, extra_message=f"{filename}"))
+        return result
+    elif len(decoders) > 1:
+        # if many files match the filename criteria, 
+        # filter decoders that starts with rel_dir of the file
+        # and from the result, select the decoder with the shorter
+        # relative path length
+        relative_dirname = relative_dirname if relative_dirname else ''
+        decoders = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), decoders))
+        decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
+        full_path = join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
     else:
-        result.add_failed_item(id_=filename, error=WazuhError(1503))
+        full_path = normpath(join(common.WAZUH_PATH,  decoders[0]['relative_dirname'], filename))
+        
+    try:
+        with open(full_path) as f:
+            file_content = f.read()
+        if raw:
+            result = file_content
+        else:
+            # Missing root tag in decoder file
+            result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
+            result.total_affected_items = 1
+    except ExpatError as e:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1501, extra_message=f"{filename}: {str(e)}"))
+    except OSError:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1502, extra_message=f"{filename}"))
 
     return result
 
