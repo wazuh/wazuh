@@ -269,7 +269,7 @@ def maltiverse_alert(
     This is just a template used to build the generated alert using
     the following arguments:
 
-    alert_id: in
+    alert_id: int
         The generated alert ID.
     ioc_dict: dict
         Raw information returned by Maltiverse API.
