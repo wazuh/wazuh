@@ -30,6 +30,7 @@ relationships:
         - task_status
         - vulnerability_read
         - vulnerability_run
+        - events_ingest
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin
