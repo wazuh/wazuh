@@ -11,6 +11,15 @@ HARDCODED_ORIGIN_MODULE = "kvdb"
 
 
 def get_dbs():
+    """
+    Retrieves the list of available databases.
+
+    Returns:
+    ---------
+    WazuhResult:
+        WazuhResult with the list of available databases under the 'data' key.
+    """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     msg = create_wazuh_socket_message(origin, 'kvdb.manager/get', {})
 
@@ -25,6 +34,29 @@ def get_dbs():
 
 
 def create_db(name: str, path: str):
+    """
+     Creates a new database.
+
+     Parameters:
+     -----------
+     name: str
+         Name of the new database.
+     path: str
+         JSON path of the new database.
+
+     Returns:
+     ---------
+     WazuhResult:
+         WazuhResult with a success message under the 'message' key.
+
+     Raises:
+     -------
+     WazuhNotAcceptable:
+         If the database already exists.
+     WazuhInternalError:
+         If an internal error occurs.
+     """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     parameters = {"name": name, "json": path}
     msg = create_wazuh_socket_message(origin, 'kvdb.manager/post', parameters)
@@ -44,6 +76,27 @@ def create_db(name: str, path: str):
 
 
 def delete_db(name: str):
+    """
+    Deletes a database.
+
+    Parameters:
+    -----------
+    name: str
+        Name of the database to delete.
+
+    Returns:
+    ---------
+    WazuhResult:
+        WazuhResult with a success message under the 'message' key.
+
+    Raises:
+    -------
+    WazuhResourceNotFound:
+        If the database is not found.
+    WazuhInternalError:
+        If an internal error occurs.
+    """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     parameters = {"name": name}
     msg = create_wazuh_socket_message(origin, 'kvdb.manager/delete', parameters)
@@ -62,6 +115,29 @@ def delete_db(name: str):
 
 
 def get_db_entries(name: str, key: Optional[str] = None):
+    """
+    Retrieves entries from a database.
+
+    Parameters:
+    -----------
+    name: str
+        Name of the database.
+    key: Optional[str]
+        Optional key of the entry to retrieve.
+
+    Returns:
+    ---------
+    WazuhResult:
+        WazuhResult with the retrieved entries under the 'data' key.
+
+    Raises:
+    -------
+    WazuhResourceNotFound:
+        If the database or entry is not found.
+    WazuhInternalError:
+        If an internal error occurs.
+    """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     if key:
         msg = create_wazuh_socket_message(origin, 'kvdb.db/get', {'name': name, 'key': key})
@@ -90,6 +166,29 @@ def get_db_entries(name: str, key: Optional[str] = None):
 
 
 def create_db_entry(name: str, value: dict, key: str):
+    """
+    Creates a new entry in a database.
+
+    Parameters:
+    -----------
+    name: str
+        Name of the database.
+    value: dict
+        Value of the new entry.
+    key: str
+        Key of the new entry.
+
+    Returns:
+    ---------
+    WazuhResult:
+        WazuhResult with a success message under the 'message' key.
+
+    Raises:
+    -------
+    WazuhInternalError:
+        If an internal error occurs.
+    """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     parameters = {"name": name, "entry": {"value": value, "key": key}}
     msg = create_wazuh_socket_message(origin, 'kvdb.db/put', parameters)
@@ -105,6 +204,29 @@ def create_db_entry(name: str, value: dict, key: str):
 
 
 def update_db_entry(name: str, value: dict, key: str):
+    """
+    Updates an existing entry in a database.
+
+    Parameters:
+    -----------
+    name: str
+        Name of the database.
+    value: dict
+        Updated value of the entry.
+    key: str
+        Key of the entry to update.
+
+    Returns:
+    ---------
+    WazuhResult:
+        WazuhResult with a success message under the 'message' key.
+
+    Raises:
+    -------
+    WazuhInternalError:
+        If an internal error occurs.
+    """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     parameters = {"name": name, "entry": {"value": value, "key": key}}
     msg = create_wazuh_socket_message(origin, 'kvdb.db/put', parameters)
@@ -120,6 +242,29 @@ def update_db_entry(name: str, value: dict, key: str):
 
 
 def delete_db_entry(name: str, key: str):
+    """
+    Deletes an entry from a database.
+
+    Parameters:
+    -----------
+    name: str
+        Name of the database.
+    key: str
+        Key of the entry to delete.
+
+    Returns:
+    ---------
+    WazuhResult:
+        WazuhResult with a success message under the 'message' key.
+
+    Raises:
+    -------
+    WazuhResourceNotFound:
+        If the database or entry is not found.
+    WazuhInternalError:
+        If an internal error occurs.
+    """
+
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     parameters = {"name": name, "key": key}
     msg = create_wazuh_socket_message(origin, 'kvdb.db/delete', parameters)
