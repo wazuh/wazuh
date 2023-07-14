@@ -79,6 +79,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('local_rules1.xml,local_rules2.xml', _xml_filename),
     ('scripts/active_response', _active_response_command),
     ('!scripts/active_response', _active_response_command),
+    ('correct.wpk', _wpk_path),
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
     # version
@@ -88,7 +89,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('wazuh v4.4.0', _wazuh_version),
     # miscellaneous
     ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64),
-    ('correct.wpk', _wpk_path)
 ])
 def test_validation_check_exp_ok(exp, regex_name):
     """Verify that check_exp() returns True with correct params"""
@@ -148,6 +148,8 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('/var/ossec/etc/rules/local_rules.xml()', _paths),
     ('!scripts/active_response()', _active_response_command),
     ('scripts\\active_response$', _active_response_command),
+    ('incorrect.txt', _wpk_path),
+    ('.wpk', _wpk_path),
     # relative paths
     ('etc/internal_options', _get_dirnames_path),
     ('../../path', _get_dirnames_path),
@@ -161,8 +163,6 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('wazuh v4.4', _wazuh_version),
     # miscellaneous
     ('aDhjasdh3=', _base64),
-    ('incorrect.txt', _wpk_path),
-    ('.wpk', _wpk_path)
 ])
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
@@ -308,5 +308,3 @@ def test_check_component_configuration_pair(component, configuration, expected_r
         assert response.code == expected_response.code
     else:
         assert response is expected_response
-
-
