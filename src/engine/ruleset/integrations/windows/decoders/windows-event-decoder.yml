@@ -17,6 +17,15 @@ metadata:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
+definitions:
+  MAP_WindowsLevelToLogLevel:
+    "0": "Audit"
+    "1": "Critical"
+    "2": "Error"
+    "3": "Warning"
+    "4": "Information"
+    "5": "Verbose"
+
 check:
   - wazuh.origin: EventChannel
 
@@ -29,41 +38,11 @@ normalize:
    - wazuh.decoders: +array_append/windows-event-decoder
    - event.module: windows
    - event.dataset: general
-   - event.start: $~windows.Event.System.TimeCreated.@SystemTime
-   - event.code: $~windows.Event.System.EventID.#text
-   - event.id: $~windows.Event.System.EventID.#text
+   - event.start: $~windows.System.TimeCreated.@SystemTime
+   - event.code: $~windows.System.EventID.#text
+   - event.id: $~windows.System.EventID.#text
    - event.kind: event
-   - event.provider: $~windows.Event.System.Provider.@Name
-   - host.name: $~windows.Event.System.Computer.#text
-
-
-# Set event level
- - check:
-    - ~windows.Event.System.Level.#text: "0"
-   map:
-    - log.level: "Audit"
-
- - check:
-    - ~windows.Event.System.Level.#text: "1"
-   map:
-    - log.level: "Critical"
-
- - check:
-    - ~windows.Event.System.Level.#text: "2"
-   map:
-    - log.level: "Error"
-
- - check:
-    - ~windows.Event.System.Level.#text: "3"
-   map:
-    - log.level: "Warning"
-
- - check:
-    - ~windows.Event.System.Level.#text: "4"
-   map:
-    - log.level: "Information"
-
- - check:
-    - ~windows.Event.System.Level.#text: "5"
-   map:
-    - log.level: "Verbose"
+   - event.provider: $~windows.System.Provider.@Name
+   - host.name: $~windows.System.Computer.#text
+   # Set event level
+   - log.level: +get_value/$MAP_WindowsLevelToLogLevel/$~windows.System.Level.#text
