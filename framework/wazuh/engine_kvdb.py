@@ -35,7 +35,7 @@ def create_db(name: str, path: str):
 
     # TODO Handle error
     if result['status'] == 'ERROR':
-        if result['error'] == 'HARD':
+        if "already exists" in result['error']:
             raise WazuhNotAcceptable(9011, extra_message=result['error'])
         else:
             raise WazuhInternalError(9002, extra_message=result['error'])
@@ -119,9 +119,9 @@ def update_db_entry(name: str, value: dict, key: str):
     return WazuhResult({'message': result['status']})
 
 
-def delete_db_entry(name: str):
+def delete_db_entry(name: str, key: str):
     origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
-    parameters = {"name": name}
+    parameters = {"name": name, "key": key}
     msg = create_wazuh_socket_message(origin, 'kvdb.db/delete', parameters)
 
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
