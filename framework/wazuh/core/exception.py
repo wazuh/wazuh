@@ -544,7 +544,15 @@ class WazuhException(Exception):
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # Vulnerability detector
-        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
+        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'},
+
+        # Engine
+        9002: {'message': 'Unexpected error trying to request data from the engine'},
+
+        # Engine KVDB Module
+        9009: {'message': 'DB not found'},
+        9010: {'message': 'DB Entry key does not exists'},
+        9011: {'message': 'DB name already used'}
     }
 
     # Reserve agent upgrade custom errors

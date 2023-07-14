@@ -2,6 +2,7 @@ from typing import Optional
 
 from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.results import WazuhResult
+from wazuh.core.exception import WazuhInternalError, WazuhResourceNotFound, WazuhNotAcceptable
 from wazuh.core.common import ENGINE_SOCKET
 
 # TODO Redefine HARDCODED values
@@ -17,9 +18,8 @@ def get_dbs():
     engine_socket.send(msg)
     result = engine_socket.receive()
 
-    # TODO Handle error
     if result['status'] == 'ERROR':
-        pass
+        raise WazuhInternalError(9002, extra_message=result['error'])
 
     return WazuhResult({'data': result['dbs']})
 
@@ -35,7 +35,10 @@ def create_db(name: str, path: str):
 
     # TODO Handle error
     if result['status'] == 'ERROR':
-        pass
+        if result['error'] == 'HARD':
+            raise WazuhNotAcceptable(9011, extra_message=result['error'])
+        else:
+            raise WazuhInternalError(9002, extra_message=result['error'])
 
     return WazuhResult({'message': result['status']})
 
@@ -49,9 +52,11 @@ def delete_db(name: str):
     engine_socket.send(msg)
     result = engine_socket.receive()
 
-    # TODO Handle error
     if result['status'] == 'ERROR':
-        pass
+        if 'not found' in result['error']:
+            raise WazuhResourceNotFound(9009, extra_message=result['error'])
+        else:
+            raise WazuhInternalError(9002, extra_message=result['error'])
 
     return WazuhResult({'message': result['status']})
 
@@ -68,7 +73,13 @@ def get_db_entries(name: str, key: Optional[str] = None):
     result = engine_socket.receive()
 
     if result['status'] == 'ERROR':
-        pass
+        if result['status'] == 'ERROR':
+            if "Cannot read value: 'NotFound: '" in result['error']:
+                raise WazuhResourceNotFound(9010)
+            elif 'not found' in result['error']:
+                raise WazuhResourceNotFound(9009, extra_message=result['error'])
+            else:
+                raise WazuhInternalError(9002, extra_message=result['error'])
 
     if key:
         final_result = [{'value': result['value'], 'key': key}]
@@ -87,9 +98,8 @@ def create_db_entry(name: str, value: dict, key: str):
     engine_socket.send(msg)
     result = engine_socket.receive()
 
-    # TODO Handle error
     if result['status'] == 'ERROR':
-        pass
+        raise WazuhInternalError(9002, extra_message=result['error'])
 
     return WazuhResult({'message': result['status']})
 
@@ -103,9 +113,8 @@ def update_db_entry(name: str, value: dict, key: str):
     engine_socket.send(msg)
     result = engine_socket.receive()
 
-    # TODO Handle error
     if result['status'] == 'ERROR':
-        pass
+        raise WazuhInternalError(9002, extra_message=result['error'])
 
     return WazuhResult({'message': result['status']})
 
@@ -119,8 +128,10 @@ def delete_db_entry(name: str):
     engine_socket.send(msg)
     result = engine_socket.receive()
 
-    # TODO Handle error
     if result['status'] == 'ERROR':
-        pass
+        if 'not found' in result['error']:
+            raise WazuhResourceNotFound(9009, extra_message=result['error'])
+        else:
+            raise WazuhInternalError(9002, extra_message=result['error'])
 
     return WazuhResult({'message': result['status']})
