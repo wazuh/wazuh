@@ -269,13 +269,17 @@ def maltiverse_alert(
     This is just a template used to build the generated alert using
     the following arguments:
 
-    alert_id: the generated alert id
-    ioc_dict: raw information returned by Maltiverse API
-    ioc_name: the representative name of the indicator
-    ioc_ref: (optional) an indicator reference used to build a reference url
-      ioc_name is used by dafault if ioc_ref is not set
-    include_full_source: (optional) if True (default), the complete API
-      response is also included.
+    alert_id: in
+        The generated alert ID.
+    ioc_dict: dict
+        Raw information returned by Maltiverse API.
+    ioc_name: str
+        The representative name of the indicator.
+    ioc_ref: Optional[str]
+        An indicator reference used to build a reference URL.
+        ioc_name is used by default if ioc_ref is not set.
+    include_full_source: Optional[bool]
+        If True (default), the complete API response is also included.
     """
 
     _blacklist = ioc_dict.get("blacklist", [])
