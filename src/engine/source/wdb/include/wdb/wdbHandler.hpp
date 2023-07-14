@@ -103,7 +103,7 @@ public:
      * code and the optional data (payload)
      */
     std::tuple<QueryResultCodes, std::optional<std::string>>
-    tryQueryAndParseResult(const std::string& query, const unsigned int attempts = 2) noexcept override;
+    tryQueryAndParseResult(const std::string& query, const unsigned int attempts) noexcept override;
 
     size_t getQueryMaxSize() const noexcept override { return this->m_socket->getMaxMsgSize(); };
 };

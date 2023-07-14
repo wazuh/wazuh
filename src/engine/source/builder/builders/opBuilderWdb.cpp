@@ -9,7 +9,6 @@
 
 #include <baseHelper.hpp>
 #include <utils/stringUtils.hpp>
-#include <wdb/wdb.hpp>
 
 namespace builder::internals::builders
 {
@@ -18,7 +17,8 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::string& targe
                                                         const std::string& rawName,
                                                         const std::vector<std::string>& rawParameters,
                                                         std::shared_ptr<defs::IDefinitions> definitions,
-                                                        bool doReturnPayload)
+                                                        bool doReturnPayload,
+                                                        std::shared_ptr<wazuhdb::IWDBManager> wdbManager)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
@@ -42,12 +42,12 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::string& targe
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: Target field '{}' is empty", name, targetField)};
 
     // instantiate WDB
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
+    auto wdb = wdbManager->connection();
+
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), wdb = std::move(wdb)](
-            base::Event event) -> base::result::Result<base::Event>
+        [=, wdb = std::move(wdb)](const base::Event& event) -> base::result::Result<base::Event>
         {
             std::string completeQuery {};
 
@@ -98,14 +98,7 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::string& targe
                 }
                 else
                 {
-                    std::string_view retCode {};
-                    for (auto& it : wazuhdb::QueryResStr2Code)
-                    {
-                        if (it.second == resultCode)
-                        {
-                            retCode = it.first;
-                        }
-                    }
+                    auto retCode = wazuhdb::qrcToStr(resultCode);
                     return base::result::makeFailure(event, failureTrace + fmt::format("Result code is '{}'", retCode));
                 }
             }
@@ -118,21 +111,27 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::string& targe
 }
 
 // <wdb_result>: +wdb_update/<quey>|$<quey>
-base::Expression opBuilderWdbUpdate(const std::string& targetField,
-                                    const std::string& rawName,
-                                    const std::vector<std::string>& rawParameters,
-                                    std::shared_ptr<defs::IDefinitions> definitions)
+HelperBuilder getBuilderWdbUpdate(std::shared_ptr<wazuhdb::IWDBManager> wdbManager)
 {
-    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, definitions, false);
+    return [wdbManager](const std::string& targetField,
+                        const std::string& rawName,
+                        const std::vector<std::string>& rawParameters,
+                        std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, definitions, false, wdbManager);
+    };
 }
 
 // <wdb_result>: +wdb_query/<quey>|$<quey>
-base::Expression opBuilderWdbQuery(const std::string& targetField,
-                                   const std::string& rawName,
-                                   const std::vector<std::string>& rawParameters,
-                                   std::shared_ptr<defs::IDefinitions> definitions)
+HelperBuilder getBuilderWdbQuery(std::shared_ptr<wazuhdb::IWDBManager> wdbManager)
 {
-    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, definitions, true);
+    return [wdbManager](const std::string& targetField,
+                        const std::string& rawName,
+                        const std::vector<std::string>& rawParameters,
+                        std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, definitions, true, wdbManager);
+    };
 }
 
 } // namespace builder::internals::builders

@@ -31,3 +31,8 @@ add_executable(wdb_test
 target_link_libraries(wdb_test gtest_main base wdb sockiface::mocks)
 gtest_discover_tests(wdb_test)
 endif(ENGINE_BUILD_TEST)
+
+add_library(wdb_mocks INTERFACE)
+target_include_directories(wdb_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(wdb_mocks INTERFACE gmock wdb::iwdb)
+add_library(wdb::mocks ALIAS wdb_mocks)

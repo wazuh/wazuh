@@ -9,18 +9,28 @@
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <testsCommon.hpp>
-#include <wdb/wdb.hpp>
-
-#include "socketAuxiliarFunctions.hpp"
+#include <wdb/mockWdbHandler.hpp>
+#include <wdb/mockWdbManager.hpp>
 
 using namespace base;
+using namespace wazuhdb::mocks;
 namespace bld = builder::internals::builders;
 
 class opBuilderHelperNetInfoTest : public ::testing::Test
 {
-
 protected:
-    void SetUp() override { initLogging(); }
+    std::shared_ptr<MockWdbManager> wdbManager {};
+    std::shared_ptr<MockWdbHandler> wdbHandler {};
+
+    void SetUp() override
+    {
+        initLogging();
+
+        wdbManager = std::make_shared<MockWdbManager>();
+        wdbHandler = std::make_shared<MockWdbHandler>();
+
+        ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdbHandler));
+    }
 
     void TearDown() override {}
 };
@@ -32,7 +42,9 @@ TEST_F(opBuilderHelperNetInfoTest, Builds)
                                        std::vector<std::string> {"$agentID", "$scanId", "$name", "$array"},
                                        std::make_shared<defs::mocks::FailDef>());
 
-    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple));
+    EXPECT_CALL(*wdbManager, connection());
+
+    ASSERT_NO_THROW(std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple));
 }
 
 TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
@@ -42,7 +54,7 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
                                        std::vector<std::string> {"parameter", "agentID", "scanId", "name"},
                                        std::make_shared<defs::mocks::FailDef>());
 
-    ASSERT_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::getBuilderSaveNetInfoIPv6(wdbManager), tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_reference)
@@ -52,7 +64,7 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_refer
                                        std::vector<std::string> {"$agentID", "$scanId", "$name", "array"},
                                        std::make_shared<defs::mocks::FailDef>());
 
-    ASSERT_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::getBuilderSaveNetInfoIPv6(wdbManager), tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity)
@@ -62,7 +74,7 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quanti
                                        std::vector<std::string> {"$agentID", "$scanId", "$name", "$array", "$array2"},
                                        std::make_shared<defs::mocks::FailDef>());
 
-    ASSERT_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::getBuilderSaveNetInfoIPv6(wdbManager), tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
@@ -108,7 +120,9 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
             }
         })");
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    EXPECT_CALL(*wdbManager, connection());
+
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result {op(event1)};
     ASSERT_FALSE(result);
 }
@@ -155,7 +169,9 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
             }
         })");
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    EXPECT_CALL(*wdbManager, connection());
+
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result {op(event1)};
     ASSERT_FALSE(result);
 }
@@ -188,7 +204,9 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
             }
         })");
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    EXPECT_CALL(*wdbManager, connection());
+
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result {op(event1)};
     ASSERT_FALSE(result);
 }
@@ -239,33 +257,22 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_event)
             }
         })");
 
-    // Create server
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save "
-                         "123456|iface_name|0|192.168.10.15|255.255.255.0|192.168.10.255");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(testing::StrEq("agent 021 netaddr save "
+                                                      "123456|iface_name|1|192.168.10.15|255.255.255.0|192.168.10.255"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save "
-                         "123456|iface_name|0|192.168.11.16|255.255.255.0|192.168.11.255");
-            testSendMsg(SecondclientRemote, "ok");
-            close(SecondclientRemote);
-        });
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(testing::StrEq("agent 021 netaddr save "
+                                                      "123456|iface_name|1|192.168.11.16|255.255.255.0|192.168.11.255"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result {op(event1)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());
@@ -314,26 +321,16 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
             }
         })");
 
-    // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save "
-                         "123456|iface_name|0|192.168.10.15|255.255.255.0|192.168.10.255");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
-        });
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(testing::StrEq("agent 021 netaddr save "
+                                                      "123456|iface_name|1|192.168.10.15|255.255.255.0|192.168.10.255"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());
@@ -385,30 +382,23 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
             }
         })");
 
-    // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save "
-                         "123456|iface_name|0|192.168.10.15|255.255.255.0|192.168.10.255");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(testing::StrEq("agent 021 netaddr save "
+                                                      "123456|iface_name|1|192.168.10.15|255.255.255.0|192.168.10.255"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
-            testSendMsg(SecondclientRemote, "err");
-            close(SecondclientRemote);
-        });
+    EXPECT_CALL(
+        *wdbHandler,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.11.16|255.255.255.0|192.168.11.255"),
+            testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_FALSE(result);
 }
@@ -456,26 +446,16 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_ev
             }
         })");
 
-    // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save "
-                         "123456|iface_name|1|192.168.10.15|255.255.255.0|192.168.10.255");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
-        });
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(testing::StrEq("agent 021 netaddr save "
+                                                      "123456|iface_name|1|192.168.10.15|255.255.255.0|192.168.10.255"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv6(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());
@@ -522,37 +502,25 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_ot
             }
         })");
 
-    // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.10.15|NULL|NULL");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.10.15|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.11.16|NULL|NULL");
-            testSendMsg(SecondclientRemote, "ok");
-            close(SecondclientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.11.16|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int ThirdclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(ThirdclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.100.16|NULL|NULL");
-            testSendMsg(ThirdclientRemote, "ok");
-            close(ThirdclientRemote);
-        });
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.100.16|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -602,37 +570,25 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_
             }
         })");
 
-    // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.10.15|NULL|NULL");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.10.15|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.11.16|NULL|NULL");
-            testSendMsg(SecondclientRemote, "ok");
-            close(SecondclientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.11.16|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int ThirdclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(ThirdclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.100.16|NULL|NULL");
-            testSendMsg(ThirdclientRemote, "ok");
-            close(ThirdclientRemote);
-        });
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.100.16|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -675,37 +631,25 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
             }
         })");
 
-    // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdbManager, connection());
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.10.15|NULL|NULL");
-            testSendMsg(clientRemote, "ok");
-            close(clientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.10.15|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.11.16|NULL|NULL");
-            testSendMsg(SecondclientRemote, "ok");
-            close(SecondclientRemote);
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.11.16|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            const int ThirdclientRemote {testAcceptConnection(serverSocketFD)};
-            ASSERT_STREQ(testRecvString(ThirdclientRemote, SOCK_STREAM).c_str(),
-                         "agent 021 netaddr save 123456|iface_name|0|192.168.100.16|NULL|NULL");
-            testSendMsg(ThirdclientRemote, "ok");
-            close(ThirdclientRemote);
-        });
+    EXPECT_CALL(*wdbHandler,
+                tryQueryAndParseResult(
+                    testing::StrEq("agent 021 netaddr save 123456|iface_name|1|192.168.100.16|NULL|NULL"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv4(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -745,7 +689,9 @@ TEST_F(opBuilderHelperNetInfoTest, False_result_when_no_address)
             }
         })");
 
-    auto op = std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    EXPECT_CALL(*wdbManager, connection());
+
+    auto op = std::apply(bld::getBuilderSaveNetInfoIPv6(wdbManager), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_FALSE(result);
 }

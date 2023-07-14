@@ -5,7 +5,7 @@
 #include <variant>
 
 #include <baseHelper.hpp>
-#include <wdb/wdb.hpp>
+#include <wdb/iwdbManager.hpp>
 
 namespace
 {
@@ -36,7 +36,7 @@ bool sysNetAddresTableFill(base::Event event,
                            const std::string& scan_id,
                            const std::string& name,
                            const std::string& ipObjectPath,
-                           std::shared_ptr<wazuhdb::WazuhDB> wdb,
+                           std::shared_ptr<wazuhdb::IWDBHandler> wdb,
                            const bool isIPv6)
 {
     // Cheking if AddresArray exists
@@ -110,6 +110,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
                                                const std::string& rawName,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions,
+                                               std::shared_ptr<wazuhdb::IWDBManager> wdbManager,
                                                bool isIPv6)
 {
     const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
@@ -138,7 +139,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
         fmt::format("[{}] -> Failure: [{}] couldn't assign result value", traceName, targetField);
 
     // EventPaths and mappedPaths can be set in buildtime
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
+    auto wdb = wdbManager->connection();
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -203,20 +204,26 @@ base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
 namespace builder::internals::builders
 {
 
-base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
-                                                const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters,
-                                                std::shared_ptr<defs::IDefinitions> definitions)
+HelperBuilder getBuilderSaveNetInfoIPv4(std::shared_ptr<wazuhdb::IWDBManager> wdbManager)
 {
-    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, definitions, false);
+    return [wdbManager](const std::string& targetField,
+                        const std::string& rawName,
+                        const std::vector<std::string>& rawParameters,
+                        std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, definitions, wdbManager, true);
+    };
 }
 
-base::Expression opBuilderHelperSaveNetInfoIPv6(const std::string& targetField,
-                                                const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters,
-                                                std::shared_ptr<defs::IDefinitions> definitions)
+HelperBuilder getBuilderSaveNetInfoIPv6(std::shared_ptr<wazuhdb::IWDBManager> wdbManager)
 {
-    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, definitions, true);
+    return [wdbManager](const std::string& targetField,
+                        const std::string& rawName,
+                        const std::vector<std::string>& rawParameters,
+                        std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, definitions, wdbManager, true);
+    };
 }
 
 } // namespace builder::internals::builders

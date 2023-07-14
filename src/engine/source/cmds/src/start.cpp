@@ -21,10 +21,10 @@
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
-#include <logpar/logpar.hpp>
-#include <logpar/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
+#include <logpar/logpar.hpp>
+#include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
 #include <router/router.hpp>
@@ -34,7 +34,9 @@
 #include <server/endpoints/unixStream.hpp>     //API
 #include <server/engineServer.hpp>
 #include <server/protocolHandlers/wStream.hpp> //API
+#include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
+#include <wdb/wdbManager.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
@@ -195,6 +197,8 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<metricsManager::MetricsManager> metrics;
     std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
     std::shared_ptr<schemf::Schema> schema;
+    std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
+    std::shared_ptr<wazuhdb::WDBManager> wdbManager;
 
     try
     {
@@ -290,6 +294,9 @@ void runStart(ConfHandler confManager)
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
             deps.forceFieldNaming = true;
+            deps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
+            deps.wdbManager =
+                std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), deps.sockFactory);
             builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
             builder::internals::registerBuilders(registry, deps);
             LOG_DEBUG("Builders registered.");

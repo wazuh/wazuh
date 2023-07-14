@@ -26,6 +26,8 @@ target_link_libraries(cmds
     eMessages
     metrics
     schemf
+    wdb
+    sockiface
 )
 
 target_include_directories(cmds

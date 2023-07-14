@@ -5,8 +5,10 @@
 
 #include <baseTypes.hpp>
 #include <defs/idefinitions.hpp>
+#include <wdb/iwdbManager.hpp>
 
 #include "expression.hpp"
+#include "registry.hpp"
 
 /*
  * The helper Map (Transformation), builds a lifter that will chain rxcpp map operation
@@ -27,10 +29,7 @@ namespace builder::internals::builders
  * @param definitions handler with definitions
  * @return base::Expression
  */
-base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
-                                                const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters,
-                                                std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderSaveNetInfoIPv4(std::shared_ptr<wazuhdb::IWDBManager> wdbManager);
 
 /**
  * @brief Get address, netmask and gateway fields from iface IPv6
@@ -43,10 +42,7 @@ base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
  * @param definitions handler with definitions
  * @return base::Expression
  */
-base::Expression opBuilderHelperSaveNetInfoIPv6(const std::string& targetField,
-                                                const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters,
-                                                std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderSaveNetInfoIPv6(std::shared_ptr<wazuhdb::IWDBManager> wdbManager);
 
 } // namespace builder::internals::builders
 

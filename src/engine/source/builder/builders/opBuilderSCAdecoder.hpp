@@ -7,10 +7,11 @@
 #include <baseTypes.hpp>
 #include <defs/idefinitions.hpp>
 #include <json/json.hpp>
-#include <utils/socketInterface/unixDatagram.hpp>
-#include <wdb/wdb.hpp>
+#include <sockiface/isockFactory.hpp>
+#include <wdb/iwdbManager.hpp>
 
 #include "expression.hpp"
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
@@ -101,11 +102,11 @@ enum class SearchResult
  */
 struct DecodeCxt
 {
-    base::Event& event;                    ///< Event to be processed.
-    const std::string& agentID;            ///< Agent ID of the agent that generated the event.
-    std::shared_ptr<wazuhdb::WazuhDB> wdb; ///< WazuhDB instance.
+    base::Event& event;                        ///< Event to be processed.
+    const std::string& agentID;                ///< Agent ID of the agent that generated the event.
+    std::shared_ptr<wazuhdb::IWDBHandler> wdb; ///< WazuhDB instance.
     /** @brief Socket to forward dump request. */
-    std::shared_ptr<base::utils::socketInterface::unixDatagram> forwarderSocket;
+    std::shared_ptr<sockiface::ISockHandler> forwarderSocket;
     /** @brief Mapping the field Name to path of the field in the Original Event. */
     const std::unordered_map<sca::field::Name, std::string>& sourcePath;
     /** @brief Mapping the field Name to path of the field in the /sca Event. */
@@ -363,10 +364,8 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx);
  * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression true when executes without any problem, false otherwise.
  */
-base::Expression opBuilderSCAdecoder(const std::string& targetField,
-                                     const std::string& rawName,
-                                     const std::vector<std::string>& rawParameters,
-                                     std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderSCAdecoder(std::shared_ptr<wazuhdb::IWDBManager> wdbManager,
+                                   std::shared_ptr<sockiface::ISockFactory> sockFactory);
 
 } // namespace builder::internals::builders
 

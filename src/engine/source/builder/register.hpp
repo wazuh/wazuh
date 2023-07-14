@@ -1,9 +1,11 @@
 #ifndef _REGISTER_H
 #define _REGISTER_H
 
-#include <logpar/logpar.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
+#include <sockiface/isockFactory.hpp>
+#include <wdb/iwdbManager.hpp>
 
 #include "builders/opBuilderFileOutput.hpp"
 #include "builders/opBuilderHelperActiveResponse.hpp"
@@ -34,6 +36,8 @@ struct dependencies
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
     std::shared_ptr<schemf::ISchema> schema;
     bool forceFieldNaming = false; // TODO remove once test use proper naming for fields
+    std::shared_ptr<sockiface::ISockFactory> sockFactory;
+    std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
 };
 
 static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
@@ -102,7 +106,8 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperStringUP, "upcase");
     // Map helpers: Time functions
     helperRegistry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "system_epoch");
-    helperRegistry->registerBuilder(builders::getOpBuilderHelperDateFromEpochTime(dependencies.schema), "date_from_epoch");
+    helperRegistry->registerBuilder(builders::getOpBuilderHelperDateFromEpochTime(dependencies.schema),
+                                    "date_from_epoch");
     // Map helpers: Definition functions
     helperRegistry->registerBuilder(builders::getOpBuilderHelperGetValue(dependencies.schema), "get_value");
     helperRegistry->registerBuilder(builders::getOpBuilderHelperMergeValue(dependencies.schema), "merge_value");
@@ -111,11 +116,11 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
 
     // Active Response
     helperRegistry->registerBuilder(builders::opBuilderHelperCreateAR, "active_response_create");
-    helperRegistry->registerBuilder(builders::opBuilderHelperSendAR, "active_response_send");
+    helperRegistry->registerBuilder(builders::getBuilderHelperSendAR(dependencies.sockFactory), "active_response_send");
 
     // DB sync
-    helperRegistry->registerBuilder(builders::opBuilderWdbQuery, "wdb_query");
-    helperRegistry->registerBuilder(builders::opBuilderWdbUpdate, "wdb_update");
+    helperRegistry->registerBuilder(builders::getBuilderWdbQuery(dependencies.wdbManager), "wdb_query");
+    helperRegistry->registerBuilder(builders::getBuilderWdbUpdate(dependencies.wdbManager), "wdb_update");
 
     // KVDB
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbManager), "kvdb_delete");
@@ -126,11 +131,12 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager), "kvdb_set");
 
     // SCA decoder
-    helperRegistry->registerBuilder(builders::opBuilderSCAdecoder, "sca_decoder");
+    helperRegistry->registerBuilder(builders::getBuilderSCAdecoder(dependencies.wdbManager, dependencies.sockFactory),
+                                    "sca_decoder");
 
     // SysCollector - netInfo
-    helperRegistry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4, "sysc_ni_save_ipv4");
-    helperRegistry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6, "sysc_ni_save_ipv6");
+    helperRegistry->registerBuilder(builders::getBuilderSaveNetInfoIPv4(dependencies.wdbManager), "sysc_ni_save_ipv4");
+    helperRegistry->registerBuilder(builders::getBuilderSaveNetInfoIPv6(dependencies.wdbManager), "sysc_ni_save_ipv6");
 
     // High level parsers
     helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBoolParse, "parse_bool");
@@ -155,7 +161,8 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "parse_alphanumeric");
 
     // Upgrade Confirmation
-    helperRegistry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "send_upgrade_confirmation");
+    helperRegistry->registerBuilder(builders::getBuilderHelperSendUpgradeConfirmation(dependencies.sockFactory),
+                                    "send_upgrade_confirmation");
 }
 
 static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const dependencies& dependencies = {})

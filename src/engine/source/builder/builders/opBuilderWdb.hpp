@@ -8,7 +8,9 @@
 #include "expression.hpp"
 #include <defs/idefinitions.hpp>
 #include <utils/stringUtils.hpp>
-#include <wdb/wdb.hpp>
+#include <wdb/iwdbManager.hpp>
+
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
@@ -21,10 +23,7 @@ namespace builder::internals::builders
  * @param definitions handler with definitions
  * @return base::Expression true when executes without any problem, false otherwise.
  */
-base::Expression opBuilderWdbUpdate(const std::string& targetField,
-                                    const std::string& rawName,
-                                    const std::vector<std::string>& rawParameters,
-                                    std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderWdbUpdate(std::shared_ptr<wazuhdb::IWDBManager> wdbManager);
 
 /**
  * @brief Executes query on WDB returning the payload.
@@ -34,10 +33,7 @@ base::Expression opBuilderWdbUpdate(const std::string& targetField,
  * @param definitions handler with definitions
  * @return base::Expression when true returns string of payload, false none.
  */
-base::Expression opBuilderWdbQuery(const std::string& targetField,
-                                   const std::string& rawName,
-                                   const std::vector<std::string>& rawParameters,
-                                   std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderWdbQuery(std::shared_ptr<wazuhdb::IWDBManager> wdbManager);
 
 } // namespace builder::internals::builders
 

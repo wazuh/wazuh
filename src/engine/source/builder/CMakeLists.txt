@@ -52,15 +52,11 @@ add_library(builders OBJECT
 
 target_include_directories(builders
   PRIVATE
-  ${ENGINE_SOURCE_DIR}/wdb/src
-
   # TODO fix this?
   ${ENGINE_SOURCE_DIR}/builder/builders
-  ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}
   PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}
-  ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
@@ -74,7 +70,9 @@ target_link_libraries(builders
   kvdb
   re2
   logicExpression
-  wdb
+  wdb::iwdb
+  sockiface::isock
+  json
   OpenSSL::Crypto
   schemf::ischema
   date::date
