@@ -1478,13 +1478,21 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
     logger = logging.getLogger('testing')
     with patch('wazuh.core.cluster.common.utils.get_utc_now', side_effect=get_utc_now_mock):
         with patch.object(logger, "info") as logger_info_mock:
-            assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
+            assert cluster_common.end_sending_agent_information(
+                logger,
+                datetime.fromtimestamp(0),
+                "response"
+                ) == (b'ok', b'Thanks')
             json_loads_mock.assert_called_once_with("response")
             logger_info_mock.assert_called_once_with("Finished in 0.000s. Updated 10 chunks.")
 
         with patch.object(logger, "error") as logger_error_mock:
             json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
-            assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
+            assert cluster_common.end_sending_agent_information(
+                logger,
+                datetime.fromtimestamp(0),
+                "response"
+                ) == (b'ok', b'Thanks')
             logger_error_mock.assert_called_once_with(
                 "Finished in 0.000s. Updated 10 chunks. There were 5 chunks with errors: error")
 

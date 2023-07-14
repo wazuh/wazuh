@@ -1602,7 +1602,8 @@ class SyncWazuhdb(SyncTask):
         return True
 
 
-def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, bytes]:
+def end_sending_agent_information(logger: logging.Logger, start_time: datetime.datetime,
+                                  response: str) -> Tuple[bytes, bytes]:
     """Function called when the master/worker sends the "syn_m_a_e" or "syn_w_g_e" command.
 
     This method is called once the master finishes processing the agent-info/agent-groups. It logs
@@ -1610,10 +1611,10 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
 
     Parameters
     ----------
-    logger : Logger object
+    logger : logging.Logger
         Logger to use during synchronization process.
-    start_time : float
-        Timestamp collected at the start of the end process of a task of type agent-information.
+    start_time : datetime.datetime
+        Time collected at the start of the end process of an agent-information task.
     response : str
         JSON containing information about agent-info/agent-groups sync status.
 
@@ -1625,7 +1626,9 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    msg = f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated {data['updated_chunks']} chunks."
+    msg = f"Finished in {(utils.get_utc_now().timestamp() - start_time.timestamp()):.3f}s. " + \
+    f"Updated {data['updated_chunks']} chunks."
+
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
 
