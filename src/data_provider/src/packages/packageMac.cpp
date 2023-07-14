@@ -35,7 +35,7 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     return ret;
 }
 
-std::shared_ptr<IPackage> FactoryBSDPackage::create(std::pair<SQLite::Statement, int>& ctx)
+std::shared_ptr<IPackage> FactoryBSDPackage::create(std::pair<SQLite::Statement&, const int&>& ctx)
 {
     std::shared_ptr<IPackage> ret;
 

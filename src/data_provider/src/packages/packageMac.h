@@ -27,7 +27,7 @@ class FactoryBSDPackage
 {
     public:
         static std::shared_ptr<IPackage>create(const std::pair<PackageContext, int>& ctx);
-        static std::shared_ptr<IPackage>create(std::pair<SQLite::Statement, int>& ctx);
+        static std::shared_ptr<IPackage>create(std::pair<SQLite::Statement&, const int&>& ctx);
 };
 
 class BSDPackageImpl final : public IPackage

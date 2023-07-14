@@ -106,25 +106,32 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     {
         if (Utils::existsRegular(pkgDirectory + "/" + MACPORTS_DB_NAME))
         {
-            std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
-            SQLite::Statement stmt
+            try
             {
-                sqliteConnection,
-                MACPORTS_QUERY
-            };
+                std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
 
-            while (SQLITE_ROW == stmt.step())
-            {
-                nlohmann::json jsPackage;
-                std::pair<SQLite::Statement, int> pkgContext {std::make_pair(stmt, pkgType)};
-                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
-
-                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                SQLite::Statement stmt
                 {
-                    // Only return valid content packages
-                    callback(jsPackage);
+                    sqliteConnection,
+                    MACPORTS_QUERY
+                };
+
+                std::pair<SQLite::Statement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
+
+                while (SQLITE_ROW == stmt.step())
+                {
+                    nlohmann::json jsPackage;
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
+
+                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                    {
+                        // Only return valid content packages
+                        callback(jsPackage);
+                    }
                 }
             }
+            catch (...)
+            {}
         }
     }
     else
@@ -158,7 +165,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         if (!Utils::startsWith(version, "."))
                         {
                             nlohmann::json jsPackage;
-                            FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
 
                             if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                             {
