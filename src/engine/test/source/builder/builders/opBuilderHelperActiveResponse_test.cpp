@@ -6,17 +6,17 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
-#include <utils/socketInterface/unixDatagram.hpp>
-#include <wdb/wdb.hpp>
+#include <sockiface/mockSockFactory.hpp>
+#include <sockiface/mockSockHandler.hpp>
 
 #include <testsCommon.hpp>
 
 #include "opBuilderHelperActiveResponse.hpp"
-#include "socketAuxiliarFunctions.hpp"
 
 using namespace base;
 using namespace builder::internals::builders;
 using namespace builder::internals::builders::ar;
+using namespace sockiface::mocks;
 
 using std::make_shared;
 using std::make_tuple;
@@ -49,70 +49,81 @@ protected:
     void TearDown() override {}
 };
 
+std::tuple<std::shared_ptr<MockSockFactory>, std::shared_ptr<MockSockHandler>> getSockMocks()
+{
+    auto sockFactory = std::make_shared<MockSockFactory>();
+    auto sockHandler = std::make_shared<MockSockHandler>();
+
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_)).Times(1).WillOnce(testing::Return(sockHandler));
+
+    return std::make_tuple(sockFactory, sockHandler);
+}
+
+using SendRetval = sockiface::ISockHandler::SendRetval;
+
 TEST_F(opBuilderSendARTestSuite, Builder)
 {
     auto tuple {make_tuple(
         targetField, arSendHFName, vector<string> {"query params"}, std::make_shared<defs::mocks::FailDef>())};
 
-    ASSERT_NO_THROW(std::apply(opBuilderHelperSendAR, tuple));
+    auto sockFactory = std::make_shared<MockSockFactory>();
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_)).Times(1);
+
+    ASSERT_NO_THROW(std::apply(getBuilderHelperSendAR(sockFactory), tuple));
 }
 
 TEST_F(opBuilderSendARTestSuite, BuilderNoParameterError)
 {
     auto tuple {make_tuple(targetField, arSendHFName, vector<string> {}, std::make_shared<defs::mocks::FailDef>())};
 
-    ASSERT_THROW(std::apply(opBuilderHelperSendAR, tuple), std::runtime_error);
+    auto sockFactory = std::make_shared<MockSockFactory>();
+
+    ASSERT_THROW(std::apply(getBuilderHelperSendAR(sockFactory), tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderSendARTestSuite, Send)
 {
     auto tuple {
         make_tuple(targetField, arSendHFName, vector<string> {"test\n123"}, std::make_shared<defs::mocks::FailDef>())};
-    auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
-    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
-    ASSERT_GT(serverSocketFD, 0);
+    auto [sockFactory, sockHandler] = getSockMocks();
+
+    EXPECT_CALL(*sockHandler, sendMsg(testing::StrEq("test\n123"))).WillOnce(testing::Return(SendRetval::SUCCESS));
+
+    auto op {std::apply(getBuilderHelperSendAR(sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {make_shared<json::Json>(R"({"agent_id": "007"})")};
     auto result {op(event)};
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
     ASSERT_TRUE(result.payload()->getBool(targetField));
-
-    // Check received command on the AR's queue
-    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "test\n123");
-
-    close(serverSocketFD);
-    unlink(AR_QUEUE_PATH);
 }
 
 TEST_F(opBuilderSendARTestSuite, SendFromReference)
 {
     auto tuple {make_tuple(
         targetField, arSendHFName, vector<string> {"$wdb.query_params"}, std::make_shared<defs::mocks::FailDef>())};
-    auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
-    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
-    ASSERT_GT(serverSocketFD, 0);
+    auto [sockFactory, sockHandler] = getSockMocks();
+    EXPECT_CALL(*sockHandler, sendMsg(testing::StrEq("reference_test"))).WillOnce(testing::Return(SendRetval::SUCCESS));
+
+    auto op {std::apply(getBuilderHelperSendAR(sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {make_shared<json::Json>(R"({"wdb": {"query_params": "reference_test"}})")};
     auto result {op(event)};
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
     ASSERT_TRUE(result.payload()->getBool(targetField));
-
-    // Check received command on the AR's queue
-    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "reference_test");
-
-    close(serverSocketFD);
-    unlink(AR_QUEUE_PATH);
 }
 
 TEST_F(opBuilderSendARTestSuite, SendEmptyReferencedValueError)
 {
     auto tuple {make_tuple(
         targetField, arSendHFName, vector<string> {"$wdb.query_params"}, std::make_shared<defs::mocks::FailDef>())};
-    auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    auto [sockFactory, sockHandler] = getSockMocks();
+
+    auto op {std::apply(getBuilderHelperSendAR(sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {make_shared<json::Json>(R"({"wdb": {"query_params": ""}})")};
     auto result {op(event)};
@@ -123,7 +134,10 @@ TEST_F(opBuilderSendARTestSuite, SendEmptyReferenceError)
 {
     auto tuple {make_tuple(
         targetField, arSendHFName, vector<string> {"$wdb.query_params"}, std::make_shared<defs::mocks::FailDef>())};
-    auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    auto [sockFactory, sockHandler] = getSockMocks();
+
+    auto op {std::apply(getBuilderHelperSendAR(sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {make_shared<json::Json>(R"({"wdb": {"NO_query_params": "123"}})")};
     auto result {op(event)};

@@ -9,13 +9,13 @@
 #include "syntax.hpp"
 
 #include <baseHelper.hpp>
-#include <utils/socketInterface/unixDatagram.hpp>
+#include <sockiface/isockFactory.hpp>
 #include <utils/stringUtils.hpp>
 // TODO: move the wazuhRequest to a common path such as "utils"
 #include <base/utils/wazuhProtocol/wazuhRequest.hpp>
 
-using base::utils::socketInterface::SendRetval;
-using base::utils::socketInterface::unixDatagram;
+using SendRetval = sockiface::ISockHandler::SendRetval;
+using Protocol = sockiface::ISockHandler::Protocol;
 using helper::base::Parameter;
 
 namespace builder::internals::builders
@@ -33,7 +33,7 @@ constexpr const char* AR_JSON_PARAMS {R"({
 
 inline bool isStringNumber(const std::string value)
 {
-    char* p = NULL;
+    char* p = nullptr;
     strtol(value.c_str(), &p, 10); // base 10
     return (!*p);
 }
@@ -287,87 +287,89 @@ base::Expression opBuilderHelperCreateAR(const std::string& targetField,
 }
 
 // field: +active_response_send/ar_message
-
-base::Expression opBuilderHelperSendAR(const std::string& targetField,
-                                       const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters,
-                                       std::shared_ptr<defs::IDefinitions> definitions)
+HelperBuilder getBuilderHelperSendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory)
 {
-    // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 1);
-    // Format name for the tracer
-    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+    return [sockFactory](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters,
+                         std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        // Identify references and build JSON pointer paths
+        auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
+        // Assert expected number of parameters
+        helper::base::checkParametersSize(rawName, parameters, 1);
+        // Format name for the tracer
+        const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
-    std::shared_ptr<unixDatagram> socketAR {std::make_shared<unixDatagram>(ar::AR_QUEUE_PATH)};
+        auto socketAR = sockFactory->getHandler(Protocol::DATAGRAM, ar::AR_QUEUE_PATH);
 
-    std::string rValue {};
-    const helper::base::Parameter rightParameter {parameters[0]};
-    const auto rValueType {rightParameter.m_type};
-    rValue = rightParameter.m_value;
+        std::string rValue {};
+        const helper::base::Parameter rightParameter {parameters[0]};
+        const auto rValueType {rightParameter.m_type};
+        rValue = rightParameter.m_value;
 
-    // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+        // Tracing
+        const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Query reference \"{}\" not found", name, parameters[0].m_value)};
-    const std::string failureTrace2 {fmt::format("[{}] -> Failure: The query is empty", name)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: AR message could not be send", name)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Error trying to send AR message: ", name)};
+        const std::string failureTrace1 {
+            fmt::format("[{}] -> Failure: Query reference \"{}\" not found", name, parameters[0].m_value)};
+        const std::string failureTrace2 {fmt::format("[{}] -> Failure: The query is empty", name)};
+        const std::string failureTrace3 {fmt::format("[{}] -> Failure: AR message could not be send", name)};
+        const std::string failureTrace4 {fmt::format("[{}] -> Failure: Error trying to send AR message: ", name)};
 
-    // Function that implements the helper
-    return base::Term<base::EngineOp>::create(name,
-                                              [=, targetField = std::move(targetField), name = std::move(name)](
-                                                  base::Event event) -> base::result::Result<base::Event>
-                                              {
-                                                  std::string query {};
-                                                  bool messageSent {false};
+        // Function that implements the helper
+        return base::Term<base::EngineOp>::create(
+            name,
+            [=, targetField = std::move(targetField), name = std::move(name)](
+                base::Event event) -> base::result::Result<base::Event>
+            {
+                std::string query {};
+                bool messageSent {false};
 
-                                                  // Check if the value comes from a reference
-                                                  if (Parameter::Type::REFERENCE == rValueType)
-                                                  {
-                                                      auto resolvedRValue {event->getString(rValue)};
+                // Check if the value comes from a reference
+                if (Parameter::Type::REFERENCE == rValueType)
+                {
+                    auto resolvedRValue {event->getString(rValue)};
 
-                                                      if (!resolvedRValue.has_value())
-                                                      {
-                                                          return base::result::makeFailure(event, failureTrace1);
-                                                      }
-                                                      else
-                                                      {
-                                                          query = resolvedRValue.value();
-                                                      }
-                                                  }
-                                                  else // Direct value
-                                                  {
-                                                      query = rValue;
-                                                  }
+                    if (!resolvedRValue.has_value())
+                    {
+                        return base::result::makeFailure(event, failureTrace1);
+                    }
+                    else
+                    {
+                        query = resolvedRValue.value();
+                    }
+                }
+                else // Direct value
+                {
+                    query = rValue;
+                }
 
-                                                  if (query.empty())
-                                                  {
-                                                      return base::result::makeFailure(event, failureTrace2);
-                                                  }
-                                                  else
-                                                  {
-                                                      try
-                                                      {
-                                                          if (SendRetval::SUCCESS == socketAR->sendMsg(query))
-                                                          {
-                                                              event->setBool(true, targetField);
-                                                              return base::result::makeSuccess(event, successTrace);
-                                                          }
-                                                          else
-                                                          {
-                                                              return base::result::makeFailure(event, failureTrace3);
-                                                          }
-                                                      }
-                                                      catch (const std::exception& e)
-                                                      {
-                                                          return base::result::makeFailure(event,
-                                                                                           failureTrace4 + e.what());
-                                                      }
-                                                  }
-                                              });
+                if (query.empty())
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
+                else
+                {
+                    try
+                    {
+                        if (SendRetval::SUCCESS == socketAR->sendMsg(query))
+                        {
+                            event->setBool(true, targetField);
+                            return base::result::makeSuccess(event, successTrace);
+                        }
+                        else
+                        {
+                            return base::result::makeFailure(event, failureTrace3);
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        return base::result::makeFailure(event, failureTrace4 + e.what());
+                    }
+                }
+            });
+    };
 }
 
 } // namespace builder::internals::builders

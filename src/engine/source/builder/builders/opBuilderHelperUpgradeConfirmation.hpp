@@ -10,9 +10,11 @@
 
 #include <baseTypes.hpp>
 #include <defs/idefinitions.hpp>
+#include <sockiface/isockFactory.hpp>
+#include <utils/stringUtils.hpp>
 
 #include "expression.hpp"
-#include <utils/stringUtils.hpp>
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
@@ -28,10 +30,7 @@ constexpr const char* WM_UPGRADE_SOCK {"/var/ossec/queue/tasks/upgrade"};
  * @param definitions handler with definitions
  * @return base::Expression The ifter with the transformation.
  */
-base::Expression opBuilderHelperSendUpgradeConfirmation(const std::string& targetField,
-                                                        const std::string& rawName,
-                                                        const std::vector<std::string>& rawParameters,
-                                                        std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderHelperSendUpgradeConfirmation(std::shared_ptr<sockiface::ISockFactory> sockFactory);
 
 } // namespace builder::internals::builders
 

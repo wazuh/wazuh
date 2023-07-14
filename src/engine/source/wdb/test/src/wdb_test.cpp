@@ -24,13 +24,11 @@ void inline initLogging()
 }
 
 using namespace wazuhdb;
+using namespace sockiface::mocks;
 
 constexpr const char* TEST_MESSAGE {"Test Message to be queried"};
 constexpr const char* TEST_PAYLOAD {"Test Query Response Payload"};
 constexpr const char* TEST_RESPONSE {"Test"};
-const std::vector<char> TEST_RESPONSE_VECTOR {'T', 'e', 's', 't', '\0'};
-const std::vector<char> TEST_OK_RESPONSE_VECTOR {'o', 'k', '\0'};
-const std::vector<char> TEST_OK_PAYLOAD_RESPONSE_VECTOR {'o', 'k', ' ', 'p', 'a', 'y', 'l', 'o', 'a', 'd', '\0'};
 constexpr const char* TEST_DUMMY_PATH {"/dummy/path"};
 
 std::tuple<std::shared_ptr<IWDBHandler>, std::shared_ptr<MockSockHandler>> getWDBHandler()
@@ -141,8 +139,8 @@ TEST_F(wdb_query, SendAndResponse)
     auto [wdb, MockSockHandler] = getWDBHandler();
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024));
     EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
-        .WillOnce(testing::Return(sockiface::ISockHandler::SendRetval::SUCCESS));
-    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(TEST_RESPONSE_VECTOR));
+        .WillOnce(testing::Return(successSendMsgRes()));
+    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(recvMsgRes("Test")));
 
     ASSERT_STREQ(wdb->query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
 }
@@ -164,8 +162,8 @@ TEST_F(wdb_tryQuery, RecoverAndSend)
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024)).WillOnce(testing::Return(1024));
     EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
         .WillOnce(testing::Throw(sockiface::ISockHandler::RecoverableError("Error sending message")))
-        .WillOnce(testing::Return(sockiface::ISockHandler::SendRetval::SUCCESS));
-    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(TEST_RESPONSE_VECTOR));
+        .WillOnce(testing::Return(successSendMsgRes()));
+    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(recvMsgRes("Test")));
 
     ASSERT_STREQ(wdb->tryQuery(TEST_MESSAGE, 2).c_str(), TEST_RESPONSE);
 }
@@ -301,8 +299,8 @@ TEST_F(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
     auto [wdb, MockSockHandler] = getWDBHandler();
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024));
     EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
-        .WillOnce(testing::Return(sockiface::ISockHandler::SendRetval::SUCCESS));
-    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(TEST_OK_RESPONSE_VECTOR));
+        .WillOnce(testing::Return(successSendMsgRes()));
+    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(recvMsgRes("ok")));
 
     auto retval {wdb->tryQueryAndParseResult(TEST_MESSAGE, 1)};
 
@@ -316,8 +314,8 @@ TEST_F(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024)).WillOnce(testing::Return(1024));
     EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
         .WillOnce(testing::Throw(sockiface::ISockHandler::RecoverableError("test error")))
-        .WillOnce(testing::Return(sockiface::ISockHandler::SendRetval::SUCCESS));
-    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(TEST_OK_PAYLOAD_RESPONSE_VECTOR));
+        .WillOnce(testing::Return(successSendMsgRes()));
+    EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(recvMsgRes("ok payload")));
     EXPECT_CALL(*MockSockHandler, socketConnect()).Times(1);
 
     auto retval {wdb->tryQueryAndParseResult(TEST_MESSAGE, 5)};

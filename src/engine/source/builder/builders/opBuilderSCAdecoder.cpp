@@ -13,8 +13,11 @@
 #include <baseTypes.hpp>
 #include <logging/logging.hpp>
 #include <utils/stringUtils.hpp>
-#include <wdb/wdb.hpp>
 
+namespace
+{
+constexpr std::string_view CFG_AR_SOCK_PATH {"/var/ossec/queue/alerts/cfgarq"};
+}
 namespace builder::internals::builders
 {
 
@@ -24,6 +27,7 @@ constexpr auto TYPE_CHECK = "check";       ///< Check Event type
 constexpr auto TYPE_SUMMARY = "summary";   ///< Scan info Event type
 constexpr auto TYPE_POLICIES = "policies"; ///< Policies Event type
 constexpr auto TYPE_DUMP_END = "dump_end"; ///< Dump end Event type
+constexpr auto WDB_ATTEMPTS = 2;
 
 namespace field
 {
@@ -139,7 +143,7 @@ inline void csvStr2ArrayIfExist(const DecodeCxt& ctx, Name field)
     if (csv)
     {
         const auto scaArrayPath = ctx.destinationPath.at(field);
-        const auto cvaArray = base::utils::string::split(csv.value().c_str(), ',');
+        const auto cvaArray = base::utils::string::split(csv.value(), ',');
 
         ctx.event->setArray(scaArrayPath);
         for (const auto& csvItem : cvaArray)
@@ -242,12 +246,12 @@ inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
  * @return <SearchResult::ERROR, ""> otherwise.
  */
 std::tuple<SearchResult, std::string>
-searchAndParse(const std::string& query, std::shared_ptr<wazuhdb::WazuhDB> wdb, bool parse = true)
+searchAndParse(const std::string& query, std::shared_ptr<wazuhdb::IWDBHandler> wdb, bool parse = true)
 {
     std::string retStr {};
     SearchResult retCode {SearchResult::ERROR};
 
-    const auto [rescode, payload] = wdb->tryQueryAndParseResult(query);
+    const auto [rescode, payload] = wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
 
     if (wazuhdb::QueryResultCodes::OK == rescode && payload.has_value())
     {
@@ -384,7 +388,7 @@ void insertCompliance(const DecodeCxt& ctx, const int checkID)
         const auto query =
             fmt::format("agent {} sca insert_compliance {}|{}|{}", ctx.agentID, checkID, key, value.value());
 
-        const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
+        const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
         if (wazuhdb::QueryResultCodes::OK != res)
         {
             LOG_WARNING(
@@ -419,7 +423,7 @@ void insertRules(const DecodeCxt& ctx, const int checkID)
             const auto query =
                 fmt::format("agent {} sca insert_rules {}|{}|{}", ctx.agentID, checkID, type.value(), rule.value());
 
-            const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
+            const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
             if (wazuhdb::QueryResultCodes::OK != res)
             {
                 LOG_WARNING(
@@ -483,7 +487,7 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
             return std::string("Error querying policy monitoring database for agent ") + ctx.agentID;
     }
     // Save or update the policy monitoring
-    const auto [resSavePolicy, empty] = ctx.wdb->tryQueryAndParseResult(saveQuery);
+    const auto [resSavePolicy, empty] = ctx.wdb->tryQueryAndParseResult(saveQuery, WDB_ATTEMPTS);
     if (wazuhdb::QueryResultCodes::OK != resSavePolicy)
     {
         LOG_WARNING("Engine SCA decoder builder: Error saving policy monitoring for agent '{}'.", ctx.agentID);
@@ -567,13 +571,13 @@ void pushDumpRequest(const DecodeCxt& ctx, const std::string& policyId, bool fir
     const auto sendStatus = ctx.forwarderSocket->sendMsg(msg);
     switch (sendStatus)
     {
-        case base::utils::socketInterface::SendRetval::SUCCESS: break;
-        case base::utils::socketInterface::SendRetval::SIZE_TOO_LONG:
+        case sockiface::ISockHandler::SendRetval::SUCCESS: break;
+        case sockiface::ISockHandler::SendRetval::SIZE_TOO_LONG:
             LOG_WARNING("Engine SCA decoder builder: Error sending message to forwarder: message too long ({}): '{}'.",
                         msg.length(),
                         msg);
             break;
-        case base::utils::socketInterface::SendRetval::SOCKET_ERROR:
+        case sockiface::ISockHandler::SendRetval::SOCKET_ERROR:
         default:
             LOG_WARNING("Engine SCA decoder builder: Error database dump request for agent '{}'. {} ({}).",
                         ctx.agentID,
@@ -634,7 +638,7 @@ bool SaveScanInfo(const DecodeCxt& ctx, bool update)
                             hash);
     }
 
-    const auto [queryResult, discartPayload] = ctx.wdb->tryQueryAndParseResult(query);
+    const auto [queryResult, discartPayload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
 
     if (wazuhdb::QueryResultCodes::OK != queryResult)
     {
@@ -657,7 +661,7 @@ void insertPolicyInfo(const DecodeCxt& ctx)
                                    ctx.getSrcStr(field::Name::REFERENCES).value_or("NULL"),
                                    ctx.getSrcStr(field::Name::HASH_FILE).value_or("NULL"));
 
-    const auto [result, payload] = ctx.wdb->tryQueryAndParseResult(query);
+    const auto [result, payload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
 
     if (wazuhdb::QueryResultCodes::OK != result)
     {
@@ -750,7 +754,7 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
     // "Deleting policy '%s', agent id '%s'"
     auto query = fmt::format("agent {} sca delete_policy {}", ctx.agentID, policyId);
 
-    const auto [resDelPolicy, dummyPayload] = ctx.wdb->tryQueryAndParseResult(query);
+    const auto [resDelPolicy, dummyPayload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
 
     if (wazuhdb::QueryResultCodes::OK != resDelPolicy)
     {
@@ -761,7 +765,7 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
     // "Deleting check for policy '%s', agent id '%s'"
     query = fmt::format("agent {} sca delete_check {}", ctx.agentID, policyId);
 
-    const auto [delCheckResultCode, delCheckPayload] = ctx.wdb->tryQueryAndParseResult(query);
+    const auto [delCheckResultCode, delCheckPayload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
 
     if (wazuhdb::QueryResultCodes::OK != delCheckResultCode)
     {
@@ -979,7 +983,7 @@ void deletePolicyCheckDistinct(const DecodeCxt& ctx, const std::string& policyId
     // "Deleting check distinct policy id , agent id "
     const auto query = fmt::format("agent {} sca delete_check_distinct {}|{}", ctx.agentID, policyId, scanId);
 
-    const auto [resultCode, payload] = ctx.wdb->tryQueryAndParseResult(query);
+    const auto [resultCode, payload] = ctx.wdb->tryQueryAndParseResult(query, WDB_ATTEMPTS);
     if (wazuhdb::QueryResultCodes::OK != resultCode)
     {
         LOG_WARNING("Engine SCA decoder builder: Error deleting check distinct policy id '{}' of agent '{}'.",
@@ -1049,113 +1053,117 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx)
 
 // - Helper - //
 
-base::Expression opBuilderSCAdecoder(const std::string& targetField,
+HelperBuilder getBuilderSCAdecoder(std::shared_ptr<wazuhdb::IWDBManager> wdbManager,
+                                   std::shared_ptr<sockiface::ISockFactory> sockFactory)
+{
+    return [wdbManager, sockFactory](const std::string& targetField,
                                      const std::string& rawName,
                                      const std::vector<std::string>& rawParameters,
                                      std::shared_ptr<defs::IDefinitions> definitions)
-{
-    // Identify references and build JSON pointer paths
-    const auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 2);
-    // Parameter type check
-    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
-
-    // Format name for the tracer
-    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
-
-    // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
-
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: Parameter '{}' reference not found", name, parameters[0].m_value)};
-    const auto failureTrace2 {
-        fmt::format("[{}] -> Failure: Parameter '{}' type not supported", name, parameters[0].m_value + "/type")};
-
-    /* Create the context for SCA decoder */
-    namespace SF = sca::field;
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
-    auto cfgarSock = std::make_shared<base::utils::socketInterface::unixDatagram>(wazuhdb::CFG_AR_SOCK_PATH);
-    /*  Maps of paths. Contains the orginal path and the mapped path for each field */
-    std::unordered_map<SF::Name, std::string> fieldSource {};
-    std::unordered_map<SF::Name, std::string> fieldDest {};
-
-    for (SF::Name field = SF::Name::A_BEGIN; field != SF::Name::A_END; ++field)
     {
-        fieldSource.insert({field, parameters[0].m_value + SF::getRealtivePath(field)});
-        fieldDest.insert({field, std::string {"/sca"} + SF::getRealtivePath(field)});
-    }
+        // Identify references and build JSON pointer paths
+        const auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
+        // Assert expected number of parameters
+        helper::base::checkParametersSize(rawName, parameters, 2);
+        // Parameter type check
+        helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
+        helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
 
-    // Return Term
-    return base::Term<base::EngineOp>::create(
-        name,
-        [=,
-         targetField = std::move(targetField),
-         sourceSCApath = parameters[0].m_value,
-         agentIdPath = parameters[1].m_value,
-         fieldSrc = std::move(fieldSource),
-         fieldDst = std::move(fieldDest),
-         cfgarSock = std::move(cfgarSock),
-         wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
+        // Format name for the tracer
+        const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+        // Tracing
+        const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+        const auto failureTrace1 {
+            fmt::format("[{}] -> Failure: Parameter '{}' reference not found", name, parameters[0].m_value)};
+        const auto failureTrace2 {
+            fmt::format("[{}] -> Failure: Parameter '{}' type not supported", name, parameters[0].m_value + "/type")};
+
+        /* Create the context for SCA decoder */
+        namespace SF = sca::field;
+        auto wdb = wdbManager->connection();
+        auto cfgarSock = sockFactory->getHandler(sockiface::ISockHandler::Protocol::DATAGRAM, CFG_AR_SOCK_PATH);
+        /*  Maps of paths. Contains the orginal path and the mapped path for each field */
+        std::unordered_map<SF::Name, std::string> fieldSource {};
+        std::unordered_map<SF::Name, std::string> fieldDest {};
+
+        for (SF::Name field = SF::Name::A_BEGIN; field != SF::Name::A_END; ++field)
         {
-            std::optional<std::string> error;
+            fieldSource.insert({field, parameters[0].m_value + SF::getRealtivePath(field)});
+            fieldDest.insert({field, std::string {"/sca"} + SF::getRealtivePath(field)});
+        }
 
-            // TODO: this should be checked in the decoder
-            if (event->exists(sourceSCApath) && event->exists(agentIdPath) && event->isString(agentIdPath))
+        // Return Term
+        return base::Term<base::EngineOp>::create(
+            name,
+            [=,
+             targetField = std::move(targetField),
+             sourceSCApath = parameters[0].m_value,
+             agentIdPath = parameters[1].m_value,
+             fieldSrc = std::move(fieldSource),
+             fieldDst = std::move(fieldDest),
+             cfgarSock = std::move(cfgarSock),
+             wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
             {
-                const auto agentId = event->getString(agentIdPath).value();
-                const auto cxt = sca::DecodeCxt {event, agentId, wdb, cfgarSock, fieldSrc, fieldDst};
+                std::optional<std::string> error;
 
-                // TODO: Field type is mandatory and should be checked in the decoder
-                auto type = event->getString(sourceSCApath + "/type");
-                if (!type)
+                // TODO: this should be checked in the decoder
+                if (event->exists(sourceSCApath) && event->exists(agentIdPath) && event->isString(agentIdPath))
                 {
-                    // TODO: Change trace message
-                    error = failureTrace1;
-                }
-                // Proccess event with the appropriate handler
-                else if (sca::TYPE_CHECK == type.value())
-                {
-                    error = sca::handleCheckEvent(cxt);
-                }
-                else if (sca::TYPE_SUMMARY == type.value())
-                {
-                    error = sca::handleScanInfo(cxt);
-                }
-                else if (sca::TYPE_POLICIES == type.value())
-                {
-                    error = sca::handlePoliciesInfo(cxt);
-                }
-                else if (sca::TYPE_DUMP_END == type.value())
-                {
-                    error = sca::handleDumpEvent(cxt);
+                    const auto agentId = event->getString(agentIdPath).value();
+                    const auto cxt = sca::DecodeCxt {event, agentId, wdb, cfgarSock, fieldSrc, fieldDst};
+
+                    // TODO: Field type is mandatory and should be checked in the decoder
+                    auto type = event->getString(sourceSCApath + "/type");
+                    if (!type)
+                    {
+                        // TODO: Change trace message
+                        error = failureTrace1;
+                    }
+                    // Proccess event with the appropriate handler
+                    else if (sca::TYPE_CHECK == type.value())
+                    {
+                        error = sca::handleCheckEvent(cxt);
+                    }
+                    else if (sca::TYPE_SUMMARY == type.value())
+                    {
+                        error = sca::handleScanInfo(cxt);
+                    }
+                    else if (sca::TYPE_POLICIES == type.value())
+                    {
+                        error = sca::handlePoliciesInfo(cxt);
+                    }
+                    else if (sca::TYPE_DUMP_END == type.value())
+                    {
+                        error = sca::handleDumpEvent(cxt);
+                    }
+                    else
+                    {
+                        // Unknown type value
+                        error = failureTrace2;
+                    }
                 }
                 else
                 {
-                    // Unknown type value
-                    error = failureTrace2;
+                    error = failureTrace1;
                 }
-            }
-            else
-            {
-                error = failureTrace1;
-            }
 
-            // Event is processed, return base::Result accordingly
-            // Error is nullopt if no error occurred, otherwise it contains the error
-            // message
-            if (error)
-            {
-                event->setBool(false, targetField);
-                return base::result::makeFailure(event, error.value());
-            }
-            else
-            {
-                event->setBool(true, targetField);
-                return base::result::makeSuccess(event, successTrace);
-            }
-        });
+                // Event is processed, return base::Result accordingly
+                // Error is nullopt if no error occurred, otherwise it contains the error
+                // message
+                if (error)
+                {
+                    event->setBool(false, targetField);
+                    return base::result::makeFailure(event, error.value());
+                }
+                else
+                {
+                    event->setBool(true, targetField);
+                    return base::result::makeSuccess(event, successTrace);
+                }
+            });
+    };
 }
 
 } // namespace builder::internals::builders
