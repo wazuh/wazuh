@@ -29,7 +29,7 @@
 #define TAG_INTERVAL        "\"interval\""
 #define TAG_LOCATION        "\"location\""
 
-bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj );
+bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj);
 uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, size_t *ptrs, char *output, size_t *sizeOutput);
 void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader);
 void addClosingTags(char *strJson);
@@ -78,7 +78,7 @@ size_t lccom_dispatch(char * command, char ** output){
  * @return true all indexes are stored
  * @return false not all indexes are stored
  */
-bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj ) {
+bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj) {
     bool isReadyIndex = false;
     int i = 0;
     ptrs[i++] = (size_t)outjson_aux;   //ptrs[0] inicio de estadisticas sin 1er location
@@ -90,7 +90,7 @@ bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amou
             break;
         }
         ptrs[i++] = (size_t)(&outjson_aux[0]);
-        outjson_aux = outjson_aux + LEN_LOCATION ;
+        outjson_aux = outjson_aux + LEN_LOCATION;
     }
     *amountObj = i;
     return isReadyIndex;
@@ -153,9 +153,9 @@ void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeade
     if (bufferTmp != NULL && strJson != NULL) {
         memcpy(bufferTmp, headerData, lenHeaderData);
         memcpy(bufferTmp + lenHeaderData, header, lenHeader);
-        memcpy(bufferTmp + lenHeaderData + lenHeader, strJson, OS_MAXSTR - lenHeaderData - lenHeader);
+        memcpy(bufferTmp + lenHeaderData + lenHeader, strJson, OS_MAXSTR - lenHeaderData - lenHeader - 1);
         memset(strJson, 0 , OS_MAXSTR);
-        memcpy(strJson, bufferTmp, OS_MAXSTR);
+        memcpy(strJson, bufferTmp, OS_MAXSTR - 1);
     }
 }
 
@@ -280,22 +280,22 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
         } else if (flag_interval == false && flag_global == true) {
             if (strstr(buffJson, TAG_INTERVAL) != NULL) {
                 flag_interval = true;
-                if (counter == 0 ) {
+                if (counter == 0) {
                     /* 4: remainder of first block onwards, already find global
-                    find intervals,files y greather than 64k
+                    find intervals,files and greather than 64k
                     */
                     addClosingTags(buffJson);
                     addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                 } else  {
                     /* 5: remainder of first block onwards, already find global
-                    find intervals,files y lower than 64k, it closes self
+                    find intervals,files and lower than 64k, it closes self
                     */
                     addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                     flag_interval = false;
                 }
             } else {
                 /* 6: remainder of first block onwards, already find global
-                intervals,files not found y greather than 64k
+                intervals,files not found and greather than 64k
                 always  global and interval are full json therefore dont is need lower than 64k
                 */
                 addClosingTags(buffJson);
@@ -381,8 +381,8 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
     extractHeadersFromJson(*output, headerGlobal, headerInterval, headerData, &LenHeaderInterval, &LenHeaderData, &LenHeaderGlobal);
 
     if (isReadyIndex) {
-        apiLatestIndex = checkJson64k (*output, apiLatestIndex, i, ptrs, buffer, &counter);
-        addStartandEndTagsToJsonStrBlock (buffer, headerGlobal, headerInterval, headerData,
+        apiLatestIndex = checkJson64k(*output, apiLatestIndex, i, ptrs, buffer, &counter);
+        addStartandEndTagsToJsonStrBlock(buffer, headerGlobal, headerInterval, headerData,
                                         LenHeaderInterval, LenHeaderData, LenHeaderGlobal, counter, getNextPage);
 
         if (apiLatestIndex == i) {
@@ -397,7 +397,7 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
             LenHeaderGlobal = 0;
         }
         os_free(*output);
-        os_strdup (buffer, *output);
+        os_strdup(buffer, *output);
     }
     return  strlen(buffer);
 }
