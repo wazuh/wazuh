@@ -522,6 +522,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
+    std::deque<int64_t> inodes;
 
     for (const auto& portType : PORTS_TYPE)
     {
@@ -540,21 +541,16 @@ nlohmann::json SysInfo::getPorts() const
                 Utils::replaceAll(row, "  ", " ");
                 std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
                 ports.push_back(port);
+
+                try
+                {
+                    inodes.push_back(port.at("inode"));
+                }
+                catch (...) {}
             }
 
             fileBody = true;
         }
-    }
-
-    std::deque<int64_t> inodes;
-
-    for (const auto& port : ports)
-    {
-        try
-        {
-            inodes.push_back(port.at("inode"));
-        }
-        catch (...) {}
     }
 
     ProcessInfo ret;
