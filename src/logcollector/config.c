@@ -17,7 +17,10 @@
 
 int accept_remote;
 int lc_debug_level;
-#ifndef WIN32
+#ifdef WIN32
+#define WIN32_MAX_STDIO 2048 // Maximum allowed value to use in _setmaxstdio().
+int nofile;
+#else
 rlim_t nofile;
 #endif
 
@@ -61,7 +64,9 @@ int LogCollectorConfig(const char *cfgfile)
         mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", reload_interval, vcheck_files);
     }
 
-#ifndef WIN32
+#ifdef WIN32
+    nofile = getDefine_Int("logcollector", "rlimit_nofile", 512, WIN32_MAX_STDIO);
+#else
     nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
 #endif
 
@@ -70,18 +75,15 @@ int LogCollectorConfig(const char *cfgfile)
         return OS_INVALID;
     }
 
-#ifndef WIN32
+#ifdef WIN32
+    if (maximum_files > nofile) {
+        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile').");
+#else
     if (maximum_files > (int)nofile - 100) {
         merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+#endif
         return OS_SIZELIM;
     }
-#else
-    if (maximum_files > WIN32_MAX_FILES) {
-        /* Limit files on Windows as file descriptors are shared */
-        maximum_files = WIN32_MAX_FILES;
-        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.", WIN32_MAX_FILES);
-    }
-#endif
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
         return (OS_INVALID);
@@ -329,10 +331,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
     cJSON_AddNumberToObject(logcollector, "exclude_files_interval", free_excluded_files_interval);
     cJSON_AddNumberToObject(logcollector, "state_interval", state_interval);
-
-#ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
-#endif
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);
     cJSON_AddItemToObject(root,"internal",internals);

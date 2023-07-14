@@ -18,7 +18,6 @@
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
-#define WIN32_MAX_FILES 200
 
 ///< Size of hash table to save the status file
 #define LOCALFILES_TABLE_SIZE 40
@@ -286,7 +285,9 @@ extern int lc_debug_level;
 extern int accept_remote;
 extern int N_INPUT_THREADS;
 extern int OUTPUT_QUEUE_SIZE;
-#ifndef WIN32
+#ifdef WIN32
+extern int nofile;
+#else
 extern rlim_t nofile;
 #endif
 
