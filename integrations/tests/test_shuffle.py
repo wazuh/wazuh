@@ -10,28 +10,49 @@ import os
 import json
 import pytest
 import requests
-import shuffle
+import shuffle as shuffle
 from unittest.mock import patch, mock_open
+
+# Exit error codes
+ERR_BAD_ARGUMENTS       = 2
+ERR_FILE_NOT_FOUND      = 6
+ERR_INVALID_JSON        = 7
 
 sys.path.append(os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '..', '..'))
 
-alert_template = {'timestamp': 'year-month-dayThours:minuts:seconds+0000',
-                  'rule': {'level': 0, 'description': 'alert description',
-                           'id': '',
-                           'firedtimes': 1},
-                  'id': 'alert_id',
-                  'full_log': 'full log.', 'decoder': {'name': 'decoder-name'},
-                  'location': 'wazuh-X'}
+"""
+    Mockup messages for testing
+"""
 
-msg_template = '{"severity": 1, "pretext": "WAZUH Alert", "title": "alert description", "text": "full log.", ' \
-               '"rule_id": "rule-id", "timestamp": "year-month-dayThours:minuts:seconds+0000", "id": "alert_id", ' \
-               '"all_fields": {"timestamp": "year-month-dayThours:minuts:seconds+0000", "rule": {"level": 0, ' \
+alert_template = {
+    'timestamp': '2023-02-23T00:00:00+00:00',
+    'rule': {
+        'level': 0,
+        'description': 'alert description',
+        'id': '',
+        'firedtimes': 1
+    },
+    'id': 'alert_id',
+    'full_log': 'full log.',
+    'decoder': {
+        'name': 'decoder-name'
+    },
+    'location': 'wazuh-X'
+}
+
+options_template = {
+    'pretext': 'Wazuh-X -- Alert generated'
+}
+
+msg_template = '{"severity": 1, "pretext": "Wazuh-X -- Alert generated", "title": "alert description", "text": "full log.", ' \
+               '"rule_id": "rule-id", "timestamp": "2023-02-23T00:00:00+00:00", "id": "alert_id", ' \
+               '"all_fields": {"timestamp": "2023-02-23T00:00:00+00:00", "rule": {"level": 0, ' \
                '"description": "alert description", "id": "rule-id", "firedtimes": 1}, "id": "alert_id", "full_log": ' \
                '"full log.", "decoder": {"name": "decoder-name"}, "location": "wazuh-X"}}'
 
 sys_args_template = ['/var/ossec/integrations/shuffle.py', '/tmp/shuffle-XXXXXX-XXXXXXX.alert', '',
-                     'http://<IP>:3001/api/v1/hooks/<HOOK_ID>', ' > /dev/null 2>&1']
+                     'http://<IP>:3001/api/v1/hooks/<HOOK_ID>', ' > /dev/null 2>&1', '/tmp/virustotal-XXXXXX-XXXXXXX.options']
 
 
 def test_main_bad_arguments_exit():
@@ -39,7 +60,7 @@ def test_main_bad_arguments_exit():
     with patch("shuffle.open", mock_open()), \
             pytest.raises(SystemExit) as pytest_wrapped_e:
         shuffle.main(sys_args_template[0:2])
-    assert pytest_wrapped_e.value.code == 2
+    assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
 
 
 def test_main_exception():
@@ -62,8 +83,8 @@ def test_main():
 
 
 @pytest.mark.parametrize('side_effect, return_value', [
-    (FileNotFoundError, 3),
-    (json.decoder.JSONDecodeError("Expecting value", "", 0), 4)
+    (FileNotFoundError, ERR_FILE_NOT_FOUND),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
 ])
 def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.
@@ -85,14 +106,18 @@ def test_process_args_exit(side_effect, return_value):
 
 def test_process_args():
     """Test the correct execution of the process_args function."""
-    with patch("shuffle.open", mock_open()) as alert_file, \
-            patch('json.load', return_value=alert_template), \
+    with patch("shuffle.open", mock_open()), \
+            patch('shuffle.get_json_alert') as alert_load,\
+            patch('shuffle.get_json_options') as options_load,\
             patch('shuffle.send_msg') as send_msg, \
             patch('shuffle.generate_msg', return_value=msg_template) as generate_msg, \
             patch('requests.post', return_value=requests.Response):
+        alert_load.return_value = alert_template
+        options_load.return_value = options_template
         shuffle.process_args(sys_args_template)
-        alert_file.assert_called_once_with(sys_args_template[1])
-        generate_msg.assert_called_once_with(alert_template)
+        generate_msg.assert_called_once_with(alert_template,options_template)
+        generated_msg = shuffle.generate_msg(alert_template,options_template)
+        assert generated_msg==msg_template
         send_msg.assert_called_once_with(msg_template, sys_args_template[3])
 
 
@@ -113,7 +138,7 @@ def test_debug():
             patch('shuffle.LOG_FILE', return_value='integrations.log') as log_file:
         shuffle.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{shuffle.now}: {msg_template}\n")
+        open_mock().write.assert_called_with(msg_template)
 
 
 @pytest.mark.parametrize('rule_id, expected_msg', [
@@ -132,7 +157,7 @@ def test_generate_msg(expected_msg, rule_id):
     """
 
     alert_template['rule']['id'] = rule_id
-    assert shuffle.generate_msg(alert_template) == expected_msg
+    assert shuffle.generate_msg(alert_template,options_template) == expected_msg
 
 
 @pytest.mark.parametrize('rule_level, severity', [
@@ -153,7 +178,7 @@ def test_generate_msg_severity(rule_level, severity):
     """
 
     alert_template['rule']['level'] = rule_level
-    assert json.loads(shuffle.generate_msg(alert_template))['severity'] == severity
+    assert json.loads(shuffle.generate_msg(alert_template,options_template))['severity'] == severity
 
 
 @pytest.mark.parametrize('rule_id, result', [

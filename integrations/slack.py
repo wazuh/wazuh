@@ -1,22 +1,15 @@
-# Created by Shuffle, AS. <frikky@shuffler.io>.
-# Based on the Slack integration using Webhooks
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-# Error Codes:
-#   1 - Module requests not found
-#   2 - Incorrect input arguments
-#   3 - Alert File does not exist
-#   4 - Error getting json_alert
-
-
 import json
 import os
 import sys
 import time
+
 
 # Exit error codes
 ERR_NO_REQUEST_MODULE   = 1
@@ -27,25 +20,23 @@ ERR_INVALID_JSON        = 7
 try:
     import requests
     from requests.auth import HTTPBasicAuth
-except ModuleNotFoundError as e:
+except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(ERR_NO_REQUEST_MODULE)
 
 # ossec.conf configuration structure
-# <integration>
-#  <name>shuffle</name>
-#  <hook_url>http://IP:3001/api/v1/hooks/HOOK_ID</hook_url> <!-- Replace with your Shuffle hook URL -->
-#  <level>3</level>
-#  <alert_format>json</alert_format>
-#  <options>JSON</options> <!-- Replace with your custom JSON object -->
-# </integration>
+#  <integration>
+#      <name>slack</name>
+#      <hook_url>https://hooks.slack.com/services/XXXXXXXXXXXXXX</hook_url>
+#      <alert_format>json</alert_format>
+#      <options>JSON</options> <!-- Replace with your custom JSON object -->
+#  </integration>
 
 # Global vars
 debug_enabled   = False
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
-SKIP_RULE_IDS   = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932",
-                 "80710", "87929", "87928", "5710"]
+json_options    = {}
 
 # Log path
 LOG_FILE        = f'{pwd}/logs/integrations.log'
@@ -65,8 +56,8 @@ def main(args):
                 args[1],
                 args[2],
                 args[3],
-                args[4] if len(sys.argv) > 4 else '',
-                args[5] if len(sys.argv) > 5 else ''
+                args[4] if len(args) > 4 else '',
+                args[5] if len(args) > 5 else ''
             )
             debug_enabled = (len(args) > 4 and args[4] == 'debug')
         else:
@@ -88,7 +79,6 @@ def main(args):
         debug(str(e))
         raise
 
-
 def process_args(args) -> None:
     """
         This is the core function, creates a message with all valid fields
@@ -98,21 +88,13 @@ def process_args(args) -> None:
         ----------
         args : list[str]
             The argument list from main call
-
-        Raises
-        ------
-        FileNotFoundError
-            If no alert file or optional file are presents.
-        JSONDecodeError
-            If no valid JSON file are used
     """
-    debug("# Running Shuffle script")
+    debug("# Running Slack script")
 
     # Read args
     alert_file_location: str     = args[ALERT_INDEX]
     webhook: str                 = args[WEBHOOK_INDEX]
     options_file_location: str   = ''
-    json_options: str            = ''
 
     # Look for options file location
     for idx in range(4, len(args)):
@@ -129,14 +111,13 @@ def process_args(args) -> None:
     debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
 
     debug("# Generating message")
-    msg: str = generate_msg(json_alert, json_options)
+    msg: any = generate_msg(json_alert, json_options)
 
-    # Check if alert is skipped
-    if isinstance(msg, str):
-        if not msg:
-            return
+    if not len(msg):
+        debug("# ERROR: Empty message")
+        raise Exception
 
-    debug(f"# Sending message {msg} to Shuffle server")
+    debug(f"# Sending message {msg} to Slack server")
     send_msg(msg, webhook)
 
 def debug(msg: str) -> None:
@@ -155,14 +136,7 @@ def debug(msg: str) -> None:
             f.write(msg)
 
 
-# Skips container kills to stop self-recursion
-def filter_msg(alert) -> bool:
-    # SKIP_RULE_IDS need to be filtered because Shuffle starts Docker containers, therefore those alerts are triggered
-
-    return not alert["rule"]["id"] in SKIP_RULE_IDS
-
-
-def generate_msg(alert: any, options: any) -> str:
+def generate_msg(alert: any, options: any) -> any:
     """
         Generate the JSON object with the message to be send
 
@@ -175,34 +149,52 @@ def generate_msg(alert: any, options: any) -> str:
 
         Returns
         -------
-
         msg: str
             The JSON message to send
     """
-    if not filter_msg(alert):
-        print("Skipping rule %s" % alert["rule"]["id"])
-        return ""
-
-    level = alert['rule']['level']
+    level           = alert['rule']['level']
 
     if (level <= 4):
-        severity = 1
+        color = "good"
     elif (level >= 5 and level <= 7):
-        severity = 2
+        color = "warning"
     else:
-        severity = 3
+        color = "danger"
 
-    msg = {'severity': severity, 'pretext': "WAZUH Alert",
-           'title': alert['rule']['description'] if 'description' in alert['rule'] else "N/A",
-           'text': alert.get('full_log'),
-           'rule_id': alert["rule"]["id"],
-           'timestamp': alert["timestamp"],
-           'id': alert['id'], "all_fields": alert}
+    msg             = {}
+    msg['color']    = color
+    msg['pretext']  = "WAZUH Alert"
+    msg['title']    = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
+    msg['text']     = alert.get('full_log')
+
+    msg['fields']   = []
+    if 'agent' in alert:
+        msg['fields'].append({
+            "title": "Agent",
+            "value": "({0}) - {1}".format(
+                alert['agent']['id'],
+                alert['agent']['name']
+            ),
+        })
+    if 'agentless' in alert:
+        msg['fields'].append({
+            "title": "Agentless Host",
+            "value": alert['agentless']['host'],
+        })
+    msg['fields'].append({"title": "Location", "value": alert['location']})
+    msg['fields'].append({
+        "title": "Rule ID",
+        "value": "{0} _(Level {1})_".format(alert['rule']['id'], level),
+    })
+
+    msg['ts']       = alert['id']
 
     if(options):
         msg.update(options)
 
-    return json.dumps(msg)
+    attach = {'attachments': [msg]}
+
+    return json.dumps(attach)
 
 def send_msg(msg: str, url: str) -> None:
     """
@@ -213,10 +205,10 @@ def send_msg(msg: str, url: str) -> None:
         msg : str
             JSON message.
         url: str
-            URL of the integration.
+            URL of the API.
     """
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    res     = requests.post(url, data=msg, headers=headers, verify=False)
+    res     = requests.post(url, data=msg, headers=headers)
     debug("# Response received: %s" % res.json)
 
 def get_json_alert(file_location: str) -> any:

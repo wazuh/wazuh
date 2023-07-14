@@ -31,6 +31,7 @@ typedef struct _IntegratorConfig
     char *path;
     char *alert_format;
     char *group;
+    char *options;
     OSMatch *location;
 }IntegratorConfig;
 
