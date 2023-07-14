@@ -1,0 +1,23 @@
+- name: MAX_UPLOAD_LIMITLESS_BIG_CONTENT
+  description: Check if the API receives a request using a big content
+  configuration_parameters:
+    MAX_UPLOAD_SIZE: 0
+  metadata:
+    request_content_size: 100
+    expected_code: 200
+
+- name: MAX_UPLOAD_BIGGER_THAN_CONTENT
+  description: Check if the API receives a request with a content which size is lower than the limit
+  configuration_parameters:
+    MAX_UPLOAD_SIZE: 40
+  metadata:
+    request_content_size: 10
+    expected_code: 200
+
+- name: MAX_UPLOAD_LOWER_THAN_CONTENT
+  description: Check if the API rejects a request with a content which size is lower than the limit
+  configuration_parameters:
+    MAX_UPLOAD_SIZE: 10
+  metadata:
+    request_content_size: 20
+    expected_code: 413
