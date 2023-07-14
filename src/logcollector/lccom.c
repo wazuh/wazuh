@@ -17,7 +17,6 @@
 #define LEN_LOCATION        (10)    /*!< length of "location"*/
 #define LEN_BOOL_STR        (5)     /*!< length of "false"*/
 #define MAX_LEN_HEADER      (150)   /*!< length of maximun header*/
-#define SIZE_1KB            (1024)  /*!< size of 1KB*/
 #define OFFSET_HEADER_TAGS  (3)
 #define OFFSET_CLOSING_TAGS (2)
 #define AMOUNT_CLOSING_TAGS (4)
@@ -118,7 +117,7 @@ uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, 
             size_t len = ptrs[currentIndex] - ptrs[currentIndex-1];
             size_t currentLength = len;
             counter += currentLength;
-            if (counter < OS_MAXSTR - SIZE_1KB) {
+            if (counter < OS_MAXSTR - OS_SIZE_1024) {
                 currentIndex++;
             } else {
                 memset(output, 0, OS_MAXSTR);
@@ -130,9 +129,9 @@ uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, 
             }
         }
 
-        if (currentIndex != 1 && (counter < OS_MAXSTR - SIZE_1KB)) {
+        if (currentIndex != 1 && (counter < OS_MAXSTR - OS_SIZE_1024)) {
             memset(output, 0, OS_MAXSTR);
-            strncpy(output, outjson + ptrs[initialIndex] - ptrs[0], ptrs[currentIndex-1] - ptrs[initialIndex-1] + strlen(outjson + ptrs[currentIndex-1] -ptrs[0]));
+            strncpy(output, outjson + ptrs[initialIndex] - ptrs[0], ptrs[currentIndex-1] - ptrs[initialIndex-1] + strlen(outjson + ptrs[currentIndex-1] - ptrs[0]));
         }
     }
     *sizeOutput = counter;
@@ -376,7 +375,7 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
     size_t LenHeaderData = 0;
     size_t LenHeaderGlobal = 0;
 
-    isReadyIndex = getObjectIndexFromJsonStats (*output, ptrs, &i);
+    isReadyIndex = getObjectIndexFromJsonStats(*output, ptrs, &i);
     apiLatestIndex = (getNextPage == false) ? 0 : apiLatestIndex;
     extractHeadersFromJson(*output, headerGlobal, headerInterval, headerData, &LenHeaderInterval, &LenHeaderData, &LenHeaderGlobal);
 
@@ -441,7 +440,7 @@ size_t lccom_getstate(char ** output, bool getNextPage) {
         retval = getJsonStr64kBlockFromLatestIndex(output, getNextPage);
 
         /* '*output' point to the block of length <= 64k*/
-        replaceBoolToStr(*output, "\"remaining\":", strlen(*output) >= OS_MAXSTR - (2*SIZE_1KB));
+        replaceBoolToStr(*output, "\"remaining\":", strlen(*output) >= OS_MAXSTR - (2*OS_SIZE_1024));
         replaceBoolToStr(*output, "\"json_updated\":", isJsonUpdated());
     } else {
         retval = strlen(*output);
