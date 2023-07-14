@@ -6,6 +6,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
+from wazuh_testing.modules.fim.patterns import WHODATA_ADDED_EVENT, WHODATA_DELETED_EVENT
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -32,14 +33,15 @@ if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_whodate_works_over_realtime(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                      truncate_monitored_files, folder_to_monitor, daemons_handler):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     test_file = Path(folder_to_monitor, test_metadata['test_file'])
+    
     file.write_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(r'.*Sending FIM event:.*'))
-    assert 'whodata' and 'added' in wazuh_log_monitor.callback_result
+    wazuh_log_monitor.start(callback=generate_callback(WHODATA_ADDED_EVENT))
+    assert wazuh_log_monitor.callback_result
     
     file.remove_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(r'.*Sending FIM event:.*'))
-    assert 'whodata' and 'deleted' in wazuh_log_monitor.callback_result
+    wazuh_log_monitor.start(callback=generate_callback(WHODATA_DELETED_EVENT))
+    assert wazuh_log_monitor.callback_result
