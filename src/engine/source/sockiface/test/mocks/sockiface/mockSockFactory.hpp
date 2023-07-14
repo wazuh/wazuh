@@ -5,6 +5,8 @@
 
 #include <sockiface/isockFactory.hpp>
 
+namespace sockiface::mocks
+{
 class MockSockFactory : public sockiface::ISockFactory
 {
 public:
@@ -17,5 +19,6 @@ public:
                 (sockiface::ISockHandler::Protocol proto, std::string_view path),
                 (override));
 };
+} // namespace sockiface::mocks
 
 #endif // _SOCKIFACE_MOCK_SOCK_FACTORY_HPP

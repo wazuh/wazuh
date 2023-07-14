@@ -5,9 +5,11 @@
 
 #include <baseTypes.hpp>
 #include <defs/idefinitions.hpp>
+#include <sockiface/isockFactory.hpp>
+#include <utils/stringUtils.hpp>
 
 #include "expression.hpp"
-#include <utils/stringUtils.hpp>
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
@@ -37,10 +39,7 @@ constexpr const char* SUPPORTED_VERSION {"1"};
  * @param rawParameters
  * @return base::Expression The lifter with the `active_response_send` transformation.
  */
-base::Expression opBuilderHelperSendAR(const std::string& targetField,
-                                       const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters,
-                                       std::shared_ptr<defs::IDefinitions> definitions);
+HelperBuilder getBuilderHelperSendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory);
 
 /**
  * @brief Helper Function for creating the base event that will be sent through

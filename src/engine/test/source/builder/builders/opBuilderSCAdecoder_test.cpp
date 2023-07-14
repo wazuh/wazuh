@@ -6,16 +6,17 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
-#include <utils/socketInterface/unixDatagram.hpp>
-
+#include <sockiface/mockSockFactory.hpp>
+#include <sockiface/mockSockHandler.hpp>
 #include <testsCommon.hpp>
-#include <wdb/wdb.hpp>
+#include <wdb/mockWdbHandler.hpp>
+#include <wdb/mockWdbManager.hpp>
 
 #include "opBuilderSCAdecoder.hpp"
-#include "socketAuxiliarFunctions.hpp"
 
 using namespace base;
-using namespace wazuhdb;
+using namespace wazuhdb::mocks;
+using namespace sockiface::mocks;
 using namespace builder::internals::builders;
 
 using std::string;
@@ -27,8 +28,8 @@ const std::vector<string> commonArguments {"$event.original", "$agent.id"};
 class opBuilderSCAdecoder_Functions : public ::testing::Test
 {
 protected:
-    std::shared_ptr<wazuhdb::WazuhDB> wdb {};
-    std::shared_ptr<base::utils::socketInterface::unixDatagram> cfg {};
+    std::shared_ptr<MockWdbHandler> wdb {};
+    std::shared_ptr<MockSockHandler> cfg {};
     std::unordered_map<sca::field::Name, std::string> fieldSource {};
     std::unordered_map<sca::field::Name, std::string> fieldDest {};
 
@@ -36,8 +37,8 @@ protected:
     {
         initLogging();
 
-        wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-        cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(CFG_AR_SOCK_PATH);
+        wdb = std::make_shared<MockWdbHandler>();
+        cfg = std::make_shared<MockSockHandler>();
 
         for (sca::field::Name field = sca::field::Name::A_BEGIN; field != sca::field::Name::A_END; ++field)
         {
@@ -52,7 +53,23 @@ protected:
 class opBuilderSCAdecoderInit : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    std::shared_ptr<MockWdbManager> wdbManager {};
+    std::shared_ptr<MockWdbHandler> wdb {};
+    std::shared_ptr<MockSockFactory> sockFactory {};
+    std::shared_ptr<MockSockHandler> cfg {};
+
+    void SetUp() override
+    {
+        initLogging();
+
+        wdbManager = std::make_shared<MockWdbManager>();
+        wdb = std::make_shared<MockWdbHandler>();
+        sockFactory = std::make_shared<MockSockFactory>();
+        cfg = std::make_shared<MockSockHandler>();
+
+        ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
+        ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+    }
 
     void TearDown() override {}
 };
@@ -60,7 +77,22 @@ protected:
 class checkTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    std::shared_ptr<MockWdbManager> wdbManager {};
+    std::shared_ptr<MockWdbHandler> wdb {};
+    std::shared_ptr<MockSockFactory> sockFactory {};
+    std::shared_ptr<MockSockHandler> cfg {};
+
+    void SetUp() override
+    {
+        initLogging();
+        wdbManager = std::make_shared<MockWdbManager>();
+        wdb = std::make_shared<MockWdbHandler>();
+        sockFactory = std::make_shared<MockSockFactory>();
+        cfg = std::make_shared<MockSockHandler>();
+
+        ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
+        ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+    }
 
     void TearDown() override {}
 };
@@ -68,7 +100,22 @@ protected:
 class summaryTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    std::shared_ptr<MockWdbManager> wdbManager {};
+    std::shared_ptr<MockWdbHandler> wdb {};
+    std::shared_ptr<MockSockFactory> sockFactory {};
+    std::shared_ptr<MockSockHandler> cfg {};
+
+    void SetUp() override
+    {
+        initLogging();
+        wdbManager = std::make_shared<MockWdbManager>();
+        wdb = std::make_shared<MockWdbHandler>();
+        sockFactory = std::make_shared<MockSockFactory>();
+        cfg = std::make_shared<MockSockHandler>();
+
+        ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
+        ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+    }
 
     void TearDown() override {}
 };
@@ -76,7 +123,22 @@ protected:
 class policiesTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    std::shared_ptr<MockWdbManager> wdbManager {};
+    std::shared_ptr<MockWdbHandler> wdb {};
+    std::shared_ptr<MockSockFactory> sockFactory {};
+    std::shared_ptr<MockSockHandler> cfg {};
+
+    void SetUp() override
+    {
+        initLogging();
+        wdbManager = std::make_shared<MockWdbManager>();
+        wdb = std::make_shared<MockWdbHandler>();
+        sockFactory = std::make_shared<MockSockFactory>();
+        cfg = std::make_shared<MockSockHandler>();
+
+        ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
+        ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+    }
 
     void TearDown() override {}
 };
@@ -84,7 +146,22 @@ protected:
 class dumpEndTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    std::shared_ptr<MockWdbManager> wdbManager {};
+    std::shared_ptr<MockWdbHandler> wdb {};
+    std::shared_ptr<MockSockFactory> sockFactory {};
+    std::shared_ptr<MockSockHandler> cfg {};
+
+    void SetUp() override
+    {
+        initLogging();
+        wdbManager = std::make_shared<MockWdbManager>();
+        wdb = std::make_shared<MockWdbHandler>();
+        sockFactory = std::make_shared<MockSockFactory>();
+        cfg = std::make_shared<MockSockHandler>();
+
+        ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
+        ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+    }
 
     void TearDown() override {}
 };
@@ -690,20 +767,6 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
 // Result true, Executes Query and responds OK
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 {
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                         "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
-            testSendMsg(clientRemoteFD, "ok ");
-            close(clientRemoteFD);
-        });
-
     auto event {std::make_shared<json::Json>(
         R"({
         "agent":
@@ -722,29 +785,17 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 
     const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
-    sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct cis_centos8_linux|4602802"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    t.join();
-    close(serverSocketFD);
+    ASSERT_NO_THROW(sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802));
 }
 
 // Result true, Executes Query and responds Err
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
 {
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                         "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
-            testSendMsg(clientRemoteFD, "err ");
-            close(clientRemoteFD);
-        });
-
     auto event {std::make_shared<json::Json>(
         R"({
         "agent":
@@ -763,29 +814,17 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
 
     const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
-    sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct cis_centos8_linux|4602802"),
+                                       testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    t.join();
-    close(serverSocketFD);
+    ASSERT_NO_THROW(sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802));
 }
 
 // Result false, Executes Query and responds with anything besides regular options
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 {
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                         "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
-            testSendMsg(clientRemoteFD, "anything_else ");
-            close(clientRemoteFD);
-        });
-
     auto event {std::make_shared<json::Json>(
         R"({
         "agent":
@@ -804,10 +843,12 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithR
 
     const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
-    sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct cis_centos8_linux|4602802"),
+                                       testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    t.join();
-    close(serverSocketFD);
+    ASSERT_NO_THROW(sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802));
 }
 
 // Result true, Executes Query and responds OK found paylod
@@ -831,28 +872,16 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
         }
     })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                         "agent 007 sca query_results cis_centos8_linux");
-            testSendMsg(clientRemoteFD, "ok found payload");
-            close(clientRemoteFD);
-        });
-
     const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results cis_centos8_linux"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found check")));
+
     auto [resultCode, hashCheckResults] = sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::FOUND);
-    ASSERT_STREQ(hashCheckResults.c_str(), "payload");
-
-    t.join();
-    close(serverSocketFD);
+    ASSERT_EQ(hashCheckResults, "check");
 }
 
 // Result false, Executes Query and responds OK not found
@@ -876,28 +905,16 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
         }
     })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                         "agent 007 sca query_results cis_centos8_linux");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
-
     const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results cis_centos8_linux"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+
     auto [resultCode, hashCheckResults] = sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::NOT_FOUND);
     ASSERT_TRUE(hashCheckResults.empty());
-
-    t.join();
-    close(serverSocketFD);
 }
 
 // Result false, Executes Query and responds anything else outside available options
@@ -921,28 +938,16 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
         }
     })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                         "agent 007 sca query_results cis_centos8_linux");
-            testSendMsg(clientRemoteFD, "err not_found");
-            close(clientRemoteFD);
-        });
-
     const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results cis_centos8_linux"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
+
     auto [resultCode, hashCheckResults] = sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::ERROR);
     ASSERT_STREQ(hashCheckResults.c_str(), "");
-
-    t.join();
-    close(serverSocketFD);
 }
 
 TEST_F(opBuilderSCAdecoder_Functions, IsValidScanInfo_OnlyMandatoryFields)
@@ -1157,7 +1162,10 @@ TEST_F(opBuilderSCAdecoderInit, BuildSimplest)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    ASSERT_NO_THROW(std::apply(opBuilderSCAdecoder, tuple));
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    ASSERT_NO_THROW(std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple));
 }
 
 TEST_F(opBuilderSCAdecoderInit, checkWrongQttyParams)
@@ -1167,7 +1175,7 @@ TEST_F(opBuilderSCAdecoderInit, checkWrongQttyParams)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
-    ASSERT_THROW(std::apply(opBuilderSCAdecoder, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderSCAdecoderInit, checkNoParams)
@@ -1177,7 +1185,7 @@ TEST_F(opBuilderSCAdecoderInit, checkNoParams)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
-    ASSERT_THROW(std::apply(opBuilderSCAdecoder, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
@@ -1187,7 +1195,10 @@ TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(R"({"_event_json": ""})")};
 
@@ -1203,7 +1214,10 @@ TEST_F(opBuilderSCAdecoderInit, gettingNonExistingReference)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(R"({"$_not_event_json": "event"})")};
 
@@ -1219,7 +1233,10 @@ TEST_F(opBuilderSCAdecoderInit, unexpectedType)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1274,7 +1291,10 @@ TEST_F(checkTypeDecoderSCA, missingFields)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1298,7 +1318,10 @@ TEST_F(checkTypeDecoderSCA, missingIDField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1334,7 +1357,10 @@ TEST_F(checkTypeDecoderSCA, missingPolicyField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1370,7 +1396,10 @@ TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1406,7 +1435,10 @@ TEST_F(checkTypeDecoderSCA, missingCheckField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1437,7 +1469,10 @@ TEST_F(checkTypeDecoderSCA, missingCheckIDField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1473,7 +1508,10 @@ TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1509,7 +1547,10 @@ TEST_F(checkTypeDecoderSCA, missingCheckResultField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1534,6 +1575,9 @@ TEST_F(checkTypeDecoderSCA, missingCheckResultField)
             }
         })")};
 
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
@@ -1545,29 +1589,17 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_FALSE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -1578,37 +1610,19 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok found payload");
-            close(clientRemoteFD);
-
-            // SaveEventcheck update (exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result||404");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found check")));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca update 911|Some Result||404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_EQ(event->getInt("/sca/id").value(), 404);
@@ -1617,7 +1631,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "Some Policy");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_Policy_ID");
     ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Some Title");
-    ASSERT_STREQ(event->getString("/sca/check/previous_result").value().c_str(), "payload");
+    ASSERT_STREQ(event->getString("/sca/check/previous_result").value().c_str(), "check");
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "Some Result");
     ASSERT_FALSE(event->exists("/sca/check/compliance"));
     ASSERT_FALSE(event->exists("/sca/check/reason"));
@@ -1629,37 +1643,19 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok found Some Result");
-            close(clientRemoteFD);
-
-            // SaveEventcheck update (exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result||404");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found Some Result")));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca update 911|Some Result||404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -1671,7 +1667,10 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto checkTypeEvtWithoutResult {
         R"({
@@ -1699,33 +1698,13 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithoutResult)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok found ");
-            close(clientRemoteFD);
-
-            // SaveEventcheck update (exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911||Could not open file|404");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found ")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca update 911||Could not open file|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -1736,39 +1715,22 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_EQ(event->getInt("/sca/id").value(), 404);
@@ -1785,7 +1747,10 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1815,43 +1780,18 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveCompliance
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyI|valueI");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_compliance 911|keyI|valueI"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_EQ(event->getInt("/sca/id").value(), 404);
@@ -1874,7 +1814,10 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1906,59 +1849,23 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveCompliance
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyI|valueI");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveCompliance
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyII|2");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveCompliance
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyIII|3.0");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_compliance 911|keyI|valueI"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_compliance 911|keyII|2"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_compliance 911|keyIII|3.0"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -1968,7 +1875,10 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1998,43 +1908,19 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|file|f:some_file_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|file|f:some_file_rule"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2044,7 +1930,10 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2074,43 +1963,19 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|directory|d:some_directory_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2120,7 +1985,10 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2150,43 +2018,19 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|registry|r:some_registry_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2196,7 +2040,10 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2226,43 +2073,19 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|command|c:some_command_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|command|c:some_command_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2272,7 +2095,10 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2302,43 +2128,19 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|process|p:some_process_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|process|p:some_process_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2348,7 +2150,10 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2378,43 +2183,19 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|numeric|n:some_numeric_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2424,7 +2205,10 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2556,35 +2340,15 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2594,7 +2358,10 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2629,83 +2396,39 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindEventcheck
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-            close(clientRemoteFD);
-
-            // SaveEventcheck insert (not exists)
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedQuery =
-                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
-            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-            testSendMsg(clientRemoteFD, "this answer is always ignored");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|file|f:some_file_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|command|c:some_command_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|process|p:some_process_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-
-            // SaveRule
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
-            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query 911"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(
+            testing::StrEq("agent 007 sca insert " + event->str("/event/original").value_or("error")), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|file|f:some_file_rule"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|directory|d:some_directory_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|registry|r:some_registry_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|command|c:some_command_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|process|p:some_process_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_rules 911|numeric|n:some_numeric_rule"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -2745,7 +2468,10 @@ TEST_F(summaryTypeDecoderSCA, missingFields)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2768,7 +2494,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2803,7 +2532,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2838,7 +2570,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2873,7 +2608,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2908,7 +2646,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2943,7 +2684,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2978,7 +2722,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3013,7 +2760,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3047,7 +2797,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScore)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3082,7 +2835,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHash)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3117,7 +2873,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3152,7 +2911,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFile)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3187,7 +2949,10 @@ TEST_F(summaryTypeDecoderSCA, missingFieldName)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3295,17 +3060,16 @@ const static std::map<FuncName, string> Function2Operation = {{FuncName::FindSca
                                                               {FuncName::FindPolicyInfo, "query_policy"},
                                                               {FuncName::FindCheckResults, "query_results"}};
 
-static inline void
-ignoreCodeSection(const FuncName function, const int& serverSocketFD, const string& agentID, const string& policyID)
+static inline void ignoreCodeSection(const FuncName function,
+                                     const string& agentID,
+                                     const string& policyID,
+                                     std::shared_ptr<MockWdbHandler> wdb)
 {
-    auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-    ASSERT_GT(clientRemoteFD, 0);
-    auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
     string operation {Function2Operation.find(function)->second};
     auto expectedMsg = string("agent ") + agentID + " sca " + operation + " " + policyID;
-    ASSERT_STREQ(clientMessage.data(), expectedMsg.data());
-    testSendMsg(clientRemoteFD, "unexpected answer");
-    close(clientRemoteFD);
+
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq(expectedMsg), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 }
 
 TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
@@ -3313,30 +3077,23 @@ TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     // TODO How log the errors of wdb
     ASSERT_TRUE(result); // TODO: When is it true, when is it false?
@@ -3348,48 +3105,28 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_hash some_old_scan_id")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca update_scan_info_start "
+                                                      "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
-            close(clientRemoteFD);
-
-            // SaveScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(),
-                         "agent 007 sca update_scan_info_start "
-                         "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
-            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-            close(clientRemoteFD);
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
@@ -3410,7 +3147,10 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto firstScanSummaryEvt {
         R"({
@@ -3446,44 +3186,22 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_hash some_old_scan_id")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca update_scan_info_start "
+                                              "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash"),
+                               testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
-            close(clientRemoteFD);
-
-            // SaveScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(),
-                         "agent 007 sca update_scan_info_start "
-                         "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
-            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-            close(clientRemoteFD);
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
@@ -3504,7 +3222,10 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto notFirstScanNoForceSummaryEvt {
         R"({
@@ -3538,44 +3259,21 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 
     const auto event {std::make_shared<json::Json>(notFirstScanNoForceSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash some_old_scan_id")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca update_scan_info_start "
+                                                      "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
-            close(clientRemoteFD);
-
-            // SaveScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(),
-                         "agent 007 sca update_scan_info_start "
-                         "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
-            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-            close(clientRemoteFD);
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -3586,7 +3284,10 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto notFirstScanNoForceSummaryEvt {
         R"({
@@ -3620,44 +3321,22 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
 
     const auto event {std::make_shared<json::Json>(notFirstScanNoForceSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash some_old_scan_id")));
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca update_scan_info_start "
+                                              "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash"),
+                               testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
-            close(clientRemoteFD);
-
-            // SaveScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(),
-                         "agent 007 sca update_scan_info_start "
-                         "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
-            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-            close(clientRemoteFD);
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -3668,58 +3347,33 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_scan_info "
+                                                      "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-
-            // SaveScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(),
-                         "agent 007 sca insert_scan_info "
-                         "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
-            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-            close(clientRemoteFD);
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:1")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
     result::Result<Event> result {op(event)};
-
-    // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
@@ -3740,48 +3394,28 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_scan_info "
+                                                      "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-
-            // SaveScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(),
-                         "agent 007 sca insert_scan_info "
-                         "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
-            testSendMsg(clientRemoteFD, "ok This answer is always ignored.");
-            close(clientRemoteFD);
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
@@ -3802,48 +3436,29 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca insert_policy some_name|some_file|"
+                                                      "some_policy_id|Some description|Some references|"
+                                                      "some_hash_file"),
+                                       testing::_))
+        .WillOnce(testing::Return(okQueryRes("This payload is always ignored.")));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-
-            // SavePolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca insert_policy some_name|some_file|some_policy_id|Some "
-                               "description|Some references|some_hash_file";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -3854,47 +3469,26 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAns
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found this_is_ignored_if_exists")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy_sha256 some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("unexpected answer")));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-            close(clientRemoteFD);
-
-            // FindPolicySHA256
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -3905,47 +3499,26 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found this_is_ignored_if_exists")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy_sha256 some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-            close(clientRemoteFD);
-
-            // FindPolicySHA256
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -3956,47 +3529,26 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHa
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found this_is_ignored_if_exists")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy_sha256 some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_file")));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-            close(clientRemoteFD);
-
-            // FindPolicySHA256
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok found some_hash_file");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4007,56 +3559,35 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found this_is_ignored_if_exists")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy_sha256 some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found different_hash_file")));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("unexpected answer")));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("unexpected answer")));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+    // Dump
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:1")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-            close(clientRemoteFD);
-
-            // FindPolicySHA256
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok found different_hash_file");
-            close(clientRemoteFD);
-
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            expectedMsg = "agent 007 sca delete_policy some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4067,56 +3598,28 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found this_is_ignored_if_exists")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy_sha256 some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found different_hash_file")));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-            close(clientRemoteFD);
-
-            // FindPolicySHA256
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok found different_hash_file");
-            close(clientRemoteFD);
-
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            expectedMsg = "agent 007 sca delete_policy some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4127,75 +3630,37 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found this_is_ignored_if_exists")));
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policy_sha256 some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found different_hash_file")));
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+    // DeletePolicyCheck
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // FindPolicyInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-            close(clientRemoteFD);
-
-            // FindPolicySHA256
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok found different_hash_file");
-            close(clientRemoteFD);
-
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            expectedMsg = "agent 007 sca delete_policy some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // DeletePolicyCheck
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            expectedMsg = "agent 007 sca delete_check some_policy_id";
-            ASSERT_STREQ(clientMessage.data(), expectedMsg);
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindCheckResults
+    ignoreCodeSection(FuncName::FindCheckResults, "007", "some_policy_id", wdb);
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:1")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4206,38 +3671,24 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4248,48 +3699,29 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:1")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4300,48 +3732,29 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:0")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4352,38 +3765,24 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4394,48 +3793,29 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_different_hash");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_hash")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:1")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4446,48 +3826,29 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindScanInfo
+    ignoreCodeSection(FuncName::FindScanInfo, "007", "some_policy_id", wdb);
 
-    std::thread t(
-        [&]()
-        {
-            int clientRemoteFD {-1};
-            string clientMessage;
+    // FindPolicyInfo
+    ignoreCodeSection(FuncName::FindPolicyInfo, "007", "some_policy_id", wdb);
 
-            // FindScanInfo
-            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindPolicyInfo
-            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_different_hash");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_hash")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:0")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_FALSE(event->exists("/sca/type"));
@@ -4502,7 +3863,10 @@ TEST_F(policiesTypeDecoderSCA, missingFields)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4526,7 +3890,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4544,25 +3911,11 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindCheckResults
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4573,7 +3926,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4591,25 +3947,11 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4620,7 +3962,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4638,25 +3983,11 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found some_policy");
-            close(clientRemoteFD);
-        });
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_policy")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4667,7 +3998,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4685,25 +4019,11 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found some_policyN,some_policy1,some_policy2");
-            close(clientRemoteFD);
-        });
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_policyN,some_policy1,some_policy2")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4714,7 +4034,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4732,33 +4055,16 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_policy")));
 
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found some_different_policy");
-            close(clientRemoteFD);
-
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy some_different_policy");
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
-        });
+    // DeletePolicy
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy some_different_policy"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4769,7 +4075,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4787,33 +4096,16 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_policy")));
 
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found some_different_policy");
-            close(clientRemoteFD);
-
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy some_different_policy");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // DeletePolicy
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy some_different_policy"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4824,7 +4116,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4842,41 +4137,21 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_different_policy")));
 
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found some_different_policy");
-            close(clientRemoteFD);
+    // DeletePolicy
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy some_different_policy"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy some_different_policy");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // DeletePolicyCheck
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check some_different_policy");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    // DeletePolicyCheck
+    EXPECT_CALL(*wdb,
+                tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check some_different_policy"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4887,7 +4162,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4905,41 +4183,19 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found policyI,policyIII,policyII")));
 
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found policyI,policyIII,policyII");
-            close(clientRemoteFD);
+    // DeletePolicy
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy policyII"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyII");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // DeletePolicyCheck
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyII");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    // DeletePolicyCheck
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check policyII"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -4949,7 +4205,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4967,41 +4226,19 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found policyI,policyIII,policyIV")));
 
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found policyI,policyIII,policyIV");
-            close(clientRemoteFD);
+    // DeletePolicy
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy policyIV"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyIV");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // DeletePolicyCheck
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyIV");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    // DeletePolicyCheck
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check policyIV"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -5012,7 +4249,10 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5030,57 +4270,27 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // FindPoliciesIds
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_policies "), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found policyII,policyIII,policyIV")));
 
-    std::thread t(
-        [&]()
-        {
-            // FindPoliciesIds
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-            testSendMsg(clientRemoteFD, "ok found policyII,policyIII,policyIV");
-            close(clientRemoteFD);
+    // DeletePolicy
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy policyII"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyII");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
+    // DeletePolicyCheck
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check policyII"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-            // DeletePolicyCheck
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyII");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
+    // DeletePolicy
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_policy policyIV"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-            // DeletePolicy
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyIV");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // DeletePolicyCheck
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyIV");
-            testSendMsg(clientRemoteFD, "This answer is always ignored.");
-            close(clientRemoteFD);
-        });
+    // DeletePolicyCheck
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check policyIV"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
 }
@@ -5120,7 +4330,10 @@ TEST_F(dumpEndTypeDecoderSCA, missingFields)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5143,7 +4356,10 @@ TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5168,7 +4384,10 @@ TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5193,7 +4412,10 @@ TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5218,37 +4440,24 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheck
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5260,37 +4469,24 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheck
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5302,37 +4498,24 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotF
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5344,37 +4527,24 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpec
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5386,37 +4556,24 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFo
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
-
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5428,45 +4585,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanI
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5478,45 +4618,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanI
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5528,45 +4651,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpected
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5578,45 +4684,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5628,45 +4717,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok not found");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("not found")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5678,45 +4750,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedA
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5728,45 +4783,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZ
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5778,45 +4816,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5828,45 +4849,28 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-        });
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
     result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5879,55 +4883,33 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(unknownQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "unexpected answer");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_distinct_hash_id")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:0")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -5940,55 +4922,33 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(errorQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "err");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_distinct_hash_id")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:0")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
@@ -6001,55 +4961,33 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
 
-    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    EXPECT_CALL(*wdbManager, connection());
+    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
+
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
+    // DeletePolicyCheckDistinct
+    EXPECT_CALL(
+        *wdb,
+        tryQueryAndParseResult(testing::StrEq("agent 007 sca delete_check_distinct some_policy_id|404"), testing::_))
+        .WillOnce(testing::Return(okQueryRes()));
 
-    std::thread t(
-        [&]()
-        {
-            // DeletePolicyCheckDistinct
-            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-            ASSERT_GT(clientRemoteFD, 0);
-            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
-            testSendMsg(clientRemoteFD, "ok");
-            close(clientRemoteFD);
+    // FindCheckResults
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_results some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_hash_id")));
 
-            // FindCheckResults
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_hash_id");
-            close(clientRemoteFD);
-
-            // FindScanInfo
-            clientRemoteFD = testAcceptConnection(serverSocketFD);
-            ASSERT_GT(clientRemoteFD, 0);
-            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-            testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
-            close(clientRemoteFD);
-        });
-
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
+    // FindScanInfo
+    EXPECT_CALL(*wdb, tryQueryAndParseResult(testing::StrEq("agent 007 sca query_scan some_policy_id"), testing::_))
+        .WillOnce(testing::Return(okQueryRes("found some_distinct_hash_id")));
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
-    close(clientDgramFD);
-    unlink(CFG_AR_SOCK_PATH.data());
+    EXPECT_CALL(*cfg, isConnected()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*cfg, sendMsg(testing::StrEq("007:sca-dump:some_policy_id:0")))
+        .WillOnce(testing::Return(successSendMsgRes()));
 
-    t.join();
-    close(serverSocketFD);
+    result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->isBool(targetField));
