@@ -16,15 +16,23 @@ using namespace hlp::parser;
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
 bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
-    if ("Data" != std::string {node.name()})
+    auto enEstring = docJson.prettyStr();
+    if ("Data" == std::string {node.name()})
+    {
+        path += "/" + std::string {node.attribute("Name").value()};
+        docJson.setString(node.text().as_string(), path);
+        return true;
+    }
+    else if ("Event" == std::string {node.name()})
+    {
+        // Skip Event in result json
+        path += "/Event";
+        return true;
+    }
+    else
     {
         return false;
     }
-
-    path += "/" + std::string {node.attribute("Name").value()};
-    docJson.setString(node.text().as_string(), path);
-
-    return true;
 }
 
 std::unordered_map<std::string_view, xmlModule> xmlModules = {
