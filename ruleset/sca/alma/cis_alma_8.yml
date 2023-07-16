@@ -13,7 +13,7 @@
 policy:
   id: "cis_alma_linux_8"
   file: "cis_alma_linux_8.yml"
-  name: "CIS Benchmark for Alma Linux 8"
+  name: "CIS Alma Linux 8 Benchmark v2.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Alma Linux 8 systems running on x86 and x64 platforms. This document was tested against Alma Linux 8."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
