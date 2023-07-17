@@ -1,0 +1,15 @@
+- name: cloudwatch_discard_regex_simple_text
+  description: CloudWatch discard regex configuration for simple text logs
+  configuration_parameters:
+    SERVICE_TYPE: cloudwatchlogs
+    LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
+    REGIONS: us-east-1
+    DISCARD_REGEX: .*Test.*
+    ONLY_LOGS_AFTER: 2023-JAN-12
+  metadata:
+    service_type: cloudwatchlogs
+    log_group_name: wazuh-cloudwatchlogs-integration-tests
+    only_logs_after: 2023-JAN-12
+    discard_regex: .*Test.*
+    regions: us-east-1
+    found_logs: 3
