@@ -81,8 +81,8 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=2)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_whodata_thread.yaml')
-config_path = Path(CONFIGS_PATH, 'configuration_whodata_thread.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_whodata_ambiguous_thread.yaml')
+config_path = Path(CONFIGS_PATH, 'configuration_whodata_ambiguous_thread.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
@@ -94,7 +94,7 @@ if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_whodata_thread(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+def test_whodata_ambiguous_thread(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                         truncate_monitored_files, daemons_handler):
     '''
     description: Check if the 'wazuh-syscheckd' daemon starts the 'whodata' thread when the configuration
@@ -141,7 +141,7 @@ def test_whodata_thread(test_configuration, test_metadata, set_wazuh_configurati
         - Verify that 'whodata' thread is started when the last 'whodata' value detected is set to 'yes'.
         - Verify that 'whodata' thread is not started when the last 'whodata' value detected is set to 'no'.
 
-    input_description: Two test cases are contained in external YAML file (cases_whodata_thread.yaml)
+    input_description: Two test cases are contained in external YAML file (cases_whodata_ambiguous_thread.yaml)
                        which includes configuration settings for the 'wazuh-syscheckd' daemon and testing
                        directories to monitor.
 
