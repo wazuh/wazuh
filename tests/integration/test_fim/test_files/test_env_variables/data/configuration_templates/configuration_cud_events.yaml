@@ -1,0 +1,30 @@
+# conf 1
+- tags:
+    - ossec_conf
+  apply_to_modules:
+    - test_dir
+  sections:
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'no'
+        - directories:
+            value: TEST_DIR
+            attributes:
+              - FIM_MODE
+        - frequency:
+            value: 5
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: 'yes'
