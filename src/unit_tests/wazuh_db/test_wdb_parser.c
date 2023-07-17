@@ -2532,6 +2532,9 @@ void test_wdb_parse_global_backup_invalid_syntax(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for backup.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: backup");
 
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'backup'");
@@ -2580,6 +2583,9 @@ void test_wdb_parse_global_backup_create_failed(void **state) {
     will_return(__wrap_wdb_global_create_backup, "ERROR MESSAGE");
     will_return(__wrap_wdb_global_create_backup, OS_INVALID);
     expect_string(__wrap__merror, formatted_msg, "Creating Global DB snapshot on demand failed: ERROR MESSAGE");
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
 
     result = wdb_parse(query, data->output, 0);
 
