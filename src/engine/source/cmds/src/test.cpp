@@ -16,10 +16,8 @@
 namespace
 {
 
-constexpr auto DEFAULT_SESSION_LIFESPAN = 0; ///< Default session lifespan
-
-std::atomic<bool> gs_doRun {true};
-cmd::details::StackExecutor g_exitHanlder {};
+bool gs_doRun {true};
+cmd::details::StackExecutor g_exitHandler {};
 
 /**
  * @brief Signal handler for SIGINT
@@ -277,14 +275,14 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
             clearIcanon(false);
         }
 
-        g_exitHanlder.execute();
+        g_exitHandler.execute(); // TODO: what does this do?
     }
 }
 
 void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
     using RequestType = eTest::SessionPost_Request;
-    using ResponseType = eTest::SessionPost_Response;
+    using ResponseType = eEngine::GenericStatus_Response;
     const std::string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
 
     RequestType eRequest;
@@ -318,7 +316,7 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
     using RequestType = eTest::SessionsDelete_Request;
-    using ResponseType = eTest::SessionsDelete_Response;
+    using ResponseType = eEngine::GenericStatus_Response;
     const std::string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
 
     RequestType eRequest;
@@ -409,7 +407,8 @@ void configure(CLI::App_p app)
     // API test session create
     auto testSessionCreateApp = testSessionApp->add_subcommand("create", "Create a new session.");
     testSessionCreateApp->add_option("name", parameters->sessionName, "Name of the new session.")->required();
-    testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.");
+    testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.")
+        ->default_val(std::string {api::test::handlers::DEFAULT_POLICY_FULL_NAME});
     testSessionCreateApp->add_option("-l, --lifespan", parameters->lifespan, "Lifespan of the session in minutes.");
     testSessionCreateApp->add_option("-d, --description", parameters->description, "Description of the session.");
     testSessionCreateApp->callback([parameters, client]() { sessionCreate(client, *parameters); });

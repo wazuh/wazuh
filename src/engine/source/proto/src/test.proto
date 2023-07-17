@@ -40,7 +40,7 @@ enum DebugMode
  **************************************************/
 message SessionGet_Request
 {
-    string name = 1; // test session name
+    optional string name = 1; // test session name
 }
 
 message SessionGet_Response
@@ -57,7 +57,7 @@ message SessionGet_Response
  **************************************************/
 message SessionPost_Request
 {
-    string name = 1;                 // test session name
+    optional string name = 1;        // test session name
     optional string policy = 2;      // test policy name
     optional uint32 lifespan = 3;    // test session lifespan
     optional string description = 4; // test session description
@@ -65,9 +65,9 @@ message SessionPost_Request
 
 message SessionPost_Response
 {
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
+    optional string error = 1; // Error message if status is ERROR
 }
+// GenericStatus_Response status; // Status of the query
 
 /***************************************************
  * Get the active sessions list
@@ -90,15 +90,15 @@ message SessionsGet_Response
  **************************************************/
 message SessionsDelete_Request
 {
-    optional string name = 1;     // test session name
-    optional bool delete_all = 2; // option to delete all the sessions
+    optional string name = 1; // test session name
+    bool delete_all = 2;      // option to delete all the sessions
 }
 
 message SessionsDelete_Response
 {
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
+    optional string error = 1; // Error message if status is ERROR
 }
+// GenericStatus_Response status; // Status of the query
 
 /***************************************************
  * Run a test

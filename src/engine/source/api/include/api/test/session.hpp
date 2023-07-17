@@ -38,56 +38,58 @@ public:
      *
      * @return std::string
      */
-    std::string getDescription(void) const { return m_description; };
+    std::string getDescription() const { return m_description; };
 
     /**
      * @brief Get the filter name.
      *
      * @return std::string
      */
-    std::string getFilterName(void) const { return m_filterName; };
+    std::string getFilterName() const { return m_filterName; };
 
     /**
      * @brief Get the policy name.
      *
      * @return std::string
      */
-    std::string getPolicyName(void) const { return m_policyName; };
+    std::string getPolicyName() const { return m_policyName; };
 
     /**
      * @brief Get the route name.
      *
      * @return std::string
      */
-    std::string getRouteName(void) const { return m_routeName; };
+    std::string getRouteName() const { return m_routeName; };
 
     /**
      * @brief Get the session ID.
      *
      * @return uint32_t
      */
-    uint32_t getSessionID(void) const { return m_sessionID; };
+    uint32_t getSessionID() const { return m_sessionID; };
 
     /**
      * @brief Get the session name.
      *
      * @return std::string
      */
-    std::string getSessionName(void) const { return m_sessionName; };
+    std::string getSessionName() const { return m_sessionName; };
 
     /**
      * @brief Get the session creation date.
      *
+     * @todo Consider using modern C++ features like std::chrono instead of std::time_t.
+     *
      * @return std::time_t
      */
-    std::time_t getCreationDate(void) const { return m_creationDate; };
+    std::time_t getCreationDate() const { return m_creationDate; };
 
     /**
      * @brief Get the session lifespan.
      *
      * @return uint32_t
      */
-    uint32_t getLifespan(void) const { return m_lifespan; };
+    uint32_t getLifespan() const { return m_lifespan; };
 
 private:
     const std::string m_description;  ///< Session description.
