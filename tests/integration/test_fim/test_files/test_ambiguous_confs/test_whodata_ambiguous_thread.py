@@ -92,10 +92,10 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LO
 if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
 
 
-
+# Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_whodata_ambiguous_thread(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                        truncate_monitored_files, daemons_handler):
+                                  truncate_monitored_files, daemons_handler):
     '''
     description: Check if the 'wazuh-syscheckd' daemon starts the 'whodata' thread when the configuration
                  is ambiguous. For example, when using 'whodata' on the same directory using conflicting

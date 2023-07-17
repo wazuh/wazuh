@@ -1,5 +1,10 @@
 from pathlib import Path
+import re
+import subprocess
+import sys
 from typing import Any
+import distro
+from psutil import WINDOWS
 import pytest
 
 from wazuh_testing.utils import file
@@ -23,3 +28,28 @@ def folder_to_monitor(test_metadata: dict) -> None:
     yield path
 
     file.delete_path_recursively(path) if path else None
+
+
+@pytest.fixture(scope='session', autouse=True)
+def install_audit():
+    """Automatically install auditd before test session on linux distros."""
+    if sys.platform == WINDOWS:
+        return
+
+    # Check distro
+    linux_distro = distro.id()
+
+    if re.match(linux_distro, "centos"):
+        package_management = "yum"
+        audit = "audit"
+        option = "--assumeyes"
+    elif re.match(linux_distro, "ubuntu") or re.match(linux_distro, "debian"):
+        package_management = "apt-get"
+        audit = "auditd"
+        option = "--yes"
+    else:
+        raise ValueError(
+            f"Linux distro ({linux_distro}) not supported for install audit")
+
+    subprocess.run([package_management, "install", audit, option], check=True)
+    subprocess.run(["service", "auditd", "start"], check=True)
