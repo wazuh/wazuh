@@ -145,7 +145,6 @@ Vagrant.configure("2") do |config|
         $ENGINE_DIR/wazuh-engine catalog create policy < $ENGINE_SRC_DIR/ruleset/default-policy.yml
         echo "Enabling default environment..."
         $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 255 policy/wazuh/0
-        cp -r $WAZUH_DIR/etc/kvdb/* $WAZUH_DIR/etc/kvdb_test/
         echo
 
         # Add user vagrant to wazuh group

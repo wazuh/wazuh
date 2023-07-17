@@ -12,6 +12,8 @@ namespace api::test::handlers
 
 constexpr auto API_SESSIONS_TABLE_NAME = "internal/api_sessions/0";   ///< Name of the sessions table in the store
 
+constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0";           ///< Default policy full name
+
 constexpr auto TEST_DELETE_SESSIONS_API_CMD = "test.sessions/delete"; ///< API command to delete sessions
 constexpr auto TEST_GET_SESSION_DATA_API_CMD = "test.session/get";    ///< API command to get a session data
 constexpr auto TEST_GET_SESSIONS_LIST_API_CMD = "test.sessions/get";  ///< API command to get the list of sessions
@@ -47,21 +49,29 @@ loadSessionsFromJson(const std::shared_ptr<api::sessionManager::SessionManager>&
                      const json::Json& jsonSessions);
 
 /**
- * @brief Get the sessions as a JSON object.
+ * @brief Retrieves a list of sessions as a JSON object.
  *
- * @param sessionManager Session Manager instance.
+ * This function takes a shared pointer to the SessionManager and returns a JSON object representing the sessions.
  *
- * @return json::Json
+ * @param sessionManager A shared pointer to the SessionManager object.
+ * @return json::Json A JSON object containing the sessions.
  */
 json::Json getSessionsAsJson(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager);
 
 /**
- * @brief Get the sessions as a JSON string.
+ * @brief Loads stored sessions given a JSON object.
  *
- * @param sessionManager Session Manager instance.
- * @param store Store instance.
+ * This function takes a shared pointer to the SessionManager, Catalog, Router, and a JSON object representing sessions.
+ * It parses the JSON sessions, validates the required fields, and creates sessions in the session manager.
+ * Additionally, it subscribes to the output and traces of the created sessions in the router.
  *
- * @return optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ * @param sessionManager A shared pointer to the SessionManager object.
+ * @param catalog A shared pointer to the Catalog object.
+ * @param router A shared pointer to the Router object.
+ * @param jsonSessions A JSON object representing the sessions.
+ *
+ * @return std::optional<base::Error> An optional Error object indicating any error that occurred during the loading
+ * process, or std::nullopt if the loading was successful.
  */
 std::optional<base::Error>
 saveSessionsToStore(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
@@ -82,6 +92,8 @@ int32_t getMaximumAvailablePriority(const std::shared_ptr<::router::Router>& rou
  * @param catalog Catalog instance.
  * @param assetType Asset type string.
  * @param assetContent Asset content as a string.
+ *
+ * @todo Consider moving this method to the catalog scope.
  *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
