@@ -197,6 +197,26 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
     const std::string commandGet {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
 
+    // Set signal [SIGINT]: Crt+C handler
+    {
+        // Set the signal handler for SIGINT
+        struct sigaction sigIntHandler = {};
+        sigIntHandler.sa_handler = sigintHandler;
+        sigemptyset(&sigIntHandler.sa_mask);
+        sigIntHandler.sa_flags = 0;
+        sigaction(SIGINT, &sigIntHandler, nullptr);
+    }
+    // Set signal [EPIPE]: Broken pipe handler
+    {
+        // Set the signal handler for EPIPE (uvw/libuv/libev)
+        // https://github.com/skypjack/uvw/issues/291
+        struct sigaction sigPipeHandler = {};
+        sigPipeHandler.sa_handler = SIG_IGN;
+        sigemptyset(&sigPipeHandler.sa_mask);
+        sigPipeHandler.sa_flags = 0;
+        sigaction(SIGPIPE, &sigPipeHandler, nullptr);
+    }
+
     // Check that the session exists before executing the run command
     eTest::SessionGet_Request eGetRequest;
     eGetRequest.set_name(parameters.sessionName);
@@ -269,6 +289,8 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
                           << std::endl;
             }
         }
+
+        std::cerr << "exiittt   " << std::endl;
 
         if (isatty(fileno(stdin)))
         {
