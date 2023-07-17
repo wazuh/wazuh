@@ -246,7 +246,7 @@ INSTANTIATE_TEST_SUITE_P(Functionality,
                          TestSessionDeleteCommand,
                          ::testing::Values(std::make_tuple(1, R"({})", R"({
                         "status": "ERROR",
-                        "error": "Missing both /name and /delete_all fields, at least one field must be set"
+                        "error": "Missing field /name while /delete_all field is 'false'"
                     })"),
                                            std::make_tuple(2, R"({"name":"dummy"})", R"({
                         "status": "ERROR",
@@ -574,7 +574,7 @@ TEST_P(TestSessionPostCommand, Functionality)
     ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, sessionPostCommandparams));
     auto response = m_cmdAPI(request);
 
-    if (executionNumber > 1)
+    if (executionNumber > 2)
     {
         EXPECT_GT(m_sessionManager->getNewSessionID(), 1);
     }
@@ -626,11 +626,13 @@ TEST_P(TestSessionPostCommand, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     Functionality,
     TestSessionPostCommand,
-    ::testing::Values(std::make_tuple(1, R"({})", R"({"status":"ERROR","error":"Session name cannot be empty"})"),
-                      std::make_tuple(2, R"({"name":"dummy"})", R"({
+    ::testing::Values(
+        std::make_tuple(1, R"({})", R"({"status":"ERROR","error":"Field /name is required"})"),
+        std::make_tuple(2, R"({"name":""})", R"({"status":"ERROR","error":"Field /name cannot be empty"})"),
+        std::make_tuple(3, R"({"name":"dummy"})", R"({
                         "status": "OK"
                     })"),
-                      std::make_tuple(3, R"({"name":"dummy"})", R"({
+        std::make_tuple(4, R"({"name":"dummy"})", R"({
                         "status": "ERROR",
                         "error": "Session 'dummy' already exists"
                     })")));
