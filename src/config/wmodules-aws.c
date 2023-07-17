@@ -59,6 +59,7 @@ static const char *INSPECTOR_SERVICE_TYPE = "inspector";
 static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
+static const char *BUCKETS_SUBSCRIBER_TYPE = "buckets";
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
 static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
@@ -539,12 +540,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             // type is an attribute of the subscriber tag
             if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid one is '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s' or '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
                     return OS_INVALID;
-                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE)) {
+                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid one is '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 }
             } else {
@@ -602,6 +603,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_subscriber->iam_role_duration);
                             os_strdup(children[j]->content, cur_subscriber->iam_role_duration);
                         }
+                } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->aws_profile);
+                        os_strdup(children[j]->content, cur_subscriber->aws_profile);
+                    }
                 } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->sts_endpoint);
@@ -611,6 +617,26 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->service_endpoint);
                         os_strdup(children[j]->content, cur_subscriber->service_endpoint);
+                    }
+                } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->aws_profile);
+                        os_strdup(children[j]->content, cur_subscriber->aws_profile);
+                    }
+                } else if (strcmp(children[j]->element, XML_DISCARD_REGEX) == 0) {
+                    if (strlen(children[j]->content) != 0) {
+                        const char * field_attr = w_get_attr_val_by_name(children[j], XML_DISCARD_FIELD);
+                        if ((field_attr) && (strlen(field_attr) != 0)) {
+                            free(cur_service->discard_field);
+                            os_strdup(field_attr, cur_service->discard_field);
+
+                            free(cur_service->discard_regex);
+                            os_strdup(children[j]->content, cur_service->discard_regex);
+                        } else {
+                            mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                        }
+                    } else {
+                        mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
                     }
                 } else {
                     merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
