@@ -37,15 +37,13 @@ constexpr auto API_SESSIONS_DATA_FORMAT = R"({"name":"","id":"","creationdate":0
                                           R"("filtername":"","policyname":"","routename":""})"; ///< API session data
                                                                                                 ///< format
 
-constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0";   ///< Default policy full name
-
 constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")";    ///< JSON name field format, where '{}' is the asset name
 constexpr auto FILTER_CONTENT_FORMAT =
     R"({{"name": "{}", "check":[{{"~TestSessionID":{}}}]}})"; ///< Filter content format
 constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0"; ///< Filter name format, '{}' is the session name
 constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy name format, '{}' is the session name
 constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
-constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "/~0TestSessionID";  ///< Field to check in filter.
+constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "~TestSessionID";    ///< Field to check in filter.
 constexpr auto TEST_DEFAULT_PROTOCOL_LOCATION = "api.test";         ///< Default protocol location
 
 constexpr auto FILTER_NOT_REMOVED_MSG = "Filter '{}' could not be removed from the catalog: {}";
@@ -64,6 +62,7 @@ namespace api::test::handlers
 namespace eEngine = ::com::wazuh::api::engine;
 namespace eTest = ::com::wazuh::api::engine::test;
 
+// TODO: Consider the chance of adapting the session to incorporate methods to be imported and exported as Json
 std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionManager>& sessionManager,
                                                 const std::shared_ptr<Catalog>& catalog,
                                                 const std::shared_ptr<Router>& router,
@@ -132,13 +131,13 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionMan
         }
 
         auto&& createSessionError = sessionManager->createSession(sessionName.value(),
-                                                                      policyName.value(),
-                                                                      filterName.value(),
-                                                                      routeName.value(),
-                                                                      sessionID.value(),
-                                                                      lifespan.value(),
-                                                                      description.value(),
-                                                                      creationDate.value());
+                                                                  policyName.value(),
+                                                                  filterName.value(),
+                                                                  routeName.value(),
+                                                                  sessionID.value(),
+                                                                  lifespan.value(),
+                                                                  description.value(),
+                                                                  creationDate.value());
         if (createSessionError.has_value())
         {
             return createSessionError;
@@ -423,6 +422,7 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Sess
     return (errorMsg.empty() ? std::nullopt : std::optional<base::Error> {base::Error {errorMsg}});
 }
 
+// TODO: consider using a "stack executor" to undo previous operations in case of failure
 api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                          const std::shared_ptr<Catalog>& catalog,
                          const std::shared_ptr<Router>& router,
@@ -431,7 +431,7 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
     return [sessionManager, catalog, router, store](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionPost_Request;
-        using ResponseType = eTest::SessionPost_Response;
+        using ResponseType = eEngine::GenericStatus_Response;
         auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
@@ -441,9 +441,14 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
         }
         const auto& eRequest = std::get<RequestType>(res);
 
+        if (!eRequest.has_name())
+        {
+            return genericError<ResponseType>("Field /name is required");
+        }
+
         if (eRequest.name().empty())
         {
-            return genericError<ResponseType>("Session name cannot be empty");
+            return genericError<ResponseType>("Field /name cannot be empty");
         }
 
         const auto& sessionName = eRequest.name();
@@ -677,6 +682,11 @@ api::Handler sessionGet(const std::shared_ptr<SessionManager>& sessionManager)
 
         const auto& eRequest = std::get<RequestType>(res);
 
+        if (!eRequest.has_name())
+        {
+            return genericError<ResponseType>("Session name is required");
+        }
+
         const auto session = sessionManager->getSession(eRequest.name());
         if (!session.has_value())
         {
@@ -738,7 +748,7 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
     return [sessionManager, catalog, router, store](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsDelete_Request;
-        using ResponseType = eTest::SessionsDelete_Response;
+        using ResponseType = eEngine::GenericStatus_Response;
         auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
@@ -749,24 +759,32 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
 
         const auto& eRequest = std::get<RequestType>(res);
 
-        const auto errorMsg =
-            ((!eRequest.has_name() && !eRequest.has_delete_all())
-                 ? std::make_optional("Missing both /name and /delete_all fields, at least one field must be set")
-                 : std::nullopt);
+        const auto errorMsg = ((!eRequest.has_name() && !eRequest.delete_all())
+                                   ? std::make_optional("Missing field /name while /delete_all field is 'false'")
+                                   : std::nullopt);
         if (errorMsg.has_value())
         {
             return genericError<ResponseType>(errorMsg.value());
         }
 
-        if (eRequest.has_delete_all() && eRequest.delete_all())
+        if (eRequest.delete_all())
         {
+            std::string errorMsg {};
             for (auto& sessionName : sessionManager->getSessionsList())
             {
                 const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, sessionName);
                 if (deleteSessionError.has_value())
                 {
-                    return genericError<ResponseType>(deleteSessionError.value().message);
+                    if (!errorMsg.empty())
+                    {
+                        errorMsg += ". ";
+                    }
+                    errorMsg += deleteSessionError.value().message;
                 }
+            }
+            if (!errorMsg.empty())
+            {
+                return genericError<ResponseType>(errorMsg);
             }
         }
         else if (eRequest.has_name())
@@ -879,7 +897,8 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
 
         // Add session ID to the event to filter it on the route
         const auto sessionID = session.value().getSessionID();
-        event->setInt(static_cast<int>(sessionID), TEST_FIELD_TO_CHECK_IN_FILTER);
+        const auto formattedPath = json::Json::formatJsonPath(TEST_FIELD_TO_CHECK_IN_FILTER);
+        event->setInt(static_cast<int>(sessionID), formattedPath);
 
         // Enqueue event
         const auto enqueueEventError = router->enqueueEvent(std::move(event));
