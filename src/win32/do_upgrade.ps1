@@ -285,6 +285,9 @@ while($status -ne "connected"  -And $counter -gt 0)
 }
 Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
+# Save a copy of ossec.log, only for troubleshooting https://github.com/wazuh/support/issues/424
+Copy-Item .\ossec.log .\upgrade\ossec.bkp.log
+
 If ($status -ne "connected")
 {
     Get-Service -Name "Wazuh" | Stop-Service
