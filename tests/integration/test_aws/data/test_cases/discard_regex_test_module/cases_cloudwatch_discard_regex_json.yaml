@@ -1,0 +1,17 @@
+- name: cloudwatch_discard_regex_json
+  description: CloudWatch discard regex configuration for JSON logs
+  configuration_parameters:
+    SERVICE_TYPE: cloudwatchlogs
+    LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
+    REGIONS: us-east-1
+    DISCARD_FIELD: networkInterfaces.networkInterfaceId
+    DISCARD_REGEX: .*eni-networkInterfaceId*
+    ONLY_LOGS_AFTER: 2023-JUL-03
+  metadata:
+    service_type: cloudwatchlogs
+    log_group_name: wazuh-cloudwatchlogs-integration-tests
+    only_logs_after: 2023-JUL-03
+    discard_field: networkInterfaces.networkInterfaceId
+    discard_regex: .*eni-networkInterfaceId.*
+    regions: us-east-1
+    found_logs: 1
