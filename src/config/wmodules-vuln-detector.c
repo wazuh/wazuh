@@ -110,7 +110,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
     } else if (elements == 1) {
         snprintf(*os_name, size, "%s", distr);
     } else {
-        free(*os_name);
+        os_free(*os_name);
         return OS_INVALID;
     }
 
@@ -120,7 +120,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
         *ver_end = '\0';
     }
     if (size = strlen(ver), size >= 20) {
-        free(*os_name);
+        os_free(*os_name);
         return OS_INVALID;
     }
     os_strdup(ver, *os_ver);
@@ -367,8 +367,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     if (upd_list[os_index]) {
         mdebug1("Duplicate OVAL configuration for '%s%s%s'", upd->dist, upd->version ? " " : "", upd->version ? upd->version : "");
-        wm_vuldet_free_update_node(upd_list[os_index]);
-        free(upd_list[os_index]);
+        wm_vuldet_release_update_node(upd_list, os_index);
     }
 
     upd_list[os_index] = upd;
@@ -954,15 +953,18 @@ int wm_vuldet_add_allow_os(update_node *update, char *os_tags) {
         }
         mdebug1("'%s' successfully added to the monitored OS list.", os_tags);
         update->allowed_os_name[size + 1] = NULL;
+        update->allowed_os_ver[size + 1] = NULL;
         os_tags = found;
     }
     os_realloc(update->allowed_os_name, (size + 2)*sizeof(char *), update->allowed_os_name);
+    os_realloc(update->allowed_os_ver, (size + 2)*sizeof(char *), update->allowed_os_ver);
     if (format_os_version(os_tags, &update->allowed_os_name[size], &update->allowed_os_ver[size])) {
         merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
         return OS_INVALID;
     }
     mdebug1("'%s' successfully added to the monitored OS list.", os_tags);
     update->allowed_os_name[size + 1] = NULL;
+    update->allowed_os_ver[size + 1] = NULL;
 
     return 0;
 }
