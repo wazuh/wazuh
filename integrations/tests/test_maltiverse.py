@@ -9,8 +9,10 @@ import json
 import maltiverse
 import pytest
 import socket
+import os
+import logging
 
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
 
 UNABLE_TO_CONNECT_SOCKET_ERROR_CODE = 6
 SENDING_MESSAGE_SOCKET_ERROR_CODE = 7
@@ -35,6 +37,9 @@ response_example = {
     "creation_time": "2022-01-01T00:00:00Z",
     "modification_time": "2022-01-02T00:00:00Z",
 }
+alerts_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/alerts.json')
+sys_args_template = ['/var/ossec/integrations/maltiverse.py', alerts_file, 'API key', 
+                     'http://<IP>:3001/api/v1/hooks/<HOOK_ID>']
 
 
 def assert_expected_schema(response):
@@ -160,15 +165,6 @@ def test_main_exit_with_invalid_number_of_arguments(number_of_arguments):
     assert excinfo.value.code == 2
 
 
-def test_main_enables_debug():
-    """Test that the `main` function enables debug mode when 'debug' argument is present."""
-    with patch("builtins.open", mock_open()), patch("maltiverse.process_args"):
-        maltiverse.main(["a", "b", "c", "d", "debug"])
-
-    assert maltiverse.debug_enabled
-    maltiverse.debug_enabled = False
-
-
 @pytest.mark.parametrize(
     "invalid_url",
     [
@@ -182,7 +178,7 @@ def test_process_args_exit_with_invalid_hook_url(invalid_url):
     with pytest.raises(SystemExit) as excinfo:
         maltiverse.process_args(["a", "b", "c", invalid_url])
 
-    assert excinfo.value.code == 5
+    assert excinfo.value.code == 6
 
 
 def test_load_alert():
@@ -197,7 +193,6 @@ def test_load_alert():
         result = maltiverse.load_alert(file_path)
 
     assert result == alert_data
-    mock_open.assert_called_once_with(file_path)
 
 
 def test_load_alert_exit_with_invalid_file():
@@ -207,7 +202,7 @@ def test_load_alert_exit_with_invalid_file():
     with pytest.raises(SystemExit) as excinfo:
         maltiverse.load_alert(invalid_file_path)
 
-    assert excinfo.value.code == 3
+    assert excinfo.value.code == maltiverse.ERR_FILE_NOT_FOUND
 
 
 def test_load_alert_exit_with_invalid_file_content():
@@ -220,7 +215,7 @@ def test_load_alert_exit_with_invalid_file_content():
 
         maltiverse.load_alert(file_path)
 
-    assert excinfo.value.code == 4
+    assert excinfo.value.code == maltiverse.ERR_INVALID_JSON
 
 
 @pytest.mark.parametrize(
@@ -460,13 +455,22 @@ def test_get_mitre_information(ioc, expected):
     assert result == expected
 
 
-def test_debug():
-    """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
-    example_msg = "some message"
+def test_logger(caplog):
+    """Test the correct execution of the logger."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    with patch("maltiverse.socket.socket") as mock_socket:
+        with patch("maltiverse.request_maltiverse_info", return_value={}):
+            with caplog.at_level(logging.DEBUG, logger='maltiverse'):
+                args = sys_args_template[:]
+                args.append('info')
+                maltiverse.main(args)
 
-    with patch('maltiverse.debug_enabled', return_value=True), \
-            patch("maltiverse.open", mock_open()) as open_mock, \
-            patch('maltiverse.LOG_FILE', return_value='integrations.log') as log_file:
-        maltiverse.debug(example_msg)
-        open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{example_msg}\n")
+    # Assert console log correctness
+    assert caplog.records[0].message == 'Running Maltiverse script'
+    assert caplog.records[1].message == f'Alerts file location: {sys_args_template[1]}'
+    assert caplog.records[-1].levelname == 'INFO'
+    assert "DEBUG" not in caplog.text
+    # Assert the log file is created and is not empty
+    assert os.path.exists(maltiverse.LOG_FILE)
+    assert os.path.getsize(maltiverse.LOG_FILE) > 0

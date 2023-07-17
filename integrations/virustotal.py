@@ -8,14 +8,16 @@
 
 import json
 import sys
-import time
+import logging
+from logging.handlers import TimedRotatingFileHandler
+from urllib.parse import urlparse
 import os
 import re
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 # Exit error codes
 ERR_NO_REQUEST_MODULE   = 1
-ERR_BAD_ARGUMENTS       = 2
+ERR_INVALID_ARGUMENTS   = 2
 ERR_BAD_MD5_SUM         = 3
 ERR_NO_RESPONSE_VT      = 4
 ERR_SOCKET_OPERATION    = 5
@@ -39,11 +41,11 @@ except Exception as e:
 # </integration>
 
 # Global vars
-debug_enabled   = False
 timeout         = 10
 retries         = 3
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
+logger = logging.getLogger("virustotal")
 
 # Log and socket path
 LOG_FILE        = f'{pwd}/logs/integrations.log'
@@ -55,105 +57,82 @@ APIKEY_INDEX    = 2
 TIMEOUT_INDEX   = 6
 RETRIES_INDEX   = 7
 
-
 def main(args):
-    global debug_enabled
     global timeout
     global retries
     try:
         # Read arguments
-        bad_arguments: bool = False
         if len(args) >= 4:
             msg = '{0} {1} {2} {3} {4} {5} {6}'.format(
                 args[1],
                 args[2],
                 args[3],
-                args[4] if len(args) > 4 else '',
-                args[5] if len(args) > 5 else '',
+                args[4].upper() if len(args) > 4 else 'INFO',
+                args[5] if len(sys.argv) > 5 else '',
                 args[TIMEOUT_INDEX] if len(args) > TIMEOUT_INDEX else timeout,
                 args[RETRIES_INDEX] if len(args) > RETRIES_INDEX else retries,
             )
-            debug_enabled = (len(args) > 4 and args[4] == 'debug')
             if len(args) > TIMEOUT_INDEX: timeout = int(args[TIMEOUT_INDEX])
             if len(args) > RETRIES_INDEX: retries = int(args[RETRIES_INDEX])
         else:
-            msg = '# Error: Wrong arguments'
-            bad_arguments = True
+            print_help_msg()
+            sys.exit(ERR_INVALID_ARGUMENTS)
+        
+        setup_logger(args)
+
+        if not os.path.exists(args[1]):
+            raise FileNotFoundError(f"Alert file specified {args[1]} does not exist")
 
         # Logging the call
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
-
-        if bad_arguments:
-            debug("# Error: Exiting, bad arguments. Inputted: %s" % args)
-            sys.exit(ERR_BAD_ARGUMENTS)
+        logger.debug(msg)
 
         # Core function
         process_args(args)
 
     except Exception as e:
-        debug(str(e))
+        logger.error(str(e))
         raise
 
+
 def process_args(args) -> None:
-    """
-        This is the core function, creates a message with all valid fields
-        and overwrite or add with the optional fields
+    """Create a message with all valid fields and overwrite or add the optional fields.
 
-        Parameters
-        ----------
-        args : list[str]
-            The argument list from main call
+    Parameters
+    ----------
+    args : list[str]
+        The argument list from main call.
     """
-    debug("# Running VirusTotal script")
-
     # Read args
     alert_file_location: str     = args[ALERT_INDEX]
     apikey: str                  = args[APIKEY_INDEX]
 
+    logger.info("Running VirusTotal script")
+    logger.info("Alerts file location: %s", alert_file_location)
+    logger.debug("API key: %s", apikey)
+
     # Load alert. Parse JSON object.
     json_alert  = get_json_alert(alert_file_location)
-    debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
+    logger.info("Processing alert with ID %s", json_alert["id"])
+    logger.debug("Opening alert file at '%s' with '%s'", alert_file_location, json_alert)
 
-    # Request VirusTotal info
-    debug("# Requesting VirusTotal information")
-    msg: any    = request_virustotal_info(json_alert, apikey)
+    msg: any = generate_msg(json_alert, apikey)
+    send_msg(msg, json_alert['agent'])
 
-    if not msg:
-        debug("# Error: Empty message")
-        raise Exception
+def generate_msg(alert: any, apikey: str):
+    """Generate the JSON object with the message to be sent.
 
-    send_msg(msg, json_alert["agent"])
+    Parameters
+    ----------
+    alert : any
+        JSON alert object.
 
-def debug(msg: str) -> None:
+    Returns
+    -------
+    msg: str
+        The JSON message to send.
     """
-        Log the message in the log file with the timestamp, if debug flag
-        is enabled
+    logger.info("Generating message")
 
-        Parameters
-        ----------
-        msg : str
-            The message to be logged.
-    """
-    if debug_enabled:
-        print(msg)
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
-
-def request_virustotal_info(alert: any, apikey: str):
-    """
-        Generate the JSON object with the message to be send
-
-        Parameters
-        ----------
-        alert : any
-            JSON alert object.
-
-        Returns
-        -------
-        msg: str
-            The JSON message to send
-    """
     request_ok                    = False
     alert_output                  = {}
     alert_output["virustotal"]    = {}
@@ -161,18 +140,17 @@ def request_virustotal_info(alert: any, apikey: str):
 
     # If there is no syscheck block present in the alert. Exit.
     if not "syscheck" in alert:
-        debug("# No syscheck block present in the alert")
+        logger.debug("No syscheck block present in the alert")
         return None
 
     # If there is no md5 checksum present in the alert. Exit.
     if not "md5_after" in alert["syscheck"]:
-        debug("# No md5 checksum present in the alert")
-        return None
+        raise Exception("No md5 checksum present in the alert")
 
     # If the md5_after field is not a md5 hash checksum. Exit
-    if not (isinstance(alert["syscheck"]["md5_after"],str) is True and len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert["syscheck"]["md5_after"])) == 1) :
-        debug("# md5_after field in the alert is not a md5 hash checksum")
-        return None
+    if not (isinstance(alert["syscheck"]["md5_after"],str) is True and
+            len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert["syscheck"]["md5_after"])) == 1) :
+        raise Exception("md5_after field in the alert is not a md5 hash checksum")
 
     # Request info using VirusTotal API
     for attempt in range(retries + 1):
@@ -181,14 +159,14 @@ def request_virustotal_info(alert: any, apikey: str):
             request_ok = True
             break
         except Timeout:
-            debug("# Error: Request timed out. Remaining retries: %s" % (retries - attempt))
+            logger.error("Request timed out. Remaining retries: %s" % (retries - attempt))
             continue
         except Exception as e:
-            debug(str(e))
+            logger.error(str(e))
             sys.exit(ERR_NO_RESPONSE_VT)
 
     if not request_ok:
-        debug("# Error: Request timed out and maximum number of retries was exceeded")
+        logger.error("Request timed out and maximum number of retries was exceeded")
         alert_output["virustotal"]["error"]         = 408
         alert_output["virustotal"]["description"]   = "Error: API request timed out"
         send_msg(alert_output)
@@ -226,58 +204,62 @@ def in_database(data, hash):
     return True
 
 def query_api(hash: str, apikey: str) -> any:
-    """
-        Send a request to VT API and fetch information to build message
+    """Send a request to VT API and fetch information to build message.
 
-        Parameters
-        ----------
-        hash : str
-            Hash need it for parameters
-        apikey: str
-            Authentication API
+    Parameters
+    ----------
+    hash : str
+        Hash needed for the parameters.
+    apikey: str
+        Authentication API.
 
-        Returns
-        -------
-        data: any
-            JSON with the response
+    Returns
+    -------
+    data: any
+        JSON with the response.
 
-        Raises
-        ------
-        Exception
-            If the status code is different than 200.
+    Raises
+    ------
+    Exception
+        If the status code is different than 200.
     """
     params    = {'apikey': apikey, 'resource': hash}
     headers   = { "Accept-Encoding": "gzip, deflate", "User-Agent" : "gzip,  Python library-client-VirusTotal" }
 
-    debug("# Querying VirusTotal API")
-    response  = requests.get('https://www.virustotal.com/vtapi/v2/file/report',params=params, headers=headers, timeout=timeout)
+    logger.debug("Querying VirusTotal API")
+    response = requests.get('https://www.virustotal.com/vtapi/v2/file/report',
+                            params=params, headers=headers, timeout=timeout)
 
     if response.status_code == 200:
         json_response = response.json()
         vt_response_data = json_response
         return vt_response_data
-    else:
-        alert_output                  = {}
-        alert_output["virustotal"]    = {}
-        alert_output["integration"]   = "virustotal"
+    
+    alert_output                        = {}
+    alert_output["virustotal"]          = {}
+    alert_output["integration"]         = "virustotal"
+    alert_output["virustotal"]["error"] = response.status_code
 
-        if response.status_code == 204:
-            alert_output["virustotal"]["error"]         = response.status_code
-            alert_output["virustotal"]["description"]   = "Error: Public API request rate limit reached"
-            send_msg(alert_output)
-            raise Exception("# Error: VirusTotal Public API request rate limit reached")
-        elif response.status_code == 403:
-            alert_output["virustotal"]["error"]         = response.status_code
-            alert_output["virustotal"]["description"]   = "Error: Check credentials"
-            send_msg(alert_output)
-            raise Exception("# Error: VirusTotal credentials, required privileges error")
-        else:
-            alert_output["virustotal"]["error"]         = response.status_code
-            alert_output["virustotal"]["description"]   = "Error: API request fail"
-            send_msg(alert_output)
-            raise Exception("# Error: VirusTotal credentials, required privileges error")
+    if response.status_code == 204:
+        alert_output["virustotal"]["description"]   = "Error: Public API request rate limit reached"
+        error = 'Error: VirusTotal Public API request rate limit reached'
+
+    elif response.status_code == 403:
+        alert_output["virustotal"]["description"]   = "Error: Check credentials"
+        error = 'Error: VirusTotal credentials, required privileges error'
+ 
+    else:
+        alert_output["virustotal"]["description"]   = "Error: API request fail"
+        error = 'Error: VirusTotal credentials, required privileges error'
+
+    send_msg(json.dumps(alert_output))
+
+    logger.error(error)
+    raise Exception(error)
 
 def send_msg(msg: any, agent:any = None) -> None:
+    logger.info("Sending message")
+
     if not agent or agent["id"] == "000":
         string      = '1:virustotal:{0}'.format(json.dumps(msg))
     else:
@@ -285,46 +267,96 @@ def send_msg(msg: any, agent:any = None) -> None:
         location    = location.replace("|", "||").replace(":", "|:")
         string      = '1:{0}->virustotal:{1}'.format(location, json.dumps(msg))
 
-    debug("# Request result from VT server: %s" % string)
+    logger.debug("Event: %s", string)
+
     try:
         sock = socket(AF_UNIX, SOCK_DGRAM)
         sock.connect(SOCKET_ADDR)
         sock.send(string.encode())
         sock.close()
     except FileNotFoundError:
-        debug("# Error: Unable to open socket connection at %s" % SOCKET_ADDR)
+        logger.error("Error: Unable to open socket connection at %s", SOCKET_ADDR)
         sys.exit(ERR_SOCKET_OPERATION)
 
 def get_json_alert(file_location: str) -> any:
-    """
-        Read JSON alert object from file
+    """Read JSON alert object from file.
 
-        Parameters
-        ----------
-        file_location : str
-            Path to the JSON file location.
+    Parameters
+    ----------
+    file_location : str
+        Path to the JSON file location.
 
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
+    Returns
+    -------
+    any
+        JSON encoded alert.
 
-        Raises
-        ------
-        FileNotFoundError
-            If no JSON file is found.
-        JSONDecodeError
-            If no valid JSON file are used
+    Raises
+    ------
+    FileNotFoundError
+        If no JSON file is found.
+    JSONDecodeError
+        If no valid JSON file is used.
     """
     try:
-        with open(file_location) as alert_file:
+        with open(file_location, encoding='utf-8') as alert_file:
             return json.load(alert_file)
     except FileNotFoundError:
-        debug("# JSON file for alert %s doesn't exist" % file_location)
+        logger.error("JSON file for alert %s doesn't exist", file_location)
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
-        debug("Failed getting JSON alert. Error: %s" % e)
+        logger.error("Failed getting JSON alert. Error: %s", e)
         sys.exit(ERR_INVALID_JSON)
+
+def print_help_msg():
+    """Send the command's help message to the standard output."""
+    help_msg = '''
+    Exiting: Invalid arguments.
+
+    Usage:
+        virustotal <alerts_file> <api_key> [webhook_url] [logging_level] [options_file]
+    Arguments:
+        alerts_file (required)
+            Path to the JSON file containing the alerts.
+        api_key (required)
+            Virus total API key.
+        webhook_url (not required)
+            The webhook URL argument is not needed for the Virus total integration. However, it's still considered because the 
+            integrator executes all scripts with the same arguments.
+            If you are executing the script manually, please put anything in that argument.
+        logging_level (optional)
+            Used to define how much information should be logged. Default is INFO.
+            Levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL.
+        options_file (optional)
+            Path to a file containing custom variables to be used in the integration. It must be JSON-encoded.
+    '''
+    print(help_msg)
+
+def setup_logger(args):
+    """Configure the logger.
+
+    Parameters
+    ----------
+    args: any
+        Command arguments.
+    """
+    # Create log file directories if they do not exist
+    log_file_dir = os.path.dirname(LOG_FILE)
+    if not os.path.exists(log_file_dir):
+        os.makedirs(log_file_dir)
+
+    consoleHandler = logging.StreamHandler()
+    fileHandler = TimedRotatingFileHandler(LOG_FILE, when='midnight', backupCount=31)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%a %b %d %H:%M:%S %Z %Y")
+    consoleHandler.setFormatter(formatter)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(consoleHandler)
+    logger.addHandler(fileHandler)
+
+    if len(args) > 4:
+        logger.setLevel(args[4].upper())
+    else:
+        logger.setLevel(logging.INFO)
 
 if __name__ == "__main__":
     main(sys.argv)
