@@ -1389,7 +1389,8 @@ class WazuhDBQuery(object):
         self.count = count
         self.data = get_data
         self.total_items = 0
-        self.min_select_fields = min_select_fields
+        # Do not include any fields when we are looking for distinct values
+        self.min_select_fields = set() if distinct else min_select_fields
         self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
         self.query_separators = {',': 'OR', ';': 'AND', '': ''}
         self.special_characters = "\'\""
