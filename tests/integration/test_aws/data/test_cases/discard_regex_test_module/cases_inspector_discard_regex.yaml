@@ -1,0 +1,15 @@
+- name: inspector_discard_regex
+  description: Inspector discard regex configurations
+  configuration_parameters:
+    SERVICE_TYPE: inspector
+    REGIONS: us-east-1
+    DISCARD_FIELD: assetAttributes.tags.value
+    DISCARD_REGEX: .*inspector-integration-test.*
+    ONLY_LOGS_AFTER: 2023-JAN-12
+  metadata:
+    service_type: inspector
+    only_logs_after: 2023-JAN-12
+    discard_field: assetAttributes.tags.value
+    discard_regex: .*inspector-integration-test.*
+    regions: us-east-1
+    found_logs: 4
