@@ -305,7 +305,9 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                                 free(cur_bucket->discard_regex);
                                 os_strdup(children[j]->content, cur_bucket->discard_regex);
                             } else {
-                                mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                                merror("Required attribute '%s' is missing in '%s'. This is a mandatory parameter.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
                             }
                         } else {
                             mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
@@ -458,7 +460,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_service->discard_regex);
                             os_strdup(children[j]->content, cur_service->discard_regex);
                         } else {
-                            mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                             if(strcmp(*nodes[i]->values, CLOUDWATCHLOGS_SERVICE_TYPE) == 0){
+                                free(cur_service->discard_regex);
+                                os_strdup(children[j]->content, cur_service->discard_regex);
+                            } else {
+                                merror("Required attribute '%s' is missing in '%s'. This is a mandatory parameter.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
+                            }
                         }
                     } else {
                         mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
