@@ -1,50 +1,31 @@
-- name: test
+- name: FIM cud events from environment variables - Single dir
   description: test
   configuration_parameters:
     WHODATA: 'yes'
     REALTIME: 'yes'
     TEST_ENV_VARS: "$TEST_DIR"
   metadata:
+    folder_to_monitor: /test_dir1
     test_file: test_file.log
     environment_variables:
-      - TEST_DIR: /test_dir
-- name: test
-  description: test
-  configuration_parameters:
-    WHODATA: 'yes'
-    REALTIME: 'yes'
-    TEST_ENV_VARS: "$TEST_DIR"
-  metadata:
-    test_file: test_file.log
-    environment_variables:
-      - TEST_DIR: /test_dir1
-- name: test
-  description: test
-  configuration_parameters:
-    WHODATA: 'yes'
-    REALTIME: 'yes'
-    TEST_ENV_VARS: "$TEST_DIR"
-  metadata:
-    test_file: test_file.log
-    environment_variables:
-      - TEST_DIR: /test_dir2
-- name: test
-  description: test
-  configuration_parameters:
-    WHODATA: 'yes'
-    REALTIME: 'yes'
-    TEST_ENV_VARS: "$TEST_DIR"
-  metadata:
-    test_file: test_file.log
-    environment_variables:
-      - TEST_DIR: /test_dir3
-- name: test
-  description: test
-  configuration_parameters:
-    WHODATA: 'yes'
-    REALTIME: 'yes'
-    TEST_ENV_VARS: "$TEST_DIR"
-  metadata:
-    test_file: test_file.log
-    environment_variables:
-      - TEST_DIR: /test_dir4
+      TEST_DIR: /test_dir1
+
+# - name: FIM cud events from environment variables - Multiple dirs
+#   description: test
+#   configuration_parameters:
+#     WHODATA: 'yes'
+#     REALTIME: 'yes'
+#     TEST_ENV_VARS: "$TEST_DIR, $TEST_MULTIPLE_DIRS"
+#   metadata:
+#     folder_to_monitor: 
+#       - /test_dir
+#       - /test_dir1
+#       - /test_dir2
+#       - /test_dir3
+#     test_file: test_file.log
+#     environment_variables:
+#       TEST_DIR: /test_dir1
+#       TEST_MULTIPLE_DIRS: 
+#         - /test_dir1
+#         - /test_dir2
+#         - /test_dir3
