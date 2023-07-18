@@ -1,0 +1,413 @@
+from socket import AF_UNIX, SOCK_DGRAM
+import pytest
+import maltiverse
+import json
+
+from unittest.mock import patch, mock_open
+
+response_example = {
+    "blacklist": [
+        {"description": "Malicious IP", "source": "Threat Intel Source 1"},
+        {"description": "Suspicious Domain", "source": "Threat Intel Source 2"},
+    ],
+    "type": "ip",
+    "creation_time": "2022-01-01T00:00:00Z",
+    "modification_time": "2022-01-02T00:00:00Z",
+}
+
+
+def assert_expected_schema(response):
+    """Asserts that the response contains the expected schema fields."""
+    list_of_fields = ["blacklist", "type", "creation_time", "modification_time"]
+    for f in list_of_fields:
+        assert f in response
+
+
+def test_get_ip():
+    """Test the `ip_get` method of the Maltiverse class."""
+    example_token = "example_token"
+    example_ip = "77.53.9.158"
+    testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
+
+    with patch("maltiverse.requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = response_example
+
+        result = testing_maltiverse.ip_get(example_ip)
+        assert_expected_schema(result)
+
+
+def test_get_hostname():
+    """Test the `hostname_get` method of the Maltiverse class."""
+    example_token = "example_token"
+    example_hostname = "paypal.com-information-update-activity-account.gq"
+    testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
+
+    with patch("maltiverse.requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = response_example
+
+        result = testing_maltiverse.hostname_get(example_hostname)
+        assert_expected_schema(result)
+
+
+def test_get_url():
+    """Test the `url_get` method of the Maltiverse class."""
+    example_token = "example_token"
+    example_url = "http://assocolours.com/mu/i/LoginVerification.php"
+    testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
+
+    with patch("maltiverse.requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = response_example
+
+        result = testing_maltiverse.url_get(example_url)
+        assert_expected_schema(result)
+
+
+@pytest.mark.parametrize(
+    "algorithm, mock_path",
+    [
+        ("md5", "maltiverse.Maltiverse.sample_get_by_md5"),
+        ("sha1", "maltiverse.Maltiverse.sample_get_by_sha1"),
+    ],
+)
+def test_get_sample_uses_correct_algorithm(algorithm, mock_path):
+    """Test that the `sample_get` method uses the correct algorithm."""
+    example_token = "example_token"
+    testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
+    with patch(mock_path) as mock_lambda:
+        mock_lambda.return_value = response_example
+
+        result = testing_maltiverse.sample_get("", algorithm)
+
+        mock_lambda.assert_called_once()
+        assert_expected_schema(result)
+
+
+def test_get_by_md5():
+    """Test the `sample_get_by_md5` method of the Maltiverse class."""
+    example_token = "example_token"
+    example_sample = "someSample"
+    testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
+
+    with patch("maltiverse.requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = response_example
+
+        result = testing_maltiverse.sample_get_by_md5(example_sample)
+        assert_expected_schema(result)
+
+
+def test_get_by_sha1():
+    """Test the `sample_get_by_sha1` method of the Maltiverse class."""
+    example_token = "example_token"
+    example_sample = "someSample"
+    testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
+
+    with patch("maltiverse.requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = response_example
+
+        result = testing_maltiverse.sample_get_by_sha1(example_sample)
+        assert_expected_schema(result)
+
+
+@pytest.mark.parametrize("number_of_arguments", [1, 2, 3])
+def test_main_exit_with_invalid_number_of_arguments(number_of_arguments):
+    """Test that the `main` function exits with the expected code for an invalid number of arguments."""
+    with patch("builtins.open", mock_open()):
+        with pytest.raises(SystemExit) as excinfo:
+            maltiverse.main(list(range(0, number_of_arguments)))
+
+    assert excinfo.value.code == 2
+
+
+def test_main_enables_debug():
+    """Test that the `main` function enables debug mode when 'debug' argument is present."""
+    with patch("builtins.open", mock_open()), patch("maltiverse.process_args"):
+        maltiverse.main(["a", "b", "c", "d", "debug"])
+
+    assert maltiverse.debug_enabled
+    maltiverse.debug_enabled = False
+
+
+@pytest.mark.parametrize(
+    "invalid_url",
+    [
+        "example.com",  # Missing schema
+        "http://",  # Missing hostname
+        ":8080/path",  # Missing netloc
+    ],
+)
+def test_process_args_exit_with_invalid_hook_url(invalid_url):
+    """Test that the `process_args` function exits with the expected code for an invalid hook URL."""
+    with pytest.raises(SystemExit) as excinfo:
+        maltiverse.process_args(["a", "b", "c", invalid_url])
+
+    assert excinfo.value.code == 3
+
+
+def test_load_alert_returns_file_contents():
+    """Test that the `load_alert` function returns the contents of the file as a dictionary."""
+    alert_data = {"key": "value"}
+    file_path = "alert.json"
+
+    with patch("builtins.open", create=True) as mock_open:
+        mock_file = mock_open.return_value.__enter__.return_value
+        mock_file.read.return_value = json.dumps(alert_data)
+
+        result = maltiverse.load_alert(file_path)
+
+    assert result == alert_data
+
+
+def test_load_alert_exit_with_invalid_file():
+    """Test that the `load_alert` function exits with the expected code for an invalid file path."""
+    invalid_file_path = "idontexists.txt"
+
+    with pytest.raises(SystemExit) as excinfo:
+        maltiverse.load_alert(invalid_file_path)
+
+    assert excinfo.value.code == 3
+
+
+def test_load_alert_exit_with_invalid_file_content():
+    """Test that the `load_alert` function exits with the expected code for invalid file content."""
+    file_path = "somepath"
+
+    with pytest.raises(SystemExit) as excinfo, patch("builtins.open") as mock_open:
+        mock_file = mock_open.return_value.__enter__.return_value
+        mock_file.read.return_value = "invalid json"
+
+        maltiverse.load_alert(file_path)
+
+    assert excinfo.value.code == 4
+
+
+@pytest.mark.parametrize(
+    "data, expected_call",
+    [
+        (
+            {
+                "syscheck": {"md5_after": "some"},
+                "data": {"md5_after": "some"},
+                "id": "some",
+            },
+            "maltiverse.Maltiverse.sample_get_by_md5",
+        ),
+        (
+            {
+                "syscheck": {"sha1_after": "some"},
+                "data": {"sha1_after": "some"},
+                "id": "some",
+            },
+            "maltiverse.Maltiverse.sample_get_by_sha1",
+        ),
+        ({"data": {"srcip": "8.8.8.8"}, "id": "some"}, "maltiverse.Maltiverse.ip_get"),
+        (
+            {"data": {"hostname": "somehostname"}, "id": "some"},
+            "maltiverse.Maltiverse.hostname_get",
+        ),
+        ({"data": {"url": "someurl"}, "id": "some"}, "maltiverse.Maltiverse.url_get"),
+    ],
+)
+def test_request_maltiverse_info_make_expected_calls(data, expected_call):
+    """Test that the `request_maltiverse_info` function makes the expected API calls."""
+    testing_maltiverse = maltiverse.Maltiverse()
+
+    with patch("maltiverse.maltiverse_alert") as alert_mock, patch(
+        expected_call
+    ) as call_mock:
+        alert_mock.return_value = {}
+        result = maltiverse.request_maltiverse_info(data, testing_maltiverse)
+
+    assert len(result) == 1
+    call_mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "ecs_type, expected",
+    [
+        ("ip", "ipv4-addr"),
+        ("hostname", "domain-name"),
+        ("sample", "file"),
+        ("url", "url"),
+    ],
+)
+def test_match_ecs_type(ecs_type, expected):
+    """Test that the `match_ecs_type` function correctly maps Maltiverse types to ECS types."""
+    assert expected == maltiverse.match_ecs_type(ecs_type)
+
+
+@pytest.mark.parametrize(
+    "data, expected",
+    [
+        ({"classification": "malicious", "blacklist": [1, 2]}, "High"),
+        ({"classification": "malicious", "blacklist": [1]}, "Medium"),
+        ({"classification": "suspicious", "blacklist": [1, 2]}, "Medium"),
+        ({"classification": "neutral", "blacklist": [1, 2]}, "Low"),
+        ({"classification": "neutral", "blacklist": []}, "None"),
+        ({"classification": "whitelist", "blacklist": [1, 2]}, "Low"),
+        ({"classification": "whitelist", "blacklist": []}, "None"),
+        ({}, "Not Specified"),
+    ],
+)
+def test_get_ioc_confidence(data, expected):
+    """Test the `get_ioc_confidence` function to ensure correct confidence ratings are returned."""
+    assert expected == maltiverse.get_ioc_confidence(data)
+
+
+def test_send_event_to_agent():
+    """
+    Test sending an event to a specific agent.
+    """
+    msg = "Event message"
+    agent = {"id": "001", "name": "Agent1", "ip": "192.168.0.1"}
+
+    with patch("maltiverse.socket") as mock_socket:
+        maltiverse.send_event(msg, agent)
+
+    mock_socket.assert_called_with(AF_UNIX, SOCK_DGRAM)
+    mock_socket.return_value.send.assert_called_with(
+        f"1:[001] (Agent1) 192.168.0.1->maltiverse:{json.dumps(msg)}".encode()
+    )
+    mock_socket.return_value.close.assert_called()
+
+
+@pytest.mark.parametrize(
+    "agent",
+    [
+        {},
+        {"id": "000", "name": "Agent1", "ip": "192.168.0.1"}
+    ]
+)
+def test_send_event_with_no_agent(agent):
+    """
+    Test sending an event without specifying an agent or with no agent.
+    """
+    msg = "Event message"
+
+    with patch("maltiverse.socket") as mock_socket:
+        maltiverse.send_event(msg, agent)
+
+    mock_socket.assert_called_with(AF_UNIX, SOCK_DGRAM)
+    mock_socket.return_value.send.assert_called_with(
+        f"1:maltiverse:{json.dumps(msg)}".encode()
+    )
+    mock_socket.return_value.close.assert_called()
+
+
+def test_maltiverse_returns_ok():
+    """Test that maltiverse_alert generates the expected alert dictionary."""
+    example_ioc_dict = response_example
+    example_alert_id = 123
+    example_ioc_name = "some_name"
+
+    expected_result = {
+        "integration": "maltiverse",
+        "alert_id": example_alert_id,
+        "maltiverse": {"source": response_example},
+        "threat": {
+            "indicator": {
+                "name": example_ioc_name,
+                "type": "ipv4-addr",
+                "ip": example_ioc_name,
+                "description": "Malicious IP, Suspicious Domain",
+                "provider": "Threat Intel Source 1, Threat Intel Source 2",
+                "first_seen": "2022-01-01T00:00:00Z",
+                "modified_at": "2022-01-02T00:00:00Z",
+                "last_seen": "2022-01-02T00:00:00Z",
+                "confidence": "Not Specified",
+                "sightings": 2,
+                "reference": f"https://maltiverse.com/ip/{example_ioc_name}",
+            }
+        },
+    }
+
+    result = maltiverse.maltiverse_alert(
+        example_alert_id, example_ioc_dict, example_ioc_name
+    )
+    print(result)
+
+    assert result == expected_result
+
+
+def test_maltiverse_alert_does_not_include_sources():
+    """Test that maltiverse_alert excludes the maltiverse source when include_full_source is False."""
+    example_ioc_dict = response_example
+    example_alert_id = 123
+    example_ioc_name = "some_name"
+
+    result = maltiverse.maltiverse_alert(
+        example_alert_id, example_ioc_dict, example_ioc_name, include_full_source=False
+    )
+    assert "maltiverse" not in result
+
+
+@pytest.mark.parametrize(
+    "ioc,expected",
+    [
+        # Process the mitre information
+        (
+            {
+                "blacklist": [
+                    {
+                        "external_references": [
+                            {
+                                "external_id": "Something",
+                                "url": "some_url",
+                                "description": "",
+                                "source_name": "mitre-attack",
+                            }
+                        ]
+                    }
+                ]
+            },
+            {"software": {"id": "Something", "reference": "some_url", "name": ""}},
+        ),
+        # Skips the mitre information due to the source name
+        (
+            {
+                "blacklist": [
+                    {
+                        "external_references": [
+                            {
+                                "external_id": "Something",
+                                "url": "some_url",
+                                "description": "",
+                                "source_name": "something",
+                            }
+                        ]
+                    }
+                ]
+            },
+            {},
+        ),
+        # Skips the mitre information due to the external_id name
+        (
+            {
+                "blacklist": [
+                    {
+                        "external_references": [
+                            {
+                                "external_id": "something",
+                                "url": "some_url",
+                                "description": "",
+                                "source_name": "mitre-attack",
+                            }
+                        ]
+                    }
+                ]
+            },
+            {},
+        ),
+        # Skips the mitre information due to being an empty dict
+        ({}, {}),
+    ],
+)
+def test_get_mitre_information(ioc, expected):
+    """Test that get_mitre_information extracts the expected mitre information from the IOC dictionary."""
+    result = maltiverse.get_mitre_information(ioc)
+
+    assert result == expected
