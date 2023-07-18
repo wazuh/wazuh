@@ -26,12 +26,12 @@ definitions:
     "4": "Information"
     "5": "Verbose"
 
-check:
-  - wazuh.origin: EventChannel
+check: wazuh.origin=="EventChannel" OR +exists/~json.Event
 
 parse:
   logpar:
     - event.original: <~windows/xml/windows>
+    - ~json.Event: <~windows/xml/windows>
 
 normalize:
  - map:
@@ -46,3 +46,6 @@ normalize:
    - host.name: $~windows.System.Computer.#text
    # Set event level
    - log.level: +get_value/$MAP_WindowsLevelToLogLevel/$~windows.System.Level.#text
+
+   # Cleanup
+   - ~json: +delete
