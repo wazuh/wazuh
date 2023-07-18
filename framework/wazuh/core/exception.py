@@ -215,6 +215,10 @@ class WazuhException(Exception):
         1415: {'message': 'Rules file not found',
                'remediation': 'Please, use GET /rules/files to list all available rules'
                },
+        1416: {'message': 'Not a valid join type field',
+               'remediation': 'Please, use only one of: LEFT, CROSS or OUTER'
+               },
+        1417: 'Invalid join conditions',
 
         # Decoders: 1500 - 1599
         1500: {'message': 'Error reading decoders from ossec.conf',
