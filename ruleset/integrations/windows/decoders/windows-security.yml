@@ -105,76 +105,53 @@ normalize:
     - wazuh.decoders: +array_append/windows-security
     - event.dataset: security
 
-    # Set categorization fields
+    # Categorization fields
     - event: +kvdb_get_merge/win_security_categories/$event.id
 
-    # Set User Account Control
-    # NewUacValue
-    # Correct implementation needs bitwise operations - Opting to use raw value
-    #- event.UserAccountControl: $~windows.EventData.NewUacValue
-    - ~winlog.event_data.UserAccountControl: +split/$~windows.EventData.UserAccountControl/%
+    # User Account Control
+    # TODO: DoubleCheck Correct implementation needs bitwise operations - Opting to use raw value
+    - ~winlog.NewUserAccountControl: $~windows.EventData.NewUacValue
+    - ~winlog.UserAccountControl: +split/$~windows.EventData.UserAccountControl/%
 
-    # Set Kerberos Ticket Options
-    # TicketOptionsDescription - Needs bitwise operations
-
-    # Set Kerberos Ticket Status Codes
-    #TODO: Pending rebuild kvdb
-    #- ~winlog.event_data.StatusDescription: +kvdb_get_merge/kerberos_tickets_status_codes/$~windows.EventData.Status
-
-    # Set Service Type and Name
-    # Service related fields
+    # Service Type and Name
     - service.name: $~windows.EventData.ServiceName
 
-    # Set Audit Information
-    # Event sub category
-    #TODO: Pending rebuild kvdb
-    # - ~winlog.event_data.Category: +kvdb_get_merge/audit_category/$~windows.EventData.SubcategoryGuid
-    #TODO: Pending rebuild kvdb
-    # - ~winlog.event_data.SubCategory: +kvdb_get_merge/audit_subcategory/$~windows.EventData.SubcategoryGuid
-
     # Set Trust Attributes
-    #TODO: Pending rebuild kvdb
-    # - ~winlog.trustAttribute: +kvdb_get/win_trust_attributes/$~windows.EventData.TdoAttributes
-    - ~winlog.logon.id: $~windows.EventData.SubjectLogonId
-    - ~winlog.event_data.PrivilegeList: '+split/$~windows.EventData.PrivilegeList/ '
+    # TODO DOUBLE CHECK: user.id or user.effective.id or client.user.id
+    - user.id: $~windows.EventData.SubjectLogonId
+    # TODO: can user.changes.roles fix in here?
+    - ~winlog.User_PrivilegeList: '+split/$~windows.EventData.PrivilegeList/ '
 
     - user.target.name: $~windows.EventData.OldTargetUserName
     - user.changes.name: $~windows.EventData.NewTargetUserName
     - related.user: +array_append/$~windows.EventData.NewTargetUserName
     - related.user: +array_append/$~windows.EventData.OldTargetUserName
 
-    # Decode message table
     # Failure reason for logon
-#  - check:
-#     - ~windows.EventData.FailureReason: +exists
-  #  map:
-    #TODO: Pending rebuild kvdb
-    # - ~winlog.logon.failure.reason: +kvdb_get/failure_codes_descriptions/$~windows.EventData.FailureReason
+ - check:
+    - ~windows.EventData.FailureReason: +exists
+   map:
+    - event.action: logon failed
+    - event.reason: +kvdb_get/failure_codes_descriptions/$~windows.EventData.FailureReason
 
-    # Conditional logon status and substatus
-    # 4625 and 4776 Set Status and SubStatus
-#  - check: event.code=="4625" OR event.code=="4776"
-#    map:
-#    #TODO: Pending rebuild kvdb
-#     - ~winlog.logon.failure.status: +kvdb_get/win_logon_status/$~windows.EventData.Status
-#     - ~winlog.logon.failure.sub_status: +kvdb_get/win_logon_status/$~windows.EventData.SubStatus
+  # Conditional Logon
+ - check: event.code=="4625" OR event.code=="4776"
+   map:
+    - event.action: logon failed
+    - event.reason: +kvdb_get/win_logon_status/$~windows.EventData.Status
 
     # Add Session Events
  - check: $event.code=="4778" OR $event.code=="4779"
    map:
-    # AccountName to user.name and related.user
     - user.name: $~windows.EventData.AccountName
     - related.user: +array_append/$~windows.EventData.AccountName
-    # AccountDomain to user.domain
     - user.domain: $~windows.EventData.AccountDomain
-    # ClientAddress to source.ip and related.ip
     - source.ip: $~windows.EventData.ClientAddress
     - related.ip: +array_append/$~windows.EventData.ClientAddress
-    # ClientName to source.domain
     - source.domain: $~windows.EventData.ClientName
 
-    # # LogonID to winlog.logon.id
-    # - winlog.logon.id: $~windows.EventData.LogonID
+    # TODO: double check LogonID
+    - user.id: $~windows.EventData.LogonID
 
     # Copy Target User
     # TargetUserSid to user.id or user.target.id
@@ -208,7 +185,7 @@ normalize:
    map:
     - user.target.domain: $~windows.EventData.TargetDomainName
 
-    # Copy MemberName to User and User to Group
+
  - check:
     - ~MAP_IdMemberName: +array_contains/$event.code
    map:
@@ -217,8 +194,8 @@ normalize:
     - user.target.name: $~temp.split_memberName.0
     - related.user: +array_append/$~temp.split_memberName.0
     - group.id: $~windows.EventData.TargetUserSid
-    - group.id: $~windows.EventData.TargetSid
-    - group.name: $~windows.EventData.TargetUserName
+    - user.target.id: $~windows.EventData.TargetSid
+    - user.target.name: $~windows.EventData.TargetUserName
     - ~windows.EventData.TargetDomainName: '+replace/DC=/'
     - group.domain: $~windows.EventData.TargetDomainName
     - user.target.group.id: $group.id
@@ -229,23 +206,15 @@ normalize:
 
  - check: event.code=="4741" OR event.code=="4742" OR event.code=="4743"
    map:
-    - ~winlog.computerObject.id: $~windows.EventData.TargetSid
-    - ~winlog.computerObject.name: $~windows.EventData.TargetUserName
-    - ~winlog.computerObject.domain: $~windows.EventData.TargetDomainName
+    - user.target.id: $~windows.EventData.TargetSid
+    - user.target.name: $~windows.EventData.TargetUserName
+    - user.target.domain: $~windows.EventData.TargetDomainName
 
  - check: event.code=="4634" OR event.code=="4647" OR event.code=="4964"
    map:
-    - ~winlog.logon.id: $~windows.EventData.TargetLogonId
+    - user.id: $~windows.EventData.TargetLogonId
 
- # Copy Subject User from Event Data
- - check: +kvdb_match/event.code/win_id_copy_subject_user
-   map:
-    - user.id: $~windows.EventData.SubjectUserSid
-    - user.name: $~windows.EventData.SubjectUserName
-    - related.user: +array_append/$~windows.EventData.SubjectUserName
-    - user.domain: $~windows.EventData.SubjectDomainName
-
- # Copy Target User to Target
+ # Copy Target User
  - check: +match_key/~MAP_IdCopyTargetUserArray/$event.code
    map:
     - user.target.id: $~windows.EventData.TargetSid
@@ -271,17 +240,23 @@ normalize:
    map:
     - user.effective.domain: $~windows.EventData.TargetDomainName
 
-# Copy Subject User from user_data
- - check: $event.code=="1102"
+ # Copy Subject User
+ - check: +kvdb_match/event.code/win_id_copy_subject_user
+   map:
+    - user.id: $~windows.EventData.SubjectUserSid
+    - user.name: $~windows.EventData.SubjectUserName
+    - related.user: +array_append/$~windows.EventData.SubjectUserName
+    - user.domain: $~windows.EventData.SubjectDomainName
+
+ - check: event.code=="1102"
    map:
     - user.id: $~windows.UserData.LogFileCleared.SubjectUserSid.#text
     - user.name: $~windows.UserData.LogFileCleared.SubjectUserName.#text
     - related.user: +array_append/$~windows.UserData.LogFileCleared.SubjectUserName.#text
     - user.domain: $~windows.UserData.LogFileCleared.SubjectDomainName.#text
-    - ~winlog.logon.id: $~windows.UserData.LogFileCleared.SubjectLogonId.#text
-    - ~winlog.task: Log clear
+    - event.action: Log clear
 
-# Rename Common Auth Fields
+# Rename Common Auth
  - check: +array_contains/~MAP_IdRenameCommonAuthFields/$event.code
    map:
     - process.pid: +hex_to_number/$~windows.EventData.ProcessId
@@ -315,9 +290,9 @@ normalize:
 
  - check: event.code=="1105"
    map:
-    - ~winlog.task: Log automatic backup
-    - ~winlog.user_data.BackupPath: $~windows.UserData.AutoBackup.BackupPath.#text
-    - ~winlog.user_data.Channel: $~windows.UserData.AutoBackup.Channel.#text
+    - event.action: Log automatic backup
+    - ~winlog.UserDataBackupPath: $~windows.UserData.AutoBackup.BackupPath.#text
+    - ~winlog.UserDataChannel: $~windows.UserData.AutoBackup.Channel.#text
 
  - check:
     - ~temp.id_related_user: +array_contains/$event.code
@@ -330,23 +305,23 @@ normalize:
 
  - check: event.code=="4670" OR event.code=="4817" OR event.code=="4907" OR event.code=="4808"
    map:
-    - ~winlog.event_data.NewSd: $~windows.EventData.NewSd
-    - ~winlog.event_data.OldSd: $~windows.EventData.OldSd
-    - ~winlog.event_data.ObjectType: $~windows.EventData.ObjectType
-    - ~winlog.event_data.ObjectServer: $~windows.EventData.ObjectServer
-    - ~winlog.event_data.ObjectName: $~windows.EventData.ObjectName
+    - ~winlog.NewSecurityDescriptor: $~windows.EventData.NewSd
+    - ~winlog.OldSecurityDescriptor: $~windows.EventData.OldSd
+    - ~winlog.ObjectType: $~windows.EventData.ObjectType
+    - ~winlog.ObjectServer: $~windows.EventData.ObjectServer
+    - ~winlog.ObjectName: $~windows.EventData.ObjectName
 
 # Cleanup
  - map:
     - service.type: +get_value/$MAP_ServiceType/$~windows.EventData.ServiceType
     # Set Kerberos Encryption Types
-    - ~winlog.event_data.TicketEncryptionTypeDescription: +get_value/$MAP_KerberosEncryptionType/$~windows.EventData.TicketEncryptionType
+    - ~winlog.TicketEncryptionTypeDescription: +get_value/$MAP_KerberosEncryptionType/$~windows.EventData.TicketEncryptionType
     # Set Trust Direction
-    - ~winlog.trustDirection: +get_value/$MAP_TrustDirection/$~windows.EventData.TdoDirection
+    - ~winlog.TrustDirection: +get_value/$MAP_TrustDirection/$~windows.EventData.TdoDirection
     # Set trust type
-    - ~winlog.trustType: +get_value/$MAP_TrustType/$~windows.EventData.TdoType
+    - ~winlog.TrustType: +get_value/$MAP_TrustType/$~windows.EventData.TdoType
     # Set Logon Type
-    - ~winlog.logon.type: +get_value/$MAP_LogonType/$~windows.EventData.LogonType
+    - ~winlog.LogonType: +get_value/$MAP_LogonType/$~windows.EventData.LogonType
 
     #cleanup
     - ~temp: +delete
