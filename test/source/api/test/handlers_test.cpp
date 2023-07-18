@@ -525,7 +525,7 @@ TEST_P(TestSessionPostCommand, Functionality)
 {
     auto [executionNumber, sessionPostParams, outputSessionPost] = GetParam();
 
-    auto numTest {3};
+    auto numTest {4};
 
     if (executionNumber > 1)
     {

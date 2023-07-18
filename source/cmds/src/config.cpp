@@ -14,6 +14,7 @@ struct Options
     std::string serverApiSock;
     std::string value;
     std::string path;
+    int clientTimeout;
 };
 } // namespace
 
@@ -91,7 +92,11 @@ void configure(CLI::App_p app)
     configApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
         ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
+
+    // Client timeout
+    configApp->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     auto get_subcommand =
         configApp->add_subcommand("get",
@@ -100,18 +105,33 @@ void configure(CLI::App_p app)
     get_subcommand
         ->add_option("name", options->name, "Name of the configuration option to get, empty to get all configuration")
         ->default_val("");
-    get_subcommand->callback([options, client]() { runGet(client, options->name); });
+    get_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runGet(client, options->name);
+        });
 
     auto save_subcommand =
         configApp->add_subcommand("save", "Persist the current configuration, to take effect restart the engine");
     save_subcommand
         ->add_option("path", options->path, "Path to save the configuration, empty to save in the default path")
         ->default_val("");
-    save_subcommand->callback([options, client]() { runSave(client, options->path); });
+    save_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runSave(client, options->path);
+        });
 
     auto put_subcommand = configApp->add_subcommand("put", "Update a configuration option");
     put_subcommand->add_option("name", options->name, "Name of the configuration option to set")->required();
     put_subcommand->add_option("value", options->value, "Value of the configuration option to set")->required();
-    put_subcommand->callback([options, client]() { runPut(client, options->name, options->value); });
+    put_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runPut(client, options->name, options->value);
+        });
 }
 } // namespace cmd::config

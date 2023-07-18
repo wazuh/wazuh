@@ -32,6 +32,7 @@ struct Options
     std::string graphType;
     std::string policyName;
     std::string serverApiSock;
+    int clientTimeout;
 };
 
 /**
