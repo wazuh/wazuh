@@ -1130,31 +1130,12 @@ checks:
     rules:
       - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
-  # 2.1.1.1 Ensure a single time synchronization daemon is in use. (Automated)
-  - id: 31067
-    title: "Ensure a single time synchronization daemon is in use."
-    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: - On virtual systems where host based time synchronization is available consult your virtualization software documentation and verify that host based synchronization is in use and follows local site policy. In this scenario, this section should be skipped - Only one time synchronization method should be in use on the system. Configuring multiple time synchronization methods could lead to unexpected or unreliable results."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
-    remediation: "On physical systems, and virtual systems where host based time synchronization is not available. Select one of the three time synchronization daemons; chrony (1), systemd-timesyncd (2), or ntp (3), and following the remediation procedure for the selected daemon. Note: enabling more than one synchronization daemon could lead to unexpected or unreliable results: 1. chrony Run the following command to install chrony: # apt install chrony Run the following commands to stop and mask the systemd-timesyncd daemon: # systemctl stop systemd-timesyncd.service # systemctl --now mask systemd-timesyncd.service Run the following command to remove the ntp package: # apt purge ntp NOTE: - Subsection: Configure chrony should be followed - Subsections: Configure systemd-timesyncd and Configure ntp should be skipped 2. systemd-timesyncd Run the following command to remove the chrony package: # apt purge chrony Run the following command to remove the ntp package: # apt purge ntp NOTE: - Subsection: Configure systemd-timesyncd should be followed - Subsections: Configure chrony and Configure ntp should be skipped 3. ntp Run the following command to install ntp: # apt install ntp Run the following commands to stop and mask the systemd-timesyncd daemon: # systemctl stop systemd-timesyncd.service # systemctl --now mask systemd-timesyncd.service Run the following command to remove the chrony package: # apt purge chrony NOTE: - Subsection: Configure ntp should be followed - Subsections: Configure chrony and Configure systemd-timesyncd should be skipped."
-    compliance:
-      - cis: ["2.1.1.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
+  # 2.1.1.1 Ensure a single time synchronization daemon is in use. (Automated)- Not Implemented
 
   # 2.1.2.1 Ensure chrony is configured with authorized timeserver. (Manual)
   - id: 31068
     title: "Ensure chrony is configured with authorized timeserver."
-    description: "- server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server’s system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
+    description: "- server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server's system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file - # chronyc reload sources OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
     compliance:
@@ -1170,8 +1151,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: any
     rules:
+      - "not c:ps -ef -> r:^_chrony && r:/chronyd"
+      - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
 
   # 2.1.2.2 Ensure chrony is running as user _chrony. (Automated)
   - id: 31069
@@ -1192,8 +1175,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: any
     rules:
+      - "not c:ps -ef -> r:^_chrony && r:/chronyd"
+      - "f:/etc/chrony/chrony.conf -> r:^user _chrony"
 
   # 2.1.2.3 Ensure chrony is enabled and running. (Automated)
   - id: 31070
@@ -1214,8 +1199,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled chrony.service -> r:^enabled"
+      - "c:systemctl is-active chrony.service -> r:^active"
 
   # 2.1.3.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated)
   - id: 31071
@@ -1239,8 +1226,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/systemd"
+      - 'd:/etc/systemd -> r:\.+.conf$'
+      - 'd:/etc/systemd -> r:\.+.conf$ -> r:^\s*NTP=|^\s*FallbackNTP='
 
   # 2.1.3.2 Ensure systemd-timesyncd is enabled and running. (Manual)
   - id: 31072
@@ -1261,8 +1251,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:^active"
 
   # 2.1.4.1 Ensure ntp access control is configured. (Automated)
   - id: 31073
@@ -1285,13 +1277,15 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/ntp.conf -> r:^restrict\s*\t*-4\s*\t*default|^restrict\s*\t*default && r:\s*kod && r:\s*nomodify && r:\s*notrap && r:\s*nopeer && r:\s*noquery'
+      - 'f:/etc/ntp.conf -> r:^restrict\s*\t*-6\s*\t*default && r:\s*kod && r:\s*nomodify && r:\s*notrap && r:\s*nopeer && r:\s*noquery'
 
   # 2.1.4.2 Ensure ntp is configured with authorized timeserver. (Manual)
   - id: 31074
     title: "Ensure ntp is configured with authorized timeserver."
-    description: "The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons “:” in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. - pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. - server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses."
+    description: 'The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons ":" in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. - pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. - server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses.'
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Edit /etc/ntp.conf and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool mode: pool time.nist.gov iburst server mode: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run the following command to load the updated time sources into ntp running config: # systemctl restart ntp OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
@@ -1310,8 +1304,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/ntp.conf -> r:^pool"
+      - "f:/etc/ntp.conf -> r:^server"
 
   # 2.1.4.3 Ensure ntp is running as user ntp. (Automated)
   - id: 31075
@@ -1331,8 +1327,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/usr/lib/ntp/ntp-systemd-wrapper -> r:^RUNASUSER=ntp"
+      - "c:ps -ef -> r: ^ntp"
 
   # 2.1.4.4 Ensure ntp is enabled and running. (Automated)
   - id: 31076
@@ -1350,8 +1348,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled ntp.service -> r:^enabled"
+      - "c:systemctl is-active ntp.service -> r:^active"
 
   # 2.2.1 Ensure X Window System is not installed. (Automated)
   - id: 31077
@@ -1372,8 +1372,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' xserver-xorg -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' xserver-xorg -> r:install ok installed"
 
   # 2.2.2 Ensure Avahi Server is not installed. (Automated)
   - id: 31078
@@ -1393,8 +1395,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:install ok installed"
 
   # 2.2.3 Ensure CUPS is not installed. (Automated)
   - id: 31079
@@ -1417,8 +1421,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:install ok installed"
 
   # 2.2.4 Ensure DHCP Server is not installed. (Automated)
   - id: 31080
@@ -1440,8 +1446,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> r:install ok installed"
 
   # 2.2.5 Ensure LDAP server is not installed. (Automated)
   - id: 31081
@@ -1463,8 +1471,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> r:install ok installed"
 
   # 2.2.6 Ensure NFS is not installed. (Automated)
   - id: 31082
@@ -1481,8 +1491,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> r:install ok installed"
 
   # 2.2.7 Ensure DNS Server is not installed. (Automated)
   - id: 31083
@@ -1502,8 +1514,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> r:install ok installed"
 
   # 2.2.8 Ensure FTP Server is not installed. (Automated)
   - id: 31084
@@ -1523,8 +1537,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:install ok installed"
 
   # 2.2.9 Ensure HTTP server is not installed. (Automated)
   - id: 31085
@@ -1544,8 +1560,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' apache2 -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' apache2 -> r:install ok installed"
 
   # 2.2.10 Ensure IMAP and POP3 server are not installed. (Automated)
   - id: 31086
@@ -1565,8 +1583,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> r:install ok installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> r:install ok installed"
 
   # 2.2.11 Ensure Samba is not installed. (Automated)
   - id: 31087
@@ -1585,8 +1605,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:install ok installed"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 31088
@@ -1606,8 +1628,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:install ok installed"
 
   # 2.2.13 Ensure SNMP Server is not installed. (Automated)
   - id: 31089
@@ -1627,8 +1651,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmpd -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmpd -> r:install ok installed"
 
   # 2.2.14 Ensure NIS Server is not installed. (Automated)
   - id: 31090
@@ -1648,8 +1674,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:install ok installed"
 
   # 2.2.15 Ensure dnsmasq is not installed. (Automated)
   - id: 31091
@@ -1669,8 +1697,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dnsmaq -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dnsmaq -> r:install ok installed"
 
   # 2.2.16 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 31092
@@ -1690,8 +1720,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
 
   # 2.2.17 Ensure rsync service is either not installed or is masked. (Automated)
   - id: 31093
@@ -1711,8 +1742,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsync -> r:unknown ok not-installed"
+      - "c:systemctl is-active rsync -> r:^inactive"
+      - "c:systemctl is-enabled rsync -> r:^masked"
 
   # 2.3.1 Ensure NIS Client is not installed. (Automated)
   - id: 31094
@@ -1733,14 +1767,16 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:install ok installed"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 31095
     title: "Ensure rsh client is not installed."
     description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh-client package removes the clients for rsh , rcp and rlogin ."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh-client package removes the clients for rsh , rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Uninstall rsh: # apt purge rsh-client."
     compliance:
@@ -1755,8 +1791,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:install ok installed"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 31096
@@ -1777,8 +1815,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:no packages found matching talk"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:install ok installed"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 31097
@@ -1799,8 +1840,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:install ok installed"
 
   # 2.3.5 Ensure LDAP client is not installed. (Automated)
   - id: 31098
@@ -1821,8 +1864,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:install ok installed"
 
   # 2.3.6 Ensure RPC is not installed. (Automated)
   - id: 31099
@@ -1842,29 +1887,12 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:unknown ok not-installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:install ok installed"
 
-  # 2.4 Ensure nonessential services are removed or masked. (Manual)
-  - id: 31100
-    title: "Ensure nonessential services are removed or masked."
-    description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP. A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations."
-    rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
-    remediation: "Run the following command to remove the package containing the service: # apt purge <package_name> OR If required packages have a dependency: Run the following commands to stop and mask the service: # systemctl stop <service_name>.socket # systemctl stop <service_name>.service # systemctl mask <service_name>.socket # systemctl mask <service_name>.service."
-    compliance:
-      - cis: ["2.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 2.4 Ensure nonessential services are removed or masked. (Manual) - Not Implemented
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual)
   - id: 31101
