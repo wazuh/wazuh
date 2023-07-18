@@ -8317,6 +8317,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':

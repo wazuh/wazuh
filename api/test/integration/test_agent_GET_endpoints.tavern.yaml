@@ -2752,6 +2752,26 @@ stages:
       json:
         error: 1407
 
+    - name: Get agents groups using select
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        select: 'count'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'count'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
   - name: Get distinct agents groups
     request:
       verify: False

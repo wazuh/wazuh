@@ -11,7 +11,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
-    GROUP_SORT_FIELDS, GROUP_FILES_FIELDS
+    GROUP_FIELDS, GROUP_FILES_FIELDS
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -558,7 +558,8 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
                   post_proc_kwargs={'exclude_codes': [1710]})
 def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort_by: list = None,
                      sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
-                     hash_algorithm: str = 'md5', q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+                     hash_algorithm: str = 'md5', q: str = None, select: str = None,
+                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Gets the existing groups.
 
     Parameters
@@ -581,6 +582,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         hash algorithm used to get mergedsum and configsum. Default: 'md5'
     q : str
         Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
     distinct : bool
         Look for distinct values.
 
@@ -625,9 +628,10 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
             affected_groups.append(group)
 
-    data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_SORT_FIELDS,
+    data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
                          sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
-                         complementary_search=complementary_search, q=q, distinct=distinct)
+                         complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
+                         select=select, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
