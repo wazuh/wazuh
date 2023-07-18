@@ -11,7 +11,7 @@ namespace api::sessionManager
  * @brief Session class.
  *
  */
-struct Session
+class Session
 {
 public:
     Session(const std::string& sessionName,
