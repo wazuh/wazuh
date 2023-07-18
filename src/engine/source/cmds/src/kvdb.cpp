@@ -12,10 +12,11 @@ struct Options
 {
     std::string serverApiSock {};
     bool loaded {false};
-    std::string kvdbName {};
-    std::string kvdbInputFilePath {};
-    std::string kvdbKey {};
-    std::string kvdbValue {};
+    std::string kvdbName;
+    std::string kvdbInputFilePath;
+    std::string kvdbKey;
+    std::string kvdbValue;
+    int clientTimeout;
 };
 
 } // namespace
@@ -93,8 +94,6 @@ void runDump(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbNam
     const auto& dump = eResponse.entries();
     const auto json = eMessage::eRepeatedFieldToJson<eKVDB::Entry>(dump);
     std::cout << std::get<std::string>(json) << std::endl;
-
-
 }
 
 void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName)
@@ -133,7 +132,6 @@ void runGetKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbNa
     const auto& value = eResponse.value();
     const auto json = eMessage::eMessageToJson<google::protobuf::Value>(value);
     std::cout << std::get<std::string>(json) << std::endl;
-
 }
 
 void runInsertKV(std::shared_ptr<apiclnt::Client> client,
@@ -176,7 +174,6 @@ void runInsertKV(std::shared_ptr<apiclnt::Client> client,
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
-
 }
 
 void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey)
@@ -203,8 +200,13 @@ void configure(const CLI::App_p& app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    kvdbApp->add_option("-a, --api_socket", options->serverApiSock, "engine api address")->default_val(ENGINE_SRV_API_SOCK);
-    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
+    kvdbApp->add_option("-a, --api_socket", options->serverApiSock, "engine api address")
+        ->default_val(ENGINE_SRV_API_SOCK);
+
+    // Client timeout
+    kvdbApp->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     // KVDB list subcommand
     auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND, "List all KVDB availables.");
@@ -212,7 +214,12 @@ void configure(const CLI::App_p& app)
     list_subcommand
         ->add_option("-n, --name", options->kvdbName, "KVDB name to match the start of the name of the available ones.")
         ->default_val("");
-    list_subcommand->callback([options, client]() { runList(client, options->kvdbName, options->loaded); });
+    list_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runList(client, options->kvdbName, options->loaded);
+        });
 
     // KVDB create subcommand
     auto create_subcommand =
@@ -228,22 +235,36 @@ void configure(const CLI::App_p& app)
                      "The file must be a JSON file with the following format: {\"key\": VALUE} "
                      "where VALUE can be any JSON type.")
         ->check(CLI::ExistingFile);
-    create_subcommand->callback([options, client]()
-                                { runCreate(client, options->kvdbName, options->kvdbInputFilePath); });
+    create_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runCreate(client, options->kvdbName, options->kvdbInputFilePath);
+        });
 
     // KVDB dump subcommand
     auto dump_subcommand = kvdbApp->add_subcommand(details::API_KVDB_DUMP_SUBCOMMAND,
                                                    "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
-    dump_subcommand->callback([options, client]() { runDump(client, options->kvdbName); });
+    dump_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runDump(client, options->kvdbName);
+        });
 
     // KVDB delete subcommand
     auto delete_subcommand =
         kvdbApp->add_subcommand(details::API_KVDB_DELETE_SUBCOMMAND, "Deletes a KeyValueDB named db-name.");
     // delete KVDB name
     delete_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be deleted.")->required();
-    delete_subcommand->callback([options, client]() { runDelete(client, options->kvdbName); });
+    delete_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runDelete(client, options->kvdbName);
+        });
 
     // KVDB get subcommand
     auto get_subcommand = kvdbApp->add_subcommand(details::API_KVDB_GET_SUBCOMMAND,
@@ -252,7 +273,12 @@ void configure(const CLI::App_p& app)
     get_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // get key
     get_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be obtained.")->required();
-    get_subcommand->callback([options, client]() { runGetKV(client, options->kvdbName, options->kvdbKey); });
+    get_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runGetKV(client, options->kvdbName, options->kvdbKey);
+        });
 
     // KVDB insert subcommand
     auto insert_subcommand =
@@ -264,8 +290,12 @@ void configure(const CLI::App_p& app)
     // insert value
     insert_subcommand->add_option("-v, --value", options->kvdbValue, "value to be inserted on key.")
         ->default_val("null");
-    insert_subcommand->callback([options, client]()
-                                { runInsertKV(client, options->kvdbName, options->kvdbKey, options->kvdbValue); });
+    insert_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runInsertKV(client, options->kvdbName, options->kvdbKey, options->kvdbValue);
+        });
 
     // KVDB remove subcommand
     auto remove_subcommand = kvdbApp->add_subcommand("remove", "Removes key from db-name.");
@@ -273,7 +303,12 @@ void configure(const CLI::App_p& app)
     remove_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // remove key
     auto key = remove_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be removed.")->required();
-    remove_subcommand->callback([options, client]() { runRemoveKV(client, options->kvdbName, options->kvdbKey); });
+    remove_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runRemoveKV(client, options->kvdbName, options->kvdbKey);
+        });
 }
 
 } // namespace cmd::kvdb
