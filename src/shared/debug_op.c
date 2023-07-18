@@ -42,6 +42,28 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void WinSetError();
 #endif
 
+static void print_stderr_msg(char* timestamp, const char *tag, const char * file, int line, const char * func, const char* level, const char *msg, bool use_va_list, va_list args2) {
+    (void)fprintf(stderr, "%s ", timestamp);
+
+    if (dbg_flag > 0) {
+        (void)fprintf(stderr, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+    } else {
+        (void)fprintf(stderr, "%s: ", tag);
+    }
+
+    (void)fprintf(stderr, "%s: ", level);
+    if (use_va_list) {
+        (void)vfprintf(stderr, msg, args2);
+    } else {
+        (void)fprintf(stderr, "%s", msg);
+    }
+#ifdef WIN32
+    (void)fprintf(stderr, "\r\n");
+#else
+    (void)fprintf(stderr, "\n");
+#endif
+}
+
 static void _log_function(int level, const char *tag, const char * file, int line, const char * func, const char *msg, bool plain_only, va_list args)
 {
     va_list args2; /* For the stderr print */
@@ -80,8 +102,14 @@ static void _log_function(int level, const char *tag, const char * file, int lin
             flags.log_plain = 1;
             flags.log_json = 0;
             if(!flags.mutex_initialized) {
-                flags.mutex_initialized=1;
-                pthread_mutex_init(&logging_mutex, NULL);
+                flags.mutex_initialized = 1;
+                int error_code = pthread_mutex_init(&logging_mutex, NULL);
+                if (error_code != 0 && daemon_flag == 0) {
+                    char err_msg[OS_SIZE_128] = {0};
+                    snprintf(err_msg, OS_SIZE_128, "Failed to initialize logging mutex (%d).", error_code);
+                    print_stderr_msg(timestamp, __local_name, __FILE__, __LINE__, __func__, strlevel[LOGLEVEL_ERROR],
+                                     err_msg, false, args);
+                }
             }
         } else {
             w_logging_init();
@@ -197,7 +225,13 @@ static void _log_function(int level, const char *tag, const char * file, int lin
         /* Maybe log to syslog if the log file is not available */
         if (fp) {
             // Not using w_ variant to avoid calling this same method again.
-            pthread_mutex_lock(&logging_mutex);
+            int error_code = pthread_mutex_lock(&logging_mutex);
+            if (error_code != 0 && daemon_flag == 0) {
+                char err_msg[OS_SIZE_128] = {0};
+                snprintf(err_msg, OS_SIZE_128, "Failed to lock logging mutex (%d).", error_code);
+                print_stderr_msg(timestamp, __local_name, __FILE__, __LINE__, __func__, strlevel[LOGLEVEL_ERROR],
+                                 err_msg, false, args);
+            }
             (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
@@ -211,7 +245,13 @@ static void _log_function(int level, const char *tag, const char * file, int lin
             (void)fprintf(fp, "\n");
             fflush(fp);
             // Not using w_ variant to avoid calling this same method again.
-            pthread_mutex_unlock(&logging_mutex);
+            error_code = pthread_mutex_unlock(&logging_mutex);
+            if (error_code != 0 && daemon_flag == 0) {
+                char err_msg[OS_SIZE_128] = {0};
+                snprintf(err_msg, OS_SIZE_128, "Failed to unlock logging mutex (%d).", error_code);
+                print_stderr_msg(timestamp, __local_name, __FILE__, __LINE__, __func__, strlevel[LOGLEVEL_ERROR],
+                                 err_msg, false, args);
+            }
 
             fclose(fp);
         }
@@ -219,22 +259,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
 
     /* Only if not in daemon mode */
     if (daemon_flag == 0) {
-        /* Print to stderr */
-        (void)fprintf(stderr, "%s ", timestamp);
-
-        if (dbg_flag > 0) {
-            (void)fprintf(stderr, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
-        } else {
-            (void)fprintf(stderr, "%s: ", tag);
-        }
-
-        (void)fprintf(stderr, "%s: ", strlevel[level]);
-        (void)vfprintf(stderr, msg, args2);
-#ifdef WIN32
-        (void)fprintf(stderr, "\r\n");
-#else
-        (void)fprintf(stderr, "\n");
-#endif
+        print_stderr_msg(timestamp, tag, file, line, func, strlevel[level], msg, true, args2);
     }
 
     free(timestamp);
