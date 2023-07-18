@@ -1,0 +1,28 @@
+name: decoder/windows-json/0
+
+metadata:
+  description: Partial parent decoder for Windows events
+  module: Windows
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  title: This decoder processes event coming through Windows Event Channel queue
+  references:
+    - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+
+sources:
+  - decoder/integrations/0
+
+check:
+  - wazuh.origin: EventChannel
+
+parse:
+  logpar:
+    - event.original: <~json/json>
+
+normalize:
+ - map:
+    - wazuh.decoders: +array_append/windows-json
