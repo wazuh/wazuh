@@ -45,6 +45,9 @@ void DB::init(const int storage,
 
     auto rsyncHandler { std::make_shared<RemoteSync>(syncThreadPool, syncQueueSize) };
 
+    dbsync_initialize(NULL);
+    rsync_initialize(NULL);
+
     FIMDB::instance().init(syncInterval,
                            syncMaxInterval,
                            syncResponseTimeout,

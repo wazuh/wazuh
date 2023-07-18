@@ -12,6 +12,19 @@
 #ifndef FIMDB_H
 #define FIMDB_H
 
+// Define EXPORTED for any platform
+#ifdef _WIN32
+#ifdef WIN_EXPORT
+#define EXPORTED __declspec(dllexport)
+#else
+#define EXPORTED __declspec(dllimport)
+#endif
+#elif __GNUC__ >= 4
+#define EXPORTED __attribute__((visibility("default")))
+#else
+#define EXPORTED
+#endif
+
 #include "fimCommonDefs.h"
 #include "commonDefs.h"
 #include "syscheck.h"
@@ -44,17 +57,17 @@ extern "C" {
  *
  * @return FIMDB_OK on success, FIMDB_ERROR on error.
  */
-FIMDBErrorCode fim_db_init(int storage,
-                           int sync_interval,
-                           uint32_t sync_max_interval,
-                           uint32_t sync_response_timeout,
-                           fim_sync_callback_t sync_callback,
-                           logging_callback_t log_callback,
-                           int file_limit,
-                           int value_limit,
-                           bool sync_registry_enabled,
-                           int sync_thread_pool,
-                           unsigned int sync_queue_size);
+EXPORTED FIMDBErrorCode fim_db_init(int storage,
+                                    int sync_interval,
+                                    uint32_t sync_max_interval,
+                                    uint32_t sync_response_timeout,
+                                    fim_sync_callback_t sync_callback,
+                                    logging_callback_t log_callback,
+                                    int file_limit,
+                                    int value_limit,
+                                    bool sync_registry_enabled,
+                                    int sync_thread_pool,
+                                    unsigned int sync_queue_size);
 
 /**
  * @brief Get entry data using path.
@@ -66,8 +79,8 @@ FIMDBErrorCode fim_db_init(int storage,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_get_path(const char* file_path,
-                               callback_context_t data);
+EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path,
+                                        callback_context_t data);
 
 /**
  * @brief Find entries based on pattern search.
@@ -79,8 +92,8 @@ FIMDBErrorCode fim_db_get_path(const char* file_path,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_file_pattern_search(const char* pattern,
-                                          callback_context_t data);
+EXPORTED FIMDBErrorCode fim_db_file_pattern_search(const char* pattern,
+                                                   callback_context_t data);
 
 /**
  * @brief Delete entry from the DB using file path.
@@ -91,21 +104,21 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_remove_path(const char* path);
+EXPORTED FIMDBErrorCode fim_db_remove_path(const char* path);
 
 /**
  * @brief Get count of all inodes in file_entry table.
  *
  * @return Number of inodes in file_entry table.
  */
-int fim_db_get_count_file_inode();
+EXPORTED int fim_db_get_count_file_inode();
 
 /**
  * @brief Get count of all entries in file_entry table.
  *
  * @return Number of entries in file_entry table.
  */
-int fim_db_get_count_file_entry();
+EXPORTED int fim_db_get_count_file_entry();
 
 /**
  * @brief Makes any necessary queries to get the entry updated in the DB.
@@ -115,8 +128,8 @@ int fim_db_get_count_file_entry();
  *
  * @return FIMDB_OK on success.
  */
-FIMDBErrorCode fim_db_file_update(fim_entry* data,
-                                  callback_context_t callback);
+EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data,
+                                           callback_context_t callback);
 
 /**
  * @brief Find entries using the inode.
@@ -127,9 +140,9 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data,
  *
  * @return FIMDB_OK on success.
  */
-FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
-                                        unsigned long int dev,
-                                        callback_context_t data);
+EXPORTED FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
+                                                 unsigned long int dev,
+                                                 callback_context_t data);
 
 /**
  * @brief Push a message to the syscheck queue
@@ -138,14 +151,14 @@ FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
  *
  * @return FIMDB_OK on success.
  */
-FIMDBErrorCode fim_sync_push_msg(const char* msg);
+EXPORTED FIMDBErrorCode fim_sync_push_msg(const char* msg);
 
 /**
  * @brief Thread that performs the syscheck data synchronization
  *
  * @return FIMDB_OK on success.
  */
-FIMDBErrorCode fim_run_integrity();
+EXPORTED FIMDBErrorCode fim_run_integrity();
 
 /*
  * @brief Function that starts a new DBSync transaction.
@@ -156,9 +169,9 @@ FIMDBErrorCode fim_run_integrity();
  *
  * @return TXN_HANDLE Transaction handler.
  */
-TXN_HANDLE fim_db_transaction_start(const char* table,
-                                    result_callback_t row_callback,
-                                    void *user_data);
+EXPORTED TXN_HANDLE fim_db_transaction_start(const char* table,
+                                             result_callback_t row_callback,
+                                             void *user_data);
 
 /**
  * @brief Function to perform a sync row operation (ADD OR REPLACE).
@@ -170,8 +183,8 @@ TXN_HANDLE fim_db_transaction_start(const char* table,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler,
-                                           const fim_entry* entry);
+EXPORTED FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler,
+                                                    const fim_entry* entry);
 
 /**
  * @brief Function to perform the deleted rows operation.
@@ -183,16 +196,16 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
-                                               result_callback_t callback,
-                                               void* txn_ctx);
+EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+                                                        result_callback_t callback,
+                                                        void* txn_ctx);
 
 /**
  * @brief Turns off the services provided.
  *
  * It will be responsible to close sync and release resources
  */
-void fim_db_teardown();
+EXPORTED void fim_db_teardown();
 
 #ifdef WIN32
 
@@ -203,14 +216,14 @@ void fim_db_teardown();
  *
  * @return Number of entries in registry data table.
  */
-int fim_db_get_count_registry_data();
+EXPORTED int fim_db_get_count_registry_data();
 
 /**
  * @brief Get count of all entries in registry key table.
  *
  * @return Number of entries in registry data table.
  */
-int fim_db_get_count_registry_key();
+EXPORTED int fim_db_get_count_registry_key();
 
 #endif /* WIN32 */
 

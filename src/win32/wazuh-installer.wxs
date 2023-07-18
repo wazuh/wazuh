@@ -208,6 +208,9 @@
                     <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="7CE63D8B-C959-43CC-A7B6-4226414EBADB">
                         <File Id="SYSCOLLECTOR_DLL" Name="syscollector.dll" Source="..\wazuh_modules\syscollector\build\bin\syscollector.dll" />
                     </Component>
+                    <Component Id="FIMDB_DLL" DiskId="1" Guid="15806BCA-876E-41D7-A82E-623EEEC63C3A">
+                        <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd/build/bin/libfimdb.dll" />
+                    </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
