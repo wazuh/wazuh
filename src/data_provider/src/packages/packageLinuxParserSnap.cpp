@@ -18,38 +18,22 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
 {
     UNIXSocketRequest::instance().get(
         HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps"),
-        [&](const std::string & result)
-    {
-        auto feed = nlohmann::json::parse(result).at("result");
+        [&](const std::string & result) {
+            auto feed = nlohmann::json::parse(result).at("result");
 
-        int count = (int)feed.size();
+            int count = (int)feed.size();
 
-        for (int k = 0; k < count; k++)
-        {
-            auto& entry = feed.at(k);
+            for (int k = 0; k < count; k++) {
+                auto& entry = feed.at(k);
 
-            nlohmann::json mapping = PackageLinuxHelper::parseSnap(entry);
+                nlohmann::json mapping = PackageLinuxHelper::parseSnap(entry);
 
-            if (!mapping.empty())
-            {
-                callback(mapping);
+                if (!mapping.empty()) {
+                    callback(mapping);
+                }
             }
-        }
-
-    },
-    [&](const std::string & result)
-    {
-        nlohmann::json error
-        {
-            {"type", "error"},
-            {"status-code", 0},
-            {"status", "get() Error"},
-            {
-                "result",
-                {"message"}, {result}
-            }
-        };
-
-        callback(error);
-    });
+        },
+        [&](const std::string& result, const long responseCode) {
+            std::cerr<<"Error retrieving packages using snap unix-socket ("<<responseCode<<") "<<result<<"\n";
+        });
 }
