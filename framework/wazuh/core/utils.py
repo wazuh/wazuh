@@ -40,6 +40,8 @@ if sys.version_info[0] == 3:
 # Temporary cache
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
+SQLITE_JOIN_TYPES = ['LEFT', 'CROSS', 'OUTER']
+
 
 def clean_pid_files(daemon: str):
     """Check the existence of '.pid' files for a specified daemon.
@@ -1363,7 +1365,8 @@ class WazuhDBQuery(object):
     def __init__(self, offset: int, limit: int, table: str, sort: dict, search: dict, select: list, query: str,
                  fields: dict, default_sort_field: str, count: bool, get_data: bool, backend: str,
                  default_sort_order: str = 'ASC', filters: dict = {}, min_select_fields: set = set(),
-                 date_fields: set = set(), extra_fields=set(), distinct: bool = False, rbac_negate: bool = True):
+                 date_fields: set = set(), extra_fields=set(), distinct: bool = False, rbac_negate: bool = True,
+                 joins: typing.Dict[str, str] = None, group_by: list = None):
         """Wazuh DB Query constructor.
 
         Parameters
@@ -1406,6 +1409,10 @@ class WazuhDBQuery(object):
             Whether to use IN or NOT IN on RBAC resources.
         backend : str
             Database engine to use. Possible options are 'wdb' and 'sqlite3'.
+        joins: dict
+            Table joins to perform. Format: {"table1": {"type": "left", "conditions": ["condition1", "condition2"]}}.
+        group_by: list
+            Groups the items. Format: ["field1","field2"].
         """
         self.offset = offset
         self.limit = limit
@@ -1457,6 +1464,8 @@ class WazuhDBQuery(object):
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
         self.rbac_negate = rbac_negate
+        self.joins = joins
+        self.group_by = group_by
 
     def __enter__(self):
         return self
@@ -1490,6 +1499,14 @@ class WazuhDBQuery(object):
             self.request['limit'] = self.limit
         elif self.limit == 0:  # 0 is not a valid limit
             raise WazuhError(1406)
+
+    def _add_group_by_to_query(self):
+        if self.group_by:
+            for field in self.group_by:
+                if field not in self.fields.keys():
+                    raise WazuhError(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+
+            self.query += ' GROUP BY ' + ','.join(self.group_by)
 
     def _sort_query(self, field):
         return '{} {}'.format(self.fields[field], self.sort['order'])
@@ -1537,6 +1554,38 @@ class WazuhDBQuery(object):
 
     def _add_select_to_query(self):
         self.select = self._parse_select_filter(self.select)
+
+    def _validate_join_conditions(self, conditions: typing.List[str]):
+        if not conditions:
+            raise WazuhError(1417)
+
+        for condition in conditions:
+            if not self.query_regex.match(condition):
+                raise WazuhError(1407, condition)
+        
+        # Value could be any value or another table field, so we are not making any validation
+        for _, field, operator, _, _, _ in self.query_regex.findall(condition):
+            if field not in self.fields.keys():
+                raise WazuhError(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+            if operator not in self.query_operators:
+                raise WazuhError(1409,
+                                 "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators),
+                                                                                 operator))
+
+    def _add_joins_to_query(self):
+        if not self.joins:
+            return
+
+        for table, join in self.joins.items():
+            join_type = join['type'].upper()
+            if join_type not in SQLITE_JOIN_TYPES:
+                raise WazuhError(1416, 'invalid join type: ' + join_type)
+
+            conditions = join['conditions']
+            self._validate_join_conditions(conditions)
+            join_conditions = ' AND '.join(conditions)
+
+            self.query += f" {join_type} JOIN {table} ON {join_conditions}"
 
     def _parse_query(self):
         """A query has the following pattern: field operator value separator field operator value...
@@ -1704,12 +1753,14 @@ class WazuhDBQuery(object):
             Dictionary with the formatted data.
         """
         self._add_select_to_query()
+        self._add_joins_to_query()
         self._add_filters_to_query()
         self._add_search_to_query()
         if self.count:
             self._get_total_items()
             if not self.data:
                 return {'totalItems': self.total_items}
+        self._add_group_by_to_query()
         self._add_sort_to_query()
         self._add_limit_to_query()
         if self.data:
@@ -1731,10 +1782,12 @@ class WazuhDBQuery(object):
             Error communicating with socket. Query too long.
         """
         self._add_select_to_query()
+        self._add_joins_to_query()
         original_select = self.select
         rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
         self._add_filters_to_query()
         self._add_search_to_query()
+        self._add_group_by_to_query()
         self._add_sort_to_query()
 
         resource = None
