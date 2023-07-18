@@ -52,5 +52,5 @@ jobs:
     - name: Unit Test
       # Run unit tests using CTest
       working-directory: ${{env.ENGINE_DIR}}/build
-      run: ctest -C ${{env.BUILD_TYPE}} -T test --output-on-failure
+      run: ctest -C ${{env.BUILD_TYPE}} -T test --output-on-failure -j2
 
