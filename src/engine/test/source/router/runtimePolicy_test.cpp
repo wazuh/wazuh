@@ -5,74 +5,82 @@
 
 #include <gtest/gtest.h>
 
-#include "testAuxiliar/routerAuxiliarFunctions.hpp"
+#include "routerAuxiliarFunctions.hpp"
 
 #include "parseEvent.hpp"
 #include "register.hpp"
 #include <testsCommon.hpp>
 
-constexpr auto env_1 = "policy/env_1/0";
-constexpr auto env_2 = "policy/env_2/0";
-constexpr auto env_default = "policy/default/0";
+constexpr auto POLICY_1 = "policy/pol_1/0";
+constexpr auto INVALID_POLICY = "policy/invalid/0";
 
-class RuntimeEnvironment : public ::testing::Test
+using namespace store::mocks;
+
+class RuntimePolicyTest
+    : public ::testing::Test
+    , public MockDeps
 {
 
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override
+    {
+        initLogging();
+
+        init();
+    }
 
     void TearDown() override {}
 };
 
-TEST_F(RuntimeEnvironment, build_ok)
+TEST_F(RuntimePolicyTest, build_ok)
 {
-    auto builder = aux::getFakeBuilder();
-    auto policy = std::make_shared<router::RuntimePolicy>(env_1);
-    auto error = policy->build(builder);
+    auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
+    expectBuildPolicy(POLICY_1);
+    auto error = policy->build(m_builder);
     ASSERT_FALSE(error.has_value()) << error.value().message;
 }
 
-TEST_F(RuntimeEnvironment, build_fail_env)
+TEST_F(RuntimePolicyTest, build_fail_policy)
 {
-    auto builder = aux::getFakeBuilder();
-    auto policy = std::make_shared<router::RuntimePolicy>("invalid_env");
-    auto error = policy->build(builder);
+    auto policy = std::make_shared<router::RuntimePolicy>(INVALID_POLICY);
+    EXPECT_CALL(*m_store, get(base::Name(INVALID_POLICY))).WillOnce(::testing::Return(getError("error")));
+    auto error = policy->build(m_builder);
     ASSERT_TRUE(error.has_value());
 }
 
-TEST_F(RuntimeEnvironment, build_fail_builder)
+TEST_F(RuntimePolicyTest, build_fail_builder)
 {
     GTEST_SKIP();
-    auto policy = std::make_shared<router::RuntimePolicy>("invalid_env");
+    auto policy = std::make_shared<router::RuntimePolicy>(INVALID_POLICY);
     // TODO SHOULD BE ASSERT_THROW LOGIC ERROR
     policy->build(nullptr);
 }
 
-TEST_F(RuntimeEnvironment, build_2_times)
+TEST_F(RuntimePolicyTest, build_2_times)
 {
-    auto builder = aux::getFakeBuilder();
-    auto policy = std::make_shared<router::RuntimePolicy>(env_1);
-    auto error = policy->build(builder);
+    auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
+    expectBuildPolicy(POLICY_1);
+    auto error = policy->build(m_builder);
     ASSERT_FALSE(error.has_value()) << error.value().message;
-    error = policy->build(builder);
+    error = policy->build(m_builder);
     ASSERT_TRUE(error.has_value());
-    ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/env_1/0' is already built");
+    ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/pol_1/0' is already built");
 }
 
-TEST_F(RuntimeEnvironment, processEvent_not_built)
+TEST_F(RuntimePolicyTest, processEvent_not_built)
 {
-    auto policy = std::make_shared<router::RuntimePolicy>(env_1);
+    auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
     auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
     auto error = policy->processEvent(e);
     ASSERT_TRUE(error.has_value());
-    ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/env_1/0' is not built");
+    ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/pol_1/0' is not built");
 }
 
-TEST_F(RuntimeEnvironment, processEvent_1_event)
+TEST_F(RuntimePolicyTest, processEvent_1_event)
 {
-    auto builder = aux::getFakeBuilder();
-    auto policy = std::make_shared<router::RuntimePolicy>(env_1);
-    auto error = policy->build(builder);
+    auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
+    expectBuildPolicy(POLICY_1);
+    auto error = policy->build(m_builder);
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
@@ -86,11 +94,11 @@ TEST_F(RuntimeEnvironment, processEvent_1_event)
 }
 
 // TODO add more tests
-TEST_F(RuntimeEnvironment, processEvent_30_event)
+TEST_F(RuntimePolicyTest, processEvent_30_event)
 {
-    auto builder = aux::getFakeBuilder();
-    auto policy = std::make_shared<router::RuntimePolicy>(env_1);
-    auto error = policy->build(builder);
+    auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
+    expectBuildPolicy(POLICY_1);
+    auto error = policy->build(m_builder);
     ASSERT_FALSE(error.has_value()) << error.value().message;
     auto decoderPath = json::Json::formatJsonPath("~decoder");
 
