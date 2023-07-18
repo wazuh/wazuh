@@ -155,21 +155,16 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     """
     if not array:
         return {'items': [], 'totalItems': 0}
+    
+    print(array)
 
-    filter_items = isinstance(filters, dict) and len(filters.keys()) > 0
-    if distinct or filter_items:
+    if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = []
         for element in array:
-            if distinct and (element in new_array):
-                continue
-
-            if filter_items:
-                for key, value in filters.items():
-                    if element[key] in value:
-                        new_array.append(element)
-                        break
-            else:
-                new_array.append(element)
+            for key, value in filters.items():
+                if element[key] in value:
+                    new_array.append(element)
+                    break
 
         array = new_array
 
@@ -187,8 +182,18 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
         array = filter_array_by_query(q, array)
 
     if select:
+        # Do not force the inclusion of any fields when we are looking for distinct values
+        required_fields = set() if distinct else required_fields
         array = select_array(array, select=select, required_fields=required_fields,
                              allowed_select_fields=allowed_select_fields)
+
+    if distinct:
+        distinct_array = []
+        for element in array:
+            if element not in distinct_array:
+                distinct_array.append(element)
+
+        array = distinct_array
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
