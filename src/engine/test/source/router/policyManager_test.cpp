@@ -5,31 +5,39 @@
 #include <gtest/gtest.h>
 
 #include "parseEvent.hpp"
-#include "register.hpp"
 
-#include "testAuxiliar/routerAuxiliarFunctions.hpp"
+#include "routerAuxiliarFunctions.hpp"
 #include <testsCommon.hpp>
 
-class PolicyManager : public ::testing::Test
+constexpr auto POLICY_1 = "policy/pol_1/0";
+constexpr auto POLICY_2 = "policy/pol_2/0";
+constexpr auto POLICY_3 = "policy/pol_3/0";
+
+class PolicyManagerTest
+    : public ::testing::Test
+    , public MockDeps
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override
+    {
+        initLogging();
+        init();
+    }
 
     void TearDown() override {};
 };
 
-TEST_F(PolicyManager, instance_ok)
+TEST_F(PolicyManagerTest, instance_ok)
 {
-    auto builder = aux::getFakeBuilder();
-    ASSERT_NO_THROW(router::PolicyManager(builder, 1));
+    ASSERT_NO_THROW(router::PolicyManager(m_builder, 1));
 }
 
-TEST_F(PolicyManager, instance_fail_null_builder)
+TEST_F(PolicyManagerTest, instance_fail_null_builder)
 {
     try
     {
-        router::PolicyManager(nullptr, 1);
-        FAIL();
+        auto r = router::PolicyManager(nullptr, 1);
+        FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
     {
@@ -37,17 +45,16 @@ TEST_F(PolicyManager, instance_fail_null_builder)
     }
     catch (...)
     {
-        FAIL();
+        FAIL() << "Expected std::runtime_error";
     }
 }
 
-TEST_F(PolicyManager, zero_instances)
+TEST_F(PolicyManagerTest, zero_instances)
 {
-    auto builder = aux::getFakeBuilder();
     try
     {
-        router::PolicyManager(builder, 0);
-        FAIL();
+        auto r = router::PolicyManager(m_builder, 0);
+        FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
     {
@@ -55,30 +62,31 @@ TEST_F(PolicyManager, zero_instances)
     }
     catch (...)
     {
-        FAIL();
+        FAIL() << "Expected std::runtime_error";
     }
 }
 
-TEST_F(PolicyManager, policyFlow)
+TEST_F(PolicyManagerTest, policyFlow)
 {
-    auto builder = aux::getFakeBuilder();
     auto numOfInstances = 10;
 
     // Instance
-    auto manager = router::PolicyManager(builder, numOfInstances);
+    auto manager = router::PolicyManager(m_builder, numOfInstances);
 
     for (std::size_t i = 0; i < numOfInstances; ++i)
     {
         // Add policy
-        auto err = manager.addPolicy("policy/env_1/0");
+        expectBuildPolicy(POLICY_1, numOfInstances);
+        auto err = manager.addPolicy(POLICY_1);
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.addPolicy("policy/env_2/0");
+        expectBuildPolicy(POLICY_2, numOfInstances);
+        err = manager.addPolicy(POLICY_2);
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.addPolicy("policy/env_3/0");
+        expectBuildPolicy(POLICY_3, numOfInstances);
+        err = manager.addPolicy(POLICY_3);
         ASSERT_FALSE(err.has_value()) << err.value().message;
-
 
         // Create event to process
         auto pathDeco = json::Json::formatJsonPath("~decoder");
@@ -91,96 +99,98 @@ TEST_F(PolicyManager, policyFlow)
         ASSERT_FALSE(e3->exists(pathDeco));
 
         // Process event
-        err = manager.forwardEvent("policy/env_1/0", i, e1);
+        err = manager.forwardEvent(POLICY_1, i, e1);
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e1->exists(pathDeco) && e1->isString(pathDeco));
         ASSERT_STREQ(e1->getString(pathDeco).value().c_str(), "deco_1");
 
-        err = manager.forwardEvent("policy/env_2/0", i, e2);
+        err = manager.forwardEvent(POLICY_2, i, e2);
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e2->exists(pathDeco) && e2->isString(pathDeco));
         ASSERT_STREQ(e2->getString(pathDeco).value().c_str(), "deco_2");
 
-        err = manager.forwardEvent("policy/env_3/0", i, e3);
+        err = manager.forwardEvent(POLICY_3, i, e3);
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e3->exists(pathDeco) && e3->isString(pathDeco));
         ASSERT_STREQ(e3->getString(pathDeco).value().c_str(), "deco_3");
 
         // Delete policy
-        err = manager.deletePolicy("policy/env_1/0");
+        err = manager.deletePolicy(POLICY_1);
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.forwardEvent("policy/env_1/0", i, e1);
+        err = manager.forwardEvent(POLICY_1, i, e1);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' does not exist");
+        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_1/0' does not exist");
 
-        err = manager.deletePolicy("policy/env_2/0");
-        ASSERT_FALSE(err.has_value()) << err.value().message;// Process event
+        err = manager.deletePolicy(POLICY_2);
+        ASSERT_FALSE(err.has_value()) << err.value().message; // Process event
 
-        err = manager.forwardEvent("policy/env_2/0", i, e2);
+        err = manager.forwardEvent(POLICY_2, i, e2);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_2/0' does not exist");
+        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_2/0' does not exist");
 
-        err = manager.deletePolicy("policy/env_3/0");
+        err = manager.deletePolicy(POLICY_3);
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.forwardEvent("policy/env_3/0", i, e3);
+        err = manager.forwardEvent(POLICY_3, i, e3);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_3/0' does not exist");
-
+        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_3/0' does not exist");
     }
 }
 
-TEST_F(PolicyManager, addPolicy_fail)
+TEST_F(PolicyManagerTest, addPolicy_fail)
 {
-    auto builder = aux::getFakeBuilder();
-    auto manager = router::PolicyManager(builder, 1);
+    auto manager = router::PolicyManager(m_builder, 1);
     auto err = manager.addPolicy("invalid_env");
     ASSERT_TRUE(err.has_value());
 }
 
-TEST_F(PolicyManager, add_list_del_policy)
+TEST_F(PolicyManagerTest, add_list_del_policy)
 {
-    auto builder = aux::getFakeBuilder();
-    auto manager = router::PolicyManager(builder, 1);
-    auto err = manager.addPolicy("policy/env_1/0");
+    auto manager = router::PolicyManager(m_builder, 1);
+    expectBuildPolicy(POLICY_1);
+    auto err = manager.addPolicy(POLICY_1);
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    auto envs = manager.listPolicies();
-    ASSERT_EQ(envs.size(), 1);
-    ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
+    auto policies = manager.listPolicies();
+    ASSERT_EQ(policies.size(), 1);
+    ASSERT_STREQ(policies[0].c_str(), POLICY_1);
 
-    err = manager.addPolicy("policy/env_1/0");
+    expectBuildPolicy(POLICY_1);
+    err = manager.addPolicy(POLICY_1);
     ASSERT_TRUE(err.has_value());
-    ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' already exists");
+    ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_1/0' already exists");
 
-    envs = manager.listPolicies();
-    ASSERT_EQ(envs.size(), 1);
-    ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
+    policies = manager.listPolicies();
+    ASSERT_EQ(policies.size(), 1);
+    ASSERT_STREQ(policies[0].c_str(), POLICY_1);
 
-    err = manager.deletePolicy("policy/env_1/0");
+    err = manager.deletePolicy(POLICY_1);
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    envs = manager.listPolicies();
-    ASSERT_EQ(envs.size(), 0);
+    policies = manager.listPolicies();
+    ASSERT_EQ(policies.size(), 0);
 
-    err = manager.deletePolicy("policy/env_1/0");
+    err = manager.deletePolicy(POLICY_1);
     ASSERT_TRUE(err.has_value());
-    ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' does not exist");
+    ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_1/0' does not exist");
 
-    err = manager.addPolicy("policy/env_1/0");
+    expectBuildPolicy(POLICY_1);
+    err = manager.addPolicy(POLICY_1);
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    err = manager.addPolicy("policy/env_2/0");
+    expectBuildPolicy(POLICY_2);
+    err = manager.addPolicy(POLICY_2);
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    err = manager.addPolicy("policy/env_3/0");
+    expectBuildPolicy(POLICY_3);
+    err = manager.addPolicy(POLICY_3);
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    envs = manager.listPolicies();
-    ASSERT_EQ(envs.size(), 3);
-    std::sort(envs.begin(), envs.end());
-    ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
-    ASSERT_STREQ(envs[1].c_str(), "policy/env_2/0");
-    ASSERT_STREQ(envs[2].c_str(), "policy/env_3/0");
+    policies = manager.listPolicies();
+    ASSERT_EQ(policies.size(), 3);
+    std::sort(policies.begin(), policies.end());
+    ASSERT_STREQ(policies[0].c_str(), POLICY_1);
+    ASSERT_STREQ(policies[1].c_str(), POLICY_2);
+    ASSERT_STREQ(policies[2].c_str(), POLICY_3);
 }

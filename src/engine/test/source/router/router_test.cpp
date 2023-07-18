@@ -6,44 +6,51 @@
 
 #include "register.hpp"
 
-#include "testAuxiliar/routerAuxiliarFunctions.hpp"
+#include "routerAuxiliarFunctions.hpp"
 
-#include <metrics/metricsManager.hpp>
-#include <mocks/fakeMetric.hpp>
-#include <schemf/mocks/emptySchema.hpp>
 #include <testsCommon.hpp>
+
+constexpr auto INTERNAL_TABLE = "internal/router_table/0";
 
 using namespace metricsManager;
 // TODO actually fake the store
 
-class Router : public ::testing::Test
+class RouterTest
+    : public ::testing::Test
+    , public MockDeps
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override
+    {
+        initLogging();
+        init();
+    }
 
     void TearDown() override {};
 };
 
-TEST_F(Router, build_ok)
+TEST_F(RouterTest, build_ok_from_table)
 {
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
-    auto builder = aux::getFakeBuilder();
-    auto store = aux::getFakeStore();
-
-    router::Router router(builder, store);
+    expectBuildTable(INTERNAL_TABLE);
+    // TODO: check update calls, seems to be called once foreach entry in the router table
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).Times(3).WillRepeatedly(::testing::Return(okRes()));
+    ASSERT_NO_THROW(router::Router router(m_builder, m_store));
 }
-// Add more test
-TEST_F(Router, build_fail)
-{
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
-    auto builder = aux::getFakeBuilder();
-    auto store = aux::getFakeStore();
 
+TEST_F(RouterTest, build_ok_no_table)
+{
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
+
+    ASSERT_NO_THROW(router::Router router(m_builder, m_store));
+}
+
+// Add more test
+TEST_F(RouterTest, build_fail)
+{
     try
     {
-        router::Router router(builder, store, 0);
+        router::Router router(m_builder, m_store, 0);
         FAIL() << "Router: The router was created with 0 threads";
     }
     catch (const std::runtime_error& e)
@@ -57,7 +64,7 @@ TEST_F(Router, build_fail)
 
     try
     {
-        router::Router router(nullptr, store, 1);
+        router::Router router(nullptr, m_store, 1);
         FAIL() << "Router: The router was created with a null builder";
     }
     catch (const std::runtime_error& e)
@@ -71,7 +78,7 @@ TEST_F(Router, build_fail)
 
     try
     {
-        router::Router router(builder, nullptr, 1);
+        router::Router router(m_builder, nullptr, 1);
         FAIL() << "Router: The router was created with a null store";
     }
     catch (const std::runtime_error& e)
@@ -84,19 +91,19 @@ TEST_F(Router, build_fail)
     }
 }
 
-TEST_F(Router, add_list_remove_routes)
+TEST_F(RouterTest, add_list_remove_routes)
 {
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
-    auto builder = aux::getFakeBuilder();
-    auto store = aux::getFakeStore();
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(okRes()));
 
-    router::Router router(builder, store);
-
+    router::Router router(m_builder, m_store);
     ASSERT_EQ(router.getRouteTable().size(), 0);
 
     // Add a route
-    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/env_1/0");
+    expectBuildPolicy("policy/pol_1/0");
+    expectBuild("filter/e_wazuh_queue/0");
+    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/pol_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -104,7 +111,9 @@ TEST_F(Router, add_list_remove_routes)
     ASSERT_EQ(routes.size(), 1);
 
     // Add a route
-    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/env_2/0");
+    expectBuildPolicy("policy/pol_2/0");
+    expectBuild("filter/allow_all/0");
+    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/pol_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -140,17 +149,18 @@ TEST_F(Router, add_list_remove_routes)
     ASSERT_EQ(routes.size(), 0);
 }
 
-TEST_F(Router, priorityChanges)
+TEST_F(RouterTest, priorityChanges)
 {
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
-    auto builder = aux::getFakeBuilder();
-    auto store = aux::getFakeStore();
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(okRes()));
 
-    router::Router router(builder, store);
+    router::Router router(m_builder, m_store);
 
     // Add a route
-    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/env_1/0");
+    expectBuildPolicy("policy/pol_1/0");
+    expectBuild("filter/e_wazuh_queue/0");
+    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/pol_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -158,7 +168,9 @@ TEST_F(Router, priorityChanges)
     ASSERT_EQ(routes.size(), 1);
 
     // Add a route
-    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/env_2/0");
+    expectBuildPolicy("policy/pol_2/0");
+    expectBuild("filter/allow_all/0");
+    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/pol_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -246,23 +258,22 @@ TEST_F(Router, priorityChanges)
     ASSERT_EQ(std::get<1>(list[1]), p_e_wazuh_queue);
 }
 
-TEST_F(Router, checkRouting)
+TEST_F(RouterTest, checkRouting)
 {
     const auto sleepTime = (const struct timespec[]) {{0, 100000000L}};
-    const auto ENV_A1 = "deco_A1";
-    const auto ENV_B2 = "deco_B2";
-    const auto ENV_C3 = "deco_C3";
+    const auto POLICY_A1 = "deco_A1";
+    const auto POLICY_B2 = "deco_B2";
+    const auto POLICY_C3 = "deco_C3";
     const auto PATH_DECODER = json::Json::formatJsonPath("~decoder");
 
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
-    auto builder = aux::getFakeBuilder();
-    auto store = aux::getFakeStore();
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(okRes()));
 
     // Run the router
     auto testQueue = aux::testQueue {};
 
-    router::Router router(builder, store);
+    router::Router router(m_builder, m_store);
     router.run(testQueue.getQueue());
 
     /*************************************************************************************
@@ -273,7 +284,9 @@ TEST_F(Router, checkRouting)
     auto message = aux::createFakeMessage();
 
     // Add a route
-    auto error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/env_A1/0");
+    expectBuildPolicy("policy/pol_A1/0");
+    expectBuild("filter/allow_all_A1/0");
+    auto error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/pol_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -282,7 +295,7 @@ TEST_F(Router, checkRouting)
 
     auto decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_A1) << message->prettyStr();
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_A1) << message->prettyStr();
 
     router.removeRoute("allow_all_A1");
 
@@ -290,7 +303,9 @@ TEST_F(Router, checkRouting)
     // Create a fake message
     message = aux::createFakeMessage();
 
-    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/env_B2/0");
+    expectBuildPolicy("policy/pol_B2/0");
+    expectBuild("filter/allow_all_B2/0");
+    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/pol_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -299,7 +314,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_B2) << message->prettyStr();
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_B2) << message->prettyStr();
 
     router.removeRoute("allow_all_B2");
 
@@ -307,7 +322,9 @@ TEST_F(Router, checkRouting)
     // Create a fake message
     message = aux::createFakeMessage();
 
-    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/env_C3/0");
+    expectBuildPolicy("policy/pol_C3/0");
+    expectBuild("filter/allow_all_C3/0");
+    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/pol_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -316,7 +333,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_C3) << message->prettyStr();
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_C3) << message->prettyStr();
 
     router.removeRoute("allow_all_C3");
 
@@ -327,15 +344,21 @@ TEST_F(Router, checkRouting)
     ASSERT_EQ(list.size(), 0);
 
     /* Add route 1 */
-    error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/env_A1/0");
+    expectBuildPolicy("policy/pol_A1/0");
+    expectBuild("filter/allow_all_A1/0");
+    error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/pol_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 2 */
-    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/env_B2/0");
+    expectBuildPolicy("policy/pol_B2/0");
+    expectBuild("filter/allow_all_B2/0");
+    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/pol_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 3 */
-    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/env_C3/0");
+    expectBuildPolicy("policy/pol_C3/0");
+    expectBuild("filter/allow_all_C3/0");
+    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/pol_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();
@@ -348,7 +371,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_A1) << std::get<0>(router.getRouteTable()[0]);
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_A1) << std::get<0>(router.getRouteTable()[0]);
 
     // Move route 1 to the end
     error = router.changeRoutePriority("allow_all_A1", 201);
@@ -365,7 +388,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_B2) << std::get<0>(router.getRouteTable()[0]);
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_B2) << std::get<0>(router.getRouteTable()[0]);
 
     // Move route 2 to the end
     error = router.changeRoutePriority("allow_all_B2", 202);
@@ -382,7 +405,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_C3) << std::get<0>(router.getRouteTable()[0]);
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_C3) << std::get<0>(router.getRouteTable()[0]);
 
     // Move route 3 to the end
     error = router.changeRoutePriority("allow_all_C3", 203);
@@ -399,7 +422,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_A1) << std::get<0>(router.getRouteTable()[0]);
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_A1) << std::get<0>(router.getRouteTable()[0]);
 
     // Move route 1 to the begin
     error = router.changeRoutePriority("allow_all_A1", 50);
@@ -416,7 +439,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_A1) << std::get<0>(router.getRouteTable()[0]);
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_A1) << std::get<0>(router.getRouteTable()[0]);
 
     // Delete route 3
     router.removeRoute("allow_all_C3");
@@ -428,7 +451,9 @@ TEST_F(Router, checkRouting)
 
     /* Check route 1 */
     // Add route 3 in first position
-    error = router.addRoute("allow_all_C3", 1, "filter/allow_all_C3/0", "policy/env_C3/0");
+    expectBuildPolicy("policy/pol_C3/0");
+    expectBuild("filter/allow_all_C3/0");
+    error = router.addRoute("allow_all_C3", 1, "filter/allow_all_C3/0", "policy/pol_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();
@@ -443,7 +468,7 @@ TEST_F(Router, checkRouting)
 
     decoder = message->getString(PATH_DECODER);
     ASSERT_TRUE(decoder.has_value()) << message->prettyStr();
-    ASSERT_STREQ(decoder.value().c_str(), ENV_C3) << std::get<0>(router.getRouteTable()[0]);
+    ASSERT_STREQ(decoder.value().c_str(), POLICY_C3) << std::get<0>(router.getRouteTable()[0]);
 
     router.stop();
 }
