@@ -156,8 +156,6 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     if not array:
         return {'items': [], 'totalItems': 0}
     
-    print(array)
-
     if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = []
         for element in array:
