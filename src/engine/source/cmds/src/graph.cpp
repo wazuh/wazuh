@@ -38,9 +38,14 @@ void configure(CLI::App_p app)
 
     auto graphApp = app->add_subcommand(details::API_GRAPH_SUBCOMMAND, "Generate a dot description of a policy.");
 
+    // Endpoint
     graphApp->add_option("-a, --api_socket", options->serverApiSock, "engine api address")
         ->default_val(ENGINE_SRV_API_SOCK);
-    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
+
+    // Client timeout
+    graphApp->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     // Environment
     graphApp->add_option("--policy", options->policyName, "Name of the policy to be used.")
@@ -51,10 +56,16 @@ void configure(CLI::App_p app)
         ->add_option(
             "-g, --graph", options->graphType, "Graph. Choose between [policy, expressions]. Defaults to 'policy'.")
         ->default_val("policy")
-        ->check(CLI::IsMember({"policy", "expressions"}));;
+        ->check(CLI::IsMember({"policy", "expressions"}));
+    ;
 
     // Register callback
-    graphApp->callback([client, options]() { getGraph(client, *options); });
+    graphApp->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            getGraph(client, *options);
+        });
 }
 
 } // namespace cmd::graph

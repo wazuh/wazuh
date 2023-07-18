@@ -20,7 +20,6 @@
 #include <cmds/apiclnt/client.hpp>
 #include <logging/logging.hpp>
 
-
 namespace cmd::catalog
 {
 
@@ -41,6 +40,7 @@ struct Options
     bool abortOnError;
     std::string policy;
     std::string integration;
+    int clientTimeout;
 };
 
 eCatalog::ResourceFormat toResourceFormat(const std::string& format)
@@ -223,7 +223,6 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
              bool abortOnError)
 {
 
-
     using RequestType = eCatalog::ResourcePost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
     const std::string command = "catalog.resource/post";
@@ -379,7 +378,12 @@ void configure(CLI::App_p app)
     catalogApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
         ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
+
+    // Client timeout
+    catalogApp
+        ->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     // format
     catalogApp->add_option("-f, --format", options->format, "Sets the format of the input/output.")
@@ -403,7 +407,12 @@ void configure(CLI::App_p app)
     auto get_subcommand =
         catalogApp->add_subcommand("get", "get item-type[/item-id[/item-version]]: Get an item or list a collection.");
     get_subcommand->add_option(name, options->name, nameDesc + "collection to list: item-type[/item-id]")->required();
-    get_subcommand->callback([options, client]() { runGet(client, options->format, options->name); });
+    get_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runGet(client, options->format, options->name);
+        });
 
     // update
     auto update_subcommand =
@@ -412,8 +421,9 @@ void configure(CLI::App_p app)
         ->required();
     update_subcommand->add_option(item, options->content, itemDesc)->default_val("");
     update_subcommand->callback(
-        [options, client]()
+        [options]()
         {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
             runUpdate(client, options->format, options->name, options->content);
         });
@@ -425,8 +435,9 @@ void configure(CLI::App_p app)
         ->required();
     create_subcommand->add_option(item, options->content, itemDesc)->default_val("");
     create_subcommand->callback(
-        [options, client]()
+        [options]()
         {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
             runCreate(client, options->format, options->name, options->content);
         });
@@ -437,7 +448,12 @@ void configure(CLI::App_p app)
     delete_subcommand
         ->add_option(name, options->name, nameDesc + "item or collection to delete: item-type[/item-id[/version]]")
         ->required();
-    delete_subcommand->callback([options, client]() { runDelete(client, options->format, options->name); });
+    delete_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runDelete(client, options->format, options->name);
+        });
 
     // validate
     auto validate_subcommand =
@@ -446,8 +462,9 @@ void configure(CLI::App_p app)
         ->required();
     validate_subcommand->add_option(item, options->content, itemDesc)->default_val("");
     validate_subcommand->callback(
-        [options, client]()
+        [options]()
         {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
             runValidate(client, options->format, options->name, options->content);
         });
@@ -470,7 +487,10 @@ void configure(CLI::App_p app)
     load_subcommand->add_flag("-r, --recursive", options->recursive, "Recursive loading of the directory.");
     load_subcommand->add_flag("-a, --abort", options->abortOnError, "Abort on error.");
     load_subcommand->callback(
-        [options, client]()
-        { runLoad(client, options->format, options->name, options->path, options->recursive, options->abortOnError); });
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runLoad(client, options->format, options->name, options->path, options->recursive, options->abortOnError);
+        });
 }
 } // namespace cmd::catalog

@@ -37,6 +37,7 @@ struct Parameters
     std::string protocolQueue;
     std::string sessionName;
     uint32_t lifespan;
+    int clientTimeout;
 };
 
 /**

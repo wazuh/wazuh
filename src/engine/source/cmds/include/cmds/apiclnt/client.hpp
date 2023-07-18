@@ -18,19 +18,18 @@
 namespace cmd::apiclnt
 {
 
-constexpr auto DEFAULT_TIMEOUT = 1000;
-
 class Client
 {
 private:
     std::string m_socketPath;
+    int m_timeout;
     std::shared_ptr<uvw::Loop> m_loop;
-    bool m_isFirstExecution;
 
 public:
-    Client(const std::string& socketPath)
+    Client(const std::string& socketPath, int timeout)
         : m_socketPath(socketPath)
         , m_loop(uvw::Loop::getDefault())
+        , m_timeout(timeout)
     {
     }
 
@@ -75,11 +74,11 @@ public:
             });
 
         clientHandle->once<uvw::ConnectEvent>(
-            [&requestWithHeader, timer](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            [&requestWithHeader, timer, this](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
             {
                 std::vector<char> buffer {requestWithHeader.begin(), requestWithHeader.end()};
                 handle.write(buffer.data(), buffer.size());
-                timer->start(uvw::TimerHandle::Time {DEFAULT_TIMEOUT}, uvw::TimerHandle::Time {DEFAULT_TIMEOUT});
+                timer->start(uvw::TimerHandle::Time {m_timeout}, uvw::TimerHandle::Time {m_timeout});
                 handle.read();
             });
 
@@ -114,17 +113,17 @@ public:
             });
 
         clientHandle->once<uvw::EndEvent>(
-            [this, gracefullEnd](const uvw::EndEvent&, uvw::PipeHandle& handle)
+            [this, gracefullEnd, &error](const uvw::EndEvent&, uvw::PipeHandle& handle)
             {
-                std::cout << "Connection closed by server" << std::endl;
+                error = "Connection closed by server";
                 gracefullEnd(handle);
+
             });
 
         clientHandle->once<uvw::CloseEvent>(
             [this, gracefullEnd](const uvw::CloseEvent&, uvw::PipeHandle& handle)
             {
                 gracefullEnd(handle);
-                std::cout << "Connection closed" << std::endl;
             });
 
         timer->on<uvw::TimerEvent>(
@@ -148,7 +147,6 @@ public:
         timer->on<uvw::CloseEvent>(
             [this](const uvw::CloseEvent&, uvw::TimerHandle& timer)
             {
-                std::cout << "Timer closed" << std::endl;
             });
 
 

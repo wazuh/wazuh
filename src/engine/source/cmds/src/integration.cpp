@@ -21,6 +21,7 @@ struct Options
     std::string policyName;
     std::string integrationName;
     std::string apiEndpoint;
+    int clientTimeout;
 };
 } // namespace
 
@@ -69,18 +70,33 @@ void configure(CLI::App_p app)
     integrationApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
         ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+
+    // Client timeout
+    integrationApp
+        ->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     // Add to
     auto addToApp = integrationApp->add_subcommand("add-to", "Add an integration to a policy");
     addToApp->add_option("policy", options->policyName, "Policy name")->required();
     addToApp->add_option("integration", options->integrationName, "Integration name")->required();
-    addToApp->callback([client, options]() { runAddTo(client, options->policyName, options->integrationName); });
+    addToApp->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            runAddTo(client, options->policyName, options->integrationName);
+        });
 
     // Remove from
     auto removeFromApp = integrationApp->add_subcommand("remove-from", "Remove an integration from a policy");
     removeFromApp->add_option("policy", options->policyName, "Policy name")->required();
     removeFromApp->add_option("integration", options->integrationName, "Integration name")->required();
-    removeFromApp->callback([client, options]() { removeFrom(client, options->policyName, options->integrationName); });
+    removeFromApp->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            removeFrom(client, options->policyName, options->integrationName);
+        });
 }
 } // namespace cmd::integration

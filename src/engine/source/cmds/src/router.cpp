@@ -17,6 +17,7 @@ struct Options
     int priority {};
     std::string policy;
     std::string event;
+    int clientTimeout;
 };
 } // namespace
 
@@ -156,14 +157,23 @@ void configure(CLI::App_p app)
     routerApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
         ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
+
+    // Client timeout
+    routerApp->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     // Get
     auto getSubcommand = routerApp->add_subcommand(
         "get", "Get the information of an active route, or all active routes if no name is provided.");
     getSubcommand->add_option("name", options->name, "Name of the route to get, empty to list all routes.")
         ->default_val("");
-    getSubcommand->callback([options, client]() { runGet(client, options->name); });
+    getSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runGet(client, options->name);
+        });
 
     // Add
     auto addSubcommand =
@@ -175,13 +185,21 @@ void configure(CLI::App_p app)
         ->check(CLI::Range(::router::USER_ROUTE_MAXIMUM_PRIORITY, ::router::USER_ROUTE_MINIMUM_PRIORITY));
     addSubcommand->add_option("policy", options->policy, "Target policy of the route.")->required();
     addSubcommand->callback(
-        [options, client]()
-        { runAdd(client, options->name, options->priority, options->filterName, options->policy); });
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runAdd(client, options->name, options->priority, options->filterName, options->policy);
+        });
 
     // Delete
     auto deleteSubcommand = routerApp->add_subcommand("delete", "Deactivate a route.");
     deleteSubcommand->add_option("name", options->name, "Name of the route to deactivate.")->required();
-    deleteSubcommand->callback([options, client]() { runDelete(client, options->name); });
+    deleteSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runDelete(client, options->name);
+        });
 
     // Update
     auto updateSubcommand = routerApp->add_subcommand("update", "Modify an active route.");
@@ -189,11 +207,21 @@ void configure(CLI::App_p app)
     updateSubcommand->add_option("priority", options->priority, "Priority of the route.")
         ->required()
         ->check(CLI::Range(::router::USER_ROUTE_MAXIMUM_PRIORITY, ::router::USER_ROUTE_MINIMUM_PRIORITY));
-    updateSubcommand->callback([options, client]() { runUpdate(client, options->name, options->priority); });
+    updateSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runUpdate(client, options->name, options->priority);
+        });
 
     // Ingest
     auto ingestSubcommand = routerApp->add_subcommand("ingest", "Ingest an event on the specified route.");
     ingestSubcommand->add_option("event", options->event, "Event to ingest.")->required();
-    ingestSubcommand->callback([options, client]() { runIngest(client, options->event); });
+    ingestSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runIngest(client, options->event);
+        });
 }
 } // namespace cmd::router
