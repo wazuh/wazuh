@@ -1463,6 +1463,59 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_joins_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
+                                                       mock_exists):
+    """Test WazuhDBQuery._add_joins_to_query function."""
+    query = utils.WazuhDBQuery(offset=0, limit=10, table='agent', sort=None,
+                               search=None, select=None, filters=None,
+                               fields={'id': 'id', 'test.name': 'name'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None,
+                               joins={
+                                   "belongs": {
+                                       "type": "left",
+                                       "conditions": ["id>002", "id<005"]
+                                   },
+                                   "test": {
+                                       "type": "cross",
+                                       "conditions": ["test.name=test"]
+                                   }
+                                },
+                               )
+
+    query._add_joins_to_query()
+    expected = "SELECT {0} FROM agent LEFT JOIN belongs ON id>002 AND id<005 CROSS JOIN test ON test.name=test"
+    assert query.query == expected
+
+    mock_conn_db.assert_called_once_with()
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch("wazuh.core.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_group_by_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
+                                                       mock_exists):
+    """Test WazuhDBQuery._add_group_by_to_query function."""
+    query = utils.WazuhDBQuery(offset=0, limit=10, table='agent', sort=None,
+                               search=None, select=None, filters=None,
+                               fields={'id': 'id'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None, group_by=['id']
+                               )
+
+    query._add_group_by_to_query()
+    assert query.query == "SELECT {0} FROM agent GROUP BY id"
+
+    mock_conn_db.assert_called_once_with()
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch("wazuh.core.database.isfile", return_value=True)
+@patch('socket.socket.connect')
 def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
                                                       mock_exists):
     """Test utils.WazuhDBQueryDistinct._default_query function."""
@@ -1643,7 +1696,6 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
 
     query._add_select_to_query()
     mock_conn_db.assert_called_once_with()
-
 
 @pytest.mark.parametrize('q, return_length', [
     ('name=firewall', 0),
