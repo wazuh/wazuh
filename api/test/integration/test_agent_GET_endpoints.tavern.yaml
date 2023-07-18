@@ -2752,7 +2752,7 @@ stages:
       json:
         error: 1407
 
-    - name: Get agents groups using select
+  - name: Get agents groups using select
     request:
       verify: False
       <<: *get_agents_groups
