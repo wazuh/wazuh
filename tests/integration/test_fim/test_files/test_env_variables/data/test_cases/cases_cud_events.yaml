@@ -1,6 +1,15 @@
-- name: Remove auditd - Whodata cannot start
-  description: When Auditd is removed, whodata thread cannot start and monitoring is done in realtime
+- name: whodata_thread_started_with_realtime_enabled
+  description: Check Whodata thread is enabled and is used with realtime enabled on same tag
   configuration_parameters:
-    WHODATA: 'yes'
+    TEST_DIR: /test_dir
   metadata:
-    fim_mode: whodata
+    folder_to_monitor: /test_dir
+    test_file: test_file.log
+
+- name: whodata_thread_started_with_realtime_disabled
+  description: Check Whodata thread is enabled and is used with realtime disabled on same tag
+  configuration_parameters:
+    TEST_DIR: /test_dir
+  metadata:
+    folder_to_monitor: /test_dir
+    test_file: test_file.log
