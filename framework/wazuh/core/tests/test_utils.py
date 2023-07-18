@@ -312,6 +312,8 @@ def test_process_array(array, q, filters, limit, search_text, sort_by, select, d
         List of fields to select.
     sort_by : list
         List of fields to sort by.
+    distinct: bool
+        Look for distinct values.
     expected_items : list
         List of items expected after having applied the processing.
     expected_total_items : int
