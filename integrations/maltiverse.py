@@ -99,11 +99,15 @@ class Maltiverse:
 
     def sample_get(self, sample: str, algorithm: str = "md5") -> dict:
         """Requests a Maltiverse sample via API."""
+
+        # If another function is added, it must have the interface Callable[str, Dict]
         mapping = {
             "md5": self.sample_get_by_md5,
             "sha1": self.sample_get_by_sha1,
         }
-        return mapping.get(algorithm, mapping.get("md5"))()
+
+        callable_function = mapping.get(algorithm, mapping.get("md5"))
+        return callable_function(sample)
 
     def sample_get_by_md5(self, md5: str):
         """Requests a Maltiverse MD5 sample via API."""
@@ -297,10 +301,10 @@ def maltiverse_alert(
                 "name": ioc_name,
                 "type": match_ecs_type(_type),
                 "description": ", ".join(
-                    set([b.get("description") for b in _blacklist]),
+                    sorted(set([b.get("description") for b in _blacklist])),
                 ),
                 "provider": ", ".join(
-                    set([b.get("source") for b in _blacklist]),
+                    sorted(set([b.get("source") for b in _blacklist])),
                 ),
                 "first_seen": ioc_dict.get("creation_time"),
                 "modified_at": ioc_dict.get("modification_time"),
