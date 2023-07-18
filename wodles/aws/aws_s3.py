@@ -9,7 +9,7 @@
 # Error Codes:
 #   1 - Unknown
 #   2 - SIGINT
-#   3 - Invalid credentials to access S3 bucket
+#   3 - Invalid credentials to access AWS service
 #   4 - boto3 module missing
 #   5 - Unexpected error accessing SQLite DB
 #   6 - Unable to create SQLite DB
@@ -86,7 +86,8 @@ GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stor
                                'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
                                'bucket instead. Check {url} for more information. '
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
-
+SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/current/cloud-security/amazon/services/' \
+                                        'supported-services/security-lake.html#configuring-an-iam-role'
 # Enable/disable debug mode
 debug_level = 0
 INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
@@ -4104,6 +4105,11 @@ def main(argv):
         elif options.subscriber:
 
             if options.subscriber.lower() == "security_lake":
+                if options.aws_profile:
+                    print(
+                        "+++ ERROR: The AWS Security Lake integration does not make use of the Profile authentication "
+                        f"method. Check the available ones for it in {SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
+                    sys.exit(3)
                 bucket_handler = AWSSLSubscriberBucket
                 asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
                                         iam_role_duration=options.iam_role_duration,
