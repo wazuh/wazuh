@@ -18,6 +18,7 @@ struct Options
     std::string instrumentName;
     std::string scopeName;
     bool enableState;
+    int clientTimeout;
 };
 
 } // namespace
@@ -147,13 +148,22 @@ void configure(CLI::App_p app)
     // Endpoint
     metricApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")
         ->default_val(ENGINE_SRV_API_SOCK);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+
+    // Client timeout
+    metricApp->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->default_val(ENGINE_CLIENT_TIMEOUT)
+        ->check(CLI::NonNegativeNumber);
 
     // metrics subcommands
     // dump
     auto dump_subcommand =
         metricApp->add_subcommand(details::API_METRICS_DUMP_SUBCOMMAND, "Prints all collected metrics.");
-    dump_subcommand->callback([options, client]() { runDump(client); });
+    dump_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            runDump(client);
+        });
 
     // get
     auto get_subcommand = metricApp->add_subcommand("get", "Print a single metric as json.");
@@ -161,8 +171,12 @@ void configure(CLI::App_p app)
         ->required();
     get_subcommand->add_option("Instrument name", options->instrumentName, "Name that identifies the instrument.")
         ->required();
-    get_subcommand->callback([options, client]()
-                             { runGetInstrument(client, options->scopeName, options->instrumentName); });
+    get_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            runGetInstrument(client, options->scopeName, options->instrumentName);
+        });
 
     // enable
     auto enable_subcommand =
@@ -175,18 +189,31 @@ void configure(CLI::App_p app)
         ->required();
     enable_subcommand->add_option("Enable state", options->enableState, "New instrument status.")->required();
     enable_subcommand->callback(
-        [options, client]()
-        { runEnableInstrument(client, options->scopeName, options->instrumentName, options->enableState); });
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            runEnableInstrument(client, options->scopeName, options->instrumentName, options->enableState);
+        });
 
     // list
     auto list_subcommand =
         metricApp->add_subcommand(details::API_METRICS_LIST_SUBCOMMAND, "Prints name, status and instruments types.");
-    list_subcommand->callback([options, client]() { runListInstruments(client); });
+    list_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            runListInstruments(client);
+        });
 
     // test
     auto test_subcommand =
         metricApp->add_subcommand(details::API_METRICS_TEST_SUBCOMMAND, "Generate dummy metrics for testing.");
-    test_subcommand->callback([client]() { runTest(client); });
+    test_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint, options->clientTimeout);
+            runTest(client);
+        });
 }
 
 } // namespace cmd::metrics
