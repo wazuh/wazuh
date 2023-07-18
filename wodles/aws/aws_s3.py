@@ -3329,24 +3329,43 @@ class AWSCloudWatchLogs(AWSService):
 
 
 class AWSQueueMessageProcessor:
-    def extract_message_info(self, message: dict) -> dict:
+    """Class in charge of processing the messages retrieved from an AWS SQS queue."""
+    def extract_message_info(self, sqs_messages: list[dict]) -> dict:
+        messages = []
+        for mesg in sqs_messages:
+            body = mesg['Body']
+            msg_handle = mesg["ReceiptHandle"]
+            message = json.loads(body)
+
+            debug(f'The message is: {message}', 2)
+
+            message_information = self.parse_message(message)
+            messages.append({**message_information, "handle": msg_handle})
+        return messages
+
+    def parse_message(self, message: dict) -> dict:
         raise NotImplementedError
 
 
 class AWSS3MessageProcessor(AWSQueueMessageProcessor):
-    def extract_message_info(self, message: dict) -> dict:
-        log_path = message["Records"][0]["s3"]["object"]["key"]
-        bucket_path = message["Records"][0]["s3"]["bucket"]["name"]
+    def parse_message(self, message: dict) -> dict:
+        try:
+            log_path = message["Records"][0]["s3"]["object"]["key"]
+            bucket_path = message["Records"][0]["s3"]["bucket"]["name"]
 
-        return {"log_path": log_path, "bucket_path": bucket_path}
+            return {"route": {"log_path": log_path, "bucket_path": bucket_path}}
+        except KeyError:
+            return {'raw_message': message}
 
 
 class AWSSSecLakeMessageProcessor(AWSQueueMessageProcessor):
-    def extract_message_info(self, message: dict) -> dict:
-        parquet_path = message["detail"]["object"]["key"]
-        bucket_path = message["detail"]["bucket"]["name"]
-
-        return {"parquet_path": parquet_path, "bucket_path": bucket_path}
+    def parse_message(self, message: dict) -> dict:
+        try:
+            log_path = message["detail"]["object"]["key"]
+            bucket_path = message["detail"]["bucket"]["name"]
+            return {"route": {"log_path": log_path, "bucket_path": bucket_path}}
+        except KeyError:
+            return {'raw_message': message}
 
 
 class AWSS3LogHandler:
@@ -3368,12 +3387,12 @@ class AWSS3LogHandler:
         """
         raise NotImplementedError
 
-    def process_file(self, message: dict) -> None:
-        """Parse an SQS message, obtain the events associated, and send them to Analysisd.
+    def process_file(self, message_body: dict) -> None:
+        """Parse an SQS message body, obtain the events associated, and send them to Analysisd.
 
         Parameters
         ----------
-        message : dict
+        message_body : dict
             An SQS message received from the queue.
         """
         raise NotImplementedError
@@ -3416,7 +3435,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
             List of extracted events to send to Wazuh.
         """
 
-        def _process_jsonl(self, file):
+        def _process_jsonl(file):
             json_list = list(file)
             result = []
             for json_item in json_list:
@@ -3452,12 +3471,12 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                     print(f"ERROR: Data in the file does not seem to be CSV either.")
                     sys.exit(9)
 
-    def process_file(self, message: dict) -> None:
+    def process_file(self, message_body: dict) -> None:
         """Parse an SQS message, obtain the events associated, and send them to Analysisd.
 
         Parameters
         ----------
-        message : dict
+        message_body : dict
             An SQS message received from the queue.
         """
 
@@ -3468,8 +3487,8 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                 elif value is None:
                     del event[key]
 
-        log_path = message['log_path']
-        bucket_path = message['bucket_path']
+        log_path = message_body['log_path']
+        bucket_path = message_body['bucket_path']
 
         msg = {
             'integration': 'aws',
@@ -3541,16 +3560,16 @@ class AWSSLSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         debug(f'Found {len(events)} events in file {log_path}', 2)
         return events
 
-    def process_file(self, message: dict) -> None:
+    def process_file(self, message_body: dict) -> None:
         """Parse an SQS message, obtain the events associated, and send them to Analysisd.
 
         Parameters
         ----------
-        message : dict
+        message_body : dict
             An SQS message received from the queue.
         """
-        events_in_file = self.obtain_logs(bucket=message['bucket_path'],
-                                          log_path=message['parquet_path'])
+        events_in_file = self.obtain_logs(bucket=message_body['bucket_path'],
+                                          log_path=message_body['log_path'])
         for event in events_in_file:
             self.send_msg(event, dump_json=False)
         debug(f'{len(events_in_file)} events sent to Analysisd', 2)
@@ -3687,18 +3706,11 @@ class AWSSQSQueue(WazuhIntegration):
         messages : list
             Parsed messages from the SQS queue.
         """
-        messages = []
         sqs_raw_messages = self.fetch_messages()
         debug(f'The raw message is: {sqs_raw_messages}', 3)
         sqs_messages = sqs_raw_messages.get('Messages', [])
-        for mesg in sqs_messages:
-            body = mesg['Body']
-            msg_handle = mesg["ReceiptHandle"]
-            message = json.loads(body)
 
-            debug(f'The message is: {message}', 2)
-            messages.append({**self.message_processor.extract_message_info(message), "handle": msg_handle})
-        return messages
+        return self.message_processor.extract_message_info(sqs_messages)
 
     def sync_events(self) -> None:
         """
@@ -3707,7 +3719,12 @@ class AWSSQSQueue(WazuhIntegration):
         messages = self.get_messages()
         while messages:
             for message in messages:
-                self.bucket_handler.process_file(message)
+                try:
+                    self.bucket_handler.process_file(message["route"])
+                except KeyError:
+                    message_without_handle = {k: v for k, v in message.items() if k != 'handle'}
+                    debug(f"Processed message {message_without_handle} does not contain the expected format, "
+                          f"omitting message.", 2)
                 self.delete_message(message)
             messages = self.get_messages()
 
