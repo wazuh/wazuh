@@ -1,15 +1,50 @@
-- name: whodata_thread_started_with_realtime_enabled
-  description: Check Whodata thread is enabled and is used with realtime enabled on same tag
+- name: test
+  description: test
   configuration_parameters:
-    TEST_DIR: /test_dir
+    WHODATA: 'yes'
+    REALTIME: 'yes'
+    TEST_ENV_VARS: "$TEST_DIR"
   metadata:
-    folder_to_monitor: /test_dir
     test_file: test_file.log
-
-- name: whodata_thread_started_with_realtime_disabled
-  description: Check Whodata thread is enabled and is used with realtime disabled on same tag
+    environment_variables:
+      - TEST_DIR: /test_dir
+- name: test
+  description: test
   configuration_parameters:
-    TEST_DIR: /test_dir
+    WHODATA: 'yes'
+    REALTIME: 'yes'
+    TEST_ENV_VARS: "$TEST_DIR"
   metadata:
-    folder_to_monitor: /test_dir
     test_file: test_file.log
+    environment_variables:
+      - TEST_DIR: /test_dir1
+- name: test
+  description: test
+  configuration_parameters:
+    WHODATA: 'yes'
+    REALTIME: 'yes'
+    TEST_ENV_VARS: "$TEST_DIR"
+  metadata:
+    test_file: test_file.log
+    environment_variables:
+      - TEST_DIR: /test_dir2
+- name: test
+  description: test
+  configuration_parameters:
+    WHODATA: 'yes'
+    REALTIME: 'yes'
+    TEST_ENV_VARS: "$TEST_DIR"
+  metadata:
+    test_file: test_file.log
+    environment_variables:
+      - TEST_DIR: /test_dir3
+- name: test
+  description: test
+  configuration_parameters:
+    WHODATA: 'yes'
+    REALTIME: 'yes'
+    TEST_ENV_VARS: "$TEST_DIR"
+  metadata:
+    test_file: test_file.log
+    environment_variables:
+      - TEST_DIR: /test_dir4
