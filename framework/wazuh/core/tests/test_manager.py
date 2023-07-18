@@ -117,18 +117,26 @@ def test_get_ossec_logs(log_format):
 
     with patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=log_format):
         if log_format == LoggingFormat.plain:
-            with patch('wazuh.core.manager.exists', return_value=True):
-                with patch('wazuh.core.manager.tail', return_value=logs):
-                    result = get_ossec_logs()
-                    assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
-        elif log_format == LoggingFormat.json:
-            with patch('wazuh.core.manager.exists', return_value=True):
-                with patch('wazuh.core.manager.tail', return_value=logs):
-                    result = get_ossec_logs()
-                    assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
-        else:
             with pytest.raises(WazuhInternalError, match=".*1020.*"):
                 get_ossec_logs()
+        else:
+            with patch('wazuh.core.manager.exists', return_value=True):
+                with patch('wazuh.core.manager.tail', return_value=logs):
+                    result = get_ossec_logs()
+                    assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
+
+
+@patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
+@patch('wazuh.core.manager.exists', return_value=True)
+def test_get_logs_summary(mock_exists, mock_active_logging_format):
+    """Test get_logs_summary() method returns result with expected information"""
+    logs = get_logs().splitlines()
+    with patch('wazuh.core.manager.tail', return_value=logs):
+        result = get_logs_summary()
+        assert all(key in log for key in ('all', 'info', 'error', 'critical', 'warning', 'debug')
+                   for log in result.values())
+        assert result['wazuh-modulesd:database'] == {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0,
+                                                     'debug': 2}
 
 
 @patch('wazuh.core.manager.exists', return_value=True)
