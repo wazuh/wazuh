@@ -3323,7 +3323,7 @@ char * w_get_file_content(const char * path, long max_size) {
 
     // Check file size limit
     if (size > max_size) {
-        mdebug1("Cannot load file '%s': it exceeds %i MiB", path, (max_size / (1024 * 1024)));
+        mdebug1("Cannot load file '%s': it exceeds %ld MiB", path, (max_size / (1024 * 1024)));
         goto end;
     }
 
