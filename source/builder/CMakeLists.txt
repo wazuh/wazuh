@@ -13,6 +13,8 @@ CPMAddPackage(
   GIT_TAG 2022-02-01
   VERSION release 2022-02-01
   EXCLUDE_FROM_ALL YES
+  OPTIONS
+    "RE2_BUILD_TESTING OFF"
 )
 
 # TODO: as in curl library this should be added statically inside the project
