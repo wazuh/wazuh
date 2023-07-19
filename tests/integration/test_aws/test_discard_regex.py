@@ -55,7 +55,6 @@ def test_bucket_discard_regex(
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
-            - Delete the uploaded file
 
     wazuh_min_version: 4.6.0
 
@@ -184,7 +183,6 @@ def test_cloudwatch_discard_regex_json(
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
-            - Delete the uploaded file
 
     wazuh_min_version: 4.6.0
 
@@ -432,7 +430,6 @@ def test_inspector_discard_regex(
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
-            - Delete the uploaded file
 
     wazuh_min_version: 4.6.0
 

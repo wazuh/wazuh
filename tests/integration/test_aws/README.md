@@ -1,69 +1,63 @@
-# AWS Integration tests
+# AWS Integration
 
 ## Description
 
-It is a _wodle based_ module that test the capabilities of the Wazuh AWS integration, pulling logs from different
-buckets and services.
+It is a _wodle based_ module that has a capability to pull logs from several AWS services.
 
 ## Tests directory structure
 
 ```bash
-wazuh/tests/integration/test_aws
+wazuh-qa/tests/integration/test_aws
+├── conftest.py
 ├── data
 │   ├── configuration_template
 │   │   ├── basic_test_module
-│   │   ├── custom_bucket_test_module
 │   │   ├── discard_regex_test_module
-│   │   ├── log_groups_test_module
 │   │   ├── only_logs_after_test_module
-│   │   ├── parser_test_module
 │   │   ├── path_suffix_test_module
 │   │   ├── path_test_module
 │   │   ├── regions_test_module
 │   │   └── remove_from_bucket_test_module
 │   └── test_cases
 │       ├── basic_test_module
-│       ├── custom_bucket_test_module
 │       ├── discard_regex_test_module
-│       ├── log_groups_test_module
 │       ├── only_logs_after_test_module
-│       ├── parser_test_module
 │       ├── path_suffix_test_module
 │       ├── path_test_module
 │       ├── regions_test_module
 │       └── remove_from_bucket_test_module
-├── __init__.py
-├── README.md
-├── conftest.py
+├── README.MD
 ├── test_basic.py
-├── test_custom_bucket.py
 ├── test_discard_regex.py
-├── test_log_groups.py
 ├── test_only_logs_after.py
 ├── test_path.py
 ├── test_path_suffix.py
 ├── test_regions.py
-├── test_remove_from_bucket.py
-└── utils.py
+└── test_remove_from_bucket.py
+```
+
+## Deps directory structure
+
+```bash
+wazuh-qa/deps/wazuh_testing/wazuh_testing/modules/aws
+├── cli_utils.py
+├── constants.py
+├── data_generator.py
+├── db_utils.py
+├── event_monitor.py
+├── __init__.py
+└── s3_utils.py
 ```
 
 ## Requirements
 
-- [Proper testing environment](#Setting up a test environment)
-
-- [Wazuh](https://github.com/wazuh/qa-integration-framework) repository.
-
-- [Testing framework](https://github.com/wazuh/qa-integration-framework) installed.
-
-- Configured buckets, log groups and an inspector assessment with test data in AWS.
-
-For a step-by-step example guide using linux go to the [test setup section](#linux)
+- The only extra dependency is `boto3`
+- The module will assume there are already buckets, log groups and an inspector assessment with test data in AWS.
 
 ## Configuration settings
 
-- **Credentials**:
-    Set the credentials at `$HOME/.aws/credentials` (being `HOME` the home directory of the user who runs the tests, 
- more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles) with the content:
+- **credentials**
+    Set the credentials at `$HOME/.aws/credentials` (being `HOME` the home directory of the user who runs the tests, more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles)) with the content:
 
 ```ini
 [qa]
@@ -73,7 +67,7 @@ aws_secret_access_key = <secret-key-value>
 
 ## Setting up a test environment
 
-You will need a proper environment to run the integration tests. You can use Docker or any virtual machine. If you have
+You will need a proper environment to run the integration tests. You can use any virtual machine you wish. If you have
 one already, go to the [integration tests section](#integration-tests)
 
 If you use [Vagrant](https://www.vagrantup.com/downloads.html)
@@ -94,18 +88,21 @@ _We are using **Ubuntu 22.04** for this example:_
 
 - Install **Wazuh**
 
-- Install Python tests dependencies:
+- Install python tests dependencies:
 
-```shell script
-# Install pip
-apt install python3-pip git -y
+    ```shell script
+    # Install pip
+    apt install python3-pip
 
-# Clone the `qa-integration-framework` repository withing your testing environment
-git clone https://github.com/wazuh/qa-integration-framework.git
+    # Clone your `wazuh-qa` repository within your testing environment
+    cd wazuh-qa
 
-# Install tests dependencies
-python3 -m pip install qa-integration-framework/
-```
+    # Install Python libraries
+    python3 -m pip install -r requirements.txt
+
+    # Install test dependecies
+    python3 -m pip install deps/wazuh-testing
+    ```
 
 
 ## Integration tests
@@ -121,15 +118,14 @@ from the closest one, it will look for the next one (if possible) until reaching
 need to run every test from the following path, where the general _conftest_ is:
 
 ```shell script
-    cd wazuh/tests/integration/test_aws/
+cd wazuh-qa/tests/integration
 ```
 
 To run any test, we just need to call `pytest` from `python3` using the following line:
 
 ```shell script
-    python3 -m pytest [options] [file_or_dir] [file_or_dir] [...]
+python3 -m pytest [options] [file_or_dir] [file_or_dir] [...]
 ```
-
 
 **Options:**
 
@@ -142,7 +138,7 @@ To run any test, we just need to call `pytest` from `python3` using the followin
 - `--tier`: only run tests with given tier (ex. --tier 2)
 - `--html`: generates a HTML report for the test results. (ex. --html=report.html)
 - `--default-timeout`: overwrites the default timeout (in seconds). This value is used to make a test fail if a
-  condition is not met before the given timelapse. Some tests make use of this value and other has other fixed timeout
+  condition is not met before the given time lapse. Some tests make use of this value and other has other fixed timeout
   that cannot be modified.
 
 _Use `-h` to see the rest or check its [documentation](https://docs.pytest.org/en/latest/usage.html)._
@@ -153,22 +149,32 @@ check its documentation for further information.
 #### AWS integration tests example
 
 ```bash
-#root@wazuh-master:/wazuh/tests/integration# pytest -x test_aws/ --disable-warnings
-==================================== test session starts ====================================
-platform linux -- Python 3.10.12, pytest-7.1.2, pluggy-1.2.0
-rootdir: /wazuh/tests/integration, configfile: pytest.ini
-plugins: testinfra-5.0.0, metadata-3.0.0, html-3.1.1
-collected 195 items
+# python3 -m pytest -vvx test_aws/ -k cloudtrail
+=========================================================== test session starts ======================================================
+platform linux -- Python 3.10.6, pytest-7.1.2, pluggy-1.0.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.10.6', 'Platform': 'Linux-5.15.0-58-generic-x86_64-with-glibc2.35',
+'Packages': {'pytest': '7.1.2', 'py': '1.10.0', 'pluggy': '1.0.0'},
+'Plugins': {'metadata': '2.0.2', 'html': '3.1.1', 'testinfra': '5.0.0'}}
+rootdir: /home/vagrant/qa/tests/integration, configfile: pytest.ini
+plugins: metadata-2.0.2, html-3.1.1, testinfra-5.0.0
+collected 15 items
 
-test_aws/test_basic.py ................                                               [  8%]
-test_aws/test_discard_regex.py ..............                                         [ 15%]
-test_aws/test_log_groups.py ..                                                        [ 16%]
-test_aws/test_only_logs_after.py .............................................x.      [ 40%]
-test_aws/test_parser.py ..........................                                    [ 53%]
-test_aws/test_path.py ..........................................                      [ 75%]
-test_aws/test_path_suffix.py .........                                                [ 80%]
-test_aws/test_regions.py ........................                                     [ 92%]
-test_aws/test_remove_from_bucket.py ...sss.........                                   [100%]
+test_aws/test_basic.py::test_defaults[cloudtrail_defaults] PASSED                                                               [  6%]
+test_aws/test_discard_regex.py::test_discard_regex[cloudtrail_discard_regex] PASSED                                             [ 13%]
+test_aws/test_only_logs_after.py::test_without_only_logs_after[cloudtrail_without_only_logs_after] PASSED                       [ 20%]
+test_aws/test_only_logs_after.py::test_with_only_logs_after[cloudtrail_with_only_logs_after] PASSED                             [ 26%]
+test_aws/test_only_logs_after.py::test_multiple_calls[cloudtrail_only_logs_after_multiple_calls] PASSED                         [ 33%]
+test_aws/test_path.py::test_path[cloudtrail_path_with_data] PASSED                                                              [ 40%]
+test_aws/test_path.py::test_path[cloudtrail_path_without_data] PASSED                                                           [ 46%]
+test_aws/test_path.py::test_path[cloudtrail_inexistent_path] PASSED                                                             [ 53%]
+test_aws/test_path_suffix.py::test_path_suffix[cloudtrail_path_suffix_with_data] PASSED                                         [ 60%]
+test_aws/test_path_suffix.py::test_path_suffix[cloudtrail_path_suffix_without_data] PASSED                                      [ 66%]
+test_aws/test_path_suffix.py::test_path_suffix[cloudtrail_inexistent_path_suffix] PASSED                                        [ 73%]
+test_aws/test_regions.py::test_regions[cloudtrail_region_with_data] PASSED                                                      [ 80%]
+test_aws/test_regions.py::test_regions[cloudtrail_regions_with_data] PASSED                                                     [ 86%]
+test_aws/test_regions.py::test_regions[cloudtrail_inexistent_region] PASSED                                                     [ 93%]
+test_aws/test_remove_from_bucket.py::test_remove_from_bucket[cloudtrail_remove_from_bucket] PASSED                              [100%]
 
-============ 191 passed, 3 skipped, 1 xfailed, 7 warnings in 3723.08s (1:02:03) =============
+=============================================== 15 passed, 2 warnings in 332.67s (0:05:32) ===========================================
 ```
