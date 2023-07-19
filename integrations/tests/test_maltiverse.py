@@ -7,7 +7,18 @@ from unittest.mock import patch, mock_open
 
 response_example = {
     "blacklist": [
-        {"description": "Malicious IP", "source": "Threat Intel Source 1"},
+        {
+            "description": "Malicious IP",
+            "source": "Threat Intel Source 1",
+            "external_references": [
+                {
+                    "source_name": "mitre-attack",
+                    "external_id": "Some_id",
+                    "url": "some_url",
+                    "description": "something",
+                }
+            ],
+        },
         {"description": "Suspicious Domain", "source": "Threat Intel Source 2"},
     ],
     "type": "ip",
@@ -72,7 +83,7 @@ def test_get_url():
         ("sha1", "maltiverse.Maltiverse.sample_get_by_sha1"),
     ],
 )
-def test_get_sample_uses_correct_algorithm(algorithm, mock_path):
+def test_get_sample(algorithm, mock_path):
     """Test that the `sample_get` method uses the correct algorithm."""
     example_token = "example_token"
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
@@ -258,47 +269,29 @@ def test_get_ioc_confidence(data, expected):
     assert expected == maltiverse.get_ioc_confidence(data)
 
 
-def test_send_event_to_agent():
+@pytest.mark.parametrize(
+    "msg,agent,expected",
+    [
+        ("msg", {}, '1:maltiverse:"msg"'),
+        ("msg", {"id": "000", "name": "Agent1", "ip": "192.168.0.1"}, '1:maltiverse:"msg"'),
+        ("msg", {"id": "001", "name": "Agent1", "ip": "192.168.0.1"}, '1:[001] (Agent1) 192.168.0.1->maltiverse:"msg"')
+    ]
+)
+def test_send_event(msg, agent, expected):
     """
     Test sending an event to a specific agent.
     """
-    msg = "Event message"
-    agent = {"id": "001", "name": "Agent1", "ip": "192.168.0.1"}
-
     with patch("maltiverse.socket") as mock_socket:
         maltiverse.send_event(msg, agent)
 
     mock_socket.assert_called_with(AF_UNIX, SOCK_DGRAM)
     mock_socket.return_value.send.assert_called_with(
-        f"1:[001] (Agent1) 192.168.0.1->maltiverse:{json.dumps(msg)}".encode()
+        expected.encode()
     )
     mock_socket.return_value.close.assert_called()
 
 
-@pytest.mark.parametrize(
-    "agent",
-    [
-        {},
-        {"id": "000", "name": "Agent1", "ip": "192.168.0.1"}
-    ]
-)
-def test_send_event_with_no_agent(agent):
-    """
-    Test sending an event without specifying an agent or with no agent.
-    """
-    msg = "Event message"
-
-    with patch("maltiverse.socket") as mock_socket:
-        maltiverse.send_event(msg, agent)
-
-    mock_socket.assert_called_with(AF_UNIX, SOCK_DGRAM)
-    mock_socket.return_value.send.assert_called_with(
-        f"1:maltiverse:{json.dumps(msg)}".encode()
-    )
-    mock_socket.return_value.close.assert_called()
-
-
-def test_maltiverse_returns_ok():
+def test_maltiverse_alert():
     """Test that maltiverse_alert generates the expected alert dictionary."""
     example_ioc_dict = response_example
     example_alert_id = 123
@@ -321,6 +314,11 @@ def test_maltiverse_returns_ok():
                 "confidence": "Not Specified",
                 "sightings": 2,
                 "reference": f"https://maltiverse.com/ip/{example_ioc_name}",
+            },
+            "software": {
+                "id": "Some_id",
+                "reference": "some_url",
+                "name": "something"
             }
         },
     }
@@ -328,7 +326,6 @@ def test_maltiverse_returns_ok():
     result = maltiverse.maltiverse_alert(
         example_alert_id, example_ioc_dict, example_ioc_name
     )
-    print(result)
 
     assert result == expected_result
 
@@ -411,3 +408,15 @@ def test_get_mitre_information(ioc, expected):
     result = maltiverse.get_mitre_information(ioc)
 
     assert result == expected
+
+
+def test_debug():
+    """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
+    example_msg = "some message"
+
+    with patch('maltiverse.debug_enabled', return_value=True), \
+            patch("maltiverse.open", mock_open()) as open_mock, \
+            patch('maltiverse.LOG_FILE', return_value='integrations.log') as log_file:
+        maltiverse.debug(example_msg)
+        open_mock.assert_called_with(log_file, 'a')
+        open_mock().write.assert_called_with(f"{maltiverse.now}: {example_msg}\n")
