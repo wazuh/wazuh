@@ -79,4 +79,24 @@ Name='IpAddress'>::1</Data><Data Name='IpPort'>0</Data></EventData>)",
                                format(R"({{"{}":{}}})", TARGET.substr(1), R"({"EventData":{"SubjectUserSid":"S-1-5-21-3541430928-2051711210-1391384369-1001","SubjectUserName":"vagrant","SubjectDomainName":"VAGRANT-2012-R2","SubjectLogonId":"0x1008e","TargetUserSid":"S-1-0-0","TargetUserName":"bosch","TargetDomainName":"VAGRANT-2012-R2","Status":"0xc000006d","FailureReason":"%%2313","SubStatus":"0xc0000064","LogonType":"2","LogonProcessName":"seclogo","AuthenticationPackageName":"Negotiate","WorkstationName":"VAGRANT-2012-R2","TransmittedServices":"-","LmPackageName":"-","KeyLength":"0","ProcessId":"0x344","ProcessName":"C:\\\\Windows\\\\System32\\\\svchost.exe","IpAddress":"::1","IpPort":"0"}})")),
                        942,
                        getXMLParser,
+                       {NAME, TARGET, {""}, {"windows"}}),
+                       ParseT(SUCCESS,
+                       R"(<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+        <Provider Name="PowerShell"/>
+        <EventID Qualifiers="0">800</EventID>
+        <Level>4</Level>
+        <Security/>
+    </System>
+    <EventData>
+        <Data/>
+        <Data>DetailSequence=1 DetailTotal=1 SequenceNumber=143 UserId=VAGRANT\\vagrant HostName=ConsoleHost HostVersion=5.1.17763.1007 CommandLine=</Data>
+        <Data>CommandInvocation(Out-Default): 'Out-Default' ParameterBinding(Out-Default): name='InputObject'; value='Cannot find the Windows PowerShell data file 'ArchiveResources.psd1' in directory 'C:\\Wazuh\\', or in any parent culture directories.'</Data>
+    </EventData>
+</Event>)",
+                       j(
+                           fmt::
+                               format(R"({{"{}":{}}})", TARGET.substr(1), R"({"System":{"Provider":{"@Name":"PowerShell"},"EventID":{"#text":"800","@Qualifiers":"0"},"Level":{"#text":"4"},"Security":{}},"EventData":["","DetailSequence=1 DetailTotal=1 SequenceNumber=143 UserId=VAGRANT\\\\vagrant HostName=ConsoleHost HostVersion=5.1.17763.1007 CommandLine=","CommandInvocation(Out-Default): 'Out-Default' ParameterBinding(Out-Default): name='InputObject'; value='Cannot find the Windows PowerShell data file 'ArchiveResources.psd1' in directory 'C:\\\\Wazuh\\\\', or in any parent culture directories.'"]})")),
+                       700,
+                       getXMLParser,
                        {NAME, TARGET, {""}, {"windows"}})));

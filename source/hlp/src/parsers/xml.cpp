@@ -16,11 +16,21 @@ using namespace hlp::parser;
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
 bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
-    auto enEstring = docJson.prettyStr();
     if ("Data" == std::string {node.name()})
     {
-        path += "/" + std::string {node.attribute("Name").value()};
-        docJson.setString(node.text().as_string(), path);
+        const std::string fieldName {node.attribute("Name").value()};
+        if (fieldName.empty())
+        {
+            // Treat it as an array in order to avoid data loss
+            docJson.appendString(node.first_child().value(), path);
+            return true;
+        }
+        else
+        {
+            path += "/" + fieldName;
+            docJson.setString(node.text().as_string(), path);
+        }
+
         return true;
     }
     else if ("Event" == std::string {node.name()})
