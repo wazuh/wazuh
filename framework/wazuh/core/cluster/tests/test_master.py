@@ -1043,27 +1043,17 @@ async def test_master_handler_sync_worker_files_ko(wait_for_mock, decompress_fil
 
 
 @pytest.mark.asyncio
-@freeze_time("2021-11-02")
-@patch.object(logging.getLogger("wazuh"), "info")
+@patch("wazuh.core.cluster.master.MasterHandler.set_date_end_master")
 @patch("wazuh.core.cluster.master.MasterHandler.sync_worker_files")
-async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mock):
+async def test_master_handler_sync_extra_valid(sync_worker_files_mock, set_date_end_master_mock):
     """Check if the extra_valid sync process is properly run."""
-
     master_handler = get_master_handler()
     master_handler.task_loggers["Integrity sync"] = logging.getLogger("wazuh")
     await master_handler.sync_extra_valid("task_id", None)
 
     sync_worker_files_mock.assert_called_once_with("task_id", None, logging.getLogger("wazuh"))
-    assert master_handler.integrity_sync_status['date_end_master'] == "2021-11-02T00:00:00.000000Z"
-    if master_handler.integrity_sync_status['tmp_date_start_master'] == DEFAULT_DATE:
-        tmp_date_start_master = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
-    else:
-        tmp_date_start_master = get_utc_strptime(master_handler.integrity_sync_status['tmp_date_start_master'],
-                                                 '%Y-%m-%dT%H:%M:%S.%fZ')
-    logger_mock.assert_called_once_with(
-        "Finished in {:.3f}s.".format(
-            (get_utc_strptime(master_handler.integrity_sync_status['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ') -
-             tmp_date_start_master).total_seconds()))
+    set_date_end_master_mock.assert_called_once_with(logging.getLogger("wazuh"))
+    assert master_handler.integrity_sync_status['date_end_master'] == DEFAULT_DATE
     assert master_handler.integrity_sync_status['date_start_master'] == DEFAULT_DATE
     assert master_handler.extra_valid_requested is False
     assert master_handler.sync_integrity_free[0] is True
@@ -1075,7 +1065,10 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mo
 def test_set_date_end_master(info_mock):
     """Check if set_date_end_master works as expected."""
     master_handler = get_master_handler()
+    master_handler.integrity_sync_status['tmp_date_start_master'] = datetime.utcnow().replace(tzinfo=timezone.utc)
     master_handler.set_date_end_master(logging.getLogger("wazuh"))
+
+    assert master_handler.integrity_sync_status['date_end_master'] == "1970-01-01T00:00:00.000000Z"
     assert isinstance(master_handler.integrity_sync_status['date_start_master'], str)
     assert isinstance(master_handler.integrity_sync_status['date_end_master'], str)
     info_mock.assert_called_once()
