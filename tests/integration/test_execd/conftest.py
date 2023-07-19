@@ -12,7 +12,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 
-
+# TEST
 @pytest.fixture()
 def configure_ar_conf(request: pytest.FixtureRequest) -> None:
     """
