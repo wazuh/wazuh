@@ -787,7 +787,7 @@ base::Expression opBuilderHelperArrayPresence(const std::string& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Target array '{}' {} of the parameters",
                                                  name,
                                                  targetField,
-                                                 checkPresence ? "Contain at least one" : "does not contain any")};
+                                                 checkPresence ? "does not contain any": "contain at least one")};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
