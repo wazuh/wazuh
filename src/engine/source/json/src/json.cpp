@@ -926,7 +926,7 @@ bool Json::erase(std::string_view path)
     }
 }
 
-void Json::merge(const bool isRecursive, rapidjson::Value& source, std::string_view path)
+void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path)
 {
     const auto pp = rapidjson::Pointer(path.data());
 
@@ -957,7 +957,8 @@ void Json::merge(const bool isRecursive, rapidjson::Value& source, std::string_v
                         else
                         {
                             rapidjson::Value cpyValue {srcIt->value, m_document.GetAllocator()};
-                            dstValue->AddMember(srcIt->name, cpyValue, m_document.GetAllocator());
+                            rapidjson::Value cpyName {srcIt->name, m_document.GetAllocator()};
+                            dstValue->AddMember(cpyName, cpyValue, m_document.GetAllocator());
                         }
                     }
                 }
@@ -979,7 +980,8 @@ void Json::merge(const bool isRecursive, rapidjson::Value& source, std::string_v
                         }
                         if (!found)
                         {
-                            dstValue->PushBack(*srcIt, m_document.GetAllocator());
+                            rapidjson::Value cpyValue {*srcIt, m_document.GetAllocator()};
+                            dstValue->PushBack(cpyValue, m_document.GetAllocator());
                         }
                     }
                 }
@@ -1000,7 +1002,7 @@ void Json::merge(const bool isRecursive, rapidjson::Value& source, std::string_v
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::merge(const bool isRecursive, Json& other, std::string_view path)
+void Json::merge(const bool isRecursive, const Json& other, std::string_view path)
 {
     merge(isRecursive, other.m_document, path);
 }

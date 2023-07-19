@@ -2353,3 +2353,19 @@ TEST_F(JsonSettersTest, MergeRecursiveObjRoot)
     ASSERT_NO_THROW(jObjDst.merge(json::RECURSIVE, jObjSrc));
     ASSERT_EQ(jObjDst, jObjExpected);
 }
+
+TEST_F(JsonSettersTest, MergesCopiesMergedSubtree)
+{
+    json::Json source{R"({
+        "key": ["value1", "value2", "value3"]
+    })"};
+    json::Json destination{R"({
+    })"};
+    json::Json expected{R"({
+        "key": ["value1", "value2", "value3"]
+    })"};
+
+    ASSERT_NO_THROW(destination.merge(false, source));
+    source.appendString("value4", "/key");
+    ASSERT_EQ(destination, expected);
+}
