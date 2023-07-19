@@ -5,9 +5,6 @@
             value: 'no'
         - directories:
             value: TEST_ENV_VARS
-            attributes:
-              - whodata: WHODATA
-              - realtime: REALTIME
 
     - section: sca
       elements:
