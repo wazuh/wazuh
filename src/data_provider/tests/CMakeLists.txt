@@ -32,6 +32,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_subdirectory(sysInfoNetworkWindows)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
+add_subdirectory(sysInfoPackages)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
 else()
