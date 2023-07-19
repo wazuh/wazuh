@@ -1,0 +1,5 @@
+- name: inspector_only_logs_after_multiple_calls
+  description: Inspector only_logs_after multiple calls configurations
+  configuration_parameters:
+  metadata:
+    service_type: inspector

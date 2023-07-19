@@ -15,19 +15,22 @@ from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREME
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, \
-                                               WAZUH_API_JSON_LOG_FILE_PATH
+    WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
-from wazuh_testing.utils.file import remove_file
+from wazuh_testing.utils.file import remove_file, truncate_file
 from wazuh_testing.utils.manage_agents import remove_agents
+import wazuh_testing.utils.configuration as wazuh_configuration
+from wazuh_testing.utils.services import control_service
 
 
-#- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -133,20 +136,20 @@ def load_wazuh_basic_configuration():
 
 
 @pytest.fixture()
-def set_wazuh_configuration(test_configuration: dict) -> None:
+def set_wazuh_configuration(configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
-        test_configuration (dict): Configuration template data to write in the ossec.conf
+        configuration (dict): Configuration template data to write in the ossec.conf
     """
     # Save current configuration
-    backup_config = configuration.get_wazuh_conf()
+    backup_config = wazuh_configuration.get_wazuh_conf()
 
     # Configuration for testing
-    test_config = configuration.set_section_wazuh_conf(test_configuration.get('sections'))
+    test_config = wazuh_configuration.set_section_wazuh_conf(configuration.get('sections'))
 
     # Set new configuration
-    configuration.write_wazuh_conf(test_config)
+    wazuh_configuration.write_wazuh_conf(test_config)
 
     # Set current configuration
     session_parameters.current_configuration = test_config
@@ -154,7 +157,98 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     yield
 
     # Restore previous configuration
-    configuration.write_wazuh_conf(backup_config)
+    wazuh_configuration.write_wazuh_conf(backup_config)
+
+
+@pytest.fixture()
+def configure_local_internal_options_function(request):
+    """Fixture to configure the local internal options file.
+
+    It uses the test variable local_internal_options. This should be
+    a dictionary wich keys and values corresponds to the internal option configuration, For example:
+    local_internal_options = {'monitord.rotate_log': '0', 'syscheck.debug': '0' }
+    """
+    try:
+        local_internal_options = request.param
+    except AttributeError:
+        try:
+            local_internal_options = getattr(request.module, 'local_internal_options')
+        except AttributeError:
+            logger.debug('local_internal_options is not set')
+            raise AttributeError('Error when using the fixture "configure_local_internal_options_module", no '
+                                 'parameter has been passed explicitly, nor is the variable local_internal_options '
+                                 'found in the module.') from AttributeError
+
+    backup_local_internal_options = wazuh_configuration.get_local_internal_options_dict()
+
+    logger.debug(f"Set local_internal_option to {str(local_internal_options)}")
+    wazuh_configuration.set_local_internal_options_dict(local_internal_options)
+
+    yield
+
+    logger.debug(f"Restore local_internal_option to {str(backup_local_internal_options)}")
+    wazuh_configuration.set_local_internal_options_dict(backup_local_internal_options)
+
+
+@pytest.fixture(scope='function')
+def restart_wazuh_function(request):
+    """Restart before starting a test, and stop it after finishing.
+
+       Args:
+            request (fixture): Provide information on the executing test function.
+    """
+    # If there is a list of required daemons defined in the test module, restart daemons, else restart all daemons.
+    try:
+        daemons = request.module.REQUIRED_DAEMONS
+    except AttributeError:
+        daemons = []
+
+    if len(daemons) == 0:
+        logger.debug(f"Restarting all daemon")
+        control_service('restart')
+    else:
+        for daemon in daemons:
+            logger.debug(f"Restarting {daemon}")
+            # Restart daemon instead of starting due to legacy used fixture in the test suite.
+            control_service('restart', daemon=daemon)
+
+    yield
+
+    # Stop all daemons by default (daemons = None)
+    if len(daemons) == 0:
+        logger.debug(f"Stopping all daemons")
+        control_service('stop')
+    else:
+        # Stop a list daemons in order (as Wazuh does)
+        daemons.reverse()
+        for daemon in daemons:
+            logger.debug(f"Stopping {daemon}")
+            control_service('stop', daemon=daemon)
+
+
+@pytest.fixture(scope='function')
+def file_monitoring(request):
+    """Fixture to handle the monitoring of a specified file.
+
+    It uses the variable `file_to_monitor` to determinate the file to monitor. Default `LOG_FILE_PATH`
+
+    Args:
+        request (fixture): Provide information on the executing test function.
+    """
+    if hasattr(request.module, 'file_to_monitor'):
+        file_to_monitor = getattr(request.module, 'file_to_monitor')
+    else:
+        file_to_monitor = WAZUH_LOG_PATH
+
+    logger.debug(f"Initializing file to monitor to {file_to_monitor}")
+
+    file_monitor = FileMonitor(file_to_monitor)
+    setattr(request.module, 'log_monitor', file_monitor)
+
+    yield
+
+    truncate_file(file_to_monitor)
+    logger.debug(f"Trucanted {file_to_monitor}")
 
 
 def truncate_monitored_files_implementation() -> None:
@@ -251,7 +345,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         logger.debug('Stopping wazuh using wazuh-control')
         services.control_service('stop')
     else:
-        if daemons == API_DAEMONS_REQUIREMENTS: daemons.reverse() # Stop in reverse, otherwise the next start will fail
+        if daemons == API_DAEMONS_REQUIREMENTS: daemons.reverse()  # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
             services.control_service('stop', daemon=daemon)

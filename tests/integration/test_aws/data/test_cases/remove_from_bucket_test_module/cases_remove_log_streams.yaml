@@ -1,0 +1,8 @@
+- name: cloudwatchlogs_remove_from_bucket
+  description: CloudWatch remove from bucket configurations
+  configuration_parameters:
+    SERVICE_TYPE: cloudwatchlogs
+    LOG_GROUP_NAME: temporary-log-group
+  metadata:
+    service_type: cloudwatchlogs
+    log_group_name: temporary-log-group
