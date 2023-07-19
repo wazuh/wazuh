@@ -173,12 +173,12 @@ def getFoldersToAStyle(moduleName):
 
     foldersToScan = ""
     if str(moduleName) == "shared_modules/utils":
-        foldersToScan = "{0}/../*.h {0}/*.cpp".format(moduleName)
+        foldersToScan = "{0}/../*.h {0}/*.cpp {0}/../*.hpp".format(moduleName)
     elif str(moduleName) == "syscheckd":
         foldersToScan = "\"{0}/src/db/src/*.hpp\" \"{0}/src/db/src/*.cpp\""\
                         .format(moduleName)
     else:
-        foldersToScan = "{0}/*.h {0}/*.cpp".format(moduleName)
+        foldersToScan = "{0}/*.h {0}/*.cpp {0}/*.hpp".format(moduleName)
 
     return foldersToScan
 

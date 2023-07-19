@@ -30,9 +30,9 @@ namespace Utils
 
     class SharedLocking final : public ILocking
     {
-        std::shared_lock<std::shared_timed_mutex> m_lock;
+            std::shared_lock<std::shared_timed_mutex> m_lock;
         public:
-            explicit SharedLocking(std::shared_timed_mutex &mutex)
+            explicit SharedLocking(std::shared_timed_mutex& mutex)
                 : m_lock(std::shared_lock<std::shared_timed_mutex>(mutex)) {};
 
             virtual ~SharedLocking() = default;
@@ -48,9 +48,9 @@ namespace Utils
 
     class ExclusiveLocking final : public ILocking
     {
-        std::unique_lock<std::shared_timed_mutex> m_lock;
+            std::unique_lock<std::shared_timed_mutex> m_lock;
         public:
-            explicit ExclusiveLocking(std::shared_timed_mutex &mutex)
+            explicit ExclusiveLocking(std::shared_timed_mutex& mutex)
                 : m_lock(std::unique_lock<std::shared_timed_mutex>(mutex)) {};
 
             virtual ~ExclusiveLocking() = default;
