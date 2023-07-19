@@ -69,13 +69,13 @@ class Maltiverse:
     def __init__(
         self, endpoint: str = "https://api.maltiverse.com", auth_token: str = None
     ):
-        """
-        Initialize the Maltiverse class.
+        """Initialize the Maltiverse class.
 
-        Parameters:
-        - endpoint: str, optional (default: "https://api.maltiverse.com")
+        Parameters
+        ----------
+        endpoint : str, optional (default: "https://api.maltiverse.com")
             The API endpoint URL.
-        - auth_token: str, optional
+        auth_token : str, optional
             The authentication token for the API.
         """
         self.endpoint = endpoint
@@ -86,45 +86,51 @@ class Maltiverse:
         }
 
     def ip_get(self, ip_addr: str) -> dict:
-        """
-        Request Maltiverse Ipv4 via API.
+        """Request Maltiverse Ipv4 via API.
 
-        Parameters:
-        - ip_addr: str
+        Parameters
+        ----------
+        ip_addr : str
             The IP address to request.
 
-        Returns:
-        - dict: The Maltiverse Ipv4 information as a dictionary.
+        Returns
+        -------
+        dict
+            The Maltiverse Ipv4 information as a dictionary.
         """
         return requests.get(
             f"{self.endpoint}/ip/{ip_addr}", headers=self.headers
         ).json()
 
     def hostname_get(self, hostname: str) -> dict:
-        """
-        Request Maltiverse hostname via API.
+        """Request Maltiverse hostname via API.
 
-        Parameters:
-        - hostname: str
+        Parameters
+        ----------
+        hostname : str
             The hostname to request.
 
-        Returns:
-        - dict: The Maltiverse hostname information as a dictionary.
+        Returns
+        -------
+        dict
+            The Maltiverse hostname information as a dictionary.
         """
         return requests.get(
             f"{self.endpoint}/hostname/{hostname}", headers=self.headers
         ).json()
 
     def url_get(self, url: str) -> dict:
-        """
-        Request Maltiverse URL via API.
+        """Request Maltiverse URL via API.
 
-        Parameters:
-        - url: str
+        Parameters
+        ----------
+        url : str
             The URL to request.
 
-        Returns:
-        - dict: The Maltiverse URL information as a dictionary.
+        Returns
+        -------
+        dict
+            The Maltiverse URL information as a dictionary.
         """
         urlchecksum = hashlib.sha256(url.encode("utf-8")).hexdigest()
         return requests.get(
@@ -132,17 +138,19 @@ class Maltiverse:
         ).json()
 
     def sample_get(self, sample: str, algorithm: str = "md5") -> dict:
-        """
-        Request Maltiverse sample via API.
+        """Request Maltiverse sample via API.
 
-        Parameters:
-        - sample: str
+        Parameters
+        ----------
+        sample : str
             The sample to request.
-        - algorithm: str, optional (default: "md5")
+        algorithm : str, optional (default: "md5")
             The algorithm used for the sample search.
 
-        Returns:
-        - dict: The Maltiverse sample information as a dictionary.
+        Returns
+        -------
+        dict
+            The Maltiverse sample information as a dictionary.
         """
         mapping = {
             "md5": self.sample_get_by_md5,
@@ -152,30 +160,34 @@ class Maltiverse:
         return callable_function(sample)
 
     def sample_get_by_md5(self, md5: str):
-        """
-        Request Maltiverse MD5 sample via API.
+        """Request Maltiverse MD5 sample via API.
 
-        Parameters:
-        - md5: str
+        Parameters
+        ----------
+        md5 : str
             The MD5 checksum of the sample.
 
-        Returns:
-        - dict: The Maltiverse MD5 sample information as a dictionary.
+        Returns
+        -------
+        dict
+            The Maltiverse MD5 sample information as a dictionary.
         """
         return requests.get(
             f"{self.endpoint}/sample/md5/{md5}", headers=self.headers
         ).json()
 
     def sample_get_by_sha1(self, sha1: str):
-        """
-        Request Maltiverse SHA1 sample via API.
+        """Request Maltiverse SHA1 sample via API.
 
-        Parameters:
-        - sha1: str
+        Parameters
+        ----------
+        sha1 : str
             The SHA1 checksum of the sample.
 
-        Returns:
-        - dict: The Maltiverse SHA1 sample information as a dictionary.
+        Returns
+        -------
+        dict
+            The Maltiverse SHA1 sample information as a dictionary.
         """
         return requests.get(
             f"{self.endpoint}/sample/sha1/{sha1}", headers=self.headers
@@ -183,26 +195,28 @@ class Maltiverse:
 
 
 def is_valid_url(url: str) -> bool:
-    """
-    Check if a URL is valid.
+    """Check if a URL is valid.
 
-    Parameters:
-    - url: str
+    Parameters
+    ----------
+    url : str
         The URL to check.
 
-    Returns:
-    - bool: True if the URL is valid, False otherwise.
+    Returns
+    -------
+    bool
+        True if the URL is valid, False otherwise.
     """
     split_url = urlsplit(url)
     return bool(split_url.scheme and split_url.netloc)
 
 
 def main(args: list):
-    """
-    The main entry point of the script.
+    """The main entry point of the script.
 
-    Parameters:
-    - args: list
+    Parameters
+    ----------
+    args : list
         The command-line arguments passed to the script.
     """
     global debug_enabled
@@ -239,15 +253,17 @@ def main(args: list):
 
 
 def load_alert(file_path: str) -> dict:
-    """
-    Load an alert JSON file.
+    """Load an alert JSON file.
 
-    Parameters:
-    - file_path: str
+    Parameters
+    ----------
+    file_path : str
         The path to the JSON alert file.
 
-    Returns:
-    - dict: The loaded JSON object as a dictionary.
+    Returns
+    -------
+    dict
+        The loaded JSON object as a dictionary.
     """
     try:
         with open(file_path) as alert_file:
@@ -261,11 +277,11 @@ def load_alert(file_path: str) -> dict:
 
 
 def process_args(args: list):
-    """
-    Process the command-line arguments.
+    """Process the command-line arguments.
 
-    Parameters:
-    - args: list
+    Parameters
+    ----------
+    args : list
         The command-line arguments passed to the script.
     """
     debug("# Starting")
@@ -294,11 +310,11 @@ def process_args(args: list):
 
 
 def debug(msg: str):
-    """
-    Print a debug message.
+    """Print a debug message.
 
-    Parameters:
-    - msg: str
+    Parameters
+    ----------
+    msg : str
         The debug message to print.
     """
     if debug_enabled:
@@ -309,17 +325,17 @@ def debug(msg: str):
 
 
 def get_ioc_confidence(ioc: dict) -> str:
-    """
-    Get the vendor-neutral confidence rating.
+    """Get the vendor-neutral confidence rating and returns the None/Low/Medium/High scale.
 
-    Returns the None/Low/Medium/High scale.
-
-    Parameters:
-    - ioc: dict
+    Parameters
+    ----------
+    ioc : dict
         The IOC dictionary.
 
-    Returns:
-    - str: The confidence rating.
+    Returns
+    -------
+    str
+        The confidence rating.
     """
     if not (classification := ioc.get("classification")):
         return "Not Specified"
@@ -334,15 +350,17 @@ def get_ioc_confidence(ioc: dict) -> str:
 
 
 def get_mitre_information(ioc: dict) -> dict:
-    """
-    Get the MITRE information from the IOC dictionary.
+    """Get the MITRE information from the IOC dictionary.
 
-    Parameters:
-    - ioc: dict
+    Parameters
+    ----------
+    ioc : dict
         The IOC dictionary.
 
-    Returns:
-    - dict: The MITRE information as a dictionary.
+    Returns
+    -------
+    dict
+        The MITRE information as a dictionary.
     """
     mitre_info = {}
     for indicator in ioc.get("blacklist", []):
@@ -362,15 +380,17 @@ def get_mitre_information(ioc: dict) -> dict:
 
 
 def match_ecs_type(maltiverse_type: str) -> str:
-    """
-    Convert the Maltiverse type to the ECS Threat type.
+    """ Convert the Maltiverse type to the ECS Threat type.
 
-    Parameters:
-    - maltiverse_type: str
+    Parameters
+    ----------
+    maltiverse_type : str
         The Maltiverse type.
 
-    Returns:
-    - str: The ECS Threat type.
+    Returns
+    -------
+    str
+        The ECS Threat type.
     """
     mapping = {
         "ip": "ipv4-addr",
@@ -388,24 +408,26 @@ def maltiverse_alert(
     ioc_ref: str = None,
     include_full_source: bool = True,
 ) -> dict:
-    """
-    Generate a new alert.
+    """Generate a new alert.
 
-    Parameters:
-    - alert_id: int
+    Parameters
+    ----------
+    alert_id : int
         The generated alert ID.
-    - ioc_dict: dict
+    ioc_dict : dict
         Raw information returned by Maltiverse API.
-    - ioc_name: str
+    ioc_name : str
         The representative name of the indicator.
-    - ioc_ref: str, optional
+    ioc_ref : str, optional
         An indicator reference used to build a reference URL.
         ioc_name is used by default if ioc_ref is not set.
-    - include_full_source: bool, optional (default: True)
+    include_full_source : bool, optional (default: True)
         Whether to include the complete API response.
 
-    Returns:
-    - dict: The generated alert as a dictionary.
+    Returns
+    -------
+    dict
+        The generated alert as a dictionary.
     """
     _blacklist = ioc_dict.get("blacklist", [])
     _type = ioc_dict.get("type")
@@ -450,17 +472,19 @@ def maltiverse_alert(
 
 
 def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
-    """
-    Request Maltiverse information and generate alerts.
+    """Request Maltiverse information and generate alerts.
 
-    Parameters:
-    - alert: dict
+    Parameters
+    ----------
+    alert : dict
         The alert dictionary.
-    - maltiverse_api: Maltiverse
+    maltiverse_api : Maltiverse
         An instance of the Maltiverse class.
 
-    Returns:
-    - dict: The generated alerts as a dictionary.
+    Returns
+    -------
+    dict
+        The generated alerts as a dictionary.
     """
     results = []
 
@@ -536,13 +560,13 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
 
 
 def send_event(msg: str, agent: dict = None):
-    """
-    Send an event to the Wazuh Manager.
+    """Send an event to the Wazuh Manager.
 
-    Parameters:
-    - msg: str
+    Parameters
+    ----------
+    msg : str
         The event message.
-    - agent: dict, optional
+    agent : dict, optional
         The agent information.
     """
     if not agent or agent["id"] == "000":
