@@ -5,14 +5,10 @@
 """
     This file contains constant and other utilities to be used in the AWS integration test module.
 """
-from os.path import join, dirname, realpath
 
 # CONSTANTS
-TEMPLATE_DIR = 'configuration_template'
-TEST_CASES_DIR = 'test_cases'
-WAZUH_MODULES_DEBUG = 'wazuh_modules.debug'
 
-ERROR_MESSAGE = {
+ERROR_MESSAGES = {
 
     "failed_start": "The AWS module did not start as expected",
     "incorrect_parameters": "The AWS module was not called with the correct parameters",
@@ -27,22 +23,11 @@ ERROR_MESSAGE = {
     "incorrect_legacy_warning": "The AWS module did not show the expected legacy warning",
     "incorrect_warning": "The AWS module did not show the expected warning",
     "incorrect_invalid_value_message": "The AWS module did not show the expected message about invalid value",
-    "incorrect_service_calls_amount": "The AWS module was not called for bucket or service the right amount of times",
-    "unexpected_number_of_events_found": "Some logs may have been processed, "
-                                         "or the results found are more than expected",
-    "incorrect_marker": "The AWS module did not use the correct marker",
-    "incorrect_no_region_found_message": "The AWS module did not show correct message about non-existent region",
-    "incorrect_discard_regex_message": "The AWS module did not show the correct message about discard regex or, "
-                                       "did not process the expected amount of logs",
-    "failed_sqs_message_retrieval": "The AWS module did not retrieve the expected message from the SQS Queue",
-    "failed_message_handling": "The AWS module did not handle the expected message"
+    "incorrect_service_calls_amount": "The AWS module was not called for bucket or service the right amount of times"
 }
 
-TIMEOUT = {
+TIMEOUTS = {
 
     10: 10,
     20: 20
 }
-
-# Paths
-TEST_DATA_PATH = join(dirname(realpath(__file__)), 'data')
