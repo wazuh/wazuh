@@ -1,0 +1,6 @@
+- name: cloudwatchlogs_only_logs_after_multiple_calls
+  description: CloudWatch only_logs_after multiple calls configurations
+  configuration_parameters:
+  metadata:
+    service_type: cloudwatchlogs
+    log_group_name: wazuh-cloudwatchlogs-integration-tests
