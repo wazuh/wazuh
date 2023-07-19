@@ -38,6 +38,8 @@
 #include "packages/packagesWindowsParserHelper.h"
 #include "packages/packagesWindows.h"
 #include "packages/appxWindowsWrapper.h"
+#include "packages/packagesPYPI.hpp"
+#include "packages/packagesNPM.hpp"
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
@@ -776,6 +778,48 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     });
 }
 
+std::vector<std::string> getPythonDirectoriesFromRegistry() const
+{
+    std::vector<std::string> pythonDirList;
+
+    const auto getDirectoryList = [](const HKEY key, const std::string & subKey, std::vector<std::string>& outDirList)
+    {
+        std::vector<std::string> pythonInstallPaths;
+
+        try
+        {
+            // Get python install path from registry
+            Utils::expandRegistryPath(key, subKey, pythonInstallPaths);
+
+            // Get python install path from registry expanded keys.
+            for (const auto& pythonVersionKey : pythonInstallPaths)
+            {
+                try
+                {
+                    // Get python install path from registry, based on python version key.
+                    const auto pythonDir { Utils::Registry{key, pythonVersionKey, KEY_READ}.string("") };
+                    // Add python install path to pythonDirList.
+                    outDirList.push_back(pythonDir + R"(\Lib\site-packages)");
+                    outDirList.push_back(pythonDir + R"(\Lib\dist-packages)");
+                }
+                catch (const std::exception&)
+                {
+                    // Ignore errors.
+                }
+            }
+        }
+        catch (const std::exception&)
+        {
+            // Ignore errors.
+        }
+    };
+
+    getDirectoryList(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", pythonDirList);
+    getDirectoryList(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", pythonDirList);
+
+    return pythonDirList;
+}
+
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     std::set<std::string> set;
@@ -802,6 +846,9 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
         getStorePackages(HKEY_USERS, user, fillList);
     }
+
+    PYPI().getPackages(getPythonDirFromRegistry(), callback);
+    NPM().getPackages(callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const

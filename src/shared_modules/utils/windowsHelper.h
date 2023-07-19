@@ -28,6 +28,7 @@
 #include "stringHelper.h"
 #include "encodingWindowsHelper.h"
 #include "timeHelper.h"
+#include "registryHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

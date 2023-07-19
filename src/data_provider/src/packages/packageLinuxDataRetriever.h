@@ -17,6 +17,8 @@
 #include "sharedDefs.h"
 #include "filesystemHelper.h"
 #include "utilsWrapperLinux.hpp"
+#include "packagesPYPI.hpp"
+#include "packagesNPM.hpp"
 
 /**
  * @brief Fills a JSON object with all available pacman-related information
@@ -92,6 +94,9 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
             {
                 getApkInfo(APK_DB_PATH, callback);
             }
+
+            PYPI().getPackages(UNIX_PYPI_DEFAULT_BASE_DIRS, callback);
+            NPM().getPackages(UNIX_NPM_DEFAULT_BASE_DIRS, callback);
         }
 };
 
