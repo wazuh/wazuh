@@ -54,6 +54,8 @@ extern "C" {
  * @param value_limit Maximum number of registry values to be monitored.
  * @param sync_registry_enable Flag to enable the registry synchronization.
  * @param sync_queue_size Number to define the size of the queue to be synchronized.
+ * @param dbsync_log_function Logging function for dbsync module.
+ * @param rsync_log_function Logging function for rsync module.
  *
  * @return FIMDB_OK on success, FIMDB_ERROR on error.
  */
@@ -67,7 +69,9 @@ EXPORTED FIMDBErrorCode fim_db_init(int storage,
                                     int value_limit,
                                     bool sync_registry_enabled,
                                     int sync_thread_pool,
-                                    unsigned int sync_queue_size);
+                                    unsigned int sync_queue_size,
+                                    log_fnc_t dbsync_log_function,
+                                    log_fnc_t rsync_log_function);
 
 /**
  * @brief Get entry data using path.

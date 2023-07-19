@@ -45,9 +45,6 @@ void DB::init(const int storage,
 
     auto rsyncHandler { std::make_shared<RemoteSync>(syncThreadPool, syncQueueSize) };
 
-    dbsync_initialize(NULL);
-    rsync_initialize(NULL);
-
     FIMDB::instance().init(syncInterval,
                            syncMaxInterval,
                            syncResponseTimeout,
@@ -130,7 +127,9 @@ FIMDBErrorCode fim_db_init(int storage,
                            int value_limit,
                            bool sync_registry_enabled,
                            int sync_thread_pool,
-                           unsigned int sync_queue_size)
+                           unsigned int sync_queue_size,
+                           log_fnc_t dbsync_log_function,
+                           log_fnc_t rsync_log_function)
 {
     auto retVal { FIMDBErrorCode::FIMDB_ERR };
 
@@ -244,6 +243,15 @@ FIMDBErrorCode fim_db_init(int storage,
                 }
             }
         };
+
+        if (dbsync_log_function) {
+            dbsync_initialize(dbsync_log_function);
+        }
+
+        if (rsync_log_function) {
+            rsync_initialize(rsync_log_function);
+        }
+
         DB::instance().init(storage,
                             sync_interval,
                             sync_max_interval,
