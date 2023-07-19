@@ -189,7 +189,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         super().connection_lost(exc)
 
-        # Clean cluster files from previous executions 
+        # Clean cluster files from previous executions.
         cluster.clean_up(node_name=self.name)
 
     def process_request(self, command: bytes, data: bytes) -> Union[bytes, Tuple[bytes, bytes]]:

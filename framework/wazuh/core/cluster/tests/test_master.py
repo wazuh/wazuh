@@ -1398,15 +1398,20 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
         """Auxiliary class."""
 
         def __init__(self):
-            pass
+            self.cancel_called = False
 
         def cancel(self):
             """Auxiliary method."""
-            pass
+            self.cancel_called = True
 
+    tast_mock = TaskMock()
     master_handler.sync_tasks = {"key": PendingTaskMock()}
     master_handler.connection_lost(Exception())
 
+    for pending_task_mock in master_handler.sync_tasks.values():
+        assert pending_task_mock.task.cancel_called
+
+    connection_lost_mock.assert_called_once()
     clean_up_mock.assert_called_once_with(node_name=master_handler.name)
 
 

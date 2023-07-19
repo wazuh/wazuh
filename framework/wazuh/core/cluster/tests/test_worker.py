@@ -434,7 +434,7 @@ def test_worker_handler_process_request_ok(logger_mock):
 def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
 
-    worker_handler = get_worker_handler()  # Llamada a la función get_worker_handler()
+    worker_handler = get_worker_handler()  
     worker_handler.logger = logging.getLogger("wazuh")
 
     class PendingTaskMock:
@@ -456,10 +456,10 @@ def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, log
     worker_handler.sync_tasks = {"key": PendingTaskMock()}
     worker_handler.connection_lost(Exception())
 
+    connection_lost_mock.assert_called_once()
     clean_up_mock.assert_called_once_with(node_name=worker_handler.name)
 
     
-
 @patch.object(logging.getLogger("wazuh"), "debug")
 @patch("asyncio.create_task", side_effect=exception.WazuhClusterError(1001))
 def test_worker_handler_process_request_ko(create_task_mock, logger_mock):
