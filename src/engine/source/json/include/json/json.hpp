@@ -127,7 +127,7 @@ private:
         }
     }
 
-    void merge(const bool isRecursive, rapidjson::Value& source, std::string_view path);
+    void merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path);
 
 public:
     /**
@@ -755,7 +755,7 @@ public:
      * - If either Json Values are not Object or Array.
      * - If Json Values are not the same type.
      */
-    void merge(const bool isRecursive, Json& other, std::string_view path = "");
+    void merge(const bool isRecursive, const Json& other, std::string_view path = "");
 
     /**
      * @brief Merge the Json Value at the path with the given Json Value at reference
