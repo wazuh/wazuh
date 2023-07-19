@@ -1,45 +1,19 @@
-# Copyright (C) 2015-2023, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-"""
-This module contains all necessary components (fixtures, classes, methods)to configure the test for its execution.
-"""
-
 import pytest
-from os.path import join
-
-# Qa-integration-framework imports
 from wazuh_testing.logger import logger
-from wazuh_testing.constants.aws import (
+from wazuh_testing.modules.aws import (
     FAKE_CLOUDWATCH_LOG_GROUP,
     PERMANENT_CLOUDWATCH_LOG_GROUP,
 )
-from wazuh_testing.modules.aws.utils import (
+from wazuh_testing.modules.aws.cloudwatch_utils import (
     create_log_events,
     create_log_group,
     create_log_stream,
     delete_log_group,
     delete_log_stream,
-    delete_file,
-    file_exists,
-    upload_file
 )
-from wazuh_testing.modules.aws.utils import delete_s3_db, delete_services_db
+from wazuh_testing.modules.aws.db_utils import delete_s3_db, delete_services_db
+from wazuh_testing.modules.aws.s3_utils import delete_file, file_exists, upload_file
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.utils.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
-from wazuh_testing.modules.monitord import configuration as monitord_config
-
-# Local imports
-from .utils import TEST_DATA_PATH,  TEMPLATE_DIR, TEST_CASES_DIR, WAZUH_MODULES_DEBUG
-
-
-# Set local internal options
-local_internal_options = {WAZUH_MODULES_DEBUG: '2',
-                          monitord_config.MONITORD_ROTATE_LOG: '0'}
 
 
 @pytest.fixture
@@ -77,6 +51,7 @@ def upload_and_delete_file_to_s3(metadata):
         metadata['uploaded_file'] = filename
 
     yield
+
     if file_exists(filename=filename, bucket_name=bucket_name):
         delete_file(filename=filename, bucket_name=bucket_name)
         logger.debug('Deleted file: %s from bucket %s', filename, bucket_name)
@@ -164,8 +139,9 @@ def fixture_delete_log_stream(metadata):
     delete_log_stream(log_stream=log_stream)
     logger.debug('Deleted log stream: %s', log_stream)
 
-
 # DB fixtures
+
+
 @pytest.fixture
 def clean_s3_cloudtrail_db():
     """Delete the DB file before and after the test execution"""
@@ -184,56 +160,3 @@ def clean_aws_services_db():
     yield
 
     delete_services_db()
-
-
-class TestConfigurator:
-    """
-    TestConfigurator class is responsible for configuring test data and parameters for a specific test module.
-
-    Attributes:
-    - module (str): The name of the test module.
-    - configuration_path (str): The path to the configuration directory for the test module.
-    - test_cases_path (str): The path to the test cases directory for the test module.
-    - metadata (list): Test metadata retrieved from the test cases.
-    - parameters (list): Test parameters retrieved from the test cases.
-    - cases_ids (list): Identifiers for the test cases.
-    - test_configuration_template (list): The loaded configuration template for the test module.
-
-    """
-    def __init__(self, module):
-        self.module = module
-        self.configuration_path = join(TEST_DATA_PATH, TEMPLATE_DIR, self.module)
-        self.test_cases_path = join(TEST_DATA_PATH, TEST_CASES_DIR, self.module)
-        self.metadata = None
-        self.parameters = None
-        self.cases_ids = None
-        self.test_configuration_template = None
-
-    def configure_test(self, configuration_file="", cases_file=""):
-        """
-        Configures the test data and parameters for the given test module.
-
-        Args:
-        - configuration_file (str): The name of the configuration file.
-        - cases_file (str): The name of the test cases file.
-
-        Returns:
-        None
-        """
-        # Set test cases path
-        cases_path = join(self.test_cases_path, cases_file)
-
-        # Get test cases data
-        self.parameters, self.metadata, self.cases_ids = get_test_cases_data(cases_path)
-
-        # Set test configuration template for tests with config files
-        if configuration_file != "":
-            # Set config path
-            configurations_path = join(self.configuration_path, configuration_file)
-
-            # load configuration template
-            self.test_configuration_template = load_configuration_template(
-                configurations_path,
-                self.parameters,
-                self.metadata
-            )
