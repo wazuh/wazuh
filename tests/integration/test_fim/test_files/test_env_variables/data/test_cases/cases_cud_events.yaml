@@ -3,7 +3,7 @@
   configuration_parameters:
     WHODATA: 'yes'
     REALTIME: 'yes'
-    TEST_ENV_VARS: "$TEST_DIR"
+    TEST_ENV_VARS: "$TESTING"
   metadata:
     folder_to_monitor: /test_dir1
     test_file: test_file.log
