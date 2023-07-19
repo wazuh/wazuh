@@ -1,39 +1,43 @@
-# Copyright (C) 2015, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-"""
-This module will contain all cases for the path suffix test suite
-"""
-
+import os
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH
-from wazuh_testing.utils.db_queries.aws_db import get_s3_db_row, table_exists_or_has_values
-from wazuh_testing.modules.aws.utils import path_exist
-
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
+from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
+from wazuh_testing.modules.aws.db_utils import (
+    get_s3_db_row,
+    s3_db_exists,
+    table_exists_or_has_values,
+)
+from wazuh_testing.utils.configuration import (
+    get_test_cases_data,
+    load_configuration_template,
+)
 # Local module imports
-from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGES, TIMEOUTS
 
 pytestmark = [pytest.mark.server]
 
-# Set test configurator for the module
-configurator = TestConfigurator(module='path_suffix_test_module')
+
+# Generic vars
+MODULE = 'path_suffix_test_module'
+TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
+TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
 
 # ---------------------------------------------------- TEST_PATH -------------------------------------------------------
-# Configure T1 test
-configurator.configure_test(configuration_file='configuration_path_suffix.yaml',
-                            cases_file='cases_path_suffix.yaml')
+configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_path_suffix.yaml')
+cases_path = os.path.join(TEST_CASES_PATH, 'cases_path_suffix.yaml')
+
+configuration_parameters, configuration_metadata, case_ids = get_test_cases_data(cases_path)
+configurations = load_configuration_template(
+    configurations_path, configuration_parameters, configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_path_suffix(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -120,7 +124,7 @@ def test_path_suffix(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -128,24 +132,24 @@ def test_path_suffix(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUT[20],
+            timeout=TIMEOUTS[20],
             callback=event_monitor.callback_detect_event_processed,
         )
-        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
     else:
         log_monitor.start(
-            timeout=TIMEOUT[10],
+            timeout=TIMEOUTS[10],
             callback=event_monitor.make_aws_callback(pattern),
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_empty_path_suffix_message']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_empty_path_suffix_message']
 
-    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
+    assert s3_db_exists()
 
     if expected_results:
         data = get_s3_db_row(table_name=bucket_type)
@@ -160,4 +164,4 @@ def test_path_suffix(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']

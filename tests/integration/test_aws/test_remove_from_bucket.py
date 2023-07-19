@@ -1,37 +1,38 @@
-# Copyright (C) 2015, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-"""
-This module will contain all cases for the remove from bucket test suite
-"""
-
+import os
 import pytest
 
-# qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws.utils import log_stream_exists, file_exists
-
-# Local module imports
-from . import event_monitor
-from .utils import ERROR_MESSAGE
-from .conftest import TestConfigurator, local_internal_options
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
+from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
+from wazuh_testing.modules.aws.cloudwatch_utils import log_stream_exists
+from wazuh_testing.modules.aws.s3_utils import file_exists
+from wazuh_testing.utils.configuration import (
+    get_test_cases_data,
+    load_configuration_template,
+)
 
 pytestmark = [pytest.mark.server]
 
-# Set test configurator for the module
-configurator = TestConfigurator(module='remove_from_bucket_test_module')
+
+# Generic vars
+MODULE = 'remove_from_bucket_test_module'
+TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
+TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
 
 # ---------------------------------------------------- TEST_REMOVE_FROM_BUCKET -----------------------------------------
-# Configure T1 test
-configurator.configure_test(configuration_file='configuration_remove_from_bucket.yaml',
-                            cases_file='cases_remove_from_bucket.yaml')
+# Configuration and cases data
+t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_remove_from_bucket.yaml')
+t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_remove_from_bucket.yaml')
+
+t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
+t1_configurations = load_configuration_template(
+    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
 def test_remove_from_bucket(
     configuration, metadata, mark_cases_as_skipped, upload_and_delete_file_to_s3, load_wazuh_basic_configuration,
     set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
@@ -112,7 +113,7 @@ def test_remove_from_bucket(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -120,7 +121,7 @@ def test_remove_from_bucket(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     assert not file_exists(filename=metadata['uploaded_file'], bucket_name=bucket_name)
 
@@ -130,19 +131,22 @@ def test_remove_from_bucket(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # ---------------------------------------------------- TEST_REMOVE_LOG_STREAM ------------------------------------------
-# Configure T2 test
-configurator.configure_test(configuration_file='configuration_remove_log_stream.yaml',
-                            cases_file='cases_remove_log_streams.yaml')
+# Configuration and cases data
+t2_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_remove_log_stream.yaml')
+t2_cases_path = os.path.join(TEST_CASES_PATH, 'cases_remove_log_streams.yaml')
+
+t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
+t2_configurations = load_configuration_template(
+    t2_configurations_path, t2_configuration_parameters, t2_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_remove_log_stream(
     configuration, metadata, create_log_stream, load_wazuh_basic_configuration, set_wazuh_configuration,
     clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
@@ -221,7 +225,7 @@ def test_remove_log_stream(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -229,7 +233,7 @@ def test_remove_log_stream(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     assert not log_stream_exists(log_stream=metadata['log_stream'], log_group=log_group_name)
 
@@ -239,4 +243,4 @@ def test_remove_log_stream(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
