@@ -1,47 +1,53 @@
-# Copyright (C) 2015, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-"""
-This module will contain all cases for the only logs after test suite
-"""
-
+import os
 import pytest
 from datetime import datetime
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
-from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, PATH_DATE_FORMAT, VPC_FLOW_TYPE, INSPECTOR_TYPE
-from wazuh_testing.utils.db_queries.aws_db import get_multiple_s3_db_row, get_service_db_row, get_s3_db_row
-from wazuh_testing.modules.aws.utils import (call_aws_module, create_log_events, create_log_stream, path_exist,
-                                             get_last_file_key, upload_file, analyze_command_output)
-from wazuh_testing.modules.aws.patterns import (NO_LOG_PROCESSED, NO_BUCKET_LOG_PROCESSED, MARKER, NO_NEW_EVENTS,
-                                                EVENT_SENT)
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
+from wazuh_testing.modules import aws as cons
+from wazuh_testing.modules.aws import ONLY_LOGS_AFTER_PARAM, event_monitor, local_internal_options  # noqa: F401
+from wazuh_testing.modules.aws.cli_utils import call_aws_module
+from wazuh_testing.modules.aws.cloudwatch_utils import (
+    create_log_events,
+    create_log_stream,
+)
+from wazuh_testing.modules.aws.db_utils import (
+    get_multiple_s3_db_row,
+    get_service_db_row,
+    s3_db_exists,
+    services_db_exists,
+    get_s3_db_row,
+)
+from wazuh_testing.modules.aws.s3_utils import get_last_file_key, upload_file
+from wazuh_testing.utils.configuration import (
+    get_test_cases_data,
+    load_configuration_template,
+)
 
-# Local module imports
-from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGES, TIMEOUTS
 
 pytestmark = [pytest.mark.server]
 
-# Set test configurator for the module
-configurator = TestConfigurator(module='only_logs_after_test_module')
 
-import pydevd_pycharm
-pydevd_pycharm.settrace('192.168.56.1', port=55555, stdoutToServer=True, stderrToServer=True)
+# Generic vars
+MODULE = 'only_logs_after_test_module'
+TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
+TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
 
 # --------------------------------------------- TEST_BUCKET_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
-# Configure T1 test
-configurator.configure_test(configuration_file='bucket_configuration_without_only_logs_after.yaml',
-                            cases_file='cases_bucket_without_only_logs_after.yaml')
+t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'bucket_configuration_without_only_logs_after.yaml')
+t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_without_only_logs_after.yaml')
+
+t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
+t1_configurations = load_configuration_template(
+    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
 def test_bucket_without_only_logs_after(
     configuration, metadata, upload_and_delete_file_to_s3, load_wazuh_basic_configuration, set_wazuh_configuration,
     clean_s3_cloudtrail_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
@@ -128,7 +134,7 @@ def test_bucket_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -136,7 +142,7 @@ def test_bucket_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
         timeout=session_parameters.default_timeout,
@@ -144,9 +150,9 @@ def test_bucket_without_only_logs_after(
         accumulations=expected_results
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
+    assert s3_db_exists()
 
     data = get_s3_db_row(table_name=table_name)
 
@@ -159,19 +165,21 @@ def test_bucket_without_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # -------------------------------------------- TEST_SERVICE_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
-# Configure T2 test
-configurator.configure_test(configuration_file='service_configuration_without_only_logs_after.yaml',
-                            cases_file='cases_service_without_only_logs_after.yaml')
+t2_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'service_configuration_without_only_logs_after.yaml')
+t2_cases_path = os.path.join(TEST_CASES_PATH, 'cases_service_without_only_logs_after.yaml')
+
+t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
+t2_configurations = load_configuration_template(
+    t2_configurations_path, t2_configuration_parameters, t2_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_service_without_only_logs_after(
     configuration, metadata, create_log_stream_in_existent_group, load_wazuh_basic_configuration,
     set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files,
@@ -253,7 +261,7 @@ def test_service_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -261,9 +269,9 @@ def test_service_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
-    assert path_exist(path=AWS_SERVICES_DB_PATH)
+    assert services_db_exists()
 
     data = get_service_db_row(table_name="cloudwatch_logs")
 
@@ -277,19 +285,21 @@ def test_service_without_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # --------------------------------------------- TEST_BUCKET_WITH_ONLY_LOGS_AFTER ---------------------------------------
-# Configure T3 test
-configurator.configure_test(configuration_file='bucket_configuration_with_only_logs_after.yaml',
-                            cases_file='cases_bucket_with_only_logs_after.yaml')
+t3_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'bucket_configuration_with_only_logs_after.yaml')
+t3_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_with_only_logs_after.yaml')
+
+t3_configuration_parameters, t3_configuration_metadata, t3_case_ids = get_test_cases_data(t3_cases_path)
+t3_configurations = load_configuration_template(
+    t3_configurations_path, t3_configuration_parameters, t3_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
 def test_bucket_with_only_logs_after(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -374,7 +384,7 @@ def test_bucket_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -382,17 +392,17 @@ def test_bucket_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUTS[20],
         callback=event_monitor.callback_detect_event_processed,
         accumulations=expected_results
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
+    assert s3_db_exists()
 
     for row in get_multiple_s3_db_row(table_name=table_name):
         assert bucket_name in row.bucket_path
@@ -406,19 +416,21 @@ def test_bucket_with_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # --------------------------------------------TEST_CLOUDWATCH_WITH_ONLY_LOGS_AFTER -------------------------------------
-# Configure T4 test
-configurator.configure_test(configuration_file='cloudwatch_configuration_with_only_logs_after.yaml',
-                            cases_file='cases_cloudwatch_with_only_logs_after.yaml')
+t4_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'cloudwatch_configuration_with_only_logs_after.yaml')
+t4_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_with_only_logs_after.yaml')
+
+t4_configuration_parameters, t4_configuration_metadata, t4_case_ids = get_test_cases_data(t4_cases_path)
+t4_configurations = load_configuration_template(
+    t4_configurations_path, t4_configuration_parameters, t4_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t4_configurations, t4_configuration_metadata), ids=t4_case_ids)
 def test_cloudwatch_with_only_logs_after(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -503,7 +515,7 @@ def test_cloudwatch_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -511,16 +523,16 @@ def test_cloudwatch_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[10],
+        timeout=TIMEOUTS[10],
         callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert path_exist(path=AWS_SERVICES_DB_PATH)
+    assert services_db_exists()
 
     data = get_service_db_row(table_name=table_name_map[service_type])
 
@@ -533,19 +545,21 @@ def test_cloudwatch_with_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # ------------------------------------------ TEST_INSPECTOR_WITH_ONLY_LOGS_AFTER ---------------------------------------
-# Configure T5 test
-configurator.configure_test(configuration_file='inspector_configuration_with_only_logs_after.yaml',
-                            cases_file='cases_inspector_with_only_logs_after.yaml')
+t5_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'inspector_configuration_with_only_logs_after.yaml')
+t5_cases_path = os.path.join(TEST_CASES_PATH, 'cases_inspector_with_only_logs_after.yaml')
+
+t5_configuration_parameters, t5_configuration_metadata, t5_case_ids = get_test_cases_data(t5_cases_path)
+t5_configurations = load_configuration_template(
+    t5_configurations_path, t5_configuration_parameters, t5_configuration_metadata
+)
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
-                         zip(configurator.test_configuration_template, configurator.metadata),
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(t5_configurations, t5_configuration_metadata), ids=t5_case_ids)
 def test_inspector_with_only_logs_after(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -628,7 +642,7 @@ def test_inspector_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -636,16 +650,16 @@ def test_inspector_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[10],
+        timeout=TIMEOUTS[10],
         callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert path_exist(path=AWS_SERVICES_DB_PATH)
+    assert services_db_exists()
 
     data = get_service_db_row(table_name=table_name_map[service_type])
 
@@ -656,14 +670,13 @@ def test_inspector_with_only_logs_after(
 
 
 # ---------------------------------------------------- TEST_MULTIPLE_CALLS ---------------------------------------------
-# Configure T6 test
-configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
+t5_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_multiple_calls.yaml')
+
+_, t5_configuration_metadata, t5_case_ids = get_test_cases_data(t5_cases_path)
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', 
-                         configurator.metadata, 
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('metadata', t5_configuration_metadata, ids=t5_case_ids)
 def test_bucket_multiple_calls(
     metadata, clean_s3_cloudtrail_db, load_wazuh_basic_configuration, restart_wazuh_function, delete_file_from_s3
 ):
@@ -705,7 +718,7 @@ def test_bucket_multiple_calls(
             brief: Restart the wazuh service.
         - delete_file_from_s3:
             type: fixture
-            brief: Delete the file after the test execution.
+            brief: Delete the a file after the test execution.
     input_description:
         - The `cases_multiple_calls` file provides the test cases.
     """
@@ -726,71 +739,55 @@ def test_bucket_multiple_calls(
         base_parameters.extend(['--trail_prefix', path])
 
     # Call the module without only_logs_after and check that no logs were processed
-    last_marker_key = datetime.utcnow().strftime(PATH_DATE_FORMAT)
+    last_marker_key = datetime.utcnow().strftime(cons.PATH_DATE_FORMAT)
 
-    # Get bucket type
-    if bucket_type == VPC_FLOW_TYPE:
-        pattern = fr"{NO_LOG_PROCESSED}"
-    else:
-        pattern = fr"{NO_BUCKET_LOG_PROCESSED}"
-
-    # Check for the non 'processed' messages in the given output.
-    analyze_command_output(
+    event_monitor.check_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=1,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+        bucket_type=bucket_type
     )
 
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed
-    analyze_command_output(
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were
+    # processed
+    event_monitor.check_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
-        callback=event_monitor.callback_detect_event_processed,
-        expected_results=3,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
+        expected_results=3
     )
 
     # Call the module with the same parameters in and check there were no duplicates
     expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
-    analyze_command_output(
+    event_monitor.check_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=expected_skipped_logs_step_3,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
+        bucket_type=bucket_type,
+        expected_results=expected_skipped_logs_step_3
     )
 
-    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
+    # Call the module with only_logs_after set with an early date than setted previously and check that no logs
     # were processed, there were no duplicates
-    analyze_command_output(
+    event_monitor.check_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
+        bucket_type=bucket_type,
+        expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1
     )
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed and the last marker is specified in the DB.
     last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow())
     metadata['filename'] = upload_file(bucket_type, bucket_name)
-    pattern = fr"{MARKER}{last_marker_key}"
 
-    analyze_command_output(
+    event_monitor.check_marker_from_output(
         command_output=call_aws_module(*base_parameters),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=1,
-        error_message=ERROR_MESSAGE['incorrect_marker']
+        file_key=last_marker_key
     )
 
 
 # -------------------------------------------- TEST_INSPECTOR_MULTIPLE_CALLS -------------------------------------------
-# Configure T7 test
-configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
+t6_cases_path = os.path.join(TEST_CASES_PATH, 'cases_inspector_multiple_calls.yaml')
+
+_, t6_configuration_metadata, t6_case_ids = get_test_cases_data(t6_cases_path)
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', 
-                         configurator.metadata, 
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('metadata', t6_configuration_metadata, ids=t6_case_ids)
 @pytest.mark.xfail
 def test_inspector_multiple_calls(
     metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function
@@ -836,52 +833,43 @@ def test_inspector_multiple_calls(
         '--debug', '2'
     ]
 
-    if service_type == INSPECTOR_TYPE:
-        pattern = fr"{NO_NEW_EVENTS}"
-    else:
-        pattern = fr"{EVENT_SENT}"
-
     # Call the module without only_logs_after and check that no logs were processed
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters),
-        callback=event_monitor.make_aws_callback(pattern),
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+    event_monitor.check_service_non_processed_logs_from_output(
+        command_output=call_aws_module(*base_parameters), service_type=service_type, expected_results=1
     )
 
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
-    analyze_command_output(
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were
+    # processed
+    event_monitor.check_service_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-30'),
-        callback=event_monitor.callback_detect_service_event_processed(
-            expected_results=4,
-            service_type=service_type),
-        error_message=ERROR_MESSAGE['incorrect_event_number']
+        service_type=service_type,
+        events_sent=4
     )
 
     # Call the module with the same parameters in and check there were no duplicates
-    analyze_command_output(
+    event_monitor.check_service_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-30'),
-        callback=event_monitor.make_aws_callback(pattern),
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+        service_type=service_type,
+        expected_results=1
     )
 
-    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
+    # Call the module with only_logs_after set with an early date than setted previously and check that no logs
     # were processed, there were no duplicates
-    analyze_command_output(
+    event_monitor.check_service_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-31'),
-        callback=event_monitor.make_aws_callback(pattern),
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+        service_type=service_type,
+        expected_results=1
     )
 
 
 # ----------------------------------------- TEST_CLOUDWATCH_MULTIPLE_CALLS ---------------------------------------------
-# Configure T8 test
-configurator.configure_test(cases_file='cases_cloudwatch_multiple_calls.yaml')
+t7_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_multiple_calls.yaml')
+
+_, t7_configuration_metadata, t7_case_ids = get_test_cases_data(t7_cases_path)
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', 
-                         configurator.metadata, 
-                         ids=configurator.cases_ids)
+@pytest.mark.parametrize('metadata', t7_configuration_metadata, ids=t7_case_ids)
 def test_cloudwatch_multiple_calls(
     metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function, delete_log_stream
 ):
@@ -937,43 +925,32 @@ def test_cloudwatch_multiple_calls(
         '--debug', '2'
     ]
 
-    if service_type == INSPECTOR_TYPE:
-        pattern = fr"{NO_NEW_EVENTS}"
-    else:
-        pattern = fr"{EVENT_SENT}"
-
     # Call the module without only_logs_after and check that no logs were processed
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=0,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+    event_monitor.check_service_non_processed_logs_from_output(
+        command_output=call_aws_module(*base_parameters), service_type=service_type, expected_results=0
     )
 
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
-    analyze_command_output(
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were
+    # processed
+    event_monitor.check_service_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-12'),
-        callback=event_monitor.callback_detect_service_event_processed(
-            expected_results=3,
-            service_type=service_type),
-        error_message=ERROR_MESSAGE['incorrect_event_number']
+        service_type=service_type,
+        events_sent=3
     )
 
     # Call the module with the same parameters in and check there were no duplicates
-    analyze_command_output(
+    event_monitor.check_service_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-12'),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=0,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+        service_type=service_type,
+        expected_results=0
     )
 
-    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
+    # Call the module with only_logs_after set with an early date than setted previously and check that no logs
     # were processed, there were no duplicates
-    analyze_command_output(
+    event_monitor.check_service_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-15'),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=0,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+        service_type=service_type,
+        expected_results=0
     )
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
@@ -981,11 +958,6 @@ def test_cloudwatch_multiple_calls(
     log_stream = create_log_stream()
     metadata['log_stream'] = log_stream
     create_log_events(log_stream)
-
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters),
-        callback=event_monitor.callback_detect_service_event_processed(
-            expected_results=1,
-            service_type=service_type),
-        error_message=ERROR_MESSAGE['incorrect_event_number']
+    event_monitor.check_service_processed_logs_from_output(
+        command_output=call_aws_module(*base_parameters), service_type=service_type, events_sent=1
     )
