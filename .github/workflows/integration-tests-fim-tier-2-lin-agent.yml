@@ -1,4 +1,4 @@
-name: Fim integration tests tier 0 and 1 on Linux Agent
+name: Fim integration tests tier 2 on Linux Agent
 
 on:
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
         run: |
           cd tests/integration
           mkdir results
-          sudo python -m pytest --tier 0 --tier 1 test_fim/ --html=results/report.html
+          sudo python -m pytest --tier 2 test_fim/ --html=results/report.html
       - name: Upload Artifact results
         uses: actions/upload-artifact@v3
         with:
