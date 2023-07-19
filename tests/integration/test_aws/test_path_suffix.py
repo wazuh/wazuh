@@ -8,6 +8,9 @@ This module will contain all cases for the path suffix test suite
 
 import pytest
 
+import pydevd_pycharm
+pydevd_pycharm.settrace('192.168.56.1', port=55555, stdoutToServer=True, stderrToServer=True)
+
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH
