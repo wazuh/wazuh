@@ -159,7 +159,7 @@ def test_process_args_exit_with_invalid_hook_url(invalid_url):
     assert excinfo.value.code == 3
 
 
-def test_load_alert_returns_file_contents():
+def test_load_alert():
     """Test that the `load_alert` function returns the contents of the file as a dictionary."""
     alert_data = {"key": "value"}
     file_path = "alert.json"
