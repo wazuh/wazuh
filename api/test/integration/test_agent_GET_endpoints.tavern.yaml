@@ -2763,7 +2763,7 @@ stages:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_key: 'count'
+          select_key: 'name,count' # required_fields={'name'}
       status_code: 200
       json:
         error: 0
@@ -3651,13 +3651,13 @@ stages:
       verify: False
       <<: *groups_id_files_request
       params:
-        select: 'filename'
+        select: 'hash'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_key: 'filename'
+          select_key: 'filename,hash' # required_fields={'filename'}
       status_code: 200
       json:
         error: 0

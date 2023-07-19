@@ -11,7 +11,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
-    GROUP_FIELDS, GROUP_FILES_FIELDS
+    GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -631,7 +631,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
     data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
                          sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
                          complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
-                         select=select, distinct=distinct)
+                         select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -717,7 +717,8 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
                              sort_ascending=sort_ascending, offset=offset, limit=limit, q=q, select=select,
-                             allowed_select_fields=GROUP_FILES_FIELDS, distinct=distinct)
+                             allowed_select_fields=GROUP_FILES_FIELDS, distinct=distinct,
+                             required_fields=GROUP_FILES_REQUIRED_FIELDS)
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
     except WazuhError as e:

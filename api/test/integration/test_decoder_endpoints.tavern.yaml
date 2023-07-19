@@ -769,7 +769,7 @@ stages:
       json:
         error: 1407
 
-  - name: Show decoders using select
+  - name: Show decoders files using select
     request:
       verify: False
       <<: *get_decoders_files

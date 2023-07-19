@@ -1666,13 +1666,13 @@ stages:
       verify: False
       <<: *files_rules_request
       params:
-        select: 'file,status'
+        select: 'status'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_key: 'file,status'
+          select_key: 'filename,status' # required_fields={'filename'}
       status_code: 200
       json:
         error: 0
