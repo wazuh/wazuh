@@ -50,3 +50,4 @@ windows/cis_win2012r2.yml
 windows/cis_win2016.yml
 windows/cis_win2019.yml
 windows/cis_win2022.yml
+rocky/cis_rocky_linux_9.yml
