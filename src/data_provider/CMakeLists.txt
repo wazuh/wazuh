@@ -193,6 +193,9 @@ target_link_libraries(sysinfo wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(sysinfo urlrequest)
+  if(CMAKE_CHECK_CENTOS5)
+      set(USE_HTTP 1)
+  endif(CMAKE_CHECK_CENTOS5)
   add_subdirectory(${SRC_FOLDER}/shared_modules/http-request ${SRC_FOLDER}/shared_modules/http-request/build)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
