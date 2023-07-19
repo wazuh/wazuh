@@ -702,15 +702,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Logger to use.
         """
         date_end_master = utils.get_utc_now()
-        if self.integrity_sync_status['tmp_date_start_master'] == DEFAULT_DATE:
-            # This should only be a case in tests where the value has not been set beforehand
-            tmp_date_start_master = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
-        else:
-            tmp_date_start_master = datetime.strptime(self.integrity_sync_status['tmp_date_start_master'],
-                                                      DECIMALS_DATE_FORMAT)
+        tmp_date_start_master = self.integrity_sync_status['tmp_date_start_master']
 
         logger.info("Finished in {:.3f}s.".format((date_end_master - tmp_date_start_master).total_seconds()))
-        self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
+        self.integrity_sync_status['date_start_master'] = \
+            self.integrity_sync_status['tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
         self.integrity_sync_status['date_end_master'] = date_end_master.strftime(DECIMALS_DATE_FORMAT)
 
     async def integrity_check(self, task_id: str, received_file: asyncio.Event):
