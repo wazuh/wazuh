@@ -237,7 +237,7 @@ void start_daemon()
         syscheck.time = 604800;
     }else if(syscheck.scan_time){
         syscheck.time=86400;
-    }
+    } 
 
     // Deleting content of FIM diff directory
     char diff_file_dir[PATH_MAX];
