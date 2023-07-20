@@ -3347,6 +3347,28 @@ end:
     return buffer;
 }
 
+/* Return the pointer to a file from a given path */
+FILE * w_get_file_pointer(const char * path) {
+    FILE * fp = NULL;
+
+    // Check if path is NULL
+    if (path == NULL) {
+        mdebug1("Cannot open NULL path");
+        if (fp) {
+            fclose(fp);
+        }
+        return NULL;
+    }
+
+    // Load file
+    if (fp = fopen(path, "r"), !fp) {
+        mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+        return NULL;
+    }
+
+    return fp;
+}
+
 /* Check if a file is gzip compressed. */
 int w_is_compressed_gz_file(const char * path) {
     unsigned char buf[2];
