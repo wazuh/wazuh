@@ -1,6 +1,6 @@
 name: decoder/suricata-alert/0
 
-sources:
+parents:
   - decoder/suricata/0
 
 metadata:

@@ -14,7 +14,7 @@ metadata:
   references:
     - https://wazuh.com/blog/how-to-configure-rsyslog-client-to-send-events-to-wazuh/
 
-sources:
+parents:
   - decoder/core-wazuh-message/0
 
 check:

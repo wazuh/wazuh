@@ -4,7 +4,7 @@ name: decoder/integrations/0
 metadata:
   title: Base decoder.
 
-sources:
+parents:
   - decoder/core-localfile/0
   - decoder/core-rsyslog/0
   - decoder/core-windows/0

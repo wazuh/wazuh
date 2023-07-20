@@ -21,7 +21,7 @@ metadata:
   versions:
     - ""
 
-sources:
+parents:
   - decoder/core-syscheck/0
 
 check:

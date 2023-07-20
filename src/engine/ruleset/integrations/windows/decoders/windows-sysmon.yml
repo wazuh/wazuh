@@ -1,6 +1,6 @@
 name: decoder/windows-sysmon/0
 
-sources:
+parents:
   - decoder/windows-event-decoder/0
 
 metadata:
@@ -159,7 +159,7 @@ normalize:
     - ~temp.registry.array.0: +delete
     - registry.key: +join/$~temp.registry.array/\\
     - registry.value: +regex_extract/$registry.path/^.*\\\\(.*)$
-    
+
  - check: (event.code=="12" OR event.code=="13"  OR event.code=="14") AND +starts_with/~windows.Event.EventData.Details/QWORD
    map:
     - registry.data.type: SZ_QWORD

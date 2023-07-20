@@ -1,6 +1,6 @@
 name: decoder/windows-event-decoder/0
 
-sources:
+parents:
   - decoder/windows-json/0
 
 metadata:

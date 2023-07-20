@@ -15,7 +15,7 @@ metadata:
     - https://datatracker.ietf.org/doc/html/rfc3164
     - https://datatracker.ietf.org/doc/html/rfc5424
 
-sources:
+parents:
   - decoder/integrations/0
 
 parse:

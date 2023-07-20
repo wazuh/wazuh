@@ -16,7 +16,7 @@ metadata:
     name: Wazuh Inc. info@wazuh.com
     date: 2023-01-05
 
-sources:
+parents:
   - decoder/postgresql-csv/0
 
 check:

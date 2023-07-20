@@ -1,6 +1,6 @@
 name: decoder/windows-security/0
 
-sources:
+parents:
   - decoder/windows-event-decoder/0
 
 metadata:
@@ -103,7 +103,7 @@ normalize:
 
  - check: +string_not_equal/~windows.Event.EventData.TargetUserName/- AND +array_contains/~temp.id_target_user_array/$event.code
    map:
-        - related.user: +array_append/$~windows.Event.EventData.TargetUserName 
+        - related.user: +array_append/$~windows.Event.EventData.TargetUserName
 
     # TargetUserDomain to user.domain or user.target.domain
  - check: +not_exists/user.domain AND +array_contains/~temp.id_target_user_array/$event.code
@@ -187,7 +187,7 @@ normalize:
      - process.name: $~temp.file_data.name
 
  - check: +array_contains/~temp.id_rename_common_auth_fields/$event.code AND +string_not_equal/~windows.Event.EventData.IpAddress/-
-   map:  
+   map:
      - source.ip: $~windows.Event.EventData.IpAddress
      - source.port: $~windows.Event.EventData.IpPort
      - source.domain: $~windows.Event.EventData.WorkstationName

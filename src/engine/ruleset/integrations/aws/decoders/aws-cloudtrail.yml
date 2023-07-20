@@ -18,7 +18,7 @@ metadata:
       url: https://wazuh.com
       date: 2023/06/20
 
-sources:
+parents:
   - decoder/aws-json/0
 
 check:

@@ -17,7 +17,7 @@ metadata:
     - https://dev.mysql.com/doc/refman/5.7/en/error-log.html
     - https://dev.mysql.com/doc/refman/8.0/en/error-log.html
 
-sources:
+parents:
   - decoder/integrations/0
 
 #TODO: Once the events arrive tagged, uncomment following lines
@@ -54,5 +54,3 @@ normalize:
       - log.level: ERROR
     map:
       - event.type: +array_append/error
-
-
