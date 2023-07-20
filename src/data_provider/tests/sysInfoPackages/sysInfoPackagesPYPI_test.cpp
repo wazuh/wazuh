@@ -36,7 +36,7 @@ TEST_F(PYPITest, getPackagesTest)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -59,7 +59,7 @@ TEST_F(PYPITest, getPackages_NoFilesInDirectoryTest)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -73,7 +73,7 @@ TEST_F(PYPITest, getPackages_NonDirectoryPathTest)
     EXPECT_CALL(*pypi, is_directory(_))
     .WillRepeatedly(Return(false));
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
     nlohmann::json capturedJson;
     auto callback = [&](nlohmann::json & j)
     {
@@ -107,7 +107,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestEggInfo)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -139,7 +139,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -171,7 +171,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -203,7 +203,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -256,7 +256,7 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
         }
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -289,7 +289,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_NoLines)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -321,7 +321,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_InvalidLines)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -353,7 +353,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingName)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 
@@ -385,7 +385,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingVersion)
         capturedJson = j;
     };
 
-    std::vector<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
 
     pypi->getPackages(folders, callback);
 

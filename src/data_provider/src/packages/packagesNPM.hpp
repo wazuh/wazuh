@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <set>
 
 template<typename TFileSystem = RealFileSystem, typename TJsonReader = JsonIO<nlohmann::json>>
 class NPM final
@@ -84,12 +85,10 @@ class NPM final
         {
             for (const auto& expandedPath : expandedPaths)
             {
-                std::cout << "Exploring path: " << expandedPath << std::endl;
-
                 try
                 {
                     // Exist and is a directory
-                    const auto nodeModulesFolder {expandedPath + "/node_modules"};
+                    const auto nodeModulesFolder {std::filesystem::path(expandedPath) / "node_modules"};
 
                     if (TFileSystem::exists(nodeModulesFolder))
                     {
@@ -114,7 +113,7 @@ class NPM final
         NPM() = default;
         ~NPM() = default;
 
-        void getPackages(const std::vector<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
+        void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
         {
 
             // Iterate over node_modules folders

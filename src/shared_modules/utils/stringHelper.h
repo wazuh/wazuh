@@ -30,6 +30,7 @@ namespace Utils
         auto match { true };
         // Match the glob pattern without regex
         auto patternPos { 0u };
+
         for (auto i { 0u }; i < entryName.size(); ++i)
         {
             if (patternPos < pattern.size())
@@ -72,6 +73,7 @@ namespace Utils
                 break;
             }
         }
+
         // if the pattern is not fully matched, check if the remaining characters are '*'
         // and if so, the match is successful.
         while (match && patternPos < pattern.size())
@@ -87,6 +89,7 @@ namespace Utils
                 match = false;
             }
         }
+
         return match;
     }
 
