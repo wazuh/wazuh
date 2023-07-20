@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
-check: ~windows.Event.System.Channel.#text==Microsoft-Windows-PowerShell/Operational
+check: $~windows.Event.System.Channel.#text==Microsoft-Windows-PowerShell/Operational
 
 normalize:
  - map:
@@ -53,11 +53,11 @@ normalize:
    - process.title: $~windows.Event.EventData.HostName
    - process.executable: $file.path
 
- - check: event.code=="4105"
+ - check: $event.code=="4105"
    map:
     - event.type: +array_append/start
 
- - check: event.code=="4106"
+ - check: $event.code=="4106"
    map:
     - event.type: +array_append/end
 
