@@ -513,24 +513,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
             rem_inc_recv_unknown();
             return;
-        } else {
-            w_mutex_lock(&keys.keyentries[agentid]->mutex);
-
-            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
-
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-                key_unlock();
-
-                if (message->sock >= 0) {
-                    _close_sock(&keys, message->sock);
-                }
-
-                rem_inc_recv_unknown();
-                return;
-            }
-
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
@@ -568,26 +550,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
             rem_inc_recv_unknown();
             return;
-        } else {
-            w_mutex_lock(&keys.keyentries[agentid]->mutex);
-
-            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
-
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-                key_unlock();
-
-                if (message->sock >= 0) {
-                    _close_sock(&keys, message->sock);
-                }
-
-                rem_inc_recv_unknown();
-                return;
-            } else {
-                ip_found = 1;
-            }
-
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         tmp_msg = buffer;
