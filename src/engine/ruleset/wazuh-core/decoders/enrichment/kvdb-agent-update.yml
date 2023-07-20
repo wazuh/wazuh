@@ -15,7 +15,7 @@ metadata:
   versions:
     - ""
 
-sources:
+parents:
   - decoder/dbsync-host-data/0
   - decoder/syscollector-dbsync-host-data/0
 

@@ -13,7 +13,7 @@ metadata:
       url: https://wazuh.com
       date: 2023/01/30
 
-sources:
+parents:
   - decoder/auditd/0
 
 check:

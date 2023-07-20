@@ -1,6 +1,6 @@
 name: decoder/system-auth/0
 
-sources:
+parents:
   - decoder/syslog/0
 
 metadata:

@@ -1,7 +1,7 @@
 ---
 name: decoder/fim-scan/0
 
-sources:
+parents:
   - decoder/fim/0
 
 metadata:

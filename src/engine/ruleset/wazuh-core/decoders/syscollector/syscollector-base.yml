@@ -19,7 +19,7 @@ metadata:
   versions:
     - ""
 
-sources:
+parents:
   - decoder/core-syscollector/0
 
 check:

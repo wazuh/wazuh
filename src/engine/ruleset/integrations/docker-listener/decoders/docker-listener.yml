@@ -17,7 +17,7 @@ metadata:
     - https://documentation.wazuh.com/current/container-security/docker-monitor/index.html
     - https://docs.docker.com/engine/reference/commandline/events/
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:
@@ -220,4 +220,3 @@ normalize:
     #cleanup
     - ~json: +delete
     - ~tmp: +delete
-

@@ -15,7 +15,7 @@ metadata:
   versions:
     - ""
 
-sources:
+parents:
   - decoder/syscollector-dbsync/0
 
 check:

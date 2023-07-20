@@ -12,7 +12,7 @@ metadata:
   references:
     - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:
@@ -107,4 +107,3 @@ normalize:
       - related.ip: [$~tmp.destination.ip, $source.ip]
       - wazuh.decoders: +array_append/sophos-event
       - ~tmp: +delete
-

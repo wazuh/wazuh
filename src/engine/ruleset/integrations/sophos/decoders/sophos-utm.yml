@@ -12,7 +12,7 @@ metadata:
   references:
     - https://www.sophos.com/en-us/support/documentation/sophos-utm
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:

@@ -12,7 +12,7 @@ metadata:
   references:
     - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:
@@ -104,4 +104,3 @@ normalize:
       - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - wazuh.decoders: +array_append/sophos-sandstorn
       - ~tmp: +delete
-

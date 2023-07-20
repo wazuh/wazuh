@@ -14,7 +14,7 @@ metadata:
     name: Wazuh, Inc.
     date: 2023/05/04
 
-sources:
+parents:
   - decoder/integrations/0
 
 # TODO: wodle output should be fixed

@@ -12,7 +12,7 @@ metadata:
   references:
     - https://docs.fortinet.com
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:

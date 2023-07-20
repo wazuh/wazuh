@@ -13,7 +13,7 @@ metadata:
       url: https://wazuh.com
       date: 2023/01/23
 
-sources:
+parents:
   - decoder/nginx-access-base/0
 
 check:

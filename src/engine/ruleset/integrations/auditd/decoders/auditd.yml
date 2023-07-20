@@ -19,7 +19,7 @@ definitions:
   LOG_SEQUENCE: <auditd.log.sequence>
   MSG_FIELD: '<~/literal/msg=audit(>$LOG_EPOCH:$LOG_SEQUENCE<~/literal/):>'
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:
