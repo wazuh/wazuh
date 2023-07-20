@@ -26,6 +26,8 @@ namespace rxbk
 
 using RxEvent = std::shared_ptr<base::result::Result<base::Event>>;
 using Observable = rx::observable<RxEvent>;
+using SubscribeToOutputCallback = std::function<void(const RxEvent&)>;
+using SubscribeToTraceCallback = std::function<void(const std::string&)>;
 
 /**
  * @brief Handles subscriptions to trace messages for a given entity.
@@ -143,8 +145,7 @@ public:
      * @return std::function<void(const std::string&)> Tracer function of the newly added
      * tracer.
      */
-    std::function<void(const std::string&)> addTracer(const std::string& name,
-                                                      Tracer&& tracer);
+    std::function<void(const std::string&)> addTracer(const std::string& name, Tracer&& tracer);
 
     /**
      * @brief Subscribe to the output of the specified Tracer.
@@ -153,8 +154,7 @@ public:
      * @param s Subscriber to subscribe to the output.
      * @return rx::composite_subscription The subscription to the output.
      */
-    rx::composite_subscription listenOnTrace(const std::string& name,
-                                             rxcpp::subscriber<std::string> s);
+    rx::composite_subscription listenOnTrace(const std::string& name, rxcpp::subscriber<std::string> s);
 
     /**
      * @brief Subscribe to the output of all Tracers.
@@ -181,6 +181,29 @@ public:
      * @throw std::out_of_range If the tracer does not exist.
      */
     const Tracer& getTracer(const std::string& name) const;
+
+    /**
+     * @brief Configures the subscription to the output of events.
+     *
+     * @param callback The callback function to be called when an event is received.
+     * @return rxcpp::subscriber<rxbk::RxEvent> A `subscriber` object that allows managing the event subscription.
+     *
+     * This method configures the subscription to the output of events and returns a `subscriber` object that allows
+     * managing the subscription. The provided callback function will be called whenever an event is received.
+     */
+    rxcpp::subscriber<rxbk::RxEvent> configureSuscribeToOutput(SubscribeToOutputCallback callback);
+
+    /**
+     * @brief Configures the subscription to traces.
+     *
+     * @param callback The callback function to be called when a trace is received.
+     * @return rxcpp::subscriber<std::string> A `subscriber` object that allows managing the trace subscription.
+     *
+     * This method configures the subscription to traces and returns a `subscriber` object that allows managing the
+     * subscription. The provided callback function will be called whenever a trace is received, passing the trace as a
+     * `std::string` parameter.
+     */
+    rxcpp::subscriber<std::string> configureSuscribeToTrace(SubscribeToTraceCallback callback);
 };
 
 /**
