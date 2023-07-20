@@ -244,11 +244,13 @@ FIMDBErrorCode fim_db_init(int storage,
             }
         };
 
-        if (dbsync_log_function) {
+        if (dbsync_log_function)
+        {
             dbsync_initialize(dbsync_log_function);
         }
 
-        if (rsync_log_function) {
+        if (rsync_log_function)
+        {
             rsync_initialize(rsync_log_function);
         }
 

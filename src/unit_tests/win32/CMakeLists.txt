@@ -22,6 +22,7 @@ set_target_properties(
 )
 
 target_link_libraries(WIN32 ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+link_directories(${SRC_FOLDER}/syscheckd/build/bin)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -51,6 +52,7 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         WIN32
         ${TEST_DEPS}
+        fimdb
     )
 
     if(NOT win32_test_flags STREQUAL " ")

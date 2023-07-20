@@ -19,6 +19,10 @@ set_target_properties(
 
 target_link_libraries(CONFIG_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
+
 # Include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
@@ -44,6 +48,9 @@ foreach(counter RANGE ${count})
         CONFIG_O
         ${TEST_DEPS}
     )
+    if(${TARGET} STREQUAL "winagent")
+        target_link_libraries(${test_name} fimdb)
+    endif(${TARGET} STREQUAL "winagent")
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(

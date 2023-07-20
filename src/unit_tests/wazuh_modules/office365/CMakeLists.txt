@@ -46,6 +46,9 @@ set_target_properties(
 
 target_link_libraries(OFFICE365_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
 
 # Compiling tests
 list(LENGTH tests_names count)
@@ -77,6 +80,9 @@ foreach(counter RANGE ${count})
             ${test_name}
             ${TEST_DEPS}
         )
+        if(${TARGET} STREQUAL "winagent")
+          target_link_libraries(${test_name} fimdb)
+        endif(${TARGET} STREQUAL "winagent")
     endif()
 
     if(NOT test_flags STREQUAL " ")

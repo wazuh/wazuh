@@ -17,7 +17,9 @@
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
 #else
-#define EXPORTED __declspec(dllimport)
+// We avoid the definition __declspec(dllimport) as a workaround for the MinGW bug
+// for delayed loaded DLLs in 32bits (https://www.sourceware.org/bugzilla/show_bug.cgi?id=14339)
+#define EXPORTED
 #endif
 #elif __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
