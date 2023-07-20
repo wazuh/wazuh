@@ -1453,10 +1453,6 @@ components:
 
     AgentGroup:
       type: object
-      required:
-      - count
-      - name
-      - configSum
       properties:
         count:
           type: integer
