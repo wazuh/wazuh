@@ -13,7 +13,7 @@ metadata:
       url: https://wazuh.com
       date: 2023/01/23
 
-sources:
+parents:
   - decoder/integrations/0
 
 #TODO: Once the events arrive tagged, uncomment these lines below

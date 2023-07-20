@@ -19,7 +19,7 @@ metadata:
   versions:
     - ""
 
-sources:
+parents:
   - decoder/core-sca/0
 
 check:

@@ -1,6 +1,6 @@
 name: decoder/apache-access/0
 
-sources:
+parents:
   - decoder/integrations/0
 
 metadata:

@@ -66,7 +66,7 @@
         {
             "required": [
                 "allow",
-                "sources"
+                "parents"
             ],
             "not": {
                 "anyOf": [
@@ -160,9 +160,9 @@
                 }
             }
         },
-        "sources": {
+        "parents": {
             "type": "array",
-            "description": "This asset will process events coming only from the specified sources",
+            "description": "This asset will process events coming only from the specified parents",
             "items": {
                 "type": "string"
             }

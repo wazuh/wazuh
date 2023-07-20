@@ -20,7 +20,7 @@ metadata:
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
     - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
 
-sources:
+parents:
   - decoder/syscollector-base/0
 
 check:
