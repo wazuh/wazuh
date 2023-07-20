@@ -24,7 +24,7 @@ metadata:
 parents:
   - decoder/aws-json/0
 
-check: +string_equal/~json.aws.source/alb OR +string_equal/~json.aws.source/elb OR +string_equal/~json.aws.source/nlb
+check: +string_equal/$~json.aws.source/alb OR +string_equal/$~json.aws.source/elb OR +string_equal/$~json.aws.source/nlb
   #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
   # - event.module: aws
   # - event.dataset: aws-elb
@@ -84,11 +84,11 @@ normalize:
       - ~aws_elb.redirect_url: $~json.aws.redirect_url
       - ~aws_elb.bucket: $~json.aws.log_info.s3bucket
 
-  - check: +string_equal/~json.aws.type/http
+  - check: +string_equal/$~json.aws.type/http
     map:
       - event.category: +array_append/web
 
-  - check: +string_not_equal/~json.aws.type/http
+  - check: +string_not_equal/$~json.aws.type/http
     map:
       - event.category: +array_append/network
 

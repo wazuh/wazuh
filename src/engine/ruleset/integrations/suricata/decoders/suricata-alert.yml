@@ -40,12 +40,12 @@ normalize:
       - threat.technique.id: $~suricata.eve.alert.metadata.mitre_technique_id
       - threat.technique.name: $~suricata.eve.alert.metadata.mitre_technique_name
 
-  - check: source.bytes>=0 OR destination.bytes>=0
+  - check: $source.bytes>=0 OR $destination.bytes>=0
     map:
       - network.bytes: 0
       - network.bytes: +int_calculate/sum/$source.bytes/$destination.bytes
 
-  - check: source.packets>=0 OR destination.packets>=0
+  - check: $source.packets>=0 OR $destination.packets>=0
     map:
       - network.packets: 0
       - network.packets: +int_calculate/sum/$source.packets/$destination.packets

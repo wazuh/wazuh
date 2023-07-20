@@ -40,7 +40,7 @@ parse:
 # TODO: All sophos named fields are not currently in the schema.
 normalize:
 
-  - check: event.code==confd OR event.code==aua
+  - check: $event.code==confd OR $event.code==aua
     logpar:
       - ~tmp.message: <~tmp/kv/=/ /'/'>
     map:
@@ -62,7 +62,7 @@ normalize:
       - source.ip: $~tmp.srcip
       - user.name: $~tmp.user
 
-  - check: event.code==astarosg_TVM OR event.code==httpd OR event.code==ulogd
+  - check: $event.code==astarosg_TVM OR $event.code==httpd OR $event.code==ulogd
     logpar:
       - ~tmp.message: <~tmp/kv/=/ /'/'>
     map:

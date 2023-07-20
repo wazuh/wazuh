@@ -129,58 +129,58 @@ normalize:
   #########################################################
   #                   Delete invalid fields
   #########################################################
-  - check: +string_equal/~sysmonEvent.Event.EventData.ConfigurationFileHash/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.ConfigurationFileHash/-
     map:
       - ~sysmonEvent.Event.EventData.ConfigurationFileHash: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.FileVersion/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.FileVersion/-
     map:
       - ~sysmonEvent.Event.EventData.FileVersion: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.Description/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.Description/-
     map:
       - ~sysmonEvent.Event.EventData.Description: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.Product/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.Product/-
     map:
       - ~sysmonEvent.Event.EventData.Product: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.Company/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.Company/-
     map:
       - ~sysmonEvent.Event.EventData.Company: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.OriginalFileName/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.OriginalFileName/-
     map:
       - ~sysmonEvent.Event.EventData.OriginalFileName: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.Hashes/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.Hashes/-
     map:
       - ~sysmonEvent.Event.EventData.Hashes: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.User/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.User/-
     map:
       - ~sysmonEvent.Event.EventData.User: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.IsExecutable/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.IsExecutable/-
     map:
       - ~sysmonEvent.Event.EventData.IsExecutable: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.Archived/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.Archived/-
     map:
       - ~sysmonEvent.Event.EventData.Archived: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.RuleName/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.RuleName/-
     map:
       - ~sysmonEvent.Event.EventData.RuleName: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.SourceHostname/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.SourceHostname/-
     map:
       - ~sysmonEvent.Event.EventData.SourceHostname: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.SourcePortName/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.SourcePortName/-
     map:
       - ~sysmonEvent.Event.EventData.SourcePortName: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.DestinationHostname/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.DestinationHostname/-
     map:
       - ~sysmonEvent.Event.EventData.DestinationHostname: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.DestinationPortName/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.DestinationPortName/-
     map:
       - ~sysmonEvent.Event.EventData.DestinationPortName: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.ParentImage/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.ParentImage/-
     map:
       - ~sysmonEvent.Event.EventData.ParentImage: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.ParentCommandLine/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.ParentCommandLine/-
     map:
       - ~sysmonEvent.Event.EventData.ParentCommandLine: +delete
-  - check: +string_equal/~sysmonEvent.Event.EventData.ParentUser/-
+  - check: +string_equal/$~sysmonEvent.Event.EventData.ParentUser/-
     map:
       - ~sysmonEvent.Event.EventData.ParentUser: +delete
 
@@ -336,17 +336,17 @@ normalize:
 
       - dns.question.name: $~sysmonEvent.Event.EventData.QueryName
 
-  - check: ~sysmonEvent.Event.EventData.Initiated=="true" # check true, True, "true", "True"
+  - check: $~sysmonEvent.Event.EventData.Initiated=="true" # check true, True, "true", "True"
     map:
       - network.direction: egress
-  - check: ~sysmonEvent.Event.EventData.Initiated=="false"
+  - check: $~sysmonEvent.Event.EventData.Initiated=="false"
     map:
       - network.direction: ingress
 
-  - check: ~sysmonEvent.Event.EventData.SourceIsIpv6=="true" # check true, True, "true", "True"
+  - check: $~sysmonEvent.Event.EventData.SourceIsIpv6=="true" # check true, True, "true", "True"
     map:
       - network.type: ipv6
-  - check: ~sysmonEvent.Event.EventData.SourceIsIpv6=="false"
+  - check: $~sysmonEvent.Event.EventData.SourceIsIpv6=="false"
     map:
       - network.type: ipv4
 
