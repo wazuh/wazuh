@@ -21,6 +21,18 @@ constexpr auto TEST_POST_SESSION_API_CMD = "test.session/post";       ///< API c
 constexpr auto TEST_RUN_API_CMD = "test.run/post";                    ///< API command to test an event in a session
 
 /**
+ * @brief Enumeration representing debugging modes.
+ *
+ * Debugging modes control the amount and type of debugging information that will be displayed during program execution.
+ */
+enum class DebugMode
+{
+    OUTPUT_ONLY,
+    OUTPUT_AND_TRACES,
+    OUTPUT_AND_TRACES_WITH_DETAILS
+};
+
+/**
  * @brief Test configuration parameters.
  *
  */

@@ -107,12 +107,13 @@ message SessionsDelete_Response
  **************************************************/
 message RunPost_Request
 {
-    optional string name = 1;                 // Name of session
-    optional google.protobuf.Value event = 2; // Event to be process
-    optional string protocol_queue = 3;       // Protocol queue
-    optional DebugMode debug_mode = 4;        // Debug mode
-    optional string asset_trace = 5;
-    optional string protocol_location = 6; // Protocol location
+    optional string name = 1;                 // Name of the session.
+    optional google.protobuf.Value event = 2; // Event to be processed.
+    optional string protocol_queue = 3;       // The protocol queue for the event.
+    optional DebugMode debug_mode = 4; // Allows you to choose between obtaining only the output or the output plus the
+                                       // traces with or without verbosity.
+    optional string asset_trace = 5;   // Asset of which you only want to have details
+    optional string protocol_location = 6; // The protocol location for the event.
 }
 
 message RunPost_Response
