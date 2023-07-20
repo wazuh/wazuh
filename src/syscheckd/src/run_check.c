@@ -232,9 +232,11 @@ void start_daemon()
 #endif
 
     // If the scan time/day is set, reset the syscheck.time/rootcheck.time
-    if (syscheck.scan_time || syscheck.scan_day) {
+    if ((syscheck.scan_time && syscheck.scan_day) || (!syscheck.scan_time && syscheck.scan_day)) {
         // At least once a week
         syscheck.time = 604800;
+    }else if(syscheck.scan_time){
+        syscheck.time=86400;
     }
 
     // Deleting content of FIM diff directory
