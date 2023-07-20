@@ -70,7 +70,8 @@ jobs:
         run: |
           cd tests/integration
           mkdir results
-          sudo python -m pytest --tier 0 --tier 1 test_fim/ --html=results/report.html
+          sudo python -m pytest --tier 0 --tier 1 test_fim/ --html=results/report.html > results/report.log
+      # Save the results.
       - name: Upload Artifact results
         uses: actions/upload-artifact@v3
         with:
