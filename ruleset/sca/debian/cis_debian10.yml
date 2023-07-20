@@ -2085,9 +2085,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(incoming)|reject\W+(incoming)'
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(outgoing)|reject\W+(outgoing)'
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)'
+      - 'c:ufw status verbose -> r:^Default && r:deny\W+(incoming)|reject\W+(incoming)disabled\W+(incoming)'
+      - 'c:ufw status verbose -> r:^Default && r:deny\W+(outgoing)|reject\W+(outgoing)|disabled\W+(outgoing)'
+      - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)|disabled\W+(routed)'
 
   # 3.4.2.1 Ensure nftables is installed. (Automated)
   - id: 31126
