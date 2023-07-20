@@ -70,7 +70,7 @@ TEST_F(RuntimePolicyTest, build_2_times)
 TEST_F(RuntimePolicyTest, processEvent_not_built)
 {
     auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
-    auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
+    auto e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[0]);
     auto error = policy->processEvent(e);
     ASSERT_TRUE(error.has_value());
     ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/pol_1/0' is not built");
