@@ -33,18 +33,17 @@ std::optional<base::Error> PolicyManager::addPolicy(const std::string& name)
     }
 
     // Create the policy
-    std::vector<std::unique_ptr<RuntimePolicy>> envs;
+    std::vector<RuntimePolicy> envs = {};
     envs.reserve(m_numInstances);
-
     for (std::size_t i = 0; i < m_numInstances; ++i)
     {
-        auto env = std::make_unique<RuntimePolicy>(name);
-        const auto err = env->build(m_builder);
+        auto env = RuntimePolicy {name};
+        const auto err = env.build(m_builder);
         if (err)
         {
             return base::Error {err.value()};
         }
-        envs.push_back(std::move(env));
+        envs.push_back(env);
     }
     // Add the policy to the runtime list
     {
@@ -71,7 +70,7 @@ std::optional<base::Error> PolicyManager::deletePolicy(const std::string& name)
     // Complete the policies before deleting them
     for (auto& policy : it->second)
     {
-        policy->complete();
+        policy.complete();
     }
 
     if (m_policies.erase(name) != 1)
@@ -91,7 +90,7 @@ void PolicyManager::delAllPolicies()
     {
         for (auto& policy : runPolicy)
         {
-            policy->complete();
+            policy.complete();
         }
     }
 
@@ -126,12 +125,15 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
     }
 
     auto& env = it->second[instance];
-    env->processEvent(std::move(event));
+    env.processEvent(std::move(event));
 
     return std::nullopt;
 }
 
-std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::string& name, std::size_t instance)
+std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
+                                                                   rxbk::SubscribeToTraceCallback traceCallback,
+                                                                   const std::string& name,
+                                                                   std::size_t instance)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
@@ -147,36 +149,10 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::st
     }
     auto& env = it->second[instance];
 
-    env->subscribeToOutput();
-    env->listenAllTrace();
+    env.subscribeToOutput(outputCallback);
+    env.listenAllTrace(traceCallback);
 
     return std::nullopt;
 }
 
-std::variant<std::tuple<std::string, std::string>, base::Error>
-PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode, const std::string& assetTrace)
-{
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
-    auto it = m_policies.find(name);
-    if (m_policies.end() == it)
-    {
-        return base::Error {fmt::format("Policy '{}' does not exist", name)};
-    }
-
-    if (m_numInstances <= instance)
-    {
-        return base::Error {
-            fmt::format("Invalid instance number '{}', the maximum is '{}'", instance, m_numInstances - 1)};
-    }
-    auto& env = it->second[instance];
-
-    // Output and Traces
-    const auto& data = env->getData(name, debugMode, assetTrace);
-    if (std::holds_alternative<base::Error>(data))
-    {
-        return std::get<base::Error>(data);
-    }
-    return std::get<std::tuple<std::string, std::string>>(data);
-}
 } // namespace router

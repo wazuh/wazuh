@@ -17,7 +17,6 @@ namespace
 {
 
 bool gs_doRun {true};
-cmd::details::StackExecutor g_exitHandler {};
 
 /**
  * @brief Signal handler for SIGINT
@@ -296,8 +295,6 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         {
             clearIcanon(false);
         }
-
-        g_exitHandler.execute(); // TODO: what does this do?
     }
 }
 

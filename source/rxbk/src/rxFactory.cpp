@@ -112,6 +112,16 @@ const Tracer& Controller::getTracer(const std::string& name) const
     return m_tracers.at(name);
 }
 
+rxcpp::subscriber<rxbk::RxEvent> Controller::configureSuscribeToOutput(SubscribeToOutputCallback callback)
+{
+    return rxcpp::make_subscriber<rxbk::RxEvent>(callback);
+}
+
+rxcpp::subscriber<std::string> Controller::configureSuscribeToTrace(SubscribeToTraceCallback callback)
+{
+    return rxcpp::make_subscriber<std::string>(callback);
+}
+
 Observable rxFactory(const Observable& input,
                      const std::unordered_set<std::string>& assetNames,
                      base::Expression expression,
