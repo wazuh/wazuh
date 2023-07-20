@@ -22,8 +22,6 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     , m_builder {builder}
 {
 
-    m_dataState.isDataReady = false;
-
     if (0 == threads || 128 < threads)
     {
         throw std::runtime_error("Router: The number of threads must be between 1 and 128");
@@ -54,7 +52,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
         const auto table = std::get<json::Json>(result).getArray();
         if (!table.has_value())
         {
-            throw std::runtime_error("Cannot get routes table from store. Invalid table format");
+            throw std::runtime_error("Can not get routes table from store. Invalid table format");
         }
 
         for (const auto& jRoute : *table)
@@ -71,7 +69,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
             const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
             if (err.has_value())
             {
-                LOG_WARNING("Router: could not add route '{}' to the router: {}.", name.value(), err.value().message);
+                LOG_WARNING("Router: couldn't add route '{}' to the router: {}.", name.value(), err.value().message);
             }
         }
     }
@@ -292,6 +290,7 @@ std::optional<base::Error> Router::enqueueEvent(base::Event&& event)
 
 std::optional<base::Error> Router::enqueueWazuhEvent(std::string_view event)
 {
+
     std::optional<base::Error> err = std::nullopt;
     try
     {
@@ -331,22 +330,17 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     base::Event event {};
                     if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
+                        std::shared_lock lock {m_mutexRoutes};
+                        for (auto& route : m_priorityRoute)
                         {
-                            std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
-                            for (auto& route : m_priorityRoute)
+                            if (route.second[i].accept(event))
                             {
-                                if (route.second[i].accept(event))
-                                {
-                                    const auto& target = route.second[i].getTarget();
-                                    m_policyManager->forwardEvent(target, i, std::move(event));
-
-                                    // Condition variable that notifies that the outputs and traces were generated
-                                    m_dataState.isDataReady = true;
-                                    break;
-                                }
+                                const auto& target = route.second[i].getTarget();
+                                lock.unlock();
+                                m_policyManager->forwardEvent(target, i, std::move(event));
+                                break;
                             }
                         }
-                        m_dataState.dataReady.notify_all();
                     }
                 }
                 LOG_DEBUG("Thread '{}' router finished.", i);
@@ -413,13 +407,13 @@ void Router::clear()
     m_policyManager->delAllPolicies();
 }
 
-std::optional<base::Error> Router::subscribeOutputAndTraces(const std::string& policyName)
+std::optional<base::Error> Router::subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
+                                                            rxbk::SubscribeToTraceCallback traceCallback,
+                                                            const std::string& policyName)
 {
-    std::unique_lock lock {m_mutexRoutes};
-
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
-        auto data = m_policyManager->subscribeOutputAndTraces(policyName, i);
+        auto data = m_policyManager->subscribeOutputAndTraces(outputCallback, traceCallback, policyName, i);
         if (data.has_value())
         {
             return data.value();
@@ -427,37 +421,6 @@ std::optional<base::Error> Router::subscribeOutputAndTraces(const std::string& p
     }
 
     return std::nullopt;
-}
-
-std::variant<std::tuple<std::string, std::string>, base::Error> Router::getData(const std::string& policyName,
-                                                                                      router::DebugMode debugMode,
-                                                                                      const std::string& assetTrace)
-{
-    std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
-
-    m_dataState.dataReady.wait(lock, [this]() { return m_dataState.isDataReady; });
-
-    std::variant<std::tuple<std::string, std::string>, base::Error> data;
-    auto anyError {false};
-    for (std::size_t i = 0; i < m_numThreads; ++i)
-    {
-        data = m_policyManager->getData(policyName, i, debugMode, assetTrace);
-        if (!std::holds_alternative<base::Error>(data))
-        {
-            anyError = false;
-            break;
-        }
-        anyError = true;
-    }
-
-    if (anyError)
-    {
-        return std::get<base::Error>(data);
-    }
-
-    auto payload = std::get<std::tuple<std::string, std::string>>(data);
-    m_dataState.isDataReady = false;
-    return payload;
 }
 
 } // namespace router

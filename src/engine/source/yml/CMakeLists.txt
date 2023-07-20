@@ -20,7 +20,7 @@ add_library(yml STATIC
     ${CMAKE_CURRENT_LIST_DIR}/src/yml.cpp
 )
 
-target_link_libraries(yml fmt yaml-cpp json base)
+target_link_libraries(yml yaml-cpp base)
 
 target_include_directories(yml PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include

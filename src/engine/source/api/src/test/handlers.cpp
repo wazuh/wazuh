@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <regex>
 #include <string>
 
 #include <fmt/format.h>
@@ -53,6 +54,134 @@ constexpr auto SESSION_NOT_FOUND_MSG = "Session '{}' could not be found";
 constexpr auto SESSION_NOT_REMOVED_MSG = "Session '{}' could not be removed from the sessions manager";
 
 constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
+
+constexpr auto DEFAULT_TIMEOUT {1000};
+
+std::atomic<bool> callbackRunning(false);
+std::mutex queueMutex;
+
+auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync) -> std::function<void(const rxbk::RxEvent&)>
+{
+    return [dataSync](const rxbk::RxEvent& event)
+    {
+        std::stringstream output;
+        output << event->payload()->prettyStr() << std::endl;
+        dataSync->output = output.str();
+
+        {
+            std::unique_lock<std::mutex> lock(dataSync->sync);
+            dataSync->dataIsReady = true;
+        }
+
+        dataSync->cv_data.notify_all();
+        callbackRunning.store(false);
+    };
+}
+
+auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync) -> std::function<void(const std::string&)>
+{
+    return [dataSync](const std::string& trace)
+    {
+        constexpr auto opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
+        const std::regex opRegex(opPatternTrace);
+        std::smatch match;
+        if (std::regex_search(trace, match, opRegex))
+        {
+            dataSync->history.emplace_back(std::make_pair(match[1].str(), match[2].str()));
+        }
+        constexpr auto opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
+        const std::regex opRegexVerbose(opPatternTraceVerbose);
+        std::smatch matchVerbose;
+        if (std::regex_search(trace, matchVerbose, opRegexVerbose))
+        {
+            auto traceStream = std::make_shared<std::stringstream>();
+            *traceStream << trace;
+            dataSync->trace[matchVerbose[1].str()].push_back(traceStream);
+        }
+    };
+}
+
+using namespace api::test::handlers;
+std::variant<std::tuple<std::string, std::string>, base::Error>
+getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync, DebugMode debugMode, const std::string& assetTrace)
+{
+    // Wait until callbacks have been executed
+    {
+        std::unique_lock<std::mutex> lock(dataSync->sync);
+        dataSync->cv_data.wait(lock, [dataSync] { return dataSync->dataIsReady; });
+        dataSync->dataIsReady = false;
+    }
+
+    auto trace = json::Json {R"({})"};
+    if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
+    {
+        if (dataSync->history.empty())
+        {
+            dataSync->trace.clear();
+            return base::Error {fmt::format(
+                "Policy '{}' has not been configured for trace tracking and output subscription",
+                dataSync->asset)};
+        }
+
+        for (const auto& [asset, condition] : dataSync->history)
+        {
+            if (dataSync->trace.find(asset) == dataSync->trace.end())
+            {
+                dataSync->trace.clear();
+                return base::Error {fmt::format(
+                    "Policy '{}' has not been configured for trace tracking and output subscription",
+                    dataSync->asset)};
+            }
+
+            std::set<std::string> uniqueTraces; // Set for warehouses single traces
+            for (const auto& traceStream : dataSync->trace[asset])
+            {
+                uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
+            }
+
+            std::stringstream combinedTrace;
+            for (const auto info : uniqueTraces)
+            {
+                combinedTrace << info;
+            }
+
+            if (assetTrace.empty() || assetTrace == asset)
+            {
+                trace.setString(combinedTrace.str(), std::string("/") + asset);
+            }
+            else
+            {
+                trace.setString(condition, std::string("/") + asset);
+            }
+        }
+
+        dataSync->trace.clear();
+    }
+    else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
+    {
+        if (dataSync->history.empty())
+        {
+            dataSync->trace[dataSync->asset].clear();
+            return base::Error {fmt::format(
+                "Policy '{}' has not been configured for trace tracking and output subscription",
+                dataSync->asset)};
+        }
+
+        for (const auto& [asset, condition] : dataSync->history)
+        {
+            trace.setString(condition, std::string("/") + asset);
+        }
+        dataSync->trace.clear();
+    }
+
+    dataSync->trace.clear();
+    if (R"({})" == trace.prettyStr())
+    {
+        dataSync->trace.clear();
+        return std::make_tuple(dataSync->output, std::string());
+    }
+    return std::make_tuple(dataSync->output, trace.prettyStr());
+}
 
 } // namespace
 
@@ -144,7 +273,9 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionMan
         }
 
         // Suscribe to output and Trace
-        const auto subscriptionError = router->subscribeOutputAndTraces(policyName.value());
+        auto dataSync = sessionManager->getSession(sessionName.value())->getDataSync();
+        const auto subscriptionError =
+            router->subscribeOutputAndTraces(getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName.value());
         if (subscriptionError.has_value())
         {
             std::string errorMsg {subscriptionError.value().message};
@@ -590,7 +721,8 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
         }
 
         // Suscribe to output and Trace
-        const auto subscriptionError = router->subscribeOutputAndTraces(policyName);
+        auto dataSync = sessionManager->getSession(sessionName)->getDataSync();
+        const auto subscriptionError = router->subscribeOutputAndTraces(getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName);
         if (subscriptionError.has_value())
         {
             std::string errorMsg {subscriptionError.value().message};
@@ -862,15 +994,15 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
             eRequest.has_protocol_location() ? eRequest.protocol_location() : TEST_DEFAULT_PROTOCOL_LOCATION;
 
         // Set debug mode
-        router::DebugMode routerDebugMode;
+        DebugMode routerDebugMode;
         switch (debugMode)
         {
-            case eTest::DebugMode::OUTPUT_AND_TRACES: routerDebugMode = router::DebugMode::OUTPUT_AND_TRACES; break;
+            case eTest::DebugMode::OUTPUT_AND_TRACES: routerDebugMode = DebugMode::OUTPUT_AND_TRACES; break;
             case eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS:
-                routerDebugMode = router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
+                routerDebugMode = DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
                 break;
             case eTest::DebugMode::OUTPUT_ONLY:
-            default: routerDebugMode = router::DebugMode::OUTPUT_ONLY;
+            default: routerDebugMode = DebugMode::OUTPUT_ONLY;
         }
 
         const auto assetTrace = eRequest.has_asset_trace() ? eRequest.asset_trace() : std::string();
@@ -900,15 +1032,49 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
         const auto formattedPath = json::Json::formatJsonPath(TEST_FIELD_TO_CHECK_IN_FILTER);
         event->setInt(static_cast<int>(sessionID), formattedPath);
 
-        // Enqueue event
-        const auto enqueueEventError = router->enqueueEvent(std::move(event));
-        if (enqueueEventError.has_value())
+        auto dataSync = session->getDataSync();
+        auto expected {false};
+        if (callbackRunning.compare_exchange_strong(expected, true))
         {
-            return ::api::adapter::genericError<ResponseType>(enqueueEventError.value().message);
+            std::unique_lock<std::mutex> lock(queueMutex);
+            std::atomic<bool> timeoutOccurred(false);
+            std::thread timerThread([&]
+            {
+                auto startTimer = std::chrono::high_resolution_clock::now();
+                while (!dataSync->dataIsReady)
+                {
+                    auto currentTime = std::chrono::high_resolution_clock::now();
+                    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTimer).count();
+                    if (elapsedTime > DEFAULT_TIMEOUT)
+                    {
+                        timeoutOccurred.store(true);
+                        break;
+                    }
+                }
+            });
+
+            // Enqueue event
+            const auto enqueueEventError = router->enqueueEvent(std::move(event));
+            if (enqueueEventError.has_value())
+            {
+                timerThread.join();
+                return ::api::adapter::genericError<ResponseType>(enqueueEventError.value().message);
+            }
+
+            timerThread.join();
+
+            if (timeoutOccurred.load())
+            {
+                return ::api::adapter::genericError<ResponseType>("The maximum time to process the event has expired");
+            }
+        }
+        else
+        {
+            return ::api::adapter::genericError<ResponseType>("An event is still being processed");
         }
 
         // Get payload (output and traces)
-        const auto payload = router->getData(session.value().getPolicyName(), routerDebugMode, assetTrace);
+        const auto payload = getData(dataSync, routerDebugMode, assetTrace);
         if (std::holds_alternative<base::Error>(payload))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(payload).message);
