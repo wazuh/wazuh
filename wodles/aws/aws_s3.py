@@ -36,6 +36,7 @@ import signal
 import socket
 import sqlite3
 import sys
+from typing import Optional
 
 try:
     import boto3
