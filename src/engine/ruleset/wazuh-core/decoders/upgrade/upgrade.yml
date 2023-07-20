@@ -18,7 +18,7 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/agents/remote-upgrading/upgrading-agent.html#upgrading-agent
         - https://documentation.wazuh.com/current/user-manual/agents/remote-upgrading/agent-upgrade-module.html
 
-sources:
+parents:
   - decoder/core-upgrade/0
 
 # Examples:
@@ -47,4 +47,3 @@ normalize:
   - map:
       - ~tmp: +delete
       - ~json: +delete
-

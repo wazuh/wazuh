@@ -15,7 +15,7 @@ metadata:
     - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/rootcheck/how-it-works.html
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
 
-sources:
+parents:
   - decoder/core-wazuh-message/0
 
 check:

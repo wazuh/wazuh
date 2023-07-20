@@ -15,7 +15,7 @@ metadata:
     - "https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/index.html"
     - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
 
-sources:
+parents:
   - decoder/syslog/0
 
 check:

@@ -15,7 +15,7 @@ metadata:
   references:
     - https://www.json.org
 
-sources:
+parents:
   - decoder/core-wazuh-message/0
 
 check:

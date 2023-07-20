@@ -15,7 +15,7 @@ metadata:
   references:
     - https://github.com/wazuh/wazuh/issues/13521
 
-sources:
+parents:
   - decoder/core-wazuh-message/0
 
 check:

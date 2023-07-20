@@ -13,7 +13,7 @@ metadata:
   references:
     - https://support.f5.com/csp/article/K05327372
 
-sources:
+parents:
   - decoder/integrations/0
 
 #TODO: Once the events arrive tagged, uncomment these lines below

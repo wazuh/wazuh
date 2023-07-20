@@ -15,7 +15,7 @@ metadata:
     - "https://documentation.wazuh.com/current/getting-started/components/wazuh-indexer.html"
     - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
 
-sources:
+parents:
   - decoder/integrations/0
 
 check:

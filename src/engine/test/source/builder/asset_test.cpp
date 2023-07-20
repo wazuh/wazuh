@@ -143,7 +143,7 @@ TEST_F(AssetTest, BuildRule)
     auto registry = initTest();
     auto assetJson = R"({
         "name": "rule1",
-        "sources": ["ruleParent"],
+        "parents": ["ruleParent"],
         "check": [
             {"rule": 1}
         ],

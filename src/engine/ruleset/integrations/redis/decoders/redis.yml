@@ -11,7 +11,7 @@ metadata:
   references:
     - https://docs.rs/redis-module/latest/redis_module/logging/index.html
 
-sources:
+parents:
   - decoder/integrations/0
 
 #TODO: Once the events arrive tagged, uncomment these lines below

@@ -16,7 +16,7 @@ metadata:
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/how-to-configure.html
 
-sources:
+parents:
   - decoder/core-wazuh-message/0
 
 check:

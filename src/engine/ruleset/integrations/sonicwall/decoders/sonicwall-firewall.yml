@@ -12,7 +12,7 @@ metadata:
   references:
     - https://www.sonicwall.com/es-mx/support/technical-documentation
 
-sources:
+parents:
   - decoder/sonicwall-syslog/0
 
 # Since the event is first parsed by the syslog, event.original is
