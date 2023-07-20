@@ -46,7 +46,7 @@ TEST_F(NPMTest, getPackages_ValidPackagesTest)
         }
     };
 
-    std::vector<std::string> folders = {"/fake"};
+    std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders, callback);
 
@@ -63,7 +63,7 @@ TEST_F(NPMTest, getPackages_NoPackagesFoundTest)
 
     bool callbackCalled = false;
 
-    std::vector<std::string> folders = {"/fake"};
+    std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders, [&](nlohmann::json&)
     {
@@ -86,7 +86,7 @@ TEST_F(NPMTest, getPackages_NoPackageJsonTest)
 
     bool callbackCalled = false;
 
-    std::vector<std::string> folders = {"/fake"};
+    std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders, [&](nlohmann::json&)
     {
@@ -109,7 +109,7 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonNameTest)
 
     bool callbackCalled = false;
 
-    std::vector<std::string> folders = {"/fake"};
+    std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders, [&](nlohmann::json&)
     {
@@ -132,7 +132,7 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonVersionTest)
 
     bool callbackCalled = false;
 
-    std::vector<std::string> folders = {"/fake"};
+    std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders, [&](nlohmann::json&)
     {
@@ -159,7 +159,7 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
     bool callbackCalledFirst = false;
     bool callbackCalledSecond = false;
 
-    std::vector<std::string> folders = {"/fake"};
+    std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders,
                      [&](nlohmann::json & j)

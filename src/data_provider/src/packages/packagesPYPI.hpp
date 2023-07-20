@@ -17,6 +17,7 @@
 #include "filesystemHelper.h"
 #include "json.hpp"
 #include "sharedDefs.h"
+#include <set>
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
@@ -127,7 +128,7 @@ class PYPI final : public TFileSystem, public TFileIO
         }
 
     public:
-        void getPackages(const std::vector<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
+        void getPackages(const std::set<std::string>& osRootFolders, std::function<void(nlohmann::json&)> callback)
         {
 
             for (const auto& osFolder : osRootFolders)

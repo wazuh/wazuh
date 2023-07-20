@@ -65,6 +65,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExpandSimpleWildcard)
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
     Utils::expandAbsolutePath("/tmp/wazuh_test/dum*", output);
+
     for (const auto& item : output)
     {
         EXPECT_TRUE(item == "/tmp/wazuh_test/dummy" || item == "/tmp/wazuh_test/dummy.txt");
@@ -78,6 +79,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExpandWildcard)
     constexpr auto PATH_MATCH_SIZE { 4ull };
     std::vector<std::string> output;
     Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/*", output);
+
     for (const auto& item : output)
     {
         EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
@@ -94,6 +96,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExpandWildcardWithPrefix)
     constexpr auto PATH_MATCH_SIZE { 4ull };
     std::vector<std::string> output;
     Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/prefix*", output);
+
     for (const auto& item : output)
     {
         EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
@@ -110,6 +113,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExpandWildcardWithSuffix)
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
     Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/*_1", output);
+
     for (const auto& item : output)
     {
         EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
@@ -123,6 +127,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExpandWildcardWithQuestionMark)
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
     Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_?_data/*_1", output);
+
     for (const auto& item : output)
     {
         EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
@@ -137,6 +142,7 @@ TEST_F(FilesystemUtilsTest, FilesystemExpandWildcardWithQuestionMark2)
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
     Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/prefix?*1", output);
+
     for (const auto& item : output)
     {
         EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||

@@ -51,11 +51,11 @@ namespace Utils
 
         if (wildcardPos != std::string::npos)
         {
-            const auto parentDirectoryPos { path.find_last_of('/', wildcardPos) };
+            const auto parentDirectoryPos { path.find_last_of(std::filesystem::path::preferred_separator, wildcardPos) };
 
             // The parent directory is the part of the path before the first wildcard.
             // If the wildcard is the first character, then the parent directory is the root directory.
-            const auto nextDirectoryPos { wildcardPos == 0 ? 0 : path.find_first_of('/', wildcardPos) };
+            const auto nextDirectoryPos { wildcardPos == 0 ? 0 : path.find_first_of(std::filesystem::path::preferred_separator, wildcardPos) };
 
             if (parentDirectoryPos == std::string::npos)
             {
@@ -98,7 +98,7 @@ namespace Utils
                     {
                         std::string nextPath;
                         nextPath += baseDir;
-                        nextPath += "/";
+                        nextPath += std::filesystem::path::preferred_separator;
                         nextPath += entryName;
                         nextPath += nextDirectoryPos == std::string::npos ? "" :
                                     path.substr(nextDirectoryPos);

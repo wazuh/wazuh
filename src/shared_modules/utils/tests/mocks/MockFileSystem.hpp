@@ -20,7 +20,7 @@ template <typename T>
 class MockFileSystem
 {
     public:
-        MOCK_METHOD(bool, exists, (const std::string&), ());
+        MOCK_METHOD(bool, exists, (const std::filesystem::path&), ());
         MOCK_METHOD(bool, is_regular_file, (const std::filesystem::path&), ());
         MOCK_METHOD(bool, is_directory, (const std::filesystem::path&), ());
         MOCK_METHOD(T, directory_iterator, (const std::filesystem::path&), ());

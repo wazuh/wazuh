@@ -778,79 +778,105 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     });
 }
 
-std::vector<std::string> getPythonDirectoriesFromRegistry() const
+void expandFromRegistry(const HKEY key, const std::string& subKey, const std::string& field, std::function<void(const std::string&)> postAction)
 {
-    std::vector<std::string> pythonDirList;
+    std::vector<std::string> installPaths;
 
-    const auto getDirectoryList = [](const HKEY key, const std::string & subKey, std::vector<std::string>& outDirList)
+    // Get install path from registry
+    Utils::expandRegistryPath(key, subKey, installPaths);
+
+    // Get install path from registry expanded keys.
+    for (const auto& versionKey : installPaths)
     {
-        std::vector<std::string> pythonInstallPaths;
-
         try
         {
-            // Get python install path from registry
-            Utils::expandRegistryPath(key, subKey, pythonInstallPaths);
-
-            // Get python install path from registry expanded keys.
-            for (const auto& pythonVersionKey : pythonInstallPaths)
-            {
-                try
-                {
-                    // Get python install path from registry, based on python version key.
-                    const auto pythonDir { Utils::Registry{key, pythonVersionKey, KEY_READ}.string("") };
-                    // Add python install path to pythonDirList.
-                    outDirList.push_back(pythonDir + R"(\Lib\site-packages)");
-                    outDirList.push_back(pythonDir + R"(\Lib\dist-packages)");
-                }
-                catch (const std::exception&)
-                {
-                    // Ignore errors.
-                }
-            }
+            // Get install path from registry, based on version key.
+            const auto dir {Utils::Registry {key, versionKey, KEY_READ | KEY_WOW64_64KEY}.string(field)};
+            // Add install path to dirList.
+            postAction(dir);
         }
-        catch (const std::exception&)
+        catch (const std::exception& e)
         {
             // Ignore errors.
         }
+    }
+}
+
+std::set<std::string> getPythonDirectories()
+{
+    std::set<std::string> pythonDirList;
+
+    const auto postAction = [&](const std::string & pythonDir)
+    {
+        pythonDirList.insert(pythonDir + R"(Lib\site-packages)");
+        pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
     };
 
-    getDirectoryList(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", pythonDirList);
-    getDirectoryList(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", pythonDirList);
+    try
+    {
+        expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+    }
+    catch (const std::exception&)
+    {
+        // Ignore errors.
+    }
 
     return pythonDirList;
+}
+
+std::set<std::string> getNodeDirectories()
+{
+    std::set<std::string> nodeDirList;
+
+    const auto postAction = [&](const std::string & nodeDir)
+    {
+        nodeDirList.insert(nodeDir);
+    };
+
+    try
+    {
+        expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Node.js)", "InstallPath", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Node.js)", "InstallPath", postAction);
+        nodeDirList.insert(R"(C:\Users\*\AppData\Roaming\npm)");
+        nodeDirList.insert(R"(C:\Users\*)");
+    }
+    catch (const std::exception&)
+    {
+        // Ignore errors.
+    }
+
+    return nodeDirList;
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     std::set<std::string> set;
 
-    auto fillList
+    auto fillList {[&callback, &set](nlohmann::json & data)
     {
-        [&callback, &set](nlohmann::json & data)
-        {
-            const std::string key { data.at("name").get_ref<const std::string&>() + data.at("version").get_ref<const std::string&>() };
-            const auto result { set.insert(key) };
+        const std::string key {data.at("name").get_ref<const std::string&>() +
+                               data.at("version").get_ref<const std::string&>()};
+        const auto result {set.insert(key)};
 
-            if (result.second)
-            {
-                callback(data);
-            }
+        if (result.second)
+        {
+            callback(data);
         }
-    };
+    }};
 
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_64KEY);
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_32KEY);
 
-    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    for (const auto& user : Utils::Registry {HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
         getStorePackages(HKEY_USERS, user, fillList);
     }
 
-    PYPI().getPackages(getPythonDirFromRegistry(), callback);
-    NPM().getPackages(callback);
+    PYPI().getPackages(getPythonDirectories(), callback);
+    NPM().getPackages(getNodeDirectories(), callback);
 }
-
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;
