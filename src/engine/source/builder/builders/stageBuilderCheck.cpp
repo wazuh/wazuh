@@ -82,6 +82,16 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         std::string value;
         json::Json valueJson;
 
+        auto getField = [](const std::string& field) -> std::string
+        {
+            if (field[0] != syntax::REFERENCE_ANCHOR)
+            {
+                throw std::runtime_error(fmt::format("Check stage: the fild must be a reference, but got '{}'",
+                                                     field));
+            }
+            return field.substr(1);
+        };
+
         if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
             auto pos1 = term.find("/");
@@ -95,7 +105,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                 return term.size();
             }();
 
-            field = term.substr(pos1 + 1, pos2 - pos1 - 1);
+            field = getField(term.substr(pos1 + 1, pos2 - pos1 - 1));
             value = term.substr(0, pos1) + term.substr(pos2);
             valueJson.setString(value);
         }
@@ -111,7 +121,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                 keyboarder = match[1];
                 auto pos = term.find(keyboarder);
 
-                field = term.substr(0, pos);
+                field = getField(term.substr(0, pos));
 
                 auto operand = term.substr(pos + keyboarder.length());
 

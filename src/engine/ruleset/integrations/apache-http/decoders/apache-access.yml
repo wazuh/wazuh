@@ -25,8 +25,8 @@ check:
 # - event.dataset: apache-access
 
 definitions:
-  isSuccess: +is_not_null/http.response.status_code AND +int_less/http.response.status_code/400
-  isFailed: +is_not_null/http.response.status_code AND +int_greater_or_equal/http.response.status_code/400
+  isSuccess: +is_not_null/$http.response.status_code AND +int_less/$http.response.status_code/400
+  isFailed: +is_not_null/$http.response.status_code AND +int_greater_or_equal/$http.response.status_code/400
 
 parse:
   logpar:

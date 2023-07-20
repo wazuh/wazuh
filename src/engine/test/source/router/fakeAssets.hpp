@@ -12,7 +12,7 @@ auto constexpr DEC_1 = R"e({
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+exists/wazuh.queue AND (+int_equal/wazuh.queue/49 OR +int_equal/wazuh.queue/50)",
+    "check": "+exists/$wazuh.queue AND (+int_equal/$wazuh.queue/49 OR +int_equal/$wazuh.queue/50)",
     "normalize": [
         {
             "map": [
@@ -29,7 +29,7 @@ auto constexpr DEC_2 = R"e({
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+exists/wazuh.queue AND (+int_equal/wazuh.queue/51 OR +int_equal/wazuh.queue/52)",
+    "check": "+exists/$wazuh.queue AND (+int_equal/$wazuh.queue/51 OR +int_equal/$wazuh.queue/52)",
     "normalize": [
         {
             "map": [
@@ -46,7 +46,7 @@ auto constexpr DEC_3 = R"e({
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+exists/wazuh.queue AND (+int_less/wazuh.queue/49 OR +int_greater/wazuh.queue/52)",
+    "check": "+exists/$wazuh.queue AND (+int_less/$wazuh.queue/49 OR +int_greater/$wazuh.queue/52)",
     "normalize": [
         {
             "map": [

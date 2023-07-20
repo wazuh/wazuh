@@ -26,8 +26,8 @@ check:
   # - event.dataset: wazuh-indexer-server
 
 definitions:
-  isError: log.level==FATAL OR log.level==ERROR
-  isInfo: log.level!=FATAL AND log.level!=ERROR
+  isError: $log.level==FATAL OR $log.level==ERROR
+  isInfo: $log.level!=FATAL AND $log.level!=ERROR
 
 normalize:
   - map:

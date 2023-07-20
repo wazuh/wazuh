@@ -408,25 +408,25 @@ normalize:
       # source.geo: +geo/$source.ip
       # source.as: +geo/$source.ip # database_file: GeoLite2-ASN.mmdb | properties:[asn, organization_name]
 
-  - check: +string_equal/~json.aws.additionalEventData.MobileVersion/No
+  - check: +string_equal/$~json.aws.additionalEventData.MobileVersion/No
     map:
       - ~tmp.console_login_mobile_version: false
-  - check: +string_not_equal/~json.aws.additionalEventData.MobileVersion/No
+  - check: +string_not_equal/$~json.aws.additionalEventData.MobileVersion/No
     map:
       - ~tmp.console_login_mobile_version: true
 
-  - check: +string_equal/~json.aws.additionalEventData.MFAUsed/No
+  - check: +string_equal/$~json.aws.additionalEventData.MFAUsed/No
     map:
       - ~tmp.console_login_mfa_used: false
-  - check: +string_not_equal/~json.aws.additionalEventData.MFAUsed/No
+  - check: +string_not_equal/$~json.aws.additionalEventData.MFAUsed/No
     map:
       - ~tmp.console_login_mfa_used: true
 
-  - check: +exists/error.code OR +exists/error.message
+  - check: +exists/$error.code OR +exists/$error.message
     map:
       - event.outcome: failure
 
-  - check: +string_equal/~json.aws.eventName/ConsoleLogin AND +exists/~json.aws.responseElements.ConsoleLogin
+  - check: +string_equal/$~json.aws.eventName/ConsoleLogin AND +exists/$~json.aws.responseElements.ConsoleLogin
     map:
       - event.outcome: +downcase/$~json.aws.responseElements.ConsoleLogin
 

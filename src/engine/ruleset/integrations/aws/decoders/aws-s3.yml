@@ -34,7 +34,7 @@ parse:
 normalize:
   - map:
       - event.outcome: success
-  - check: +string_greater/~json.aws.error_code/- # single character '-' is not an error
+  - check: +string_greater/$~json.aws.error_code/- # single character '-' is not an error
     map:
       - event.outcome: failure
 
