@@ -3354,9 +3354,6 @@ FILE * w_get_file_pointer(const char * path) {
     // Check if path is NULL
     if (path == NULL) {
         mdebug1("Cannot open NULL path");
-        if (fp) {
-            fclose(fp);
-        }
         return NULL;
     }
 
