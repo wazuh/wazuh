@@ -1,4 +1,10 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute
+# it and/or modify it under the terms of GPLv2
+
 from socket import AF_UNIX, SOCK_DGRAM
+import hashlib
 import pytest
 import maltiverse
 import json
@@ -28,7 +34,7 @@ response_example = {
 
 
 def assert_expected_schema(response):
-    """Asserts that the response contains the expected schema fields."""
+    """Assert that the response contains the expected schema fields."""
     list_of_fields = ["blacklist", "type", "creation_time", "modification_time"]
     for f in list_of_fields:
         assert f in response
@@ -46,6 +52,10 @@ def test_get_ip():
 
         result = testing_maltiverse.ip_get(example_ip)
         assert_expected_schema(result)
+        mock_get.assert_called_once_with(
+            f'https://api.maltiverse.com/ip/{example_ip}',
+            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+        )
 
 
 def test_get_hostname():
@@ -60,6 +70,10 @@ def test_get_hostname():
 
         result = testing_maltiverse.hostname_get(example_hostname)
         assert_expected_schema(result)
+        mock_get.assert_called_once_with(
+            f'https://api.maltiverse.com/hostname/{example_hostname}',
+            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+        )
 
 
 def test_get_url():
@@ -74,6 +88,10 @@ def test_get_url():
 
         result = testing_maltiverse.url_get(example_url)
         assert_expected_schema(result)
+        mock_get.assert_called_once_with(
+            f'https://api.maltiverse.com/url/{hashlib.sha256(example_url.encode("utf-8")).hexdigest()}',
+            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+        )
 
 
 @pytest.mark.parametrize(
@@ -108,6 +126,10 @@ def test_get_by_md5():
 
         result = testing_maltiverse.sample_get_by_md5(example_sample)
         assert_expected_schema(result)
+        mock_get.assert_called_once_with(
+            f'https://api.maltiverse.com/sample/md5/{example_sample}',
+            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+        )
 
 
 def test_get_by_sha1():
@@ -122,6 +144,10 @@ def test_get_by_sha1():
 
         result = testing_maltiverse.sample_get_by_sha1(example_sample)
         assert_expected_schema(result)
+        mock_get.assert_called_once_with(
+            f'https://api.maltiverse.com/sample/sha1/{example_sample}',
+            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+        )
 
 
 @pytest.mark.parametrize("number_of_arguments", [1, 2, 3])
@@ -171,6 +197,7 @@ def test_load_alert():
         result = maltiverse.load_alert(file_path)
 
     assert result == alert_data
+    mock_open.assert_called_once_with(file_path)
 
 
 def test_load_alert_exit_with_invalid_file():
@@ -278,13 +305,12 @@ def test_get_ioc_confidence(data, expected):
     ]
 )
 def test_send_event(msg, agent, expected):
-    """
-    Test sending an event to a specific agent.
-    """
+    """Test sending an event to a specific agent."""
     with patch("maltiverse.socket") as mock_socket:
         maltiverse.send_event(msg, agent)
 
     mock_socket.assert_called_with(AF_UNIX, SOCK_DGRAM)
+    mock_socket.return_value.connect.assert_called_once_with(maltiverse.SOCKET_ADDR)
     mock_socket.return_value.send.assert_called_with(
         expected.encode()
     )
