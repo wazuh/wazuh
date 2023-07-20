@@ -156,7 +156,7 @@ normalize:
       - rsa.network.domain: $server.domain
 
   # Checks if a valid fortinet log was found
-  - check: rsa.internal.messageid==generic_fortinetmgr OR rsa.internal.messageid==generic_fortinetmgr_1 OR rsa.internal.messageid==event_fortinetmgr
+  - check: $rsa.internal.messageid==generic_fortinetmgr OR $rsa.internal.messageid==generic_fortinetmgr_1 OR $rsa.internal.messageid==event_fortinetmgr
     map:
       - \@timestamp: +concat/$~kvMap.date/T/$~kvMap.time/.000Z
       - event.action: +downcase/$~kvMap.action
@@ -179,27 +179,27 @@ normalize:
       - tags: +array_append/forwarded
 
   # Finally maps the network protocol numbers to strings
-  - check: +int_equal/network.protocol/0
+  - check: +int_equal/$network.protocol/0
     map:
       - network.protocol: hoport
 
-  - check: +int_equal/network.protocol/1
+  - check: +int_equal/$network.protocol/1
     map:
       - network.protocol: icmp
 
-  - check: +int_equal/network.protocol/3
+  - check: +int_equal/$network.protocol/3
     map:
       - network.protocol: ggp
 
-  - check: +int_equal/network.protocol/6
+  - check: +int_equal/$network.protocol/6
     map:
       - network.protocol: tcp
 
-  - check: +int_equal/network.protocol/17
+  - check: +int_equal/$network.protocol/17
     map:
       - network.protocol: udp
 
-  - check: +int_equal/network.protocol/21
+  - check: +int_equal/$network.protocol/21
     map:
       - network.protocol: prm
   - map:

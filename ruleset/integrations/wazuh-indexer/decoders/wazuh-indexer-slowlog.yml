@@ -18,14 +18,14 @@ metadata:
 parents:
   - decoder/integrations/0
 
-check: ~json.type==index_search_slowlog OR ~json.type==index_indexing_slowlog
+check: $~json.type==index_search_slowlog OR $~json.type==index_indexing_slowlog
   # TODO: Once the events arrive tagged, uncomment the following two lines
   # - event.module: wazuh-indexer
   # - event.dataset: wazuh-indexer-slowlog
 
 definitions:
-  isError: log.level==FATAL OR log.level==ERROR
-  isInfo: log.level!=FATAL AND log.level!=ERROR
+  isError: $log.level==FATAL OR $log.level==ERROR
+  isInfo: $log.level!=FATAL AND $log.level!=ERROR
 
 normalize:
   - map:
