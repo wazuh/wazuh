@@ -46,7 +46,7 @@ TEST(LogicExpression, buildDijstraEvaluator)
         }
     };
 
-    auto expression = "(EVEN OR ODD AND NOT GREAT5) AND GREAT1";
+    auto expression = "( EVEN OR ODD AND NOT GREAT5 ) AND GREAT1";
     std::function<bool(int)> evaluator;
     EXPECT_NO_THROW(evaluator = buildDijstraEvaluator<int>(expression, fakeTermBuilder));
 

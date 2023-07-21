@@ -298,7 +298,7 @@ base::Expression opBuilderHelperDummy(const std::string& targetField,
 
 TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyTrue)
 {
-    auto checkJson = Json {R"("+dummy/$field")"};
+    auto checkJson = Json {R"^("dummy($field)")^"};
 
     auto event = std::make_shared<json::Json>(R"({"field": true})");
 
@@ -310,7 +310,7 @@ TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyTrue)
 
 TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyFalse)
 {
-    auto checkJson = Json {R"("+dummy/$field")"};
+    auto checkJson = Json {R"^("dummy($field)")^"};
 
     auto event = std::make_shared<json::Json>(R"({"field": false})");
 
@@ -322,7 +322,7 @@ TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyFalse)
 
 TEST_F(StageBuilderCheckTest, CheckExpressionHelperFail)
 {
-    auto checkJson = Json {R"("+int_equal/~json/2")"};
+    auto checkJson = Json {R"^("int_equal(~json,2)")^"};
 
     helperRegistry->registerBuilder(opBuilderHelperIntLessThanEqual, "int_less_or_equal");
     ASSERT_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()),

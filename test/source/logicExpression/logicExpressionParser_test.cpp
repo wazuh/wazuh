@@ -248,16 +248,16 @@ term_11;
 TEST(LogicExpressionParser, ParseErrors)
 {
     const std::vector<std::string> expressions = {
-        R"(event.type=="test" AND (something)unexpectedTerm)",
-        R"(event.type=="test" AND OR (something))",
+        R"(event.type=="test" AND ( something ) unexpectedTerm )",
+        R"(event.type=="test" AND OR ( something ))",
         R"(AND term)",
         R"(term OR)",
-        R"(term AND (notClosedParenthesis)",
-        R"(term AND notOpenedParenthesis))",
+        R"(term AND ( notClosedParenthesis)",
+        R"(term AND notOpenedParenthesis ))",
         R"(NOT)",
         R"(AND)",
         R"(term NOT AND term),
-        R"(())",
+        R"(( ))",
         R"()",
     };
 
@@ -273,12 +273,12 @@ TEST(LogicExpressionParser, Parse)
         R"(onlyOneTerm)",
         R"(term AND term)",
         R"(term OR term)",
-        R"(term AND (term OR term))",
-        R"(term OR (term AND term))",
+        R"(term AND ( term OR term ))",
+        R"(term OR ( term AND term ))",
         R"(NOT term)",
-        R"(NOT (term AND term))",
-        R"(NOT (term OR term))",
-        R"(NOT (term AND (term OR term)))",
+        R"(NOT ( term AND term ))",
+        R"(NOT ( term OR term ))",
+        R"(NOT ( term AND ( term OR term ) ))",
         R"(term AND term OR term)",
         R"(term OR NOT term AND term)",
     };
