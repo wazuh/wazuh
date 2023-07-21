@@ -24,7 +24,7 @@
         {
             "map": [
                 {
-                    "wazuh.decoders": "+array_append/core-hostinfo"
+                    "wazuh.decoders": "array_append(core-hostinfo)"
                 }
             ]
         }
