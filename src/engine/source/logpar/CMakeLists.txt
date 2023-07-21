@@ -5,4 +5,4 @@ PUBLIC
 PRIVATE
   include/logpar
 )
-target_link_libraries(logpar PUBLIC hlp fmt json)
+target_link_libraries(logpar PUBLIC hlp fmt json schemf::ischema)
