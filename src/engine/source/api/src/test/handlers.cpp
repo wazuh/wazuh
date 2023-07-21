@@ -60,7 +60,8 @@ constexpr auto DEFAULT_TIMEOUT {1000};
 std::atomic<bool> callbackRunning(false);
 std::mutex queueMutex;
 
-auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync) -> std::function<void(const rxbk::RxEvent&)>
+auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
+    -> std::function<void(const rxbk::RxEvent&)>
 {
     return [dataSync](const rxbk::RxEvent& event)
     {
@@ -78,7 +79,8 @@ auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSyn
     };
 }
 
-auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync) -> std::function<void(const std::string&)>
+auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
+    -> std::function<void(const std::string&)>
 {
     return [dataSync](const std::string& trace)
     {
@@ -103,7 +105,9 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
 
 using namespace api::test::handlers;
 std::variant<std::tuple<std::string, std::string>, base::Error>
-getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync, DebugMode debugMode, const std::string& assetTrace)
+getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
+        DebugMode debugMode,
+        const std::string& assetTrace)
 {
     // Wait until callbacks have been executed
     {
@@ -119,8 +123,7 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync, Debu
         {
             dataSync->trace.clear();
             return base::Error {fmt::format(
-                "Policy '{}' has not been configured for trace tracking and output subscription",
-                dataSync->asset)};
+                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->asset)};
         }
 
         for (const auto& [asset, condition] : dataSync->history)
@@ -129,8 +132,7 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync, Debu
             {
                 dataSync->trace.clear();
                 return base::Error {fmt::format(
-                    "Policy '{}' has not been configured for trace tracking and output subscription",
-                    dataSync->asset)};
+                    "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->asset)};
             }
 
             std::set<std::string> uniqueTraces; // Set for warehouses single traces
@@ -163,8 +165,7 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync, Debu
         {
             dataSync->trace[dataSync->asset].clear();
             return base::Error {fmt::format(
-                "Policy '{}' has not been configured for trace tracking and output subscription",
-                dataSync->asset)};
+                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->asset)};
         }
 
         for (const auto& [asset, condition] : dataSync->history)
@@ -274,8 +275,8 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionMan
 
         // Suscribe to output and Trace
         auto dataSync = sessionManager->getSession(sessionName.value())->getDataSync();
-        const auto subscriptionError =
-            router->subscribeOutputAndTraces(getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName.value());
+        const auto subscriptionError = router->subscribeOutputAndTraces(
+            getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName.value());
         if (subscriptionError.has_value())
         {
             std::string errorMsg {subscriptionError.value().message};
@@ -722,7 +723,8 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
 
         // Suscribe to output and Trace
         auto dataSync = sessionManager->getSession(sessionName)->getDataSync();
-        const auto subscriptionError = router->subscribeOutputAndTraces(getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName);
+        const auto subscriptionError =
+            router->subscribeOutputAndTraces(getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName);
         if (subscriptionError.has_value())
         {
             std::string errorMsg {subscriptionError.value().message};
@@ -1038,20 +1040,22 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
         {
             std::unique_lock<std::mutex> lock(queueMutex);
             std::atomic<bool> timeoutOccurred(false);
-            std::thread timerThread([&]
-            {
-                auto startTimer = std::chrono::high_resolution_clock::now();
-                while (!dataSync->dataIsReady)
+            std::thread timerThread(
+                [&]
                 {
-                    auto currentTime = std::chrono::high_resolution_clock::now();
-                    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTimer).count();
-                    if (elapsedTime > DEFAULT_TIMEOUT)
+                    auto startTimer = std::chrono::high_resolution_clock::now();
+                    while (!dataSync->dataIsReady)
                     {
-                        timeoutOccurred.store(true);
-                        break;
+                        auto currentTime = std::chrono::high_resolution_clock::now();
+                        auto elapsedTime =
+                            std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTimer).count();
+                        if (elapsedTime > DEFAULT_TIMEOUT)
+                        {
+                            timeoutOccurred.store(true);
+                            break;
+                        }
                     }
-                }
-            });
+                });
 
             // Enqueue event
             const auto enqueueEventError = router->enqueueEvent(std::move(event));
