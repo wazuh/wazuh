@@ -1,0 +1,39 @@
+---
+test_name: GET /engine/graph/resource
+stages:
+
+  - name: Get a resource from the graph
+    request: &get_graph_resource
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/graph/resource"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      params:
+        policy: policy
+        type: type
+    response:
+      status_code: 200
+      json:
+        data:
+          status: "OK"
+          error: null
+          content:
+            policy: policy
+            type: type
+        error: 0
+
+  - name: Try to get non existent graph resource
+    request:
+      verify: False
+      <<: *get_graph_resource
+      params:
+        name: non-existent
+    response:
+      status_code: 200
+      json:
+        data:
+          status: "ERROR"
+          error: "The specified graph resource does not exist: 'non-existent'"
+        error: 0

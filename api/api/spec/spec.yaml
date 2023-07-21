@@ -1973,6 +1973,18 @@ components:
           properties:
             name:
               $ref: '#/components/schemas/ClusterNodeName'
+    
+    # Engine models
+    GraphResponse:
+      type: object
+      required:
+        - policy
+        - type
+      properties:
+        policy:
+          type: string
+        type:
+          type: string
 
     NodeHealthcheck:
       type: object
@@ -15045,6 +15057,49 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected decoders were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /engine/graph/resource:
+    get:
+      tags:
+        - Engine
+      summary: "Get a resource from the graph"
+      description: "Get a resource from the Engine graph"
+      operationId: api.controllers.engine.engine_controller.get_graph_resource
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/engine:read_graph'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy'
+        - $ref: '#/components/parameters/type'
+      responses:
+        '200':
+          description: "Get a resource from the Engine graph"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/GraphResponse'
+              example:
+                data:
+                  policy: "policy"
+                  type: "type"
+                message: "Selected graph resource was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
