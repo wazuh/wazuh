@@ -9,7 +9,7 @@
 #include "builder/registry.hpp"
 #include <json/json.hpp>
 #include <testsCommon.hpp>
-#include <schemf/mocks/emptySchema.hpp>
+#include <schemf/emptySchema.hpp>
 
 using namespace builder;
 using namespace builder::internals;

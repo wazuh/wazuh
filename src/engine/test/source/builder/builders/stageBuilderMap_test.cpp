@@ -9,7 +9,7 @@
 #include <json/json.hpp>
 
 #include <defs/mocks/failDef.hpp>
-#include <schemf/mocks/emptySchema.hpp>
+#include <schemf/emptySchema.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
