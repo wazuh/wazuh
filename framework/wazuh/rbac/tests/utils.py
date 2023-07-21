@@ -26,10 +26,9 @@ def init_db(schema, test_data_path):
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
                     # Invalidate in-memory database
-                    conn = orm._engine.connect()
-                    orm._Session().close()
-                    conn.invalidate()
-                    orm._engine.dispose()
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.sessions[orm.DB_FILE].close()
+                    orm.db_manager.engines[orm.DB_FILE].dispose()
 
                     reload(orm)
                     orm.db_manager.connect(orm.DB_FILE)
