@@ -734,3 +734,12 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapEmptyJSON)
 
     EXPECT_TRUE(jsPackageInfo.empty());
 }
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapWrongJSON)
+{
+    EXPECT_NO_THROW(
+        {
+            const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"(curl: (7) Couldn't connect to server)"_json) };
+            EXPECT_TRUE(jsPackageInfo.empty());
+        });
+}
