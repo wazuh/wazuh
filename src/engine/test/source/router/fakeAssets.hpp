@@ -12,7 +12,7 @@ auto constexpr DEC_1 = R"e({
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+exists/$wazuh.queue AND (+int_equal/$wazuh.queue/49 OR +int_equal/$wazuh.queue/50)",
+    "check": "exists($wazuh.queue) AND ( int_equal($wazuh.queue,49) OR int_equal($wazuh.queue,50) )",
     "normalize": [
         {
             "map": [
@@ -29,7 +29,7 @@ auto constexpr DEC_2 = R"e({
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+exists/$wazuh.queue AND (+int_equal/$wazuh.queue/51 OR +int_equal/$wazuh.queue/52)",
+    "check": "exists($wazuh.queue) AND ( int_equal($wazuh.queue,51) OR int_equal($wazuh.queue,52) )",
     "normalize": [
         {
             "map": [
@@ -46,7 +46,7 @@ auto constexpr DEC_3 = R"e({
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+exists/$wazuh.queue AND (+int_less/$wazuh.queue/49 OR +int_greater/$wazuh.queue/52)",
+    "check": "exists($wazuh.queue) AND ( int_less($wazuh.queue,49) OR int_greater($wazuh.queue,52) )",
     "normalize": [
         {
             "map": [
@@ -65,7 +65,7 @@ auto constexpr DEC_A1 = R"e({
     },
     "check": [
         {
-            "wazuh.queue": "+exists"
+            "wazuh.queue": "exists()"
         }
     ],
     "normalize": [
@@ -86,7 +86,7 @@ auto constexpr DEC_B2 = R"e({
     },
     "check": [
         {
-            "wazuh.queue": "+exists"
+            "wazuh.queue": "exists()"
         }
     ],
     "normalize": [
@@ -107,7 +107,7 @@ auto constexpr DEC_C3 = R"e({
     },
     "check": [
         {
-            "wazuh.queue": "+exists"
+            "wazuh.queue": "exists()"
         }
     ],
     "normalize": [
@@ -141,10 +141,10 @@ auto constexpr FIL_E_WAZUH_QUEUE = R"e({
     "name": "filter/e_wazuh_queue/0",
     "check": [
         {
-            "wazuh.queue": "+exists"
+            "wazuh.queue": "exists()"
         },
         {
-            "wazuh.no_queue": "+exists"
+            "wazuh.no_queue": "exists()"
         }
     ]
 })e";
