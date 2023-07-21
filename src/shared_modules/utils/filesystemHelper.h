@@ -24,6 +24,7 @@
 #include <dirent.h>
 #include <filesystem>
 #include <algorithm>
+#include <array>
 #include "stringHelper.h"
 
 #pragma GCC diagnostic push

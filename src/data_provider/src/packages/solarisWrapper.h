@@ -154,9 +154,15 @@ class SolarisWrapper final : public IPackageWrapper
 
         std::string location() const override
         {
+            std::string retVal {UNKNOWN_VALUE};
             auto it {m_data.find(LOCATION_FIELD)};
 
-            return it != m_data.end() ? it->second : EMPTY_VALUE;
+            if (it != m_data.end() && !it->second.empty())
+            {
+                retVal = it->second;
+            }
+
+            return retVal;
         }
 
         std::string priority() const override

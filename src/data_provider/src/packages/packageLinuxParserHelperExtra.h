@@ -61,6 +61,7 @@ namespace PackageLinuxHelper
         packageInfo["format"]       = "pacman";
         packageInfo["vendor"]       = "Arch Linux";
         packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
+        packageInfo["location"]     = UNKNOWN_VALUE;
         return packageInfo;
     }
 

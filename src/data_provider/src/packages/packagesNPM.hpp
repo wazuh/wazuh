@@ -50,7 +50,7 @@ class NPM final
                     packageInfo["groups"] = UNKNOWN_VALUE;
                     packageInfo["description"] = UNKNOWN_VALUE;
                     packageInfo["architecture"] = UNKNOWN_VALUE;
-                    packageInfo["format"] = "NPM";
+                    packageInfo["format"] = "npm";
                     packageInfo["source"] = UNKNOWN_VALUE;
                     packageInfo["location"] = path.string();
                     packageInfo["priority"] = UNKNOWN_VALUE;

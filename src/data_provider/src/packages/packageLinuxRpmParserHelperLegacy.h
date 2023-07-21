@@ -65,6 +65,7 @@ namespace PackageLinuxHelper
                 ret["format"]       = "rpm";
                 ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? "" : vendor;
                 ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? "" : description;
+                ret["location"]     = UNKNOWN_VALUE;
             }
         }
 

@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk', 'macports')),
+    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk', 'macports', 'pypi','npm')),
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    PRIMARY KEY (scan_id, name, version, architecture)
+    PRIMARY KEY (scan_id, name, version, architecture, location)
 );
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
