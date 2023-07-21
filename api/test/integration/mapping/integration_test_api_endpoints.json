@@ -269,6 +269,13 @@
                 ]
             },
             {
+                "name": "engine_controller.py",
+                "tag": "engine",
+                "tests": [
+                    "test_engine_endpoints.tavern.yaml"
+                ]
+            },
+            {
                 "name": "experimental_controller.py",
                 "tag": "experimental",
                 "tests": [
@@ -630,6 +637,13 @@
                 ]
             },
             {
+                "name": "engine.py",
+                "tag": "engine",
+                "tests": [
+                    "test_engine_endpoints.tavern.yaml"
+                ]
+            },
+            {
                 "name": "logtest.py",
                 "tag": "logtest",
                 "tests": [
@@ -855,6 +869,13 @@
                     "test_decoder_endpoints.tavern.yaml",
                     "test_rbac_black_decoder_endpoints.tavern.yaml",
                     "test_rbac_white_decoder_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "engine.py",
+                "tag": "engine",
+                "tests": [
+                    "test_engine_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -2119,6 +2140,13 @@
                 "tag": "test",
                 "tests": [
                     "test_default_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "test_engine_endpoints.tavern.yaml",
+                "tag": "test",
+                "tests": [
+                    "test_engine_endpoints.tavern.yaml"
                 ]
             },
             {
