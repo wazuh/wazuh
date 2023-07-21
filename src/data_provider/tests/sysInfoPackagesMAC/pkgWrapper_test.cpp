@@ -1,7 +1,7 @@
 /*
  * Wazuh SysInfo
  * Copyright (C) 2015, Wazuh Inc.
- * December 14, 2020.
+ * July 20, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
