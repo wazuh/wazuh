@@ -36,7 +36,7 @@ struct dependencies
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
     std::shared_ptr<schemf::ISchema> schema;
-    bool forceFieldNaming = false; // TODO remove once test use proper naming for fields
+    bool forceFieldNaming = false;
     std::shared_ptr<sockiface::ISockFactory> sockFactory;
     std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
 };

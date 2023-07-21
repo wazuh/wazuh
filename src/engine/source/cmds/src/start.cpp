@@ -296,7 +296,7 @@ void runStart(ConfHandler confManager)
             deps.kvdbManager = kvdbManager;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
-            deps.forceFieldNaming = true;
+            deps.forceFieldNaming = false;
             deps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
             deps.wdbManager =
                 std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), deps.sockFactory);
