@@ -47,7 +47,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.modulesd.configuration import LOCAL_INTERNAL_OPTIONS
+from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
@@ -69,7 +69,7 @@ cases_path = Path(TEST_CASES_PATH, 'cases_invalid_configuration.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
-local_internal_options = {LOCAL_INTERNAL_OPTIONS: '2'}
+local_internal_options = {MODULESD_DEBUG: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
