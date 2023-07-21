@@ -27,7 +27,6 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
             std::cerr << "Error parsing JSON feed\n";
         }
 
-
         int count = (int)feed.size();
 
         for (const auto& entry : feed)
@@ -45,3 +44,4 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
         std::cerr << "Error retrieving packages using snap unix-socket (" << responseCode << ") " << result << "\n";
     });
 }
+

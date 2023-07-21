@@ -41,4 +41,16 @@ CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 13);
 
+CREATE TRIGGER obsolete_vulnerabilities
+    AFTER DELETE ON sys_programs
+    WHEN (old.checksum = 'legacy' AND NOT EXISTS (SELECT 1 FROM sys_programs
+                                                  WHERE item_id = old.item_id
+                                                  AND scan_id != old.scan_id ))
+    OR old.checksum != 'legacy'
+    BEGIN
+        UPDATE vuln_cves SET status = 'OBSOLETE' WHERE vuln_cves.reference = old.item_id;
+END;
+
+INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 13);
+
 COMMIT;
