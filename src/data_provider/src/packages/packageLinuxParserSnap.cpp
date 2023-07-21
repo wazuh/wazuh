@@ -20,14 +20,18 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
         HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps"),
         [&](const std::string & result)
     {
-        auto feed = nlohmann::json::parse(result).at("result");
+        auto feed = nlohmann::json::parse(result,nullptr,false).at("result");
+
+        if (feed.is_discarded())
+        {
+            std::cerr << "Error parsing JSON feed\n";
+        }
+
 
         int count = (int)feed.size();
 
-        for (int k = 0; k < count; k++)
+        for(const auto& entry : feed)
         {
-            auto& entry = feed.at(k);
-
             nlohmann::json mapping = PackageLinuxHelper::parseSnap(entry);
 
             if (!mapping.empty())

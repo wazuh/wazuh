@@ -20,7 +20,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-#include <iostream>
+#include <sstream>
 
 // Parse helpers for standard Linux packaging systems (rpm, dpkg, ...)
 namespace PackageLinuxHelper
@@ -187,7 +187,7 @@ namespace PackageLinuxHelper
         if (info.contains("install-date"))
         {
             struct std::tm tm;
-            std::istringstream iss(static_cast<std::string>(info.at("install-date")));
+            std::istringstream iss(info.at("install-date").get<std::string>());
             iss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
             std::ostringstream oss;
             oss << std::put_time(&tm, "%Y/%m/%d %H:%M:%S");
@@ -213,7 +213,12 @@ namespace PackageLinuxHelper
 
                 if (stringData.length())
                 {
-                    size = std::stoi( stringData );
+                    try {
+                        size = std::stoi( stringData );
+                    }
+                    catch (const std::exception& e) {
+                        size = 0;
+                    }
                 }
             }
         }
