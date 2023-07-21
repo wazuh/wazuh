@@ -1,51 +1,66 @@
 #include "logpar_test.hpp"
 
+#include <memory>
 #include <numeric>
 #include <stdexcept>
 
 #include <fmt/format.h>
 
+#include <schemf/mockSchema.hpp>
+
 using namespace hlp;
+using namespace schemf::mocks;
 namespace logp
 {
 using namespace logpar::parser;
 }
 
-TEST(LogparTest, Builds)
+class LogparTest : public ::testing::Test
+{
+protected:
+    std::shared_ptr<MockSchema> schema;
+
+    void SetUp() override { schema = std::make_shared<MockSchema>(); }
+};
+
+TEST_F(LogparTest, Builds)
 {
     auto config = logpar_test::getConfig();
-    ASSERT_NO_THROW(logpar::Logpar logpar(config));
+    ASSERT_NO_THROW(logpar::Logpar logpar(config, schema));
 }
 
-TEST(LogparTest, BuildsNotObjectConfig)
+TEST_F(LogparTest, BuildsNotObjectConfig)
 {
     json::Json config {"\"config\""};
-    ASSERT_THROW(logpar::Logpar logpar(config), std::runtime_error);
+    ASSERT_THROW(logpar::Logpar logpar(config, schema), std::runtime_error);
 }
 
-TEST(LogparTest, BuildsEmptyConfig)
+TEST_F(LogparTest, BuildsEmptyConfig)
 {
     json::Json config {"{}"};
-    ASSERT_THROW(logpar::Logpar logpar(config), std::runtime_error);
+    ASSERT_THROW(logpar::Logpar logpar(config, schema), std::runtime_error);
 }
 
 using ParseExprT = std::tuple<std::string, bool>;
-class LogparParseExprTest : public ::testing::TestWithParam<ParseExprT>
+class LogparParseExprTest
+    : public ::testing::TestWithParam<ParseExprT>
+    , public logpar_test::LogparPBase
 {
+protected:
+    void SetUp() override { init(); }
 };
 
 TEST_P(LogparParseExprTest, Parses)
 {
     auto [expression, shouldPass] = GetParam();
-    auto logpar = logpar_test::getLogpar();
 
     if (shouldPass)
     {
-        ASSERT_NO_THROW(logpar.build(expression));
+        ASSERT_NO_THROW(logpar->build(expression));
     }
     else
     {
-        ASSERT_THROW(logpar.build(expression), std::runtime_error);
+        ASSERT_THROW(logpar->build(expression), std::runtime_error);
     }
 }
 
@@ -70,15 +85,18 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("literal<text>:<~custom/long/error_arg><~>", false)));
 
 using BuildParseT = std::tuple<bool, std::string, std::string, json::Json>;
-class LogparBuildParseTest : public ::testing::TestWithParam<BuildParseT>
+class LogparBuildParseTest
+    : public ::testing::TestWithParam<BuildParseT>
+    , public logpar_test::LogparPBase
 {
+protected:
+    void SetUp() override { init(); }
 };
 
 TEST_P(LogparBuildParseTest, BuildParse)
 {
     auto [shouldPass, expression, text, expected] = GetParam();
-    auto logpar = logpar_test::getLogpar();
-    auto parser = logpar.build(expression);
+    auto parser = logpar->build(expression);
 
     json::Json event;
     auto error = hlp::parser::run(parser, text, event);
@@ -140,7 +158,6 @@ TEST_P(LogparFieldParserTest, Parses)
     {
         ASSERT_TRUE(res.success());
         ASSERT_EQ(name, res.value().name.value);
-        ASSERT_EQ(isCustom, res.value().name.custom);
         ASSERT_EQ(args, res.value().args);
         ASSERT_EQ(isOptional, res.value().optional);
     }
@@ -164,7 +181,7 @@ INSTANTIATE_TEST_SUITE_P(
         FieldParserT(true, "<~>", "~", true, {}, false, 3),
         FieldParserT(true, "<~//1//3//>", "~", true, {"", "1", "", "3", "", ""}, false, 11),
         FieldParserT(false, "<_name>", {}, {}, {}, {}, 1),
-        FieldParserT(false, "<~_name>", {}, {}, {}, {}, 2),
+        FieldParserT(true, "<~_name>", "~_name", true, {}, false, 8),
         FieldParserT(false, "<n'me>", {}, {}, {}, {}, 2),
         FieldParserT(false, "<~n'me>", {}, {}, {}, {}, 3),
         FieldParserT(true, R"(<name//1/\/2/\\3/4\>>)", "name", false, {"", "1", "/2", "\\3", "4>"}, false, 21),
@@ -238,14 +255,14 @@ INSTANTIATE_TEST_SUITE_P(
     LogparChoiceParserTest,
     ::testing::Values(ChoiceParserT(true,
                                     "<choice1>?<choice2>",
-                                    {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}},
+                                    {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}},
                                     19),
                       ChoiceParserT(false, "<?choice1>?<choice2>", {}, 0),
                       ChoiceParserT(false, "<choice1>?<?choice2>", {}, 0),
                       ChoiceParserT(false, "<?choice1>?<?choice2>", {}, 0),
                       ChoiceParserT(true,
                                     "<choice1>?<choice2>?<choice3>",
-                                    {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}},
+                                    {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}},
                                     19),
                       ChoiceParserT(false, R"(<choice1>\?<choice2>)", {}, 0)));
 
@@ -276,28 +293,28 @@ INSTANTIATE_TEST_SUITE_P(
     LogparExpressionParserTest,
     ::testing::Values(
         ExpressionParserT(true, "literal", {logp::Literal {"literal"}}, 7),
-        ExpressionParserT(true, "<field>", {logp::Field {logp::FieldName {"field", false}, {}, false}}, 7),
+        ExpressionParserT(true, "<field>", {logp::Field {logp::FieldName {"field"}, {}, false}}, 7),
         ExpressionParserT(true,
                           "literal<field>literal",
                           {logp::Literal {"literal"},
-                           logp::Field {logp::FieldName {"field", false}, {}, false},
+                           logp::Field {logp::FieldName {"field"}, {}, false},
                            logp::Literal {"literal"}},
                           21),
         ExpressionParserT(true,
                           "literal<field>)leftover",
-                          {logp::Literal {"literal"}, logp::Field {logp::FieldName {"field", false}, {}, false}},
+                          {logp::Literal {"literal"}, logp::Field {logp::FieldName {"field"}, {}, false}},
                           14),
         ExpressionParserT(true,
                           "literal<field>literal<choice1>?<choice2>",
                           {logp::Literal {"literal"},
-                           logp::Field {logp::FieldName {"field", false}, {}, false},
+                           logp::Field {logp::FieldName {"field"}, {}, false},
                            logp::Literal {"literal"},
-                           logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}}},
+                           logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}}},
                           40),
         ExpressionParserT(true,
                           "<choice1>?<choice2><field>literal",
-                          {logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}},
-                           logp::Field {logp::FieldName {"field", false}, {}, false},
+                          {logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}},
+                           logp::Field {logp::FieldName {"field"}, {}, false},
                            logp::Literal {"literal"}},
                           33)));
 
@@ -328,16 +345,16 @@ INSTANTIATE_TEST_SUITE_P(
     LogparGroupParserTest,
     ::testing::Values(
         GroupParserT(true, "(?literal)", {{logp::Literal {"literal"}}}, 10),
-        GroupParserT(true, "(?<field>)", {{logp::Field {logp::FieldName {"field", false}, {}, false}}}, 10),
+        GroupParserT(true, "(?<field>)", {{logp::Field {logp::FieldName {"field"}, {}, false}}}, 10),
         GroupParserT(true,
                      "(?<choice1>?<choice2>)",
-                     {{logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}}}},
+                     {{logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}}}},
                      22),
         GroupParserT(true,
                      "(?<field>literal<choice1>?<choice2>)",
-                     {{logp::Field {logp::FieldName {"field", false}, {}, false},
+                     {{logp::Field {logp::FieldName {"field"}, {}, false},
                        logp::Literal {"literal"},
-                       logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}}}},
+                       logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}}}},
                      36),
         GroupParserT(true, "(?literal)leftover", {{logp::Literal {"literal"}}}, 10),
         GroupParserT(
@@ -345,12 +362,12 @@ INSTANTIATE_TEST_SUITE_P(
         GroupParserT(true,
                      "(?literal<field><choice1>?<choice2>(?literal<field><choice1>?<choice2>))",
                      {{logp::Literal {"literal"},
-                       logp::Field {logp::FieldName {"field", false}, {}, false},
-                       logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}},
+                       logp::Field {logp::FieldName {"field"}, {}, false},
+                       logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}},
                        logp::Group {
                            {logp::Literal {"literal"},
-                            logp::Field {logp::FieldName {"field", false}, {}, false},
-                            logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}}}}}},
+                            logp::Field {logp::FieldName {"field"}, {}, false},
+                            logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}}}}}},
                      72),
         GroupParserT(true,
                      "(?(?(?(?literal))))",
@@ -370,10 +387,10 @@ INSTANTIATE_TEST_SUITE_P(
         GroupParserT(false, "(?)", {}, 0),
         GroupParserT(true,
                      "(?<?~opt/text> (?<long>?<~/literal/->))",
-                     {{logp::Field {logp::FieldName {"~opt", true}, {"text"}, true},
+                     {{logp::Field {logp::FieldName {"~opt"}, {"text"}, true},
                        logp::Literal {" "},
                        logp::Group {
-                           {logp::Choice {{{"long", false}, {}, false}, {{"~", true}, {"literal", "-"}, false}}}}}},
+                           {logp::Choice {{{"long"}, {}, false}, {{"~"}, {"literal", "-"}, false}}}}}},
                      39)));
 
 using LogparParserT = std::tuple<bool, std::string, std::list<logp::ParserInfo>, size_t>;
@@ -402,28 +419,28 @@ INSTANTIATE_TEST_SUITE_P(
     Parses,
     LogparLogparParserTest,
     ::testing::Values(LogparParserT(true, "literal", {logp::Literal {"literal"}}, 7),
-                      LogparParserT(true, "<field>", {logp::Field {logp::FieldName {"field", false}, {}, false}}, 7),
+                      LogparParserT(true, "<field>", {logp::Field {logp::FieldName {"field"}, {}, false}}, 7),
                       LogparParserT(true,
                                     "<choice1>?<choice2>",
-                                    {logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}}},
+                                    {logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}}},
                                     19),
                       LogparParserT(true, "(?literal)", {logp::Group {{logp::Literal {"literal"}}}}, 10),
                       LogparParserT(true,
                                     "literal<field><choice1>?<choice2>(?literal)",
                                     {logp::Literal {"literal"},
-                                     logp::Field {logp::FieldName {"field", false}, {}, false},
-                                     logp::Choice {{{"choice1", false}, {}, false}, {{"choice2", false}, {}, false}},
+                                     logp::Field {logp::FieldName {"field"}, {}, false},
+                                     logp::Choice {{{"choice1"}, {}, false}, {{"choice2"}, {}, false}},
                                      logp::Group {{logp::Literal {"literal"}}}},
                                     43),
                       LogparParserT(false, "literal?leftover", {}, 7),
                       LogparParserT(true,
                                     "[date] <~host> <text>(?<~opt/text>|):<~>",
                                     {logp::Literal {"[date] "},
-                                     logp::Field {logp::FieldName {"~host", true}, {}, false},
+                                     logp::Field {logp::FieldName {"~host"}, {}, false},
                                      logp::Literal {" "},
-                                     logp::Field {logp::FieldName {"text", false}, {}, false},
-                                     logp::Group {{logp::Field {logp::FieldName {"~opt", true}, {"text"}, false},
+                                     logp::Field {logp::FieldName {"text"}, {}, false},
+                                     logp::Group {{logp::Field {logp::FieldName {"~opt"}, {"text"}, false},
                                                    logp::Literal {"|"}}},
                                      logp::Literal {":"},
-                                     logp::Field {logp::FieldName {"~", true}, {}, false}},
+                                     logp::Field {logp::FieldName {"~"}, {}, false}},
                                     40)));

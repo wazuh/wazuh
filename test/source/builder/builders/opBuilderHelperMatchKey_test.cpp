@@ -5,7 +5,7 @@
 #include <baseTypes.hpp>
 #include <defs/defs.hpp>
 #include <defs/mocks/failDef.hpp>
-#include <schemf/mocks/emptySchema.hpp>
+#include <schemf/emptySchema.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 

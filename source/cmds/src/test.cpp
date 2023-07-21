@@ -96,7 +96,8 @@ void run(const Options& options)
         g_exitHanlder.execute();
         return;
     }
-    auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+    auto schema = std::make_shared<schemf::Schema>();
+    auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers), schema);
     hlp::registerParsers(logpar);
     LOG_INFO("HLP initialized.");
 
@@ -110,7 +111,7 @@ void run(const Options& options)
         deps.kvdbScopeName = "test";
         deps.kvdbManager = kvdbManager;
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-        deps.schema = std::make_shared<schemf::Schema>();
+        deps.schema = schema;
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
         builder::internals::registerBuilders(registry, deps);
     }

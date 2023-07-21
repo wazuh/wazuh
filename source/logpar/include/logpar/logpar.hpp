@@ -2,6 +2,7 @@
 #define _LOGPAR_HPP
 
 #include <list>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -9,6 +10,7 @@
 
 #include <hlp/hlp.hpp>
 #include <json/json.hpp>
+#include <schemf/ischema.hpp>
 
 #include "parsec.hpp"
 
@@ -236,9 +238,9 @@ constexpr auto EXPR_ESCAPE = '\\';
 constexpr auto EXPR_ARG_SEP = '/';
 constexpr auto EXPR_GROUP_BEGIN = '(';
 constexpr auto EXPR_GROUP_END = ')';
-constexpr auto EXPR_CUSTOM_FIELD = '~';
+constexpr auto EXPR_WILDCARD = '~';
 constexpr auto EXPR_FIELD_SEP = '.';
-constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "@#";
+constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "@#~";
 constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";
 }; // namespace syntax
 
@@ -279,8 +281,7 @@ struct Literal
 struct FieldName
 {
     std::string value;
-    bool custom;
-    bool operator==(const FieldName& other) const { return value == other.value && custom == other.custom; }
+    bool operator==(const FieldName& other) const { return value == other.value; }
 };
 
 /**
@@ -372,6 +373,8 @@ private:
     using ParserBuilder = hlp::ParserBuilder;
     using Hlp = hlp::parser::Parser;
 
+    std::shared_ptr<schemf::ISchema> m_schema;
+
     size_t m_maxGroupRecursion;
 
     size_t m_debugLvl;
@@ -394,9 +397,16 @@ public:
      * @brief Construct a new Logpar object
      *
      * @param ecsFieldTypes a json object with the schema types of the schema fields
+     * @param schema the schema to validate the fields
+     * @param maxGroupRecursion the maximum number of times a group can be nested
+     * @param debugLvl the debug level
+     *
      * @throws std::runtime_error if errors occur while initializing
      */
-    Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion = 1, size_t debugLvl = 0);
+    Logpar(const json::Json& ecsFieldTypes,
+           const std::shared_ptr<schemf::ISchema>& schema,
+           size_t maxGroupRecursion = 1,
+           size_t debugLvl = 0);
 
     /**
      * @brief Register a parser builder for the given parser type

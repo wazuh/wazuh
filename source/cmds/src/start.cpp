@@ -249,6 +249,23 @@ void runStart(ConfHandler confManager)
             LOG_INFO("Store initialized.");
         }
 
+        // Schema
+        {
+            schema = std::make_shared<schemf::Schema>();
+            auto result = store->get("schema/engine-schema/0");
+            if (std::holds_alternative<base::Error>(result))
+            {
+                LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
+                LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed.");
+            }
+            else
+            {
+                auto schemaJson = std::get<json::Json>(result);
+                schema->load(schemaJson);
+            }
+            LOG_INFO("Schema initialized.");
+        }
+
         // HLP
         {
             base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
@@ -263,27 +280,9 @@ void runStart(ConfHandler confManager)
                 exitHandler.execute();
                 return;
             }
-            logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+            logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers), schema);
             hlp::registerParsers(logpar);
             LOG_INFO("HLP initialized.");
-        }
-
-        // Schema
-        {
-            // TODO schema initialization
-            schema = std::make_shared<schemf::Schema>();
-            auto result = store->get("schema/engine-schema/0");
-            if (std::holds_alternative<base::Error>(result))
-            {
-                LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
-                LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed.");
-            }
-            else
-            {
-                auto schemaJson = std::get<json::Json>(result);
-                schema->load(schemaJson);
-            }
-            LOG_INFO("Schema initialized.");
         }
 
         // Builder and registry

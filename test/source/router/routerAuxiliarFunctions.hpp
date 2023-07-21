@@ -7,7 +7,7 @@
 #include <defs/idefinitions.hpp>
 #include <parseEvent.hpp>
 #include <queue/concurrentQueue.hpp>
-#include <schemf/mocks/emptySchema.hpp>
+#include <schemf/emptySchema.hpp>
 #include <store/mockStore.hpp>
 
 #include "utils/stringUtils.hpp"

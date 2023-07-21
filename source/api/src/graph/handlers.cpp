@@ -79,7 +79,8 @@ api::Handler resourceGet(const Config& config)
                                          std::get<base::Error>(hlpParsers).message);
             return ::api::adapter::genericError<ResponseType>(msg);
         }
-        auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+        auto schema = std::make_shared<schemf::Schema>();
+        auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers), schema);
         hlp::registerParsers(logpar);
 
         auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
@@ -91,7 +92,7 @@ api::Handler resourceGet(const Config& config)
             deps.logpar = logpar;
             deps.kvdbScopeName = "graph";
             deps.kvdbManager = config.kvdbManager;
-            deps.schema = std::make_shared<schemf::Schema>();
+            deps.schema = schema;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
             builder::internals::registerBuilders(registry, deps);
