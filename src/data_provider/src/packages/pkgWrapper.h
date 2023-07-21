@@ -28,7 +28,9 @@ class PKGWrapper final : public IPackageWrapper
 {
     public:
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_architecture{UNKNOWN_VALUE}
+            : m_version{UNKNOWN_VALUE}
+            , m_groups{UNKNOWN_VALUE}
+            , m_architecture{UNKNOWN_VALUE}
             , m_format{"pkg"}
             , m_vendor{UNKNOWN_VALUE}
         {
@@ -143,12 +145,14 @@ class PKGWrapper final : public IPackageWrapper
                         else if (line == "<key>CFBundleShortVersionString</key>" &&
                                  std::getline(data, line))
                         {
-                            m_version = getValueFnc(line);
+                            auto version = getValueFnc(line);
+                            m_version = version.empty() ? UNKNOWN_VALUE : version;
                         }
                         else if (line == "<key>LSApplicationCategoryType</key>" &&
                                  std::getline(data, line))
                         {
-                            m_groups = getValueFnc(line);
+                            auto groups = getValueFnc(line);
+                            m_groups = groups.empty() ? UNKNOWN_VALUE : groups;
                         }
                         else if (line == "<key>CFBundleIdentifier</key>" &&
                                  std::getline(data, line))

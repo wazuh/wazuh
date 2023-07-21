@@ -15,6 +15,7 @@
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
+#include "sharedDefs.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -45,11 +46,11 @@ namespace PackageLinuxHelper
         {
             ret["name"] = info.at("Package");
 
-            std::string priority;
-            std::string groups;
-            std::string multiarch;
+            std::string priority {UNKNOWN_VALUE};
+            std::string groups {UNKNOWN_VALUE};
+            std::string multiarch {UNKNOWN_VALUE};
             std::string architecture;
-            std::string source;
+            std::string source {UNKNOWN_VALUE};
             std::string version;
             std::string vendor;
             std::string description;
