@@ -19,10 +19,12 @@ namespace
 std::queue<Token> tokenize(const std::string& rawExpression)
 {
     std::vector<std::string> rawTokens =
-        base::utils::string::splitMulti(rawExpression,
-                                  base::utils::string::Delimeter(' ', false),
-                                  base::utils::string::Delimeter('(', true),
-                                  base::utils::string::Delimeter(')', true));
+        base::utils::string::splitMulti(rawExpression, base::utils::string::Delimeter(' ', false));
+
+    // TODO: Right now parenthesis conflict with helper builder syntax, so we force
+    // them to be separated by blank spaces. This should be fixed in the future parsing implementation.
+    //   base::utils::string::Delimeter('(', true),
+    //   base::utils::string::Delimeter(')', true));
 
     std::queue<Token> tokens;
     size_t i = 0;
@@ -70,9 +72,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected tocken TERM \"{}\" at position \"{}\"",
-                                token.m_text,
-                                token.m_position));
+                    fmt::format("Unexpected tocken TERM \"{}\" at position \"{}\"", token.m_text, token.m_position));
             }
 
             expectOperator();
@@ -85,8 +85,7 @@ struct syntaxChecker
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected unary operator \"NOT\" at position \"{}\"",
-                                token.m_position));
+                    fmt::format("Unexpected unary operator \"NOT\" at position \"{}\"", token.m_position));
             }
 
             // Still wanting operand
@@ -98,10 +97,8 @@ struct syntaxChecker
         {
             if (expectedOperand())
             {
-                throw std::runtime_error(
-                    fmt::format("Unexpected binary operator \"{}\" at position \"{}\"",
-                                token.m_text,
-                                token.m_position));
+                throw std::runtime_error(fmt::format(
+                    "Unexpected binary operator \"{}\" at position \"{}\"", token.m_text, token.m_position));
             }
 
             expectOperand();
@@ -113,8 +110,8 @@ struct syntaxChecker
         {
             if (expectedOperator())
             {
-                throw std::runtime_error(fmt::format(
-                    "Unexpected parenthesis \"(\" at position \"{}\"", token.m_position));
+                throw std::runtime_error(
+                    fmt::format("Unexpected parenthesis \"(\" at position \"{}\"", token.m_position));
             }
 
             // Still wanting operand
@@ -126,8 +123,8 @@ struct syntaxChecker
         {
             if (expectedOperand())
             {
-                throw std::runtime_error(fmt::format(
-                    "Unexpected parenthesis \")\" at position \"{}\"", token.m_position));
+                throw std::runtime_error(
+                    fmt::format("Unexpected parenthesis \")\" at position \"{}\"", token.m_position));
             }
 
             // Still wanting operator
@@ -160,8 +157,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         }
         else if (TokenType::PARENTHESIS_CLOSE == token.m_type)
         {
-            while (!operatorStack.empty()
-                   && operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN)
+            while (!operatorStack.empty() && operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN)
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();
@@ -174,8 +170,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         }
         else
         {
-            while (!operatorStack.empty()
-                   && operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN
+            while (!operatorStack.empty() && operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN
                    && operatorStack.top() >= token)
             {
                 postfix.push(std::move(operatorStack.top()));
@@ -215,8 +210,7 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression)
     }
     catch (...)
     {
-        throw std::runtime_error(
-            fmt::format("Failed to parse expression \"{}\"", rawExpression));
+        throw std::runtime_error(fmt::format("Failed to parse expression \"{}\"", rawExpression));
     }
 
     return expression;

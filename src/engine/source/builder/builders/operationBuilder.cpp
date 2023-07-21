@@ -9,6 +9,7 @@
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
+#include "helperParser.hpp"
 #include "registry.hpp"
 #include "result.hpp"
 #include "syntax.hpp"
@@ -170,6 +171,19 @@ Expression operationBuilder(const std::any& definition,
         throw std::runtime_error(std::string("Error trying to obtain the arguments: ") + e.what());
     }
 
+    auto isHelper = [&value]() -> decltype(parseHelper(""))
+    {
+        if (value.isString())
+        {
+            auto result = parseHelper(value.getString().value());
+            return result;
+        }
+        else
+        {
+            return base::Error {};
+        }
+    }();
+
     // Check target field is a schema field or a custom field
     if (forceFieldNaming && !schema->hasField(targetField) && targetField[0] != syntax::CUSTOM_FIELD_ANCHOR)
     {
@@ -219,20 +233,12 @@ Expression operationBuilder(const std::any& definition,
             default: throw std::runtime_error(fmt::format("Unsupported operation type \"{}\"", static_cast<int>(type)));
         }
     }
-    else if (value.isString() && value.getString().value().front() == syntax::FUNCTION_HELPER_ANCHOR)
+    else if (value.isString() && std::holds_alternative<HelperToken>(isHelper))
     {
-        std::string helperName;
-        std::vector<std::string> helperArgs;
-        auto helperString = value.getString().value().substr(1);
-
-        helperArgs = base::utils::string::splitEscaped(
-            helperString, syntax::FUNCTION_HELPER_ARG_ANCHOR, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE);
-
-        helperName = helperArgs.at(0);
-        helperArgs.erase(helperArgs.begin());
+        auto helperToken = std::get<HelperToken>(isHelper);
 
         // Check if there are invalid references in the arguments
-        for (const auto& arg : helperArgs)
+        for (const auto& arg : helperToken.args)
         {
             if (forceFieldNaming && arg[0] == syntax::REFERENCE_ANCHOR)
             {
@@ -250,12 +256,13 @@ Expression operationBuilder(const std::any& definition,
 
         try
         {
-            return helperRegistry->getBuilder(helperName)(targetFieldPath, helperName, helperArgs, definitions);
+            return helperRegistry->getBuilder(helperToken.name)(
+                targetFieldPath, helperToken.name, helperToken.args, definitions);
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error(
-                fmt::format("An error occurred while building the helper function \"{}\": {}", helperName, e.what()));
+            throw std::runtime_error(fmt::format(
+                "An error occurred while building the helper function \"{}\": {}", helperToken.name, e.what()));
         }
     }
     else if (value.isArray())
@@ -271,8 +278,8 @@ Expression operationBuilder(const std::any& definition,
         for (auto i = 0; i < array.size(); i++)
         {
             auto path = targetField + syntax::JSON_PATH_SEPARATOR + std::to_string(i);
-            expressions.push_back(
-                operationBuilder(std::make_tuple(path, array[i]), definitions, type, helperRegistry, schema, forceFieldNaming));
+            expressions.push_back(operationBuilder(
+                std::make_tuple(path, array[i]), definitions, type, helperRegistry, schema, forceFieldNaming));
         }
 
         switch (type)
@@ -291,9 +298,12 @@ Expression operationBuilder(const std::any& definition,
         std::vector<base::Expression> expressions;
         for (auto& [key, value] : object)
         {
-            auto path = targetField + syntax::JSON_PATH_SEPARATOR + key;
-            expressions.push_back(
-                operationBuilder(std::make_tuple(path, value), definitions, type, helperRegistry, schema, forceFieldNaming));
+            std::string path{};
+            path += targetField;
+            path += syntax::JSON_PATH_SEPARATOR;
+            path += key;
+            expressions.push_back(operationBuilder(
+                std::make_tuple(path, value), definitions, type, helperRegistry, schema, forceFieldNaming));
         }
 
         switch (type)
@@ -328,7 +338,7 @@ Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> he
                                      bool forceFieldNaming)
 {
     return
-        [helperRegistry, schema, forceFieldNaming](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
+        [helperRegistry, schema, forceFieldNaming](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         return operationBuilder(
             definition, definitions, OperationType::FILTER, helperRegistry, schema, forceFieldNaming);
@@ -340,7 +350,7 @@ Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRe
                                bool forceFieldNaming)
 {
     return
-        [helperRegistry, schema, forceFieldNaming](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
+        [helperRegistry, schema, forceFieldNaming](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         return operationBuilder(definition, definitions, OperationType::MAP, helperRegistry, schema, forceFieldNaming);
     };

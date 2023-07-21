@@ -215,3 +215,8 @@ add_executable(opBuilderHelperUpgradeConfirmation_test
 )
 target_link_libraries(opBuilderHelperUpgradeConfirmation_test sockiface::mocks)
 gtest_discover_tests(opBuilderHelperUpgradeConfirmation_test)
+
+add_executable(helperParser_test
+  ${BUILDER_TEST_SOURCE_DIR}/helperParser_test.cpp
+)
+gtest_discover_tests(helperParser_test)

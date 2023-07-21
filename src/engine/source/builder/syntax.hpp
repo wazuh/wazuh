@@ -11,8 +11,7 @@ namespace builder::internals::syntax
 {
 
 constexpr char REFERENCE_ANCHOR {'$'};
-constexpr char FUNCTION_HELPER_ANCHOR {'+'};
-constexpr char FUNCTION_HELPER_ARG_ANCHOR {'/'};
+constexpr char FUNCTION_HELPER_ARG_ANCHOR {','};
 constexpr char FUNCTION_HELPER_DEFAULT_ESCAPE {'\\'};
 constexpr char JSON_PATH_SEPARATOR {'.'};
 constexpr char CUSTOM_FIELD_ANCHOR {'~'};

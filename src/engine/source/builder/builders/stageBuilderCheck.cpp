@@ -3,13 +3,15 @@
 #include <algorithm>
 #include <any>
 
-#include "baseTypes.hpp"
-#include "expression.hpp"
-#include "registry.hpp"
-#include "syntax.hpp"
 #include <json/json.hpp>
 #include <logicExpression/logicExpression.hpp>
 #include <regex>
+
+#include "baseTypes.hpp"
+#include "expression.hpp"
+#include "helperParser.hpp"
+#include "registry.hpp"
+#include "syntax.hpp"
 
 namespace
 {
@@ -86,28 +88,23 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         {
             if (field[0] != syntax::REFERENCE_ANCHOR)
             {
-                throw std::runtime_error(fmt::format("Check stage: the fild must be a reference, but got '{}'",
-                                                     field));
+                throw std::runtime_error(fmt::format("Check stage: the fild must be a reference, but got '{}'", field));
             }
             return field.substr(1);
         };
 
-        if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
-        {
-            auto pos1 = term.find("/");
-            auto pos2 = [&]()
-            {
-                auto tmp = term.find("/", pos1 + 1);
-                if (std::string::npos != tmp)
-                {
-                    return tmp;
-                }
-                return term.size();
-            }();
+        auto isHelper = parseHelper(term);
 
-            field = getField(term.substr(pos1 + 1, pos2 - pos1 - 1));
-            value = term.substr(0, pos1) + term.substr(pos2);
-            valueJson.setString(value);
+        if (std::holds_alternative<HelperToken>(isHelper))
+        {
+            auto helperToken = std::get<HelperToken>(isHelper);
+
+            // In expressions the target field is always the first argument
+            auto [targetField, value] = toBuilderInput(helperToken);
+
+            // Remove the first character from the target field
+            field = std::string(targetField.begin()+1, targetField.end());
+            valueJson = std::move(value);
         }
         else
         {
