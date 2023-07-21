@@ -20,7 +20,7 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
         HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps"),
         [&](const std::string & result)
     {
-        auto feed = nlohmann::json::parse(result,nullptr,false).at("result");
+        auto feed = nlohmann::json::parse(result, nullptr, false).at("result");
 
         if (feed.is_discarded())
         {
@@ -30,7 +30,7 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
 
         int count = (int)feed.size();
 
-        for(const auto& entry : feed)
+        for (const auto& entry : feed)
         {
             nlohmann::json mapping = PackageLinuxHelper::parseSnap(entry);
 

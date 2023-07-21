@@ -213,10 +213,12 @@ namespace PackageLinuxHelper
 
                 if (stringData.length())
                 {
-                    try {
+                    try
+                    {
                         size = std::stoi( stringData );
                     }
-                    catch (const std::exception& e) {
+                    catch (const std::exception& e)
+                    {
                         size = 0;
                     }
                 }
