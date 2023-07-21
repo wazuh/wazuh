@@ -1,0 +1,44 @@
+name: Framework unit tests
+
+on:
+  pull_request:
+    paths: 
+    - 'api/**'
+    - 'framework/**'
+
+jobs:
+  build: 
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9']
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'api/**'
+            framework:
+              - 'framework/**'
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r framework/requirements.txt
+
+      - name: Run API tests
+        if: steps.filter.outputs.api == 'true'
+        run: python3 -m pytest api/api
+
+      - name: Run Framework tests
+        if: steps.filter.outputs.framework == 'true'
+        run: python3 -m pytest framework
