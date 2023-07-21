@@ -27,9 +27,11 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster import common as cluster_common, client, master
+        from wazuh.core.cluster.master import DEFAULT_DATE
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
         from wazuh.core.utils import get_utc_strptime
+        from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 # Global variables
 
@@ -288,18 +290,18 @@ def test_master_handler_init():
         assert isinstance(master_handler.sync_integrity_free[1], datetime)
         assert master_handler.extra_valid_requested is False
         assert master_handler.integrity_check_status == {
-            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)}
+            'date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE}
         assert master_handler.integrity_sync_status == {
-            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'tmp_date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_start_master': DEFAULT_DATE,
+            'tmp_date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE,
             'total_extra_valid': 0,
             'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
                             'extra_valid': 0}}
         assert master_handler.sync_agent_info_status == {
-            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE,
             'n_synced_chunks': 0}
         assert master_handler.version == ""
         assert master_handler.cluster_name == ""
@@ -331,12 +333,12 @@ def test_master_handler_to_dict():
     assert output["status"]["sync_integrity_free"] == master_handler.sync_integrity_free[0]
     assert "last_check_integrity" in output["status"]
     assert output["status"]["last_check_integrity"] == {
-        'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-        'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)}
+        'date_start_master': DEFAULT_DATE,
+        'date_end_master': DEFAULT_DATE}
     assert "last_sync_integrity" in output["status"]
     assert output["status"]["last_sync_integrity"] == {
-        'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-        'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+        'date_start_master': DEFAULT_DATE,
+        'date_end_master': DEFAULT_DATE,
         'total_extra_valid': 0,
         'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
                         'extra_valid': 0}}
@@ -411,16 +413,23 @@ def test_master_handler_process_request(logger_mock):
     with patch("wazuh.core.cluster.common.end_sending_agent_information",
                return_value=b'ok') as end_sending_agent_information_mock:
         master_handler.task_loggers['Agent-groups send'] = logging.getLogger('Agent-groups send')
+        master_handler.send_agent_groups_status['date_start'] = '1970-01-01T00:00:00.0Z'
+
         assert master_handler.process_request(command=b'syn_w_g_e', data=b"data") == b"ok"
-        end_sending_agent_information_mock.assert_called_once_with(logging.getLogger('Agent-groups send'), 0.0, "data")
+        end_sending_agent_information_mock.assert_called_once_with(
+            logging.getLogger('Agent-groups send'), 
+            datetime.strptime(master_handler.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT), "data")
 
     # Test the sixth condition
     with patch("wazuh.core.cluster.common.end_sending_agent_information",
                return_value=b'ok') as end_sending_agent_information_mock:
         master_handler.task_loggers['Agent-groups send full'] = logging.getLogger('Agent-groups send full')
+        master_handler.send_full_agent_groups_status['date_start'] = '1970-01-01T00:00:00.0Z'
+
         assert master_handler.process_request(command=b'syn_wgc_e', data=b"data") == b"ok"
         end_sending_agent_information_mock.assert_called_once_with(
-            logging.getLogger('Agent-groups send full'), 0.0, "data")
+            logging.getLogger('Agent-groups send full'),
+            datetime.strptime(master_handler.send_full_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT), "data")
 
     # Test the seventh condition
     with patch("wazuh.core.cluster.common.error_receiving_agent_information",
@@ -1034,23 +1043,18 @@ async def test_master_handler_sync_worker_files_ko(wait_for_mock, decompress_fil
 
 
 @pytest.mark.asyncio
-@freeze_time("2021-11-02")
-@patch.object(logging.getLogger("wazuh"), "info")
+@patch("wazuh.core.cluster.master.MasterHandler.set_date_end_master")
 @patch("wazuh.core.cluster.master.MasterHandler.sync_worker_files")
-async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mock):
+async def test_master_handler_sync_extra_valid(sync_worker_files_mock, set_date_end_master_mock):
     """Check if the extra_valid sync process is properly run."""
-
     master_handler = get_master_handler()
     master_handler.task_loggers["Integrity sync"] = logging.getLogger("wazuh")
     await master_handler.sync_extra_valid("task_id", None)
 
     sync_worker_files_mock.assert_called_once_with("task_id", None, logging.getLogger("wazuh"))
-    assert master_handler.integrity_sync_status['date_end_master'] == "2021-11-02T00:00:00.000000Z"
-    logger_mock.assert_called_once_with(
-        "Finished in {:.3f}s.".format(
-            (get_utc_strptime(master_handler.integrity_sync_status['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ') -
-             master_handler.integrity_sync_status['tmp_date_start_master']).total_seconds()))
-    assert master_handler.integrity_sync_status['date_start_master'] == "1970-01-01T00:00:00.000000Z"
+    set_date_end_master_mock.assert_called_once_with(logging.getLogger("wazuh"))
+    assert master_handler.integrity_sync_status['date_end_master'] == DEFAULT_DATE
+    assert master_handler.integrity_sync_status['date_start_master'] == DEFAULT_DATE
     assert master_handler.extra_valid_requested is False
     assert master_handler.sync_integrity_free[0] is True
     assert isinstance(master_handler.sync_integrity_free[1], datetime)
@@ -1061,7 +1065,10 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mo
 def test_set_date_end_master(info_mock):
     """Check if set_date_end_master works as expected."""
     master_handler = get_master_handler()
+    master_handler.integrity_sync_status['tmp_date_start_master'] = datetime.utcnow().replace(tzinfo=timezone.utc)
     master_handler.set_date_end_master(logging.getLogger("wazuh"))
+
+    assert master_handler.integrity_sync_status['date_end_master'] == "1970-01-01T00:00:00.000000Z"
     assert isinstance(master_handler.integrity_sync_status['date_start_master'], str)
     assert isinstance(master_handler.integrity_sync_status['date_end_master'], str)
     info_mock.assert_called_once()
