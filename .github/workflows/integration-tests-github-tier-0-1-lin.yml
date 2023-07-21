@@ -32,6 +32,8 @@ jobs:
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="1.1.1.1"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
