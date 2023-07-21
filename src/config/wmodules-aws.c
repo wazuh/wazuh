@@ -551,16 +551,28 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->sqs_name);
                         os_strdup(children[j]->content, cur_subscriber->sqs_name);
+                    } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_SUBSCRIBER_QUEUE);
+                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_AWS_EXTERNAL_ID)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->external_id);
                         os_strdup(children[j]->content, cur_subscriber->external_id);
+                    } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_AWS_EXTERNAL_ID);
+                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->iam_role_arn);
                         os_strdup(children[j]->content, cur_subscriber->iam_role_arn);
+                    } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_IAM_ROLE_ARN);
+                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_IAM_ROLE_DURATION)){
                         if (strlen(children[j]->content) != 0){
