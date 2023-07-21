@@ -364,6 +364,10 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                 {
                     location = value;
                 }
+                else
+                {
+                    location = UNKNOWN_VALUE;
+                }
 
                 if (!name.empty())
                 {

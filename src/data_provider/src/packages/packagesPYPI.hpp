@@ -39,7 +39,7 @@ class PYPI final : public TFileSystem, public TFileIO
             packageInfo["groups"] = UNKNOWN_VALUE;
             packageInfo["description"] = UNKNOWN_VALUE;
             packageInfo["architecture"] = UNKNOWN_VALUE;
-            packageInfo["format"] = "PYPI";
+            packageInfo["format"] = "pypi";
             packageInfo["source"] = UNKNOWN_VALUE;
             packageInfo["location"] = path.string();
             packageInfo["priority"] = UNKNOWN_VALUE;

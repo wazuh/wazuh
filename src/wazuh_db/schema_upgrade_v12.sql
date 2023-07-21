@@ -2,7 +2,7 @@
  * SQL Schema for upgrading databases
  * Copyright (C) 2015, Wazuh Inc.
  *
- * July 24, 2023.
+ * February 1, 2023.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -13,7 +13,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS _sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk', 'macports')),
+    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk', 'macports', 'pypi', 'npm')),
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS _sys_programs (
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    PRIMARY KEY (scan_id, name, version, architecture)
+    PRIMARY KEY (scan_id, name, version, architecture, location)
 );
 
 INSERT INTO _sys_programs SELECT scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, cpe, msu_name, CASE WHEN checksum <> '' THEN checksum ELSE 'legacy' END AS checksum, item_id FROM sys_programs;
@@ -52,3 +52,4 @@ END;
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 12);
 
 COMMIT;
+
