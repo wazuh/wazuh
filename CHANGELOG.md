@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.5.0]
 
+### Manager
+
+#### Fixed
+
+- Fixed an error in the installation commands of the API and Framework modules when performing upgrades from sources. ([#17656](https://github.com/wazuh/wazuh/pull/17656))
+
+### RESTful API
+
+#### Changed
+
+- Changed API integration tests to include Nginx LB logs when tests failed. ([#17703](https://github.com/wazuh/wazuh/pull/17703))
+
+#### Fixed
+
+- Fixed error in the Nginx LB entrypoint of the API integration tests. ([#17703](https://github.com/wazuh/wazuh/pull/17703))
+
 
 ## [v4.4.5] - 2023-07-10
 
