@@ -46,9 +46,9 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
-include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+  include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+  include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+  include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # Avoid download externals from http-request submodule
@@ -57,8 +57,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   include_directories(${SRC_FOLDER}/shared_modules/http-request/include/)
   include_directories(${SRC_FOLDER}/shared_modules/http-request/shared/)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-include_directories(${SRC_FOLDER}/external/curl/include/curl/)
-
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
