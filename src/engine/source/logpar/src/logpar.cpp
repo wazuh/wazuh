@@ -123,26 +123,6 @@ parsec::Parser<parsec::Values<std::string>> pArgs()
 
 parsec::Parser<FieldName> pFieldName()
 {
-    parsec::Parser<std::string> pCustom = [](std::string_view text, size_t i)
-    {
-        if (i < text.size())
-        {
-            if (text[i] == syntax::EXPR_CUSTOM_FIELD)
-            {
-                return parsec::makeSuccess(std::string {text[i]}, i + 1);
-            }
-            else
-            {
-                return parsec::makeSuccess(std::string {}, i);
-            }
-        }
-        else
-        {
-            return parsec::makeError<std::string>(fmt::format("Optional '{}', found EOF", syntax::EXPR_CUSTOM_FIELD),
-                                                  i);
-        }
-    };
-
     std::string extendedChars = syntax::EXPR_FIELD_EXTENDED_CHARS;
     extendedChars += syntax::EXPR_FIELD_SEP;
     std::string extendedCharsFirst = syntax::EXPR_FIELD_EXTENDED_CHARS_FIRST;
@@ -158,23 +138,8 @@ parsec::Parser<FieldName> pFieldName()
             return result;
         },
         pCharAlphaNum(extendedCharsFirst) & parsec::many(pCharAlphaNum(extendedChars)));
-    parsec::M<FieldName, std::string> m = [=](auto customS)
-    {
-        if (!customS.empty())
-        {
-            return parsec::fmap<FieldName, std::string>(
-                [](auto s) {
-                    return FieldName {s, true};
-                },
-                parsec::fmap<std::string, std::string>([=](auto s) { return customS + s; }, parsec::opt(pName)));
-        }
-        else
-        {
-            return parsec::fmap<FieldName, std::string>([](auto s) { return FieldName {s, false}; }, pName);
-        }
-    };
 
-    return pCustom >>= m;
+    return parsec::fmap<FieldName, std::string>([](auto s) { return FieldName {s}; }, pName);
 }
 
 parsec::Parser<Field> pField()
@@ -320,10 +285,19 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 
 namespace hlp::logpar
 {
-Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t debugLvl)
+Logpar::Logpar(const json::Json& ecsFieldTypes,
+               const std::shared_ptr<schemf::ISchema>& schema,
+               size_t maxGroupRecursion,
+               size_t debugLvl)
     : m_maxGroupRecursion(maxGroupRecursion)
     , m_debugLvl(debugLvl)
 {
+    if (!schema)
+    {
+        throw std::runtime_error("Schema must not be null");
+    }
+    m_schema = schema;
+
     if (!ecsFieldTypes.isObject())
     {
         // TODO: check message
@@ -405,7 +379,7 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     ParserType type;
     std::vector<std::string> args(field.args.begin(), field.args.end());
     // Custom field
-    if (field.name.custom)
+    if (!m_schema->hasField(field.name.value))
     {
         // Custom fields use specified parser in args or text parser by default
         if (args.empty())
@@ -451,7 +425,7 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     // Build target field
     // Special case <~> -> If name is ~, ignore output
     // Otherwise, set targetField
-    if (field.name.value != std::string {syntax::EXPR_CUSTOM_FIELD})
+    if (field.name.value != std::string {syntax::EXPR_WILDCARD})
     {
         builderParams.targetField = json::Json::formatJsonPath(field.name.value);
     }

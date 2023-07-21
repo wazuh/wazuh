@@ -1,3 +1,5 @@
+// TODO: Deprecated, remove once all tests are updated
+
 #ifndef _SCHEMF_MOCKS_SINGLE_FIELD_HPP
 #define _SCHEMF_MOCKS_SINGLE_FIELD_HPP
 

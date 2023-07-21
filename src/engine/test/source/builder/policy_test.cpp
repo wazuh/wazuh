@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include <schemf/mocks/emptySchema.hpp>
+#include <schemf/emptySchema.hpp>
 
 #include "builder/builder.hpp"
 #include "builder/policy.hpp"

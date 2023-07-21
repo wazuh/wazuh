@@ -6,8 +6,8 @@
 
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
-#include <schemf/mocks/emptySchema.hpp>
-#include <schemf/mocks/straightValidator.hpp>
+#include <schemf/emptySchema.hpp>
+#include <schemf/straightValidator.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
