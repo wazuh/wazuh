@@ -2668,54 +2668,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/sshd_config" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
-  # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 31157
-    title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following script to set mode, ownership, and group on the private SSH host key files: #!/usr/bin/env bash { l_output=\"\" l_output2=\"\" l_skgn=\"ssh_keys\" # Group designated to own openSSH keys l_skgid=\"$(awk -F: '($1 == \"'\"$l_skgn\"'\"){print $3}' /etc/group)\" # Get gid of group if [ -n \"$l_skgid\" ]; then l_agroup=\"(root|$l_skgn)\" && l_sgroup=\"$l_skgn\" && l_mfix=\"u-x,g-wx,o- rwx\" else l_agroup=\"root\" && l_sgroup=\"root\" && l_mfix=\"u-x,go-rwx\" fi unset a_skarr && a_skarr=() # Clear and initialize array while IFS= read -r -d $'\\0' l_file; do # Loop to populate array if grep -Pq ':\\h+OpenSSH\\h+private\\h+key\\b' <<< \"$(file \"$l_file\")\"; then a_skarr+=(\"$(stat -Lc '%n^%#a^%U^%G^%g' \"$l_file\")\") fi done < <(find -L /etc/ssh -xdev -type f -print0) while IFS=\"^\" read -r l_file l_mode l_owner l_group l_gid; do l_out2=\"\" [ \"$l_gid\" = \"$l_skgid\" ] && l_pmask=\"0137\" || l_pmask=\"0177\" l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" if [ $(( $l_mode & $l_pmask )) -gt 0 ]; then l_out2=\"$l_out2\\n - Mode: \\\"$l_mode\\\" should be mode: \\\"$l_maxperm\\\" or more restrictive\\n - Revoking excess permissions\" chmod \"$l_mfix\" \"$l_file\" fi if [ \"$l_owner\" != \"root\" ]; then l_out2=\"$l_out2\\n - Owned by: \\\"$l_owner\\\" should be owned by \\\"root\\\"\\n - Changing ownership to \\\"root\\\"\" chown root \"$l_file\" fi if [[ ! \"$l_group\" =~ $l_agroup ]]; then l_out2=\"$l_out2\\n - Owned by group \\\"$l_group\\\" should be group owned by: \\\"${l_agroup//|/ or }\\\"\\n - Changing group ownership to \\\"$l_sgroup\\\"\" chgrp \"$l_sgroup\" \"$l_file\" fi [ -n \"$l_out2\" ] && l_output2=\"$l_output2\\n - File: \\\"$l_file\\\"$l_out2\" done <<< \"$(printf '%s\\n' \"${a_skarr[@]}\")\" unset a_skarr if [ -z \"$l_output2\" ]; then echo -e \"\\n- No access changes required\\n\" else echo -e \"\\n- Remediation results:\\n$l_output2\\n\" fi }."
-    compliance:
-      - cis: ["4.2.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1552", "T1552.004"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
-  # 4.2.3 Ensure permissions on SSH public host key files are configured. (Automated)
-  - id: 31158
-    title: "Ensure permissions on SSH public host key files are configured."
-    description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
-    rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following script to set mode, ownership, and group on the public SSH host key files: #!/usr/bin/env bash { l_pmask=\"0133\" l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" awk '{print}' <<< \"$(find -L /etc/ssh -xdev -type f -exec stat -Lc \"%n %#a %U %G\" {} +)\" | (while read -r l_file l_mode l_owner l_group; do if file \"$l_file\" | grep -Pq ':\\h+OpenSSH\\h+(\\H+\\h+)?public\\h+key\\b'; then echo -e \" - Checking private key file: \\\"$l_file\\\"\" if [ $(( $l_mode & $l_pmask )) -gt 0 ]; then echo -e \" - File: \\\"$l_file\\\" is mode \\\"$l_mode\\\" changing to mode: \\\"$l_maxperm\\\"\" chmod u-x,go-wx \"$l_file\" fi if [ \"$l_owner\" != \"root\" ]; then echo -e \" - File: \\\"$l_file\\\" is owned by: \\\"$l_owner\\\" changing owner to \\\"root\\\"\" chown root \"$l_file\" fi if [ \"$l_group\" != \"root\" ]; then echo -e \" - File: \\\"$l_file\\\" is owned by group \\\"$l_group\\\" changing to group \\\"root\\\"\" chgrp \"root\" \"$l_file\" fi fi done ) }."
-    compliance:
-      - cis: ["4.2.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1557"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.2.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 4.2.4 Ensure SSH access is limited. (Automated)
   - id: 31159
@@ -2737,8 +2696,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
   # 4.2.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 31160
@@ -2760,8 +2721,11 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s*VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
+      - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
 
   # 4.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 31161
@@ -2780,8 +2744,10 @@ checks:
       - mitre_techniques: ["T1021", "T1021.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*usepam\s+no'
 
   # 4.2.7 Ensure SSH root login is disabled. (Automated)
   - id: 31162
@@ -2801,8 +2767,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*PermitRootLogin\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
 
   # 4.2.8 Ensure SSH HostbasedAuthentication is disabled. (Automated)
   - id: 31163
@@ -2815,8 +2783,10 @@ checks:
       - mitre_mitigations: ["M1042"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*HostbasedAuthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
 
   # 4.2.9 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
   - id: 31164
@@ -2835,8 +2805,10 @@ checks:
       - mitre_techniques: ["T1021"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*PermitEmptyPasswords\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+yes'
 
   # 4.2.10 Ensure SSH PermitUserEnvironment is disabled. (Automated)
   - id: 31165
@@ -2849,8 +2821,10 @@ checks:
       - mitre_mitigations: ["M1042"]
       - mitre_tactics: ["TA0008"]
       - mitre_techniques: ["T1021"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
 
   # 4.2.11 Ensure SSH IgnoreRhosts is enabled. (Automated)
   - id: 31166
@@ -2869,8 +2843,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*IgnoreRhosts\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*IgnoreRhosts\s+no'
 
   # 4.2.12 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 31167
@@ -2890,8 +2866,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
 
   # 4.2.13 Ensure only strong Ciphers are used. (Automated)
   - id: 31168
@@ -2903,7 +2881,6 @@ checks:
       - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
       - "https://www.openssh.com/txt/cbc.adv"
       - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
-      - "https://www.openssh.com/txt/cbc.adv"
     compliance:
       - cis: ["4.2.13"]
       - cis_csc_v8: ["3.10"]
@@ -2917,8 +2894,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - "not c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|rijndael-cbc@lysator.liu.se"
 
   # 4.2.14 Ensure only strong MAC algorithms are used. (Automated)
   - id: 31169
@@ -2941,8 +2919,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - "not c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com"
 
   # 4.2.15 Ensure only strong Key Exchange algorithms are used. (Automated)
   - id: 31170
@@ -2963,8 +2942,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - "not c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 4.2.16 Ensure SSH AllowTcpForwarding is disabled. (Automated)
   - id: 31171
@@ -2980,8 +2960,10 @@ checks:
       - mitre_mitigations: ["M1042"]
       - mitre_tactics: ["TA0008"]
       - mitre_techniques: ["T1048", "T1048.002", "T1572"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 4.2.17 Ensure SSH warning banner is configured. (Automated)
   - id: 31172
@@ -2993,8 +2975,9 @@ checks:
       - cis: ["4.2.17"]
       - mitre_mitigations: ["M1035"]
       - mitre_tactics: ["TA0001", "TA0007"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
 
   # 4.2.18 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
   - id: 31173
@@ -3014,8 +2997,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'not f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s*\t*(\d+) compare > 4'
 
   # 4.2.19 Ensure SSH MaxStartups is configured. (Automated)
   - id: 31174
@@ -3035,8 +3020,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*maxstartups\s+(((1[1-9]|[1-9][0-9][0-9]+):([0-9]+):([0-9]+))|(([0-9]+):(3[1-9]|[4-9][0-9]|[1-9][0-9][0-9]+):([0-9]+))|(([0-9]+):([0-9]+):(6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+)))'
 
   # 4.2.20 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 31175
@@ -3049,8 +3036,10 @@ checks:
       - mitre_mitigations: ["M1036"]
       - mitre_tactics: ["TA0006"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> r:\s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
 
   # 4.2.21 Ensure SSH MaxSessions is set to 10 or less. (Automated)
   - id: 31176
@@ -3062,13 +3051,15 @@ checks:
       - cis: ["4.2.21"]
       - mitre_tactics: ["TA0040"]
       - mitre_techniques: ["T1499", "T1499.002"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
 
   # 4.2.22 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 31177
     title: "Ensure SSH Idle Timeout Interval is configured."
-    description: "Note: To clarify, the two settings described below are only meant for idle connections from a protocol perspective and are not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they were abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en‐abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
+    description: "Note: To clarify, the two settings described below are only meant for idle connections from a protocol perspective and are not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they were abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option enabled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinately, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters above any Include entries according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3 Note: First occurrence of a option takes precedence, Match set statements withstanding. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location."
     references:
@@ -3078,8 +3069,12 @@ checks:
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:clientalivecountmax\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/ssh/sshd_config -> r:^ClientAliveCountMax\s*\t*0'
+      - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> r:^ClientAliveCountMax\s*\t*0'
 
   # 4.3.1 Ensure sudo is installed. (Automated)
   - id: 31178
@@ -3098,8 +3093,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
   # 4.3.2 Ensure sudo commands use pty. (Automated)
   - id: 31179
@@ -3120,8 +3117,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 4.3.3 Ensure sudo log file exists. (Automated)
   - id: 31180
@@ -3143,8 +3142,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   # 4.3.4 Ensure users must provide password for privilege escalation. (Automated)
   - id: 31181
@@ -3165,8 +3166,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/sudoers -> !r:^# && r:*NOPASSWD"
+      - 'not d:/etc/sudoers.d -> r:\.* -> !r:^# && r:*NOPASSWD'
 
   # 4.3.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 31182
@@ -3183,8 +3186,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/sudoers -> !r:^# && r:*\!authenticate'
+      - 'not d:/etc/sudoers.d -> r:\.* -> !r:^# && r:*\!authenticate'
 
   # 4.3.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 31183
@@ -3203,8 +3208,11 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'd:/etc/sudoers.d -> r:\.* -> n:timestamp_timeout=(\d+) compare <=15'
 
   # 4.3.7 Ensure access to the su command is restricted. (Automated)
   - id: 31184
@@ -3226,8 +3234,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group=\w+'
 
   # 4.4.1 Ensure password creation requirements are configured. (Automated)
   - id: 31185
