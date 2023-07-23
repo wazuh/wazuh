@@ -18,7 +18,7 @@ metadata:
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 definitions:
-  MAP_WindowsLevelToLogLevel:
+  _MAP_WindowsLevelToLogLevel:
     "0": "Audit"
     "1": "Critical"
     "2": "Error"
@@ -26,7 +26,7 @@ definitions:
     "4": "Information"
     "5": "Verbose"
 
-check: wazuh.origin=="EventChannel" OR +exists/~json.Event
+check: wazuh.origin=="EventChannel" OR exists($~json.Event)
 
 parse:
   logpar:
@@ -35,7 +35,7 @@ parse:
 
 normalize:
  - map:
-   - wazuh.decoders: +array_append/windows-event-decoder
+   - wazuh.decoders: array_append(windows-event-decoder)
    - event.module: windows
    - event.dataset: general
    - event.start: $~windows.System.TimeCreated.@SystemTime
@@ -45,7 +45,7 @@ normalize:
    - event.provider: $~windows.System.Provider.@Name
    - host.name: $~windows.System.Computer.#text
    # Set event level
-   - log.level: +get_value/$MAP_WindowsLevelToLogLevel/$~windows.System.Level.#text
+   - log.level: get_value($_MAP_WindowsLevelToLogLevel,$~windows.System.Level.#text)
 
    # Cleanup
-   - ~json: +delete
+   - ~json: delete()
