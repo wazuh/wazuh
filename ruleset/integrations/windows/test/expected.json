@@ -1,337 +1,1377 @@
 [
-  {
-      "wazuh":
-      {
-          "queue": 49,
-          "location": "[003] (vm-ubuntu22) any->EventChannel",
-          "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4624</EventID><Version>2</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120744Z'/><EventRecordID>7733</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>DESKTOP-2GJHQ1J$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-5-18</Data><Data Name='TargetUserName'>SYSTEM</Data><Data Name='TargetDomainName'>NT AUTHORITY</Data><Data Name='TargetLogonId'>0x3e7</Data><Data Name='LogonType'>5</Data><Data Name='LogonProcessName'>Advapi  </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>-</Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x2c0</Data><Data Name='ProcessName'>C:\\Windows\\System32\\services.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data><Data Name='ImpersonationLevel'>%%1833</Data><Data Name='RestrictedAdminMode'>-</Data><Data Name='TargetOutboundUserName'>-</Data><Data Name='TargetOutboundDomainName'>-</Data><Data Name='VirtualAccount'>%%1843</Data><Data Name='TargetLinkedLogonId'>0x0</Data><Data Name='ElevatedToken'>%%1842</Data></EventData></Event>",
-          "origin": "EventChannel",
-          "registered_ip": "any",
-          "decoders":
-          [
-              "core-wazuh-message",
-              "core-localfile",
-              "integrations",
-              "windows-event-decoder",
-              "windows-security"
-          ],
-          "source": "logcollector"
-      },
-      "agent":
-      {
-          "id": "003",
-          "name": "vm-ubuntu22",
-          "type": "wazuh"
-      },
-      "event":
-      {
-          "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4624</EventID><Version>2</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120744Z'/><EventRecordID>7733</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>DESKTOP-2GJHQ1J$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-5-18</Data><Data Name='TargetUserName'>SYSTEM</Data><Data Name='TargetDomainName'>NT AUTHORITY</Data><Data Name='TargetLogonId'>0x3e7</Data><Data Name='LogonType'>5</Data><Data Name='LogonProcessName'>Advapi  </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>-</Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x2c0</Data><Data Name='ProcessName'>C:\\Windows\\System32\\services.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data><Data Name='ImpersonationLevel'>%%1833</Data><Data Name='RestrictedAdminMode'>-</Data><Data Name='TargetOutboundUserName'>-</Data><Data Name='TargetOutboundDomainName'>-</Data><Data Name='VirtualAccount'>%%1843</Data><Data Name='TargetLinkedLogonId'>0x0</Data><Data Name='ElevatedToken'>%%1842</Data></EventData></Event>",
-          "module": "windows",
-          "dataset": "security",
-          "start": "2023-07-11T17:14:07.5120744Z",
-          "code": "4624",
-          "id": "4624",
-          "kind": "event",
-          "provider": "Microsoft-Windows-Security-Auditing",
-          "category":
-          [
-              "authentication"
-          ],
-          "type":
-          [
-              "start"
-          ],
-          "action": "logged-in"
-      },
-      "host":
-      {
-          "id": "003",
-          "name": "DESKTOP-2GJHQ1J"
-      },
-      "log":
-      {
-          "level": "Audit"
-      },
-      "~winlog":
-      {
-          "logon":
-          {
-              "id": "0x3e7",
-              "type": "Service"
-          }
-      },
-      "user":
-      {
-          "id": "S-1-5-18",
-          "name": "DESKTOP-2GJHQ1J$",
-          "domain": "WORKGROUP"
-      },
-      "related":
-      {
-          "user":
-          [
-              "DESKTOP-2GJHQ1J$",
-              "DESKTOP-2GJHQ1J$"
-          ]
-      },
-      "service":
-      {
-          "type": "Recognizer Driver"
-      }
-  },
-  {
-      "wazuh":
-      {
-          "queue": 49,
-          "location": "[003] (vm-ubuntu22) any->EventChannel",
-          "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120807Z'/><EventRecordID>7734</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>SYSTEM</Data><Data Name='SubjectDomainName'>NT AUTHORITY</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege     SeDelegateSessionUserImpersonatePrivilege</Data></EventData></Event>",
-          "origin": "EventChannel",
-          "registered_ip": "any",
-          "decoders":
-          [
-              "core-wazuh-message",
-              "core-localfile",
-              "integrations",
-              "windows-event-decoder",
-              "windows-security"
-          ],
-          "source": "logcollector"
-      },
-      "agent":
-      {
-          "id": "003",
-          "name": "vm-ubuntu22",
-          "type": "wazuh"
-      },
-      "event":
-      {
-          "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120807Z'/><EventRecordID>7734</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>SYSTEM</Data><Data Name='SubjectDomainName'>NT AUTHORITY</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege     SeDelegateSessionUserImpersonatePrivilege</Data></EventData></Event>",
-          "module": "windows",
-          "dataset": "security",
-          "start": "2023-07-11T17:14:07.5120807Z",
-          "code": "4672",
-          "id": "4672",
-          "kind": "event",
-          "provider": "Microsoft-Windows-Security-Auditing",
-          "category":
-          [
-              "iam"
-          ],
-          "type":
-          [
-              "admin"
-          ],
-          "action": "logged-in-special"
-      },
-      "host":
-      {
-          "id": "003",
-          "name": "DESKTOP-2GJHQ1J"
-      },
-      "log":
-      {
-          "level": "Audit"
-      },
-      "~winlog":
-      {
-          "logon":
-          {
-              "id": "0x3e7"
-          },
-          "event_data":
-          {
-              "PrivilegeList":
-              [
-                  "SeAssignPrimaryTokenPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeTcbPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeSecurityPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeTakeOwnershipPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeLoadDriverPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeBackupPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeRestorePrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeDebugPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeAuditPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeSystemEnvironmentPrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeImpersonatePrivilege",
-                  "",
-                  "",
-                  "",
-                  "",
-                  "SeDelegateSessionUserImpersonatePrivilege"
-              ]
-          }
-      },
-      "user":
-      {
-          "id": "S-1-5-18",
-          "name": "SYSTEM",
-          "domain": "NT AUTHORITY"
-      },
-      "related":
-      {
-          "user":
-          [
-              "SYSTEM"
-          ]
-      },
-      "service":
-      {
-          "type": "Recognizer Driver"
-      }
-  },
-  {
-      "wazuh":
-      {
-          "queue": 49,
-          "location": "[003] (vm-ubuntu22) any->EventChannel",
-          "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7040</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:10:39.8308565Z'/><EventRecordID>1693</EventRecordID><Correlation/><Execution ProcessID='704' ThreadID='4520'/><Channel>System</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='param1'>Background Intelligent Transfer Service</Data><Data Name='param2'>auto start</Data><Data Name='param3'>demand start</Data><Data Name='param4'>BITS</Data></EventData></Event>",
-          "origin": "EventChannel",
-          "registered_ip": "any",
-          "decoders":
-          [
-              "core-wazuh-message",
-              "core-localfile",
-              "integrations",
-              "windows-event-decoder"
-          ],
-          "source": "logcollector"
-      },
-      "agent":
-      {
-          "id": "003",
-          "name": "vm-ubuntu22",
-          "type": "wazuh"
-      },
-      "event":
-      {
-          "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7040</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:10:39.8308565Z'/><EventRecordID>1693</EventRecordID><Correlation/><Execution ProcessID='704' ThreadID='4520'/><Channel>System</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='param1'>Background Intelligent Transfer Service</Data><Data Name='param2'>auto start</Data><Data Name='param3'>demand start</Data><Data Name='param4'>BITS</Data></EventData></Event>",
-          "module": "windows",
-          "dataset": "general",
-          "start": "2023-07-11T17:10:39.8308565Z",
-          "code": "7040",
-          "id": "7040",
-          "kind": "event",
-          "provider": "Service Control Manager"
-      },
-      "host":
-      {
-          "id": "003",
-          "name": "DESKTOP-2GJHQ1J"
-      },
-      "~windows":
-      {
-          "System":
-          {
-              "Provider":
-              {
-                  "@Name": "Service Control Manager",
-                  "@Guid": "{555908d1-a6d7-4695-8e1e-26931d2012f4}",
-                  "@EventSourceName": "Service Control Manager"
-              },
-              "EventID":
-              {
-                  "#text": "7040",
-                  "@Qualifiers": "16384"
-              },
-              "Version":
-              {
-                  "#text": "0"
-              },
-              "Level":
-              {
-                  "#text": "4"
-              },
-              "Task":
-              {
-                  "#text": "0"
-              },
-              "Opcode":
-              {
-                  "#text": "0"
-              },
-              "Keywords":
-              {
-                  "#text": "0x8080000000000000"
-              },
-              "TimeCreated":
-              {
-                  "@SystemTime": "2023-07-11T17:10:39.8308565Z"
-              },
-              "EventRecordID":
-              {
-                  "#text": "1693"
-              },
-              "Correlation":
-              {},
-              "Execution":
-              {
-                  "@ProcessID": "704",
-                  "@ThreadID": "4520"
-              },
-              "Channel":
-              {
-                  "#text": "System"
-              },
-              "Computer":
-              {
-                  "#text": "DESKTOP-2GJHQ1J"
-              },
-              "Security":
-              {
-                  "@UserID": "S-1-5-18"
-              }
-          },
-          "EventData":
-          {
-              "param1": "Background Intelligent Transfer Service",
-              "param2": "auto start",
-              "param3": "demand start",
-              "param4": "BITS"
-          }
-      },
-      "log":
-      {
-          "level": "Information"
-      }
-  }
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4778</EventID>   <Version>0</Version>   <Level>0</Level>   <Task>12551</Task>   <Opcode>0</Opcode>   <Keywords>0x8020000000000000</Keywords>   <TimeCreated SystemTime='2020-04-05T16:33:32.3888253Z' />   <EventRecordID>5101675</EventRecordID>   <Correlation />   <Execution ProcessID='496' ThreadID='4184' />   <Channel>Security</Channel>   <Computer>DC_TEST2k12.TEST.SAAS</Computer>   <Security />   </System> <EventData>  <Data Name='AccountName'>at_adm</Data>   <Data Name='AccountDomain'>TEST</Data>   <Data Name='LogonID'>0x76fea87</Data>   <Data Name='SessionName'>RDP-Tcp#127</Data>   <Data Name='ClientName'>EQP01777</Data>   <Data Name='ClientAddress'>10.100.150.9</Data>   </EventData>  </Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4778</EventID>   <Version>0</Version>   <Level>0</Level>   <Task>12551</Task>   <Opcode>0</Opcode>   <Keywords>0x8020000000000000</Keywords>   <TimeCreated SystemTime='2020-04-05T16:33:32.3888253Z' />   <EventRecordID>5101675</EventRecordID>   <Correlation />   <Execution ProcessID='496' ThreadID='4184' />   <Channel>Security</Channel>   <Computer>DC_TEST2k12.TEST.SAAS</Computer>   <Security />   </System> <EventData>  <Data Name='AccountName'>at_adm</Data>   <Data Name='AccountDomain'>TEST</Data>   <Data Name='LogonID'>0x76fea87</Data>   <Data Name='SessionName'>RDP-Tcp#127</Data>   <Data Name='ClientName'>EQP01777</Data>   <Data Name='ClientAddress'>10.100.150.9</Data>   </EventData>  </Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2020-04-05T16:33:32.3888253Z",
+            "code": "4778",
+            "id": "4778",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "authentication",
+                "session"
+            ],
+            "type":
+            [
+                "start"
+            ],
+            "action": "session-reconnected"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "DC_TEST2k12.TEST.SAAS"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "user":
+        {
+            "name": "at_adm",
+            "domain": "TEST"
+        },
+        "related":
+        {
+            "user":
+            [
+                "at_adm"
+            ],
+            "ip":
+            [
+                "10.100.150.9"
+            ]
+        },
+        "source":
+        {
+            "ip": "10.100.150.9",
+            "domain": "EQP01777"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x76fea87"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4753</EventID> <Version>0</Version><Level>0</Level> <Task>13827</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2019-12-19T08:24:36.5952761Z' /><EventRecordID>3707709</EventRecordID> <Correlation /><Execution ProcessID='492' ThreadID='1076' /><Channel>Security</Channel><Computer>DC_TEST2k12.TEST.SAAS</Computer><Security /></System><EventData><Data Name='TargetUserName'>testglobal1</Data><Data Name='TargetDomainName'>TEST</Data><Data Name='TargetSid'>S-1-5-21-1717121054-434620538-60925301-2904</Data> <Data Name='SubjectUserSid'>S-1-5-21-1717121054-434620538-60925301-2794</Data> <Data Name='SubjectUserName'>at_adm</Data><Data Name='SubjectDomainName'>TEST</Data><Data Name='SubjectLogonId'>0x2e67800</Data><Data Name='PrivilegeList'>-</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4753</EventID> <Version>0</Version><Level>0</Level> <Task>13827</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2019-12-19T08:24:36.5952761Z' /><EventRecordID>3707709</EventRecordID> <Correlation /><Execution ProcessID='492' ThreadID='1076' /><Channel>Security</Channel><Computer>DC_TEST2k12.TEST.SAAS</Computer><Security /></System><EventData><Data Name='TargetUserName'>testglobal1</Data><Data Name='TargetDomainName'>TEST</Data><Data Name='TargetSid'>S-1-5-21-1717121054-434620538-60925301-2904</Data> <Data Name='SubjectUserSid'>S-1-5-21-1717121054-434620538-60925301-2794</Data> <Data Name='SubjectUserName'>at_adm</Data><Data Name='SubjectDomainName'>TEST</Data><Data Name='SubjectLogonId'>0x2e67800</Data><Data Name='PrivilegeList'>-</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2019-12-19T08:24:36.5952761Z",
+            "code": "4753",
+            "id": "4753",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "group",
+                "deletion"
+            ],
+            "action": "deleted-distribution-group-account"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "DC_TEST2k12.TEST.SAAS"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x2e67800"
+            }
+        },
+        "user":
+        {
+            "target":
+            {
+                "id": "S-1-5-21-1717121054-434620538-60925301-2904",
+                "group":
+                {
+                    "name": "testglobal1",
+                    "domain": "TEST"
+                }
+            },
+            "id": "S-1-5-21-1717121054-434620538-60925301-2794",
+            "name": "at_adm",
+            "domain": "TEST"
+        },
+        "group":
+        {
+            "name": "testglobal1",
+            "domain": "TEST"
+        },
+        "related":
+        {
+            "user":
+            [
+                "at_adm"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}' EventSourceName='Software Protection Platform Service'/><EventID>4688</EventID><Version>2</Version><Level>0</Level><Task>13312</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2019-11-14T17:10:15.1515514Z'/><EventRecordID>5010</EventRecordID><Correlation/><Execution ProcessID='4' ThreadID='5076'/><Channel>Security</Channel><Computer>vagrant</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-21-1610636575-2290000098-1654242922-1000</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>VAGRANT</Data> <Data Name='SubjectLogonId'>0x274a2</Data><Data Name='NewProcessId'>0x11cc</Data><Data Name='NewProcessName'>C:\\\\Windows\\\\System32\\\\wevtutil.exe</Data><Data Name='TokenElevationType'>%%1937</Data><Data Name='ProcessId'>0x122c</Data><Data Name='CommandLine'>'C:\\\\Windows\\\\system32\\\\wevtutil.exe' cl Security</Data><Data Name='TargetUserSid'>S-1-0-0</Data><Data Name='TargetUserName'>-</Data><Data Name='TargetDomainName'>-</Data><Data Name='TargetLogonId'>0x0</Data><Data Name='ParentProcessName'>C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe</Data><Data Name='MandatoryLabel'>S-1-16-12288</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}' EventSourceName='Software Protection Platform Service'/><EventID>4688</EventID><Version>2</Version><Level>0</Level><Task>13312</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2019-11-14T17:10:15.1515514Z'/><EventRecordID>5010</EventRecordID><Correlation/><Execution ProcessID='4' ThreadID='5076'/><Channel>Security</Channel><Computer>vagrant</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-21-1610636575-2290000098-1654242922-1000</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>VAGRANT</Data> <Data Name='SubjectLogonId'>0x274a2</Data><Data Name='NewProcessId'>0x11cc</Data><Data Name='NewProcessName'>C:\\\\Windows\\\\System32\\\\wevtutil.exe</Data><Data Name='TokenElevationType'>%%1937</Data><Data Name='ProcessId'>0x122c</Data><Data Name='CommandLine'>'C:\\\\Windows\\\\system32\\\\wevtutil.exe' cl Security</Data><Data Name='TargetUserSid'>S-1-0-0</Data><Data Name='TargetUserName'>-</Data><Data Name='TargetDomainName'>-</Data><Data Name='TargetLogonId'>0x0</Data><Data Name='ParentProcessName'>C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe</Data><Data Name='MandatoryLabel'>S-1-16-12288</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2019-11-14T17:10:15.1515514Z",
+            "code": "4688",
+            "id": "4688",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "process"
+            ],
+            "type":
+            [
+                "start"
+            ],
+            "action": "created-process"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "vagrant"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x274a2"
+            }
+        },
+        "user":
+        {
+            "id": "S-1-5-21-1610636575-2290000098-1654242922-1000",
+            "name": "vagrant",
+            "domain": "VAGRANT",
+            "effective":
+            {
+                "id": "S-1-0-0"
+            }
+        },
+        "related":
+        {
+            "user":
+            [
+                "vagrant"
+            ]
+        },
+        "process":
+        {
+            "args":
+            [
+                "'C:\\\\Windows\\\\system32\\\\wevtutil.exe'",
+                "cl",
+                "Security"
+            ],
+            "pid": 4556,
+            "executable": "C:\\\\Windows\\\\System32\\\\wevtutil.exe",
+            "name": "wevtutil.exe",
+            "parent":
+            {
+                "pid": 4652,
+                "executable": "C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe",
+                "name": "powershell.exe"
+            },
+            "command_line": "'C:\\\\Windows\\\\system32\\\\wevtutil.exe' cl Security"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4624</EventID><Version>2</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120744Z'/><EventRecordID>7733</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>DESKTOP-2GJHQ1J$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-5-18</Data><Data Name='TargetUserName'>SYSTEM</Data><Data Name='TargetDomainName'>NT AUTHORITY</Data><Data Name='TargetLogonId'>0x3e7</Data><Data Name='LogonType'>5</Data><Data Name='LogonProcessName'>Advapi  </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>-</Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x2c0</Data><Data Name='ProcessName'>C:\\Windows\\System32\\services.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data><Data Name='ImpersonationLevel'>%%1833</Data><Data Name='RestrictedAdminMode'>-</Data><Data Name='TargetOutboundUserName'>-</Data><Data Name='TargetOutboundDomainName'>-</Data><Data Name='VirtualAccount'>%%1843</Data><Data Name='TargetLinkedLogonId'>0x0</Data><Data Name='ElevatedToken'>%%1842</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4624</EventID><Version>2</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120744Z'/><EventRecordID>7733</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>DESKTOP-2GJHQ1J$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-5-18</Data><Data Name='TargetUserName'>SYSTEM</Data><Data Name='TargetDomainName'>NT AUTHORITY</Data><Data Name='TargetLogonId'>0x3e7</Data><Data Name='LogonType'>5</Data><Data Name='LogonProcessName'>Advapi  </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>-</Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x2c0</Data><Data Name='ProcessName'>C:\\Windows\\System32\\services.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data><Data Name='ImpersonationLevel'>%%1833</Data><Data Name='RestrictedAdminMode'>-</Data><Data Name='TargetOutboundUserName'>-</Data><Data Name='TargetOutboundDomainName'>-</Data><Data Name='VirtualAccount'>%%1843</Data><Data Name='TargetLinkedLogonId'>0x0</Data><Data Name='ElevatedToken'>%%1842</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-11T17:14:07.5120744Z",
+            "code": "4624",
+            "id": "4624",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "authentication"
+            ],
+            "type":
+            [
+                "start"
+            ],
+            "action": "logged-in"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "DESKTOP-2GJHQ1J"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            },
+            "LogonType": "Service"
+        },
+        "user":
+        {
+            "id": "S-1-5-18",
+            "target":
+            {
+                "id": "S-1-5-18",
+                "name": "SYSTEM",
+                "domain": "NT AUTHORITY"
+            },
+            "name": "SYSTEM",
+            "domain": "NT AUTHORITY"
+        },
+        "related":
+        {
+            "user":
+            [
+                "SYSTEM"
+            ]
+        },
+        "process":
+        {
+            "pid": 704,
+            "executable": "C:\\Windows\\System32\\services.exe",
+            "name": "services.exe"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120807Z'/><EventRecordID>7734</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>SYSTEM</Data><Data Name='SubjectDomainName'>NT AUTHORITY</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege     SeDelegateSessionUserImpersonatePrivilege</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-11T17:14:07.5120807Z'/><EventRecordID>7734</EventRecordID><Correlation ActivityID='{58616339-b3b9-0001-a163-6158b9b3d901}'/><Execution ProcessID='732' ThreadID='3976'/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>SYSTEM</Data><Data Name='SubjectDomainName'>NT AUTHORITY</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege     SeDelegateSessionUserImpersonatePrivilege</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-11T17:14:07.5120807Z",
+            "code": "4672",
+            "id": "4672",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "admin"
+            ],
+            "action": "logged-in-special"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "DESKTOP-2GJHQ1J"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            },
+            "User_PrivilegeList":
+            [
+                "SeAssignPrimaryTokenPrivilege",
+                "SeTcbPrivilege",
+                "SeSecurityPrivilege",
+                "SeTakeOwnershipPrivilege",
+                "SeLoadDriverPrivilege",
+                "SeBackupPrivilege",
+                "SeRestorePrivilege",
+                "SeDebugPrivilege",
+                "SeAuditPrivilege",
+                "SeSystemEnvironmentPrivilege",
+                "SeImpersonatePrivilege",
+                "SeDelegateSessionUserImpersonatePrivilege"
+            ]
+        },
+        "user":
+        {
+            "id": "S-1-5-18",
+            "name": "SYSTEM",
+            "domain": "NT AUTHORITY"
+        },
+        "related":
+        {
+            "user":
+            [
+                "SYSTEM"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\"><System><Provider Guid=\"{54849625-5478-4994-a5ba-3e3b0328c30d}\" Name=\"Microsoft-Windows-Security-Auditing\"/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime=\"2023-07-11T17:14:07.5120807Z\"/><EventRecordID>7734</EventRecordID><Correlation ActivityID=\"{58616339-b3b9-0001-a163-6158b9b3d901}\"/><Execution ProcessID=\"732\" ThreadID=\"3976\"/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name=\"SubjectUserSid\">S-1-5-18</Data><Data Name=\"SubjectUserName\">SYSTEM</Data><Data Name=\"SubjectDomainName\">NT AUTHORITY</Data><Data Name=\"AccessMask\">%%1538%%1542</Data><Data Name=\"SubjectLogonId\">0x3e7</Data><Data Name=\"PrivilegeList\">SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege     SeDelegateSessionUserImpersonatePrivilege</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\"><System><Provider Guid=\"{54849625-5478-4994-a5ba-3e3b0328c30d}\" Name=\"Microsoft-Windows-Security-Auditing\"/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime=\"2023-07-11T17:14:07.5120807Z\"/><EventRecordID>7734</EventRecordID><Correlation ActivityID=\"{58616339-b3b9-0001-a163-6158b9b3d901}\"/><Execution ProcessID=\"732\" ThreadID=\"3976\"/><Channel>Security</Channel><Computer>DESKTOP-2GJHQ1J</Computer><Security/></System><EventData><Data Name=\"SubjectUserSid\">S-1-5-18</Data><Data Name=\"SubjectUserName\">SYSTEM</Data><Data Name=\"SubjectDomainName\">NT AUTHORITY</Data><Data Name=\"AccessMask\">%%1538%%1542</Data><Data Name=\"SubjectLogonId\">0x3e7</Data><Data Name=\"PrivilegeList\">SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege     SeDelegateSessionUserImpersonatePrivilege</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-11T17:14:07.5120807Z",
+            "code": "4672",
+            "id": "4672",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "admin"
+            ],
+            "action": "logged-in-special"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "DESKTOP-2GJHQ1J"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            },
+            "User_PrivilegeList":
+            [
+                "SeAssignPrimaryTokenPrivilege",
+                "SeTcbPrivilege",
+                "SeSecurityPrivilege",
+                "SeTakeOwnershipPrivilege",
+                "SeLoadDriverPrivilege",
+                "SeBackupPrivilege",
+                "SeRestorePrivilege",
+                "SeDebugPrivilege",
+                "SeAuditPrivilege",
+                "SeSystemEnvironmentPrivilege",
+                "SeImpersonatePrivilege",
+                "SeDelegateSessionUserImpersonatePrivilege"
+            ]
+        },
+        "user":
+        {
+            "id": "S-1-5-18",
+            "name": "SYSTEM",
+            "domain": "NT AUTHORITY"
+        },
+        "related":
+        {
+            "user":
+            [
+                "SYSTEM"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4964</EventID><Version>0</Version> <Level>0</Level><Task>12548</Task><Opcode>0</Opcode> <Keywords>0x8020000000000000</Keywords> <TimeCreated SystemTime='2020-03-24T16:36:59.5703294Z' /> <EventRecordID>68620</EventRecordID> <Correlation ActivityID='{a22b4bf4-ffdc-0000-ee4d-2ba2dcffd501}' /><Execution ProcessID='784' ThreadID='2608' /><Channel>Security</Channel><Computer>WIN-41OB2LO92CR.wlbeat.local</Computer> <Security /></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data> <Data Name='SubjectUserName'>WIN-41OB2LO92CR$</Data><Data Name='SubjectDomainName'>WLBEAT</Data><Data Name='SubjectLogonId'>0x3e7</Data> <Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TargetUserSid'>S-1-5-21-101361758-2486510592-3018839910-500</Data><Data Name='TargetUserName'>Administrator</Data><Data Name='TargetDomainName'>WLBEAT</Data><Data Name='TargetLogonId'>0x7c0be</Data><Data Name='TargetLogonGuid'>{38fec9bc-577f-76f6-5d29-e0175ce19797}</Data><Data Name='SidList'>%{S-1-5-21-101361758-2486510592-3018839910-512} %{S-1-5-21-101361758-2486510592-3018839910-519} %{S-1-5-21-101361758-2486510592-3018839910-1007}</Data> </EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-a5ba-3e3b0328c30d}'/><EventID>4964</EventID><Version>0</Version> <Level>0</Level><Task>12548</Task><Opcode>0</Opcode> <Keywords>0x8020000000000000</Keywords> <TimeCreated SystemTime='2020-03-24T16:36:59.5703294Z' /> <EventRecordID>68620</EventRecordID> <Correlation ActivityID='{a22b4bf4-ffdc-0000-ee4d-2ba2dcffd501}' /><Execution ProcessID='784' ThreadID='2608' /><Channel>Security</Channel><Computer>WIN-41OB2LO92CR.wlbeat.local</Computer> <Security /></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data> <Data Name='SubjectUserName'>WIN-41OB2LO92CR$</Data><Data Name='SubjectDomainName'>WLBEAT</Data><Data Name='SubjectLogonId'>0x3e7</Data> <Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TargetUserSid'>S-1-5-21-101361758-2486510592-3018839910-500</Data><Data Name='TargetUserName'>Administrator</Data><Data Name='TargetDomainName'>WLBEAT</Data><Data Name='TargetLogonId'>0x7c0be</Data><Data Name='TargetLogonGuid'>{38fec9bc-577f-76f6-5d29-e0175ce19797}</Data><Data Name='SidList'>%{S-1-5-21-101361758-2486510592-3018839910-512} %{S-1-5-21-101361758-2486510592-3018839910-519} %{S-1-5-21-101361758-2486510592-3018839910-1007}</Data> </EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2020-03-24T16:36:59.5703294Z",
+            "code": "4964",
+            "id": "4964",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "admin",
+                "group"
+            ],
+            "action": "logged-in-special"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-41OB2LO92CR.wlbeat.local"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x7c0be"
+            }
+        },
+        "user":
+        {
+            "id": "S-1-5-21-101361758-2486510592-3018839910-500",
+            "target":
+            {
+                "id": "S-1-5-21-101361758-2486510592-3018839910-500",
+                "name": "Administrator",
+                "domain": "WLBEAT"
+            },
+            "name": "Administrator",
+            "domain": "WLBEAT"
+        },
+        "related":
+        {
+            "user":
+            [
+                "Administrator"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Eventlog' Guid='{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}'/><EventID>1100</EventID><Version>0</Version><Level>4</Level><Task>103</Task><Opcode>0</Opcode><Keywords>0x4020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T16:43:33.726000000Z'/><EventRecordID>6835</EventRecordID><Correlation/><Execution ProcessID='792' ThreadID='1820'/><Channel>Security</Channel><Computer>vm-win7</Computer><Security/></System><UserData><ServiceShutdown xmlns:auto-ns3='http://schemas.microsoft.com/win/2004/08/events' xmlns='http://manifests.microsoft.com/win/2004/08/windows/eventlog'></ServiceShutdown></UserData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Eventlog' Guid='{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}'/><EventID>1100</EventID><Version>0</Version><Level>4</Level><Task>103</Task><Opcode>0</Opcode><Keywords>0x4020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T16:43:33.726000000Z'/><EventRecordID>6835</EventRecordID><Correlation/><Execution ProcessID='792' ThreadID='1820'/><Channel>Security</Channel><Computer>vm-win7</Computer><Security/></System><UserData><ServiceShutdown xmlns:auto-ns3='http://schemas.microsoft.com/win/2004/08/events' xmlns='http://manifests.microsoft.com/win/2004/08/windows/eventlog'></ServiceShutdown></UserData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-18T16:43:33.726000000Z",
+            "code": "1100",
+            "id": "1100",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Eventlog",
+            "category":
+            [
+                "process"
+            ],
+            "type":
+            [
+                "end"
+            ],
+            "action": "logging-service-shutdown"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "vm-win7"
+        },
+        "log":
+        {
+            "level": "Information"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4720</EventID><Version>0</Version><Level>0</Level><Task>13824</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T18:40:12.321573200Z'/><EventRecordID>13978</EventRecordID><Correlation/><Execution ProcessID='476' ThreadID='2472'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='TargetUserName'>qwerty</Data><Data Name='TargetDomainName'>WIN-IV0BOSRBARR</Data><Data Name='TargetSid'>S-1-5-21-3687077623-3779298101-2624825782-1001</Data><Data Name='SubjectUserSid'>S-1-5-21-3687077623-3779298101-2624825782-500</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>WIN-IV0BOSRBARR</Data><Data Name='SubjectLogonId'>0x90623</Data><Data Name='PrivilegeList'>-</Data><Data Name='SamAccountName'>qwerty</Data><Data Name='DisplayName'>%%1793</Data><Data Name='UserPrincipalName'>-</Data><Data Name='HomeDirectory'>%%1793</Data><Data Name='HomePath'>%%1793</Data><Data Name='ScriptPath'>%%1793</Data><Data Name='ProfilePath'>%%1793</Data><Data Name='UserWorkstations'>%%1793</Data><Data Name='PasswordLastSet'>%%1794</Data><Data Name='AccountExpires'>%%1794</Data><Data Name='PrimaryGroupId'>513</Data><Data Name='AllowedToDelegateTo'>-</Data><Data Name='OldUacValue'>0x0</Data><Data Name='NewUacValue'>0x15</Data><Data Name='UserAccountControl'>%%2080%%2082%%2084</Data><Data Name='UserParameters'>%%1793</Data><Data Name='SidHistory'>-</Data><Data Name='LogonHours'>%%1797</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4720</EventID><Version>0</Version><Level>0</Level><Task>13824</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T18:40:12.321573200Z'/><EventRecordID>13978</EventRecordID><Correlation/><Execution ProcessID='476' ThreadID='2472'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='TargetUserName'>qwerty</Data><Data Name='TargetDomainName'>WIN-IV0BOSRBARR</Data><Data Name='TargetSid'>S-1-5-21-3687077623-3779298101-2624825782-1001</Data><Data Name='SubjectUserSid'>S-1-5-21-3687077623-3779298101-2624825782-500</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>WIN-IV0BOSRBARR</Data><Data Name='SubjectLogonId'>0x90623</Data><Data Name='PrivilegeList'>-</Data><Data Name='SamAccountName'>qwerty</Data><Data Name='DisplayName'>%%1793</Data><Data Name='UserPrincipalName'>-</Data><Data Name='HomeDirectory'>%%1793</Data><Data Name='HomePath'>%%1793</Data><Data Name='ScriptPath'>%%1793</Data><Data Name='ProfilePath'>%%1793</Data><Data Name='UserWorkstations'>%%1793</Data><Data Name='PasswordLastSet'>%%1794</Data><Data Name='AccountExpires'>%%1794</Data><Data Name='PrimaryGroupId'>513</Data><Data Name='AllowedToDelegateTo'>-</Data><Data Name='OldUacValue'>0x0</Data><Data Name='NewUacValue'>0x15</Data><Data Name='UserAccountControl'>%%2080%%2082%%2084</Data><Data Name='UserParameters'>%%1793</Data><Data Name='SidHistory'>-</Data><Data Name='LogonHours'>%%1797</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-18T18:40:12.321573200Z",
+            "code": "4720",
+            "id": "4720",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "user",
+                "creation"
+            ],
+            "action": "added-user-account"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-IV0BOSRBARR"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x90623"
+            },
+            "NewUserAccountControl": "0x15",
+            "UserAccountControl":
+            [
+                "",
+                "2080",
+                "2082",
+                "2084"
+            ]
+        },
+        "user":
+        {
+            "id": "S-1-5-21-3687077623-3779298101-2624825782-500",
+            "name": "vagrant",
+            "domain": "WIN-IV0BOSRBARR"
+        },
+        "related":
+        {
+            "user":
+            [
+                "vagrant"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4735</EventID><Version>0</Version><Level>0</Level><Task>13826</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2015-04-15T19:33:01.220777700Z'/><EventRecordID>90</EventRecordID><Correlation/><Execution ProcessID='464' ThreadID='504'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='TargetUserName'>Performance Log Users</Data><Data Name='TargetDomainName'>Builtin</Data><Data Name='TargetSid'>S-1-5-32-559</Data><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>-</Data><Data Name='SamAccountName'>-</Data><Data Name='SidHistory'>-</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4735</EventID><Version>0</Version><Level>0</Level><Task>13826</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2015-04-15T19:33:01.220777700Z'/><EventRecordID>90</EventRecordID><Correlation/><Execution ProcessID='464' ThreadID='504'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='TargetUserName'>Performance Log Users</Data><Data Name='TargetDomainName'>Builtin</Data><Data Name='TargetSid'>S-1-5-32-559</Data><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>-</Data><Data Name='SamAccountName'>-</Data><Data Name='SidHistory'>-</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2015-04-15T19:33:01.220777700Z",
+            "code": "4735",
+            "id": "4735",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "group",
+                "change"
+            ],
+            "action": "modified-group-account"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-IV0BOSRBARR"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            }
+        },
+        "user":
+        {
+            "target":
+            {
+                "id": "S-1-5-32-559",
+                "group":
+                {
+                    "name": "Performance Log Users",
+                    "domain": "Builtin"
+                }
+            },
+            "id": "S-1-5-18",
+            "name": "WIN-IV0BOSRBARR$",
+            "domain": "WORKGROUP"
+        },
+        "group":
+        {
+            "name": "Performance Log Users",
+            "domain": "Builtin"
+        },
+        "related":
+        {
+            "user":
+            [
+                "WIN-IV0BOSRBARR$"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4781</EventID><Version>0</Version><Level>0</Level><Task>13824</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2015-04-15T19:33:01.220777700Z'/><EventRecordID>121</EventRecordID><Correlation/><Execution ProcessID='464' ThreadID='504'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='OldTargetUserName'>Access Control Assistance Operators</Data><Data Name='NewTargetUserName'>Access Control Assistance Operators</Data><Data Name='TargetDomainName'>Builtin</Data><Data Name='TargetSid'>S-1-5-32-579</Data><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>-</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4781</EventID><Version>0</Version><Level>0</Level><Task>13824</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2015-04-15T19:33:01.220777700Z'/><EventRecordID>121</EventRecordID><Correlation/><Execution ProcessID='464' ThreadID='504'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='OldTargetUserName'>Access Control Assistance Operators</Data><Data Name='NewTargetUserName'>Access Control Assistance Operators</Data><Data Name='TargetDomainName'>Builtin</Data><Data Name='TargetSid'>S-1-5-32-579</Data><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>-</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2015-04-15T19:33:01.220777700Z",
+            "code": "4781",
+            "id": "4781",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "user",
+                "change"
+            ],
+            "action": "renamed-user-account"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-IV0BOSRBARR"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            }
+        },
+        "user":
+        {
+            "id": "S-1-5-18",
+            "name": "WIN-IV0BOSRBARR$",
+            "domain": "WORKGROUP",
+            "target":
+            {
+                "name": "Access Control Assistance Operators"
+            },
+            "changes":
+            {
+                "name": "Access Control Assistance Operators"
+            }
+        },
+        "related":
+        {
+            "user":
+            [
+                "WIN-IV0BOSRBARR$",
+                "Access Control Assistance Operators",
+                "Access Control Assistance Operators"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4624</EventID><Version>0</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T16:48:00.187000000Z'/><EventRecordID>6861</EventRecordID><Correlation/><Execution ProcessID='488' ThreadID='2064'/><Channel>Security</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>VM-WIN7$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-5-18</Data><Data Name='TargetUserName'>SYSTEM</Data><Data Name='TargetDomainName'>NT AUTHORITY</Data><Data Name='TargetLogonId'>0x3e7</Data><Data Name='LogonType'>5</Data><Data Name='LogonProcessName'>Advapi  </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'></Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x1d8</Data><Data Name='ProcessName'>C:\\Windows\\System32\\services.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4624</EventID><Version>0</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T16:48:00.187000000Z'/><EventRecordID>6861</EventRecordID><Correlation/><Execution ProcessID='488' ThreadID='2064'/><Channel>Security</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>VM-WIN7$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-5-18</Data><Data Name='TargetUserName'>SYSTEM</Data><Data Name='TargetDomainName'>NT AUTHORITY</Data><Data Name='TargetLogonId'>0x3e7</Data><Data Name='LogonType'>5</Data><Data Name='LogonProcessName'>Advapi  </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'></Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x1d8</Data><Data Name='ProcessName'>C:\\Windows\\System32\\services.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-18T16:48:00.187000000Z",
+            "code": "4624",
+            "id": "4624",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "authentication"
+            ],
+            "type":
+            [
+                "start"
+            ],
+            "action": "logged-in"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "vm-win7"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            },
+            "LogonType": "Service"
+        },
+        "user":
+        {
+            "id": "S-1-5-18",
+            "target":
+            {
+                "id": "S-1-5-18",
+                "name": "SYSTEM",
+                "domain": "NT AUTHORITY"
+            },
+            "name": "SYSTEM",
+            "domain": "NT AUTHORITY"
+        },
+        "related":
+        {
+            "user":
+            [
+                "SYSTEM"
+            ]
+        },
+        "process":
+        {
+            "pid": 472,
+            "executable": "C:\\Windows\\System32\\services.exe",
+            "name": "services.exe"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4648</EventID><Version>0</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2015-04-15T19:00:44.092189800Z'/><EventRecordID>12040</EventRecordID><Correlation/><Execution ProcessID='472' ThreadID='492'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TargetUserName'>DWM-1</Data><Data Name='TargetDomainName'>Window Manager</Data><Data Name='TargetLogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TargetServerName'>localhost</Data><Data Name='TargetInfo'>localhost</Data><Data Name='ProcessId'>0x194</Data><Data Name='ProcessName'>C:\\Windows\\System32\\winlogon.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4648</EventID><Version>0</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2015-04-15T19:00:44.092189800Z'/><EventRecordID>12040</EventRecordID><Correlation/><Execution ProcessID='472' ThreadID='492'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='LogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TargetUserName'>DWM-1</Data><Data Name='TargetDomainName'>Window Manager</Data><Data Name='TargetLogonGuid'>{00000000-0000-0000-0000-000000000000}</Data><Data Name='TargetServerName'>localhost</Data><Data Name='TargetInfo'>localhost</Data><Data Name='ProcessId'>0x194</Data><Data Name='ProcessName'>C:\\Windows\\System32\\winlogon.exe</Data><Data Name='IpAddress'>-</Data><Data Name='IpPort'>-</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2015-04-15T19:00:44.092189800Z",
+            "code": "4648",
+            "id": "4648",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "authentication"
+            ],
+            "type":
+            [
+                "start"
+            ],
+            "action": "logged-in-explicit"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-IV0BOSRBARR"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            }
+        },
+        "user":
+        {
+            "name": "WIN-IV0BOSRBARR$",
+            "target":
+            {
+                "name": "DWM-1",
+                "domain": "Window Manager"
+            },
+            "domain": "WORKGROUP",
+            "id": "S-1-5-18",
+            "effective":
+            {
+                "name": "DWM-1",
+                "domain": "Window Manager"
+            }
+        },
+        "related":
+        {
+            "user":
+            [
+                "DWM-1",
+                "WIN-IV0BOSRBARR$"
+            ]
+        },
+        "process":
+        {
+            "pid": 404,
+            "executable": "C:\\Windows\\System32\\winlogon.exe",
+            "name": "winlogon.exe"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4728</EventID><Version>0</Version><Level>0</Level><Task>13826</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T18:40:12.321573200Z'/><EventRecordID>13977</EventRecordID><Correlation/><Execution ProcessID='476' ThreadID='2472'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='MemberName'>-</Data><Data Name='MemberSid'>S-1-5-21-3687077623-3779298101-2624825782-1001</Data><Data Name='TargetUserName'>None</Data><Data Name='TargetDomainName'>WIN-IV0BOSRBARR</Data><Data Name='TargetSid'>S-1-5-21-3687077623-3779298101-2624825782-513</Data><Data Name='SubjectUserSid'>S-1-5-21-3687077623-3779298101-2624825782-500</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>WIN-IV0BOSRBARR</Data><Data Name='SubjectLogonId'>0x90623</Data><Data Name='PrivilegeList'>-</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4728</EventID><Version>0</Version><Level>0</Level><Task>13826</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T18:40:12.321573200Z'/><EventRecordID>13977</EventRecordID><Correlation/><Execution ProcessID='476' ThreadID='2472'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='MemberName'>-</Data><Data Name='MemberSid'>S-1-5-21-3687077623-3779298101-2624825782-1001</Data><Data Name='TargetUserName'>None</Data><Data Name='TargetDomainName'>WIN-IV0BOSRBARR</Data><Data Name='TargetSid'>S-1-5-21-3687077623-3779298101-2624825782-513</Data><Data Name='SubjectUserSid'>S-1-5-21-3687077623-3779298101-2624825782-500</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>WIN-IV0BOSRBARR</Data><Data Name='SubjectLogonId'>0x90623</Data><Data Name='PrivilegeList'>-</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-18T18:40:12.321573200Z",
+            "code": "4728",
+            "id": "4728",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "group",
+                "change"
+            ],
+            "action": "added-member-to-group"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-IV0BOSRBARR"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x90623"
+            }
+        },
+        "user":
+        {
+            "target":
+            {
+                "id": "S-1-5-21-3687077623-3779298101-2624825782-513",
+                "group":
+                {
+                    "name": "None",
+                    "domain": "WIN-IV0BOSRBARR"
+                }
+            },
+            "id": "S-1-5-21-3687077623-3779298101-2624825782-500",
+            "name": "vagrant",
+            "domain": "WIN-IV0BOSRBARR"
+        },
+        "group":
+        {
+            "name": "None",
+            "domain": "WIN-IV0BOSRBARR"
+        },
+        "related":
+        {
+            "user":
+            [
+                "vagrant"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T16:46:44.468250000Z'/><EventRecordID>6851</EventRecordID><Correlation/><Execution ProcessID='488' ThreadID='568'/><Channel>Security</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>SYSTEM</Data><Data Name='SubjectDomainName'>NT AUTHORITY</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>SeAssignPrimaryTokenPrivilege SeTcbPrivilege SeSecurityPrivilege SeTakeOwnershipPrivilege SeLoadDriverPrivilege SeBackupPrivilege SeRestorePrivilege SeDebugPrivilege SeAuditPrivilege SeSystemEnvironmentPrivilege SeImpersonatePrivilege</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4672</EventID><Version>0</Version><Level>0</Level><Task>12548</Task><Opcode>0</Opcode><Keywords>0x8020000000000000</Keywords><TimeCreated SystemTime='2023-07-18T16:46:44.468250000Z'/><EventRecordID>6851</EventRecordID><Correlation/><Execution ProcessID='488' ThreadID='568'/><Channel>Security</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>SYSTEM</Data><Data Name='SubjectDomainName'>NT AUTHORITY</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='PrivilegeList'>SeAssignPrimaryTokenPrivilege SeTcbPrivilege SeSecurityPrivilege SeTakeOwnershipPrivilege SeLoadDriverPrivilege SeBackupPrivilege SeRestorePrivilege SeDebugPrivilege SeAuditPrivilege SeSystemEnvironmentPrivilege SeImpersonatePrivilege</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-18T16:46:44.468250000Z",
+            "code": "4672",
+            "id": "4672",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "iam"
+            ],
+            "type":
+            [
+                "admin"
+            ],
+            "action": "logged-in-special"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "vm-win7"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            },
+            "User_PrivilegeList":
+            [
+                "SeAssignPrimaryTokenPrivilege",
+                "SeTcbPrivilege",
+                "SeSecurityPrivilege",
+                "SeTakeOwnershipPrivilege",
+                "SeLoadDriverPrivilege",
+                "SeBackupPrivilege",
+                "SeRestorePrivilege",
+                "SeDebugPrivilege",
+                "SeAuditPrivilege",
+                "SeSystemEnvironmentPrivilege",
+                "SeImpersonatePrivilege"
+            ]
+        },
+        "user":
+        {
+            "id": "S-1-5-18",
+            "name": "SYSTEM",
+            "domain": "NT AUTHORITY"
+        },
+        "related":
+        {
+            "user":
+            [
+                "SYSTEM"
+            ]
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 102,
+            "location": "[003] (vm-ubuntu22) any->EventChannel",
+            "message": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4625</EventID><Version>0</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8010000000000000</Keywords><TimeCreated SystemTime='2023-07-18T18:58:07.973200400Z'/><EventRecordID>13993</EventRecordID><Correlation/><Execution ProcessID='476' ThreadID='548'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-0-0</Data><Data Name='TargetUserName'>qwerty</Data><Data Name='TargetDomainName'>WIN-IV0BOSRBARR</Data><Data Name='Status'>0xc000006d</Data><Data Name='FailureReason'>%%2313</Data><Data Name='SubStatus'>0xc000006a</Data><Data Name='LogonType'>2</Data><Data Name='LogonProcessName'>User32 </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>WIN-IV0BOSRBARR</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x4c0</Data><Data Name='ProcessName'>C:\\Windows\\System32\\winlogon.exe</Data><Data Name='IpAddress'>127.0.0.1</Data><Data Name='IpPort'>0</Data></EventData></Event>",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-event-decoder",
+                "windows-security"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Security-Auditing' Guid='{54849625-5478-4994-A5BA-3E3B0328C30D}'/><EventID>4625</EventID><Version>0</Version><Level>0</Level><Task>12544</Task><Opcode>0</Opcode><Keywords>0x8010000000000000</Keywords><TimeCreated SystemTime='2023-07-18T18:58:07.973200400Z'/><EventRecordID>13993</EventRecordID><Correlation/><Execution ProcessID='476' ThreadID='548'/><Channel>Security</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name='SubjectUserSid'>S-1-5-18</Data><Data Name='SubjectUserName'>WIN-IV0BOSRBARR$</Data><Data Name='SubjectDomainName'>WORKGROUP</Data><Data Name='SubjectLogonId'>0x3e7</Data><Data Name='TargetUserSid'>S-1-0-0</Data><Data Name='TargetUserName'>qwerty</Data><Data Name='TargetDomainName'>WIN-IV0BOSRBARR</Data><Data Name='Status'>0xc000006d</Data><Data Name='FailureReason'>%%2313</Data><Data Name='SubStatus'>0xc000006a</Data><Data Name='LogonType'>2</Data><Data Name='LogonProcessName'>User32 </Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>WIN-IV0BOSRBARR</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x4c0</Data><Data Name='ProcessName'>C:\\Windows\\System32\\winlogon.exe</Data><Data Name='IpAddress'>127.0.0.1</Data><Data Name='IpPort'>0</Data></EventData></Event>",
+            "module": "windows",
+            "dataset": "security",
+            "start": "2023-07-18T18:58:07.973200400Z",
+            "code": "4625",
+            "id": "4625",
+            "kind": "event",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "category":
+            [
+                "authentication"
+            ],
+            "type":
+            [
+                "start"
+            ],
+            "action": "logon failed",
+            "reason": "This is either due to a bad username or authentication information"
+        },
+        "host":
+        {
+            "id": "003",
+            "name": "WIN-IV0BOSRBARR"
+        },
+        "log":
+        {
+            "level": "Audit"
+        },
+        "~winlog":
+        {
+            "logon":
+            {
+                "id": "0x3e7"
+            },
+            "LogonType": "Interactive"
+        },
+        "user":
+        {
+            "id": "S-1-0-0",
+            "target":
+            {
+                "id": "S-1-0-0",
+                "name": "qwerty",
+                "domain": "WIN-IV0BOSRBARR"
+            },
+            "name": "qwerty",
+            "domain": "WIN-IV0BOSRBARR"
+        },
+        "related":
+        {
+            "user":
+            [
+                "qwerty"
+            ]
+        },
+        "process":
+        {
+            "pid": 1216,
+            "executable": "C:\\Windows\\System32\\winlogon.exe",
+            "name": "winlogon.exe"
+        },
+        "source":
+        {
+            "ip": "127.0.0.1",
+            "port": "0",
+            "domain": "WIN-IV0BOSRBARR"
+        }
+    }
 ]
