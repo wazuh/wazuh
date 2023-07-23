@@ -9,8 +9,6 @@
  */
 
 #include "sharedDefs.h"
-#include <alpm.h>
-#include <package.h>
 #include "packageLinuxParserHelper.h"
 #include "UNIXSocketRequest.hpp"
 
