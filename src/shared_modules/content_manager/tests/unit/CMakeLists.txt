@@ -15,6 +15,7 @@ target_link_libraries(${PROJECT_NAME}
     gmock
     urlrequest
     router
+    curl
 )
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})

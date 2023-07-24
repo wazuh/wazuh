@@ -6,8 +6,19 @@ enable_testing()
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
-#add include directory
+get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+
+# Include directories
 include_directories(include)
+
+include_directories(${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
+include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/cJSON)
+
+include_directories(${SHARED_MODULES}/utils)
 
 file(GLOB ROUTER_SRC
     "src/*.cpp"

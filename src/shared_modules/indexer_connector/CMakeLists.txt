@@ -6,8 +6,25 @@ enable_testing()
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
-#add include directory
+get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+
+# Include directories
 include_directories(include)
+
+include_directories(${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/external/cJSON)
+include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
+
+include_directories(${SHARED_MODULES}/utils)
+include_directories(${SHARED_MODULES}/common)
+include_directories(${SHARED_MODULES}/wazuh-http-request/include)
+
+# Link directories
+link_directories(${SRC_FOLDER}/external/rocksdb/build)
+link_directories(${SRC_FOLDER}/external/curl/lib/.libs)
+link_directories(${SHARED_MODULES}/wazuh-http-request/build)
 
 file(GLOB INDEXER_CONNECTOR_SRC
     "src/*.cpp"
@@ -17,7 +34,7 @@ add_library(indexer_connector SHARED
     ${INDEXER_CONNECTOR_SRC}
     )
 
-target_link_libraries(indexer_connector rocksdb urlrequest gcc_s)
+target_link_libraries(indexer_connector rocksdb urlrequest gcc_s curl)
 
 set_target_properties(indexer_connector PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
