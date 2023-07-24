@@ -3,11 +3,13 @@
     elements:
     - disabled:
         value: 'no'
+    - frequency:
+        value: 5
     - directories:
         value: TEST_DIR
         attributes:
         - check_all: 'yes'
-        - FIM_MODE
+        - realtime: 'yes'
   - section: sca
     elements:
     - enabled:
