@@ -1621,7 +1621,7 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /rules/files/{filename}
+test_name: GET /rules/files/(filename)
 
 stages:
 
@@ -1672,6 +1672,28 @@ stages:
                 code: 1415
               id:
                 - "no_exists.xml"
+          total_failed_items: 1
+        error: 1
+
+  - name: Download rule (user ruleset, rule belongs to default ruleset)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/rules'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1415
+              id:
+                - "0350-amazon_rules.xml"
           total_failed_items: 1
         error: 1
 

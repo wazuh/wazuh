@@ -134,7 +134,8 @@ origin_module: ContextVar[str] = ContextVar('origin_module', default='framework'
 try:
     mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
         'process_pool': ProcessPoolExecutor(max_workers=1),
-        'authentication_pool': ProcessPoolExecutor(max_workers=1)
+        'authentication_pool': ProcessPoolExecutor(max_workers=1),
+        'events_pool': ProcessPoolExecutor(max_workers=1)
     })
 # Handle exception when the user running Wazuh cannot access /dev/shm.
 except (FileNotFoundError, PermissionError):
@@ -245,6 +246,7 @@ REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
+QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
 
 
 # ================================================ Wazuh path - Ruleset ================================================

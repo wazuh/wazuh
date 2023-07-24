@@ -133,8 +133,8 @@ def runAStyleCheck(moduleName):
                                  Style convention.")
             utils.printFail(msg="Execute astyle \
                                  --options=ci/input/astyle.config \
-                                 \"{0}/*.h\" \"{0}/*.cpp\" for further \
-                                 information.".format(moduleName))
+                                 \"{0}/*.h\" \"{0}/*.hpp\" \"{0}/*.cpp\" \
+                                 for further information.".format(moduleName))
 
             utils.printFail(msg="[AStyle: FAILED]")
             raise ValueError("Code is not complaint with the expected \

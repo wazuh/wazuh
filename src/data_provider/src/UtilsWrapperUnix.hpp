@@ -23,7 +23,7 @@ class UtilsWrapperUnix
 {
     public:
         static int createSocket(int domain, int type, int protocol);
-        static int ioctl(int fd, unsigned long request, char *argp);
+        static int ioctl(int fd, unsigned long request, char* argp);
 };
 
 #endif // _UTILS_WRAPPER_UNIX_H
