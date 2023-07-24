@@ -80,16 +80,17 @@ def test_get_url():
     """Test the `url_get` method of the Maltiverse class."""
     example_token = "example_token"
     example_url = "http://assocolours.com/mu/i/LoginVerification.php"
+    example_urlchecksum = hashlib.sha256(example_url.encode("utf-8")).hexdigest()
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
     with patch("maltiverse.requests.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
 
-        result = testing_maltiverse.url_get(example_url)
+        result = testing_maltiverse.url_get(example_urlchecksum)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(
-            f'https://api.maltiverse.com/url/{hashlib.sha256(example_url.encode("utf-8")).hexdigest()}',
+            f'https://api.maltiverse.com/url/{example_urlchecksum}',
             headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
         )
 
@@ -229,7 +230,6 @@ def test_load_alert_exit_with_invalid_file_content():
         (
             {
                 "syscheck": {"md5_after": "some"},
-                "data": {"md5_after": "some"},
                 "id": "some",
             },
             "maltiverse.Maltiverse.sample_get_by_md5",
@@ -237,7 +237,6 @@ def test_load_alert_exit_with_invalid_file_content():
         (
             {
                 "syscheck": {"sha1_after": "some"},
-                "data": {"sha1_after": "some"},
                 "id": "some",
             },
             "maltiverse.Maltiverse.sample_get_by_sha1",

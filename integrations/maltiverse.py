@@ -128,20 +128,19 @@ class Maltiverse:
             f"{self.endpoint}/hostname/{hostname}", headers=self.headers
         ).json()
 
-    def url_get(self, url: str) -> dict:
+    def url_get(self, urlchecksum: str) -> dict:
         """Request Maltiverse URL via API.
 
         Parameters
         ----------
-        url : str
-            The URL to request.
+        urlchecksum : str
+            The URL Checksum to request.
 
         Returns
         -------
         dict
             The Maltiverse URL information as a dictionary.
         """
-        urlchecksum = hashlib.sha256(url.encode("utf-8")).hexdigest()
         return requests.get(
             f"{self.endpoint}/url/{urlchecksum}", headers=self.headers
         ).json()
@@ -499,7 +498,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
 
     if "syscheck" in alert and "md5_after" in alert["syscheck"]:
         debug("# Maltiverse: MD5 checksum present in the alert")
-        md5 = alert["data"]["md5_after"]
+        md5 = alert["syscheck"]["md5_after"]
 
         if md5_ioc := maltiverse_api.sample_get_by_md5(md5):
             results.append(
@@ -512,7 +511,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
 
     if "syscheck" in alert and "sha1_after" in alert["syscheck"]:
         debug("# Maltiverse: SHA1 checksum present in the alert")
-        sha1 = alert["data"]["sha1_after"]
+        sha1 = alert["syscheck"]["sha1_after"]
 
         if sha1_ioc := maltiverse_api.sample_get_by_sha1(sha1):
             results.append(
