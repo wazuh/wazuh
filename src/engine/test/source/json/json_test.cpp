@@ -2369,3 +2369,59 @@ TEST_F(JsonSettersTest, MergesCopiesMergedSubtree)
     source.appendString("value4", "/key");
     ASSERT_EQ(destination, expected);
 }
+
+
+TEST(JsonTest, eraseIfKeyInvalidPointer)
+{
+    Json json {R"({
+        "key1": "value1",
+        "key2": "value2"
+    })"};
+    // Erase with an invalid pointer
+    ASSERT_THROW(json.eraseIfKey([](const std::string& key) { return true; }, false, "a"), std::runtime_error);
+
+}
+
+// Test parameters for eraseIfKey [json object, recursive, path, expected json]
+using ParamsJEraseIfKey = std::tuple<std::string, bool, std::string, std::string>;
+
+class EraseIfKey : public ::testing::TestWithParam<ParamsJEraseIfKey>
+{
+};
+
+
+// Test delete all fields if key starts with "key"
+TEST_P(EraseIfKey, deleteSomeFields)
+{
+    auto [jsonStr, recursive, path, expectedStr] = GetParam();
+    Json json {jsonStr.c_str()};
+    Json expected {expectedStr.c_str()};
+
+    json.eraseIfKey([](const std::string& key) { return key.substr(0, 3) == std::string {"key"}; }, recursive, path);
+
+    ASSERT_EQ(json, expected) << json.prettyStr();
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    JsonEraseIfKey,
+    EraseIfKey,
+    ::testing::Values(
+        ParamsJEraseIfKey(R"({"key1" : "value1", "key2" : "value2", "NO_key3" : "value3", "NO_key4" : "value4"})",
+                          false,
+                          "",
+                          R"({"NO_key3" : "value3", "NO_key4" : "value4"})"),
+        ParamsJEraseIfKey(
+            {R"({"key1":"value1","key2":"value2","key3":{"key31":"value31","key32":"value32"},"no_key4":{"key41":"value41","key42":"value42"},"no_key5":"value5"})",
+             false,
+             "",
+             R"({"no_key4":{"key41":"value41","key42":"value42"},"no_key5":"value5"})"}),
+        ParamsJEraseIfKey(
+            {R"({"key1":"value1","key2":"value2","key3":{"key31":"value31","key32":"value32"},"no_key4":{"key41":"value41","key42":"value42"},"no_key5":"value5","no_key6":{"key61":"value61","key62":"value62","key63":{"key631":"value631","key632":"value632"},"no_key64":{"key641":"value641","key642":"value642","no_key643":{"key6431":"value6431","key6432":"value6432"}}}})",
+             true,
+             "",
+             R"({"no_key4":{},"no_key5":"value5","no_key6":{"no_key64":{"no_key643":{}}}  })"}),
+        ParamsJEraseIfKey({R"({"key":123,"key2":"hi","key3":{}})", false, "", R"({})"}),
+        ParamsJEraseIfKey({R"({"no_key":123,"no_key2":"hi","no_key3":{}})",
+                           true,
+                           "",
+                           R"({"no_key":123,"no_key2":"hi","no_key3":{}})"})));

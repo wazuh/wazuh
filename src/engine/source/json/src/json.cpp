@@ -1104,4 +1104,42 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     return std::nullopt;
 }
 
+bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)
+{
+    bool modified = false;
+    const auto pp = rapidjson::Pointer(path.data());
+
+    if (!pp.IsValid())
+    {
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    }
+
+    auto* value = const_cast<rapidjson::Value*>(pp.Get(m_document));
+    if (!value || !value->IsObject())
+    {
+        return modified;
+    }
+
+    for (auto it = value->MemberBegin(); it != value->MemberEnd(); )
+    {
+        if (func(it->name.GetString()))
+        {
+            it = value->EraseMember(it);
+            modified = true;
+        }
+        else
+        {
+            if (recursive && it->value.IsObject())
+            {
+                std::string newPath {path + "/" + it->name.GetString()};
+                modified |= eraseIfKey(func, recursive, newPath);
+            }
+            ++it;
+        }
+    }
+
+    return modified;
+}
+
+
 } // namespace json
