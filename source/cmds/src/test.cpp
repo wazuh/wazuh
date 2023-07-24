@@ -5,8 +5,8 @@
 #include <memory>
 #include <thread>
 
-#include <termios.h>
 #include <re2/re2.h>
+#include <termios.h>
 
 #include <cmds/details/stackExecutor.hpp>
 #include <kvdb/kvdbManager.hpp>
@@ -79,7 +79,7 @@ void run(const Options& options)
 
     auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
 
-    kvdbManager::KVDBManagerOptions kvdbOptions { options.kvdbPath, "kvdb" };
+    kvdbManager::KVDBManagerOptions kvdbOptions {options.kvdbPath, "kvdb"};
     auto kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metricsManager);
     kvdbManager->initialize();
 
@@ -98,17 +98,17 @@ void run(const Options& options)
     }
     auto schema = std::make_shared<schemf::Schema>();
     auto result = fileStore->get("schema/engine-schema/0");
-            if (std::holds_alternative<base::Error>(result))
-            {
-                LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
-                LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed.");
-            }
-            else
-            {
-                auto schemaJson = std::get<json::Json>(result);
-                schema->load(schemaJson);
-            }
-            LOG_INFO("Schema initialized.");
+    if (std::holds_alternative<base::Error>(result))
+    {
+        LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
+        LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed.");
+    }
+    else
+    {
+        auto schemaJson = std::get<json::Json>(result);
+        schema->load(schemaJson);
+    }
+    LOG_INFO("Schema initialized.");
     auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers), schema);
     hlp::registerParsers(logpar);
     LOG_INFO("HLP initialized.");

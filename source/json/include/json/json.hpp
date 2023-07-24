@@ -742,17 +742,6 @@ public:
     bool erase(std::string_view path = "");
 
     /**
-     * @brief Erase Json object properties at the path.
-     *
-     * @param prefix The prefix of the properties to erase.
-     * @param path The path to the object, default value is root object ("").
-     * @return true if object properties were erased, false if object or properties were not found.
-     *
-     * @throws std::runtime_error If path is invalid.
-     */
-    bool erase(char prefix, std::string_view path = "");
-
-    /**
      * @brief Merge the Json Value at the path with the given Json Value.
      *
      * Objects are merged, arrays are appended.
