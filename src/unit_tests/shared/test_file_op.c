@@ -1011,7 +1011,7 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_check_argv0),
         cmocka_unit_test(test_w_homedir_env_var),
         cmocka_unit_test(test_w_homedir_stat_fail),
-        // w_get
+        // w_get_file_pointer
         cmocka_unit_test(test_get_file_pointer_NULL),
         cmocka_unit_test(test_get_file_pointer_invalid),
         cmocka_unit_test(test_get_file_pointer_success),
