@@ -150,13 +150,13 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                             "Check stage: The '{}' operator only allows operate with numbers or string", keyboarder));
                     }
 
-                    const auto prefix = valueJson.isInt64() ? "+int_" : "+string_";
-                    const auto suffix = ((keyboarder == "<=")   ? "less_or_equal/"
-                                         : (keyboarder == ">=") ? "greater_or_equal/"
-                                         : (keyboarder == "<")  ? "less/"
-                                                                : "greater/")
+                    const auto prefix = valueJson.isInt64() ? "int_" : "string_";
+                    const auto suffix = ((keyboarder == "<=")   ? "less_or_equal("
+                                         : (keyboarder == ">=") ? "greater_or_equal("
+                                         : (keyboarder == "<")  ? "less("
+                                                                : "greater(")
                                         + operand;
-                    value = prefix + suffix;
+                    value = prefix + suffix + ")";
                     valueJson.setString(value);
                 }
             }
