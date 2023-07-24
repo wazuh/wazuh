@@ -1124,10 +1124,10 @@ HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchem
         // Return result
         return base::Term<base::EngineOp>::create(
             name,
-            [isCustomField, successTrace](base::Event event) -> base::result::Result<base::Event>
+            [isCustomField, targetField, successTrace](base::Event event) -> base::result::Result<base::Event>
             {
                 // Erase custom fields
-                event->eraseIfKey(isCustomField);
+                event->eraseIfKey(isCustomField, false, targetField);
                 return base::result::makeSuccess(event, successTrace);
             });
     };
