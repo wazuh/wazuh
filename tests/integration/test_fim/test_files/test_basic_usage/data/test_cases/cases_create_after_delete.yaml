@@ -3,7 +3,8 @@
   configuration_parameters:
     TEST_DIR: /test_dir
     FIM_MODE:
-      whodata: 'yes'
+      # whodata: 'yes'
+      realtime: 'yes'
   metadata:
     folder_to_monitor: /test_dir
     file_to_monitor:  /test_dir/testfile.log
