@@ -44,7 +44,7 @@ normalize:
       - ~request_fields.2: +replace/$~http_slash/
       - http.version: $~request_fields.2
       - related.user: +array_append/$user.name
-      - ~http_slash: +delete
+      - ~http_slash: delete()
       - wazuh.decoders: +array_append/nginx-access-base
 
   - check:

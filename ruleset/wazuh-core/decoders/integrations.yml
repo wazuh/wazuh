@@ -11,4 +11,4 @@ parents:
 
 normalize:
   - map:
-      - wazuh.decoders: +array_append/integrations
+      - wazuh.decoders: array_append(integrations)

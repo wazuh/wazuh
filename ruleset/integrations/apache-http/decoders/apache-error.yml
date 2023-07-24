@@ -20,7 +20,7 @@ metadata:
     - https://httpd.apache.org/docs/2.4/custom-error.html
 
 check:
-  - event.original: +starts_with/[
+  - event.original: starts_with([)
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
 # - event.module: apache-http
 # - event.dataset: apache-error
@@ -44,20 +44,20 @@ parse:
 
 normalize:
   - check:
-      - log.level: +regex_match/^(?:emerg|alert|crit|error|warn)$
+      - log.level: regex_match(^(?:emerg|alert|crit|error|warn)$)
     map:
-      - event.type: +array_append/error
+      - event.type: array_append(error)
   - check:
-      - log.level: +regex_not_match/^(?:emerg|alert|crit|error|warn)?$
+      - log.level: regex_not_match(^(?:emerg|alert|crit|error|warn)?$)
     map:
-      - event.type: +array_append/info
+      - event.type: array_append(info)
 
   - map:
       - service.type: apache
-      - event.category: +array_append/web
+      - event.category: array_append(web)
       - event.kind: event
       - service.type: apache
-      - source.ip: +parse_ip/$source.address
+      - source.ip: parse_ip($source.address)
       - event.module: apache-http
       - event.dataset: apache-error
 
@@ -65,9 +65,9 @@ normalize:
       - message: "File does not exist: <file.path>(?, referer: <http.request.referrer>)"
 
   - check:
-      - source.ip: +not_exists
+      - source.ip: not_exists()
     map:
-      - source.domain: +parse_fqdn/$source.address
+      - source.domain: parse_fqdn($source.address)
 
   - map:
-      - wazuh.decoders: +array_append/apache-error
+      - wazuh.decoders: array_append(apache-error)

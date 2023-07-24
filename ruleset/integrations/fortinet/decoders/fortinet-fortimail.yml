@@ -142,7 +142,7 @@ normalize:
     - wazuh.decoders: +array_append/fortinet-fortimail
 
   - check:
-      - rsa.internal.event_desc: +exists
+      - rsa.internal.event_desc: exists()
     logpar:
       - rsa.internal.event_desc: >-
           <~> to \<\<<~log.rsa.email.email_dst>>; reason:<~log.rsa.misc.result>; <~>
@@ -155,7 +155,7 @@ normalize:
     map:
       - rsa.misc.result: $~log.rsa.misc.result
       - rsa.email.email_dst: $~log.rsa.email.email_dst
-      - rsa.internal.event_desc: +delete
+      - rsa.internal.event_desc: delete()
 
   - map:
       - related.hosts: +array_append/$rsa.web.fqdn
@@ -171,4 +171,4 @@ normalize:
       - tags: +array_append/fortinet.fortimail/forwarded
       - /@timestamp: +concat/$~log.date/T/$~log.time/.000Z
       - rsa.time.event_time: $/@timestamp
-      - ~log: +delete
+      - ~log: delete()

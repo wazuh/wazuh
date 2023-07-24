@@ -103,5 +103,5 @@ normalize:
       - event.outcome: failure
 
   - map:
-      - ~json: +delete
-      - ~tmp: +delete
+      - ~json: delete()
+      - ~tmp: delete()

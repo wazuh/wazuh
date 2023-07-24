@@ -393,5 +393,5 @@ normalize:
       - service.type: f5
       - tags: [f5.bigipapm, forwarded]
       - wazuh.decoders: +array_append/f5-apm
-      - ~content: +delete
-      - ~tmp: +delete
+      - ~content: delete()
+      - ~tmp: delete()

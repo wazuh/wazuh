@@ -77,4 +77,4 @@ normalize:
     - tags: [f5.bigipafm, forwarded]
     - user.name: $~tmp.kvMap.source_user
     - wazuh.decoders: +array_append/f5-afm
-    - ~tmp: +delete
+    - ~tmp: delete()

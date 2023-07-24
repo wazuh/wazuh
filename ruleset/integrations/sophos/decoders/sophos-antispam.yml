@@ -114,8 +114,8 @@ normalize:
       - source.user.email: $~tmp.from_email_address
       - tags: ["forwarded", "preserve_original_event", "sophos-xg"]
       - wazuh.decoders: +array_append/sophos-antispam
-      - ~log: +delete
-      - ~tmp: +delete
+      - ~log: delete()
+      - ~tmp: delete()
 
 # TODO: Could not map field 'log.offset' due to inability to persist values into yml variables.
 #       Also, there is no helper that allows obtaining the size of an event.

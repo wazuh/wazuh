@@ -25,22 +25,22 @@ normalize:
   - logpar:
       - wazuh.location: $full_location
     map:
-      - wazuh.origin: +rename/$~origin
-      - wazuh.registered_ip: +rename/$~registered_ip
-
-  - map:
-      - event.original: $wazuh.message
-      - wazuh.decoders: +array_append/core-wazuh-message
-      - ecs.version: "8.8"
+      - wazuh.origin: rename($~origin)
+      - wazuh.registered_ip: rename($~registered_ip)
 
   - check:
-      - agent: +exists
+      - agent: exists()
     map:
       - agent.type: wazuh
 
   - check:
-      - agent.id: +exists
+      - agent.id: exists()
     map:
       - agent.type: wazuh-agent
       - host.id: $agent.id
-      - host: +kvdb_get/agents_host_data/$agent.id
+      - host: kvdb_get(agents_host_data, $agent.id)
+
+  - map:
+      - event.original: $wazuh.message
+      - ecs.version: "8.8"
+      - wazuh.decoders: array_append(core-wazuh-message)
