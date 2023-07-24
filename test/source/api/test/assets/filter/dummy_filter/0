@@ -1,4 +1,0 @@
-{
-    "name": "filter/dummy_filter/0",
-    "check": "~TestSessionID==1 OR ~TestSessionID==2 OR ~TestSessionID==3"
-}

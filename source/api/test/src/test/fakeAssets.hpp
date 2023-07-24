@@ -1,4 +1,72 @@
+#ifndef _TEST_FAKE_ASSETS_HPP
+#define _TEST_FAKE_ASSETS_HPP
+
+namespace test
 {
+namespace assets
+{
+
+auto constexpr INTERNAL_ROUTE_TABLE = R"([
+    {
+        "name": "allow_all_A1",
+        "priority": 50,
+        "filter": "filter/allow-all/0",
+        "target": "policy/env_A1/0"
+    }
+])";
+
+auto constexpr DECODER = R"({
+    "check": [
+        {
+            "wazuh.queue": 51
+        }
+    ],
+    "name": "decoder/core-hostinfo/0",
+    "normalize": [
+        {
+            "map": [
+                {
+                    "wazuh.decoders": "+array_append/core-hostinfo"
+                }
+            ]
+        }
+    ]
+})";
+
+auto constexpr FILTER_ALLOW = R"({
+    "name": "filter/allow-all/0"
+})";
+
+auto constexpr FILTER_DUMMY = R"({
+    "name": "filter/dummy_filter/0",
+    "check": "~TestSessionID==1 OR ~TestSessionID==2 OR ~TestSessionID==3"
+})";
+
+auto constexpr INTEGRATION = R"({
+    "decoders": [
+        "decoder/core-hostinfo/0"
+    ],
+    "filters": [
+        "filter/allow-all/0"
+    ],
+    "name": "integration/wazuh-core/0"
+})";
+
+auto constexpr POLICY_WAZUH = R"({
+    "name": "policy/wazuh/0",
+    "integrations": [
+        "integration/wazuh-core/0"
+    ]
+})";
+
+auto constexpr POLICY_DUMMY = R"({
+    "name": "policy/dummy_policy/0",
+    "integrations": [
+        "integration/wazuh-core/0"
+    ]
+})";
+
+auto constexpr WAZUH_ASSET = R"({
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "wazuh-asset.json",
     "name": "schema/wazuh-asset/0",
@@ -275,4 +343,55 @@
             }
         }
     }
-}
+})";
+
+auto constexpr WAZUH_POLICY = R"({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "wazuh-policy.json",
+    "title": "Schema for Wazuh policies",
+    "type": "object",
+    "minProperties": 2,
+    "required": [
+        "name"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of the policy, short and concise name to identify this asset",
+            "pattern": "^[^/]+/[^/]+/[^/]+$"
+        },
+        "decoders":{
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        },
+        "rules":{
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        },
+        "filters":{
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        },
+        "outputs":{
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+})";
+
+} // namespace assets
+} // namespace test
+#endif // _TEST_FAKE_ASSETS_HPP
