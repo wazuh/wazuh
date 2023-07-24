@@ -47,3 +47,21 @@ target_link_libraries(api
     yml
     schemf
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+
+add_executable(api_test
+  ${TEST_SRC_DIR}/apiAuxiliarFunctions.hpp
+  ${TEST_SRC_DIR}/graph/handlers_test.cpp
+  ${TEST_SRC_DIR}/graph/fakeAssets.hpp
+  ${TEST_SRC_DIR}/test/session_test.cpp
+  ${TEST_SRC_DIR}/test/handlers_test.cpp
+  ${TEST_SRC_DIR}/test/fakeAssets.hpp
+)
+
+# TODO: Replace test_mocks with the metrics executable when you have the test folder available.
+target_link_libraries(api_test gtest_main base api schemf::mocks test_mocks store_mocks)
+gtest_discover_tests(api_test)
+endif(ENGINE_BUILD_TEST)
