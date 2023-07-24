@@ -1,4 +1,9 @@
-#!/var/ossec/framework/python/bin/python3
+# Created by Maltiverse.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
 
 """
 What is Maltiverse?
@@ -50,7 +55,11 @@ import sys
 import time
 from urllib.parse import urlsplit
 
-import requests
+try:
+    import requests
+except Exception as e:
+    print("No module 'requests' found. Install: pip install requests")
+    sys.exit(1)
 
 # Global vars
 debug_enabled: bool = False
