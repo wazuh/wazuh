@@ -106,4 +106,4 @@ normalize:
       - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - related.ip: [$~tmp.destination.ip, $source.ip]
       - wazuh.decoders: +array_append/sophos-event
-      - ~tmp: +delete
+      - ~tmp: delete()

@@ -108,4 +108,4 @@ normalize:
       - service.type: sophos
       - tags: [forwarded, preserve_original_even, sophos-xg]
       - wazuh.decoders: +array_append/sophos-systemhealth
-      - ~tmp: +delete
+      - ~tmp: delete()

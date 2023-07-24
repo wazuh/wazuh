@@ -19,7 +19,7 @@ parents:
   - decoder/core-dbsync/0
 
 check:
-  - event.original: +starts_with/{
+  - event.original: starts_with({)
 
 parse:
   logpar:
@@ -27,24 +27,27 @@ parse:
 
 normalize:
   - check:
-      - ~json.type: +starts_with/integrity_check_
+      - ~json.type: starts_with(integrity_check_)
     map:
-      - ~query: +concat/agent /$agent.id/ /$~json.component/ /$~json.type/ /$~json.data
-      - ~query_response: +wdb_query/$~query
+      - ~query: concat(agent , $agent.id,  , $~json.component,  , $~json.type,  , $~json.data)
+      - ~query_response: wdb_query($~query)
   - check:
-      - ~query_response: +exists
+      - ~query_response: exists()
     map:
-      - ~ar_query: +concat/(msg_to_agent) [] N!S /$agent.id/ /$~json.component/ dbsync /$~query_response/ /$~json.data
-      - ~ar_result: +active_response_send/$~ar_query
+      - ~ar_query: concat((msg_to_agent) [] N!S , $agent.id,  , $~json.component,  dbsync , $~query_response,  , $~json.data)
+      - ~ar_result: active_response_send($~ar_query)
 
   - check:
-      - ~json.type: +string_equal/state
+      - ~json.type: string_equal(state)
     map:
-      - ~query: +concat/agent /$agent.id/ /$~json.component/ save2 /$~json.data
-      - ~query_status: +wdb_update/$~query
+      - ~query: concat(agent , $agent.id,  , $~json.component,  save2 , $~json.data)
+      - ~query_status: wdb_update($~query)
 
   - check:
-      - ~json.type: +string_equal/integrity_clear
+      - ~json.type: string_equal(integrity_clear)
     map:
-      - ~query: +concat/agent /$agent.id/ /$~json.component/ integrity_clear /$~json.data
-      - ~query_status: +wdb_update/$~query
+      - ~query: concat(agent , $agent.id,  , $~json.component,  integrity_clear , $~json.data)
+      - ~query_status: wdb_update($~query)
+
+  - map:
+      - wazuh.decoders: array_append(dbsync)

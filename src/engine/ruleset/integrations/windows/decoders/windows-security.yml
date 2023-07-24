@@ -257,5 +257,5 @@ normalize:
 
 # Cleanup
  - map:
-   - ~temp: +delete
-   - ~windows: +delete
+   - ~temp: delete()
+   - ~windows: delete()

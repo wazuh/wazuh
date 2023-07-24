@@ -23,7 +23,7 @@ parents:
   - decoder/core-sca/0
 
 check:
-  - event.original: +starts_with/{
+  - event.original: starts_with({)
 
 parse:
   logpar:
@@ -31,6 +31,9 @@ parse:
 
 normalize:
   - check:
-      - ~json.type: +exists
+      - ~json.type: exists()
     map:
-      - ~decode_result: +sca_decoder/$~json/$agent.id
+      - ~decode_result: sca_decoder($~json, $agent.id)
+
+  - map:
+      - wazuh.decoders: array_append(sca)

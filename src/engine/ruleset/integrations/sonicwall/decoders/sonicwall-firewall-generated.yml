@@ -87,7 +87,7 @@ normalize:
       - related.ip: +array_append/$destination.nat.ip
       - wazuh.decoders: +array_append/sonicwall-firewall-generated
   - check:
-      - ~log.start_message: +not_exists
+      - ~log.start_message: not_exists()
     logpar:
       - rsa.time.event_time: <~log.year>-<~log.mounth>-<~log.day>T<~>
     map:
@@ -95,9 +95,9 @@ normalize:
       # When this functionality is implemented, add it to the decoder
       - ~aux_slash: '/'
       - rsa.time.date: +concat/$~log.year/$~aux_slash/$~log.mounth/$~aux_slash/$~log.day
-      - ~aux_slash: +delete
+      - ~aux_slash: delete()
   - check:
-      - ~log.note: +exists
+      - ~log.note: exists()
     logpar:
       - ~log.note: <~log.note.header> <~log.note.protocol.header>:<~log.note.protocol.payload>
     map:
@@ -107,32 +107,32 @@ normalize:
       # it is equal to some of the allowed values (cancel, deny, allow, accept or block).
       # If it doesn't match any of those values and also fw_action doesn't exist, then event.action doesn't get mapped.
   - check:
-      - ~log.fw_action: +exists
+      - ~log.fw_action: exists()
     map:
       - event.action: $~log.fw_action
       - rsa.internal.event_desc: $~log.msg_action
   - check:
-      - ~log.fw_action: +not_exists
+      - ~log.fw_action: not_exists()
       - ~log.msg_action: accept
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +not_exists
+      - ~log.fw_action: not_exists()
       - ~log.msg_action: allow
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +not_exists
+      - ~log.fw_action: not_exists()
       - ~log.msg_action: block
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +not_exists
+      - ~log.fw_action: not_exists()
       - ~log.msg_action: cancel
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +not_exists
+      - ~log.fw_action: not_exists()
       - ~log.msg_action: deny
     map:
       - event.action: $~log.msg_action
@@ -141,13 +141,13 @@ normalize:
         ~log.msg_action!=allow AND ~log.msg_action!=block AND
         ~log.msg_action!=cancel AND ~log.msg_action!=deny
     map:
-      - event.action: +delete
+      - event.action: delete()
   - check:
-      - event.action: +not_exists
+      - event.action: not_exists()
     map:
       - rsa.internal.msg: $~log.msg_action
   - check:
-      - source.mac: +exists
+      - source.mac: exists()
     map:
       - related.ip: +array_append/$host.ip
       - rsa.misc.category: $~rsa.misc.category
@@ -155,5 +155,5 @@ normalize:
       - rsa.misc.severity: $log.level
   - map:
       - rsa.misc.action: +array_append/$event.action
-      - ~rsa: +delete
-      - ~log: +delete
+      - ~rsa: delete()
+      - ~log: delete()

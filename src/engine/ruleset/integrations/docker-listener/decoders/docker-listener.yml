@@ -104,7 +104,7 @@ definitions:
     update: change
 
 normalize:
- - check: +exists/$~json.docker
+ - check: exists($~json.docker)
    map:
     - event.module: docker-listener
     - event.dataset: wodle-docker-listener
@@ -218,5 +218,5 @@ normalize:
  - map:
     - wazuh.decoders: +array_append/docker-listener
     #cleanup
-    - ~json: +delete
-    - ~tmp: +delete
+    - ~json: delete()
+    - ~tmp: delete()

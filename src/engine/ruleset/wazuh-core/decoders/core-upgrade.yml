@@ -20,3 +20,7 @@ parents:
 
 check:
   - wazuh.queue: 117 # UPGRADE_MQ 'u'
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(core-upgrade)

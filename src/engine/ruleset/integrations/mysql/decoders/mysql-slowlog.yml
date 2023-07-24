@@ -45,4 +45,4 @@ normalize:
       - event.start: +date_from_epoch/$~mysql.slowlog.timestamp
       - event.end: $@timestamp
       - wazuh.decoders: +array_append/mysql-slowlog
-      - ~mysql.slowlog.timestamp: +delete
+      - ~mysql.slowlog.timestamp: delete()

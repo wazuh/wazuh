@@ -138,7 +138,7 @@ def run(args, resource_handler: rs.ResourceHandler):
             resource_handler.delete_catalog_file(
                 api_socket, 'integration', f'integration/{name}/0')
     else:
-        print('Error occur on the adding proccess, policy cleaned')
+        print('An error occurred on the adding proccess, policy cleaned')
 
 
 def configure(subparsers):

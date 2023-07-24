@@ -71,4 +71,4 @@ normalize:
       - event.outcome: failure
 
   - map:
-      - ~json: +delete
+      - ~json: delete()
