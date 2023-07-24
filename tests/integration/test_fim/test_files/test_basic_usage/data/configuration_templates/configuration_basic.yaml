@@ -8,8 +8,7 @@
     - directories:
         value: TEST_DIR
         attributes:
-        - check_all: 'yes'
-        - realtime: 'yes'
+        - FIM_MODE
   - section: sca
     elements:
     - enabled:
