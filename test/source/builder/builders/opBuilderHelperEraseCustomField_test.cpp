@@ -33,7 +33,7 @@ TEST_F(opBuilderHelperEraseCustomField, build) {
 
 TEST_F(opBuilderHelperEraseCustomField, removeCustomField) {
 
-    auto tuple = std::make_tuple(std::string {"/anyField"},
+    auto tuple = std::make_tuple(std::string {""},
                                  std::string {"erase_custom_fields"},
                                  std::vector<std::string> {},
                                   std::make_shared<defs::mocks::FailDef>());

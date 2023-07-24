@@ -2421,7 +2421,12 @@ INSTANTIATE_TEST_SUITE_P(
         ParamsJEraseIfKey({R"({"no_key":123,"no_key2":"hi","no_key3":{}})",
                            true,
                            "",
-                           R"({"no_key":123,"no_key2":"hi","no_key3":{}})"})));
+                           R"({"no_key":123,"no_key2":"hi","no_key3":{}})"}),
+        ParamsJEraseIfKey(
+            {R"({"key1":"value1","key2":"value2","key3":{"key31":"value31","key32":"value32"},"no_key4":{"key41":"value41","key42":"value42"},"no_key5":"value5","no_key6":{"key61":"value61","key62":"value62","key63":{"key631":"value631","key632":"value632"},"no_key64":{"key641":"value641","key642":"value642","no_key643":{"key6431":"value6431","no_key6432":"value6432"}}}})",
+             true,
+             "/no_key6",
+             R"({"key1":"value1","key2":"value2","key3":{"key31":"value31","key32":"value32"},"no_key4":{"key41":"value41","key42":"value42"},"no_key5":"value5","no_key6":{"no_key64":{"no_key643":{"no_key6432":"value6432"}}}})"})));
 
 // Test parameter for erase with prefix [input json str, expected json str, prefix, path]
 using ErasePrefixT = std::tuple<bool, std::string, std::string, char, std::string>;
