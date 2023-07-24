@@ -388,7 +388,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     packageJson["source"]       = UNKNOWN_VALUE;
                     packageJson["install_time"] = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
                     packageJson["location"]     = location.empty() ? UNKNOWN_VALUE : std::move(location);
-                    packageJson["architecture"] = architecture.empty() ? UNKNOWN_VALUE : std::move(architecture);
+                    packageJson["architecture"] = std::move(architecture);
                     packageJson["multiarch"]     = UNKNOWN_VALUE;
                     packageJson["format"]       = "win";
 

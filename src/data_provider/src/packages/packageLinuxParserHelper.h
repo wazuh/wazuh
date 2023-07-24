@@ -49,11 +49,11 @@ namespace PackageLinuxHelper
             std::string priority {UNKNOWN_VALUE};
             std::string groups {UNKNOWN_VALUE};
             std::string multiarch {UNKNOWN_VALUE};
-            std::string architecture;
+            std::string architecture {UNKNOWN_VALUE};
             std::string source {UNKNOWN_VALUE};
-            std::string version;
-            std::string vendor;
-            std::string description;
+            std::string version {UNKNOWN_VALUE};
+            std::string vendor {UNKNOWN_VALUE};
+            std::string description {UNKNOWN_VALUE};
             int size                 { 0 };
 
             auto it{info.find("Priority")};
@@ -128,6 +128,7 @@ namespace PackageLinuxHelper
             ret["version"]      = version;
             ret["format"]       = "deb";
             ret["vendor"]       = vendor;
+            ret["install_time"] = UNKNOWN_VALUE;
             ret["description"]  = description;
         }
 

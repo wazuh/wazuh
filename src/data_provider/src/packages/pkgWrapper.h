@@ -30,9 +30,16 @@ class PKGWrapper final : public IPackageWrapper
         explicit PKGWrapper(const PackageContext& ctx)
             : m_version{UNKNOWN_VALUE}
             , m_groups{UNKNOWN_VALUE}
+            , m_description {UNKNOWN_VALUE}
             , m_architecture{UNKNOWN_VALUE}
             , m_format{"pkg"}
+            , m_source {UNKNOWN_VALUE}
+            , m_location {UNKNOWN_VALUE}
+            , m_multiarch {UNKNOWN_VALUE}
+            , m_priority {UNKNOWN_VALUE}
+            , m_size {0}
             , m_vendor{UNKNOWN_VALUE}
+            , m_installTime {UNKNOWN_VALUE}
         {
             getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
         }
@@ -146,33 +153,40 @@ class PKGWrapper final : public IPackageWrapper
                                  std::getline(data, line))
                         {
                             auto version = getValueFnc(line);
-                            m_version = version.empty() ? UNKNOWN_VALUE : version;
+
+                            if (!version.empty())
+                            {
+                                m_version = version;
+                            }
                         }
                         else if (line == "<key>LSApplicationCategoryType</key>" &&
                                  std::getline(data, line))
                         {
                             auto groups = getValueFnc(line);
-                            m_groups = groups.empty() ? UNKNOWN_VALUE : groups;
+
+                            if (!groups.empty())
+                            {
+                                m_groups = groups;
+                            }
                         }
                         else if (line == "<key>CFBundleIdentifier</key>" &&
                                  std::getline(data, line))
                         {
-                            m_description = getValueFnc(line);
+                            auto description = getValueFnc(line);
 
-                            std::string vendor;
-
-                            if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
+                            if (!description.empty())
                             {
-                                m_vendor = vendor;
+                                m_description = description;
+                                std::string vendor;
+
+                                if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
+                                {
+                                    m_vendor = vendor;
+                                }
                             }
                         }
                     }
 
-                    m_architecture = UNKNOWN_VALUE;
-                    m_multiarch = UNKNOWN_VALUE;
-                    m_priority = UNKNOWN_VALUE;
-                    m_size = 0;
-                    m_installTime = UNKNOWN_VALUE;
                     m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
                     m_location = filePath;
                 }

@@ -49,6 +49,10 @@
                     "version": {
                         "type": "string",
                         "minLength": 1
+                    },
+                    "install_time": {
+                        "type": "string",
+                        "minLength": 1
                     }
                 },
                 "required": [
@@ -62,7 +66,8 @@
                     "size",
                     "source",
                     "vendor",
-                    "version"
+                    "version",
+                    "install_time"
                 ]
             }
         }
