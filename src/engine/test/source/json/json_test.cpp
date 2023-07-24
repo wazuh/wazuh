@@ -2425,3 +2425,39 @@ INSTANTIATE_TEST_SUITE_P(
                            true,
                            "",
                            R"({"no_key":123,"no_key2":"hi","no_key3":{}})"})));
+
+// Test parameter for erase with prefix [input json str, expected json str, prefix, path]
+using ErasePrefixT = std::tuple<bool, std::string, std::string, char, std::string>;
+class ErasePrefixTest : public ::testing::TestWithParam<ErasePrefixT>
+{
+};
+
+TEST_P(ErasePrefixTest, Erase)
+{
+    auto [shouldPass, inputJsonStr, expectedJsonStr, prefix, path] = GetParam();
+    Json inputJson {inputJsonStr.c_str()};
+    Json expectedJson {expectedJsonStr.c_str()};
+
+    if (shouldPass)
+    {ASSERT_NO_THROW(inputJson.erase(prefix, path));
+    ASSERT_EQ(inputJson, expectedJson);}
+    else
+    {
+        ASSERT_THROW(inputJson.erase(prefix, path), std::runtime_error);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Json,
+    ErasePrefixTest,
+    ::testing::Values(
+        ErasePrefixT(true, R"({})", R"({})", 'a', ""),
+        ErasePrefixT(true, R"({"a":1})", R"({})", 'a', ""),
+        ErasePrefixT(true, R"({"a":1})", R"({"a":1})", 'b', ""),
+        ErasePrefixT(false, R"({})", R"({})", 'a', "invalid"),
+        ErasePrefixT(true, R"({"a":1})", R"({"a":1})", 'a', "/b"),
+        ErasePrefixT(true, R"({"a":1})", R"({"a":1})", '1', "/a"),
+        ErasePrefixT(true, R"({"a":1, "_a":1, "b":1, "_b":1})", R"({"a":1, "b":1})", '_', ""),
+        ErasePrefixT(true, R"({"a":1, "_a":1, "b":1, "_b":1, "c":1})", R"({"a":1, "b":1, "c":1})", '_', ""),
+        ErasePrefixT(true, R"({"a": {"a":1, "_a":1, "b":1, "_b":1, "c":1}})", R"({"a": {"a":1, "b":1, "c":1}})", '_', "/a")
+    ));
