@@ -5332,7 +5332,7 @@ components:
         </tr>
         <tr>
         <td>monitor</td>
-        <td>internal</td>
+        <td>reports</td>
         <td><code>&lt;reports&gt;</code></td>
         </tr>
         <tr>
@@ -6911,7 +6911,7 @@ components:
       required: True
       schema:
         type: string
-        format: wazuh_path
+        format: wpk_path
     installer:
       in: query
       name: installer
