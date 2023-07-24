@@ -36,12 +36,7 @@ size_t global_counter;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-
-router_provider_create_func router_provider_create_ptr = NULL;
-router_provider_send_func router_provider_send_ptr = NULL;
-router_provider_destroy_func router_provider_destroy_ptr = NULL;
-void* router_module_p = NULL;
-
+ROUTER_PROVIDER_HANDLE router_provider_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -54,7 +49,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock, ROUTER_PROVIDER_HANDLE *router_provider_handle);
+STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -98,23 +93,6 @@ void HandleSecure()
     }
     if (!OSHash_setSize(remoted_agents_state, 2048)) {
         merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
-    }
-
-    // Initialize router library
-    if (router_module_p = so_get_module_handle("router"), router_module_p)
-    {
-        router_provider_create_ptr = so_get_function_sym(router_module_p, "router_provider_create");
-        router_provider_send_ptr = so_get_function_sym(router_module_p, "router_provider_send");
-        router_provider_destroy_ptr = so_get_function_sym(router_module_p, "router_provider_destroy");
-
-        if (!router_provider_create_ptr || !router_provider_send_ptr || !router_provider_destroy_ptr)
-        {
-            merror_exit("Unable to initialize router module.");
-        }
-    }
-    else
-    {
-        merror_exit("Unable to load router module %s.", dlerror());
     }
 
     /* Initialize manager */
@@ -372,12 +350,11 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
     int wdb_sock = -1;
-    static ROUTER_PROVIDER_HANDLE router_provider_handle = NULL;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        HandleSecureMessage(message, &wdb_sock, &router_provider_handle);
+        HandleSecureMessage(message, &wdb_sock);
         rem_msgfree(message);
     }
 
@@ -447,7 +424,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock, ROUTER_PROVIDER_HANDLE *router_provider_handle) {
+STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -714,18 +691,15 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock, ROUTER_
 
     // Print first letter of the message
     if (tmp_msg[0] == SYSCOLLECTOR_MQ) {
-        minfo("Received message from syscollector");
-        if (!*router_provider_handle) {
-            if (*router_provider_handle = router_provider_create_ptr("syscollector"), !*router_provider_handle)
+        if (!router_provider_handle) {
+            if (router_provider_handle = router_provider_create("syscollector"), !router_provider_handle)
             {
                 os_free(agentid_str);
                 return;
             }
         }
 
-        minfo("Sending message to router provider");
-
-        router_provider_send_ptr(*router_provider_handle, tmp_msg, msg_length);
+        router_provider_send(router_provider_handle, tmp_msg, msg_length);
 
     } else {
         /* If we can't send the message, try to connect to the

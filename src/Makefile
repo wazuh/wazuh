@@ -60,6 +60,7 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
+EXTERNAL_ROCKSDB=external/rocksdb/
 EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
@@ -361,6 +362,11 @@ ifeq (${TARGET}, winagent)
 else
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
+endif
+
+ifeq (${TARGET},server)
+	WAZUH_LIBS+=-lrouter
+	WAZUH_LDFLAGS+=-Lbuild/shared_modules/router
 endif
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
@@ -746,6 +752,9 @@ BUILD_AGENT+=wazuh-modulesd
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
+ifeq (${TARGET},server)
+BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
+endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 ifneq (${uname_S},HP-UX)
 BUILD_CMAKE_PROJECTS+=build_syscollector
@@ -880,6 +889,7 @@ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
+ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)/build/librocksdb.so
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -890,6 +900,11 @@ else ifeq (${uname_S},Linux)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
 else ifeq (${uname_S},Darwin)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
+endif
+
+# Adding rocksdb only for server
+ifeq (${TARGET},server)
+	EXTERNAL_LIBS += $(ROCKSDB_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -976,6 +991,11 @@ endif
 endif
 endif
 endif
+
+### rocks db ###
+
+${ROCKSDB_LIB}:
+	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 && ${MAKE}
 
 #### libplist ##########
 
@@ -1300,6 +1320,12 @@ ifneq (${TARGET},winagent)
 	EXTERNAL_RES += $(CPYTHON) jemalloc
 endif
 endif
+
+ifeq (${TARGET},server)
+	# Server extra dependency
+	EXTERNAL_RES += rocksdb
+endif
+
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1620,6 +1646,10 @@ build_syscollector: build_shared_modules build_sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
+#### Wazuh cmake ###
+build_wazuh_cmake: $(WAZUHEXT_LIB)
+	mkdir -p build && cd build && cmake .. && ${MAKE}
+
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
@@ -1865,7 +1895,7 @@ remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 wazuh-remoted: ${remoted_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
 
 #### wazuh-agentd ####
 
@@ -2497,6 +2527,7 @@ ifneq ($(wildcard external/*/*),)
 	-${MAKE} -C $(EXTERNAL_BZIP2) clean
 	rm -rf $(EXTERNAL_GOOGLE_TEST)lib
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
+	rm -rf $(EXTERNAL_ROCKSDB)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
 	rm -rf ${POPT_BUILD_DIR}
@@ -2526,7 +2557,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR) $(EXTERNAL_ROCKSDB)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
@@ -2566,6 +2597,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
+	rm -rf build
 	rm -rf libwazuhext
 	rm -rf libstdc++.so.6
 	rm -rf libgcc_s.so.1

@@ -1136,6 +1136,14 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
         fi
     fi
+    if [ -f external/rocksdb/build/librocksdb.so.8.3.2 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/rocksdb/build/librocksdb.so.8.3.2 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8.3.2
+        fi
+    fi
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster

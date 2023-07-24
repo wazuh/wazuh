@@ -67,7 +67,10 @@ endforeach(loop_var)
 
 set(BENCHMARK_ENABLE_TESTING "OFF")
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/rocksdb/build/)
+link_directories(${SRC_FOLDER}/external/openssl/)
 add_subdirectory(external/benchmark EXCLUDE_FROM_ALL)
+add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
@@ -81,22 +84,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
-
-
-# Disable gflags rocksdb
-set(WITH_GFLAGS OFF CACHE BOOL "Turn off gflags" FORCE)
-set(WITH_TESTS OFF CACHE BOOL "Turn off tests" FORCE)
-set(WITH_BENCHMARK_TOOLS OFF CACHE BOOL "Turn off benchmark tools" FORCE)
-set(WITH_TOOLS OFF CACHE BOOL "Turn off tools" FORCE)
-set(WITH_FOLLY_DISTRIBUTED_MUTEX OFF CACHE BOOL "Turn off folly distributed mutex" FORCE)
-set(USE_RTTI ON CACHE BOOL "Turn on RTTI" FORCE)
-set(ROCKSDB_BUILD_SHARED OFF CACHE BOOL "Turn off shared rocksdb" FORCE)
-set(CMAKE_DISABLE_FIND_PACKAGE_gtest ON CACHE BOOL "Turn off gtest" FORCE)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-add_subdirectory(${SRC_FOLDER}/external/rocksdb EXCLUDE_FROM_ALL)
-
-add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
+include_directories(${SRC_FOLDER}/external/openssl/include)
 
 add_subdirectory(shared_modules/utils)
 add_subdirectory(shared_modules/router)
