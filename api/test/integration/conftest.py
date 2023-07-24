@@ -537,3 +537,39 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
+
+
+@pytest.fixture
+def big_events_payload() -> list:
+    """Return a payload with a number of events larger than the maximum allowed.
+
+    Returns
+    -------
+    list
+        Events payload.
+    """
+    return [f"Event {i}" for i in range(101)]
+
+
+@pytest.fixture
+def max_size_event() -> str:
+    """Return an event with the max size allowed.
+
+    Returns
+    -------
+    str
+        The max size event.
+    """
+    return " ".join(str(i) for i in range(12772))
+
+
+@pytest.fixture
+def large_event() -> str:
+    """Return an event with the size larger than the maximum allowed.
+
+    Returns
+    -------
+    str
+        The larger event.
+    """
+    return " ".join(str(i) for i in range(12773))

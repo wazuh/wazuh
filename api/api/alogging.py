@@ -61,29 +61,30 @@ class AccessLogger(AbstractAccessLogger):
         hash_auth_context : str, optional
             Hash representing the authorization context. Default: ''
         """
+        json_info = {
+            'user': user,
+            'ip': remote,
+            'http_method': method,
+            'uri': f'{method} {path}',
+            'parameters': query,
+            'body': body,
+            'time': f'{time:.3f}s',
+            'status_code': status
+        }
+
         if not hash_auth_context:
-            log_info = f'{user} {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
-                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
-            json_info = {'user': user,
-                         'ip': remote,
-                         'http_method': method,
-                         'uri': f'{method} {path}',
-                         'parameters': query,
-                         'body': body,
-                         'time': f'{time:.3f}s',
-                         'status_code': status}
+            log_info = f'{user} {remote} "{method} {path}" '
         else:
-            log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
-                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
-            json_info = {'user': user,
-                         'hash_auth_context': hash_auth_context,
-                         'ip': remote,
-                         'http_method': method,
-                         'uri': f'{method} {path}',
-                         'parameters': query,
-                         'body': body,
-                         'time': f'{time:.3f}s',
-                         'status_code': status}
+            log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
+            json_info['hash_auth_context'] = hash_auth_context
+
+        if path == '/events' and self.logger.level >= 20:
+            # If log level is info simplify the messages for the /events requests.
+            events = body.get('events', [])
+            body = {'events': len(events)}
+            json_info['body'] = body
+
+        log_info += f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: {status}'
 
         self.logger.info(log_info, extra={'log_type': 'log'})
         self.logger.info(json_info, extra={'log_type': 'json'})
