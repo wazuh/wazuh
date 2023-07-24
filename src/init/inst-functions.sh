@@ -1136,12 +1136,12 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
         fi
     fi
-    if [ -f external/rocksdb/build/librocksdb.so.8.3.2 ]
+    if [ -f external/rocksdb/build/librocksdb.so.8 ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/rocksdb/build/librocksdb.so.8.3.2 ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/rocksdb/build/librocksdb.so.8 ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8.3.2
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
         fi
     fi
 
