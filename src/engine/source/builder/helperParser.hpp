@@ -74,7 +74,7 @@ inline std::variant<HelperToken, base::Error> parseHelper(const std::string& tex
             size_t pos = 0;
             while ((pos = strArgs.find(',', pos)) != std::string::npos)
             {
-                // if comma is the comma is scaped, skip it
+                // if the comma is escaped skip it 
                 if (pos != 0 && strArgs[pos - 1] == '\\')
                 {
                     ++pos;
