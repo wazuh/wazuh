@@ -6,7 +6,7 @@ import pytest
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.modulesd import patterns
-from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 
 @pytest.fixture()
