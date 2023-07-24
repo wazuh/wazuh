@@ -43,11 +43,15 @@ INSTANTIATE_TEST_SUITE_P(
         HelperParserT(false, "", {}),  // Empty string
         HelperParserT(false, "()", {.name = ""}),  // No function name
         HelperParserT(true, "test(,)", {.name = "test", .args {"", ""}}),
-         HelperParserT(true, "test(,,)", {.name = "test", .args {"", "", ""}}),
+        HelperParserT(true, "test(,,)", {.name = "test", .args {"", "", ""}}),
         HelperParserT(true, "test(, ,)", {.name = "test", .args {"", "", ""}}),
         HelperParserT(true, "test(arg1,)", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(true, "test(arg1, )", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(true, "test(arg1,\\ )", {.name = "test", .args {"arg1", " "}}),
-        HelperParserT(true, "test(arg1,  )", {.name = "test", .args {"arg1", " "}})
+        HelperParserT(true, "test(arg1,  )", {.name = "test", .args {"arg1", " "}}),
+        HelperParserT(true, "test(arg1, ())", {.name = "test", .args {"arg1", "()"}}),
+        HelperParserT(true, "test(arg1, ( arg2)", {.name = "test", .args = {"arg1", "( arg2"}}),
+        HelperParserT(true, "test(arg1, ) arg2)", {.name = "test", .args = {"arg1", ") arg2"}}),
+        HelperParserT(true, "test(arg1, ) arg2))))", {.name = "test", .args = {"arg1", ") arg2)))"}})
 
 ));
