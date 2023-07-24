@@ -253,6 +253,14 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
                                                  const std::vector<std::string>& rawParameters,
                                                  std::shared_ptr<defs::IDefinitions> definitions);
 
+/**
+ * @brief Function that returns a builder for the operation to erase custom fields from an event.
+ *
+ * @param schema A shared pointer to the schema to check the fields.
+ * @return A HelperBuilder object that erases custom fields from an event.
+ */
+HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchema> schema);
+
 //*************************************************
 //*           Regex tranform                      *
 //*************************************************

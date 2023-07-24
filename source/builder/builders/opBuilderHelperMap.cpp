@@ -1099,6 +1099,41 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
         });
 }
 
+// event: +erase_custom_fields
+HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchema> schema) {
+    return [schema](const std::string& targetField,
+                    const std::string& rawName,
+                    const std::vector<std::string>& rawParameters,
+                    std::shared_ptr<defs::IDefinitions> definitions) -> base::Expression
+    {
+        auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
+        helper::base::checkParametersSize(rawName, parameters, 0);
+
+        const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+        // Tracing
+        const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+        // Function that check if a field is a custom field
+        auto isCustomField = [schema](const std::string& path) -> bool
+        {
+            // Check if field is a custom field
+            return !schema->hasField(path);
+        };
+
+        // Return result
+        return base::Term<base::EngineOp>::create(
+            name,
+            [isCustomField, successTrace](base::Event event) -> base::result::Result<base::Event>
+            {
+                // Erase custom fields
+                event->eraseIfKey(isCustomField);
+                return base::result::makeSuccess(event, successTrace);
+            });
+    };
+}
+
+
 // field: +split/$field/[,| | ...]
 base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
                                                   const std::string& rawName,

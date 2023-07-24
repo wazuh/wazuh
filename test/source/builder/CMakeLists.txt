@@ -143,6 +143,7 @@ add_executable(opBuilderHelperCheck_test
 gtest_discover_tests(opBuilderHelperCheck_test)
 
 add_executable(opBuilderHelperMap_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperEraseCustomField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppend_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendSplitString_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperDateFromEpochTime_test.cpp
