@@ -23,9 +23,13 @@ parents:
   - decoder/core-syscollector/0
 
 check:
-  - wazuh.origin: +string_equal/syscollector
-  - event.original: +starts_with/{
+  - wazuh.origin: string_equal(syscollector)
+  - event.original: starts_with({)
 
 parse:
   logpar:
     - event.original: <~json/json>
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(syscollector-base)

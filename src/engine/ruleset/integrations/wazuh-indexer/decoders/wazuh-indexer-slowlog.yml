@@ -68,4 +68,4 @@ normalize:
       - ~slowlog.total_shards: $~json.total_shards
       - ~slowlog.source: $~json.source
       - ~slowlog.id: $~json.id
-      - ~json: +delete
+      - ~json: delete()

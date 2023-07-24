@@ -44,4 +44,4 @@ normalize:
       - host.name: $~node.name
       - log.level: "+trim/end/ "
       - log.logger: "+trim/end/ "
-      - ~timestamp: +delete
+      - ~timestamp: delete()

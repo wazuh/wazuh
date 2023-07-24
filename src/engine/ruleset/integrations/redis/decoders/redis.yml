@@ -78,4 +78,4 @@ normalize:
     map:
       - redis.log.role: sentinel
   - map:
-      - ~log: +delete
+      - ~log: delete()

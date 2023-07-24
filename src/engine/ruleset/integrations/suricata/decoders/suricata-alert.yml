@@ -19,18 +19,15 @@ metadata:
   description: Decoder for Suricata solution
 
 check:
-  - ~suricata.eve.event_type: +string_equal/alert
+  - ~suricata.eve.event_type: string_equal(alert)
 
 normalize:
   - map:
-      - wazuh.decoders: +array_append/suricata-alert
-
-  - map:
-      - event.category: +array_append/intrusion_detection
+      - event.category: array_append(intrusion_detection)
       - event.kind: alert
       - event.dataset: suricata.alert
       - event.severity: $~suricata.eve.alert.severity
-      - event.type: +array_append/detail
+      - event.type: array_append(detail)
       - file.name: $~suricata.eve.alert.metadata.filename
       - rule.category: $~suricata.eve.alert.category
       - rule.id: $~suricata.eve.alert.signature_id
@@ -43,17 +40,17 @@ normalize:
   - check: $source.bytes>=0 OR $destination.bytes>=0
     map:
       - network.bytes: 0
-      - network.bytes: +int_calculate/sum/$source.bytes/$destination.bytes
+      - network.bytes: int_calculate(sum, $source.bytes, $destination.bytes)
 
   - check: $source.packets>=0 OR $destination.packets>=0
     map:
       - network.packets: 0
-      - network.packets: +int_calculate/sum/$source.packets/$destination.packets
+      - network.packets: int_calculate(sum, $source.packets, $destination.packets)
 
   - check:
-      - ~suricata.eve.alert.action: +is_not_null
+      - ~suricata.eve.alert.action: is_not_null()
     map:
-      - event.type: +array_append/$~suricata.eve.alert.action
+      - event.type: array_append($~suricata.eve.alert.action)
 
   - map:
       - http.request.method: $~suricata.eve.http.http_method
@@ -62,8 +59,11 @@ normalize:
       - http.response.mime_type: $~suricata.eve.http.http_content_type
       - http.response.status_code: $~suricata.eve.http.status
       - http.version: $~suricata.eve.http.protocol
-      - related.hosts: +array_append/$~suricata.eve.http.hostname
+      - related.hosts: array_append($~suricata.eve.http.hostname)
       - user_agent.original: $~suricata.eve.http.http_user_agent
 
   - map:
-      - ~suricata: +delete
+      - ~suricata: delete()
+
+  - map:
+      - wazuh.decoders: array_append(suricata-alert)

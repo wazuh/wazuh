@@ -1,4 +1,5 @@
-decoders:
-- decoder/apache-error/0
-- decoder/apache-access/0
 name: integration/apache-http/0
+
+decoders:
+  - decoder/apache-error/0
+  - decoder/apache-access/0

@@ -184,4 +184,4 @@ normalize:
       - service.type: sophos
       - tags: +array_append/forwarded/sophos.utm
       - wazuh.decoders: +array_append/sophos-utm
-      - ~tmp: +delete
+      - ~tmp: delete()

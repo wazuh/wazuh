@@ -10,7 +10,7 @@ metadata:
     date: 2022/11/08
 
 check:
-  - wazuh.decoders: +array_contains/integrations
+  - wazuh.decoders: array_contains(integrations)
 
 outputs:
   - file:

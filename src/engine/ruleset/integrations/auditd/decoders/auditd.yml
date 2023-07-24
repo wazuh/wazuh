@@ -54,14 +54,14 @@ parse:
 
 normalize:
   - check:
-      - ~log.msg: +exists
-      - ~log.sub_msg: +exists
+      - ~log.msg: exists()
+      - ~log.sub_msg: exists()
     map:
       - ~kv_msg: +concat/$~log.msg/ /$~log.sub_msg
 
   - check:
-      - ~log.sub_msg: +not_exists
-      - ~log.msg: +exists
+      - ~log.sub_msg: not_exists()
+      - ~log.msg: exists()
     map:
       - ~kv_msg: $~log.msg
 

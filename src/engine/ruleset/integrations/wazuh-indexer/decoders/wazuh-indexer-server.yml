@@ -20,7 +20,7 @@ parents:
 
 check:
   - ~json.type: server
-  - ~json.cluster\.name: +exists
+  - ~json.cluster\.name: exists()
   # TODO: Once the events arrive tagged, uncomment the following two lines
   # - event.module: wazuh-indexer
   # - event.dataset: wazuh-indexer-server
@@ -59,4 +59,4 @@ normalize:
       - ~node.name: $~json.node\.name
       - ~node.id: $~json.node\.id
       - message: $~json.message
-      - ~json: +delete
+      - ~json: delete()

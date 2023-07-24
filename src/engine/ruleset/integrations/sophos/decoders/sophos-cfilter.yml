@@ -130,4 +130,4 @@ normalize:
       - user_agent.os.name: $~tmp.agent.os.name
   - map:
       - wazuh.decoders: +array_append/sophos-cfilter
-      - ~tmp: +delete
+      - ~tmp: delete()

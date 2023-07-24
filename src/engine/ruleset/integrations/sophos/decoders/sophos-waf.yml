@@ -101,7 +101,7 @@ normalize:
       - sophos.xg.server: $~tmp.server
       - sophos.xg.xss: $~tmp.XSS
   - check:
-      - ~tmp.localip: +exists
+      - ~tmp.localip: exists()
     logpar:
       - ~tmp.localip: <~tmp.fill>.<~tmp.fill>.<~tmp.source.as.number>.<~tmp.fill>
     map:
@@ -114,4 +114,4 @@ normalize:
       - url.full: $~tmp.url
       - user_agent.original: $~tmp.useragent
       - wazuh.decoders: +array_append/sophos-waf
-      - ~tmp: +delete
+      - ~tmp: delete()

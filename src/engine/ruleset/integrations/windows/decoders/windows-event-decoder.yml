@@ -17,7 +17,7 @@ metadata:
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
-  - ~json.Event: +exists
+  - ~json.Event: exists()
 
 parse:
   logpar:
@@ -69,4 +69,4 @@ normalize:
 
 # Cleanup
  - map:
-   - ~json: +delete
+   - ~json: delete()

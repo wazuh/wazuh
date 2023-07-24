@@ -32,18 +32,21 @@ parse:
 
 normalize:
   - check:
-      - ~json.parameters: +is_object
+      - ~json.parameters: is_object()
     map:
-      - ~tmp.agent_id_int: +parse_long/$agent.id
-      - ~json.parameters.agents: +array_append/$~tmp.agent_id_int
-      - ~tmp.send_result: +send_upgrade_confirmation/$~json
+      - ~tmp.agent_id_int: parse_long($agent.id)
+      - ~json.parameters.agents: array_append($~tmp.agent_id_int)
+      - ~tmp.send_result: send_upgrade_confirmation($~json)
 
   - check:
-      - ~tmp.send_result: +is_true
+      - ~tmp.send_result: is_true()
     map:
       - event.outcome: success
 
   # Cleanup
   - map:
-      - ~tmp: +delete
-      - ~json: +delete
+      - ~tmp: delete()
+      - ~json: delete()
+
+  - map:
+      - wazuh.decoders: array_append(upgrade)

@@ -85,5 +85,5 @@ normalize:
     - ~json.aws.tls_version: <tls.version_protocol>v<tls.version>
 
   - map:
-      - ~json: +delete
-      - ~http_url_original: +delete
+      - ~json: delete()
+      - ~http_url_original: delete()

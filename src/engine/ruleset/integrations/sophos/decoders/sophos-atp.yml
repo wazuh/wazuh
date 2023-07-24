@@ -113,4 +113,4 @@ normalize:
       - user_agent.os.name: $~tmp.agent.os.name
   - map:
       - wazuh.decoders: +array_append/sophos-atp
-      - ~tmp: +delete
+      - ~tmp: delete()

@@ -422,14 +422,14 @@ normalize:
     map:
       - ~tmp.console_login_mfa_used: true
 
-  - check: +exists/$error.code OR +exists/$error.message
+  - check: exists($error.code) OR exists($error.message)
     map:
       - event.outcome: failure
 
-  - check: +string_equal/$~json.aws.eventName/ConsoleLogin AND +exists/$~json.aws.responseElements.ConsoleLogin
+  - check: string_equal($~json.aws.eventName,ConsoleLogin) AND exists($~json.aws.responseElements.ConsoleLogin)
     map:
       - event.outcome: +downcase/$~json.aws.responseElements.ConsoleLogin
 
   - map:
-      - ~json: +delete
-      - ~tmp: +delete
+      - ~json: delete()
+      - ~tmp: delete()

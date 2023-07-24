@@ -32,7 +32,7 @@ normalize:
 
   # generic_fortinetmgr (has signature_id)
   - check:
-      - ~kvMap.signature_id: +exists
+      - ~kvMap.signature_id: exists()
     map:
       - destination.bytes: $~kvMap.rcvdbyte
       - destination.ip: $~kvMap.dst
@@ -90,8 +90,8 @@ normalize:
 
   # generic_fortinetmgr_1 (hasn't signature_id and has vd)
   - check:
-      - ~kvMap.signature_id: +not_exists
-      - ~kvMap.vd: +exists
+      - ~kvMap.signature_id: not_exists()
+      - ~kvMap.vd: exists()
     map:
       - destination.bytes: $~kvMap.rcvdbyte
       - destination.geo.country_name: $~kvMap.dstcountry
@@ -135,8 +135,8 @@ normalize:
 
   # event_fortinetmgr  (hasn't signature_id and hasn't vd)
   - check:
-      - ~kvMap.signature_id: +not_exists
-      - ~kvMap.vd: +not_exists
+      - ~kvMap.signature_id: not_exists()
+      - ~kvMap.vd: not_exists()
     map:
       - event.code: $~kvMap.log_id
       - log.level: $~kvMap.pri
@@ -204,4 +204,4 @@ normalize:
       - network.protocol: prm
   - map:
     - wazuh.decoders: +array_append/fortinet-fortimanager
-    - ~kvMap: +delete
+    - ~kvMap: delete()

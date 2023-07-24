@@ -89,4 +89,4 @@ normalize:
       - related.host: [$host.name]
       - tags: [forwarded, preserve_original_even, sophos-xg]
       - wazuh.decoders: +array_append/sophos-wifi
-      - ~tmp: +delete
+      - ~tmp: delete()

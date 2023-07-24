@@ -51,7 +51,7 @@ normalize:
       - \@timestamp: $event.start
       - wazuh.decoders: +array_append/sonicwall-firewall
   - check:
-      - ~tmp.src: +exists
+      - ~tmp.src: exists()
     logpar:
       - ~tmp.src: <~tmp.src.ip/ip>:<~tmp.src.port/long>:<~tmp.src.interface.name>
     map:
@@ -65,10 +65,10 @@ normalize:
     map:
       - rsa.internal.event_desc: $~tmp.msg
       - rsa.internal.msg: $~tmp.msg
-      - event.action: +delete
+      - event.action: delete()
   - check:
-      - event.action: +exists
+      - event.action: exists()
     map:
       - rsa.misc.action: +array_append/$~tmp.msg
   - map:
-      - ~tmp: +delete
+      - ~tmp: delete()

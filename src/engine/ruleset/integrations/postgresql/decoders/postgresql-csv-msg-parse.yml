@@ -20,7 +20,7 @@ parents:
   - decoder/postgresql-csv/0
 
 check:
-  - ~csv.message: +exists
+  - ~csv.message: exists()
 
 parse:
   logpar:

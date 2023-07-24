@@ -17,7 +17,7 @@ parents:
   - decoder/nginx-access-base/0
 
 check:
-  - ~destination_address: +exists
+  - ~destination_address: exists()
 
 parse:
   logpar:
@@ -113,7 +113,7 @@ normalize:
     map:
       - ~ip1_private: false
   - check:
-      - ~ip1_private: +is_false
+      - ~ip1_private: is_false()
     map:
       - source.address: $~ip1
 
@@ -126,8 +126,8 @@ normalize:
     map:
       - ~ip2_private: false
   - check:
-      - source.address: +not_exists
-      - ~ip2_private: +is_false
+      - source.address: not_exists()
+      - ~ip2_private: is_false()
     map:
       - source.address: $~ip2
 
@@ -140,36 +140,36 @@ normalize:
     map:
       - ~ip3_private: false
   - check:
-      - source.address: +not_exists
-      - ~ip3_private: +is_false
+      - source.address: not_exists()
+      - ~ip3_private: is_false()
     map:
       - source.address: $~ip3
 
   # if all of them are private > append first of the list
   - check:
-      - source.address: +not_exists
-      - ~ip1_private: +is_true
-      - ~ip2_private: +is_true
-      - ~ip3_private: +is_true
+      - source.address: not_exists()
+      - ~ip1_private: is_true()
+      - ~ip2_private: is_true()
+      - ~ip3_private: is_true()
     map:
       - source.address: $~ip1
 
   - check:
-      - source.address: +not_exists
+      - source.address: not_exists()
     map:
       - source.address: $~source_address
 
   - map:
-      - ~source_address: +delete
-      - ~ip1: +delete
-      - ~ip2: +delete
-      - ~ip3: +delete
-      - ~ip1_version: +delete
-      - ~ip2_version: +delete
-      - ~ip3_version: +delete
-      - ~ip1_private: +delete
-      - ~ip2_private: +delete
-      - ~ip3_private: +delete
-      - ~destination_domain: +delete
-      - ~domain1: +delete
-      - ~domain2: +delete
+      - ~source_address: delete()
+      - ~ip1: delete()
+      - ~ip2: delete()
+      - ~ip3: delete()
+      - ~ip1_version: delete()
+      - ~ip2_version: delete()
+      - ~ip3_version: delete()
+      - ~ip1_private: delete()
+      - ~ip2_private: delete()
+      - ~ip3_private: delete()
+      - ~destination_domain: delete()
+      - ~domain1: delete()
+      - ~domain2: delete()
