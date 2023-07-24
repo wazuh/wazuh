@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-github-tier-0.yml"
+        - ".github/workflows/integration-tests-github-tier-0-1.yml"
         - "src/wazuh_modules/wm_github.h"
         - "src/wazuh_modules/wm_github.c"
         - "src/Makefile"
