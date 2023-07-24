@@ -6,6 +6,7 @@
 
 #include "baseTypes.hpp"
 #include "registry.hpp"
+#include "syntax.hpp"
 
 namespace builder
 {
@@ -151,7 +152,7 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Get stages
-    m_stages = base::And::create("stages", {});
+    m_stages = base::Chain::create("stages", {});
     auto asOp = m_stages->getPtr<base::Operation>();
     for (auto& tuple : objectDefinition)
     {
@@ -160,6 +161,17 @@ Asset::Asset(const json::Json& jsonDefinition,
         auto stageExpression = registry->getBuilder(stageName)({stageDefinition}, definitions);
         asOp->getOperands().push_back(stageExpression);
     }
+
+    // Delete variables from the event always
+    auto deleteVariables =
+        base::Term<base::EngineOp>::create("DeleteVariables",
+                                           [](auto e)
+                                           {
+                                               e->erase(internals::syntax::VARIABLE_ANCHOR);
+                                               return base::result::makeSuccess(e, "DeleteVariables");
+                                           });
+
+    asOp->getOperands().push_back(deleteVariables);
 }
 
 base::Expression Asset::getExpression() const
