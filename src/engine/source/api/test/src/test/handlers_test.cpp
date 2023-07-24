@@ -4,24 +4,24 @@
 
 #include <gtest/gtest.h>
 #include <mocks/fakeMetric.hpp>
-#include <mocks/store.hpp>
+#include <store/mockStore.hpp>
 
 #include <register.hpp>
-#include <schemf/mocks/emptySchema.hpp>
-#include <testsCommon.hpp>
 
 #include <api/test/sessionManager.hpp>
-#include <builders/baseHelper.hpp>
 #include <cmds/src/defaultSettings.hpp>
+
+#include "../apiAuxiliarFunctions.hpp"
+#include "fakeAssets.hpp"
 
 using namespace api::test::handlers;
 using namespace api::sessionManager;
+using namespace test::assets;
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
 constexpr auto SIZE_QUEUE = 100;
-constexpr auto ASSET_PATH = "test/source/api/test/assets/";
 constexpr auto ROUTER_TABLE = "internal/router_table/0";
 constexpr auto JSON_DECODER = "decoder/core-hostinfo/0";
 constexpr auto JSON_FILTER = "filter/allow-all/0";
@@ -32,78 +32,13 @@ constexpr auto JSON_INTEGRATION = "integration/wazuh-core/0";
 constexpr auto JSON_SCHEMA_ASSET = "schema/wazuh-asset/0";
 constexpr auto JSON_SCHEMA_POLICY = "schema/wazuh-policy/0";
 
-const auto PATH_ROUTER_TABLE = ASSETS_PATH_TEST + std::string(ROUTER_TABLE);
-const auto PATH_POLICY = ASSETS_PATH_TEST + std::string(JSON_POLICY);
-const auto PATH_DECODER = ASSETS_PATH_TEST + std::string(JSON_DECODER);
-const auto PATH_FILTER = ASSETS_PATH_TEST + std::string(JSON_FILTER);
-const auto PATH_INTEGRATION = ASSETS_PATH_TEST + std::string(JSON_INTEGRATION);
-const auto PATH_WAZUH_ASSET = ASSETS_PATH_TEST + std::string(JSON_SCHEMA_ASSET);
-const auto PATH_WAZUH_POLICY = ASSETS_PATH_TEST + std::string(JSON_SCHEMA_POLICY);
-const auto PATH_DUMMY_FILTER = ASSETS_PATH_TEST + std::string(JSON_DUMMY_FILTER);
-const auto PATH_DUMMY_POLICY = ASSETS_PATH_TEST + std::string(JSON_DUMMY_POLICY);
-
-std::string readJsonFile(const std::string& filePath)
-{
-    std::ifstream jsonFile(filePath);
-
-    if (!jsonFile.is_open())
-    {
-        return "";
-    }
-
-    std::stringstream buffer;
-    buffer << jsonFile.rdbuf();
-
-    jsonFile.close();
-
-    return buffer.str();
-}
-
-base::Expression coutOutputHelper(const std::string& targetField,
-                                  const std::string& rawName,
-                                  const std::vector<std::string>& rawParameters,
-                                  std::shared_ptr<defs::IDefinitions> definitions)
-{
-    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
-
-    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
-    // Return Term
-    return base::Term<base::EngineOp>::create(
-        name,
-        [=, targetField = std::move(targetField), parameter = std::move(parameters)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
-            std::cout << "Dummy output: " << event->str() << std::endl;
-            event->setString("dummyBypass", targetField);
-            return base::result::makeSuccess(event, "Ok from dummy output");
-        });
-}
-
-std::shared_ptr<builder::Builder> fakeBuilder(std::shared_ptr<MockStore> store)
-{
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    auto helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-    builder::internals::dependencies dependencies;
-    dependencies.helperRegistry = helperRegistry;
-    dependencies.logparDebugLvl = 0;
-    dependencies.schema = schemf::mocks::EmptySchema::create();
-    builder::internals::registerHelperBuilders(helperRegistry);
-    builder::internals::registerBuilders(registry, dependencies);
-
-    helperRegistry->registerBuilder(coutOutputHelper, "coutOutputHelper_test");
-
-    auto builder = std::make_shared<builder::Builder>(store, registry);
-
-    return builder;
-};
-
 class TestSessionDeleteCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
     api::Handler m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
-    std::shared_ptr<MockStore> m_spMockStore;
+    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
     std::shared_ptr<SessionManager> m_sessionManager;
 
@@ -111,7 +46,7 @@ protected:
     {
         initLogging();
         m_sessionManager = std::make_shared<SessionManager>();
-        m_spMockStore = std::make_shared<MockStore>();
+        m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
         EXPECT_CALL(*m_spMockStore, get(testing::_))
@@ -120,11 +55,11 @@ protected:
                 {
                     if (name == ROUTER_TABLE)
                     {
-                        return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
+                        return json::Json {INTERNAL_ROUTE_TABLE};
                     }
                     else if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -150,11 +85,11 @@ protected:
                 {
                     if (name == JSON_SCHEMA_ASSET)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
+                        return json::Json {WAZUH_ASSET};
                     }
                     else if (name == JSON_SCHEMA_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
+                        return json::Json {WAZUH_POLICY};
                     }
                     else
                     {
@@ -182,27 +117,27 @@ TEST_P(TestSessionDeleteCommand, Functionality)
                 {
                     if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     if (name == JSON_DUMMY_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
+                        return json::Json {FILTER_DUMMY};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
+                        return json::Json {INTEGRATION};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
+                        return json::Json {POLICY_WAZUH};
                     }
                     else if (name == JSON_DUMMY_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
+                        return json::Json {POLICY_DUMMY};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
+                        return json::Json {DECODER};
                     }
                     else
                     {
@@ -262,7 +197,7 @@ protected:
     api::Handler m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
-    std::shared_ptr<MockStore> m_spMockStore;
+    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
     std::shared_ptr<SessionManager> m_sessionManager;
 
@@ -270,7 +205,7 @@ protected:
     {
         initLogging();
         m_sessionManager = std::make_shared<SessionManager>();
-        m_spMockStore = std::make_shared<MockStore>();
+        m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
         EXPECT_CALL(*m_spMockStore, get(testing::_))
@@ -279,11 +214,11 @@ protected:
                 {
                     if (name == ROUTER_TABLE)
                     {
-                        return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
+                        return json::Json {INTERNAL_ROUTE_TABLE};
                     }
                     else if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -309,11 +244,11 @@ protected:
                 {
                     if (name == JSON_SCHEMA_ASSET)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
+                        return json::Json {WAZUH_ASSET};
                     }
                     else if (name == JSON_SCHEMA_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
+                        return json::Json {WAZUH_POLICY};
                     }
                     else
                     {
@@ -338,27 +273,27 @@ TEST_P(TestSessionListCommand, Functionality)
             {
                 if (name == JSON_FILTER)
                 {
-                    return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                    return json::Json {FILTER_ALLOW};
                 }
                 if (name == JSON_DUMMY_FILTER)
                 {
-                    return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
+                    return json::Json {FILTER_DUMMY};
                 }
                 else if (name == JSON_INTEGRATION)
                 {
-                    return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
+                    return json::Json {INTEGRATION};
                 }
                 else if (name == JSON_POLICY)
                 {
-                    return json::Json {readJsonFile(PATH_POLICY).c_str()};
+                    return json::Json {POLICY_WAZUH};
                 }
                 else if (name == JSON_DUMMY_POLICY)
                 {
-                    return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
+                    return json::Json {POLICY_DUMMY};
                 }
                 else if (name == JSON_DECODER)
                 {
-                    return json::Json {readJsonFile(PATH_DECODER).c_str()};
+                    return json::Json {DECODER};
                 }
                 else
                 {
@@ -457,7 +392,7 @@ protected:
     api::Handler m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
-    std::shared_ptr<MockStore> m_spMockStore;
+    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
     std::shared_ptr<SessionManager> m_sessionManager;
 
@@ -465,7 +400,7 @@ protected:
     {
         initLogging();
         m_sessionManager = std::make_shared<SessionManager>();
-        m_spMockStore = std::make_shared<MockStore>();
+        m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
         EXPECT_CALL(*m_spMockStore, get(testing::_))
@@ -474,11 +409,11 @@ protected:
                 {
                     if (name == ROUTER_TABLE)
                     {
-                        return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
+                        return json::Json {INTERNAL_ROUTE_TABLE};
                     }
                     else if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -504,11 +439,11 @@ protected:
                 {
                     if (name == JSON_SCHEMA_ASSET)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
+                        return json::Json {WAZUH_ASSET};
                     }
                     else if (name == JSON_SCHEMA_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
+                        return json::Json {WAZUH_POLICY};
                     }
                     else
                     {
@@ -535,27 +470,27 @@ TEST_P(TestSessionPostCommand, Functionality)
                 {
                     if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     if (name == JSON_DUMMY_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
+                        return json::Json {FILTER_DUMMY};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
+                        return json::Json {INTEGRATION};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
+                        return json::Json {POLICY_WAZUH};
                     }
                     else if (name == JSON_DUMMY_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
+                        return json::Json {POLICY_DUMMY};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
+                        return json::Json {DECODER};
                     }
                     else
                     {
@@ -684,7 +619,7 @@ protected:
     api::Handler m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
-    std::shared_ptr<MockStore> m_spMockStore;
+    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
     std::shared_ptr<SessionManager> m_sessionManager;
 
@@ -692,7 +627,7 @@ protected:
     {
         initLogging();
         m_sessionManager = std::make_shared<SessionManager>();
-        m_spMockStore = std::make_shared<MockStore>();
+        m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
         EXPECT_CALL(*m_spMockStore, get(testing::_))
@@ -701,11 +636,11 @@ protected:
                 {
                     if (name == ROUTER_TABLE)
                     {
-                        return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
+                        return json::Json {INTERNAL_ROUTE_TABLE};
                     }
                     else if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -731,11 +666,11 @@ protected:
                 {
                     if (name == JSON_SCHEMA_ASSET)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
+                        return json::Json {WAZUH_ASSET};
                     }
                     else if (name == JSON_SCHEMA_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
+                        return json::Json {WAZUH_POLICY};
                     }
                     else
                     {
@@ -760,27 +695,27 @@ TEST_P(TestRunCommandIntegration, Functionality)
                 {
                     if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
+                        return json::Json {FILTER_ALLOW};
                     }
                     if (name == JSON_DUMMY_FILTER)
                     {
-                        return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
+                        return json::Json {FILTER_DUMMY};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
+                        return json::Json {INTEGRATION};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
+                        return json::Json {POLICY_WAZUH};
                     }
                     else if (name == JSON_DUMMY_POLICY)
                     {
-                        return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
+                        return json::Json {POLICY_DUMMY};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
+                        return json::Json {DECODER};
                     }
                     else
                     {

@@ -1,4 +1,51 @@
+#ifndef _GRAPH_FAKE_ASSETS_HPP
+#define _GRAPH_FAKE_ASSETS_HPP
+
+namespace graph
 {
+namespace assets
+{
+
+auto constexpr DECODER = R"({
+    "check": [
+        {
+            "wazuh.queue": 51
+        }
+    ],
+    "name": "decoder/core-hostinfo/0",
+    "normalize": [
+        {
+            "map": [
+                {
+                    "wazuh.decoders": "+array_append/core-hostinfo"
+                }
+            ]
+        }
+    ]
+})";
+
+auto constexpr FILTER = R"({
+    "name": "filter/allow-all/0"
+})";
+
+auto constexpr INTEGRATION = R"({
+    "decoders": [
+        "decoder/core-hostinfo/0"
+    ],
+    "filters": [
+        "filter/allow-all/0"
+    ],
+    "name": "integration/wazuh-core/0"
+})";
+
+auto constexpr POLICY = R"({
+    "name": "policy/wazuh/0",
+    "integrations": [
+        "integration/wazuh-core/0"
+    ]
+})";
+
+auto constexpr WAZUH_LOGPAR_TYPES = R"({
     "name": "schema/wazuh-logpar-types/0",
     "fields": {
         "@timestamp": "date",
@@ -1058,4 +1105,8 @@
         "url": "url",
         "user_agent": "useragent"
     }
-}
+})";
+
+} // namespace assets
+} // namespace graph
+#endif // _GRAPH_FAKE_ASSETS_HPP
