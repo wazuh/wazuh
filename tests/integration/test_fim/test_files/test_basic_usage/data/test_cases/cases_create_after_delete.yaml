@@ -1,6 +1,9 @@
-- name: Remove auditd - Whodata cannot start
-  description: When Auditd is removed, whodata thread cannot start and monitoring is done in realtime
+- name: Create after delete - Whodata
+  description: 
   configuration_parameters:
-    WHODATA: 'yes'
+    TEST_DIR: /test_dir
+    FIM_MODE:
+      whodata: 'yes'
   metadata:
-    fim_mode: whodata
+    folder_to_monitor: /test_dir
+    file_to_monitor:  /test_dir/testfile.log
