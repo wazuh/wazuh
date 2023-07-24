@@ -924,41 +924,6 @@ bool Json::erase(std::string_view path)
     }
 }
 
-bool Json::erase(char prefix, std::string_view path)
-{
-
-    const auto pp = rapidjson::Pointer(path.data());
-    auto erased = false;
-
-    if (pp.IsValid())
-    {
-        auto* val = pp.Get(m_document);
-        if (!val || !val->IsObject())
-        {
-            return false;
-        }
-
-        for (auto it = val->MemberBegin(); it != val->MemberEnd();)
-        {
-            if (it->name.GetString()[0] == prefix)
-            {
-                it = val->EraseMember(it);
-                erased = true;
-            }
-            else
-            {
-                ++it;
-            }
-        }
-    }
-    else
-    {
-        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
-    }
-
-    return erased;
-}
-
 void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path)
 {
     const auto pp = rapidjson::Pointer(path.data());
