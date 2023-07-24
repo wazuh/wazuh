@@ -1712,8 +1712,8 @@ TEST_F(JsonSettersTest, Append)
     Json jObject {"{\"key\": \"value\"}"};
     Json jEmpty {"null"};
 
-    Json source{"[]"};
-    Json sourceNested{"{\"nested\": []}"};
+    Json source {"[]"};
+    Json sourceNested {"{\"nested\": []}"};
 
     // String
     ASSERT_NO_THROW(source.appendJson(jString));
@@ -2356,12 +2356,12 @@ TEST_F(JsonSettersTest, MergeRecursiveObjRoot)
 
 TEST_F(JsonSettersTest, MergesCopiesMergedSubtree)
 {
-    json::Json source{R"({
+    json::Json source {R"({
         "key": ["value1", "value2", "value3"]
     })"};
-    json::Json destination{R"({
+    json::Json destination {R"({
     })"};
-    json::Json expected{R"({
+    json::Json expected {R"({
         "key": ["value1", "value2", "value3"]
     })"};
 
@@ -2369,7 +2369,6 @@ TEST_F(JsonSettersTest, MergesCopiesMergedSubtree)
     source.appendString("value4", "/key");
     ASSERT_EQ(destination, expected);
 }
-
 
 TEST(JsonTest, eraseIfKeyInvalidPointer)
 {
@@ -2379,7 +2378,6 @@ TEST(JsonTest, eraseIfKeyInvalidPointer)
     })"};
     // Erase with an invalid pointer
     ASSERT_THROW(json.eraseIfKey([](const std::string& key) { return true; }, false, "a"), std::runtime_error);
-
 }
 
 // Test parameters for eraseIfKey [json object, recursive, path, expected json]
@@ -2388,7 +2386,6 @@ using ParamsJEraseIfKey = std::tuple<std::string, bool, std::string, std::string
 class EraseIfKey : public ::testing::TestWithParam<ParamsJEraseIfKey>
 {
 };
-
 
 // Test delete all fields if key starts with "key"
 TEST_P(EraseIfKey, deleteSomeFields)
@@ -2438,12 +2435,19 @@ TEST_P(ErasePrefixTest, Erase)
     Json inputJson {inputJsonStr.c_str()};
     Json expectedJson {expectedJsonStr.c_str()};
 
+    auto ifPrefix = [p = prefix](const std::string& key)
+    {
+        return key[0] == p;
+    };
+
     if (shouldPass)
-    {ASSERT_NO_THROW(inputJson.erase(prefix, path));
-    ASSERT_EQ(inputJson, expectedJson);}
+    {
+        ASSERT_NO_THROW(inputJson.eraseIfKey(ifPrefix, false, path));
+        ASSERT_EQ(inputJson, expectedJson);
+    }
     else
     {
-        ASSERT_THROW(inputJson.erase(prefix, path), std::runtime_error);
+        ASSERT_THROW(inputJson.eraseIfKey(ifPrefix, false, path), std::runtime_error);
     }
 }
 
@@ -2459,5 +2463,5 @@ INSTANTIATE_TEST_SUITE_P(
         ErasePrefixT(true, R"({"a":1})", R"({"a":1})", '1', "/a"),
         ErasePrefixT(true, R"({"a":1, "_a":1, "b":1, "_b":1})", R"({"a":1, "b":1})", '_', ""),
         ErasePrefixT(true, R"({"a":1, "_a":1, "b":1, "_b":1, "c":1})", R"({"a":1, "b":1, "c":1})", '_', ""),
-        ErasePrefixT(true, R"({"a": {"a":1, "_a":1, "b":1, "_b":1, "c":1}})", R"({"a": {"a":1, "b":1, "c":1}})", '_', "/a")
-    ));
+        ErasePrefixT(
+            true, R"({"a": {"a":1, "_a":1, "b":1, "_b":1, "c":1}})", R"({"a": {"a":1, "b":1, "c":1}})", '_', "/a")));

@@ -163,11 +163,16 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Delete variables from the event always
+    auto ifVar = [](auto attr)
+    {
+        return !attr.empty() && attr[0] == internals::syntax::VARIABLE_ANCHOR;
+    };
+
     auto deleteVariables =
         base::Term<base::EngineOp>::create("DeleteVariables",
-                                           [](auto e)
+                                           [ifVar](auto e)
                                            {
-                                               e->erase(internals::syntax::VARIABLE_ANCHOR);
+                                               e->eraseIfKey(ifVar);
                                                return base::result::makeSuccess(e, "DeleteVariables");
                                            });
 
