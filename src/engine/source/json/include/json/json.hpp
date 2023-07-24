@@ -773,6 +773,19 @@ public:
      * - If Json Values are not the same type.
      */
     void merge(const bool isRecursive, std::string_view other, std::string_view path = "");
+
+    /**
+     * @brief Erases all the members of the JSON object that satisfy the given condition in the given Key (No the full path)
+     *
+     * @param func A function that takes a string and returns a boolean indicating whether the member should be
+     * erased. The string is the key of the member (No the full path)
+     * @param recursive If true, the function will recursively erase members of nested objects.
+     * @param path The path to the JSON object to modify.
+     * @return true if any member was erased, false otherwise.
+     *
+     * @throws std::runtime_error if the given path is invalid.
+     */
+    bool eraseIfKey(const std::function<bool(const std::string&)>&, bool recursive = false, const std::string& = "");
 };
 
 } // namespace json
