@@ -15,13 +15,11 @@ from wazuh.core import pyDaemonModule
 API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
 API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
+API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
 
 
 def spawn_process_pool():
-    """Import necessary basic Wazuh SDK modules for the local request pool and spawn child."""
-    from wazuh import agent, manager  # noqa
-    from wazuh.core import common  # noqa
-    from wazuh.core.cluster import dapi  # noqa
+    """Spawn general process pool child."""
 
     exec_pid = os.getpid()
     pyDaemonModule.create_pid(API_LOCAL_REQUEST_PROCESS, exec_pid)
@@ -29,9 +27,17 @@ def spawn_process_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
+def spawn_events_pool():
+    """Spawn events process pool child."""
+
+    events_pid = os.getpid()
+    pyDaemonModule.create_pid(API_SECURITY_EVENTS_PROCESS, events_pid)
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def spawn_authentication_pool():
-    """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
-    from wazuh import security  # noqa
+    """Spawn authentication process pool child."""
 
     auth_pid = os.getpid()
     pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, auth_pid)
