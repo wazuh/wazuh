@@ -6,8 +6,12 @@ from typing import Any
 import distro
 from psutil import WINDOWS
 import pytest
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.modules.fim.patterns import MONITORING_PATH
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 
 from wazuh_testing.utils import file
+from wazuh_testing.utils.callbacks import generate_callback
 
 
 @pytest.fixture()
@@ -41,6 +45,10 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
 
     [file.remove_file(Path(path, f'test{i}.log')) for i in range(amount)]
     
+
+@pytest.fixture()
+def start_monitoring() -> None:
+    FileMonitor(WAZUH_LOG_PATH).start(generate_callback(MONITORING_PATH))
 
 
 @pytest.fixture(scope='session', autouse=True)
