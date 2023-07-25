@@ -24,16 +24,16 @@ metadata:
 parents:
   - decoder/aws-json/0
 
-check: +string_equal/$~json.aws.source/alb OR +string_equal/$~json.aws.source/elb OR +string_equal/$~json.aws.source/nlb
+check: +string_equal/$json_event.aws.source/alb OR +string_equal/$json_event.aws.source/elb OR +string_equal/$json_event.aws.source/nlb
   #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
   # - event.module: aws
   # - event.dataset: aws-elb
 
 normalize:
   - logpar:
-      - ~json.aws.ssl_protocol: <tls.version>v<tls.version_protocol>
+      - json_event.aws.ssl_protocol: <tls.version>v<tls.version_protocol>
   - logpar:
-      - ~json.aws.request: <http.request.method> <url.original> HTTP/<http.version>
+      - json_event.aws.request: <http.request.method> <url.original> HTTP/<http.version>
   - logpar:
       - url.original: 'http://<source.ip>:<source.port>/'
 
@@ -44,51 +44,51 @@ normalize:
       - event.kind: event
       - event.type: +array_append/connection
 
-      - event.end: $~json.aws.time
-      - event.start: $~json.aws.request_creation_time
+      - event.end: $json_event.aws.time
+      - event.start: $json_event.aws.request_creation_time
 
       - cloud.provider: aws
       - service.type: aws
-      - trace.id: $~json.aws.trace_id
-      - tls.cipher: $~json.aws.ssl_cipher
+      - trace.id: $json_event.aws.trace_id
+      - tls.cipher: $json_event.aws.ssl_cipher
 
-      - client.port: $~json.aws.client_port
-      - client.address: $~json.aws.client_ip
+      - client.port: $json_event.aws.client_port
+      - client.address: $json_event.aws.client_ip
 
-      - event.action: $~json.aws.action_executed
-      - event.reason: $~json.aws.classification_reason
+      - event.action: $json_event.aws.action_executed
+      - event.reason: $json_event.aws.classification_reason
       # can event.duration be calculated as a sum of request_processing_time, target_processing_time,
       # response_processing_time ?
 
-      - http.response.status_code: $~json.aws.target_status_code
-      - destination.bytes: $~json.aws.received_bytes
-      - source.bytes: $~json.aws.sent_bytes
+      - http.response.status_code: $json_event.aws.target_status_code
+      - destination.bytes: $json_event.aws.received_bytes
+      - source.bytes: $json_event.aws.sent_bytes
 
-      - destination.port: $~json.aws.target_port
-      - destination.address: $~json.aws.target_ip
+      - destination.port: $json_event.aws.target_port
+      - destination.address: $json_event.aws.target_ip
 
-      - related.ip: '+split/$~json.aws.target_ip_list/ '
-      - url.domain: $~json.aws.domain_name
-      - process.exit_code: $~json.aws.elb_status_code
-      - process.name: $~json.aws.elb
+      - related.ip: '+split/$json_event.aws.target_ip_list/ '
+      - url.domain: $json_event.aws.domain_name
+      - process.exit_code: $json_event.aws.elb_status_code
+      - process.name: $json_event.aws.elb
 
-      - error.message: $~json.aws.error_reason
-      - user_agent.original: $~json.aws.user_agent
-      - log.file.path: $~json.aws.log_info.log_file
+      - error.message: $json_event.aws.error_reason
+      - user_agent.original: $json_event.aws.user_agent
+      - log.file.path: $json_event.aws.log_info.log_file
 
       # Temporary and custom fields
-      - ~tmp.temp_value_status_code: +parse_long/$~json.aws.target_status_code
-      - ~aws_elb.related_ports: $~json.aws.target_port_list
-      - ~aws_elb.target_group_arn: $~json.aws.target_group_arn
-      - ~aws_elb.classification: $~json.aws.classification
-      - ~aws_elb.redirect_url: $~json.aws.redirect_url
-      - ~aws_elb.bucket: $~json.aws.log_info.s3bucket
+      - ~tmp.temp_value_status_code: +parse_long/$json_event.aws.target_status_code
+      - ~aws_elb.related_ports: $json_event.aws.target_port_list
+      - ~aws_elb.target_group_arn: $json_event.aws.target_group_arn
+      - ~aws_elb.classification: $json_event.aws.classification
+      - ~aws_elb.redirect_url: $json_event.aws.redirect_url
+      - ~aws_elb.bucket: $json_event.aws.log_info.s3bucket
 
-  - check: +string_equal/$~json.aws.type/http
+  - check: +string_equal/$json_event.aws.type/http
     map:
       - event.category: +array_append/web
 
-  - check: +string_not_equal/$~json.aws.type/http
+  - check: +string_not_equal/$json_event.aws.type/http
     map:
       - event.category: +array_append/network
 
@@ -103,5 +103,5 @@ normalize:
       - event.outcome: failure
 
   - map:
-      - ~json: delete()
+      - json_event: delete()
       - ~tmp: delete()

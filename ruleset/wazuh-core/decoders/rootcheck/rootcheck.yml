@@ -23,44 +23,44 @@ parents:
 
 normalize:
   - map:
-      - ~time: system_epoch()
-      - ~query: concat(agent , $agent.id,  rootcheck save , $~time,  , $event.original)
-      - ~result: wdb_query($~query)
-      - ~wazuh.rootcheck.file: "regex_extract($event.original, (?:f|F)ile '(.*?)')"
-      - ~title: "regex_extract($event.original, (.*?)(?:(?: {)|$))"
+      - _time: system_epoch()
+      - _query: concat(agent , $agent.id,  rootcheck save , $_time,  , $event.original)
+      - _result: wdb_query($_query)
+      - wazuh.rootcheck.file: "regex_extract($event.original, (?:f|F)ile '(.*?)')"
+      - _title: "regex_extract($event.original, (.*?)(?:(?: {)|$))"
 
   - check:
-      - ~result: "2"
+      - _result: "1"
     map:
-      - ~wazuh.rootcheck.fts: true
+      - wazuh.rootcheck.update: true
 
   - check:
-      - ~result: "1"
+      - _result: "2"
     map:
-      - ~wazuh.rootcheck.update: true
+      - wazuh.rootcheck.fts: true
 
   - check:
-      - ~wazuh.rootcheck.file: not_exists()
+      - wazuh.rootcheck.file: not_exists()
     map:
-      - ~wazuh.rootcheck.file: "regex_extract($event.original, File: (.*?)(?:(?:\\. )|(?:\\.$)))"
+      - wazuh.rootcheck.file: "regex_extract($event.original, File: (.*?)(?:(?:\\. )|(?:\\.$)))"
 
   - map:
-      - ~title: "regex_extract($~title, System Audit: (.*? - .*))"
+      - _title: "regex_extract($_title, System Audit: (.*? - .*))"
 
   - map:
-      - ~title: regex_extract($~title, ^(.*\\.) )
+      - _title: regex_extract($_title, ^(.*\\.) )
 
   - check:
-      - ~title: "regex_match((?:f|F)ile )"
+      - _title: "regex_match((?:f|F)ile )"
     map:
-      - ~pre_file: "regex_extract($~title, (.*?(?:f|F)ile) )"
-      - ~pos_file: "regex_extract($~title, (?:f|F)ile '(?:.*?)'(.*))"
-      - ~title: concat($~pre_file, $~pos_file)
+      - _pre_file: "regex_extract($_title, (.*?(?:f|F)ile) )"
+      - _pos_file: "regex_extract($_title, (?:f|F)ile '(?:.*?)'(.*))"
+      - _title: concat($_pre_file, $_pos_file)
 
   - check:
-      - ~title: regex_match(.+)
+      - _title: regex_match(.+)
     map:
-      - ~wazuh.rootcheck.title: rename($~title)
+      - wazuh.rootcheck.title: $_title
 
   - map:
       - wazuh.decoders: array_append(rootcheck)

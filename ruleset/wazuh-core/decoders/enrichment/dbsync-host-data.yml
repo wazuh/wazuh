@@ -19,46 +19,46 @@ parents:
   - decoder/dbsync/0
 
 check:
-  - ~json.type: string_equal(state)
+  - json_event.type: string_equal(state)
 
 normalize:
   - check:
-      - ~json.component: regex_match(osinfo$)
+      - json_event.component: regex_match(osinfo$)
     map:
-      - ~do_update_kvdb: true
-      - host.architecture: $~json.data.attributes.architecture
-      - host.hostname: $~json.data.attributes.hostname
-      - host.name: $~json.data.attributes.hostname
-      - host.os.kernel: $~json.data.attributes.release
-      - host.os.name: $~json.data.attributes.os_name
-      - host.os.platform: $~json.data.attributes.os_platform
+      - do_update_kvdb: true
+      - host.architecture: $json_event.data.attributes.architecture
+      - host.hostname: $json_event.data.attributes.hostname
+      - host.name: $json_event.data.attributes.hostname
+      - host.os.kernel: $json_event.data.attributes.release
+      - host.os.name: $json_event.data.attributes.os_name
+      - host.os.platform: $json_event.data.attributes.os_platform
       # TODO: check if sysname is one of the accepted values
-      - host.os.type: downcase($~json.data.attributes.sysname)
-      - host.os.version: $~json.data.attributes.os_version
+      - host.os.type: downcase($json_event.data.attributes.sysname)
+      - host.os.version: $json_event.data.attributes.os_version
   - check:
-      - ~json.data.attributes.os_display_version: exists()
+      - json_event.data.attributes.os_display_version: exists()
     map:
       - host.os.type: windows
 
-  - check: exists($host.mac) AND exists($~json.data.attributes.mac) AND exists($~json.data.attributes.name)
+  - check: exists($host.mac) AND exists($json_event.data.attributes.mac) AND exists($json_event.data.attributes.name)
     map:
-      - ~do_update_kvdb: true
-      - ~mac_aux: array_append($~json.data.attributes.mac)
-      - host.mac: merge($~mac_aux)
-  - check: not_exists($host.mac) AND exists($~json.data.attributes.mac) AND exists($~json.data.attributes.name)
+      - do_update_kvdb: true
+      - _mac_aux: array_append($json_event.data.attributes.mac)
+      - host.mac: merge($_mac_aux)
+  - check: not_exists($host.mac) AND exists($json_event.data.attributes.mac) AND exists($json_event.data.attributes.name)
     map:
-      - ~do_update_kvdb: true
-      - host.mac: array_append($~json.data.attributes.mac)
+      - do_update_kvdb: true
+      - host.mac: array_append($json_event.data.attributes.mac)
 
-  - check: exists($host.ip) AND exists($~json.data.attributes.address) AND exists($~json.data.attributes.iface)
+  - check: exists($host.ip) AND exists($json_event.data.attributes.address) AND exists($json_event.data.attributes.iface)
     map:
-      - ~do_update_kvdb: true
-      - ~address_aux: array_append($~json.data.attributes.address)
-      - host.ip: merge($~address_aux)
-  - check: not_exists($host.ip) AND exists($~json.data.attributes.address) AND exists($~json.data.attributes.iface)
+      - do_update_kvdb: true
+      - _address_aux: array_append($json_event.data.attributes.address)
+      - host.ip: merge($_address_aux)
+  - check: not_exists($host.ip) AND exists($json_event.data.attributes.address) AND exists($json_event.data.attributes.iface)
     map:
-      - ~do_update_kvdb: true
-      - host.ip: array_append($~json.data.attributes.address)
+      - do_update_kvdb: true
+      - host.ip: array_append($json_event.data.attributes.address)
 
   - map:
       - wazuh.decoders: array_append(dbsync-host-data)

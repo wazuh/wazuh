@@ -18,9 +18,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 52 is equal to character '4' in ASCII
   - wazuh.queue: 52
 
 normalize:
   - map:
-      - wazuh.source: remote
       - wazuh.decoders: array_append(core-secure)
+      - wazuh.source: remote

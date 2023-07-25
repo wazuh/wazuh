@@ -19,9 +19,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 101 is equal to character 'e' in ASCII
   - wazuh.queue: 101
 
 normalize:
   - map:
-      - wazuh.source: wodle
       - wazuh.decoders: array_append(core-ciscat)
+      - wazuh.source: wodle

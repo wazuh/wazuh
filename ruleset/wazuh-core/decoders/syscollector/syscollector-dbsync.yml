@@ -24,9 +24,9 @@ parents:
   - decoder/syscollector-base/0
 
 check:
-  - ~json.type: starts_with(dbsync_)
-  - ~json.operation: is_string()
-  - ~json.data: is_object()
+  - json_event.type: starts_with(dbsync_)
+  - json_event.operation: is_string()
+  - json_event.data: is_object()
 
 # processes
 # {"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}
@@ -49,65 +49,66 @@ check:
 
 normalize:
   - map:
-      - ~empty: ""
+      - wazuh.decoders: array_append(syscollector-dbsync)
 
-  - check: exists($~json.data.address) OR exists($~json.data.mac) OR exists($~json.data.os_version) OR exists($~json.data.release) OR string_not_equal($~json.data.hostname,$~empty) OR string_not_equal($~json.data.os_name,$~empty) OR string_not_equal($~json.data.os_platform,$~empty) OR string_not_equal($~json.data.sysname,$~empty)
+      - do_update_kvdb: false
+      - _empty: ""
+
+  - check: exists($json_event.data.address) OR exists($json_event.data.mac) OR exists($json_event.data.os_version) OR exists($json_event.data.release) OR string_not_equal($json_event.data.hostname,$_empty) OR string_not_equal($json_event.data.os_name,$_empty) OR string_not_equal($json_event.data.os_platform,$_empty) OR string_not_equal($json_event.data.sysname,$_empty)
     map:
-      - ~do_update_kvdb: true
+      - do_update_kvdb: true
 
   # Avoid updating when architecture field not from osinfo
-  - check: string_not_equal($~json.data.architecture,$~empty) AND string_equal($~json.type,osinfo)
+  - check: string_not_equal($json_event.data.architecture,$_empty) AND string_equal($json_event.type,osinfo)
     map:
-      - ~do_update_kvdb: true
+      - do_update_kvdb: true
 
+# TODO: shouldn't we here check if the wdb must be updated?
   - map:
-      - ~json.type: replace(dbsync_,)
-      - ~tmp.query: concat(agent , $agent.id,  dbsync , $~json.type,  , $~json.operation,  , $~json.data)
-      - ~tmp.query_response: wdb_update($~tmp.query)
-      - ~json.data.checksum: delete()
+      - json_event.type: replace(dbsync_,)
+      - _query: concat(agent , $agent.id,  dbsync , $json_event.type,  , $json_event.operation,  , $json_event.data)
+      - _query_response: wdb_update($_query)
+      - json_event.data.checksum: delete()
 
+# TODO: what is this for?
   - check:
-      - ~tmp.query_response: is_false()
+      - _query_response: is_false()
     map:
-      - ~do_update_kvdb: false
+      - do_update_kvdb: false
 
     # Mapping result fields to wazuh.syscollector
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,processes)
+  - check: is_true($_query_response) AND string_equal($json_event.type,processes)
     map:
-      - wazuh.syscollector.process: $~json.data
+      - wazuh.syscollector.process: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,ports)
+  - check: is_true($_query_response) AND string_equal($json_event.type,ports)
     map:
-      - wazuh.syscollector.port: $~json.data
+      - wazuh.syscollector.port: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,hotfixes)
+  - check: is_true($_query_response) AND string_equal($json_event.type,hotfixes)
     map:
-      - wazuh.syscollector.hotfix: $~json.data
+      - wazuh.syscollector.hotfix: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,hwinfo)
+  - check: is_true($_query_response) AND string_equal($json_event.type,hwinfo)
     map:
-      - wazuh.syscollector.hardware: $~json.data
+      - wazuh.syscollector.hardware: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,network_address)
+  - check: is_true($_query_response) AND string_equal($json_event.type,network_address)
     map:
-      - wazuh.syscollector.netinfo.addr: $~json.data
+      - wazuh.syscollector.netinfo.addr: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,network_protocol)
+  - check: is_true($_query_response) AND string_equal($json_event.type,network_protocol)
     map:
-      - wazuh.syscollector.netinfo.proto: $~json.data
+      - wazuh.syscollector.netinfo.proto: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,network_iface)
+  - check: is_true($_query_response) AND string_equal($json_event.type,network_iface)
     map:
-      - wazuh.syscollector.netinfo.iface: $~json.data
+      - wazuh.syscollector.netinfo.iface: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,osinfo)
+  - check: is_true($_query_response) AND string_equal($json_event.type,osinfo)
     map:
-      - wazuh.syscollector.os: $~json.data
+      - wazuh.syscollector.os: $json_event.data
 
-  - check: is_true($~tmp.query_response) AND string_equal($~json.type,packages)
+  - check: is_true($_query_response) AND string_equal($json_event.type,packages)
     map:
-      - wazuh.syscollector.program: $~json.data
-
-  - map:
-      - ~tmp: delete()
-      - wazuh.decoders: array_append(syscollector-dbsync)
+      - wazuh.syscollector.program: $json_event.data

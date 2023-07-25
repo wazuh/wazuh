@@ -19,9 +19,13 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 49 is equal to character '1' in ASCII
   - wazuh.queue: 49
 
 normalize:
+  - map:
+      - wazuh.decoders: array_append(core-localfile)
+
   ### Wodles ###
   # Command
   - check:
@@ -46,17 +50,14 @@ normalize:
       - wazuh.source: logcollector
       - wazuh.message: starts_with({)
     logpar:
-      - wazuh.message: <~json/json>
+      - wazuh.message: <json_event/json>
     map:
-      - event.original: rename($~json.event.original)
-      - event.module: rename($~json.event.module)
-      - event.dataset: rename($~json.event.dataset)
+      - event.original: rename($json_event.event.original)
+      - event.module: rename($json_event.event.module)
+      - event.dataset: rename($json_event.event.dataset)
 
   ### Applied to all ###
   - check:
       - event.original: not_exists()
     map:
       - event.original: $wazuh.message
-
-  - map:
-      - wazuh.decoders: array_append(core-localfile)

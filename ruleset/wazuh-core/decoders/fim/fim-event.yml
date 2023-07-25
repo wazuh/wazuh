@@ -24,43 +24,42 @@ metadata:
   versions:
     - ""
 check:
-  - ~json.type: string_equal(event)
-  - ~json.data.path: is_string()
-  - ~json.data.type: is_string()
+  - json_event.type: string_equal(event)
+  - json_event.data.path: is_string()
+  - json_event.data.type: is_string()
 
 normalize:
   - map:
-      - ~do_save2: false
-
-  - check:
-      - ~json.data.type: string_equal(added)
-    map:
-      - ~do_save2: true
-  - check:
-      - ~json.data.type: string_equal(modified)
-    map:
-      - ~do_save2: true
-
-  - check:
-      - ~do_save2: is_true()
-    map:
-      - ~json.data.audit: delete()
-      - ~json.data.content_changes: delete()
-      - ~json.data.changed_attributes: delete()
-      - ~json.data.hard_links: delete()
-      - ~json.data.mode: delete()
-      - ~json.data.old_attributes: delete()
-      - ~json.data.type: delete()
-      - ~json.data.tags: delete()
-      - ~query: concat(agent , $agent.id,  syscheck save2 , $~json.data)
-      - ~query_result: wdb_query($~query)
-
-  - check:
-      - ~do_save2: is_false()
-      - ~json.data.type: string_equal(deleted)
-    map:
-      - ~query: concat(agent , $agent.id,  syscheck delete , $~json.data.path)
-      - ~query_result: wdb_query($~query)
-
-  - map:
       - wazuh.decoders: array_append(fim-event)
+
+      - _do_save2: false
+
+  - check:
+      - json_event.data.type: string_equal(added)
+    map:
+      - _do_save2: true
+  - check:
+      - json_event.data.type: string_equal(modified)
+    map:
+      - _do_save2: true
+
+  - check:
+      - _do_save2: is_true()
+    map:
+      - json_event.data.audit: delete()
+      - json_event.data.content_changes: delete()
+      - json_event.data.changed_attributes: delete()
+      - json_event.data.hard_links: delete()
+      - json_event.data.mode: delete()
+      - json_event.data.old_attributes: delete()
+      - json_event.data.type: delete()
+      - json_event.data.tags: delete()
+      - _query: concat(agent , $agent.id,  syscheck save2 , $json_event.data)
+      - _query_result: wdb_query($_query)
+
+  - check:
+      - _do_save2: is_false()
+      - json_event.data.type: string_equal(deleted)
+    map:
+      - _query: concat(agent , $agent.id,  syscheck delete , $json_event.data.path)
+      - _query_result: wdb_query($_query)

@@ -30,41 +30,41 @@ definitions:
 
 parse:
   logpar:
-    - event.original: <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<~tmp.http.request>" <http.response.status_code> <~tmp.dummy/literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
+    - event.original: <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<_http_request/text>" <http.response.status_code> <_ignore/literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
     - event.original: <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "-" <http.response.status_code> -
     - event.original: <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "-" <http.response.status_code> -
-    - event.original: <destination.domain> <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <~tmp.url.orig> <http.version>?<~tmp.dash>" <http.response.status_code> <http.response.body.bytes>?<~tmp.dash> "<http.request.referrer>" "<user_agent.original>"
-    - event.original: <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <~tmp.url.orig> <http.version>?<~tmp.dash>" <http.response.status_code> <http.response.body.bytes>?<~tmp.dash> "<http.request.referrer>" "<user_agent.original>"
-    - event.original: <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <~tmp.url.orig> <http.version>?<~tmp.dash>" <http.response.status_code> <http.response.body.bytes>?<~tmp.dash> "<http.request.referrer>" "<user_agent.original>"
-    - event.original: '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <network.protocol> <tls.cipher> "<http.request.method> <~tmp.url.orig> <http.version>" <http.response.body.bytes>?<~tmp.dash>'
+    - event.original: <destination.domain> <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <network.protocol> <tls.cipher> "<http.request.method> <_url_orig> <http.version>" <http.response.body.bytes>?<_dash>'
 
 normalize:
   - map:
-      - ~tmp.dash: delete()
       - event.category: array_append(web)
-      - event.kind: event
-      - service.type: apache
-      - source.ip: parse_ip($source.address)
-      - ~tmp.tls: split($network.protocol, v)
-      - ~tmp.tls-1: $~tmp.tls/1
-      - tls.version_protocol: $~tmp.tls/0
-      - tls.cipher: $tls.cipher
-      - event.module: apache-http
       - event.dataset: apache-access
+      - event.kind: event
+      - event.module: apache-http
+      - service.type: apache
+      - wazuh.decoders: array_append(apache-access)
+
+      - source.ip: parse_ip($source.address)
+      - _tls: split($network.protocol, v)
+      - _tls-1: $_tls/1
+      - tls.version_protocol: $_tls/0
+      - tls.cipher: $tls.cipher
 
     logpar:
-      - ~tmp.http.version: HTTP/<http.version>
-      - ~tmp.http.request: <http.request.method> <url.original> <~tmp.http.version>
+      - _http_request: <http.request.method> <url.original> HTTP/<http.version>
 
   - check:
-      - ~tmp.tls-1: regex_match(\d+\.\d+)
+      - _tls-1: regex_match(\d+\.\d+)
     map:
-      - tls.version: ~tmp.tls-1
+      - tls.version: $_tls-1
 
   - check:
-      - ~tmp.tls-1: regex_not_match(\d+\.\d+)
+      - _tls-1: regex_not_match(\d+\.\d+)
     map:
-      - tls.version: concat($~tmp.tls-1, .0)
+      - tls.version: concat($_tls-1, .0)
 
   - check: $isSuccess
     map:
@@ -80,6 +80,3 @@ normalize:
 
   - map:
       - url.extension: regex_extract($url.original, .*\.([^.]+)$)
-      - ~tmp: delete()
-  - map:
-      - wazuh.decoders: array_append(apache-access)

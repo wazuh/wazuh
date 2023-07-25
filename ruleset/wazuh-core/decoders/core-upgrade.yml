@@ -19,8 +19,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
-  - wazuh.queue: 117 # UPGRADE_MQ 'u'
+  # Value 117 is equal to character 'u' in ASCII
+  - wazuh.queue: 117
 
 normalize:
   - map:
       - wazuh.decoders: array_append(core-upgrade)
+      - wazuh.source: upgrade

@@ -26,39 +26,39 @@ check:
 
 parse:
   logpar:
-    - message: "<~json/json>"
+    - message: "<json_event/json>"
 
 normalize:
   - map:
       - event.module: wazuh-dashboard
       - wazuh.decoders: +array_append/wazuh-dashboard
       - event.category: +array_append/web
-      - event.type: +array_append/$~json.type
-      - '@timestamp': $~json.@timestamp
-      - tags: $~json.tags
-      - message: $~json.message
+      - event.type: +array_append/$json_event.type
+      - '@timestamp': $json_event.@timestamp
+      - tags: $json_event.tags
+      - message: $json_event.message
 
   - check:
-      - ~json.type: error
+      - json_event.type: error
     map:
-      - log.level: $~json.level
-      - error.message: $~json.error.message
-      - error.stack_trace: $~json.error.stack
-      - error.code: $~json.error.code
-      - url.original: $~json.url
+      - log.level: $json_event.level
+      - error.message: $json_event.error.message
+      - error.stack_trace: $json_event.error.stack
+      - error.code: $json_event.error.code
+      - url.original: $json_event.url
 
   - check:
-      - ~json.type: response
+      - json_event.type: response
     logpar:
-      - ~json.req.url: <url.path>(?\?<url.query>)
+      - json_event.req.url: <url.path>(?\?<url.query>)
     map:
-      - http.request.method: $~json.req.method
-      - destination.address: $~json.req.headers.host
-      - source.address: $~json.req.remoteAddress
-      - user_agent.original: $~json.req.userAgent
-      - http.request.referrer: $~json.req.referer
-      - http.request.body.bytes: $~json.req.headers.content-length
-      - http.response.status_code: $~json.res.statusCode
+      - http.request.method: $json_event.req.method
+      - destination.address: $json_event.req.headers.host
+      - source.address: $json_event.req.remoteAddress
+      - user_agent.original: $json_event.req.userAgent
+      - http.request.referrer: $json_event.req.referer
+      - http.request.body.bytes: $json_event.req.headers.content-length
+      - http.response.status_code: $json_event.res.statusCode
 
   - check:
       - http.response.status_code: +int_less/400
@@ -71,4 +71,4 @@ normalize:
       - event.outcome: failure
 
   - map:
-      - ~json: delete()
+      - json_event: delete()

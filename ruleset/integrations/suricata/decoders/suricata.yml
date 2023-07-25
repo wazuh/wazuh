@@ -18,57 +18,54 @@ metadata:
   description: Decoder for Suricata open source network analysis and threat detection software.
 
 definitions:
-  is_good_appProto: string_not_equal($~suricata.eve.app_proto,failed) AND string_not_equal($~suricata.eve.app_proto,template) AND string_not_equal($~suricata.eve.app_proto,template-rust)
+  is_good_appProto: string_not_equal($json_event.app_proto,failed) AND string_not_equal($json_event.app_proto,template) AND string_not_equal($json_event.app_proto,template-rust)
 
 check:
-  - ~json.event_type: exists()
-  - ~json.flow_id: exists()
+  - json_event.event_type: exists()
+  - json_event.flow_id: exists()
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
 # - event.module: suricata
 
 normalize:
   - map:
-      - ~suricata.eve: $~json
-      - ~json: delete()
-      - destination.address: $~suricata.eve.dest_ip
-      - destination.ip: $destination.address
-      - destination.port: $~suricata.eve.dest_port
-      - event.module: suricata
-      - event.kind: event
       - event.category: array_append(network)
-      - event.created: $~suricata.eve.timestamp
-      - network.transport: $~suricata.eve.proto
-      - source.address: $~suricata.eve.src_ip
-      - source.ip: $~suricata.eve.src_ip
-      - source.port: $~suricata.eve.src_port
-      - ~suricata.eve.app_proto: downcase($~suricata.eve.app_proto)
+      - event.kind: event
+      - event.module: suricata
+      - wazuh.decoders: array_append(suricata)
+
+      - destination.address: $json_event.dest_ip
+      - destination.ip: $destination.address
+      - destination.port: $json_event.dest_port
+      - event.created: $json_event.timestamp
+      - network.transport: $json_event.proto
+      - source.address: $json_event.src_ip
+      - source.ip: $json_event.src_ip
+      - source.port: $json_event.src_port
+      - json_event.app_proto: downcase($json_event.app_proto)
 
   - check: $is_good_appProto
     map:
-      - network.protocol: $~suricata.eve.app_proto
+      - network.protocol: $json_event.app_proto
 
   - check:
-      - ~suricata.eve.app_proto: string_equal(ftp-data)
+      - json_event.app_proto: string_equal(ftp-data)
     map:
       - network.protocol: ftp
-      - ~suricata.eve.event_type: downcase($~suricata.eve.event_type)
-      - ~suricata.eve.netwrok.transport: downcase($~suricata.eve.network.transport)
-      - ~suricata.eve.proto: downcase($~suricata.eve.proto)
+      - json_event.event_type: downcase($json_event.event_type)
+      - json_event.netwrok.transport: downcase($json_event.network.transport)
+      - json_event.proto: downcase($json_event.proto)
 
   - map:
-      - destination.bytes: $~suricata.eve.flow.bytes_toclient
-      - destination.mac: $~suricata.eve.ether.dest_mac
-      - destination.packets: $~suricata.eve.flow.pkts_toclient
-      - source.bytes: $~suricata.eve.flow.bytes_toserver
-      - source.mac: $~suricata.eve.ether.src_mac
-      - source.packets: $~suricata.eve.flow.pkts_toserver
-      - event.start: $~suricata.eve.flow.start
-      - event.end: $~suricata.eve.flow.end
+      - destination.bytes: $json_event.flow.bytes_toclient
+      - destination.mac: $json_event.ether.dest_mac
+      - destination.packets: $json_event.flow.pkts_toclient
+      - source.bytes: $json_event.flow.bytes_toserver
+      - source.mac: $json_event.ether.src_mac
+      - source.packets: $json_event.flow.pkts_toserver
+      - event.start: $json_event.flow.start
+      - event.end: $json_event.flow.end
 
   - check:
-      - ~suricata.eve.flow.state: string_equal(new)
+      - json_event.flow.state: string_equal(new)
     map:
       - event.type: array_append(end)
-
-  - map:
-      - wazuh.decoders: array_append(suricata)
