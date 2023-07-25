@@ -17,7 +17,9 @@
 #include <name.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <schemf/schema.hpp>
+#include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
+#include <wdb/wdbManager.hpp>
 
 #include "base/parseEvent.hpp"
 #include "base/utils/getExceptionStack.hpp"
@@ -124,6 +126,8 @@ void run(const Options& options)
         deps.kvdbManager = kvdbManager;
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
         deps.schema = schema;
+        deps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
+        deps.wdbManager = std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), deps.sockFactory);
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
         builder::internals::registerBuilders(registry, deps);
     }
