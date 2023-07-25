@@ -34,6 +34,7 @@ def check_experimental_feature_value(func):
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def clear_rootcheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
                                    agents_list: list = None) -> web.Response:
     """Clear the rootcheck database for all the agents or a list of them.
@@ -74,6 +75,7 @@ async def clear_rootcheck_database(request, pretty: bool = False, wait_for_compl
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def clear_syscheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
                                   agents_list: list = None) -> web.Response:
     """Clear the syscheck database for all agents or a list of them.
@@ -114,6 +116,7 @@ async def clear_syscheck_database(request, pretty: bool = False, wait_for_comple
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                               offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                               search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
@@ -194,6 +197,7 @@ async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: 
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_hardware_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                             search: str = None, board_serial: str = None) -> web.Response:
@@ -259,6 +263,7 @@ async def get_hardware_info(request, pretty: bool = False, wait_for_complete: bo
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_network_address_info(request, pretty: bool = False, wait_for_complete: bool = False,
                                    agents_list: str = '*', offset: int = 0, limit: str = None, select: str = None,
                                    sort: str = None, search: str = None, iface_name: str = None, proto: str = None,
@@ -332,6 +337,7 @@ async def get_network_address_info(request, pretty: bool = False, wait_for_compl
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_network_interface_info(request, pretty: bool = False, wait_for_complete: bool = False,
                                      agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
                                      sort: str = None, search: str = None, adapter: str = None, state: str = None,
@@ -406,6 +412,7 @@ async def get_network_interface_info(request, pretty: bool = False, wait_for_com
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_network_protocol_info(request, pretty: bool = False, wait_for_complete: bool = False,
                                     agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
                                     sort: str = None, search: str = None, iface: str = None, gateway: str = None,
@@ -474,6 +481,7 @@ async def get_network_protocol_info(request, pretty: bool = False, wait_for_comp
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_os_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                       offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
                       os_name: str = None, architecture: str = None, os_version: str = None, version: str = None,
@@ -547,6 +555,7 @@ async def get_os_info(request, pretty: bool = False, wait_for_complete: bool = F
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_packages_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                             search: str = None, vendor: str = None, name: str = None, architecture: str = None,
@@ -618,6 +627,7 @@ async def get_packages_info(request, pretty: bool = False, wait_for_complete: bo
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_ports_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                          offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
                          pid: str = None, protocol: str = None, tx_queue: str = None, state: str = None,
@@ -697,6 +707,7 @@ async def get_ports_info(request, pretty: bool = False, wait_for_complete: bool 
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_processes_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                              offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                              search: str = None, pid: str = None, state: str = None, ppid: str = None,
@@ -799,6 +810,7 @@ async def get_processes_info(request, pretty: bool = False, wait_for_complete: b
 
 
 @deprecate_endpoint()
+@check_experimental_feature_value
 async def get_hotfixes_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                             offset: int = 0, limit: int = None, sort: str = None, search: str = None,
                             select: str = None, hotfix: str = None) -> web.Response:
