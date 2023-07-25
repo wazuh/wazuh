@@ -19,7 +19,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_create_after_delete.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_delete_folder.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -30,17 +30,12 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LO
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_create_after_delete(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             folder_to_monitor, file_to_monitor, truncate_monitored_files, daemons_handler):
+def test_delete_folder(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                       folder_to_monitor, truncate_monitored_files, daemons_handler):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     # Wait folder is monitored
     wazuh_log_monitor.start(generate_callback(fr'{MONITORING_PATH}{folder_to_monitor}.*'))
 
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(WHODATA_DELETED_EVENT))
-    assert wazuh_log_monitor.callback_result
-
-    file.create_folder(folder_to_monitor)
-    file.write_file(file_to_monitor)
-    wazuh_log_monitor.start(generate_callback(WHODATA_ADDED_EVENT))
     assert wazuh_log_monitor.callback_result
