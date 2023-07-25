@@ -19,17 +19,17 @@ parents:
   - decoder/integrations/0
 
 check:
-  - ~json.type: deprecation
-  - ~json.cluster\.name: exists()
+  - json_event.type: deprecation
+  - json_event.cluster\.name: exists()
   # TODO: Once the events arrive tagged, uncomment the following two lines
   # - event.module: wazuh-indexer
   # - event.dataset: wazuh-indexer-deprecation
 
 normalize:
   - map:
-      - ~json.timestamp: +replace/,/.
+      - json_event.timestamp: +replace/,/.
   - logpar:
-      - ~json.timestamp: <@timestamp/%FT%TZ>
+      - json_event.timestamp: <@timestamp/%FT%TZ>
   - map:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-deprecation
@@ -37,13 +37,13 @@ normalize:
       - event.kind: event
       - event.category: +array_append/database
       - event.type: +array_append/info
-      - log.level: $~json.level
-      - log.logger: $~json.component
-      - host.name: $~json.node\.name
-      - host.id: $~json.node\.id
-      - ~cluster.name: $~json.cluster\.name
-      - ~cluster.uuid: $~json.cluster\.uuid
-      - ~node.name: $~json.node\.name
-      - ~node.id: $~json.node\.id
-      - message: $~json.message
-      - ~json: delete()
+      - log.level: $json_event.level
+      - log.logger: $json_event.component
+      - host.name: $json_event.node\.name
+      - host.id: $json_event.node\.id
+      - ~cluster.name: $json_event.cluster\.name
+      - ~cluster.uuid: $json_event.cluster\.uuid
+      - ~node.name: $json_event.node\.name
+      - ~node.id: $json_event.node\.id
+      - message: $json_event.message
+      - json_event: delete()

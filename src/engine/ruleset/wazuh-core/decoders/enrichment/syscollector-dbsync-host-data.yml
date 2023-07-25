@@ -19,41 +19,41 @@ parents:
   - decoder/syscollector-dbsync/0
 
 check:
-  - ~do_update_kvdb: is_true()
+  - do_update_kvdb: is_true()
   # TODO: Delete operation are not yet implemented
-  - ~json.operation: string_not_equal(DELETED)
+  - json_event.operation: string_not_equal(DELETED)
 
 normalize:
   - map:
-      - host.architecture: $~json.data.architecture
-      - host.hostname: $~json.data.hostname
-      - host.name: $~json.data.hostname
-      - host.os.kernel: $~json.data.release
-      - host.os.name: $~json.data.os_name
-      - host.os.platform: $~json.data.os_platform
+      - wazuh.decoders: array_append(syscollector-dbsync-host-data)
+
+      - host.architecture: $json_event.data.architecture
+      - host.hostname: $json_event.data.hostname
+      - host.name: $json_event.data.hostname
+      - host.os.kernel: $json_event.data.release
+      - host.os.name: $json_event.data.os_name
+      - host.os.platform: $json_event.data.os_platform
       # TODO: check if sysname is one of the accepted values
-      - host.os.type: downcase($~json.data.sysname)
-      - host.os.version: $~json.data.os_version
+      - host.os.type: downcase($json_event.data.sysname)
+      - host.os.version: $json_event.data.os_version
+
   - check:
-      - ~json.data.os_display_version: exists()
+      - json_event.data.os_display_version: exists()
     map:
       - host.os.type: windows
 
-  - check: exists($host.mac) AND exists($~json.data.mac) AND exists($~json.data.name)
+  - check: exists($host.mac) AND exists($json_event.data.mac) AND exists($json_event.data.name)
     map:
-      - ~mac_aux: array_append($~json.data.mac)
-      - host.mac: merge($~mac_aux)
-  - check: not_exists($host.mac) AND exists($~json.data.mac) AND exists($~json.data.name)
+      - _mac_aux: array_append($json_event.data.mac)
+      - host.mac: merge($_mac_aux)
+  - check: not_exists($host.mac) AND exists($json_event.data.mac) AND exists($json_event.data.name)
     map:
-      - host.mac: array_append($~json.data.mac)
+      - host.mac: array_append($json_event.data.mac)
 
-  - check: exists($host.ip) AND exists($~json.data.address) AND exists($~json.data.iface)
+  - check: exists($host.ip) AND exists($json_event.data.address) AND exists($json_event.data.iface)
     map:
-      - ~address_aux: array_append($~json.data.address)
-      - host.ip: merge($~address_aux)
-  - check: not_exists($host.ip) AND exists($~json.data.address) AND exists($~json.data.iface)
+      - _address_aux: array_append($json_event.data.address)
+      - host.ip: merge($_address_aux)
+  - check: not_exists($host.ip) AND exists($json_event.data.address) AND exists($json_event.data.iface)
     map:
-      - host.ip: array_append($~json.data.address)
-
-  - map:
-      - wazuh.decoders: array_append(syscollector-dbsync-host-data)
+      - host.ip: array_append($json_event.data.address)

@@ -19,6 +19,7 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 102 is equal to character 'f' in ASCII
   - wazuh.queue: 102
 
 normalize:

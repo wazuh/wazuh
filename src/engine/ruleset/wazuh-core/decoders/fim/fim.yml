@@ -29,7 +29,7 @@ check:
 
 parse:
   logpar:
-    - event.original: <~json/json>
+    - event.original: <json_event/json>
 
 normalize:
   - map:

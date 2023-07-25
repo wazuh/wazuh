@@ -28,25 +28,25 @@ parents:
 
 parse:
   logpar:
-    - event.original: <~json/json>
+    - event.original: <json_event/json>
 
 normalize:
-  - check:
-      - ~json.parameters: is_object()
-    map:
-      - ~tmp.agent_id_int: parse_long($agent.id)
-      - ~json.parameters.agents: array_append($~tmp.agent_id_int)
-      - ~tmp.send_result: send_upgrade_confirmation($~json)
+  - map:
+      - wazuh.decoders: array_append(upgrade)
 
   - check:
-      - ~tmp.send_result: is_true()
+      - json_event.parameters: is_object()
+    map:
+      - _agent_id_int: parse_long($agent.id)
+      - json_event.parameters.agents: array_append($_agent_id_int)
+      - _send_result: send_upgrade_confirmation($json_event)
+      - event.outcome: failure
+
+  - check:
+      - _send_result: is_true()
     map:
       - event.outcome: success
 
   # Cleanup
   - map:
-      - ~tmp: delete()
-      - ~json: delete()
-
-  - map:
-      - wazuh.decoders: array_append(upgrade)
+      - json_event: delete()

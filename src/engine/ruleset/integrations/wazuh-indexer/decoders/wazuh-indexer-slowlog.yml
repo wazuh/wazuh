@@ -18,7 +18,7 @@ metadata:
 parents:
   - decoder/integrations/0
 
-check: $~json.type==index_search_slowlog OR $~json.type==index_indexing_slowlog
+check: $json_event.type==index_search_slowlog OR $json_event.type==index_indexing_slowlog
   # TODO: Once the events arrive tagged, uncomment the following two lines
   # - event.module: wazuh-indexer
   # - event.dataset: wazuh-indexer-slowlog
@@ -29,17 +29,17 @@ definitions:
 
 normalize:
   - map:
-      - ~json.timestamp: +replace/,/.
+      - json_event.timestamp: +replace/,/.
   - logpar:
-      - ~json.timestamp: <@timestamp/%FT%TZ>
+      - json_event.timestamp: <@timestamp/%FT%TZ>
   - map:
       - event.module: wazuh-indexer
       - event.dataset: wazuh-indexer-slowlog
       - wazuh.decoders: +array_append/wazuh-indexer-slowlog
       - event.kind: event
       - event.category: +array_append/database
-      - log.level: $~json.level
-      - log.logger: $~json.component
+      - log.level: $json_event.level
+      - log.logger: $json_event.component
 
   - check: $isError
     map:
@@ -50,22 +50,22 @@ normalize:
       - event.type: +array_append/info
 
   - logpar:
-      - ~json.took_millis: <event.duration>
+      - json_event.took_millis: <event.duration>
 
   - map:
       - event.duration: +int_calculate/mul/1000000
-      - host.name: $~json.node\.name
-      - host.id: $~json.node\.id
-      - ~cluster.name: $~json.cluster\.name
-      - ~cluster.uuid: $~json.cluster\.uuid
-      - ~node.name: $~json.node\.name
-      - ~node.id: $~json.node\.id
-      - message: $~json.message
-      - ~slowlog.took: $~json.took
-      - ~slowlog.total_hits: $~json.total_hits
-      - ~slowlog.stats: $~json.stats
-      - ~slowlog.search_type: $~json.search_type
-      - ~slowlog.total_shards: $~json.total_shards
-      - ~slowlog.source: $~json.source
-      - ~slowlog.id: $~json.id
-      - ~json: delete()
+      - host.name: $json_event.node\.name
+      - host.id: $json_event.node\.id
+      - ~cluster.name: $json_event.cluster\.name
+      - ~cluster.uuid: $json_event.cluster\.uuid
+      - ~node.name: $json_event.node\.name
+      - ~node.id: $json_event.node\.id
+      - message: $json_event.message
+      - ~slowlog.took: $json_event.took
+      - ~slowlog.total_hits: $json_event.total_hits
+      - ~slowlog.stats: $json_event.stats
+      - ~slowlog.search_type: $json_event.search_type
+      - ~slowlog.total_shards: $json_event.total_shards
+      - ~slowlog.source: $json_event.source
+      - ~slowlog.id: $json_event.id
+      - json_event: delete()

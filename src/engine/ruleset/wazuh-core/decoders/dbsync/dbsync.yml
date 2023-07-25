@@ -23,31 +23,31 @@ check:
 
 parse:
   logpar:
-    - event.original: <~json/json>
+    - event.original: <json_event/json>
 
 normalize:
   - check:
-      - ~json.type: starts_with(integrity_check_)
+      - json_event.type: starts_with(integrity_check_)
     map:
-      - ~query: concat(agent , $agent.id,  , $~json.component,  , $~json.type,  , $~json.data)
-      - ~query_response: wdb_query($~query)
+      - _query: concat(agent , $agent.id,  , $json_event.component,  , $json_event.type,  , $json_event.data)
+      - _query_response: wdb_query($_query)
   - check:
-      - ~query_response: exists()
+      - _query_response: exists()
     map:
-      - ~ar_query: concat((msg_to_agent) [] N!S , $agent.id,  , $~json.component,  dbsync , $~query_response,  , $~json.data)
-      - ~ar_result: active_response_send($~ar_query)
+      - _ar_query: concat((msg_to_agent) [] N!S , $agent.id,  , $json_event.component,  dbsync , $_query_response,  , $json_event.data)
+      - _ar_result: active_response_send($_ar_query)
 
   - check:
-      - ~json.type: string_equal(state)
+      - json_event.type: string_equal(state)
     map:
-      - ~query: concat(agent , $agent.id,  , $~json.component,  save2 , $~json.data)
-      - ~query_status: wdb_update($~query)
+      - _query: concat(agent , $agent.id,  , $json_event.component,  save2 , $json_event.data)
+      - _query_status: wdb_update($_query)
 
   - check:
-      - ~json.type: string_equal(integrity_clear)
+      - json_event.type: string_equal(integrity_clear)
     map:
-      - ~query: concat(agent , $agent.id,  , $~json.component,  integrity_clear , $~json.data)
-      - ~query_status: wdb_update($~query)
+      - _query: concat(agent , $agent.id,  , $json_event.component,  integrity_clear , $json_event.data)
+      - _query_status: wdb_update($_query)
 
   - map:
       - wazuh.decoders: array_append(dbsync)

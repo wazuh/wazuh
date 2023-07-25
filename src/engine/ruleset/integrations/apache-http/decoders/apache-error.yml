@@ -43,6 +43,16 @@ parse:
     - event.original: "[<event.created/Mon Dec 26 16:22:00 2016>] [<log.level>] <message>"
 
 normalize:
+  - map:
+      - event.category: array_append(web)
+      - event.dataset: apache-error
+      - event.kind: event
+      - event.module: apache-http
+      - service.type: apache
+      - wazuh.decoders: array_append(apache-error)
+
+      - source.ip: parse_ip($source.address)
+
   - check:
       - log.level: regex_match(^(?:emerg|alert|crit|error|warn)$)
     map:
@@ -52,15 +62,6 @@ normalize:
     map:
       - event.type: array_append(info)
 
-  - map:
-      - service.type: apache
-      - event.category: array_append(web)
-      - event.kind: event
-      - service.type: apache
-      - source.ip: parse_ip($source.address)
-      - event.module: apache-http
-      - event.dataset: apache-error
-
   - logpar:
       - message: "File does not exist: <file.path>(?, referer: <http.request.referrer>)"
 
@@ -68,6 +69,3 @@ normalize:
       - source.ip: not_exists()
     map:
       - source.domain: parse_fqdn($source.address)
-
-  - map:
-      - wazuh.decoders: array_append(apache-error)

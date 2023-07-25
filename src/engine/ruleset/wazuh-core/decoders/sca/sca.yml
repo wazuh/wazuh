@@ -27,13 +27,13 @@ check:
 
 parse:
   logpar:
-    - event.original: <~json/json>
+    - event.original: <json_event/json>
 
 normalize:
   - check:
-      - ~json.type: exists()
+      - json_event.type: exists()
     map:
-      - ~decode_result: sca_decoder($~json, $agent.id)
+      - _decode_result: sca_decoder($json_event, $agent.id)
 
   - map:
       - wazuh.decoders: array_append(sca)

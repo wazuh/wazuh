@@ -25,22 +25,22 @@ metadata:
     - ""
 
 check:
-  - ~json.type: starts_with(scan)
-  - ~json.data.timestamp: is_number()
+  - json_event.type: starts_with(scan)
+  - json_event.data.timestamp: is_number()
 
 normalize:
-  - check:
-      - ~json.type: string_equal(scan_start)
-    map:
-      # TODO: adapt concat to first try to convert value from double if possible, otherwise convert it to int
-      - ~query: concat(agent , $agent.id,  syscheck scan_info_update start_scan , $~json.data.timestamp)
-      - ~query_result: wdb_query($~query)
-
-  - check:
-      - ~json.type: string_equal(scan_end)
-    map:
-      - ~query: concat(agent , $agent.id,  syscheck scan_info_update end_scan , $~json.data.timestamp)
-      - ~query_result: wdb_query($~query)
-
   - map:
       - wazuh.decoders: array_append(fim-scan)
+
+  - check:
+      - json_event.type: string_equal(scan_start)
+    map:
+      # TODO: adapt concat to first try to convert value from double if possible, otherwise convert it to int
+      - _query: concat(agent , $agent.id,  syscheck scan_info_update start_scan , $json_event.data.timestamp)
+      - _query_result: wdb_query($_query)
+
+  - check:
+      - json_event.type: string_equal(scan_end)
+    map:
+      - _query: concat(agent , $agent.id,  syscheck scan_info_update end_scan , $json_event.data.timestamp)
+      - _query_result: wdb_query($_query)

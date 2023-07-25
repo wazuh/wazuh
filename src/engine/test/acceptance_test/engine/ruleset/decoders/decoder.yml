@@ -20,8 +20,8 @@ metadata:
 
 check:
   - wazuh.test.format: text
-  - wazuh.event.original: exists()
-  - wazuh.test.ingested: exists()
+  - wazuh.event.original: +exists
+  - wazuh.test.ingested: +exists
   - wazuh.test.kind: event
 
 normalize:

@@ -18,9 +18,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 56 is equal to character '8' in ASCII
   - wazuh.queue: 56
 
 normalize:
   - map:
-      - wazuh.source: syscheck
       - wazuh.decoders: array_append(core-syscheck)
+      - wazuh.source: syscheck

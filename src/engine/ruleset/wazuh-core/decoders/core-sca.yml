@@ -20,9 +20,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 112 is equal to character 'p' in ASCII
   - wazuh.queue: 112
 
 normalize:
   - map:
-      - wazuh.source: sca
       - wazuh.decoders: array_append(core-sca)
+      - wazuh.source: sca

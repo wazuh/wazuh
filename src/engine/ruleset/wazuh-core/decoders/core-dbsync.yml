@@ -19,9 +19,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 53 is equal to character '5' in ASCII
   - wazuh.queue: 53
 
 normalize:
   - map:
-      - wazuh.source: dbsync
       - wazuh.decoders: array_append(core-dbsync)
+      - wazuh.source: dbsync

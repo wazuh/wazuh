@@ -17,16 +17,22 @@ metadata:
     - https://github.com/wazuh/wazuh/issues/15500
 
 definitions:
-  full_location: "[<agent.id>] \\(<agent.name>\\) <~registered_ip>-><~origin>"
+  full_location: "[<agent.id>] \\(<agent.name>\\) <_registered_ip>-><_origin>"
 
 normalize:
+  - map:
+      - ecs.version: "8.8"
+      - wazuh.decoders: array_append(core-wazuh-message)
+
+      - event.original: $wazuh.message
+
   #### Full location ####
   #### Present when the event is procesed by remoted
   - logpar:
       - wazuh.location: $full_location
     map:
-      - wazuh.origin: rename($~origin)
-      - wazuh.registered_ip: rename($~registered_ip)
+      - wazuh.origin: $_origin
+      - wazuh.registered_ip: $_registered_ip
 
   - check:
       - agent: exists()
@@ -39,8 +45,3 @@ normalize:
       - agent.type: wazuh-agent
       - host.id: $agent.id
       - host: kvdb_get(agents_host_data, $agent.id)
-
-  - map:
-      - event.original: $wazuh.message
-      - ecs.version: "8.8"
-      - wazuh.decoders: array_append(core-wazuh-message)
