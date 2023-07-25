@@ -31,10 +31,8 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LO
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_create_after_delete(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             folder_to_monitor, file_to_monitor, truncate_monitored_files, daemons_handler):
+                             folder_to_monitor, file_to_monitor, truncate_monitored_files, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    # Wait folder is monitored
-    wazuh_log_monitor.start(generate_callback(fr'{MONITORING_PATH}{folder_to_monitor}.*'))
 
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(WHODATA_DELETED_EVENT))
