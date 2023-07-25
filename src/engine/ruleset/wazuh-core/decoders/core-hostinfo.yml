@@ -18,8 +18,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 51 is equal to character '3' in ASCII
   - wazuh.queue: 51
 
 normalize:
   - map:
       - wazuh.decoders: array_append(core-hostinfo)
+      - wazuh.source: hostinfo

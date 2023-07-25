@@ -20,9 +20,10 @@ parents:
   - decoder/syscollector-dbsync-host-data/0
 
 check:
-  - ~do_update_kvdb: is_true()
+  - do_update_kvdb: is_true()
 
 normalize:
   - map:
-      - ~kvdb_update_result: kvdb_set(agents_host_data, $agent.id, $host)
       - wazuh.decoders: array_append(dbsync-host-data)
+
+      - _kvdb_update_result: kvdb_set(agents_host_data, $agent.id, $host)

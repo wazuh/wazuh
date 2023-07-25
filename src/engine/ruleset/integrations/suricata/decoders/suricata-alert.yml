@@ -19,23 +19,25 @@ metadata:
   description: Decoder for Suricata solution
 
 check:
-  - ~suricata.eve.event_type: string_equal(alert)
+  - json_event.event_type: string_equal(alert)
 
 normalize:
   - map:
       - event.category: array_append(intrusion_detection)
-      - event.kind: alert
       - event.dataset: suricata.alert
-      - event.severity: $~suricata.eve.alert.severity
+      - event.kind: alert
       - event.type: array_append(detail)
-      - file.name: $~suricata.eve.alert.metadata.filename
-      - rule.category: $~suricata.eve.alert.category
-      - rule.id: $~suricata.eve.alert.signature_id
-      - rule.name: $~suricata.eve.alert.signature
-      - threat.tactic.id: $~suricata.eve.alert.metadata.mitre_tactic_id
-      - threat.tactic.name: $~suricata.eve.alert.metadata.mitre_tactic_name
-      - threat.technique.id: $~suricata.eve.alert.metadata.mitre_technique_id
-      - threat.technique.name: $~suricata.eve.alert.metadata.mitre_technique_name
+      - wazuh.decoders: array_append(suricata-alert)
+
+      - event.severity: $json_event.alert.severity
+      - file.name: $json_event.alert.metadata.filename
+      - rule.category: $json_event.alert.category
+      - rule.id: $json_event.alert.signature_id
+      - rule.name: $json_event.alert.signature
+      - threat.tactic.id: $json_event.alert.metadata.mitre_tactic_id
+      - threat.tactic.name: $json_event.alert.metadata.mitre_tactic_name
+      - threat.technique.id: $json_event.alert.metadata.mitre_technique_id
+      - threat.technique.name: $json_event.alert.metadata.mitre_technique_name
 
   - check: $source.bytes>=0 OR $destination.bytes>=0
     map:
@@ -48,22 +50,16 @@ normalize:
       - network.packets: int_calculate(sum, $source.packets, $destination.packets)
 
   - check:
-      - ~suricata.eve.alert.action: is_not_null()
+      - json_event.alert.action: is_not_null()
     map:
-      - event.type: array_append($~suricata.eve.alert.action)
+      - event.type: array_append($json_event.alert.action)
 
   - map:
-      - http.request.method: $~suricata.eve.http.http_method
-      - http.request.referrer: $~suricata.eve.http.url
-      - http.response.bytes: $~suricata.eve.http.lenght
-      - http.response.mime_type: $~suricata.eve.http.http_content_type
-      - http.response.status_code: $~suricata.eve.http.status
-      - http.version: $~suricata.eve.http.protocol
-      - related.hosts: array_append($~suricata.eve.http.hostname)
-      - user_agent.original: $~suricata.eve.http.http_user_agent
-
-  - map:
-      - ~suricata: delete()
-
-  - map:
-      - wazuh.decoders: array_append(suricata-alert)
+      - http.request.method: $json_event.http.http_method
+      - http.request.referrer: $json_event.http.url
+      - http.response.bytes: $json_event.http.lenght
+      - http.response.mime_type: $json_event.http.http_content_type
+      - http.response.status_code: $json_event.http.status
+      - http.version: $json_event.http.protocol
+      - related.hosts: array_append($json_event.http.hostname)
+      - user_agent.original: $json_event.http.http_user_agent

@@ -22,7 +22,7 @@ parents:
   - decoder/aws-json/0
 
 check:
-  - ~json.aws.source: cloudtrail
+  - json_event.aws.source: cloudtrail
   #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
   # - event.module: aws
   # - event.dataset: aws-cloudtrail
@@ -340,9 +340,9 @@ definitions:
 
 normalize:
   - check:
-      - ~json.aws.previousDigestHashAlgorithm: SHA-256
+      - json_event.aws.previousDigestHashAlgorithm: SHA-256
     map:
-      - file.hash.sha256: $~json.aws.previousDigestSignature
+      - file.hash.sha256: $json_event.aws.previousDigestSignature
 
   - map:
       - event.dataset: aws-cloudtrail
@@ -351,74 +351,74 @@ normalize:
       - event.kind: event
       - event.type: +array_append/info
       - event.outcome: success
-      - event: +merge_value/$ActionsToEvent/$~json.aws.eventName
+      - event: +merge_value/$ActionsToEvent/$json_event.aws.eventName
 
-      - event.action: $~json.aws.eventName
-      - event.id: $~json.aws.eventID
-      - event.provider: $~json.aws.eventSource
-      - event.start: $~json.aws.eventTime
+      - event.action: $json_event.aws.eventName
+      - event.id: $json_event.aws.eventID
+      - event.provider: $json_event.aws.eventSource
+      - event.start: $json_event.aws.eventTime
 
-      - user.changes.name: $~json.aws.requestParameters.newUserName
-      - user.target.name: $~json.aws.requestParameters.userName
-      - user.target.id: $~json.aws.responseElements.user.userId
-      - group.name: $~json.aws.requestParameters.groupName
-      - group.id: $~json.aws.responseElements.group.groupId
+      - user.changes.name: $json_event.aws.requestParameters.newUserName
+      - user.target.name: $json_event.aws.requestParameters.userName
+      - user.target.id: $json_event.aws.responseElements.user.userId
+      - group.name: $json_event.aws.requestParameters.groupName
+      - group.id: $json_event.aws.responseElements.group.groupId
 
-      - error.code: $~json.aws.errorCode
-      - error.message: $~json.aws.errorMessage
-      - event.id: $~json.aws.sharedEventId
-      - event.end: $~json.aws.digestEndTime
-      - cloud.origin.account.id: $~json.aws.recipientAccountId
-      - service.target.id: $~json.aws.requestId
-      - cloud.target.account.id: $~json.aws.resources.accountId
-      - user.target.roles: $~json.aws.userIdentity.sessionContext.sessionIssuer.type
+      - error.code: $json_event.aws.errorCode
+      - error.message: $json_event.aws.errorMessage
+      - event.id: $json_event.aws.sharedEventId
+      - event.end: $json_event.aws.digestEndTime
+      - cloud.origin.account.id: $json_event.aws.recipientAccountId
+      - service.target.id: $json_event.aws.requestId
+      - cloud.target.account.id: $json_event.aws.resources.accountId
+      - user.target.roles: $json_event.aws.userIdentity.sessionContext.sessionIssuer.type
 
       # previous flattened fields
-      - ~aws_cloudtrail_request_parameters: $~json.aws.requestParameters
-      - ~aws_cloudtrail_response_elements: $~json.aws.responseElements
-      - ~aws_cloudtrail_additional_eventdata: $~json.aws.additionalEventData
-      - ~aws_cloudtrail_console_login.login_to: $~json.aws.additionalEventData.LoginTo
-      - ~aws_cloudtrail_service_event_details: $~json.aws.serviceEventDetails
+      - ~aws_cloudtrail_request_parameters: $json_event.aws.requestParameters
+      - ~aws_cloudtrail_response_elements: $json_event.aws.responseElements
+      - ~aws_cloudtrail_additional_eventdata: $json_event.aws.additionalEventData
+      - ~aws_cloudtrail_console_login.login_to: $json_event.aws.additionalEventData.LoginTo
+      - ~aws_cloudtrail_service_event_details: $json_event.aws.serviceEventDetails
 
       # other custom fields
-      - ~digestSignatureAlgorithm: $~json.aws.digestSignatureAlgorithm
-      - ~digestStartTime: $~json.aws.digestStartTime
-      - ~api_version: $~json.aws.apiVersion
-      - ~resource_type: $~json.aws.resources.type
-      - ~logFiles: $~json.aws.logFiles
+      - ~digestSignatureAlgorithm: $json_event.aws.digestSignatureAlgorithm
+      - ~digestStartTime: $json_event.aws.digestStartTime
+      - ~api_version: $json_event.aws.apiVersion
+      - ~resource_type: $json_event.aws.resources.type
+      - ~logFiles: $json_event.aws.logFiles
 
-      - cloud.region: $~json.aws.awsRegion
-      - cloud.account.id: $~json.aws.userIdentity.accountId
-      - cloud.account.id: $~json.aws.awsAccountId
-      - user.name: $~json.aws.userIdentity.userName
-      - user.name: $~json.aws.userIdentity.sessionContext.sessionIssuer.userName
-      - file.path: $~json.aws.previousDigestS3Object
-      - related.hash: $~json.aws.previousDigestSignature
+      - cloud.region: $json_event.aws.awsRegion
+      - cloud.account.id: $json_event.aws.userIdentity.accountId
+      - cloud.account.id: $json_event.aws.awsAccountId
+      - user.name: $json_event.aws.userIdentity.userName
+      - user.name: $json_event.aws.userIdentity.sessionContext.sessionIssuer.userName
+      - file.path: $json_event.aws.previousDigestS3Object
+      - related.hash: $json_event.aws.previousDigestSignature
 
-      - related.user: +array_append/$~json.aws.userIdentity.userName
-      - related.user: +array_append/$~json.aws.requestParameters.userName
-      - related.user: +array_append/$~json.aws.requestParameters.newUserName
+      - related.user: +array_append/$json_event.aws.userIdentity.userName
+      - related.user: +array_append/$json_event.aws.requestParameters.userName
+      - related.user: +array_append/$json_event.aws.requestParameters.newUserName
 
-      - source.address: $~json.aws.sourceIPAddress
-      - source.ip: +parse_ip/$~json.aws.sourceIPAddress
-      - user_agent.original: $~json.aws.userAgent
-      - user.id: $~json.aws.userIdentity.principalId
+      - source.address: $json_event.aws.sourceIPAddress
+      - source.ip: +parse_ip/$json_event.aws.sourceIPAddress
+      - user_agent.original: $json_event.aws.userAgent
+      - user.id: $json_event.aws.userIdentity.principalId
 
       # TODO: when geolocation implementation done:
       # source.geo: +geo/$source.ip
       # source.as: +geo/$source.ip # database_file: GeoLite2-ASN.mmdb | properties:[asn, organization_name]
 
-  - check: +string_equal/$~json.aws.additionalEventData.MobileVersion/No
+  - check: +string_equal/$json_event.aws.additionalEventData.MobileVersion/No
     map:
       - ~tmp.console_login_mobile_version: false
-  - check: +string_not_equal/$~json.aws.additionalEventData.MobileVersion/No
+  - check: +string_not_equal/$json_event.aws.additionalEventData.MobileVersion/No
     map:
       - ~tmp.console_login_mobile_version: true
 
-  - check: +string_equal/$~json.aws.additionalEventData.MFAUsed/No
+  - check: +string_equal/$json_event.aws.additionalEventData.MFAUsed/No
     map:
       - ~tmp.console_login_mfa_used: false
-  - check: +string_not_equal/$~json.aws.additionalEventData.MFAUsed/No
+  - check: +string_not_equal/$json_event.aws.additionalEventData.MFAUsed/No
     map:
       - ~tmp.console_login_mfa_used: true
 
@@ -426,10 +426,10 @@ normalize:
     map:
       - event.outcome: failure
 
-  - check: string_equal($~json.aws.eventName,ConsoleLogin) AND exists($~json.aws.responseElements.ConsoleLogin)
+  - check: string_equal($json_event.aws.eventName,ConsoleLogin) AND exists($json_event.aws.responseElements.ConsoleLogin)
     map:
-      - event.outcome: +downcase/$~json.aws.responseElements.ConsoleLogin
+      - event.outcome: +downcase/$json_event.aws.responseElements.ConsoleLogin
 
   - map:
-      - ~json: delete()
+      - json_event: delete()
       - ~tmp: delete()

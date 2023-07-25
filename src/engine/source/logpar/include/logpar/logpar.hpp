@@ -240,7 +240,7 @@ constexpr auto EXPR_GROUP_BEGIN = '(';
 constexpr auto EXPR_GROUP_END = ')';
 constexpr auto EXPR_WILDCARD = '~';
 constexpr auto EXPR_FIELD_SEP = '.';
-constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "@#~";
+constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "_@#~";
 constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";
 }; // namespace syntax
 

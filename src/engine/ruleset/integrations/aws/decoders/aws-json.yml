@@ -27,13 +27,13 @@ check:
 
 parse:
   logpar:
-    - event.original: <~json/json>
+    - event.original: <json_event/json>
 
 normalize:
  - map:
     - wazuh.decoders: +array_append/aws-json
 
  - check:
-    - ~json.integration: aws
+    - json_event.integration: aws
    map:
     - event.module: aws

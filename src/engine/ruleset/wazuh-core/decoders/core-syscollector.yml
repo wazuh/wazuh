@@ -18,9 +18,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 100 is equal to character 'd' in ASCII
   - wazuh.queue: 100
 
 normalize:
   - map:
-      - wazuh.source: wodle
       - wazuh.decoders: array_append(core-syscollector)
+      - wazuh.source: wodle

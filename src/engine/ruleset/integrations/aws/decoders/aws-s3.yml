@@ -22,19 +22,19 @@ parents:
   - decoder/aws-json/0
 
 check:
-  - ~json.aws.source: s3_server_access
+  - json_event.aws.source: s3_server_access
   #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
   # - event.module: aws
   # - event.dataset: aws-s3access
 
 parse:
   logpar:
-    - ~json.aws.request_uri: <http.request.method> <~http_url_original> HTTP/<http.version>
+    - json_event.aws.request_uri: <http.request.method> <~http_url_original> HTTP/<http.version>
 
 normalize:
   - map:
       - event.outcome: success
-  - check: +string_greater/$~json.aws.error_code/- # single character '-' is not an error
+  - check: +string_greater/$json_event.aws.error_code/- # single character '-' is not an error
     map:
       - event.outcome: failure
 
@@ -42,48 +42,48 @@ normalize:
       - event.dataset: aws-s3access
       - wazuh.decoders: +array_append/aws-s3
 
-      - ~authentication_type : $~json.aws.authentication_type
-      - ~bucket: $~json.aws.bucket
-      - ~signature_version: $~json.aws.signature_version
-      - ~turn_around_time: $~json.aws.turn_around_time
-      - ~version_id : $~json.aws.version_id
+      - ~authentication_type : $json_event.aws.authentication_type
+      - ~bucket: $json_event.aws.bucket
+      - ~signature_version: $json_event.aws.signature_version
+      - ~turn_around_time: $json_event.aws.turn_around_time
+      - ~version_id : $json_event.aws.version_id
 
-      - host.id : $~json.aws.host_id
-      - registry.key: $~json.aws.key
-      - file.size: +parse_long/$~json.aws.object_sent
-      - user_agent.name: $~json.aws.user_agent
+      - host.id : $json_event.aws.host_id
+      - registry.key: $json_event.aws.key
+      - file.size: +parse_long/$json_event.aws.object_sent
+      - user_agent.name: $json_event.aws.user_agent
 
-      - client.address: $~json.aws.remote_ip
-      - client.ip: +parse_ip/$~json.aws.remote_ip
-      - client.user.id: $~json.aws.requester
+      - client.address: $json_event.aws.remote_ip
+      - client.ip: +parse_ip/$json_event.aws.remote_ip
+      - client.user.id: $json_event.aws.requester
       - cloud.provider: aws
-      - event.action: $~json.aws.operation
+      - event.action: $json_event.aws.operation
       - event.category: +array_append/web
-      - error.code: $~json.aws.error_code
+      - error.code: $json_event.aws.error_code
       # from ms to nanoseconds
-      - event.duration: +parse_long/$~json.aws.total_time
+      - event.duration: +parse_long/$json_event.aws.total_time
       # TODO: this can cause an overflown error, if so then it stores ms
       - event.duration: +int_calculate/mul/1000000
-      - event.id: $~json.aws.request_id
+      - event.id: $json_event.aws.request_id
       - event.kind: event
       - event.type: +array_append/access
-      - event.start: +parse_date/$~json.aws.time/%d\/%b\/%Y:%T %z
-      - http.request.referrer: $~json.aws.referer
-      - http.response.body.bytes: +parse_long/$~json.aws.bytes_sent
-      - http.response.status_code: $~json.aws.http_status
+      - event.start: +parse_date/$json_event.aws.time/%d\/%b\/%Y:%T %z
+      - http.request.referrer: $json_event.aws.referer
+      - http.response.body.bytes: +parse_long/$json_event.aws.bytes_sent
+      - http.response.status_code: $json_event.aws.http_status
       - related.ip: +array_append/$client.ip
-      - related.user: +array_append/$~json.aws.bucket_owner
-      - tls.cipher: $~json.aws.cipher_suite
+      - related.user: +array_append/$json_event.aws.bucket_owner
+      - tls.cipher: $json_event.aws.cipher_suite
 
   - logpar:
     - ~http_url_original: <url.path>(?\?<url.query>)
 
   - logpar:
-    - ~json.aws.host_header: <?~>s3.<cloud.region>.<~>
+    - json_event.aws.host_header: <?~>s3.<cloud.region>.<~>
 
   - logpar:
-    - ~json.aws.tls_version: <tls.version_protocol>v<tls.version>
+    - json_event.aws.tls_version: <tls.version_protocol>v<tls.version>
 
   - map:
-      - ~json: delete()
+      - json_event: delete()
       - ~http_url_original: delete()

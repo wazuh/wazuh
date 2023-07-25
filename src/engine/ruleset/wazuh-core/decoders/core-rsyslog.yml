@@ -18,9 +18,10 @@ parents:
   - decoder/core-wazuh-message/0
 
 check:
+  # Value 50 is equal to character '2' in ASCII
   - wazuh.queue: 50
 
 normalize:
   - map:
-      - wazuh.source: remote
       - wazuh.decoders: array_append(core-rsyslog)
+      - wazuh.source: remote
