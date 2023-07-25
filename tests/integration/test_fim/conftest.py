@@ -1,15 +1,16 @@
-from pathlib import Path
+import distro
+import pytest
 import re
 import subprocess
 import sys
+
 from typing import Any
-import distro
+from pathlib import Path
 from psutil import WINDOWS
-import pytest
+
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 
