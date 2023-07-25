@@ -178,10 +178,7 @@ Expression operationBuilder(const std::any& definition,
             auto result = parseHelper(value.getString().value());
             return result;
         }
-        else
-        {
-            return base::Error {};
-        }
+        return base::Error {};
     }();
 
     // Check target field is a schema field or a custom field
