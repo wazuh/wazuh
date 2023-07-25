@@ -6,20 +6,42 @@ inputs:
     required: true
     description: "Path to compile and test"
     default: src/
+  asan:
+    required: false
+    description: "Enable address sanitizer"
+    default: "false"
 
 runs:
   using: "composite"
   steps:
       - name: Compile
         run: |
-          SRC_FOLDER=$(pwd)/src
           cd ${{ inputs.path }}
+
+          if [[ ${{ inputs.asan }} != "false" ]]; then
+            # Compile for ASAN
+            export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
+          else
+            # Compile for valgrind and coverage
+            export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
+          fi
+
           mkdir -p build && cd build
-          cmake .. -DSRC_FOLDER=${SRC_FOLDER} && make -j2
+          
+          SRC_FOLDER=$(pwd)/src
+          cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS=" $COMPILATION_FLAGS " .. && make -j2
         shell: bash
 
       - name: Test
         run: |
+
           cd ${{ inputs.path }}/build
-          ctest --output-on-failure
+          
+          if [[ ${{ inputs.asan }} != "false" ]]; then
+            # Run for ASAN
+            ctest --output-on-failure
+          else
+            # Run for valgrind and coverage
+            valgrind ctest --output-on-failure
+          fi
         shell: bash
