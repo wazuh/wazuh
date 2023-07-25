@@ -71,7 +71,7 @@ target_link_libraries(builders
   logpar
   kvdb
   re2
-  logicExpression
+  logicexpr
   wdb::iwdb
   sockiface::isock
   json

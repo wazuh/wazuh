@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include <fmt/format.h>
@@ -75,8 +76,8 @@ public:
 
     bool operator==(const Trace& other) const
     {
-        return m_success == other.m_success && m_index == other.m_index
-               && m_message == other.m_message && m_innerTraces == other.m_innerTraces;
+        return m_success == other.m_success && m_index == other.m_index && m_message == other.m_message
+               && m_innerTraces == other.m_innerTraces;
     }
     bool operator!=(const Trace& other) const { return !(*this == other); }
 
@@ -134,10 +135,7 @@ public:
         return *this;
     }
 
-    bool operator==(const Result<T>& other) const
-    {
-        return m_value == other.m_value && m_trace == other.m_trace;
-    }
+    bool operator==(const Result<T>& other) const { return m_value == other.m_value && m_trace == other.m_trace; }
     bool operator!=(const Result<T>& other) const { return !(*this == other); }
 
     /**
@@ -238,15 +236,10 @@ Result<T> makeSuccess(T&& value,
  * @return Result<T> failure result
  */
 template<typename T>
-Result<T> makeError(std::string&& error,
-                    size_t index,
-                    Trace::nestedTracesT&& innerTrace = std::nullopt)
+Result<T> makeError(std::string&& error, size_t index, Trace::nestedTracesT&& innerTrace = std::nullopt)
 {
     return Result<T> {std::nullopt,
-                      Trace {false,
-                             index,
-                             std::make_optional<std::string>(std::move(error)),
-                             std::move(innerTrace)}};
+                      Trace {false, index, std::make_optional<std::string>(std::move(error)), std::move(innerTrace)}};
 }
 
 inline const Trace& firstError(const Trace& trace)
@@ -290,9 +283,8 @@ inline std::string detailedTrace(const Trace& trace, bool last, std::string pref
 
     tr += last ? "└─" : "├─";
 
-    tr += trace.message().has_value()
-              ? fmt::format("{} at {}\n", trace.message().value(), trace.index())
-              : "succeeded \n";
+    tr += trace.message().has_value() ? fmt::format("{} at {}\n", trace.message().value(), trace.index())
+                                      : "succeeded \n";
     if (trace.innerTraces().has_value())
     {
         auto auxPrefix = prefix + (last ? "   " : "│  ");
@@ -355,6 +347,32 @@ template<typename T>
 using Parser = std::function<Result<T>(std::string_view, size_t)>;
 
 /****************************************************************************************
+ * Traits
+ ****************************************************************************************/
+namespace traits
+{
+template<typename T>
+struct is_parser : std::false_type
+{
+};
+
+template<typename T>
+struct is_parser<Parser<T>> : std::true_type
+{
+};
+
+template<typename T, typename R>
+struct is_parser_ret: std::false_type
+{
+};
+
+template<typename T, typename R>
+struct is_parser_ret<Parser<T>, R>: std::is_base_of<R, T>
+{
+};
+} // namespace traits
+
+/****************************************************************************************
  * Parser combinators
  ****************************************************************************************/
 
@@ -374,8 +392,7 @@ Parser<T> opt(const Parser<T>& p)
         auto res = p(s, i);
         if (res.success())
         {
-            return makeSuccess<T>(
-                res.value(), res.index(), "OPT(P), P failed", {{res.trace()}});
+            return makeSuccess<T>(res.value(), res.index(), "OPT(P), P failed", {{res.trace()}});
         }
         else
         {
@@ -408,14 +425,10 @@ Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
         auto resR = r(s, resL.index());
         if (resR.failure())
         {
-            return makeError<L>(
-                "L<<R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
+            return makeError<L>("L<<R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
         }
 
-        return makeSuccess(resL.value(),
-                           resR.index(),
-                           "L<<R, succeeded",
-                           {{resL.trace(), resR.trace()}});
+        return makeSuccess(resL.value(), resR.index(), "L<<R, succeeded", {{resL.trace(), resR.trace()}});
     };
 
     return fn;
@@ -445,14 +458,10 @@ Parser<R> operator>>(const Parser<L>& l, const Parser<R>& r)
         auto resR = r(s, resL.index());
         if (resR.failure())
         {
-            return makeError<R>(
-                "L>>R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
+            return makeError<R>("L>>R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
         }
 
-        return makeSuccess(resR.value(),
-                           resR.index(),
-                           "L>>R, succeeded",
-                           {{resL.trace(), resR.trace()}});
+        return makeSuccess(resR.value(), resR.index(), "L>>R, succeeded", {{resL.trace(), resR.trace()}});
     };
 
     return fn;
@@ -475,17 +484,13 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
         auto resL = l(s, i);
         if (resL.success())
         {
-            return makeSuccess<T>(
-                resL.value(), resL.index(), "L|R, L succeeded", {{resL.trace()}});
+            return makeSuccess<T>(resL.value(), resL.index(), "L|R, L succeeded", {{resL.trace()}});
         }
 
         auto resR = r(s, i);
         if (resR.success())
         {
-            return makeSuccess<T>(resR.value(),
-                                  resR.index(),
-                                  "L|R, R succeeded",
-                                  {{resL.trace(), resR.trace()}});
+            return makeSuccess<T>(resR.value(), resR.index(), "L|R, R succeeded", {{resL.trace(), resR.trace()}});
         }
 
         return makeError<T>("L|R, both failed", i, {{resL.trace(), resR.trace()}});
@@ -510,14 +515,12 @@ Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
         auto resL = l(s, i);
         if (resL.failure())
         {
-            return makeError<std::tuple<L, R>>(
-                "L&R, L failed", resL.index(), {{resL.trace()}});
+            return makeError<std::tuple<L, R>>("L&R, L failed", resL.index(), {{resL.trace()}});
         }
         auto resR = r(s, resL.index());
         if (resR.failure())
         {
-            return makeError<std::tuple<L, R>>(
-                "L&R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
+            return makeError<std::tuple<L, R>>("L&R, R failed", resR.index(), {{resL.trace(), resR.trace()}});
         }
 
         return makeSuccess<std::tuple<L, R>>(std::make_tuple(resL.value(), resR.value()),
@@ -548,8 +551,7 @@ Parser<Tx> fmap(std::function<Tx(T)> f, const Parser<T>& p)
         {
             return makeError<Tx>("FMAP(P), P failed", res.index(), {{res.trace()}});
         }
-        return makeSuccess<Tx>(
-            f(res.value()), res.index(), "FMAP(P), P succeeded", {{res.trace()}});
+        return makeSuccess<Tx>(f(res.value()), res.index(), "FMAP(P), P succeeded", {{res.trace()}});
     };
 }
 
@@ -583,14 +585,10 @@ Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
         auto res2 = newParser(s, res.index());
         if (res2.failure())
         {
-            return makeError<Tx>(
-                "P>>=M, M failed", res2.index(), {{res.trace(), res2.trace()}});
+            return makeError<Tx>("P>>=M, M failed", res2.index(), {{res.trace(), res2.trace()}});
         }
 
-        return makeSuccess<Tx>(res2.value(),
-                               res2.index(),
-                               "P>>=M, succeeded",
-                               {{res.trace(), res2.trace()}});
+        return makeSuccess<Tx>(res2.value(), res2.index(), "P>>=M, succeeded", {{res.trace(), res2.trace()}});
     };
 }
 
@@ -631,8 +629,7 @@ Parser<Values<T>> many(const Parser<T>& p)
             traces.value().push_back(std::move(innerRes.trace()));
         }
 
-        return makeSuccess<Values<T>>(
-            std::move(values), innerI, "MANY(P), succeeded", std::move(traces));
+        return makeSuccess<Values<T>>(std::move(values), innerI, "MANY(P), succeeded", std::move(traces));
     };
 }
 
@@ -654,20 +651,16 @@ Parser<Values<T>> many1(const Parser<T>& p)
         auto firstRes = p(s, i);
         if (firstRes.failure())
         {
-            return makeError<Values<T>>(
-                "MANY1(P), P failed", firstRes.index(), {{firstRes.trace()}});
+            return makeError<Values<T>>("MANY1(P), P failed", firstRes.index(), {{firstRes.trace()}});
         }
 
         Values<T> values {firstRes.value()};
         auto res = manyP(s, firstRes.index());
         values.splice(values.end(), res.value());
-        res.trace().innerTraces().value().insert(
-            res.trace().innerTraces().value().begin(), std::move(firstRes.trace()));
+        res.trace().innerTraces().value().insert(res.trace().innerTraces().value().begin(),
+                                                 std::move(firstRes.trace()));
 
-        return makeSuccess<Values<T>>(std::move(values),
-                                      res.index(),
-                                      "MANY1(P), succeeded",
-                                      res.trace().innerTraces());
+        return makeSuccess<Values<T>>(std::move(values), res.index(), "MANY1(P), succeeded", res.trace().innerTraces());
     };
 }
 
@@ -685,8 +678,7 @@ Parser<Values<T>> many1(const Parser<T>& p)
 template<typename T, typename Tag>
 Parser<std::tuple<T, Tag>> tag(const Parser<T>& p, Tag tag)
 {
-    return fmap<std::tuple<T, Tag>, T>([tag](T val) { return std::make_tuple(val, tag); },
-                                       p);
+    return fmap<std::tuple<T, Tag>, T>([tag](T val) { return std::make_tuple(val, tag); }, p);
 }
 
 /**

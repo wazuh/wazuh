@@ -8,10 +8,10 @@
 
 #include <fmt/format.h>
 
-#include "logicExpressionEvaluator.hpp"
-#include "logicExpressionParser.hpp"
+#include "evaluator.hpp"
+#include "parser.hpp"
 
-namespace logicExpression
+namespace logicexpr
 {
 
 /**
@@ -26,54 +26,51 @@ namespace logicExpression
  * its description.
  * @return std::function<bool(Event)> Evaluation function.
  */
-template<typename Event>
-std::function<bool(Event)> buildDijstraEvaluator(
-    const std::string& expression,
-    std::function<std::function<bool(Event)>(const std::string&)> termBuilder)
+template<typename Event, typename TermBuilder, typename TermParser>
+std::function<bool(Event)>
+buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, TermParser&& termParser)
 {
     // visitor to generate an evaluator::Expression tree from a
     // parser::Expression tree and a term builder function.
-    auto visit =
-        [termBuilder](const std::shared_ptr<const parser::Expression>& tokenExpr,
-                      auto& visit_ref) -> std::shared_ptr<evaluator::Expression<Event>>
+    auto visit = [termBuilder](const std::shared_ptr<const parser::Expression>& tokenExpr,
+                               auto& visit_ref) -> std::shared_ptr<evaluator::Expression<Event>>
     {
         auto builtExpr = evaluator::Expression<Event>::create();
         switch (tokenExpr->m_token.m_type)
         {
-            case parser::TokenType::TERM:
+            case parser::Token::Type::TERM:
                 builtExpr->m_type = evaluator::ExpressionType::TERM;
                 builtExpr->m_function = termBuilder(tokenExpr->m_token.m_text);
                 return builtExpr;
-            case parser::TokenType::OPERATOR_NOT:
+            case parser::Token::Type::OPERATOR_NOT:
                 builtExpr->m_type = evaluator::ExpressionType::NOT;
                 builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
                 return builtExpr;
-            case parser::TokenType::OPERATOR_OR:
+            case parser::Token::Type::OPERATOR_OR:
                 builtExpr->m_type = evaluator::ExpressionType::OR;
                 builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
                 builtExpr->m_right = visit_ref(tokenExpr->m_right, visit_ref);
                 return builtExpr;
-            case parser::TokenType::OPERATOR_AND:
+            case parser::Token::Type::OPERATOR_AND:
                 builtExpr->m_type = evaluator::ExpressionType::AND;
                 builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
                 builtExpr->m_right = visit_ref(tokenExpr->m_right, visit_ref);
                 return builtExpr;
             default:
-                throw std::runtime_error(
-                    fmt::format("Engine logic expression: Unexpected token type of token "
-                                "\"{}\" in parsed expression.",
-                                tokenExpr->m_token.m_text));
+                throw std::runtime_error(fmt::format("Engine logic expression: Unexpected token type of token "
+                                                     "\"{}\" in parsed expression.",
+                                                     tokenExpr->m_token.m_text));
         }
     };
 
     // Parse, build and return the evaluator function.
-    auto tokenExpression = parser::parse(expression);
+    auto tokenExpression = parser::parse(expression, std::forward<TermParser>(termParser));
     auto builtExprPtr = visit(tokenExpression, visit);
     auto evaluatorFunction = evaluator::getDijstraEvaluator<Event>(builtExprPtr);
 
     return evaluatorFunction;
 }
 
-} // namespace logicExpression
+} // namespace logicexpr
 
 #endif // _LOGIC_EXPRESSION_H
