@@ -803,7 +803,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
 
     wm_strcat(&subscriber_title, " - ", ' ');
 
-    mtdebug1(WM_AWS_LOGTAG, "Launching Security Lake Subscriber Command: %s", command);
+    mtdebug1(WM_AWS_LOGTAG, "Launching S3 Subscriber Command: %s", command);
 
     const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
 

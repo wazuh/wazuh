@@ -1165,33 +1165,10 @@ class AWSBucket(WazuhIntegration):
         self.send_msg(event_msg)
 
     def iter_events(self, event_list, log_key, aws_account_id):
-        def _check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
-            field_list = nested_field.split('.', 1)
-            try:
-                expression_to_evaluate = json_item[field_list[0]]
-            except TypeError:
-                if isinstance(json_item, list):
-                    return any(_check_recursive(i, field_list[0], regex=regex) for i in json_item)
-                return False
-            except KeyError:
-                return False
-            if len(field_list) == 1:
-                def check_regex(exp):
-                    try:
-                        return re.match(regex, exp) is not None
-                    except TypeError:
-                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
-
-                return check_regex(expression_to_evaluate)
-            return _check_recursive(expression_to_evaluate, field_list[1], regex=regex)
-
-        def _event_should_be_skipped(event_):
-            return self.discard_field and self.discard_regex \
-                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
-                if _event_should_be_skipped(event):
+                if self.event_should_be_skipped(event):
                     debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                           f'field. The event will be skipped.', 2)
                     continue
@@ -3503,8 +3480,12 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
         for log in formatted_logs:
             remove_none_fields(log)
+            if self.event_should_be_skipped(log):
+                debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
+                      f'field. The event will be skipped.', 2)
+                continue
             msg['aws'].update(log)
-            self.send_msg(msg, dump_json=False)
+            self.send_msg(msg)
 
 
 class AWSSLSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
@@ -3625,30 +3606,6 @@ class AWSSQSQueue(WazuhIntegration):
                                              profile=profile,
                                              **kwargs)
         self.message_processor = message_processor()
-
-
-    def _validate_params(self, external_id: Optional[str], name: Optional[str], iam_role_arn: Optional[str]):
-        """
-        Class for getting AWS SQS Queue notifications.
-        Parameters
-        ----------
-        external_id : Optional[str]
-            The name of the External ID to use.
-        name: Optional[str]
-            Name of the SQS Queue.
-        iam_role_arn : Optional[str]
-            IAM Role.
-        """
-
-        if iam_role_arn is None:
-            print('ERROR: Used a subscriber but no --iam_role_arn provided.')
-            sys.exit(21)
-        if name is None:
-            print('ERROR: Used a subscriber but no --queue provided.')
-            sys.exit(21)
-        if external_id is None:
-            print('ERROR: Used a subscriber but no --external_id provided.')
-            sys.exit(21)
 
     def _get_sqs_url(self) -> str:
         """Get the URL of the AWS SQS queue
@@ -3904,6 +3861,31 @@ def arg_valid_bucket_name(arg: str) -> str:
     return arg
 
 
+def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Optional[str], iam_role_arn: Optional[str]):
+    """
+    Validate the Securit Lake authentication arguments.
+
+    Parameters
+    ----------
+    external_id : Optional[str]
+        The name of the External ID to use.
+    name: Optional[str]
+        Name of the SQS Queue.
+    iam_role_arn : Optional[str]
+        IAM Role.
+    """
+
+    if iam_role_arn is None:
+        print('ERROR: Used a subscriber but no --iam_role_arn provided.')
+        sys.exit(21)
+    if name is None:
+        print('ERROR: Used a subscriber but no --queue provided.')
+        sys.exit(21)
+    if external_id is None:
+        print('ERROR: Used a subscriber but no --external_id provided.')
+        sys.exit(21)
+
+
 def get_aws_config_params() -> configparser.RawConfigParser:
     """Read and retrieve parameters from aws config file
 
@@ -4110,6 +4092,7 @@ def main(argv):
                         "+++ ERROR: The AWS Security Lake integration does not make use of the Profile authentication "
                         f"method. Check the available ones for it in {SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
+                arg_validate_security_lake_auth_params(options.external_id,options.queue,options.iam_role_arn)
                 bucket_handler = AWSSLSubscriberBucket
                 asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
                                         iam_role_duration=options.iam_role_duration,
@@ -4128,6 +4111,8 @@ def main(argv):
                                         service_endpoint=options.service_endpoint,
                                         name=options.queue,
                                         skip_on_error=options.skip_on_error,
+                                        discard_field=options.discard_field,
+                                        discard_regex=options.discard_regex,
                                         bucket_handler=bucket_handler,
                                         message_processor=AWSS3MessageProcessor)
             else:
