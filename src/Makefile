@@ -1317,8 +1317,13 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc rocksdb
+	EXTERNAL_RES += $(CPYTHON) jemalloc
 endif
+endif
+
+ifeq (${TARGET},server)
+	# Server extra dependency
+	EXTERNAL_RES += rocksdb
 endif
 
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
