@@ -364,6 +364,29 @@ class ResourceHandler:
         elif subcommand == 'get':
             return resp_message
 
+    def _base_send_command_kvdb(self, api_socket: str, name: str, path: str, subcommand):
+        request = {'version': 1, 'command': 'kvdb.manager/' + subcommand, 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'name': name, 'path': path}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(api_socket)
+            s.sendall(request_bytes)
+            data = s.recv(65507)
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        try:
+            resp_message = json.loads(resp_message)
+            return resp_message
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+
     def create_kvdb(self, api_socket: str, name: str, path: str):
         self._base_command_kvdb(api_socket, name, path, 'post')
 
