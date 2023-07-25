@@ -12,6 +12,9 @@
             ],
             "source": "logcollector"
         },
+        "ecs": {
+            "version": "8.8"
+        },
         "event": {
             "original": "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8",
             "start": "2023-10-11T22:14:15.000Z",
@@ -20,7 +23,6 @@
         "host": {
             "hostname": "mymachine"
         },
-        "~TAG": "su",
         "message": "'su root' failed for lonvick on /dev/pts/8",
         "related": {
             "hosts": [
@@ -43,6 +45,9 @@
                 "syslog"
             ],
             "source": "logcollector"
+        },
+        "ecs": {
+            "version": "8.8"
         },
         "event": {
             "original": "Feb  5 17:32:18 10.0.0.99 Use the BFG!",
@@ -72,6 +77,9 @@
             ],
             "source": "logcollector"
         },
+        "ecs": {
+            "version": "8.8"
+        },
         "event": {
             "original": "Aug 24 05:34:00 CST 1987 mymachine myproc[10]: %% It's time to make the do-nuts. %%  Ingredients: Mix=OK, Jelly=OK # Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport: Conveyer1=OK, Conveyer2=OK # %%",
             "start": "2023-08-24T05:34:00.000Z",
@@ -99,6 +107,9 @@
                 "syslog"
             ],
             "source": "logcollector"
+        },
+        "ecs": {
+            "version": "8.8"
         },
         "event": {
             "original": "Oct 22 10:52:12 scapegoat 1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
@@ -128,6 +139,9 @@
             ],
             "source": "logcollector"
         },
+        "ecs": {
+            "version": "8.8"
+        },
         "event": {
             "original": "2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.",
             "start": "2018-08-14T12:30:02.203Z",
@@ -136,7 +150,6 @@
         "host": {
             "hostname": "linux-sqrz"
         },
-        "~TAG": "systemd",
         "process": {
             "pid": 4179,
             "name": "systemd"
@@ -161,17 +174,19 @@
             ],
             "source": "logcollector"
         },
+        "ecs": {
+            "version": "8.8"
+        },
         "event": {
             "original": "1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
             "start": "1990-10-22T10:52:01.000Z",
             "kind": "event"
         },
-        "~timezone": "TZ-6",
+        "timezone": "TZ-6",
         "host": {
             "hostname": "scapegoat.dmz.example.org",
             "ip": "10.1.2.3"
         },
-        "~TAG": "sched",
         "process": {
             "pid": 0,
             "name": "sched"
