@@ -379,11 +379,17 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     }
 
                     packageJson["name"]         = std::move(name);
-                    packageJson["version"]      = std::move(version);
-                    packageJson["vendor"]       = std::move(vendor);
-                    packageJson["install_time"] = std::move(install_time);
-                    packageJson["location"]     = std::move(location);
+                    packageJson["description"]  = UNKNOWN_VALUE;
+                    packageJson["version"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
+                    packageJson["groups"]       = UNKNOWN_VALUE;
+                    packageJson["priority"]       = UNKNOWN_VALUE;
+                    packageJson["size"]           = 0;
+                    packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
+                    packageJson["source"]       = UNKNOWN_VALUE;
+                    packageJson["install_time"] = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
+                    packageJson["location"]     = location.empty() ? UNKNOWN_VALUE : std::move(location);
                     packageJson["architecture"] = std::move(architecture);
+                    packageJson["multiarch"]     = UNKNOWN_VALUE;
                     packageJson["format"]       = "win";
 
                     returnCallback(packageJson);
