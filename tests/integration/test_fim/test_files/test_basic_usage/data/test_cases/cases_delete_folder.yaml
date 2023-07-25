@@ -8,7 +8,6 @@
       realtime: 'yes'
   metadata:
     folder_to_monitor: /test_dir
-    files_amount: 4
 
 - name: Delete folder - Scheduled
   description: When a scheduled monitored directory es deleted
@@ -21,4 +20,3 @@
       realtime: 'no'
   metadata:
     folder_to_monitor: /test_dir
-    files_amount: 4
