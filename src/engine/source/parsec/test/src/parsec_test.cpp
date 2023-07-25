@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <logpar/parsec.hpp>
+#include <parsec/parsec.hpp>
 
 using resT = int;
 static const resT valTest = 1;

@@ -166,10 +166,11 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/schemf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
+add_subdirectory(${ENGINE_SOURCE_DIR}/parsec)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logpar)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
-add_subdirectory(${ENGINE_SOURCE_DIR}/logicExpression)
+add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rxbk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
@@ -230,4 +231,3 @@ add_custom_target( clean_insource
 add_custom_target( clean_build
     COMMAND rm -rf "${CMAKE_SOURCE_DIR}/build/*"
     ERROR_QUIET )
-
