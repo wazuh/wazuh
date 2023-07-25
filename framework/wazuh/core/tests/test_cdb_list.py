@@ -37,7 +37,9 @@ CONTENT_FILE = {'test-wazuh-w': 'write',
                 'test-key:1': 'value',
                 'test-key:2': 'value:2',
                 'test-key::::::3': 'value3',
-                'test-key4': 'value:::4'}
+                'test-key4': 'value:::4',
+                'https://wazuh': 'wazuh',
+                'wazuh': 'https://wazuh'}
 
 # Tests
 
@@ -213,7 +215,8 @@ def test_create_list_file(mock_delete, mock_chmod):
             with patch('builtins.open') as mock_open:
                 wazuh_cdb_list = f.read()
                 result = create_list_file('/test/path', wazuh_cdb_list, permissions=0o660)
-                assert mock_open.return_value.__enter__().write.call_count == len(wazuh_cdb_list.split('\n'))-1
+                # Minus 2 because there are two extra empty lines to test
+                assert mock_open.return_value.__enter__().write.call_count == len(wazuh_cdb_list.split('\n')) - 2
 
     mock_chmod.assert_called_once_with('/test/path', 0o660)
 
