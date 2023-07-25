@@ -34,7 +34,7 @@ parse:
     - event.original: <event.start/%b %d %T> <host.hostname> <message>
 
     # RFC3164 example 4 section 5.4
-    - event.original: "<event.start/%Y %b %d %T> <~timezone> <host.hostname> <host.ip> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>"
+    - event.original: "<event.start/%Y %b %d %T> <timezone> <host.hostname> <host.ip> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>"
 
 normalize:
   - map:
