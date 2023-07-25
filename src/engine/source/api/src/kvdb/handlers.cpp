@@ -92,7 +92,7 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>(resultCreate.value().message);
         }
 
-        if (eRequest.has_path())
+        if (!eRequest.path().empty())
         {
             const auto resultLoad = kvdbManager->loadDBFromFile(eRequest.name(), eRequest.path());
 
