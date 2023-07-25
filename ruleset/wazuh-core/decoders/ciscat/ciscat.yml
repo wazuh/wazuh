@@ -34,6 +34,7 @@ normalize:
   - map:
       - wazuh.decoders: array_append(ciscat)
 
+#TODO: what is this check for?
   - check:
       - wazuh.origin: "wodle_cis-cat"
       - json_event.cis: exists()
