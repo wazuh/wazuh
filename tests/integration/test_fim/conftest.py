@@ -23,17 +23,24 @@ def file_to_monitor(test_metadata: dict) -> Any:
 @pytest.fixture()
 def folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
-    if isinstance(path, list):
-        [file.create_folder(p) for p in path if path]
-    else:
-        file.create_folder(path) if path else None
+    file.create_folder(path) if path else None
 
     yield path
 
-    if isinstance(path, list):
-        [file.delete_path_recursively(p) for p in path if path]
-    else:
-        file.delete_path_recursively(path) if path else None
+    file.delete_path_recursively(path) if path else None
+
+
+@pytest.fixture()
+def fill_folder_to_monitor(test_metadata: dict) -> None:
+    path = test_metadata.get('folder_to_monitor')
+    amount = test_metadata.get('files_amount')
+
+    [file.write_file(Path(path, f'test{i}.log')) for i in range(amount)]
+
+    yield
+
+    [file.remove_file(Path(path, f'test{i}.log')) for i in range(amount)]
+    
 
 
 @pytest.fixture(scope='session', autouse=True)
