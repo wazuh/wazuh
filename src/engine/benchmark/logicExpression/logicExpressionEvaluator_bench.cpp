@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include <logicExpression/logicExpression.hpp>
+#include <logicexpr/logicexpr.hpp>
 
 static void BM_DijkstraEvaluator(benchmark::State& state)
 {

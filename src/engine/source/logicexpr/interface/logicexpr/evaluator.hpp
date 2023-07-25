@@ -1,5 +1,5 @@
-#ifndef _LOGIC_EXPRESSION_EVALUATOR_H
-#define _LOGIC_EXPRESSION_EVALUATOR_H
+#ifndef _LOGICEXPR_EVALUATOR_H
+#define _LOGICEXPR_EVALUATOR_H
 
 #include <functional>
 #include <memory>
@@ -9,20 +9,18 @@
 
 #include <fmt/format.h>
 
-namespace logicExpression
-{
 /**
  * @brief Functionality for evaluating logic expressions.
  *
  */
-namespace evaluator
+namespace logicexpr::evaluator
 {
 
 /**
  * @brief Expression type
  *
  */
-enum ExpressionType
+enum class ExpressionType
 {
     TERM,
     OR,
@@ -59,20 +57,14 @@ public:
      *
      * @return std::shared_ptr<const ThisType>
      */
-    std::shared_ptr<const ThisType> getPtr() const
-    {
-        return ThisType::shared_from_this();
-    }
+    std::shared_ptr<const ThisType> getPtr() const { return ThisType::shared_from_this(); }
 
     /**
      * @brief Create empty expression
      *
      * @return std::shared_ptr<ThisType>
      */
-    [[nodiscard]] static std::shared_ptr<ThisType> create()
-    {
-        return std::shared_ptr<ThisType>(new ThisType());
-    }
+    [[nodiscard]] static std::shared_ptr<ThisType> create() { return std::shared_ptr<ThisType>(new ThisType()); }
 
     /**
      * @brief Create term expression
@@ -82,8 +74,7 @@ public:
      */
     [[nodiscard]] static std::shared_ptr<ThisType> create(FunctionType&& function)
     {
-        return std::shared_ptr<ThisType>(
-            new ThisType(std::forward<FunctionType>(function)));
+        return std::shared_ptr<ThisType>(new ThisType(std::forward<FunctionType>(function)));
     }
 
     /**
@@ -95,8 +86,7 @@ public:
      */
     [[nodiscard]] static std::shared_ptr<ThisType> create(ExpressionType&& type)
     {
-        return std::shared_ptr<ThisType>(
-            new ThisType(std::forward<ExpressionType>(type)));
+        return std::shared_ptr<ThisType>(new ThisType(std::forward<ExpressionType>(type)));
     }
 
     /**
@@ -119,18 +109,16 @@ public:
 private:
     Expression() = default;
     Expression(FunctionType function)
-        : m_type(TERM)
+        : m_type(ExpressionType::TERM)
         , m_function(function)
     {
     }
     Expression(ExpressionType type)
     {
-        if (TERM == type)
+        if (ExpressionType::TERM == type)
         {
-            throw std::runtime_error(fmt::format(
-                "Engine logic expression evaluator: \"{}\" method: TERM type is not "
-                "allowed, use \"Expression(FunctionType function)\" instead.",
-                __func__));
+            throw std::runtime_error(
+                "Error creating expression with TERM type, use constructor with function type instead.");
         }
 
         m_type = type;
@@ -145,8 +133,7 @@ private:
  * @return Expression<Event>::FunctionType
  */
 template<typename Event>
-typename Expression<Event>::FunctionType
-getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
+typename Expression<Event>::FunctionType getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
 {
     // Struct for operators stack
     struct Operator
@@ -162,7 +149,7 @@ getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
     // Visitor to poputale operators stack
     auto visitor = [&operators](const Expression<Event>& expression)
     {
-        if (expression.m_type == TERM)
+        if (expression.m_type == ExpressionType::TERM)
         {
             operators.push_back({expression.m_type, expression.m_function});
         }
@@ -184,7 +171,7 @@ getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
         {
             switch (it->m_type)
             {
-                case TERM:
+                case ExpressionType::TERM:
                     // Handle only term expression
                     // TODO: dont allow expressions with one term only, use check list
                     // instead
@@ -197,30 +184,26 @@ getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
                         operands.push(it->m_function(event));
                     }
                     break;
-                case NOT:
+                case ExpressionType::NOT:
                     result = operands.top();
                     operands.pop();
                     operands.push(!result);
                     break;
-                case AND:
+                case ExpressionType::AND:
                     result = operands.top();
                     operands.pop();
                     result = result && operands.top();
                     operands.pop();
                     operands.push(result);
                     break;
-                case OR:
+                case ExpressionType::OR:
                     result = operands.top();
                     operands.pop();
                     result = result || operands.top();
                     operands.pop();
                     operands.push(result);
                     break;
-                default:
-                    throw std::runtime_error(
-                        fmt::format("Engine logic expression evaluator: \"{}\" method: "
-                                    "Unknown operator type.",
-                                    __func__));
+                default: throw std::runtime_error("Engine logic expression evaluator got unknown operator type.");
             }
         }
 
@@ -228,7 +211,6 @@ getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
     };
 }
 
-} // namespace evaluator
-} // namespace logicExpression
+} // namespace logicexpr::evaluator
 
-#endif // _LOGIC_EXPRESSION_EVALUATOR_H
+#endif // _LOGICEXPR_EVALUATOR_H
