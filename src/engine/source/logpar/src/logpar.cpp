@@ -7,8 +7,6 @@
 
 #include <fmt/format.h>
 
-#include "parsec.hpp"
-
 namespace hlp::logpar::parser
 {
 parsec::Parser<char> pChar(std::string chars)

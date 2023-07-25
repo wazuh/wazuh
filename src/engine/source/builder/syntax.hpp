@@ -16,6 +16,10 @@ constexpr char FUNCTION_HELPER_DEFAULT_ESCAPE {'\\'};
 constexpr char JSON_PATH_SEPARATOR {'.'};
 constexpr char CUSTOM_FIELD_ANCHOR {'~'};
 constexpr char VARIABLE_ANCHOR {'_'};
+constexpr auto FIELD_EXTENDED = "_@#";
+constexpr auto HELPER_NAME_EXTENDED = "_";
+constexpr auto PARENTHESIS_OPEN = '(';
+constexpr auto PARENTHESIS_CLOSE = ')';
 
 } // namespace builder::internals::syntax
 

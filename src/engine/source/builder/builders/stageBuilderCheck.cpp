@@ -4,7 +4,6 @@
 #include <any>
 
 #include <json/json.hpp>
-#include <logicExpression/logicExpression.hpp>
 #include <regex>
 
 #include "baseTypes.hpp"
@@ -103,7 +102,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
             auto [targetField, value] = toBuilderInput(helperToken);
 
             // Remove the first character from the target field
-            field = std::string(targetField.begin()+1, targetField.end());
+            field = std::string(targetField.begin() + 1, targetField.end());
             valueJson = std::move(value);
         }
         else
@@ -221,7 +220,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
     };
 
     // Evaluator function
-    auto evaluator = logicExpression::buildDijstraEvaluator<base::Event>(expressionString, termBuilder);
+    auto evaluator = logicExpression::buildDijstraEvaluator<base::Event>(expressionString, termBuilder, termParser);
 
     // Trace
     auto name = fmt::format("check: {}", expressionString);
