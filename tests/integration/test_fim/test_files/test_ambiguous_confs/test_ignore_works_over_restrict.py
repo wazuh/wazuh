@@ -93,8 +93,8 @@ if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_ignore_works_over_restrict(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                    truncate_monitored_files, folder_to_monitor, daemons_handler, file_to_monitor):
+def test_ignore_works_over_restrict(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                                    configure_local_internal_options, folder_to_monitor, daemons_handler, file_to_monitor):
     '''
     description: Check if the 'ignore' tag prevails over the 'restrict' one when using both in the same directory.
                  For example, when a directory is ignored and at the same time monitoring is restricted to a file
