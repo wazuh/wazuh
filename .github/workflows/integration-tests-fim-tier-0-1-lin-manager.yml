@@ -39,7 +39,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSCHECK="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
