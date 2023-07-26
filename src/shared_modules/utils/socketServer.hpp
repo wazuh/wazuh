@@ -120,10 +120,10 @@ public:
         // Remove any existing socket file
         std::filesystem::remove(m_socketPath);
 
-        // Build the address.
-        auto unixAddress {UnixAddress::builder().address(m_socketPath).build()};
+        // Builder for the address.
+        auto unixAddressBuilder {UnixAddress::builder()};
         // Instance server socket
-        m_listenSocket->listen(unixAddress.data());
+        m_listenSocket->listen(unixAddressBuilder.address(m_socketPath).data());
 
         // Add server socket to epoll
         m_epoll->addDescriptor(m_listenSocket->fileDescriptor(), EPOLLIN);
