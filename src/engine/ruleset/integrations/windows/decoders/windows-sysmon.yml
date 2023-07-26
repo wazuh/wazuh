@@ -22,6 +22,7 @@ check:
 
 normalize:
  - map:
+    - wazuh.decoders: +array_append/windows-sysmon
     - event.dataset: sysmon
     - event.kind: event
 
@@ -101,11 +102,11 @@ normalize:
 
  - check: +string_not_equal/$event.code/7
    map:
-    - process.pe.original_file_name: $~windows.Event.EventData.OriginalFileName
-    - process.pe.company: $~windows.Event.EventData.Company
-    - process.pe.description: $~windows.Event.EventData.Description
-    - process.pe.file_version: $~windows.Event.EventData.FileVersion
-    - process.pe.product: $~windows.Event.EventData.Product
+   - process.pe.original_file_name: $~windows.Event.EventData.OriginalFileName
+   - process.pe.company: $~windows.Event.EventData.Company
+   - process.pe.description: $~windows.Event.EventData.Description
+   - process.pe.file_version: $~windows.Event.EventData.FileVersion
+   - process.pe.product: $~windows.Event.EventData.Product
 
  - check: $event.code=="7"
    map:
@@ -155,7 +156,7 @@ normalize:
     - registry.path: $~windows.Event.EventData.TargetObject
     - ~temp.registry.array: +split/$registry.path/\\
     - registry.hive: $~temp.registry.array.0
-    - ~temp.registry.array.0: delete()
+    - ~temp.registry.array.0: +delete
     - registry.key: +join/$~temp.registry.array/\\
     - registry.value: +regex_extract/$registry.path/^.*\\\\(.*)$
 
@@ -182,6 +183,5 @@ normalize:
 
 # Cleanup
  - map:
-    - ~temp: delete()
-    - ~windows: delete()
-    - wazuh.decoders: array_append(windows-sysmon)
+   - ~temp: +delete
+   - ~windows: +delete
