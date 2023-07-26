@@ -1664,7 +1664,7 @@ endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB)
-	mkdir -p build && cd build && cmake .. && ${MAKE}
+	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
