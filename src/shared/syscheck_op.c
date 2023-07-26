@@ -1177,6 +1177,357 @@ void ag_send_syscheck(char * message) {
     free(response);
 }
 
+HKEY w_switch_root_key(char* str_rootkey) {
+    if (!strcmp(str_rootkey, STR_HKEY_CLASSES_ROOT)) {
+        return HKEY_CLASSES_ROOT;
+    }
+    else if (!strcmp(str_rootkey, STR_HKEY_CURRENT_CONFIG)) {
+        return HKEY_CURRENT_CONFIG;
+    }
+    else if (!strcmp(str_rootkey, STR_HKEY_CURRENT_USER)) {
+        return HKEY_CURRENT_USER;
+    }
+    else if (!strcmp(str_rootkey, STR_HKEY_LOCAL_MACHINE)) {
+        return HKEY_LOCAL_MACHINE;
+    }
+    else if (!strcmp(str_rootkey, STR_HKEY_USERS)) {
+        return HKEY_USERS;
+    }
+    else {
+        mdebug1("Invalid value of root Handle to Registry Key.");
+        return NULL;
+    }
+}
+
+void expand_wildcard_registers(char* entry, char** paths) {
+    reg_path_struct** aux_vector;
+    reg_path_struct** current_position;
+    os_calloc(OS_SIZE_8192, sizeof(reg_path_struct*), aux_vector);
+
+    reg_path_struct* first_e;
+    os_calloc(1, sizeof(reg_path_struct), first_e);
+
+    first_e->path           = strdup(entry);
+    first_e->has_wildcard   = check_wildcard(entry);
+    first_e->checked        = 0;
+    *aux_vector             = first_e;
+    current_position        = aux_vector; //Save the current pointer for future iteration
+
+    // ----- Begin expansion path section -----
+    // New algorithm form proposal
+
+    while (w_is_still_a_wildcard(current_position)) {
+        char* pos_qk = strchr((*current_position)->path, '?');
+        char* pos_sr = strchr((*current_position)->path, '*');
+        if (pos_qk != NULL && pos_sr != NULL) {
+            if (pos_qk < pos_sr) {
+                w_expand_by_wildcard(current_position, '?');
+            } else {
+                w_expand_by_wildcard(current_position, '*');
+            }
+        } else if (pos_sr != NULL) {
+            w_expand_by_wildcard(current_position, '*');
+        } else if (pos_qk != NULL) {
+            w_expand_by_wildcard(current_position, '?');
+        }
+        current_position++;
+    }
+
+    // ----- End expansion path section -----
+
+    current_position = aux_vector;
+    while (*current_position != NULL) {
+        if (!(*current_position)->has_wildcard && (*current_position)->checked) {
+            os_strdup((*current_position)->path, *paths);
+            os_free((*current_position)->path);
+            os_free(*current_position);
+            paths++;
+        } else {
+            os_free((*current_position)->path);
+            os_free(*current_position);
+        }
+        current_position++;
+    }
+
+    //Release memory before leaves function
+    os_free(*current_position);
+    os_free(aux_vector);
+}
+
+char* get_subkey(char* key) {
+    char* remaining_key = NULL;
+    char* subkey        = NULL;
+
+    os_strdup(strchr(key, '\\') + 1, remaining_key);
+    os_calloc(OS_SIZE_128, sizeof(char), subkey);
+
+    char* aux_token;
+
+    aux_token = strtok(remaining_key, "\\");
+    while (aux_token !=NULL && !(strchr(aux_token, '?') || strchr(aux_token, '*'))) {
+        strcat(subkey, aux_token);
+        aux_token = strtok(NULL, "\\");
+        strcat(subkey, "\\");
+    }
+    int path_len = strlen(subkey) - 1;
+    os_free(remaining_key);
+    if (path_len > 0) {
+        if (subkey[path_len] == '\\') {
+            subkey[path_len] = '\0';
+        }
+        return subkey;
+    } else {
+        os_free(subkey);
+        return strdup("");
+    }
+}
+
+int w_is_still_a_wildcard(reg_path_struct **array_struct) {
+    while (*array_struct) {
+        if ((*array_struct)->has_wildcard && !(*array_struct)->checked) {
+            return 1;
+        }
+        array_struct++;
+    }
+    return 0;
+}
+
+char** w_list_all_keys(HKEY root_key, char* str_subkey) {
+    HKEY keyhandle;
+    char** key_list = NULL;
+    if (RegOpenKeyEx(root_key, str_subkey, 0, KEY_READ | KEY_WOW64_64KEY, &keyhandle) == ERROR_SUCCESS) {
+        TCHAR    achKey[OS_SIZE_256];
+        DWORD    cbName;
+        TCHAR    achClass[OS_SIZE_256] = TEXT("");
+        DWORD    cchClassName = OS_SIZE_256;
+        DWORD    cSubKeys = 0;
+        DWORD    cbMaxSubKey;
+        DWORD    cchMaxClass;
+        DWORD    cValues;
+        DWORD    cchMaxValue;
+        DWORD    cbMaxValueData;
+        DWORD    cbSecurityDescriptor;
+        FILETIME ftLastWriteTime;
+
+        DWORD i, retCode;
+
+        // Get the class name and the value count.
+        retCode = RegQueryInfoKey(
+            keyhandle,               // key handle
+            achClass,                // buffer for class name
+            &cchClassName,           // size of class string
+            NULL,                    // reserved
+            &cSubKeys,               // number of subkeys
+            &cbMaxSubKey,            // longest subkey size
+            &cchMaxClass,            // longest class string
+            &cValues,                // number of values for this key
+            &cchMaxValue,            // longest value name
+            &cbMaxValueData,         // longest value data
+            &cbSecurityDescriptor,   // security descriptor
+            &ftLastWriteTime);       // last write time
+
+        if (retCode == ERROR_SUCCESS) {
+            if (cSubKeys) {
+            os_calloc(cSubKeys + 1, sizeof(char*), key_list);
+            for (i = 0; i < cSubKeys; i++) {
+                cbName = OS_SIZE_256;
+                retCode = RegEnumKeyEx(keyhandle, i,
+                    achKey,
+                    &cbName,
+                    NULL,
+                    NULL,
+                    NULL,
+                    &ftLastWriteTime);
+                if (retCode == ERROR_SUCCESS) {
+                    os_strdup(achKey, *(key_list + i));
+                    }
+                }
+                *(key_list + i) = NULL;
+            }
+        }
+    }
+    RegCloseKey(keyhandle);
+    return key_list;
+}
+
+void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
+    // ----- Begin setup variables section -----
+    char* wildcard_str          = NULL;
+    os_calloc(2, sizeof(char), wildcard_str);
+    wildcard_str[0]             = wildcard_chr;
+    wildcard_str[1]             = '\0';
+
+    char** first_position       = NULL;
+
+    char* matcher               = NULL; //Only used when wildcard is ?.
+
+    //Create a copy of the path to be able to modify it.
+    char* aux_path              = NULL;
+    os_strdup((*array_struct)->path, aux_path);
+
+    //Take the first part of the wildcard, splitting by wildcard. Clean any chars after a slash bar.
+    char* first_part            = strtok(aux_path, wildcard_str);
+    for (int letter = strlen(first_part) - 1; letter >= 0; letter--) {
+        if (first_part[letter] != '\\') {
+            first_part[letter] = '\0';
+        }
+        else {
+            break;
+        }
+    }
+
+    if (wildcard_chr == '?') {
+        //Usar strtok_r
+        char* temp          = NULL;
+        char* aux_matcher   = NULL;
+        os_strdup((*array_struct)->path, temp);
+
+        //Search through all tokens until you find the one that has the wildcard
+        aux_matcher = strtok(temp, "\\");
+        while (!strchr(aux_matcher, '?')) {
+            aux_matcher = strtok(NULL, "\\");
+        }
+        os_strdup(aux_matcher,matcher);
+        os_free(temp);
+    }
+
+    //Take the remainder part of the path.
+    char* second_part       = NULL;
+    if ((*array_struct)->path != NULL) {
+        second_part         = strchr(strchr((*array_struct)->path, wildcard_chr), '\\');
+    }
+
+    //Duplicate key part
+    char* temp = NULL;
+    os_strdup(first_part,temp);
+
+    char* str_root_key          = NULL;
+    //Obtain the subkey. If it's empty, it's a NULL value.
+    char* subkey                = get_subkey((*array_struct)->path);
+
+    os_strdup(strtok(temp, "\\"), str_root_key);
+    os_free(temp);
+
+    HKEY root_key               = w_switch_root_key(str_root_key);
+
+    // ----- End setup variables section -----
+
+    (*array_struct)->checked    = 1; //Mark path as checked.
+
+    //Get first empty position of the vector.
+    int first_empty             = 0;
+    while (array_struct[first_empty] != NULL) {
+        first_empty++;
+    }
+    //----------------------------------------
+
+    //There is two possibles branches to take depending of the wildcard.
+    if (wildcard_chr=='?') {
+        if (root_key != NULL && matcher != NULL) {
+            //Get all keys from Windows API.
+            char** query_keys = w_list_all_keys(root_key, subkey);
+            first_position = query_keys;
+            if (query_keys) {
+                //Itarate over string vector.
+                while (*query_keys != NULL) {
+                    //Use Windows API and check wildcar coincidences.
+                    if (PathMatchSpecA(*query_keys, matcher)) {
+                        // ----- Begin final path variable section -----
+
+                        char* full_path = NULL;
+                        os_calloc(OS_SIZE_256, sizeof(char), full_path);
+
+                        //Copy first part.
+                        strcpy(full_path, first_part);
+
+                        //Add key result.
+                        strcat(full_path, *query_keys);
+
+                        //Copy second part.
+                        second_part != NULL ? strcat(full_path, second_part) : strcat(full_path,"\0");
+
+                        // ----- End final path variable section -----
+
+                        //Create new struct and add it to vector.
+                        reg_path_struct* new_struct = NULL;
+                        os_calloc(1, sizeof(reg_path_struct), new_struct);
+
+                        int path_length             = strlen(full_path);
+                        if(full_path[path_length - 1] == '\\'){
+                            full_path[path_length - 1] = '\0';
+                        }
+
+                        new_struct->path            = full_path;
+                        new_struct->has_wildcard    = (check_wildcard(full_path)) && !(check_wildcard(*query_keys)) ? 1 : 0;
+                        new_struct->checked         = 1 & !new_struct->has_wildcard;
+                        array_struct[first_empty]   = new_struct;
+
+                        //Increment pointers.
+                        first_empty++;
+                    }
+                    //Increment pointers.
+                    query_keys++;
+                    }
+                }
+            //Release memory before leaves function.
+            os_free(matcher);
+        }
+    } else {
+        if (root_key != NULL) {
+            //Get all keys from Windows API.
+            char** query_keys = w_list_all_keys(root_key, subkey);
+            first_position    = query_keys;
+            if (query_keys) {
+                //Itarate over string vector.
+                while (*query_keys != NULL) {
+
+                    // ----- Begin final path variable section -----
+
+                    char* full_path = NULL;
+                    os_calloc(OS_SIZE_256, sizeof(char), full_path);
+
+                    //Copy first part.
+                    strcpy(full_path, first_part);
+
+                    //Add key result.
+                    strcat(full_path, *query_keys);
+
+                    //Copy second part.
+                    second_part != NULL ? strcat(full_path, second_part) : strcat(full_path, "\0");
+
+                    // ----- End final path variable section -----
+
+                    //Create new struct and add it to vector.
+                    reg_path_struct* new_struct = NULL;
+                    os_calloc(1, sizeof(reg_path_struct), new_struct);
+
+                    int path_length             = strlen(full_path);
+                    if(full_path[path_length - 1] == '\\') {
+                        full_path[path_length - 1] = '\0';
+                    }
+
+                    new_struct->path            = full_path;
+                    new_struct->has_wildcard    = (check_wildcard(full_path)) && !(check_wildcard(*query_keys)) ? 1 : 0;
+                    new_struct->checked         = 1 & !new_struct->has_wildcard;
+                    array_struct[first_empty]   = new_struct;
+
+                    //Increment pointers.
+                    first_empty++;
+                    query_keys++;
+                }
+            }
+        }
+    }
+
+    //Release memory after leaves function. Common variables
+    os_free(wildcard_str);
+    os_free(aux_path);
+    os_free(str_root_key);
+    os_free(subkey);
+    free_strarray(first_position);
+    os_free(matcher);
+}
+
 #endif /* # else (ifndef WIN32) */
 
 void decode_win_attributes(char *str, unsigned int attrs) {

@@ -26,7 +26,8 @@
 #include "cmdHelper.h"
 #include "stringHelper.h"
 
-enum ROUTING_FIELDS {
+enum ROUTING_FIELDS
+{
     ROUTING_DESTINATION,
     ROUTING_GATEWAY,
     ROUTING_FLAGS,
@@ -36,7 +37,8 @@ enum ROUTING_FIELDS {
     ROUTING_SIZE_FIELDS
 };
 
-enum MAC_FIELDS {
+enum MAC_FIELDS
+{
     MAC_FIELD_NAME,
     MAC_ADDRESS,
     MAC_SIZE_FIELDS
@@ -44,17 +46,17 @@ enum MAC_FIELDS {
 
 class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 {
-    lifreq* m_networkInterface;
-    const int m_fileDescriptor;
-    const sa_family_t m_family;
-    const uint64_t m_interfaceFlags;
+        lifreq* m_networkInterface;
+        const int m_fileDescriptor;
+        const sa_family_t m_family;
+        const uint64_t m_interfaceFlags;
 
     public:
         explicit NetworkSolarisInterface(const sa_family_t family, int fd, std::pair<lifreq*, uint64_t> interface)
-        : m_networkInterface {interface.first}
-        , m_fileDescriptor {fd}
-        , m_family {family}
-        , m_interfaceFlags {interface.second}
+            : m_networkInterface {interface.first}
+            , m_fileDescriptor {fd}
+            , m_family {family}
+            , m_interfaceFlags {interface.second}
         {
         }
 
@@ -79,11 +81,11 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFADDR, reinterpret_cast<char *>(m_networkInterface));
-                struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in *>(&m_networkInterface->lifr_addr);
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFADDR, reinterpret_cast<char*>(m_networkInterface));
+                struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in*>(&m_networkInterface->lifr_addr);
                 address = Utils::NetworkHelper::IAddressToBinary(this->family(), &data->sin_addr);
             }
-            catch(...)
+            catch (...)
             {
             }
 
@@ -96,11 +98,11 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFNETMASK, reinterpret_cast<char *>(m_networkInterface));
-                struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in *>(&m_networkInterface->lifr_addr);
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFNETMASK, reinterpret_cast<char*>(m_networkInterface));
+                struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in*>(&m_networkInterface->lifr_addr);
                 address = Utils::NetworkHelper::IAddressToBinary(this->family(), &data->sin_addr);
             }
-            catch(...)
+            catch (...)
             {
             }
 
@@ -115,11 +117,11 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
             {
                 try
                 {
-                    UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFBRDADDR, reinterpret_cast<char *>(m_networkInterface));
-                    struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in *>(&m_networkInterface->lifr_broadaddr);
+                    UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFBRDADDR, reinterpret_cast<char*>(m_networkInterface));
+                    struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in*>(&m_networkInterface->lifr_broadaddr);
                     retVal = Utils::NetworkHelper::IAddressToBinary(this->family(), &data->sin_addr);
                 }
-                catch(...)
+                catch (...)
                 {
                 }
             }
@@ -133,11 +135,11 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFADDR, reinterpret_cast<char *>(m_networkInterface));
-                struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6 *>(&m_networkInterface->lifr_addr);
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFADDR, reinterpret_cast<char*>(m_networkInterface));
+                struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6*>(&m_networkInterface->lifr_addr);
                 address = Utils::NetworkHelper::IAddressToBinary(this->family(), &data->sin6_addr);
             }
-            catch(...)
+            catch (...)
             {
             }
 
@@ -150,11 +152,11 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFNETMASK, reinterpret_cast<char *>(m_networkInterface));
-                struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6 *>(&m_networkInterface->lifr_addr);
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFNETMASK, reinterpret_cast<char*>(m_networkInterface));
+                struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6*>(&m_networkInterface->lifr_addr);
                 address = Utils::NetworkHelper::IAddressToBinary(this->family(), &data->sin6_addr);
             }
-            catch(...)
+            catch (...)
             {
             }
 
@@ -169,11 +171,11 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
             {
                 try
                 {
-                    UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFBRDADDR , reinterpret_cast<char *>(m_networkInterface));
-                    struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6 *>(&m_networkInterface->lifr_addr);
+                    UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFBRDADDR, reinterpret_cast<char*>(m_networkInterface));
+                    struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6*>(&m_networkInterface->lifr_addr);
                     retVal = Utils::NetworkHelper::IAddressToBinary(this->family(), &data->sin6_addr);
                 }
-                catch(...)
+                catch (...)
                 {
                 }
             }
@@ -185,23 +187,28 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
             const auto buffer { Utils::exec("netstat -rn") };
+
             if (!buffer.empty())
             {
                 const auto lines { Utils::split(buffer, '\n') };
+
                 for (auto line : lines)
                 {
                     Utils::replaceAll(line, "  ", " ");
                     const auto fields { Utils::split(line, ' ') };
+
                     if (fields.size() == ROUTING_SIZE_FIELDS && fields.front().compare("default") == 0)
                     {
                         if (fields[ROUTING_IFACE_NAME].compare(this->name()) == 0)
                         {
                             retVal = fields[ROUTING_GATEWAY];
                         }
+
                         break;
                     }
                 }
             }
+
             return retVal;
         }
 
@@ -211,10 +218,10 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFMETRIC, reinterpret_cast<char *>(m_networkInterface));
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFMETRIC, reinterpret_cast<char*>(m_networkInterface));
                 metric = std::to_string(m_networkInterface->lifr_metric);
             }
-            catch(...)
+            catch (...)
             {
             }
 
@@ -227,10 +234,10 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFMETRIC, reinterpret_cast<char *>(m_networkInterface));
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFMETRIC, reinterpret_cast<char*>(m_networkInterface));
                 metric = std::to_string(m_networkInterface->lifr_metric);
             }
-            catch(const std::exception& e)
+            catch (const std::exception& e)
             {
                 std::cerr << e.what() << '\n';
             }
@@ -249,10 +256,10 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             try
             {
-                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFMTU, reinterpret_cast<char *>(m_networkInterface));
+                UtilsWrapperUnix::ioctl(m_fileDescriptor, SIOCGLIFMTU, reinterpret_cast<char*>(m_networkInterface));
                 retVal = m_networkInterface->lifr_mtu;
             }
-            catch(...)
+            catch (...)
             {
             }
 
@@ -262,7 +269,7 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
         LinkStats stats() const override
         {
             auto buffer { Utils::exec("kstat -n " + this->name() + " -c net", 256) };
-	        LinkStats statistic { 0, 0, 0, 0, 0, 0, 0, 0 };
+            LinkStats statistic { 0, 0, 0, 0, 0, 0, 0, 0 };
 
             if (!buffer.empty())
             {
@@ -304,7 +311,7 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
                         }
                     }
                 }
-                catch(...)
+                catch (...)
                 {
                 }
 
@@ -366,7 +373,7 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
                         type = values.at(it - headers.begin());
                     }
                 }
-                catch(...)
+                catch (...)
                 {
                 }
             }
@@ -387,6 +394,7 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
             if (!buffer.empty())
             {
                 const auto lines { Utils::split(buffer, '\n') };
+
                 for (auto line : lines)
                 {
                     Utils::replaceAll(line, "\t", "");

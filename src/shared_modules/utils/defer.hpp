@@ -31,26 +31,26 @@
 template<typename F>
 class Defer final
 {
-public:
-    /**
-     * @brief Constructor that stores a function object
-     * @param f The function object to be stored
-     */
-    explicit Defer(F f)
-        : m_f(f)
-    {
-    }
+    public:
+        /**
+         * @brief Constructor that stores a function object
+         * @param f The function object to be stored
+         */
+        explicit Defer(F f)
+            : m_f(f)
+        {
+        }
 
-    /**
-     * @brief Destructor that calls the stored function object
-     */
-    ~Defer()
-    {
-        m_f();
-    }
+        /**
+         * @brief Destructor that calls the stored function object
+         */
+        ~Defer()
+        {
+            m_f();
+        }
 
-private:
-    F m_f; ///< The stored function object
+    private:
+        F m_f; ///< The stored function object
 };
 
 /**

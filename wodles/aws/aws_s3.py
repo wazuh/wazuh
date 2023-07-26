@@ -37,6 +37,7 @@ import signal
 import socket
 import sqlite3
 import sys
+from typing import Optional
 
 try:
     import boto3
@@ -500,6 +501,30 @@ class WazuhIntegration:
             sys.exit(3)
 
         return sts_client
+
+    def event_should_be_skipped(self, event_):
+        def _check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
+            field_list = nested_field.split('.', 1)
+            try:
+                expression_to_evaluate = json_item[field_list[0]]
+            except TypeError:
+                if isinstance(json_item, list):
+                    return any(_check_recursive(i, field_list[0], regex=regex) for i in json_item)
+                return False
+            except KeyError:
+                return False
+            if len(field_list) == 1:
+                def check_regex(exp):
+                    try:
+                        return re.match(regex, exp) is not None
+                    except TypeError:
+                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
+
+                return check_regex(expression_to_evaluate)
+            return _check_recursive(expression_to_evaluate, field_list[1], regex=regex)
+
+        return self.discard_field and self.discard_regex \
+            and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
     def send_msg(self, msg, dump_json=True):
         """
@@ -2717,10 +2742,14 @@ class AWSInspector(AWSService):
         """
         if len(arn_list) != 0:
             response = self.client.describe_findings(findingArns=arn_list)['findings']
-            self.sent_events += len(response)
             debug(f"+++ Processing {len(response)} events", 3)
             for elem in response:
+                if self.event_should_be_skipped(elem):
+                    debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
+                          f'field. The event will be skipped.', 2)
+                    continue
                 self.send_msg(self.format_message(elem))
+                self.sent_events += 1
 
     def get_alerts(self):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
@@ -3027,6 +3056,7 @@ class AWSCloudWatchLogs(AWSService):
         A dict containing the Token for the next set of logs, the timestamp of the first fetched log and the timestamp
         of the latest one.
         """
+        sent_events = 0
         response = None
         min_start_time = start_time
         max_end_time = end_time if end_time is not None else start_time
@@ -3059,13 +3089,31 @@ class AWSCloudWatchLogs(AWSService):
             token = response['nextForwardToken']
             parameters['nextToken'] = token
 
+            debug('+++ Sending events to Analysisd...', 1)
             # Send events to Analysisd
             if response['events']:
                 debug('+++ Sending events to Analysisd...', 1)
                 for event in response['events']:
-                    debug('The message is "{}"'.format(event['message']), 3)
+                    event_msg = event['message']
+                    try:
+                        json_event = json.loads(event_msg)
+                        if self.event_should_be_skipped(json_event):
+                            debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
+                                f'field. The event will be skipped.', 2)
+                            continue
+                    except ValueError:
+                        # event_msg is not a JSON object, check if discard_regex.pattern matches the given string
+                        debug(f"+++ Retrieved log event is not a JSON object.", 3)
+                        if re.match(self.discard_regex, event_msg):
+                            debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex found a match. The event will be skipped.',
+                                2)
+                            continue
+                    debug('The message is "{}"'.format(event_msg), 2)
                     debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
-                    self.send_msg(event['message'], dump_json=False)
+                    self.send_msg(event_msg, dump_json=False)
+                    sent_events += 1
 
                     if min_start_time is None:
                         min_start_time = event['timestamp']
@@ -3077,6 +3125,12 @@ class AWSCloudWatchLogs(AWSService):
                     elif event['timestamp'] > max_end_time:
                         max_end_time = event['timestamp']
                 debug(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
+
+            if sent_events:
+                debug(f"+++ Sent {sent_events} events to Analysisd", 1)
+                sent_events = 0
+            else:
+                debug(f'+++ There are no new events in the "{log_group}" group', 1)
 
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 
@@ -3361,6 +3415,7 @@ class AWSSQSQueue(WazuhIntegration):
 
     def __init__(self, name: str, iam_role_arn: str, access_key: str = None, secret_key: str = None,
                  external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
+        self._validate_params(external_id=external_id, name=name, iam_role_arn=iam_role_arn)
         self.sqs_name = name
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, iam_role_arn=iam_role_arn,
                                   aws_profile=None, external_id=external_id, service_name='sqs',
@@ -3374,6 +3429,29 @@ class AWSSQSQueue(WazuhIntegration):
                                                         iam_role_arn=self.iam_role_arn,
                                                         service_endpoint=service_endpoint,
                                                         sts_endpoint=sts_endpoint)
+
+    def _validate_params(self, external_id: Optional[str], name: Optional[str], iam_role_arn: Optional[str]):
+        """
+        Class for getting AWS SQS Queue notifications.
+        Parameters
+        ----------
+        external_id : Optional[str]
+            The name of the External ID to use.
+        name: Optional[str]
+            Name of the SQS Queue.
+        iam_role_arn : Optional[str]
+            IAM Role.
+        """
+
+        if iam_role_arn is None:
+            print('ERROR: Used a subscriber but no --iam_role_arn provided.')
+            sys.exit(21)
+        if name is None:
+            print('ERROR: Used a subscriber but no --queue provided.')
+            sys.exit(21)
+        if external_id is None:
+            print('ERROR: Used a subscriber but no --external_id provided.')
+            sys.exit(21)
 
     def _get_sqs_url(self) -> str:
         """Get the URL of the AWS SQS queue
@@ -3549,9 +3627,63 @@ def arg_valid_iam_role_duration(arg_string):
         If the number provided is not in the expected range.
     """
     # Session duration must be between 15m and 12h
-    if not (arg_string is None or (900 <= int(arg_string) <= 3600)):
+    # Session duration must be between 15m and 12h
+    if arg_string is None:
+        return None
+
+    # Validate if the argument is a number
+    if not arg_string.isdigit():
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be a valid number.")
+
+    # Convert to integer and check range
+    num_seconds = int(arg_string)
+    if not (900 <= num_seconds <= 3600):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
-    return int(arg_string)
+
+    return num_seconds
+
+
+def args_valid_iam_role_arn(iam_role_arn):
+    """Checks if the IAM role ARN specified is a valid parameter.
+
+    Parameters
+    ----------
+    iam_role_arn : str
+        The IAM role ARN to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the ARN provided is not in the expected format.
+    """
+    pattern = r'^arn:(?P<Partition>[^:\n]*):(?P<Service>[^:\n]*):(?P<Region>[^:\n]*):(?P<AccountID>[^:\n]*):(?P<Ignore>(?P<ResourceType>[^:\/\n]*)[:\/])?(?P<Resource>.*)$'
+
+    if not re.match(pattern, iam_role_arn):
+        raise argparse.ArgumentTypeError("Invalid ARN Role specified. Value must be a valid ARN Role.")
+
+    return iam_role_arn
+
+
+def args_valid_sqs_name(sqs_name):
+    """Checks if the SQS name specified is a valid parameter.
+
+    Parameters
+    ----------
+    sqs_name : str
+        The SQS name to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the SQS name provided is not in the expected format.
+    """
+    pattern = r'^[a-zA-Z0-9-_]{1,80}$'
+
+    if not re.match(pattern, sqs_name):
+        raise argparse.ArgumentTypeError("Invalid SQS Name specified. Value must be up to 80 characters and the valid "
+                                         "values are alphanumeric characters, hyphens (-), and underscores (_)")
+
+    return sqs_name
 
 
 def arg_valid_bucket_name(arg: str) -> str:
@@ -3605,7 +3737,7 @@ def get_script_arguments():
     group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the type of the subscriber',
                        action='store')
     parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
-                        action='store')
+                        type=args_valid_sqs_name, action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3627,6 +3759,7 @@ def get_script_arguments():
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
+                        type=args_valid_iam_role_arn,
                         default=None)
     parser.add_argument('-n', '--aws_account_alias', dest='aws_account_alias',
                         help='AWS Account ID Alias', default='')
