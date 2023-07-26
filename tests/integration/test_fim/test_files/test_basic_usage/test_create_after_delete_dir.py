@@ -31,7 +31,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LO
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_create_after_delete(test_configuration, test_metadata, truncate_monitored_files, set_wazuh_configuration,
-                             configure_local_internal_options, folder_to_monitor,  daemons_handler, file_to_monitor,
+                             configure_local_internal_options, folder_to_monitor, file_to_monitor, daemons_handler,
                              start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
