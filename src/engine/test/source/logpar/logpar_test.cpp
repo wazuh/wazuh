@@ -180,7 +180,7 @@ INSTANTIATE_TEST_SUITE_P(
         FieldParserT(true, "<~ecs_.name//1//3//>leftover", "~ecs_.name", true, {"", "1", "", "3", "", ""}, false, 20),
         FieldParserT(true, "<~>", "~", true, {}, false, 3),
         FieldParserT(true, "<~//1//3//>", "~", true, {"", "1", "", "3", "", ""}, false, 11),
-        FieldParserT(true, "<_name>", {}, {}, {}, {}, 1),
+        FieldParserT(true, "<_name>", "_name", true, {}, false, 7),
         FieldParserT(true, "<~_name>", "~_name", true, {}, false, 8),
         FieldParserT(false, "<n'me>", {}, {}, {}, {}, 2),
         FieldParserT(false, "<~n'me>", {}, {}, {}, {}, 3),
