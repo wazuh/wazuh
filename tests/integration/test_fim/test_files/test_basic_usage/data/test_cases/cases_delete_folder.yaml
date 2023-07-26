@@ -9,7 +9,6 @@
   metadata:
     folder_to_monitor: /test_dir
     file_to_monitor:  /test_dir/testfile.log
-    fim_mode: realtime
 
 - name: Delete folder - Scheduled
   description: When a scheduled monitored directory es deleted
@@ -23,4 +22,3 @@
   metadata:
     folder_to_monitor: /test_dir
     file_to_monitor:  /test_dir/testfile.log
-    fim_mode: scheduled
