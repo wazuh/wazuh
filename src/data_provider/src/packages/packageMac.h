@@ -14,7 +14,9 @@
 
 #include "ipackageInterface.h"
 #include "ipackageWrapper.h"
-#include "sqlite_wrapper.h"
+#ifdef __APPLE__
+#include "sqliteWrapperTemp.h"
+#endif
 
 struct PackageContext
 {

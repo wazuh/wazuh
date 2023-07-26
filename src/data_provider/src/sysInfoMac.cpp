@@ -27,7 +27,7 @@
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
-#include "sqlite_wrapper.h"
+#include "sqliteWrapperTemp.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};

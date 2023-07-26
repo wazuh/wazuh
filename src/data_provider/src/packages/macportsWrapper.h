@@ -13,7 +13,7 @@
 #define _MACPORTS_WRAPPER_H
 
 #include "ipackageWrapper.h"
-#include "sqlite_wrapper.h"
+#include "sqliteWrapperTemp.h"
 
 const std::map<std::string, int> columnIndexes
 {
