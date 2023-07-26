@@ -15,23 +15,23 @@ auto constexpr INTERNAL_ROUTE_TABLE = R"([
     }
 ])";
 
-auto constexpr DECODER = R"({
+auto constexpr DECODER = R"e({
+    "name": "decoder/core-hostinfo/0",
     "check": [
         {
-            "wazuh.queue": 51
+        "wazuh.queue": 51
         }
     ],
-    "name": "decoder/core-hostinfo/0",
     "normalize": [
         {
-            "map": [
-                {
-                    "wazuh.decoders": "+array_append/core-hostinfo"
-                }
-            ]
+        "map": [
+            {
+            "wazuh.decoders": "array_append(core-hostinfo)"
+            }
+        ]
         }
     ]
-})";
+    })e";
 
 auto constexpr FILTER_ALLOW = R"({
     "name": "filter/allow-all/0"
@@ -39,7 +39,11 @@ auto constexpr FILTER_ALLOW = R"({
 
 auto constexpr FILTER_DUMMY = R"({
     "name": "filter/dummy_filter/0",
-    "check": "~TestSessionID==1 OR ~TestSessionID==2 OR ~TestSessionID==3"
+    "check": [
+        {
+            "TestSessionID": 1
+        }
+    ]
 })";
 
 auto constexpr INTEGRATION = R"({
