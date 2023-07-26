@@ -58,9 +58,12 @@ public:
 
         if (it != observers.end())
         {
-            throw std::runtime_error("Observer already attached");
+            *it = observer;
         }
-        observers.push_back(observer);
+        else
+        {
+            observers.push_back(observer);
+        }
     }
 
     void detach(const std::string& observerId)

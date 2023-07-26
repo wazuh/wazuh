@@ -45,6 +45,10 @@ TEST_F(RouterInterfaceTest, TestDoubleProviderInit)
     EXPECT_NO_THROW({ provider->start(); });
 }
 
+/**
+ * @brief Test that a subscriber can be created after a provider is started
+ * double subscription is allowed and the second one replaces the first one.
+ */
 TEST_F(RouterInterfaceTest, TestDoubleSubscriberInit)
 {
     auto provider = std::make_unique<RouterProvider>("test");
@@ -55,7 +59,7 @@ TEST_F(RouterInterfaceTest, TestDoubleSubscriberInit)
 
     EXPECT_NO_THROW({ subscriptor->subscribe([](const std::vector<char>&) {}); });
 
-    EXPECT_THROW({ subscriptor->subscribe([](const std::vector<char>&) {}); }, std::runtime_error);
+    EXPECT_NO_THROW({ subscriptor->subscribe([](const std::vector<char>&) {}); });
 
     EXPECT_NO_THROW({
         subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
