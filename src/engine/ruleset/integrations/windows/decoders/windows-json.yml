@@ -21,7 +21,7 @@ check:
 
 parse:
   logpar:
-    - event.original: <json_event/json>
+    - event.original: <~json/json>
 
 normalize:
  - map:
