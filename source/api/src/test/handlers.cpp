@@ -40,11 +40,11 @@ constexpr auto API_SESSIONS_DATA_FORMAT = R"({"name":"","id":"","creationdate":0
 
 constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")";    ///< JSON name field format, where '{}' is the asset name
 constexpr auto FILTER_CONTENT_FORMAT =
-    R"({{"name": "{}", "check":[{{"~TestSessionID":{}}}]}})"; ///< Filter content format
+    R"({{"name": "{}", "check":[{{"TestSessionID":{}}}]}})"; ///< Filter content format
 constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0"; ///< Filter name format, '{}' is the session name
 constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy name format, '{}' is the session name
 constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
-constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "~TestSessionID";    ///< Field to check in filter.
+constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "TestSessionID";    ///< Field to check in filter.
 constexpr auto TEST_DEFAULT_PROTOCOL_LOCATION = "api.test";         ///< Default protocol location
 
 constexpr auto FILTER_NOT_REMOVED_MSG = "Filter '{}' could not be removed from the catalog: {}";
@@ -57,9 +57,6 @@ constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
 
 constexpr auto DEFAULT_TIMEOUT {1000};
 
-std::atomic<bool> callbackRunning(false);
-std::mutex queueMutex;
-
 auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
     -> std::function<void(const rxbk::RxEvent&)>
 {
@@ -67,15 +64,24 @@ auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSyn
     {
         std::stringstream output;
         output << event->payload()->prettyStr() << std::endl;
-        dataSync->output = output.str();
+        dataSync->m_output = output.str();
 
         {
-            std::unique_lock<std::mutex> lock(dataSync->sync);
-            dataSync->dataIsReady = true;
+            std::unique_lock<std::mutex> lock(dataSync->m_sync);
+            if (dataSync->m_hasTimedout)
+            {
+                dataSync->m_hasTimedout = false;
+                dataSync->m_output.clear();
+                dataSync->m_history.clear();
+                dataSync->m_trace.clear();
+            }
+            else
+            {
+                dataSync->m_processedData = true;
+            }
         }
 
-        dataSync->cv_data.notify_all();
-        callbackRunning.store(false);
+        dataSync->m_cvData.notify_all();
     };
 }
 
@@ -89,7 +95,7 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
         std::smatch match;
         if (std::regex_search(trace, match, opRegex))
         {
-            dataSync->history.emplace_back(std::make_pair(match[1].str(), match[2].str()));
+            dataSync->m_history.emplace_back(std::make_pair(match[1].str(), match[2].str()));
         }
         constexpr auto opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
         const std::regex opRegexVerbose(opPatternTraceVerbose);
@@ -98,7 +104,7 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
         {
             auto traceStream = std::make_shared<std::stringstream>();
             *traceStream << trace;
-            dataSync->trace[matchVerbose[1].str()].push_back(traceStream);
+            dataSync->m_trace[matchVerbose[1].str()].push_back(traceStream);
         }
     };
 }
@@ -111,32 +117,36 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
 {
     // Wait until callbacks have been executed
     {
-        std::unique_lock<std::mutex> lock(dataSync->sync);
-        dataSync->cv_data.wait(lock, [dataSync] { return dataSync->dataIsReady; });
-        dataSync->dataIsReady = false;
+        std::unique_lock<std::mutex> lock(dataSync->m_sync);
+        if (!dataSync->m_cvData.wait_for(lock, std::chrono::milliseconds(DEFAULT_TIMEOUT), [dataSync] { return dataSync->m_processedData; }))
+        {
+            dataSync->m_hasTimedout = true;
+            return base::Error {"The maximum time to process the event has expired"};
+        }
+        dataSync->m_processedData = false;
     }
 
     auto trace = json::Json {R"({})"};
     if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
-        if (dataSync->history.empty())
+        if (dataSync->m_history.empty())
         {
-            dataSync->trace.clear();
+            dataSync->m_trace.clear();
             return base::Error {fmt::format(
-                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->asset)};
+                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
         }
 
-        for (const auto& [asset, condition] : dataSync->history)
+        for (const auto& [asset, condition] : dataSync->m_history)
         {
-            if (dataSync->trace.find(asset) == dataSync->trace.end())
+            if (dataSync->m_trace.find(asset) == dataSync->m_trace.end())
             {
-                dataSync->trace.clear();
+                dataSync->m_trace.clear();
                 return base::Error {fmt::format(
-                    "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->asset)};
+                    "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
             }
 
             std::set<std::string> uniqueTraces; // Set for warehouses single traces
-            for (const auto& traceStream : dataSync->trace[asset])
+            for (const auto& traceStream : dataSync->m_trace[asset])
             {
                 uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
             }
@@ -157,31 +167,32 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
             }
         }
 
-        dataSync->trace.clear();
+        dataSync->m_trace.clear();
     }
     else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
     {
-        if (dataSync->history.empty())
+        if (dataSync->m_history.empty())
         {
-            dataSync->trace[dataSync->asset].clear();
+            dataSync->m_trace[dataSync->m_asset].clear();
             return base::Error {fmt::format(
-                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->asset)};
+                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
         }
 
-        for (const auto& [asset, condition] : dataSync->history)
+        for (const auto& [asset, condition] : dataSync->m_history)
         {
             trace.setString(condition, std::string("/") + asset);
         }
-        dataSync->trace.clear();
+        dataSync->m_trace.clear();
     }
 
-    dataSync->trace.clear();
+    dataSync->m_trace.clear();
+    // TODO: Add a method to verify that a json is empty
     if (R"({})" == trace.prettyStr())
     {
-        dataSync->trace.clear();
-        return std::make_tuple(dataSync->output, std::string());
+        dataSync->m_trace[dataSync->m_asset].clear();
+        return std::make_tuple(dataSync->m_output, std::string());
     }
-    return std::make_tuple(dataSync->output, trace.prettyStr());
+    return std::make_tuple(dataSync->m_output, trace.prettyStr());
 }
 
 } // namespace
@@ -1036,40 +1047,13 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
 
         auto dataSync = session->getDataSync();
         auto expected {false};
-        if (callbackRunning.compare_exchange_strong(expected, true))
+        if (dataSync->m_sessionVisit.compare_exchange_strong(expected, true))
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            std::atomic<bool> timeoutOccurred(false);
-            std::thread timerThread(
-                [&]
-                {
-                    auto startTimer = std::chrono::high_resolution_clock::now();
-                    while (!dataSync->dataIsReady)
-                    {
-                        auto currentTime = std::chrono::high_resolution_clock::now();
-                        auto elapsedTime =
-                            std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTimer).count();
-                        if (elapsedTime > DEFAULT_TIMEOUT)
-                        {
-                            timeoutOccurred.store(true);
-                            break;
-                        }
-                    }
-                });
-
             // Enqueue event
             const auto enqueueEventError = router->enqueueEvent(std::move(event));
             if (enqueueEventError.has_value())
             {
-                timerThread.join();
                 return ::api::adapter::genericError<ResponseType>(enqueueEventError.value().message);
-            }
-
-            timerThread.join();
-
-            if (timeoutOccurred.load())
-            {
-                return ::api::adapter::genericError<ResponseType>("The maximum time to process the event has expired");
             }
         }
         else
@@ -1079,6 +1063,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
 
         // Get payload (output and traces)
         const auto payload = getData(dataSync, routerDebugMode, assetTrace);
+        dataSync->m_sessionVisit.store(false);
         if (std::holds_alternative<base::Error>(payload))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(payload).message);

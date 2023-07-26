@@ -6,23 +6,23 @@ namespace graph
 namespace assets
 {
 
-auto constexpr DECODER = R"({
+auto constexpr DECODER = R"e({
+    "name": "decoder/core-hostinfo/0",
     "check": [
         {
-            "wazuh.queue": 51
+        "wazuh.queue": 51
         }
     ],
-    "name": "decoder/core-hostinfo/0",
     "normalize": [
         {
-            "map": [
-                {
-                    "wazuh.decoders": "+array_append/core-hostinfo"
-                }
-            ]
+        "map": [
+            {
+            "wazuh.decoders": "array_append(core-hostinfo)"
+            }
+        ]
         }
     ]
-})";
+    })e";
 
 auto constexpr FILTER = R"({
     "name": "filter/allow-all/0"
