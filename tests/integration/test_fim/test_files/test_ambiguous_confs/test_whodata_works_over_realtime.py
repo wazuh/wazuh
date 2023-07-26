@@ -65,7 +65,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import SENDING_FIM_EVENT, WHODATA_DELETED_EVENT
+from wazuh_testing.modules.fim.patterns import FIM_ADDED_EVENT, FIM_DELETED_EVENT
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
@@ -168,13 +168,13 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     test_file = Path(folder_to_monitor, test_metadata['test_file'])
     
     file.write_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(SENDING_FIM_EVENT), only_new_events=True)
+    wazuh_log_monitor.start(callback=generate_callback(FIM_ADDED_EVENT))
     event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
     print(event_data)
     assert event_data.get('mode') == 'whodata'
     
     file.remove_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(SENDING_FIM_EVENT), only_new_events=True)
+    wazuh_log_monitor.start(callback=generate_callback(FIM_DELETED_EVENT))
     event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
     print(event_data)
     assert event_data.get('mode') == 'whodata'
