@@ -58,8 +58,6 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 # Marks
 pytestmark = pytest.mark.tier(level=0)
 
-# variables
-force_restart_after_restoring = True
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_invalid_configuration.yaml')

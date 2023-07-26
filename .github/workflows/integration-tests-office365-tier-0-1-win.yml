@@ -86,3 +86,4 @@ jobs:
         run: |
           cd C:\wazuh\tests\integration
           python -m pytest --tier 0 --tier 1 test_office365\
+          

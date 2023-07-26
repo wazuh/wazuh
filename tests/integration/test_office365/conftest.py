@@ -11,7 +11,7 @@ from wazuh_testing.utils import callbacks
 
 @pytest.fixture()
 def wait_for_office365_start():
-    # Wait for module github starts
+    # Wait for module office365 starts
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_STARTED, {
                               'integration': 'Office365'
