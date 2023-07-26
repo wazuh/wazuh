@@ -26,7 +26,7 @@ definitions:
     "4": "Information"
     "5": "Verbose"
 
-check: wazuh.origin=="EventChannel" OR exists($~json.Event)
+check: $wazuh.origin=="EventChannel" OR exists($~json.Event)
 
 parse:
   logpar:
