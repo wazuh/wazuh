@@ -92,7 +92,7 @@ if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                     configure_local_internal_options, folder_to_monitor, daemons_handler, start_monitoring):
+                                     configure_local_internal_options, folder_to_monitor, daemons_handler):
     '''
     description: Check if when using the options who-data and real-time at the same time
                  the value of 'whodata' is the one used. For example, when using 'whodata=yes'
