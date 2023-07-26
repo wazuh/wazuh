@@ -6,6 +6,7 @@
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
+      whodata: 'yes'
   metadata:
     folder_to_monitor: /test_dir
     file_to_monitor:  /test_dir/testfile.log
@@ -19,6 +20,7 @@
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
+      whodata: 'yes'
   metadata:
     folder_to_monitor: /test_dir
     file_to_monitor:  /test_dir/testfile.log
