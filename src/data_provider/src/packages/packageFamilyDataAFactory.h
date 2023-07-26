@@ -17,7 +17,7 @@
 #include "packageMac.h"
 #include "packageSolaris.h"
 #include "sharedDefs.h"
-#include "sqlite_wrapper.h"
+#include "sqlite_wrapper_temp.h"
 
 template <OSPlatformType osType>
 class FactoryPackageFamilyCreator final

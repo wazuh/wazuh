@@ -42,8 +42,6 @@ include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
-include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/)
-include_directories(${SRC_FOLDER}/shared_modules/dbsync/include)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
@@ -106,7 +104,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
         "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-        "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/sqlite_wrapper.cpp"
         "${CMAKE_SOURCE_DIR}/src/hardware/*ARMMac.cpp")
   else()
     file(GLOB SYSINFO_SRC
@@ -115,7 +112,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
         "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-        "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/sqlite_wrapper.cpp"
         "${CMAKE_SOURCE_DIR}/src/hardware/*X86_64Mac.cpp")
   endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
