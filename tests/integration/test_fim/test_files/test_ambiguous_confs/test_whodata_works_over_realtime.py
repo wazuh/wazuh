@@ -56,6 +56,7 @@ pytest_args:
 tags:
     - fim_ambiguous_confs
 '''
+import re
 import sys
 import pytest
 
@@ -64,7 +65,8 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import WHODATA_ADDED_EVENT, WHODATA_DELETED_EVENT
+from wazuh_testing.modules.fim.patterns import SENDING_FIM_EVENT, WHODATA_DELETED_EVENT
+from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -88,6 +90,9 @@ test_configuration = load_configuration_template(config_path, test_configuration
 daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
+
+
+GET_FIM_EVENT_JSON =  r'.*Sending FIM event: (.+)$'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
@@ -163,9 +168,13 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     test_file = Path(folder_to_monitor, test_metadata['test_file'])
     
     file.write_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(WHODATA_ADDED_EVENT))
-    assert wazuh_log_monitor.callback_result
+    wazuh_log_monitor.start(callback=generate_callback(SENDING_FIM_EVENT), only_new_events=True)
+    event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
+    print(event_data)
+    assert event_data.get('mode') == 'whodata'
     
     file.remove_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(WHODATA_DELETED_EVENT))
-    assert wazuh_log_monitor.callback_result
+    wazuh_log_monitor.start(callback=generate_callback(SENDING_FIM_EVENT), only_new_events=True)
+    event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
+    print(event_data)
+    assert event_data.get('mode') == 'whodata'
