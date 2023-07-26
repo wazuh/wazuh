@@ -12,7 +12,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -95,7 +95,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -184,7 +184,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -281,7 +281,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -368,7 +368,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -457,7 +457,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -546,7 +546,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -627,7 +627,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -681,7 +681,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -764,7 +764,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -853,7 +853,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -938,7 +938,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -1025,7 +1025,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -1116,7 +1116,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -1205,7 +1205,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -1293,7 +1293,7 @@
                 "core-wazuh-message",
                 "core-windows",
                 "integrations",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"

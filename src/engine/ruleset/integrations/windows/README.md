@@ -44,7 +44,7 @@ To capture Powershell and Sysmon events, modify the `ossec.conf` file in a monit
 | decoder/windows-powershell/0 | Decoder for Windows Powershell events |
 | decoder/windows-powershell-operational/0 | Decoder for Windows Powershell Operational events |
 | decoder/windows-json/0 | Partial parent decoder for Windows events |
-| decoder/windows-event-decoder/0 | Parent decoder for Windows events |
+| decoder/windows-event/0 | Parent decoder for Windows events |
 | decoder/windows-security/0 | Decoder for Windows Security events |
 ## Rules
 

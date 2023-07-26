@@ -11,7 +11,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -88,7 +88,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -159,7 +159,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -231,7 +231,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -316,7 +316,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -394,7 +394,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
@@ -470,7 +470,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-security"
             ],
             "source": "logcollector"
