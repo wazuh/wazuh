@@ -8,7 +8,6 @@
 #include <rapidjson/writer.h>
 #include <yaml-cpp/yaml.h>
 
-// #TODO Adds a thread-safe mechanism (?)
 namespace yml
 {
 constexpr auto QUOTED_TAG = "!";

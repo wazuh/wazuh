@@ -10,7 +10,7 @@
 #include <logging/logging.hpp>
 #include <register.hpp>
 #include <registry.hpp>
-#include <schemf/mocks/emptySchema.hpp>
+#include <schemf/test/mocks/schemf/emptySchema.hpp>
 #include <store/mockStore.hpp>
 
 void inline initLogging(void)

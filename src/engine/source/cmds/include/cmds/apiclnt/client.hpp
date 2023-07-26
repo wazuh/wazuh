@@ -51,7 +51,7 @@ public:
         std::string error {};
         std::string response {};
 
-        auto gracefullEnd = [timer, this](uvw::PipeHandle& client)
+        auto gracefullEnd = [loop = m_loop, timer](uvw::PipeHandle& client)
         {
             if (!timer->closing())
             {
@@ -62,7 +62,7 @@ public:
             {
                 client.close();
             }
-            m_loop->stop();
+            loop->stop();
         };
 
         clientHandle->on<uvw::ErrorEvent>(
@@ -74,11 +74,11 @@ public:
             });
 
         clientHandle->once<uvw::ConnectEvent>(
-            [&requestWithHeader, timer, this](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            [&requestWithHeader, timer, timeout = m_timeout](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
             {
                 std::vector<char> buffer {requestWithHeader.begin(), requestWithHeader.end()};
                 handle.write(buffer.data(), buffer.size());
-                timer->start(uvw::TimerHandle::Time {m_timeout}, uvw::TimerHandle::Time {m_timeout});
+                timer->start(uvw::TimerHandle::Time {timeout}, uvw::TimerHandle::Time {timeout});
                 handle.read();
             });
 
@@ -113,7 +113,7 @@ public:
             });
 
         clientHandle->once<uvw::EndEvent>(
-            [this, gracefullEnd, &error](const uvw::EndEvent&, uvw::PipeHandle& handle)
+            [gracefullEnd, &error](const uvw::EndEvent&, uvw::PipeHandle& handle)
             {
                 error = "Connection closed by server";
                 gracefullEnd(handle);
@@ -121,7 +121,7 @@ public:
             });
 
         clientHandle->once<uvw::CloseEvent>(
-            [this, gracefullEnd](const uvw::CloseEvent&, uvw::PipeHandle& handle)
+            [gracefullEnd](const uvw::CloseEvent&, uvw::PipeHandle& handle)
             {
                 gracefullEnd(handle);
             });
@@ -145,7 +145,7 @@ public:
             });
 
         timer->on<uvw::CloseEvent>(
-            [this](const uvw::CloseEvent&, uvw::TimerHandle& timer)
+            [](const uvw::CloseEvent&, uvw::TimerHandle& timer)
             {
             });
 

@@ -780,7 +780,7 @@ INSTANTIATE_TEST_SUITE_P(
                         "status": "OK",
                         "run": {
                             "output": {
-                                "~TestSessionID": 1,
+                                "TestSessionID": 1,
                                 "wazuh": {
                                     "message": "hello world!",
                                     "location": "api.test",
@@ -793,7 +793,7 @@ INSTANTIATE_TEST_SUITE_P(
                         "status": "OK",
                         "run": {
                             "output": {
-                                "~TestSessionID": 1,
+                                "TestSessionID": 1,
                                 "wazuh": {
                                     "location": "api.test",
                                     "message": "hello world!",
@@ -813,7 +813,7 @@ INSTANTIATE_TEST_SUITE_P(
                         "status": "OK",
                         "run": {
                             "output": {
-                                "~TestSessionID": 1,
+                                "TestSessionID": 1,
                                 "wazuh": {
                                     "location": "api.test",
                                     "queue": 1,

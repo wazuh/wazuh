@@ -106,7 +106,31 @@ processJson(const json::Json& jsonObject, const std::string& jsonPath, const std
 inline void printYML(const YAML::Node& node)
 {
     YAML::Emitter out;
-    out << node;
+
+    // Sort traces
+    if (node["Traces"])
+    {
+        // Sort sections alphabetically
+        std::vector<std::string> sections;
+        for (const auto& section : node["Traces"])
+        {
+            sections.push_back(section.first.as<std::string>());
+        }
+        std::sort(sections.begin(), sections.end());
+
+        // Create a new yaml node with the ordered sections
+        YAML::Node sortedConfig;
+        for (const auto& section : sections)
+        {
+            sortedConfig["Traces"][section] = node["Traces"][section];
+        }
+        out << sortedConfig;
+    }
+    else
+    {
+        out << node;
+    }
+
     std::cout << std::endl << out.c_str() << std::endl << std::endl;
 }
 
@@ -239,13 +263,14 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     eRequest.set_protocol_queue(parameters.protocolQueue);
 
     // Set debug mode
+    // TODO: Need to add one more debug level '-ddd'
     eTest::DebugMode debugModeMap;
     switch (parameters.debugLevel)
     {
         case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
         case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
-        case OUTPUT_ONLY:
-        default: debugModeMap = eTest::DebugMode::OUTPUT_ONLY;
+        case OUTPUT_ONLY: debugModeMap = eTest::DebugMode::OUTPUT_ONLY; break;
+        default: throw std::runtime_error {"Debug level greater than '-dd' is not supported."};
     }
     eRequest.set_debug_mode(debugModeMap);
 
@@ -288,8 +313,6 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
                           << std::endl;
             }
         }
-
-        std::cerr << "exiittt   " << std::endl;
 
         if (isatty(fileno(stdin)))
         {
