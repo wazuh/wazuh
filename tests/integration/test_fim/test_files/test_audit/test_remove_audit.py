@@ -91,8 +91,8 @@ local_internal_options = {SYSCHECK_DEBUG: 2,AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_remove_audit(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                      configure_local_internal_options, uninstall_audit,daemons_handler):
+def test_remove_audit(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                      uninstall_audit, truncate_monitored_files, daemons_handler):
     '''
     description: Check if FIM switches the monitoring mode of the testing directories from 'who-data'
                  to 'realtime' when the 'auditd' package is not installed. For this purpose, the test

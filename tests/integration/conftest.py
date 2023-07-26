@@ -63,7 +63,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config, items: List[pytest.Item]) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item]) -> None:
     """Deselect tests that do not match with the specified environment or tier.
 
     Args:
@@ -176,7 +176,7 @@ def truncate_monitored_files_implementation() -> None:
         log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH,
                      WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_CLIENT_KEYS_PATH]
     else:
-        log_files = [WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH]
+        log_files = [WAZUH_LOG_PATH]
 
     for log_file in log_files:
         if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
