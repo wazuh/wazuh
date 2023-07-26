@@ -1,7 +1,7 @@
 name: decoder/windows-powershell/0
 
 parents:
-  - decoder/windows-event-decoder/0
+  - decoder/windows-event/0
 
 metadata:
   description: Decoder for Windows Powershell events
@@ -17,15 +17,15 @@ metadata:
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
-  - ~windows.System.Channel.#text: string_equal(Windows PowerShell)
+  - windows.System.Channel.#text: string_equal(Windows PowerShell)
 
 normalize:
  - map:
-   - ~windows.EventData.2: replace(\t, )
-   - ~windows.EventData.2: replace(   ,   )
-   - ~windows.EventData.2: replace(  ,\,)
+   - windows.EventData.2: replace(\t, )
+   - windows.EventData.2: replace(   ,   )
+   - windows.EventData.2: replace(  ,\,)
  - logpar:
-    - ~windows.EventData.2: <~temp.event_data/kv/=/,/'/'>
+    - windows.EventData.2: <temp.event_data/kv/=/,/'/'>
 
  - map:
    - wazuh.decoders: array_append(windows-powershell)
@@ -33,42 +33,42 @@ normalize:
    - event.kind: event
    - event.category: array_append(process)
    - event.type: array_append(info)
-   - event.sequence: $~temp.event_data.SequenceNumber
+   - event.sequence: $temp.event_data.SequenceNumber
 
   ## Process fields.
-   - process.entity_id: $~temp.event_data.HostId
-   - process.command_line: $~temp.event_data.HostApplication
-   - process.title: $~temp.event_data.HostName
-   - process.executable: $~temp.event_data.ScriptName
+   - process.entity_id: $temp.event_data.HostId
+   - process.command_line: $temp.event_data.HostApplication
+   - process.title: $temp.event_data.HostName
+   - process.executable: $temp.event_data.ScriptName
 
   ## User fields.
-   - ~temp.user_parts: split($~temp.event_data.UserId, \)
-   - user.domain: $~temp.user_parts.0
-   - user.name: $~temp.user_parts.1
+   - temp.user_parts: split($temp.event_data.UserId, \)
+   - user.domain: $temp.user_parts.0
+   - user.name: $temp.user_parts.1
    - related.user: array_append($user.name)
 
   ## PowerShell fields.
-   - ~powershell.engine.new_state: $~temp.event_data.NewEngineState
-   - ~powershell.engine.previous_state: $~temp.event_data.PreviousEngineState
-   - ~powershell.provider.new_state: $~temp.event_data.NewProviderState
-   - ~powershell.provider.name: $~temp.event_data.ProviderName
-   - ~powershell.total: $~temp.event_data.DetailTotal
-   - ~powershell.sequence: $~temp.event_data.DetailSequence
-   - ~powershell.engine.version: $~temp.event_data.EngineVersion
-   - ~powershell.pipeline_id: $~temp.event_data.PipelineId
-   - ~powershell.runspace_id: $~temp.event_data.RunspaceId
-   - ~powershell.process.executable_version: $~temp.event_data.HostVersion
-   - ~powershell.command.value: $~temp.event_data.CommandLine
-   - ~powershell.command.path: $~temp.event_data.CommandPath
-   - ~powershell.command.name: $~temp.event_data.CommandName
-   - ~powershell.command.type: $~temp.event_data.CommandType
+   - powershell.engine.new_state: $temp.event_data.NewEngineState
+   - powershell.engine.previous_state: $temp.event_data.PreviousEngineState
+   - powershell.provider.new_state: $temp.event_data.NewProviderState
+   - powershell.provider.name: $temp.event_data.ProviderName
+   - powershell.total: $temp.event_data.DetailTotal
+   - powershell.sequence: $temp.event_data.DetailSequence
+   - powershell.engine.version: $temp.event_data.EngineVersion
+   - powershell.pipeline_id: $temp.event_data.PipelineId
+   - powershell.runspace_id: $temp.event_data.RunspaceId
+   - powershell.process.executable_version: $temp.event_data.HostVersion
+   - powershell.command.value: $temp.event_data.CommandLine
+   - powershell.command.path: $temp.event_data.CommandPath
+   - powershell.command.name: $temp.event_data.CommandName
+   - powershell.command.type: $temp.event_data.CommandType
 
   # Add file information.
-   - file.path: $~temp.event_data.ScriptName
-   - ~temp.file_data: parse_file($file.path)
-   - file.directory: $~temp.file_data.path
-   - file.extension: $~temp.file_data.ext
-   - file.name: $~temp.file_data.name
+   - file.path: $temp.event_data.ScriptName
+   - temp.file_data: parse_file($file.path)
+   - file.directory: $temp.file_data.path
+   - file.extension: $temp.file_data.ext
+   - file.name: $temp.file_data.name
 
  - check: $event.code=="400"
    map:
@@ -80,5 +80,5 @@ normalize:
 
 # Cleanup
  - map:
-   - ~temp: delete()
-   - ~windows: delete()
+   - temp: delete()
+   - windows: delete()

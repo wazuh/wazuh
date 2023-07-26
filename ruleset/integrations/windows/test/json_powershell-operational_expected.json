@@ -11,7 +11,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-powershell-operational"
             ],
             "source": "logcollector"
@@ -65,7 +65,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-powershell-operational"
             ],
             "source": "logcollector"
