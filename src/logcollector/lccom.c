@@ -131,7 +131,9 @@ uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, 
 
         if (currentIndex != 1 && (counter < OS_MAXSTR - OS_SIZE_1024)) {
             memset(output, 0, OS_MAXSTR);
-            strncpy(output, outjson + ptrs[initialIndex] - ptrs[0], ptrs[currentIndex-1] - ptrs[initialIndex-1] + strlen(outjson + ptrs[currentIndex-1] - ptrs[0]));
+            strncpy(output, outjson + ptrs[initialIndex] - ptrs[0],
+                ptrs[currentIndex-1] - ptrs[initialIndex == 0 ? initialIndex : (initialIndex-1)] +
+                strlen(outjson + ptrs[currentIndex-1] - ptrs[0]));
         }
     }
     *sizeOutput = counter;
