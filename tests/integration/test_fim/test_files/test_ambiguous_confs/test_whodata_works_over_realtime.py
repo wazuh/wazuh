@@ -97,7 +97,7 @@ GET_FIM_EVENT_JSON =  r'.*Sending FIM event: (.+)$'
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                     truncate_monitored_files, folder_to_monitor, daemons_handler):
+                                     truncate_monitored_files, folder_to_monitor, daemons_handler, fill_folder_to_monitor):
     '''
     description: Check if when using the options who-data and real-time at the same time
                  the value of 'whodata' is the one used. For example, when using 'whodata=yes'
