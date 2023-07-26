@@ -12,7 +12,7 @@
               - whodata: WHODATA
               - realtime: REALTIME
         - ignore:
-            value: /test_dir_1/testfile
+            value: /home/test_dir_1/testfile
         - ignore:
             value: regex_testfile$
             attributes:
