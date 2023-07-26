@@ -208,5 +208,6 @@ extern int tcp_keepidle;
 extern int tcp_keepintvl;
 extern int tcp_keepcnt;
 extern size_t global_counter;
+extern int connection_overtake_time;
 
 #endif /* LOGREMOTE_H */
