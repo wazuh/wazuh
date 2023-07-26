@@ -1,4 +1,4 @@
-name: decoder/windows-event-decoder/0
+name: decoder/windows-event/0
 
 parents:
   - decoder/integrations/0
@@ -26,26 +26,26 @@ definitions:
     "4": "Information"
     "5": "Verbose"
 
-check: $wazuh.origin=="EventChannel" OR exists($~json.Event)
+check: $wazuh.origin=="EventChannel" OR exists($json.Event)
 
 parse:
   logpar:
-    - event.original: <~windows/xml/windows>
-    - ~json.Event: <~windows/xml/windows>
+    - event.original: <windows/xml/windows>
+    - json.Event: <windows/xml/windows>
 
 normalize:
  - map:
-   - wazuh.decoders: array_append(windows-event-decoder)
+   - wazuh.decoders: array_append(windows-event)
    - event.module: windows
    - event.dataset: general
-   - event.start: $~windows.System.TimeCreated.@SystemTime
-   - event.code: $~windows.System.EventID.#text
-   - event.id: $~windows.System.EventID.#text
+   - event.start: $windows.System.TimeCreated.@SystemTime
+   - event.code: $windows.System.EventID.#text
+   - event.id: $windows.System.EventID.#text
    - event.kind: event
-   - event.provider: $~windows.System.Provider.@Name
-   - host.name: $~windows.System.Computer.#text
+   - event.provider: $windows.System.Provider.@Name
+   - host.name: $windows.System.Computer.#text
    # Set event level
-   - log.level: get_value($_MAP_WindowsLevelToLogLevel,$~windows.System.Level.#text)
+   - log.level: get_value($_MAP_WindowsLevelToLogLevel,$windows.System.Level.#text)
 
    # Cleanup
-   - ~json: delete()
+   - json: delete()

@@ -1,7 +1,7 @@
 name: decoder/windows-powershell-operational/0
 
 parents:
-  - decoder/windows-event-decoder/0
+  - decoder/windows-event/0
 
 metadata:
   description: Decoder for Windows Powershell Operational events
@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
-check: string_equal($~windows.System.Channel.#text,Microsoft-Windows-PowerShell/Operational)
+check: string_equal($windows.System.Channel.#text,Microsoft-Windows-PowerShell/Operational)
 
 normalize:
  - map:
@@ -25,48 +25,48 @@ normalize:
    - event.dataset: powershell
    - event.category: array_append(process)
    - event.type: array_append(info)
-   - event.sequence: $~windows.EventData.SequenceNumber
+   - event.sequence: $windows.EventData.SequenceNumber
 
   # User fields
-   - ~temp.user_parts: split($~windows.EventData.User, \)
-   - destination.user.domain: $~temp.user_parts.0
-   - destination.user.name: $~temp.user_parts.1
+   - temp.user_parts: split($windows.EventData.User, \)
+   - destination.user.domain: $temp.user_parts.0
+   - destination.user.name: $temp.user_parts.1
    - related.user: array_append(destination.user.name)
-   - ~temp.connected_user_parts: split($~windows.EventData.ConnectedUser, \)
-   - source.user.domain: $~temp.connected_user_parts.0
-   - source.user.name: $~temp.connected_user_parts.1
+   - temp.connected_user_parts: split($windows.EventData.ConnectedUser, \)
+   - source.user.domain: $temp.connected_user_parts.0
+   - source.user.name: $temp.connected_user_parts.1
    - user.name: $source.user.name
    - user.domain: $source.user.domain
    - related.user: array_append($source.user.name)
 
    # PowerShell fields
-   - ~powershell.sequence: $~windows.EventData.MessageNumber
-   - ~powershell.total: $~windows.EventData.MessageTotal
-   - ~powershell.id: $~windows.EventData.ShellID
-   - ~powershell.engine.version: $~windows.EventData.EngineVersion
-   - ~powershell.pipeline_id: $~windows.EventData.PipelineID
-   - ~powershell.runspace_id: $~windows.EventData.RunspaceID
-   - ~powershell.runspace_id: $~windows.EventData.RunspaceId
-   - ~powershell.process.executable_version: $~windows.EventData.HostVersion
-   - ~powershell.command.value: $~windows.EventData.CommandLine
-   - ~powershell.command.path: $~windows.EventData.CommandPath
-   - ~powershell.command.name: $~windows.EventData.CommandName
-   - ~powershell.command.type: $~windows.EventData.CommandType
-   - ~powershell.file.script_block_id: $~windows.EventData.ScriptBlockId
-   - ~powershell.file.script_block_text: $~windows.EventData.ScriptBlockText
+   - powershell.sequence: $windows.EventData.MessageNumber
+   - powershell.total: $windows.EventData.MessageTotal
+   - powershell.id: $windows.EventData.ShellID
+   - powershell.engine.version: $windows.EventData.EngineVersion
+   - powershell.pipeline_id: $windows.EventData.PipelineID
+   - powershell.runspace_id: $windows.EventData.RunspaceID
+   - powershell.runspace_id: $windows.EventData.RunspaceId
+   - powershell.process.executable_version: $windows.EventData.HostVersion
+   - powershell.command.value: $windows.EventData.CommandLine
+   - powershell.command.path: $windows.EventData.CommandPath
+   - powershell.command.name: $windows.EventData.CommandName
+   - powershell.command.type: $windows.EventData.CommandType
+   - powershell.file.script_block_id: $windows.EventData.ScriptBlockId
+   - powershell.file.script_block_text: $windows.EventData.ScriptBlockText
 
    # File fields
-   - file.path: $~windows.EventData.Path
-   - file.path: $~windows.EventData.ScriptName
-   - ~temp.file_data: parse_file($file.path)
-   - file.directory: $~temp.file_data.path
-   - file.extension: $~temp.file_data.ext
-   - file.name: $~temp.file_data.name
+   - file.path: $windows.EventData.Path
+   - file.path: $windows.EventData.ScriptName
+   - temp.file_data: parse_file($file.path)
+   - file.directory: $temp.file_data.path
+   - file.extension: $temp.file_data.ext
+   - file.name: $temp.file_data.name
 
   # Process fields
-   - process.entity_id: $~windows.EventData.HostID
-   - process.command_line: $~windows.EventData.HostApplication
-   - process.title: $~windows.EventData.HostName
+   - process.entity_id: $windows.EventData.HostID
+   - process.command_line: $windows.EventData.HostApplication
+   - process.title: $windows.EventData.HostName
    - process.executable: $file.path
 
  - check: $event.code=="4105"
@@ -79,5 +79,5 @@ normalize:
 
 # Cleanup
  - map:
-   - ~temp: delete()
-   - ~windows: delete()
+   - temp: delete()
+   - windows: delete()

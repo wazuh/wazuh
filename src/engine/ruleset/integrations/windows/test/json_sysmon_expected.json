@@ -11,7 +11,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-sysmon"
             ],
             "source": "logcollector"
@@ -71,7 +71,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-sysmon"
             ],
             "source": "logcollector"
@@ -131,7 +131,7 @@
                 "core-windows",
                 "integrations",
                 "windows-json",
-                "windows-event-decoder",
+                "windows-event",
                 "windows-sysmon"
             ],
             "source": "logcollector"
