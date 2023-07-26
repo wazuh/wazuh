@@ -39,8 +39,7 @@ def folder_to_monitor(test_metadata: dict) -> None:
 def fill_folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
     amount = test_metadata.get('files_amount')
-    amount = 2 if not amount else amount
-    
+
     [file.write_file(Path(path, f'test{i}.log')) for i in range(amount)]
 
     yield

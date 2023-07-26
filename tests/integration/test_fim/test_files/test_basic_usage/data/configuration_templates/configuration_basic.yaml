@@ -3,12 +3,12 @@
     elements:
     - disabled:
         value: 'no'
+    - frequency:
+        value: 5
     - directories:
         value: TEST_DIR
         attributes:
         - FIM_MODE
-    - frequency:
-        value: FREQUENCY
   - section: sca
     elements:
     - enabled:
