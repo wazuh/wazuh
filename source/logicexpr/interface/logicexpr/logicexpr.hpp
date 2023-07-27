@@ -24,6 +24,7 @@ namespace logicexpr
  * @param expression String logic expression.
  * @param termBuilder Builder to generate the term's evaluation function from
  * its description.
+ * @param termParser Parser to parse the term's of the expression.
  * @return std::function<bool(Event)> Evaluation function.
  */
 template<typename Event, typename TermBuilder, typename TermParser>
