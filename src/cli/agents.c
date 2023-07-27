@@ -44,7 +44,7 @@ typedef struct agentStatus_t{
 extern char shost[512];
 static void agentsCmd(cmdStatus_t *s);
 static void agents2Cmd(cmdStatus_t *s);
-static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize);
+static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize, char *selectedId);
 
 static void agentsCursorUp  (UNUSED agentControl_t *status, UNUSED stream_t *s, UNUSED char c);
 static void agentsCursorDown(UNUSED agentControl_t *status, UNUSED stream_t *s, UNUSED char c);
@@ -68,6 +68,8 @@ static const char *cmds[] = {
 };
 static void agents2Cmd(cmdStatus_t *c){
     int st;
+    char tmp[50];
+    char selectedId[10];
     int fd, count;
     char *s;
     char key;
@@ -140,18 +142,26 @@ static void agents2Cmd(cmdStatus_t *c){
             
             if(a2s->control.refresh){
                 a2s->control.refresh = 0;
-                showAgentSet(c, a2s, 10);
+                showAgentSet(c, a2s, 10, selectedId);
+                printf("SELECTED ID: %s\r\n", selectedId);
+                if(selectedId && strlen(selectedId)){
+                    sprintf(tmp, cmds[3], selectedId);
+                    s = execute(tmp);
+
+                    if(s != NULL){
+                        //printAgentInfo(c, s);
+                    }
+                }
             }
             
-            if(a2s->exit){
-                showAgentSet(c, a2s, 10);
+            if(a2s->control.exit){
                 cmdSetState(c, 2);
             }
             
         break;
         case 2:
-            a2s = (agentStatus_t *)cmdGetCustomData(s);
-            cJSON_Delete(a2s->root);
+            //a2s = (agentStatus_t *)cmdGetCustomData(s);
+            //cJSON_Delete(a2s->root);
             cmdPrintf(c, ansiEraseScreen());
             cmdEnd(c);
         break;
@@ -200,9 +210,9 @@ static void agentsCmd(cmdStatus_t *s){
             cJSON_AddItemToObject(status->root, "data", status->agents);
 
 	        item = cJSON_CreateObject();
-            cJSON_AddStringToObject(item, "id", "000");
-            cJSON_AddStringToObject(item, "name", shost);
-            cJSON_AddStringToObject(item, "ip", "127.0.0.1");
+            cJSON_AddStringToObject(item, "id"    , "000");
+            cJSON_AddStringToObject(item, "name"  , shost);
+            cJSON_AddStringToObject(item, "ip"    , "127.0.0.1");
             cJSON_AddStringToObject(item, "status", "server_status");
             cJSON_AddItemToArray(status->agents, item);
 
@@ -227,10 +237,9 @@ static void agentsCmd(cmdStatus_t *s){
             }
             if(status->control.refresh){
                 status->control.refresh = 0;
-                showAgentSet(s, status, 10);
+                showAgentSet(s, status, 10, NULL);
             }
             if(status->control.exit){
-                showAgentSet(s, status, 10);
                 cmdSetState(s, 2);
             }
         break;
@@ -243,10 +252,16 @@ static void agentsCmd(cmdStatus_t *s){
     }
 }
 
-static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
+static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize, char *selectedId){
     int i = 0;
     //cJSON *agents = cJSON_GetObjectItem(set->root, "data");
     cJSON * item, *id, *name, *ip, *stat;
+
+    if(!selectedId)
+        return;
+
+    selectedId[0] = 0;
+
     do{
         item = cJSON_GetArrayItem(set->agents, i);
 
@@ -255,6 +270,9 @@ static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
             name = cJSON_GetObjectItem(item, "name");
             ip = cJSON_GetObjectItem(item, "ip");
             stat = cJSON_GetObjectItem(item, "status");
+            if(set->control.selectedAgent == i){
+                strcpy(selectedId, id->valuestring);
+            }
             cmdDraw(s, "│ %s%-4s │ %-20s │ %-20s │ %-20s\033[0m │\r\n", 
                 set->control.selectedAgent == i? "\033[47m\033[30m":"",
                 id->valuestring,
@@ -289,6 +307,42 @@ static void agentsCursorDown(UNUSED agentControl_t *ctrl, UNUSED stream_t *s, UN
         ctrl->refresh = 1;
     }
     printf("ctrl->selectedAgent: %d\r\n", ctrl->selectedAgent);
+}
+
+void printAgentInfo(cmdStatus_t *cmd, char *s){
+    cJSON *root, *data, *os, *version, *configSum, *mergedsum, *lastKeepAlive, *syscheckTime, *syscheckEndTime;
+    root = cJSON_Parse(s);
+    if(!root)
+        return;
+    data = cJSON_GetObjectItem(root, "data");
+    if(!data)
+       return;
+    os = cJSON_GetObjectItem(data, "os");
+    version = cJSON_GetObjectItem(data, "version");
+    configSum = cJSON_GetObjectItem(data, "configSum");
+    mergedsum = cJSON_GetObjectItem(data, "mergedSum");
+    lastKeepAlive = cJSON_GetObjectItem(data, "lastKeepAlive");
+    syscheckTime = cJSON_GetObjectItem(data, "syscheckTime");
+    syscheckEndTime = cJSON_GetObjectItem(data, "syscheckEndTime");
+    cmdDraw(cmd, "┌──────┬──────────────────────┬──────────────────────┬──────────────────────┐\r\n");
+    cmdPrintf(cmd, "OS:%s\r\n", os?os->valuestring:"                                           ");
+    cmdPrintf(cmd, "VERSION:%s\r\n", version?version->valuestring:"                                           ");
+    cmdDraw(cmd, "└──────┴──────────────────────┴──────────────────────┴──────────────────────┘\r\n");
+    if(os)
+        printf("OS: %s\r\n", os->valuestring);
+    if(version)
+        printf("VERSION: %s\r\n", version->valuestring);
+    if(configSum)
+        printf("CONFIG SUM: %s\r\n", configSum->valuestring);
+    if(mergedsum)
+        printf("MERGED SUM: %s\r\n", mergedsum->valuestring);
+    if(lastKeepAlive)
+        printf("LAST KEEP ALIVE: %s\r\n", lastKeepAlive->valuestring);
+    if(syscheckTime)
+        printf("SYSCHECK TIME: %s\r\n", syscheckTime->valuestring);
+    if(syscheckEndTime)
+        printf("SYSCHECK END TIME: %s\r\n", syscheckEndTime->valuestring);
+    cJSON_Delete(root);
 }
 
 static void agentsEnter     (UNUSED agentControl_t *ctrl, UNUSED stream_t *s, UNUSED char c){

@@ -28,38 +28,52 @@ typedef struct streamTcpStatus_t{
 
 static streamTcpStatus_t streamTcpStatus = {
     .st = 0,
-    .sck = 0,
     .con = 0,
     .isOnline = 0
 };
 
-static int  streamTcpDataAvailable(void);
-static int  streamTcpGetChar(char *c);
-static int  streamTcpSendChar(char c);
-static int  streamTcpWrite(char *buf, int len);
-static int  streamTcpClearInput(void);
-static int  streamTcpFlushOutput(void);
-static int  streamTcpEnableRawMode(void);
-static void streamTcpTask(void);
-static int  streamTcpIsOnline(void);
+static const stream_t st = {
+    .getChar       = streamTCPGetChar,
+    .clearInput    = streamTCPClearInput,
+    .dataAvailable = streamTCPDataAvailable,
+    .flushOutput   = streamTCPFlushOutput,
+    .sendChar      = streamTCPSendChar,
+    .task          = streamTCPTask,
+    .write         = streamTCPWrite,
+    .isOnline      = streamTCPIsOnline,
+    .custom        = NULL
+}streamTemplate;
 
-stream_t *streamTcpInit(void){
-    stream_t *std = calloc(1, sizeof(stream_t ));
-    const stream_t st = {
-            .getChar       = streamTcpGetChar,
-            .clearInput    = streamTcpClearInput,
-            .dataAvailable = streamTcpDataAvailable,
-            .flushOutput   = streamTcpFlushOutput,
-            .sendChar      = streamTcpSendChar,
-            .task          = streamTcpTask,
-            .write         = streamTcpWrite,
-            .isOnline      = streamTcpIsOnline
-    };
-    *std = st;
-    return std;
+static streamTCPMainTask(void);
+
+static int  streamTCPDataAvailable(streamTcpStatus_t *tcpStatus);
+static int  streamTCPGetChar      (streamTcpStatus_t *tcpStatus, char *c);
+static int  streamTCPSendChar     (streamTcpStatus_t *tcpStatus, char c);
+static int  streamTCPWrite        (streamTcpStatus_t *tcpStatus, char *buf, int len);
+static int  streamTCPClearInput   (streamTcpStatus_t *tcpStatus);
+static int  streamTCPFlushOutput  (streamTcpStatus_t *tcpStatus);
+static int  streamTCPEnableRawMode(streamTcpStatus_t *tcpStatus);
+static void streamTCPTask         (streamTcpStatus_t *tcpStatus);
+static int  streamTCPIsOnline     (streamTcpStatus_t *tcpStatus);
+
+static stream_t *streamTcpNewCli(streamTcpStatus_t *status){
+    streamTcpStatus_t *tcpStatus = calloc(1, sizeof(streamTcpStatus_t));
+    if(!tcpStatus)
+        return NULL;
+
+    stream_t *stream = calloc(1, sizeof(stream_t ));
+    if(!stream){
+        free(status);
+        return NULL;
+    }
+
+    *stream = *streamTemplate;
+    *tcpStatus = *status;
+    stream->custom = tcpStatus;
+    return stream;
 }
 
-static void streamTcpTask(void){
+static void streamTcpMainTask(void){
     char c;
     int len;
     struct sockaddr_in servaddr, cli;
@@ -138,7 +152,11 @@ static void streamTcpTask(void){
     }
 }
 
-static int streamTcpGetChar(char *c){
+void streamTCPTask(streamTcpStatus_t *tcpStatus){
+    return;
+}
+
+static int streamTcpGetChar(streamTcpStatus_t *tcpStatus, char *c){
     int recvRet;
 
     if(streamTcpStatus.isOnline){
@@ -152,7 +170,7 @@ static int streamTcpGetChar(char *c){
     return 0;
 }
 
-static int streamTcpDataAvailable(void){
+static int streamTcpDataAvailable(streamTcpStatus_t *tcpStatus){
     int bytes;
     int ret, ret2;
     char buf;
@@ -172,31 +190,31 @@ static int streamTcpDataAvailable(void){
     return 0;
 }
 
-static int streamTcpSendChar(char c){
+static int streamTcpSendChar(streamTcpStatus_t *tcpStatus, char c){
     if(streamTcpStatus.isOnline){
         return send(streamTcpStatus.con, &c, 1, 0);
     }
     return 0;
 }
 
-static int streamTcpWrite(char *buf, int len){
+static int streamTcpWrite(streamTcpStatus_t *tcpStatus, char *buf, int len){
     if(streamTcpStatus.isOnline){
         return send(streamTcpStatus.con, buf, (size_t)len, 0);
     }
     return 0;
 }
 
-static int streamTcpClearInput(void){
+static int streamTcpClearInput(streamTcpStatus_t *tcpStatus){
     return 0;
 }
 
-static int streamTcpFlushOutput(void){
+static int streamTcpFlushOutput(streamTcpStatus_t *tcpStatus){
 
 }
 
-static int streamTcpEnableRawMode(void){
+static int streamTcpEnableRawMode(streamTcpStatus_t *tcpStatus){
 
 }
-static int streamTcpIsOnline(void){
+static int streamTcpIsOnline(streamTcpStatus_t *tcpStatus){
     return streamTcpStatus.isOnline;
 }
