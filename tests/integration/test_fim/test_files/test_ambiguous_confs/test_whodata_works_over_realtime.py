@@ -168,13 +168,13 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     test_file = Path(folder_to_monitor, test_metadata['test_file'])
     
     file.write_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(FIM_ADDED_EVENT),timeout=60)
+    wazuh_log_monitor.start(callback=generate_callback(FIM_ADDED_EVENT))
     event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
 
     assert event_data.get('mode') == 'whodata'
     
     file.remove_file(test_file)
-    wazuh_log_monitor.start(callback=generate_callback(FIM_DELETED_EVENT),timeout=60)
+    wazuh_log_monitor.start(callback=generate_callback(FIM_DELETED_EVENT))
     event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
 
     assert event_data.get('mode') == 'whodata'

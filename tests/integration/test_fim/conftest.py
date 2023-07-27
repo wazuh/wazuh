@@ -7,12 +7,16 @@ import sys
 from typing import Any
 from pathlib import Path
 from psutil import WINDOWS
+from wazuh_testing.constants.daemons import WAZUH_MANAGER
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.utils.services import get_service
 
 
 @pytest.fixture()
@@ -46,11 +50,30 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     yield
 
     [file.remove_file(Path(path, f'test{i}.log')) for i in range(amount)]
-    
+
 
 @pytest.fixture()
 def start_monitoring() -> None:
     FileMonitor(WAZUH_LOG_PATH).start(generate_callback(MONITORING_PATH))
+
+
+@pytest.fixture(scope='module', autouse=True)
+def set_agent_config(request: pytest.FixtureRequest):
+    if not hasattr(request.module, 'test_configuration'):
+        return
+    if get_service() is WAZUH_MANAGER:
+        return
+    configurations = getattr(request.module, 'test_configuration')
+    agent_conf = {"section": "client", "elements": [
+        {"server": {"elements": [
+            {"address": {"value": "127.0.0.1"}},
+            {"port": {"value": 1514}},
+            {"protocol": {"value": "tcp"}}]}}]}
+
+    for index, _ in enumerate(configurations):
+        configurations[index]['sections'].append(agent_conf)
+
+    request.module.test_configuration = configurations
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -76,3 +99,19 @@ def install_audit():
 
     subprocess.run([package_management, "install", audit, option], check=True)
     subprocess.run(["service", "auditd", "start"], check=True)
+
+
+@pytest.fixture(autouse=True)
+def start_simulators() -> None:
+    if get_service() is not WAZUH_MANAGER:
+        authd = AuthdSimulator()
+        remoted = RemotedSimulator()
+
+        authd.start()
+        remoted.start()
+
+    yield
+
+    if get_service() is not WAZUH_MANAGER:
+        authd.shutdown()
+        remoted.shutdown()
