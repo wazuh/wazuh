@@ -278,6 +278,7 @@ while($status -eq $null -And $counter -gt 0)
 }
 write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
 
+$status = $null
 If ($status -eq $null)
 {
     Get-Service -Name "Wazuh" | Stop-Service
