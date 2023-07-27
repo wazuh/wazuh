@@ -27,6 +27,7 @@ namespace
 // https://stackoverflow.com/questions/29634992/shunting-yard-validate-expression
 struct syntaxChecker
 {
+
     // Could be optimized by taking advantage of the fact that shunting-yard
     // algorithm is already doing some comparisons, is as it is for modularity
 
@@ -52,12 +53,12 @@ struct syntaxChecker
     void operator()(const Token& token)
     {
         // Got term
-        if (Token::Type::TERM == token.m_type)
+        if (token->isTerm())
         {
             if (expectedOperator())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected token TERM \"{}\" at position \"{}\"", token.m_text, token.m_pos));
+                    fmt::format("Unexpected token TERM '{}' at position '{}'", token->text(), token->pos()));
             }
 
             expectOperator();
@@ -65,12 +66,11 @@ struct syntaxChecker
         }
 
         // Got unary operator
-        if (token.isUnaryOperator())
+        if (token->isUnaryOperator())
         {
             if (expectedOperator())
             {
-                throw std::runtime_error(
-                    fmt::format("Unexpected unary operator \"NOT\" at position \"{}\"", token.m_pos));
+                throw std::runtime_error(fmt::format("Unexpected unary operator 'NOT' at position '{}'", token->pos()));
             }
 
             // Still wanting operand
@@ -78,12 +78,12 @@ struct syntaxChecker
         }
 
         // Got binary operator
-        if (token.isBinaryOperator())
+        if (token->isBinaryOperator())
         {
             if (expectedOperand())
             {
                 throw std::runtime_error(
-                    fmt::format("Unexpected binary operator \"{}\" at position \"{}\"", token.m_text, token.m_pos));
+                    fmt::format("Unexpected binary operator '{}' at position '{}'", token->text(), token->pos()));
             }
 
             expectOperand();
@@ -91,11 +91,11 @@ struct syntaxChecker
         }
 
         // Got parenthesis open
-        if (Token::Type::PARENTHESIS_OPEN == token.m_type)
+        if (token->isParenthesisOpen())
         {
             if (expectedOperator())
             {
-                throw std::runtime_error(fmt::format("Unexpected parenthesis \"(\" at position \"{}\"", token.m_pos));
+                throw std::runtime_error(fmt::format("Unexpected parenthesis '(' at position '{}'", token->pos()));
             }
 
             // Still wanting operand
@@ -103,11 +103,11 @@ struct syntaxChecker
         }
 
         // Got parenthesis close
-        if (Token::Type::PARENTHESIS_CLOSE == token.m_type)
+        if (token->isParenthesisClose())
         {
             if (expectedOperand())
             {
-                throw std::runtime_error(fmt::format("Unexpected parenthesis \")\" at position \"{}\"", token.m_pos));
+                throw std::runtime_error(fmt::format("Unexpected parenthesis ')' at position '{}'", token->pos()));
             }
 
             // Still wanting operator
@@ -130,17 +130,17 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         infix.pop();
         checker(token);
 
-        if (Token::Type::TERM == token.m_type)
+        if (token->isTerm())
         {
             postfix.push(std::move(token));
         }
-        else if (Token::Type::PARENTHESIS_OPEN == token.m_type)
+        else if (token->isParenthesisOpen())
         {
             operatorStack.push(std::move(token));
         }
-        else if (Token::Type::PARENTHESIS_CLOSE == token.m_type)
+        else if (token->isParenthesisClose())
         {
-            while (!operatorStack.empty() && operatorStack.top().m_type != Token::Type::PARENTHESIS_OPEN)
+            while (!operatorStack.empty() && !operatorStack.top()->isParenthesisOpen())
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();
@@ -153,8 +153,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         }
         else
         {
-            while (!operatorStack.empty() && operatorStack.top().m_type != Token::Type::PARENTHESIS_OPEN
-                   && operatorStack.top() >= token)
+            while (!operatorStack.empty() && !operatorStack.top()->isParenthesisOpen() && operatorStack.top() >= token)
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();
@@ -166,7 +165,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
 
     while (!operatorStack.empty())
     {
-        if (operatorStack.top().m_type == Token::Type::PARENTHESIS_OPEN)
+        if (operatorStack.top()->isParenthesisOpen())
         {
             throw std::runtime_error("Parenthesis are not balanced");
         }
@@ -175,7 +174,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
     }
 
     return postfix;
-}
+};
 
 } // namespace
 
@@ -264,14 +263,14 @@ public:
 
         auto visit = [&ss](const std::shared_ptr<const Expression>& root, int depth, int width, auto& visit_ref) -> void
         {
-            ss << fmt::format("{}_{}{};", root->m_token.m_text, depth, width) << std::endl;
+            ss << fmt::format("{}_{}{};", root->m_token->text(), depth, width) << std::endl;
             if (root->m_left)
             {
                 ss << fmt::format("{}_{}{} -> {}_{}{};",
-                                  root->m_token.m_text,
+                                  root->m_token->text(),
                                   depth,
                                   width,
-                                  root->m_left->m_token.m_text,
+                                  root->m_left->m_token->text(),
                                   depth + 1,
                                   0)
                    << std::endl;
@@ -281,10 +280,10 @@ public:
             if (root->m_right)
             {
                 ss << fmt::format("{}_{}{} -> {}_{}{};",
-                                  root->m_token.m_text,
+                                  root->m_token->text(),
                                   depth,
                                   width,
-                                  root->m_right->m_token.m_text,
+                                  root->m_right->m_token->text(),
                                   depth + 1,
                                   1)
                    << std::endl;
@@ -307,12 +306,7 @@ private:
         {
             throw std::logic_error("Engine logic expression parser: Got unbalanced expression.");
         }
-        if (postfix.top().m_type == Token::Type::ERROR_TYPE)
-        {
-            throw std::logic_error("Engine logic expression parser: Got invalid token with \"ERROR_TYPE\".");
-        }
-        if (postfix.top().m_type == Token::Type::PARENTHESIS_OPEN
-            || postfix.top().m_type == Token::Type::PARENTHESIS_CLOSE)
+        if (postfix.top()->isParenthesisOpen() || postfix.top()->isParenthesisClose())
         {
             throw std::logic_error("Engine logic expression parser: Got invalid token "
                                    "with \"PARENTHESIS_OPEN\" or \"PARENTHESIS_CLOSE\".");
@@ -321,11 +315,11 @@ private:
         m_token = std::move(postfix.top());
         postfix.pop();
 
-        if (m_token.isUnaryOperator())
+        if (m_token->isUnaryOperator())
         {
             m_left = Expression::create(postfix);
         }
-        else if (m_token.isBinaryOperator())
+        else if (m_token->isBinaryOperator())
         {
             m_left = Expression::create(postfix);
             m_right = Expression::create(postfix);
@@ -361,7 +355,7 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression, TermParser&&
     }
 
     return expression;
-}
+};
 
 } // namespace logicexpr::parser
 
