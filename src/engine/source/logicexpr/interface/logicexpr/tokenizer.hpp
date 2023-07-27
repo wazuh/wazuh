@@ -90,7 +90,7 @@ private:
     parsec::Result<Token> tokenParser(std::string_view sv, size_t pos) const
     {
         auto res = termParser(sv, pos);
-        if (res.success())
+        if (res.success()) // TODO Should be exluyent with operatorParser?
         {
             return res;
         }
