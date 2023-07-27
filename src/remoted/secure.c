@@ -31,7 +31,7 @@ wnotify_t * notify = NULL;
 
 size_t global_counter;
 
-time_t currect_ts;
+_Atomic (time_t) currect_ts;
 
 OSHash *remoted_agents_state;
 
@@ -53,9 +53,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
-
-/* Close and remove socket from keystore from idle connection */
-STATIC void *close_idle_socket(keystore * keys, int agentid);
 
 /* Get current timestamp */
 STATIC void *current_timestamp(void *none);
@@ -528,8 +525,17 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((currect_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
-                   close_idle_socket(&keys, agentid);
+                if ((connection_overtake_time > 0) && (currect_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
+                    int sock_idle = keys.keyentries[agentid]->sock;
+
+                    mdebug2("Close idle socket to agent id '%s'", keys.keyentries[agentid]->id);
+
+                    keys.keyentries[agentid]->rcvd = currect_ts;
+                    keys.keyentries[agentid]->sock = message->sock;
+
+                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+
+                    _close_sock(&keys, sock_idle);
                 } else {
                     mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
@@ -543,9 +549,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     rem_inc_recv_unknown();
                     return;
                 }
-            } else {
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
+
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
@@ -587,8 +594,17 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((currect_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
-                    close_idle_socket(&keys, agentid);
+                if ((connection_overtake_time > 0) && (currect_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
+                    int sock_idle = keys.keyentries[agentid]->sock;
+
+                    mdebug2("Close idle socket to agent id '%s'", keys.keyentries[agentid]->id);
+
+                    keys.keyentries[agentid]->rcvd = currect_ts;
+                    keys.keyentries[agentid]->sock = message->sock;
+
+                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+
+                    _close_sock(&keys, sock_idle);
                 } else {
                     mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
@@ -602,10 +618,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     rem_inc_recv_unknown();
                     return;
                 }
-            } else {
-                ip_found = 1;
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
+
+            ip_found = 1;
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         tmp_msg = buffer;
@@ -644,10 +660,9 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         return;
     }
 
-    /* Recieved valid message timestamp updated. */
-    w_mutex_lock(&keys.keyentries[agentid]->mutex);
+    /* Recieved valid message timestamp and protocol updated. */
     keys.keyentries[agentid]->rcvd = currect_ts;
-    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+    keys.keyentries[agentid]->net_protocol = protocol;
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
@@ -655,7 +670,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         /* We need to save the peerinfo if it is a control msg */
 
         w_mutex_lock(&keys.keyentries[agentid]->mutex);
-        keys.keyentries[agentid]->net_protocol = protocol;
         memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
 
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
@@ -837,38 +851,4 @@ void *current_timestamp(__attribute__((unused)) void *none)
     }
 
     return NULL;
-}
-
-/* Close and remove socket from keystore from idle connection */
-void *close_idle_socket(keystore * keys, int agentid)
-{
-    int sock = keys->keyentries[agentid]->sock;
-
-    mdebug1("Close idle socket to agent id '%s'", keys->keyentries[agentid]->id);
-
-    rem_setCounter(sock, global_counter);
-
-    char strsock[16] = "";
-    keyentry * entry;
-
-    snprintf(strsock, sizeof(strsock), "%d", sock);
-    w_mutex_lock(&keys->keytree_sock_mutex);
-
-    if (entry = rbtree_get(keys->keytree_sock, strsock), entry) {
-        if (sock == entry->sock) {
-            entry->sock = -1;
-        }
-        rbtree_delete(keys->keytree_sock, strsock);
-    }
-
-    w_mutex_unlock(&entry->mutex);
-    w_mutex_unlock(&keys->keytree_sock_mutex);
-
-    if (!close(sock)) {
-        nb_close(&netbuffer_recv, sock);
-        nb_close(&netbuffer_send, sock);
-        rem_dec_tcp();
-    }
-
-    mdebug1("TCP socket disconnected [%d] due to inactivity", sock);
 }
