@@ -1,0 +1,43 @@
+---
+-
+  name: "Negative state interval"
+  test_case:
+    log_expect: 'interval_not_valid'
+    interval: -1
+    state_file_exist: false
+    agentd_ends: true
+-
+  name: "Undefined state interval value"
+  test_case:
+    log_expect: 'file_not_enabled'
+    interval: " "
+    state_file_exist: false
+    agentd_ends: false
+-
+  name: "State interval option dont exist"
+  test_case:
+    log_expect: 'interval_not_found'
+    interval: null
+    state_file_exist: false
+    agentd_ends: true
+-
+  name: "Zero state interval"
+  test_case:
+    log_expect: 'file_not_enabled'
+    interval: 0
+    state_file_exist: false
+    agentd_ends: false
+-
+  name: "Too big state interval"
+  test_case:
+    log_expect: 'interval_not_valid'
+    interval: 86401
+    state_file_exist: false
+    agentd_ends: true
+-
+  name: "Default state interval"
+  test_case:
+    log_expect: 'file_enabled'
+    interval: 5
+    state_file_exist: true
+    agentd_ends: false
