@@ -1850,6 +1850,10 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from Office365 module (this agent)"
+                                  ms-graph:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from ms-graph module (this agent)"
                                   oscap:
                                     type: integer
                                     format: int32
@@ -2565,6 +2569,10 @@ components:
                               type: integer
                               format: int32
                               description: "Events coming from Office365 module"
+                            ms-graph:
+                              type: integer
+                              format: int32
+                              description: "Events coming from ms-graph module"
                             oscap:
                               type: integer
                               format: int32
@@ -2685,6 +2693,10 @@ components:
                               type: integer
                               format: int32
                               description: "Events discarded from Office365 module because the queue was full"
+                            ms-graph:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from ms-graph module because the queue was full"
                             oscap:
                               type: integer
                               format: int32
@@ -7790,6 +7802,7 @@ paths:
                                       macos: 0
                                       others: 0
                                     office365: 0
+                                    ms-graph: 0
                                     oscap: 0
                                     osquery: 0
                                     rootcheck: 1
