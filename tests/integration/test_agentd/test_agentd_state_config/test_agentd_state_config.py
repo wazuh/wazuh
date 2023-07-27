@@ -45,12 +45,15 @@ references:
 tags:
     - stats_file
 '''
-
+import os
 import pytest
 from pathlib import Path
+import sys
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
+from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.modulesd.agentd import AGENTD_DEBUG
+from wazuh_testing.modules.modulesd.agentd import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
@@ -62,52 +65,13 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 pytestmark = pytest.mark.tier(level=0)
 
 # Configuration and cases data.
-configs_path = Path(CONFIGS_PATH, 'config_invalid_configuration.yaml')
-cases_path = Path(TEST_CASES_PATH, 'cases_invalid_configuration.yaml')
+configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
+cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 
-# Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-test_data_file = os.path.join(test_data_path, 'wazuh_state_config_tests.yaml')
-configurations_path = os.path.join(test_data_path, 'wazuh_conf.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__)
-
-# Open test cases description file
-with open(test_data_file) as f:
-    test_cases = yaml.safe_load(f)
-
-# ossec.log watch callbacks
-callbacks = {
-    'interval_not_valid': callback_state_interval_not_valid,
-    'interval_not_found': callback_state_interval_not_found,
-    'file_enabled': callback_state_file_enabled,
-    'file_not_enabled': callback_state_file_not_enabled
-}
-
-
-# Fixture
-@pytest.fixture(scope='module')
-def set_local_internal_options():
-    """Set local internal options"""
-    if sys.platform == 'win32':
-        change_internal_options('windows.debug', '2')
-    else:
-        change_internal_options('agent.debug', '2')
-        
-    yield
-    
-    if sys.platform == 'win32':
-        change_internal_options('windows.debug', '0')
-    else:
-        change_internal_options('agent.debug', '0')
-        
-    set_state_interval(5, internal_options)
-
-
-@pytest.fixture(scope='module', params=configurations)
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
+if sys.platform == WINDOWS:
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+else:
+    local_internal_options = {AGENTD_DEBUG: '2'}
 
 @pytest.mark.parametrize('test_case',
                          [test_case['test_case'] for test_case in test_cases],
