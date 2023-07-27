@@ -17,7 +17,6 @@
 #include "packageMac.h"
 #include "packageSolaris.h"
 #include "sharedDefs.h"
-#include "sqlite_wrapper_temp.h"
 
 template <OSPlatformType osType>
 class FactoryPackageFamilyCreator final
@@ -48,10 +47,12 @@ class FactoryPackageFamilyCreator<OSPlatformType::BSDBASED> final
         {
             return FactoryBSDPackage::create(ctx);
         }
+#ifdef __APPLE__
         static std::shared_ptr<IPackage> create(std::pair<SQLite::Statement&, const int&>& ctx)
         {
             return FactoryBSDPackage::create(ctx);
         }
+#endif
 };
 
 template <>
