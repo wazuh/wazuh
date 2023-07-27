@@ -402,7 +402,7 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
     OSListNode *node_it;
     int watches;
 
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
     set_priority_windows_thread();
     // Directories in Windows configured with real-time add recursive watches
     w_rwlock_wrlock(&syscheck.directories_lock);

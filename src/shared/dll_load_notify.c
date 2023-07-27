@@ -9,6 +9,14 @@
  * Foundation.
  */
 
+/**************************************************************************************
+    WARNING: all the logging functions of this file must use the plain_ variant
+    to avoid calling any external library that could be loaded during the signature
+    verification.
+
+    Also, all os_ functions that contain merror_exit were avoided for the same reason.
+**************************************************************************************/
+
 #include "shared.h"
 #include "dll_load_notify.h"
 
@@ -45,12 +53,12 @@ static void loaded_modules_verification()
                 if (verify_hash_and_pe_signature(module_name) != OS_SUCCESS) {
                     const char* ERROR_MESSAGE = "The file '%S' is not signed or its signature is invalid.";
 #if IMAGE_TRUST_CHECKS == 2
-                    merror_exit(ERROR_MESSAGE, module_name);
+                    plain_merror_exit(ERROR_MESSAGE, module_name);
 #else
-                    mwarn(ERROR_MESSAGE, module_name);
+                    plain_mwarn(ERROR_MESSAGE, module_name);
 #endif // IMAGE_TRUST_CHECKS == 2
                 } else {
-                    mdebug1("The file '%S' is signed and its signature is valid.", module_name);
+                    plain_mdebug1("The file '%S' is signed and its signature is valid.", module_name);
                 }
             }
         }
@@ -58,9 +66,9 @@ static void loaded_modules_verification()
         const char* ERROR_MESSAGE = "The mechanism of signature validation for loaded modules at startup failed because"
                                     " the modules of the process couldn't be enumerated. Error: %lu";
 #if IMAGE_TRUST_CHECKS == 2
-        merror_exit(ERROR_MESSAGE, GetLastError());
+        plain_merror_exit(ERROR_MESSAGE, GetLastError());
 #else
-        mwarn(ERROR_MESSAGE, GetLastError());
+        plain_mwarn(ERROR_MESSAGE, GetLastError());
 #endif // IMAGE_TRUST_CHECKS == 2
 
     }
@@ -85,18 +93,18 @@ void CALLBACK dll_notification(ULONG reason,
 #if IMAGE_TRUST_CHECKS != 0
         if (verify_hash_and_pe_signature(notification_data->loaded.full_dll_name->Buffer) != OS_SUCCESS) {
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit(ERROR_MESSAGE, notification_data->loaded.full_dll_name->Buffer);
+            plain_merror_exit(ERROR_MESSAGE, notification_data->loaded.full_dll_name->Buffer);
 #else
-            mwarn(ERROR_MESSAGE, notification_data->loaded.full_dll_name->Buffer);
+            plain_mwarn(ERROR_MESSAGE, notification_data->loaded.full_dll_name->Buffer);
 #endif // IMAGE_TRUST_CHECKS == 2
         } else {
-            mdebug1("The file '%S' is signed and its signature is valid.",
+            plain_mdebug1("The file '%S' is signed and its signature is valid.",
                     notification_data->loaded.full_dll_name->Buffer);
         }
 #endif // IMAGE_TRUST_CHECKS != 0
         break;
     case LDR_DLL_NOTIFICATION_REASON_UNLOADED:
-        mdebug1("Unloaded: '%S'", notification_data->unloaded.full_dll_name->Buffer);
+        plain_mdebug1("Unloaded: '%S'", notification_data->unloaded.full_dll_name->Buffer);
         break;
     }
 }
@@ -113,9 +121,9 @@ void enable_dll_verification()
                                     CA_NAME
                                     "') is not available.";
 #if IMAGE_TRUST_CHECKS == 2
-        merror_exit(ERROR_MESSAGE);
+        plain_merror_exit(ERROR_MESSAGE);
 #else
-        mwarn(ERROR_MESSAGE);
+        plain_mwarn(ERROR_MESSAGE);
 #endif
     } else {
         loaded_modules_verification();
@@ -133,9 +141,9 @@ void enable_dll_verification()
                 const char* ERROR_MESSAGE = "The dynamic signature validation is not available for this system. Error"
                                             " %lu: %s";
 #if IMAGE_TRUST_CHECKS == 2
-                merror_exit(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
+                plain_merror_exit(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #else
-                mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
+                plain_mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
             }
         } else {
@@ -143,9 +151,9 @@ void enable_dll_verification()
                                         "initiated because it wasn't possible to get the handle of 'ntdll.dll'. "
                                         "Error %lu: %s";
 #if IMAGE_TRUST_CHECKS == 2
-            merror_exit(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
+            plain_merror_exit(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #else
-            mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
+            plain_mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
         }
     }

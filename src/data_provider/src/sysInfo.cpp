@@ -14,13 +14,7 @@
 
 nlohmann::json SysInfo::hardware()
 {
-    nlohmann::json ret;
-    ret["board_serial"] = getSerialNumber();
-    ret["cpu_name"] = getCpuName();
-    ret["cpu_cores"] = getCpuCores();
-    ret["cpu_mhz"] = double(getCpuMHz());
-    getMemory(ret);
-    return ret;
+    return getHardware();
 }
 
 nlohmann::json SysInfo::packages()

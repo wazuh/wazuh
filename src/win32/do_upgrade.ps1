@@ -5,9 +5,12 @@ $TMP_BACKUP_DIR               = "wazuh_backup_tmp"
 $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
+# Delete previous upgrade.log
+Remove-Item -Path ".\upgrade\upgrade.log" -ErrorAction SilentlyContinue
+
 # Select powershell
-if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [System.IntPtr]::Size -eq 4) {
-    write-output "$(Get-Date -format u) Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
+if (Test-Path "$env:windir\sysnative") {
+    write-output "$(Get-Date -format u) - Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -146,7 +149,7 @@ function uninstall_wazuh {
 
 	if ($UninstallString -ne $null) {
 		write-output "$(Get-Date -format u) - Performing the Wazuh-Agent uninstall using: `"$UninstallString`"." >> .\upgrade\upgrade.log
-		& "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString
+		& "$env:windir\System32\cmd.exe"/c $UninstallString
 
 		# registry takes some time to refresh (e.g.: NT 6.3)
 		Start-Sleep 5
@@ -229,7 +232,7 @@ function install
 
 # Get current version
 $current_version = (Get-Content VERSION)
-write-output "$(Get-Date -format u) - Current version: $($current_version)." > .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
 # Get process name
 $current_process = "wazuh-agent"
@@ -254,7 +257,7 @@ write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgra
 
 # Check process status
 $process_id = (Get-Process wazuh-agent).id
-$counter = 5
+$counter = 10
 while($process_id -eq $null -And $counter -gt 0)
 {
     $counter--
@@ -268,17 +271,21 @@ write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\
 Start-Sleep 10
 
 # Check status file
-$status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
-$counter = 5
-while($status -eq $null -And $counter -gt 0)
+function Get-AgentStatus {
+    Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+}
+
+$status = Get-AgentStatus
+$counter = 30
+while($status -ne "connected"  -And $counter -gt 0)
 {
     $counter--
     Start-Sleep 2
-    $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
+    $status = Get-AgentStatus
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
+Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-If ($status -eq $null)
+If ($status -ne "connected")
 {
     Get-Service -Name "Wazuh" | Stop-Service
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring former installation." >> .\upgrade\upgrade.log

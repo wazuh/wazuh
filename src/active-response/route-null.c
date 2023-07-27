@@ -8,11 +8,17 @@
  */
 
 #include "active_responses.h"
+#include "dll_load_notify.h"
 
 #define ROUTE "route"
 #define ROUTE_PATH "C:\\Windows\\System32\\route.exe"
 
 int main (int argc, char **argv) {
+#ifdef WIN32
+    // This must be always the first instruction
+    enable_dll_verification();
+#endif
+
     (void)argc;
     int action = OS_INVALID;
     cJSON *input_json = NULL;

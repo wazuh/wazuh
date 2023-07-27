@@ -804,7 +804,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
         sqlite3_bind_null(stmt, 8);
     }
 
-    if (ram_usage > 0) {
+    if (ram_usage > 0 && ram_usage <= 100) {
         sqlite3_bind_int(stmt, 9, ram_usage);
     } else {
         sqlite3_bind_null(stmt, 9);

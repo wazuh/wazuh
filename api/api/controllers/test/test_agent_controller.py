@@ -470,24 +470,25 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('agents_list', [
-    (['all']),
-    (['001', '002']),
+@pytest.mark.parametrize('agents_list, file_path',  [
+    (['all'], '/var/ossec/valid_file.wpk'),
+    (['001', '002'], '/var/ossec/var/upgrade/valid_file.wpk'),
+    (['001'], '/var/ossec/wrong_file.txt')
 ])
 @patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, agents_list):
+async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, agents_list, file_path):
     """Verify 'put_upgrade_custom_agents' endpoint is working as expected."""
     mock_request = MagicMock()
-    result = await put_upgrade_custom_agents(request=mock_request, agents_list=agents_list)
+    result = await put_upgrade_custom_agents(request=mock_request, agents_list=agents_list, file_path=file_path)
 
     if 'all' in agents_list:
         agents_list = '*'
     f_kwargs = {'agent_list': agents_list,
-                'file_path': None,
+                'file_path': file_path,
                 'installer': None,
                 'filters': {
                     'manager': None,

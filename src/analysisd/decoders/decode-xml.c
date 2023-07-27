@@ -811,8 +811,16 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
         }
 
         /* Add osdecoder to the list */
-        if (!OS_AddOSDecoder(pi, decoderlist_pn, decoderlist_nopn, log_msg)) {
+
+        int r;
+
+        if ((r = OS_AddOSDecoder(pi, decoderlist_pn, decoderlist_nopn, log_msg)) < 1) {
             smerror(log_msg, DECODER_ERROR);
+
+            if (r == -1) {
+                pi = NULL;
+            }
+
             goto cleanup;
         }
 

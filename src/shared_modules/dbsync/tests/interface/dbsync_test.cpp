@@ -20,6 +20,11 @@
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto DATABASE_MEMORY {":memory:"};
+constexpr auto DATABASE_PERMISSIONS
+{
+    0640u
+};
+
 
 class CallbackMock
 {
@@ -62,6 +67,14 @@ TEST_F(DBSyncTest, Initialization)
 
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
+
+    // On windows, no change in permissions is expected
+#ifndef _WIN32
+    struct stat stStat {};
+    ASSERT_EQ(0, stat(DATABASE_TEMP, &stStat));
+    ASSERT_NE(0, S_ISREG(stStat.st_mode));
+    EXPECT_EQ(DATABASE_PERMISSIONS, stStat.st_mode & 0777);
+#endif
 }
 
 TEST_F(DBSyncTest, InitializationNullptr)
@@ -2280,4 +2293,20 @@ TEST_F(DBSyncTest, createTxnAtomicOperation)
     };
 
     EXPECT_NO_THROW(dbSync->selectRows(nlohmann::json::parse(selectData), callbackData));
+}
+
+TEST_F(DBSyncTest, InitializationCPP)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `time` BIGINT, PRIMARY KEY (`pid`, `time`)) WITHOUT ROWID;"};
+    std::unique_ptr<DBSync> dbSync;
+
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
+
+    // On windows, no change in permissions is expected
+#ifndef _WIN32
+    struct stat stStat {};
+    ASSERT_EQ(0, stat(DATABASE_TEMP, &stStat));
+    ASSERT_NE(0, S_ISREG(stStat.st_mode));
+    EXPECT_EQ(DATABASE_PERMISSIONS, stStat.st_mode & 0777);
+#endif
 }

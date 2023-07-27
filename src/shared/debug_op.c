@@ -24,18 +24,25 @@ static struct{
   unsigned int log_plain:1;
   unsigned int log_json:1;
   unsigned int initialized:1;
+  unsigned int mutex_initialized:1;
 } flags;
 
 static pthread_mutex_t logging_mutex;
 
+static void _log_function(int level, const char *tag, const char * file, int line, const char * func, const char *msg, bool plain_only, va_list args) __attribute__((format(printf, 5, 0))) __attribute__((nonnull));
+
+// Wrapper for the real _log_function
 static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args) __attribute__((format(printf, 5, 0))) __attribute__((nonnull));
+static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args) {
+    _log_function(level, tag, file, line, func, msg, false, args);
+}
 
 
 #ifdef WIN32
 void WinSetError();
 #endif
 
-static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args)
+static void _log_function(int level, const char *tag, const char * file, int line, const char * func, const char *msg, bool plain_only, va_list args)
 {
     va_list args2; /* For the stderr print */
     va_list args3; /* For the JSON output */
@@ -66,15 +73,29 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     va_copy(args3, args);
 
     if (!flags.initialized) {
-        w_logging_init();
-        mdebug1("Logging module auto-initialized");
+        /* If not initialized and plain_only is true, we avoid reading the
+           the ossec.conf file due to the call to many shared libraries (XML read, etc.).
+           The module will be initialized later. */
+        if(plain_only) {
+            flags.log_plain = 1;
+            flags.log_json = 0;
+            if(!flags.mutex_initialized) {
+                flags.mutex_initialized=1;
+                pthread_mutex_init(&logging_mutex, NULL);
+            }
+        } else {
+            w_logging_init();
+            mdebug1("Logging module auto-initialized");
+        }
     }
 
     if (filename = strrchr(file, '/'), filename) {
         file = filename + 1;
     }
 
-    if (flags.log_json) {
+    /* The plain_only flag allows to bypass the JSON output even when it's enabled to
+       avoid the call to external libraries like cJSON. */
+    if (!plain_only && flags.log_json) {
 
 #ifndef WIN32
         int oldmask;
@@ -175,7 +196,8 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
         /* Maybe log to syslog if the log file is not available */
         if (fp) {
-            w_mutex_lock(&logging_mutex);
+            // Not using w_ variant to avoid calling this same method again.
+            pthread_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
@@ -188,7 +210,8 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             (void)vfprintf(fp, msg, args);
             (void)fprintf(fp, "\n");
             fflush(fp);
-            w_mutex_unlock(&logging_mutex);
+            // Not using w_ variant to avoid calling this same method again.
+            pthread_mutex_unlock(&logging_mutex);
 
             fclose(fp);
         }
@@ -222,7 +245,10 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
 void w_logging_init(){
     flags.initialized = 1;
-    w_mutex_init(&logging_mutex, NULL);
+    if(!flags.mutex_initialized) {
+        flags.mutex_initialized = 1;
+        w_mutex_init(&logging_mutex, NULL);
+    }
     os_logging_config();
 }
 
@@ -306,6 +332,18 @@ void _mdebug1(const char * file, int line, const char * func, const char *msg, .
     }
 }
 
+void _plain_mdebug1(const char * file, int line, const char * func, const char *msg, ...)
+{
+    if (dbg_flag >= 1) {
+        va_list args;
+        int level = LOGLEVEL_DEBUG;
+        const char *tag = __local_name;
+        va_start(args, msg);
+        _log_function(level, tag, file, line, func, msg, true, args);
+        va_end(args);
+    }
+}
+
 void _mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     if (dbg_flag >= 1) {
@@ -351,6 +389,17 @@ void _merror(const char * file, int line, const char * func, const char *msg, ..
     va_end(args);
 }
 
+void _plain_merror(const char * file, int line, const char * func, const char *msg, ...)
+{
+    va_list args;
+    int level = LOGLEVEL_ERROR;
+    const char *tag = __local_name;
+
+    va_start(args, msg);
+    _log_function(level, tag, file, line, func, msg, true, args);
+    va_end(args);
+}
+
 void _mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
@@ -379,6 +428,17 @@ void _mwarn(const char * file, int line, const char * func, const char *msg, ...
     va_end(args);
 }
 
+void _plain_mwarn(const char * file, int line, const char * func, const char *msg, ...)
+{
+    va_list args;
+    int level = LOGLEVEL_WARNING;
+    const char *tag = __local_name;
+
+    va_start(args, msg);
+    _log_function(level, tag, file, line, func, msg, true, args);
+    va_end(args);
+}
+
 void _mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
@@ -404,6 +464,17 @@ void _minfo(const char * file, int line, const char * func, const char *msg, ...
 
     va_start(args, msg);
     _log(level, tag, file, line, func, msg, args);
+    va_end(args);
+}
+
+void _plain_minfo(const char * file, int line, const char * func, const char *msg, ...)
+{
+    va_list args;
+    int level = LOGLEVEL_INFO;
+    const char *tag = __local_name;
+
+    va_start(args, msg);
+    _log_function(level, tag, file, line, func, msg, true, args);
     va_end(args);
 }
 
@@ -469,6 +540,26 @@ void _merror_exit(const char * file, int line, const char * func, const char *ms
 
     va_start(args, msg);
     _log(level, tag, file, line, func, msg, args);
+    va_end(args);
+
+#ifdef WIN32
+    /* If not MA */
+#ifndef MA
+    WinSetError();
+#endif
+#endif
+
+    exit(1);
+}
+
+void _plain_merror_exit(const char * file, int line, const char * func, const char *msg, ...)
+{
+    va_list args;
+    int level = LOGLEVEL_CRITICAL;
+    const char *tag = __local_name;
+
+    va_start(args, msg);
+    _log_function(level, tag, file, line, func, msg, true, args);
     va_end(args);
 
 #ifdef WIN32

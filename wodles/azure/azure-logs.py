@@ -708,7 +708,6 @@ def get_blobs(
             # Skip if the blob is empty
             if blob.properties.content_length == 0:
                 continue
-
             # Skip the blob if nested under prefix but prefix is not setted
             if prefix is None and len(blob.name.split("/")) > 1:
                 continue

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import orm as sqlalchemy_orm
 
 
 def create_memory_db(sql_file, session, test_data_path):
@@ -21,10 +22,22 @@ def init_db(schema, test_data_path):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
+
+                    # Clear mappers
+                    sqlalchemy_orm.clear_mappers()
+                    # Invalidate in-memory database
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.sessions[orm.DB_FILE].close()
+                    orm.db_manager.engines[orm.DB_FILE].dispose()
+
                     reload(orm)
                     orm.db_manager.connect(orm.DB_FILE)
                     orm.db_manager.create_database(orm.DB_FILE)
                     orm.db_manager.insert_default_resources(orm.DB_FILE)
+                    import wazuh.rbac.decorators as decorators
+                    from wazuh.tests.util import RBAC_bypasser
+
+                    decorators.expose_resources = RBAC_bypasser
     try:
         create_memory_db(schema, orm.db_manager.sessions[orm.DB_FILE], test_data_path)
     except OperationalError:

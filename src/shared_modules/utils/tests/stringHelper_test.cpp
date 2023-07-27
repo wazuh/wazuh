@@ -400,3 +400,23 @@ TEST_F(StringUtilsTest, rawUnicodeToUTF8)
               "LC_CTYPE=",
               content);
 }
+
+TEST_F(StringUtilsTest, stringIsNumberFalse1)
+{
+    EXPECT_FALSE(Utils::isNumber("random_string"));
+}
+
+TEST_F(StringUtilsTest, stringIsNumberFalse2)
+{
+    EXPECT_FALSE(Utils::isNumber("r4nd0m_57r1n9"));
+}
+
+TEST_F(StringUtilsTest, stringIsNumberFalse3)
+{
+    EXPECT_FALSE(Utils::isNumber(""));
+}
+
+TEST_F(StringUtilsTest, stringIsNumberTrue)
+{
+    EXPECT_TRUE(Utils::isNumber("12345"));
+}

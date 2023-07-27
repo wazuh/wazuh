@@ -109,6 +109,13 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
                         regex_matching * regex_match);
 
 /**
+ * @brief Frees regex_matching object
+ * @param expression expression with compiled pattern
+  * @param regex_match Structure to manage pattern matches.
+ */
+void w_free_expression_match(w_expression_t * expression, regex_matching **reg);
+
+/**
  * @brief Fill a match_data with PCRE2 result
  * @param captured_groups number of matches of PCRE2 execute
  * @param str_test string to test

@@ -1,0 +1,11 @@
+- sections:
+    - section: global
+      elements:
+        - limits:
+            elements:
+              - eps:
+                  elements:
+                    - maximum:
+                        value: 500
+                    - timeframe:
+                        value: 10

@@ -31,6 +31,7 @@ constexpr auto PACMAN_PATH {"/var/lib/pacman"};
 
 constexpr auto APK_PATH {"/lib/apk/db"};
 constexpr auto APK_DB_PATH {"/lib/apk/db/installed"};
+constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE { " " };
 constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
@@ -41,7 +42,7 @@ constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 
 
-enum OSType
+enum OSPlatformType
 {
     LINUX,
     BSDBASED,
@@ -97,6 +98,12 @@ enum RPMFields
     RPM_FIELDS_INSTALLTIME,
     RPM_FIELDS_GROUPS,
     RPM_FIELDS_SIZE
+};
+
+enum MacOSArchitecture
+{
+    X86_64,
+    ARM64
 };
 
 #endif //_SHARED_DEFS_H
