@@ -49,12 +49,7 @@ TEST_F(ExecutionContextTest, TestDefaultFolderWhenThereIsNoConfigurationForTheOu
 
     m_spUpdaterBaseContext->configData.erase("outputFolder");
 
-    // Start silence stdout
-    testing::internal::CaptureStdout();
-
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    testing::internal::GetCapturedStdout();
 
     EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, GENERIC_OUTPUT_FOLDER_PATH);
 
@@ -71,12 +66,7 @@ TEST_F(ExecutionContextTest, TestDefaultFolderWhenTheOutputFolderPathIsEmpty)
 
     m_spUpdaterBaseContext->configData["outputFolder"] = "";
 
-    // Start silence stdout
-    testing::internal::CaptureStdout();
-
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    testing::internal::GetCapturedStdout();
 
     EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, GENERIC_OUTPUT_FOLDER_PATH);
 
@@ -93,12 +83,7 @@ TEST_F(ExecutionContextTest, TestValidCaseWhenTheOutputFolderPathIsNotEmpty)
     // Remove the output folder if exists
     removeOutputFolderIfExists(expectedOutputFolder);
 
-    // Start silence stdout
-    testing::internal::CaptureStdout();
-
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    testing::internal::GetCapturedStdout();
 
     EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, expectedOutputFolder);
 
@@ -115,15 +100,11 @@ TEST_F(ExecutionContextTest, TestValidCaseWhenTheOutputFolderPathIsNotEmptyAndEx
 
     // Remove the output folder if exists
     removeOutputFolderIfExists(expectedOutputFolder);
+
     // Create the output folder.
     std::filesystem::create_directory(expectedOutputFolder);
 
-    // Start silence stdout
-    testing::internal::CaptureStdout(); 
-
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    testing::internal::GetCapturedStdout();
 
     EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, expectedOutputFolder);
 
