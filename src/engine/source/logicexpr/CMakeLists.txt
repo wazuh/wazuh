@@ -22,4 +22,11 @@ add_executable(logicexprToken_test
 target_link_libraries(logicexprToken_test logicexpr gtest_main)
 gtest_discover_tests(logicexprToken_test)
 
+add_executable(logicexprParser_test
+    ${TEST_SRC_DIR}/parser_test.cpp
+)
+target_link_libraries(logicexprParser_test logicexpr gtest_main)
+gtest_discover_tests(logicexprParser_test)
+
+
 endif(ENGINE_BUILD_TEST)
