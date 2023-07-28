@@ -26,7 +26,7 @@ namespace opstr
 {
 const static std::string OR = "OR";
 const static std::string AND = "AND";
-const static std::string NOT = "!";
+const static std::string NOT = "NOT";
 const static std::string P_OPEN = "(";
 const static std::string P_CLOSE = ")";
 } // namespace opstr
@@ -89,14 +89,14 @@ private:
 
     parsec::Result<Token> tokenParser(std::string_view sv, size_t pos) const
     {
-        auto res = termParser(sv, pos);
-        if (res.success()) // TODO Should be exluyent with operatorParser?
+        auto res = operatorParser(sv, pos);
+        if (res.success())
         {
             return res;
         }
         else
         {
-            return operatorParser(sv, pos);
+            return termParser(sv, pos);
         }
     }
 
