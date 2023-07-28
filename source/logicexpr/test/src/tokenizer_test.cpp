@@ -118,7 +118,7 @@ INSTANTIATE_TEST_SUITE_P(
         TokenizerT(false, "TERMunknownOR", {}),
         TokenizerT(false, "TERM AND unknown", {}),
         TokenizerT(true,
-                   "TERM AND (ORTERMAND)   !",
+                   "TERM AND (ORTERMAND)   NOT",
                    {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 0),
                     AndToken::create(opstr::AND, 5),
                     ParenthOpenToken::create(opstr::P_OPEN, 9),
@@ -127,4 +127,11 @@ INSTANTIATE_TEST_SUITE_P(
                     AndToken::create(opstr::AND, 16),
                     ParenthCloseToken::create(opstr::P_CLOSE, 19),
                     NotToken::create(opstr::NOT, 23)}),
-        TokenizerT(false, "    ", {})));
+        TokenizerT(false, "    ", {}),
+        TokenizerT(true,
+           "NOT TERM AND TERM   ",
+           {{NotToken::create(opstr::NOT, 0)},
+            TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 4),
+            OrToken::create(opstr::AND, 9),
+            TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 13)})
+        ));
