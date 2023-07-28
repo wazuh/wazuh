@@ -43,9 +43,13 @@ public:
                                                  std::get<base::Error>(envJson).message));
         }
 
-        Policy environment {std::get<json::Json>(envJson), m_storeRead, m_registry};
+        auto jsonObject = std::get<json::Json>(envJson).getJson("/json");
+        if (!jsonObject.has_value())
+        {
+            throw std::runtime_error ("/json path not found in JSON.");
+        }
 
-        return environment;
+        return Policy {jsonObject.value(), m_storeRead, m_registry};
     }
 
     /**
@@ -66,7 +70,14 @@ public:
                                                  name.fullName(),
                                                  std::get<base::Error>(routeJson).message));
         }
-        return Asset {std::get<json::Json>(routeJson), Asset::Type::FILTER, m_registry};
+
+        auto jsonObject = std::get<json::Json>(routeJson).getJson("/json");
+        if (!jsonObject.has_value())
+        {
+            throw std::runtime_error ("/json path not found in JSON.");
+        }
+
+        return Asset {jsonObject.value(), Asset::Type::FILTER, m_registry};
     }
 
     std::optional<base::Error> validatePolicy(const json::Json& json) const override
