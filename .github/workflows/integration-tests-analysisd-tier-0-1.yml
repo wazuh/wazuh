@@ -1,4 +1,4 @@
-name: Analisysd integration tests tier 0 and 1
+name: Integration tests for Analisysd - Tier 0 and 1
 
 on:
   workflow_dispatch:
