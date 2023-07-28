@@ -1,0 +1,24 @@
+name: "Compile and test"
+description: "Executes a compilation and test routine based on a path"
+
+inputs:
+  path:
+    required: true
+    description: "Path to compile and test"
+    default: src/
+      
+runs:
+  using: "composite"
+  steps:    
+      - name: Compile
+        run: |
+          cd ${{ inputs.path }}
+          mkdir -p build && cd build
+          cmake .. && make -j2
+        shell: bash
+      
+      - name: Test
+        run: |
+          cd ${{ inputs.path }}/build
+          ctest --output-on-failure
+        shell: bash
