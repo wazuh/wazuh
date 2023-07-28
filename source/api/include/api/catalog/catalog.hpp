@@ -113,10 +113,11 @@ public:
      * resource.m_format
      *
      * @param resource Resource identifying the item or collection to get
+     * @param original Allow get the original yaml file
      * @return std::variant<std::string, base::Error> Error if the operation failed or the
      * content of the resource
      */
-    std::variant<std::string, base::Error> getResource(const Resource& resource) const;
+    std::variant<std::string, base::Error> getResource(const Resource& resource, const bool original = false) const;
 
     /**
      * @brief Delete a resource

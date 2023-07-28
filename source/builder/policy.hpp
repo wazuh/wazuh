@@ -187,7 +187,13 @@ public:
                                                          std::get<base::Error>(integrationDef).message));
                 }
 
-                auto integrationAssets = getManifestAssets(std::get<json::Json>(integrationDef), storeRead, registry);
+                auto jsonObject = std::get<json::Json>(integrationDef).getJson("/json");
+                if (!jsonObject.has_value())
+                {
+                    throw std::runtime_error ("/json path not found in JSON.");
+                }
+
+                auto integrationAssets = getManifestAssets(jsonObject.value(), storeRead, registry);
                 for (auto& [key, value] : integrationAssets)
                 {
                     assets[key].insert(assets[key].end(), value.begin(), value.end());

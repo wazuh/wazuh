@@ -21,7 +21,7 @@ void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response);
 void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath);
 } // namespace details
 
-void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr);
+void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr, const bool original);
 
 void runUpdate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
