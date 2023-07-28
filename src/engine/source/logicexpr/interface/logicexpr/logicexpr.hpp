@@ -34,34 +34,38 @@ buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, 
     // visitor to generate an evaluator::Expression tree from a
     // parser::Expression tree and a term builder function.
     auto visit = [termBuilder](const std::shared_ptr<const parser::Expression>& tokenExpr,
-                               auto& visit_ref) -> std::shared_ptr<evaluator::Expression<Event>>
+                               auto& visitRef) -> std::shared_ptr<evaluator::Expression<Event>>
     {
         auto builtExpr = evaluator::Expression<Event>::create();
-        switch (tokenExpr->m_token.m_type)
-        {
-            case parser::Token::Type::TERM:
-                builtExpr->m_type = evaluator::ExpressionType::TERM;
-                builtExpr->m_function = termBuilder(tokenExpr->m_token.m_text);
-                return builtExpr;
-            case parser::Token::Type::OPERATOR_NOT:
-                builtExpr->m_type = evaluator::ExpressionType::NOT;
-                builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
-                return builtExpr;
-            case parser::Token::Type::OPERATOR_OR:
-                builtExpr->m_type = evaluator::ExpressionType::OR;
-                builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
-                builtExpr->m_right = visit_ref(tokenExpr->m_right, visit_ref);
-                return builtExpr;
-            case parser::Token::Type::OPERATOR_AND:
-                builtExpr->m_type = evaluator::ExpressionType::AND;
-                builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
-                builtExpr->m_right = visit_ref(tokenExpr->m_right, visit_ref);
-                return builtExpr;
-            default:
-                throw std::runtime_error(fmt::format("Engine logic expression: Unexpected token type of token "
-                                                     "\"{}\" in parsed expression.",
-                                                     tokenExpr->m_token.m_text));
+
+        if (tokenExpr->m_token->isTerm()) {
+            builtExpr->m_type = evaluator::ExpressionType::TERM;
+            builtExpr->m_function = termBuilder(tokenExpr->m_token->text());
+            return builtExpr;
         }
+
+        if (tokenExpr->m_token->isNot()) {
+            builtExpr->m_type = evaluator::ExpressionType::NOT;
+            builtExpr->m_left = visitRef(tokenExpr->m_left, visitRef);
+            return builtExpr;
+        }
+
+        if (tokenExpr->m_token->isOr()) {
+            builtExpr->m_type = evaluator::ExpressionType::OR;
+            builtExpr->m_left = visitRef(tokenExpr->m_left, visitRef);
+            builtExpr->m_right = visitRef(tokenExpr->m_right, visitRef);
+            return builtExpr;
+        }
+
+        if (tokenExpr->m_token->isAnd()) {
+            builtExpr->m_type = evaluator::ExpressionType::AND;
+            builtExpr->m_left = visitRef(tokenExpr->m_left, visitRef);
+            builtExpr->m_right = visitRef(tokenExpr->m_right, visitRef);
+            return builtExpr;
+        }
+
+        throw std::runtime_error(fmt::format("Engine logic expression: Unexpected token type of token '{}'",
+                                             tokenExpr->m_token->text()));
     };
 
     // Parse, build and return the evaluator function.

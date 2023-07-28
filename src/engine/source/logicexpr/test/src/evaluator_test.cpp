@@ -1,8 +1,8 @@
-#include <logicExpressionEvaluator.hpp>
+#include <logicexpr/evaluator.hpp>
 
 #include "gtest/gtest.h"
 
-using namespace logicExpression::evaluator;
+using namespace logicexpr::evaluator;
 
 TEST(LogicExpressionEvaluator, ExpressionConstructs)
 {
@@ -11,11 +11,11 @@ TEST(LogicExpressionEvaluator, ExpressionConstructs)
     EXPECT_NO_THROW(expression =
                         Expression<int>::create([](int) { return true; }));
     EXPECT_TRUE(expression->m_function(0));
-    EXPECT_THROW(expression = Expression<int>::create(TERM), std::runtime_error);
+    EXPECT_THROW(expression = Expression<int>::create(ExpressionType::TERM), std::runtime_error);
 
-    EXPECT_NO_THROW(expression = Expression<int>::create(OR));
-    EXPECT_NO_THROW(expression = Expression<int>::create(AND));
-    EXPECT_NO_THROW(expression = Expression<int>::create(NOT));
+    EXPECT_NO_THROW(expression = Expression<int>::create(ExpressionType::OR));
+    EXPECT_NO_THROW(expression = Expression<int>::create(ExpressionType::AND));
+    EXPECT_NO_THROW(expression = Expression<int>::create(ExpressionType::NOT));
 }
 
 TEST(LogicExpressionEvaluator, ExpressionUtils)
@@ -30,7 +30,8 @@ TEST(LogicExpressionEvaluator, ExpressionUtils)
     EXPECT_TRUE(expr1 == expr2);
 
     // Visitor Pre-Order
-    std::vector<int> expected = {TERM, NOT, TERM, OR};
+    std::vector<ExpressionType> expected = {
+        ExpressionType::TERM, ExpressionType::NOT, ExpressionType::TERM, ExpressionType::OR};
     auto it = expected.end() - 1;
     auto visitor = [&it](const Expression<int>& expr)
     {
@@ -38,9 +39,9 @@ TEST(LogicExpressionEvaluator, ExpressionUtils)
         --it;
     };
 
-    auto root = Expression<int>::create(OR);
+    auto root = Expression<int>::create(ExpressionType::OR);
     root->m_left = Expression<int>::create([](int) { return true; });
-    root->m_right = Expression<int>::create(NOT);
+    root->m_right = Expression<int>::create(ExpressionType::NOT);
     root->m_right->m_left = Expression<int>::create([](int) { return true; });
     EXPECT_NO_THROW(Expression<int>::visitPreOrder(root, visitor));
 }
@@ -49,12 +50,12 @@ TEST(LogicExpressionEvaluator, getDijstraEvaluator)
 {
     // True if: (pair or odd and not i>5) and i>1
     // tldr: true if 3,5 or pair>1
-    auto root = Expression<int>::create(AND);
+    auto root = Expression<int>::create(ExpressionType::AND);
     root->m_left = Expression<int>::create([](int i) { return i > 1; });
-    root->m_right = Expression<int>::create(OR);
+    root->m_right = Expression<int>::create(ExpressionType::OR);
     root->m_right->m_left =
         Expression<int>::create([](int i) { return i % 2 == 0; });
-    root->m_right->m_right = Expression<int>::create(NOT);
+    root->m_right->m_right = Expression<int>::create(ExpressionType::NOT);
     root->m_right->m_right->m_left =
         Expression<int>::create([](int i) { return i > 5; });
 
