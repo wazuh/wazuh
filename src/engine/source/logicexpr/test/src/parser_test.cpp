@@ -123,7 +123,8 @@ INSTANTIATE_TEST_SUITE_P(Logicexpr,
                                            R"(NOT)",
                                            R"(AND)",
                                            R"(term NOT AND term),
-        R"(( ))",
+                                           R"(term ! AND term),
+                                           R"(( ))",
                                            R"()"));
 
 using Okpair = std::pair<std::string, std::string>;
@@ -268,17 +269,17 @@ AND_11 -> term_21;
 term_21;
 }
 )"},
-                                           Okpair {R"(term OR NOT term AND term)", R"(digraph G {
+                                           Okpair {R"(termA OR NOT termB AND termC)", R"(digraph G {
 OR_00;
 OR_00 -> AND_10;
 AND_10;
-AND_10 -> term_20;
-term_20;
+AND_10 -> termC_20;
+termC_20;
 AND_10 -> NOT_21;
 NOT_21;
-NOT_21 -> term_30;
-term_30;
-OR_00 -> term_11;
-term_11;
+NOT_21 -> termB_30;
+termB_30;
+OR_00 -> termA_11;
+termA_11;
 }
 )"}));

@@ -55,6 +55,26 @@ public:
     {
         return lhs.text() == rhs.text() && lhs.pos() == rhs.pos();
     }
+
+    int getPrecedence() const
+    {
+        if (this->isNot())
+            return 3;
+        else if (this->isAnd())
+            return 2;
+        else if (this->isOr())
+            return 1;
+        else
+            return 0;
+    }
+
+    inline friend bool operator>=(const BaseToken& lhs, const BaseToken& rhs)
+    {
+        if (lhs.isTerm() || rhs.isTerm()) {
+            return true;
+        }
+        return lhs.getPrecedence() >= rhs.getPrecedence();
+    }
 };
 
 template<typename BuildToken>
