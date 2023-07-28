@@ -57,6 +57,7 @@ message ResourceGet_Request
 {
     optional string name = 1;           // Name of the resource
     optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
+    optional bool original = 3;         // Allow get the original yaml file
 }
 
 message ResourceGet_Response

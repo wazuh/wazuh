@@ -74,8 +74,8 @@ void Policy::addFilters(const std::string& graphName)
 
 std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
 Policy::getManifestAssets(const json::Json& jsonDefinition,
-                               std::shared_ptr<const store::IStoreRead> storeRead,
-                               std::shared_ptr<internals::Registry<internals::Builder>> registry)
+                          std::shared_ptr<const store::IStoreRead> storeRead,
+                          std::shared_ptr<internals::Registry<internals::Builder>> registry)
 {
     if (!jsonDefinition.isObject())
     {
@@ -132,7 +132,13 @@ Policy::getManifestAssets(const json::Json& jsonDefinition,
                                        "Error loading {}: ", name.value(), std::get<base::Error>(assetDef).message));
                                }
 
-                               return std::make_shared<Asset>(std::get<json::Json>(assetDef), assetType, registry);
+                               auto jsonObject = std::get<json::Json>(assetDef).getJson("/json");
+                               if (!jsonObject.has_value())
+                               {
+                                   throw std::runtime_error("/json path not found in JSON.");
+                               }
+
+                               return std::make_shared<Asset>(jsonObject.value(), assetType, registry);
                            });
 
             assets[key] = assetList;
