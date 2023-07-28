@@ -46,7 +46,8 @@ PROTOBUF_CONSTEXPR ResourceGet_Request::ResourceGet_Request(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.format_)*/0} {}
+  , /*decltype(_impl_.format_)*/0
+  , /*decltype(_impl_.original_)*/false} {}
 struct ResourceGet_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ResourceGet_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -148,8 +149,10 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_.format_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Request, _impl_.original_),
   0,
   1,
+  2,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceGet_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -197,11 +200,11 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 9, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePost_Request)},
-  { 12, 20, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Request)},
-  { 22, 31, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Response)},
-  { 34, 43, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePut_Request)},
-  { 46, 53, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceDelete_Request)},
-  { 54, 63, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceValidate_Request)},
+  { 12, 21, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Request)},
+  { 24, 33, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Response)},
+  { 36, 45, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePut_Request)},
+  { 48, 55, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceDelete_Request)},
+  { 56, 65, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceValidate_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -220,35 +223,36 @@ const char descriptor_table_protodef_catalog_2eproto[] PROTOBUF_SECTION_VARIABLE
   "e.catalog.ResourceTypeH\000\210\001\001\022A\n\006format\030\002 "
   "\001(\0162,.com.wazuh.api.engine.catalog.Resou"
   "rceFormatH\001\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005"
-  "_typeB\t\n\007_formatB\n\n\010_content\"\177\n\023Resource"
-  "Get_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006format"
-  "\030\002 \001(\0162,.com.wazuh.api.engine.catalog.Re"
-  "sourceFormatH\001\210\001\001B\007\n\005_nameB\t\n\007_format\"\212\001"
-  "\n\024ResourceGet_Response\0222\n\006status\030\001 \001(\0162\""
-  ".com.wazuh.api.engine.ReturnStatus\022\022\n\005er"
-  "ror\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010\n\006"
-  "_errorB\n\n\010_content\"\241\001\n\023ResourcePut_Reque"
-  "st\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006format\030\002 \001(\0162,."
-  "com.wazuh.api.engine.catalog.ResourceFor"
-  "matH\001\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB"
-  "\t\n\007_formatB\n\n\010_content\"4\n\026ResourceDelete"
-  "_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\246\001\n"
-  "\030ResourceValidate_Request\022\021\n\004name\030\001 \001(\tH"
-  "\000\210\001\001\022A\n\006format\030\002 \001(\0162,.com.wazuh.api.eng"
-  "ine.catalog.ResourceFormatH\001\210\001\001\022\024\n\007conte"
-  "nt\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_formatB\n\n\010_co"
-  "ntent*1\n\016ResourceFormat\022\010\n\004json\020\000\022\010\n\004yam"
-  "l\020\001\022\007\n\003yml\020\001\032\002\020\001*\203\001\n\014ResourceType\022\013\n\007UNK"
-  "NOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filter\020"
-  "\003\022\n\n\006output\020\004\022\n\n\006policy\020\005\022\n\n\006schema\020\006\022\016\n"
-  "\ncollection\020\007\022\017\n\013integration\020\010b\006proto3"
+  "_typeB\t\n\007_formatB\n\n\010_content\"\243\001\n\023Resourc"
+  "eGet_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006forma"
+  "t\030\002 \001(\0162,.com.wazuh.api.engine.catalog.R"
+  "esourceFormatH\001\210\001\001\022\025\n\010original\030\003 \001(\010H\002\210\001"
+  "\001B\007\n\005_nameB\t\n\007_formatB\013\n\t_original\"\212\001\n\024R"
+  "esourceGet_Response\0222\n\006status\030\001 \001(\0162\".co"
+  "m.wazuh.api.engine.ReturnStatus\022\022\n\005error"
+  "\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010\n\006_er"
+  "rorB\n\n\010_content\"\241\001\n\023ResourcePut_Request\022"
+  "\021\n\004name\030\001 \001(\tH\000\210\001\001\022A\n\006format\030\002 \001(\0162,.com"
+  ".wazuh.api.engine.catalog.ResourceFormat"
+  "H\001\210\001\001\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007"
+  "_formatB\n\n\010_content\"4\n\026ResourceDelete_Re"
+  "quest\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\246\001\n\030Re"
+  "sourceValidate_Request\022\021\n\004name\030\001 \001(\tH\000\210\001"
+  "\001\022A\n\006format\030\002 \001(\0162,.com.wazuh.api.engine"
+  ".catalog.ResourceFormatH\001\210\001\001\022\024\n\007content\030"
+  "\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_formatB\n\n\010_conte"
+  "nt*1\n\016ResourceFormat\022\010\n\004json\020\000\022\010\n\004yaml\020\001"
+  "\022\007\n\003yml\020\001\032\002\020\001*\203\001\n\014ResourceType\022\013\n\007UNKNOW"
+  "N\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filter\020\003\022\n"
+  "\n\006output\020\004\022\n\n\006policy\020\005\022\n\n\006schema\020\006\022\016\n\nco"
+  "llection\020\007\022\017\n\013integration\020\010b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_catalog_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_catalog_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_catalog_2eproto = {
-    false, false, 1118, descriptor_table_protodef_catalog_2eproto,
+    false, false, 1155, descriptor_table_protodef_catalog_2eproto,
     "catalog.proto",
     &descriptor_table_catalog_2eproto_once, descriptor_table_catalog_2eproto_deps, 1, 6,
     schemas, file_default_instances, TableStruct_catalog_2eproto::offsets,
@@ -610,6 +614,9 @@ class ResourceGet_Request::_Internal {
   static void set_has_format(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
+  static void set_has_original(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
 };
 
 ResourceGet_Request::ResourceGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
@@ -625,7 +632,8 @@ ResourceGet_Request::ResourceGet_Request(const ResourceGet_Request& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.format_){}};
+    , decltype(_impl_.format_){}
+    , decltype(_impl_.original_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.name_.InitDefault();
@@ -636,7 +644,9 @@ ResourceGet_Request::ResourceGet_Request(const ResourceGet_Request& from)
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
-  _this->_impl_.format_ = from._impl_.format_;
+  ::memcpy(&_impl_.format_, &from._impl_.format_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.original_) -
+    reinterpret_cast<char*>(&_impl_.format_)) + sizeof(_impl_.original_));
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.catalog.ResourceGet_Request)
 }
 
@@ -649,6 +659,7 @@ inline void ResourceGet_Request::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.format_){0}
+    , decltype(_impl_.original_){false}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -684,7 +695,11 @@ void ResourceGet_Request::Clear() {
   if (cached_has_bits & 0x00000001u) {
     _impl_.name_.ClearNonDefaultToEmpty();
   }
-  _impl_.format_ = 0;
+  if (cached_has_bits & 0x00000006u) {
+    ::memset(&_impl_.format_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.original_) -
+        reinterpret_cast<char*>(&_impl_.format_)) + sizeof(_impl_.original_));
+  }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -712,6 +727,15 @@ const char* ResourceGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
           _internal_set_format(static_cast<::com::wazuh::api::engine::catalog::ResourceFormat>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional bool original = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _Internal::set_has_original(&has_bits);
+          _impl_.original_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -762,6 +786,12 @@ uint8_t* ResourceGet_Request::_InternalSerialize(
       2, this->_internal_format(), target);
   }
 
+  // optional bool original = 3;
+  if (_internal_has_original()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(3, this->_internal_original(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -779,7 +809,7 @@ size_t ResourceGet_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -791,6 +821,11 @@ size_t ResourceGet_Request::ByteSizeLong() const {
     if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_format());
+    }
+
+    // optional bool original = 3;
+    if (cached_has_bits & 0x00000004u) {
+      total_size += 1 + 1;
     }
 
   }
@@ -813,12 +848,15 @@ void ResourceGet_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_name(from._internal_name());
     }
     if (cached_has_bits & 0x00000002u) {
       _this->_impl_.format_ = from._impl_.format_;
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _this->_impl_.original_ = from._impl_.original_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
   }
@@ -846,7 +884,12 @@ void ResourceGet_Request::InternalSwap(ResourceGet_Request* other) {
       &_impl_.name_, lhs_arena,
       &other->_impl_.name_, rhs_arena
   );
-  swap(_impl_.format_, other->_impl_.format_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(ResourceGet_Request, _impl_.original_)
+      + sizeof(ResourceGet_Request::_impl_.original_)
+      - PROTOBUF_FIELD_OFFSET(ResourceGet_Request, _impl_.format_)>(
+          reinterpret_cast<char*>(&_impl_.format_),
+          reinterpret_cast<char*>(&other->_impl_.format_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata ResourceGet_Request::GetMetadata() const {
