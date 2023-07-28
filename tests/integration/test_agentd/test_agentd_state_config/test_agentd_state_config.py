@@ -52,8 +52,7 @@ import sys
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.modules.modulesd.agentd import AGENTD_DEBUG
-from wazuh_testing.modules.modulesd.agentd import AGENTD_WINDOWS_DEBUG
+from wazuh_testing.modules.modulesd.agentd import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
@@ -68,15 +67,16 @@ pytestmark = pytest.mark.tier(level=0)
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
 cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 
+# Test configurations.
+config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
+test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
+
 if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 
-@pytest.mark.parametrize('test_case',
-                         [test_case['test_case'] for test_case in test_cases],
-                         ids=[test_case['name'] for test_case in test_cases])
-@pytest.mark.skipif(sys.platform == 'win32', reason="It will be blocked by #1593 and wazuh/wazuh#8746.")
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_state_config(test_case, set_local_internal_options):
     '''
     description: Check that the 'wazuh-agentd.state' statistics file is created
