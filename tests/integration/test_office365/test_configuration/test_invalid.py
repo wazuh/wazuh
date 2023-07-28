@@ -7,19 +7,18 @@ copyright: Copyright (C) 2015-2022, Wazuh Inc.
 
 type: integration
 
-brief: The Wazuh 'github' module allows you to collect all the 'audit logs' from GitHub using its API.
+brief: The Wazuh 'office365' module allows you to collect all the logs from Office 365 using its API.
        Specifically, these tests will check if that module detects invalid configurations and indicates
-       the location of the errors detected. The 'audit log' allows organization admins to quickly review
-       the actions performed by members of your organization. It includes details such as who performed
-       the action, what the action was, and when it was performed.
+       the location of the errors detected. The Office 365 Management Activity API aggregates actions
+       and events into tenant-specific content blobs, which are classified by the type and source
+       of the content they contain.
 
 components:
-    - github
+    - office365
 
 suite: configuration
 
 targets:
-    - agent
     - manager
 
 daemons:
@@ -41,11 +40,8 @@ os_version:
     - Ubuntu Focal
     - Ubuntu Bionic
 
-references:
-    - https://github.com/wazuh/wazuh-documentation/blob/develop/source/github/monitoring-github-activity.rst
-
 tags:
-    - github_configuration
+    - office365_configuration
 '''
 import pytest
 from pathlib import Path
@@ -75,9 +71,9 @@ local_internal_options = {MODULESD_DEBUG: '2'}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                 truncate_monitored_files, daemons_handler, wait_for_github_start):
+                 truncate_monitored_files, daemons_handler, wait_for_office365_start):
     '''
-    description: Check if the 'github' module detects invalid configurations. For this purpose, the test
+    description: Check if the 'office365' module detects invalid configurations. For this purpose, the test
                  will configure that module using invalid configuration settings with different attributes.
                  Finally, it will verify that error events are generated indicating the source of the errors.
 
@@ -104,20 +100,20 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
         - daemons_handler:
             type: fixture
             brief: Manages daemons to reset Wazuh.
-        - wait_for_github_start:
+        - wait_for_office365_start:
             type: fixture
             brief: Checks integration start message does not appear.
 
     assertions:
-        - Verify that the 'github' module generates error events when invalid configurations are used.
+        - Verify that the 'office365' module generates error events when invalid configurations are used.
 
-    input_description: A configuration template (github_integration) is contained in an external YAML file
+    input_description: A configuration template (office365_integration) is contained in an external YAML file
                        (wazuh_conf.yaml). That template is combined with different test cases defined in
-                       the module. Those include configuration settings for the 'github' module.
+                       the module. Those include configuration settings for the 'office365' module.
 
     expected_output:
-        - r'wm_github_read(): ERROR.* Invalid content for tag .*'
-        - r'wm_github_read(): ERROR.* Empty content for tag .*'
+        - r'wm_office365_read(): ERROR.* Invalid content for tag .*'
+        - r'wm_office365_read(): ERROR.* Empty content for tag .*'
 
     tags:
         - invalid_settings
