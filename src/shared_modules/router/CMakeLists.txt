@@ -6,8 +6,13 @@ enable_testing()
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
+if (NOT SHARED_MODULES)
+    get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+endif()
 
 # Include directories
 include_directories(include)

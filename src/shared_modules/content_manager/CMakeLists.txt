@@ -4,8 +4,13 @@ project(content_manager)
 
 enable_testing()
 
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-get_filename_component(SHARED_MODULES ${SRC_FOLDER}/shared_modules/ ABSOLUTE)
+if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
+if (NOT SHARED_MODULES)
+    get_filename_component(SHARED_MODULES ${SRC_FOLDER}/shared_modules/ ABSOLUTE)
+endif()
 
 # Include directories
 include_directories(include)
