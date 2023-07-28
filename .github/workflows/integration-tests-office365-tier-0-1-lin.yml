@@ -1,10 +1,10 @@
-name: Office365 integration tests tier 0 and 1 on Linux
+name: Integration tests for Office365 on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-github-tier-0-1-lin.yml"
+        - ".github/workflows/integration-tests-office365-tier-0-1-lin.yml"
         - "src/wazuh_modules/wm_office365.h"
         - "src/wazuh_modules/wm_office365.c"
         - "src/Makefile"
@@ -71,4 +71,3 @@ jobs:
         run: |
           cd tests/integration
           sudo python -m pytest --tier 0 --tier 1 test_office365/
-          

@@ -1,4 +1,4 @@
-name: Office365 integration tests tier 0 and 1 on Windows
+name: Integration tests for Office365 on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -86,4 +86,3 @@ jobs:
         run: |
           cd C:\wazuh\tests\integration
           python -m pytest --tier 0 --tier 1 test_office365\
-          

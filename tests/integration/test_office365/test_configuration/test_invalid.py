@@ -58,7 +58,6 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 # Marks
 pytestmark = pytest.mark.tier(level=0)
 
-
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_invalid_configuration.yaml')
 cases_path = Path(TEST_CASES_PATH, 'cases_invalid_configuration.yaml')
@@ -125,6 +124,6 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
                               'error_type': str(test_metadata['error_type']),
                               'tag': str(test_metadata['event_monitor']),
                               'integration': str(test_metadata['module']),
-                          }))    
-    
+                          }))
+
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
