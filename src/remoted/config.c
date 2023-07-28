@@ -44,7 +44,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
     send_buffer_size = (unsigned)getDefine_Int("remoted", "send_buffer_size", 65536, 1048576);
     send_timeout_to_retry = getDefine_Int("remoted", "send_timeout_to_retry", 1, 60);
-    connection_overtake_time = getDefine_Int("remoted", "connection_overtake_time", 10, 3600);
+    connection_overtake_time = getDefine_Int("remoted", "connection_overtake_time", 0, 3600);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 600;

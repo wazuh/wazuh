@@ -31,7 +31,7 @@ wnotify_t * notify = NULL;
 
 size_t global_counter;
 
-_Atomic (time_t) currect_ts;
+_Atomic (time_t) current_ts;
 
 OSHash *remoted_agents_state;
 
@@ -525,12 +525,12 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((connection_overtake_time > 0) && (currect_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
+                if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
                     int sock_idle = keys.keyentries[agentid]->sock;
 
-                    mdebug2("Close idle socket to agent id '%s'", keys.keyentries[agentid]->id);
+                    mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
 
-                    keys.keyentries[agentid]->rcvd = currect_ts;
+                    keys.keyentries[agentid]->rcvd = current_ts;
                     keys.keyentries[agentid]->sock = message->sock;
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
@@ -549,10 +549,9 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     rem_inc_recv_unknown();
                     return;
                 }
+            } else {
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
-
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
@@ -594,12 +593,12 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((connection_overtake_time > 0) && (currect_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
+                if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
                     int sock_idle = keys.keyentries[agentid]->sock;
 
-                    mdebug2("Close idle socket to agent id '%s'", keys.keyentries[agentid]->id);
+                    mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
 
-                    keys.keyentries[agentid]->rcvd = currect_ts;
+                    keys.keyentries[agentid]->rcvd = current_ts;
                     keys.keyentries[agentid]->sock = message->sock;
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
@@ -618,10 +617,11 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     rem_inc_recv_unknown();
                     return;
                 }
+            } else {
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
 
             ip_found = 1;
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         tmp_msg = buffer;
@@ -661,7 +661,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     }
 
     /* Recieved valid message timestamp and protocol updated. */
-    keys.keyentries[agentid]->rcvd = currect_ts;
+    keys.keyentries[agentid]->rcvd = current_ts;
     keys.keyentries[agentid]->net_protocol = protocol;
 
     /* Check if it is a control message */
@@ -846,7 +846,7 @@ void * key_request_thread(__attribute__((unused)) void * args) {
 void *current_timestamp(__attribute__((unused)) void *none)
 {
     while (1) {
-        currect_ts = time(NULL);
+        current_ts = time(NULL);
         sleep(1);
     }
 
