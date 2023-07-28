@@ -93,15 +93,22 @@ TEST_P(ErrorParserTest, badExpression)
             ++pos;
         }
         auto start = pos;
-        // Extract keyword
-        while (pos < text.size() && !std::isspace(text[pos]))
+        // Extract keyword until space, parenthesis or end of string
+        while (pos < text.size() && !std::isspace(text[pos]) && text[pos] != '(' && text[pos] != ')')
         {
             ++pos;
         }
 
+
         if (start == pos)
         {
             return parsec::makeError<std::string>(std::string("Expected keyword"), pos);
+        }
+
+        // Check if keyword is a Operator checking if start with a uppercase letter
+        if (std::isupper(text[start]))
+        {
+            return parsec::makeError<std::string>(std::string("Expected a non-operator keyword"), pos);
         }
 
         auto keyword = text.substr(start, pos - start);
@@ -114,12 +121,12 @@ TEST_P(ErrorParserTest, badExpression)
 
 INSTANTIATE_TEST_SUITE_P(Logicexpr,
                          ErrorParserTest,
-                         ::testing::Values(R"(event.type=="test" AND ( something ) unexpectedTerm )",
-                                           R"(event.type=="test" AND OR ( something ))",
+                         ::testing::Values(R"(event.type=="test" AND (something) unexpectedTerm)",
+                                           R"(event.type=="test" AND OR (something))",
                                            R"(AND term)",
                                            R"(term OR)",
-                                           R"(term AND ( notClosedParenthesis)",
-                                           R"(term AND notOpenedParenthesis ))",
+                                           R"(term AND (notClosedParenthesis)",
+                                           R"(term AND notOpenedParenthesis))",
                                            R"(NOT)",
                                            R"(AND)",
                                            R"(term NOT AND term),
@@ -140,8 +147,8 @@ TEST_P(OkParserTest, parsingOK)
             ++pos;
         }
         auto start = pos;
-        // Extract keyword
-        while (pos < text.size() && !std::isspace(text[pos]))
+        // Extract keyword until space, parenthesis or end of string
+        while (pos < text.size() && !std::isspace(text[pos]) && text[pos] != '(' && text[pos] != ')')
         {
             ++pos;
         }
@@ -149,6 +156,12 @@ TEST_P(OkParserTest, parsingOK)
         if (start == pos)
         {
             return parsec::makeError<std::string>(std::string("Expected keyword"), pos);
+        }
+
+        // Check if keyword is a Operator checking if start with a uppercase letter
+        if (std::isupper(text[start]) || text[start] == '(' || text[start] == ')')
+        {
+            return parsec::makeError<std::string>(std::string("Expected a non-operator keyword"), pos);
         }
 
         auto keyword = text.substr(start, pos - start);
@@ -193,7 +206,7 @@ OR_00 -> term_11;
 term_11;
 }
 )"},
-                                           Okpair {R"(term AND ( term OR term ))", R"(digraph G {
+                                           Okpair {R"(term AND (term OR term))", R"(digraph G {
 AND_00;
 AND_00 -> OR_10;
 OR_10;
@@ -205,7 +218,7 @@ AND_00 -> term_11;
 term_11;
 }
 )"},
-                                           Okpair {R"(term OR ( term AND term ))", R"(digraph G {
+                                           Okpair {R"(term OR (term AND term))", R"(digraph G {
 OR_00;
 OR_00 -> AND_10;
 AND_10;
@@ -223,7 +236,7 @@ NOT_00 -> term_10;
 term_10;
 }
 )"},
-                                           Okpair {R"(NOT ( term AND term ))", R"(digraph G {
+                                           Okpair {R"(NOT (term AND term))", R"(digraph G {
 NOT_00;
 NOT_00 -> AND_10;
 AND_10;
@@ -233,7 +246,7 @@ AND_10 -> term_21;
 term_21;
 }
 )"},
-                                           Okpair {R"(NOT ( term OR term ))", R"(digraph G {
+                                           Okpair {R"(NOT (term OR term))", R"(digraph G {
 NOT_00;
 NOT_00 -> OR_10;
 OR_10;
@@ -243,7 +256,7 @@ OR_10 -> term_21;
 term_21;
 }
 )"},
-                                           Okpair {R"(NOT ( term AND ( term OR term ) ))", R"(digraph G {
+                                           Okpair {R"(NOT (term AND (term OR term)))", R"(digraph G {
 NOT_00;
 NOT_00 -> AND_10;
 AND_10;
@@ -283,3 +296,78 @@ OR_00 -> termA_11;
 termA_11;
 }
 )"}));
+
+
+TEST(LogicExpressionParser, notCopiableTerm)
+{
+
+    class NotCopyableTerm
+    {
+    private:
+        std::string m_value;
+
+    public:
+        NotCopyableTerm() = delete;
+        NotCopyableTerm(const NotCopyableTerm&) = delete;
+        NotCopyableTerm& operator=(const NotCopyableTerm&) = delete;
+
+        NotCopyableTerm(NotCopyableTerm&&) noexcept = default;
+        NotCopyableTerm& operator=(NotCopyableTerm&&) noexcept = default;
+
+        explicit NotCopyableTerm(const std::string& value)
+            : m_value(value)
+        {
+        }
+
+        std::string value() const { return m_value; }
+    };
+
+    parsec::Parser<NotCopyableTerm> p = [](std::string_view text, size_t pos) -> parsec::Result<NotCopyableTerm>
+    {
+        auto index = pos;
+        // Skip spaces
+        while (pos < text.size() && std::isspace(text[pos]))
+        {
+            ++pos;
+        }
+        auto start = pos;
+        // Extract keyword
+        while (pos < text.size() && !std::isspace(text[pos]))
+        {
+            ++pos;
+        }
+
+        if (start == pos)
+        {
+            return parsec::makeError<NotCopyableTerm>(std::string("Expected keyword"), pos);
+        }
+
+        // Check if keyword is a Operator checking if start with a uppercase letter
+        if (std::isupper(text[start]))
+        {
+            return parsec::makeError<NotCopyableTerm>(std::string("Expected a non-operator keyword"), pos);
+        }
+
+        auto keyword = text.substr(start, pos - start);
+
+        return parsec::makeSuccess(NotCopyableTerm{std::string(keyword)}, pos);
+    };
+
+    std::string input = "termA AND termB";
+    std::string expected = R"(digraph G {
+AND_00;
+AND_00 -> termB_10;
+termB_10;
+AND_00 -> termA_11;
+termA_11;
+}
+)";
+    auto expression = Expression::create();
+    std::string result ;
+
+    EXPECT_NO_THROW(expression = parse<decltype(p)>(input, std::move(p))) << "Parsing: " << input;
+    EXPECT_NO_THROW(result = Expression::toDotString(expression));
+
+
+    EXPECT_EQ(result, expected) << "Parsing: " << input << "\n result: " << result << "\n expected: " << expected;
+}
