@@ -6,10 +6,10 @@ import sys
 
 from typing import Any
 from pathlib import Path
-from psutil import WINDOWS
-from wazuh_testing.constants.daemons import WAZUH_MANAGER
 
+from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
@@ -102,16 +102,29 @@ def install_audit():
 
 
 @pytest.fixture(autouse=True)
-def start_simulators() -> None:
-    if get_service() is not WAZUH_MANAGER:
-        authd = AuthdSimulator()
-        remoted = RemotedSimulator()
+def start_simulators(request: pytest.FixtureRequest) -> None:
+    """
+    Fixture for starting simulators.
 
-        authd.start()
-        remoted.start()
+    This fixture starts both Authd and Remoted simulators. If the service is not WAZUH_MANAGER,
+     both simulators are started. After the test function finishes, both simulators are shut down.
+
+     Returns:
+         None
+
+     """
+    create_authd = 'authd_simulator' not in request.fixturenames
+    create_remoted = 'authd_simulator' not in request.fixturenames
+
+    if get_service() is not WAZUH_MANAGER:
+        authd = AuthdSimulator() if create_authd else None
+        remoted = RemotedSimulator() if create_remoted else None
+
+        authd.start() if authd else None
+        remoted.start() if create_remoted else None
 
     yield
 
     if get_service() is not WAZUH_MANAGER:
-        authd.shutdown()
-        remoted.shutdown()
+        authd.shutdown() if authd else None
+        remoted.shutdown() if create_remoted else None

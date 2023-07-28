@@ -34,6 +34,9 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
                              truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
+    file.write_file(file_to_monitor)
+    wazuh_log_monitor.start(generate_callback(FIM_ADDED_EVENT))
+
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(FIM_DELETED_EVENT))
     assert wazuh_log_monitor.callback_result

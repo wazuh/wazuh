@@ -77,7 +77,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.linux, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_remove_audit.yaml')
