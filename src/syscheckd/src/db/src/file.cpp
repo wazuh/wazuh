@@ -105,7 +105,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["mtime"] = data.at("mtime");
     }
 
-    if (ctx->config->options & CHECK_SHA1SUM)
+    if (ctx->config->options & CHECK_MD5SUM)
     {
         jsonEvent["data"]["attributes"]["hash_md5"] = data.at("hash_md5");
     }
