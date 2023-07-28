@@ -43,10 +43,10 @@ private:
     parsec::Result<Token> termParser(std::string_view sv, size_t pos) const
     {
         auto res = m_termParser(sv, pos);
-        auto buildToken = std::move(res.value());
 
         if (res.success())
         {
+            auto buildToken = std::move(res.value());
             return parsec::makeSuccess(Token {TermToken<decltype(buildToken)>::create(
                                            std::move(buildToken), std::string(sv.substr(pos, res.index() - pos)), pos)},
                                        res.index());
@@ -89,14 +89,16 @@ private:
 
     parsec::Result<Token> tokenParser(std::string_view sv, size_t pos) const
     {
-        auto res = operatorParser(sv, pos);
+        // The term parser must be tried first, to avoid scaping other tokens
+        // Term parser no should be success if the token is a operator
+        auto res = termParser(sv, pos);
         if (res.success())
         {
             return res;
         }
         else
         {
-            return termParser(sv, pos);
+            return operatorParser(sv, pos);
         }
     }
 
