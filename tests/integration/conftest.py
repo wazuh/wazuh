@@ -535,11 +535,11 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
         authd = AuthdSimulator() if create_authd else None
         remoted = RemotedSimulator() if create_remoted else None
 
-        authd.start() if authd else None
+        authd.start() if create_authd else None
         remoted.start() if create_remoted else None
 
     yield
 
     if services.get_service() is not WAZUH_MANAGER:
-        authd.shutdown() if authd else None
+        authd.shutdown() if create_authd else None
         remoted.shutdown() if create_remoted else None
