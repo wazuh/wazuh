@@ -89,7 +89,7 @@ test_configuration = load_configuration_template(config_path, test_configuration
 # Set configurations required by the fixtures.
 daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
-if sys.platform == WINDOWS: local_internal_options += {AGENTD_WINDOWS_DEBUG: 2}
+if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 
 # Test function.
