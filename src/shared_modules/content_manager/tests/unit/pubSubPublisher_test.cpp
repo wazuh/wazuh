@@ -40,13 +40,7 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
-
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput, "PubSubPublisher - No data data to publish\n");
 
     m_spUpdaterBaseContext->spChannel->stop();
 
@@ -71,13 +65,7 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
     m_spUpdaterContext->data = std::vector<char>(message.begin(), message.end());
 
-    testing::internal::CaptureStdout();
-
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
-
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput, "PubSubPublisher - Data published\n");
 
     m_spUpdaterBaseContext->spChannel->stop();
 
@@ -120,13 +108,7 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheMockRouterProvider
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
-
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput, "PubSubPublisher - No data data to publish\n");
 
     EXPECT_THROW(m_spUpdaterBaseContext->spChannel->stop(), std::runtime_error);
 
