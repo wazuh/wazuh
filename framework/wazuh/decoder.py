@@ -10,7 +10,8 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS
+from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS, \
+    DECODER_FILES_FIELDS, DECODER_FILES_REQUIRED_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
@@ -23,7 +24,7 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
                  parents: bool = False, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                  sort_by: list = None, sort_ascending: bool = True, search_text: str = None,
                  complementary_search: bool = False, search_in_fields: list = None,
-                 q: str = '') -> AffectedItemsWazuhResult:
+                 q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get a list of available decoders.
 
     Parameters
@@ -56,6 +57,8 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
         Maximum number of elements to return.
     q : str
         Defines query to filter.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -102,7 +105,7 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
     data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
-                         required_fields=REQUIRED_FIELDS, allowed_select_fields=DECODER_FIELDS)
+                         required_fields=REQUIRED_FIELDS, allowed_select_fields=DECODER_FIELDS, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -113,7 +116,8 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
 def get_decoders_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
                        limit: int = common.DATABASE_LIMIT, sort_by: list = None, sort_ascending: bool = True,
                        search_text: str = None, complementary_search: bool = False,
-                       search_in_fields: list = None) -> AffectedItemsWazuhResult:
+                       search_in_fields: list = None, q: str = None, select: str = None,
+                       distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get a list of the available decoder files.
 
     Parameters
@@ -138,6 +142,12 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
         First element to return.
     limit : int
         Maximum number of elements to return.
+    q : str
+        Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
+    distinct : bool
+        Look for distinct values.
 
     Raises
     ------
@@ -172,7 +182,8 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
 
     data = process_array(decoders_files, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, q=q, select=select, allowed_select_fields=DECODER_FILES_FIELDS,
+                         distinct=distinct, required_fields=DECODER_FILES_REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

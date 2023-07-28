@@ -112,7 +112,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
                   search_in_fields: list = None, select: list = None, sort_by: list = None,
                   sort_ascending: bool = True, allowed_sort_fields: list = None, offset: int = 0, limit: int = None,
                   q: str = '', required_fields: list = None, allowed_select_fields: list = None,
-                  filters: dict = None) -> dict:
+                  filters: dict = None, distinct: bool = False) -> dict:
     """Process a Wazuh framework data array.
 
     Parameters
@@ -145,6 +145,8 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
         List of fields allowed to select from.
     filters : dict
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -152,14 +154,15 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
         Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
     if not array:
-        return {'items': list(), 'totalItems': 0}
-
+        return {'items': [], 'totalItems': 0}
+    
     if isinstance(filters, dict) and len(filters.keys()) > 0:
-        new_array = list()
+        new_array = []
         for element in array:
             for key, value in filters.items():
                 if element[key] in value:
                     new_array.append(element)
+                    break
 
         array = new_array
 
@@ -177,8 +180,18 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
         array = filter_array_by_query(q, array)
 
     if select:
+        # Do not force the inclusion of any fields when we are looking for distinct values
+        required_fields = set() if distinct else required_fields
         array = select_array(array, select=select, required_fields=required_fields,
                              allowed_select_fields=allowed_select_fields)
+
+    if distinct:
+        distinct_array = []
+        for element in array:
+            if element not in distinct_array:
+                distinct_array.append(element)
+
+        array = distinct_array
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -1379,7 +1392,8 @@ class WazuhDBQuery(object):
         self.count = count
         self.data = get_data
         self.total_items = 0
-        self.min_select_fields = min_select_fields
+        # Do not include any fields when we are looking for distinct values
+        self.min_select_fields = set() if distinct else min_select_fields
         self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
         self.query_separators = {',': 'OR', ';': 'AND', '': ''}
         self.special_characters = "\'\""

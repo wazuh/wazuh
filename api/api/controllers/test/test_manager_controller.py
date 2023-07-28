@@ -78,7 +78,8 @@ async def test_get_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
         result = await get_configuration(request=mock_request)
         f_kwargs = {'section': None,
                     'field': None,
-                    'raw': False
+                    'raw': False,
+                    'distinct': False,
                     }
         mock_dapi.assert_called_once_with(f=manager.read_ossec_conf,
                                           f_kwargs=mock_remove.return_value,
@@ -254,7 +255,9 @@ async def test_get_log(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reques
                 'complementary_search': None,
                 'tag': None,
                 'level': None,
-                'q': None
+                'q': None,
+                'select': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=manager.ossec_log,
                                       f_kwargs=mock_remove.return_value,
