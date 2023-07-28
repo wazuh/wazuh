@@ -89,6 +89,21 @@ async def test_get_agents_versions():
         assert all(result[agent] == {'prev_version': mocked_version, 'new_version': None} for agent in agents_list)
 
 
+@pytest.mark.asyncio
+async def test_get_agent_version():
+    class AffectedItems:
+        def __init__(self, affected_items):
+            self.affected_items = affected_items
+
+    agent_id = "001"
+    mocked_version = "v4.6.0"
+    affected_items = [{"id": agent_id, "version": mocked_version}]
+
+    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=AffectedItems(affected_items)):
+        result = await agent_upgrade.get_agent_version(agent_id)
+        assert result == mocked_version
+
+
 def test_create_command():
     """Check that expected result is returned in create_command function"""
     agent_upgrade.args = MagicMock()
