@@ -61,6 +61,7 @@ EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_ROCKSDB=external/rocksdb/
+EXTERNAL_FLATBUFFERS=external/flatbuffers/
 EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
@@ -893,6 +894,7 @@ POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)/build/librocksdb.so
+FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -907,7 +909,7 @@ endif
 
 # Adding rocksdb only for server
 ifeq (${TARGET},server)
-	EXTERNAL_LIBS += $(ROCKSDB_LIB)
+	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -999,6 +1001,10 @@ endif
 
 ${ROCKSDB_LIB}:
 	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 && ${MAKE}
+
+### flatbuffers ###
+${FLATBUFFERS_LIB}:
+	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 
 #### libplist ##########
 
@@ -1326,7 +1332,7 @@ endif
 
 ifeq (${TARGET},server)
 	# Server extra dependency
-	EXTERNAL_RES += rocksdb
+	EXTERNAL_RES += rocksdb flatbuffers
 endif
 
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
@@ -1663,7 +1669,7 @@ build_syscollector: build_shared_modules build_sysinfo
 endif
 
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB)
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##
@@ -2544,6 +2550,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)lib
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
+	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
 	rm -rf ${POPT_BUILD_DIR}
