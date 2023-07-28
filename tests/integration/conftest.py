@@ -684,32 +684,3 @@ def set_environment_variables(request: pytest.FixtureRequest) -> None:
     if hasattr(request.module, 'environment_variables'):
         for env in environment_variables:
             os.environ.pop[env]
-
-
-@pytest.fixture(autouse=True)
-def start_simulators(request: pytest.FixtureRequest) -> None:
-    """
-    Fixture for starting simulators.
-
-    This fixture starts both Authd and Remoted simulators. If the service is not WAZUH_MANAGER,
-     both simulators are started. After the test function finishes, both simulators are shut down.
-
-     Returns:
-         None
-
-     """
-    create_authd = 'authd_simulator' not in request.fixturenames
-    create_remoted = 'authd_simulator' not in request.fixturenames
-
-    if services.get_service() is not WAZUH_MANAGER:
-        authd = AuthdSimulator() if create_authd else None
-        remoted = RemotedSimulator() if create_remoted else None
-
-        authd.start() if authd else None
-        remoted.start() if create_remoted else None
-
-    yield
-
-    if services.get_service() is not WAZUH_MANAGER:
-        authd.shutdown() if authd else None
-        remoted.shutdown() if create_remoted else None
