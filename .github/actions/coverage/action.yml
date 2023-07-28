@@ -1,0 +1,73 @@
+name: "Coverage"
+description: "Calculates the coverage for a module located on a given path"
+
+inputs:
+  path:
+    required: true
+    description: "Path to the module"
+
+runs:
+  using: "composite"
+  steps:    
+      # Dependencies for testing:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: lcov
+          version: 1.0
+
+      - name: Generate coverage files
+        run: |
+
+          cd ${{ inputs.path }}
+
+          # Set arguments
+          arguments="--capture "
+          
+          # Set working directory
+          arguments+="--directory . "
+
+          # Exclude files from outside the working directory
+          arguments+="--no-external "          
+
+          # Set output file
+          arguments+="--output-file build/coverage.info "
+
+          # # Disable branch coverage
+          arguments+="-rc lcov_branch_coverage=0 "
+
+          # Exclude test files
+          excludes=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \) -exec dirname {} \; | grep test | sort -u | sed "s|^./|--exclude=\"*|; s/$/\/\*\"/" | tr '\n' ' ')
+          arguments+="$excludes "
+
+          echo "Executing: lcov $arguments"
+          lcov $arguments
+
+        shell: bash
+      
+      - name: Validate coverage
+        run: |
+
+          cd ${{ inputs.path }}
+
+          # Obtain the coverage data
+          coverageData=($(lcov --list build/coverage.info | tail -n1 | grep -oE '[0-9.]+%'))
+
+          # Check if lines the coverage is greater than 90%
+          linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
+          echo "Lines coverage is: $linesCoverage %"
+          if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
+              echo "ERROR: Low lines coverage"
+              #exit 1
+          fi
+          
+          # Check if functions coverage is greater than 90%
+          functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
+          echo "Functions coverage is: $functionsCoverage %"
+          if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
+              echo "ERROR: Low functions coverage"
+              #exit 1
+          fi
+
+        shell: bash

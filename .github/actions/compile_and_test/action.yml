@@ -1,5 +1,5 @@
 name: "Compile and test"
-description: "Executes a compilation and test routine based on a path"
+description: "Executes a compilation and test routine based on a path. It also validates the right execution with ASAN or Valgrind"
 
 inputs:
   path:
@@ -13,35 +13,55 @@ inputs:
 
 runs:
   using: "composite"
-  steps:
+  steps:    
+      # Dependencies for testing:
+      # - valgrind 
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: valgrind
+          version: 1.0
+
+      # Dependencies for coverage:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: lcov
+          version: 1.0
+
       - name: Compile
         run: |
           cd ${{ inputs.path }}
 
-          if [[ ${{ inputs.asan }} != "false" ]]; then
+          if [[ "${{ inputs.asan }}" != "false" ]]; then
             # Compile for ASAN
+            echo "Compiling for ASAN"
             export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
           else
             # Compile for valgrind and coverage
+            echo "Compiling for valgrind and coverage"
             export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
           fi
 
           mkdir -p build && cd build
           
           SRC_FOLDER=$(pwd)/src
-          cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS=" $COMPILATION_FLAGS " .. && make -j2
+          cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" .. && make -j2
         shell: bash
 
       - name: Test
         run: |
 
           cd ${{ inputs.path }}/build
-          
-          if [[ ${{ inputs.asan }} != "false" ]]; then
+
+          if [[ "${{ inputs.asan }}" != "false" ]]; then
             # Run for ASAN
+            echo "Running tests for ASAN"
             ctest --output-on-failure
           else
             # Run for valgrind and coverage
+            echo "Running tests for valgrind and coverage"
             valgrind ctest --output-on-failure
           fi
         shell: bash
