@@ -97,7 +97,7 @@ GET_FIM_EVENT_JSON =  r'.*Sending FIM event: (.+)$'
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                     truncate_monitored_files, folder_to_monitor, daemons_handler, fill_folder_to_monitor):
+                                     truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, fill_folder_to_monitor):
     '''
     description: Check if when using the options who-data and real-time at the same time
                  the value of 'whodata' is the one used. For example, when using 'whodata=yes'
@@ -165,15 +165,15 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
         - who_data
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    test_file = Path(test_metadata['test_file'])
+    test_file = test_metadata['test_file']
     
-    file.write_file(test_file)
+    file.write_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(FIM_ADDED_EVENT))
     event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
 
     assert event_data.get('mode') == 'whodata'
     
-    file.remove_file(test_file)
+    file.remove_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(FIM_DELETED_EVENT))
     event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
 
