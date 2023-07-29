@@ -4,10 +4,10 @@
     REALTIME: 'no'
     WHODATA: 'no'
     RESTRICT: testfile$
-    TEST_DIR: /test_dir_1
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
   metadata:
-    folder_to_monitor: /test_dir_1
-    file_to_monitor: /test_dir_1/testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/testfile]
     is_pattern: true
     regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
     fim_mode: scheduled
@@ -18,10 +18,10 @@
     REALTIME: 'yes'
     WHODATA: 'no'
     RESTRICT: testfile$
-    TEST_DIR: /test_dir_1
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
   metadata:
-    folder_to_monitor: /test_dir_1
-    file_to_monitor: /test_dir_1/testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/testfile]
     is_pattern: true
     regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
     fim_mode: realtime
@@ -32,10 +32,10 @@
     REALTIME: 'no'
     WHODATA: 'yes'
     RESTRICT: testfile$
-    TEST_DIR: /test_dir_1
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
   metadata:
-    folder_to_monitor: /test_dir_1
-    file_to_monitor: /test_dir_1/testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/testfile]
     is_pattern: true
     regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
     fim_mode: whodata
@@ -46,10 +46,10 @@
     REALTIME: 'no'
     WHODATA: 'no'
     RESTRICT: testfile$
-    TEST_DIR: /test_dir_1
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
   metadata:
-    folder_to_monitor: /test_dir_1
-    file_to_monitor: /test_dir_1/regex_testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/regex_testfile]
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
     fim_mode: scheduled
@@ -60,10 +60,10 @@
     REALTIME: 'yes'
     WHODATA: 'no'
     RESTRICT: testfile$
-    TEST_DIR: /test_dir_1
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
   metadata:
-    folder_to_monitor: /test_dir_1
-    file_to_monitor: /test_dir_1/regex_testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/regex_testfile]
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
     fim_mode: realtime
@@ -74,10 +74,10 @@
     REALTIME: 'no'
     WHODATA: 'yes'
     RESTRICT: testfile$
-    TEST_DIR: /test_dir_1
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
   metadata:
-    folder_to_monitor: /test_dir_1
-    file_to_monitor: /test_dir_1/regex_testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/regex_testfile]
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
     fim_mode: whodata
@@ -88,10 +88,10 @@
     REALTIME: 'no'
     WHODATA: 'no'
     RESTRICT: regex_testfile$
-    TEST_DIR: /test_dir_2
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_2]
   metadata:
-    folder_to_monitor: /test_dir_2
-    file_to_monitor: /test_dir_2/regex_testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_2]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_2/regex_testfile]
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
     fim_mode: scheduled
@@ -102,10 +102,10 @@
     REALTIME: 'yes'
     WHODATA: 'no'
     RESTRICT: regex_testfile$
-    TEST_DIR: /test_dir_2
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_2]
   metadata:
-    folder_to_monitor: /test_dir_2
-    file_to_monitor: /test_dir_2/regex_testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_2]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_2/regex_testfile]
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
     fim_mode: realtime
@@ -116,10 +116,10 @@
     REALTIME: 'no'
     WHODATA: 'yes'
     RESTRICT: regex_testfile$
-    TEST_DIR: /test_dir_2
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_2]
   metadata:
-    folder_to_monitor: /test_dir_2
-    file_to_monitor: /test_dir_2/regex_testfile
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_2]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_2/regex_testfile]
     is_pattern: false
     regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
     fim_mode: whodata
