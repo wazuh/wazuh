@@ -25,10 +25,10 @@ def file_to_monitor(test_metadata: dict) -> Any:
     path = test_metadata.get('file_to_monitor')
     path = os.path.abspath(path)
 
-    file.write_file(path) if path else None
+    file.write_file(path)
     yield path
 
-    file.remove_file(path) if path else None
+    file.remove_file(path)
 
 
 @pytest.fixture()
@@ -36,11 +36,11 @@ def folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
     path = os.path.abspath(path)
 
-    file.create_folder(path) if path else None
+    file.create_folder(path)
 
     yield path
 
-    file.delete_path_recursively(path) if path else None
+    file.delete_path_recursively(path)
 
 
 @pytest.fixture()
