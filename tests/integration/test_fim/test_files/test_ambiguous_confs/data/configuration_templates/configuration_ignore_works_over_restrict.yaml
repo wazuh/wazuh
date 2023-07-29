@@ -12,7 +12,7 @@
               - whodata: WHODATA
               - realtime: REALTIME
         - ignore:
-            value: /test_dir_1/testfile
+            value: !!python/object/apply:os.path.join [/test_dir_1, testfile]
         - ignore:
             value: regex_testfile$
             attributes:

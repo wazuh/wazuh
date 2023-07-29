@@ -1,3 +1,4 @@
+import os
 import distro
 import pytest
 import re
@@ -22,8 +23,10 @@ from wazuh_testing.utils.services import get_service
 @pytest.fixture()
 def file_to_monitor(test_metadata: dict) -> Any:
     path = test_metadata.get('file_to_monitor')
-    file.write_file(path) if path else None
+    path = os.path.abspath(path)
 
+    print(path)
+    file.write_file(path) if path else None
     yield path
 
     file.remove_file(path) if path else None
@@ -32,6 +35,9 @@ def file_to_monitor(test_metadata: dict) -> Any:
 @pytest.fixture()
 def folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
+    path = os.path.abspath(path)
+
+    print(path)
     file.create_folder(path) if path else None
 
     yield path
@@ -42,9 +48,11 @@ def folder_to_monitor(test_metadata: dict) -> None:
 @pytest.fixture()
 def fill_folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
+    path = os.path.abspath(path)
     amount = test_metadata.get('files_amount')
     amount = 2 if not amount else amount
 
+    print(path)
     [file.write_file(Path(path, f'test{i}.log')) for i in range(amount)]
 
     yield
@@ -99,32 +107,3 @@ def install_audit():
 
     subprocess.run([package_management, "install", audit, option], check=True)
     subprocess.run(["service", "auditd", "start"], check=True)
-
-
-@pytest.fixture(autouse=True)
-def start_simulators(request: pytest.FixtureRequest) -> None:
-    """
-    Fixture for starting simulators.
-
-    This fixture starts both Authd and Remoted simulators. If the service is not WAZUH_MANAGER,
-     both simulators are started. After the test function finishes, both simulators are shut down.
-
-     Returns:
-         None
-
-     """
-    create_authd = 'authd_simulator' not in request.fixturenames
-    create_remoted = 'authd_simulator' not in request.fixturenames
-
-    if get_service() is not WAZUH_MANAGER:
-        authd = AuthdSimulator() if create_authd else None
-        remoted = RemotedSimulator() if create_remoted else None
-
-        authd.start() if authd else None
-        remoted.start() if create_remoted else None
-
-    yield
-
-    if get_service() is not WAZUH_MANAGER:
-        authd.shutdown() if authd else None
-        remoted.shutdown() if create_remoted else None
