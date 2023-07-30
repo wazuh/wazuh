@@ -20,7 +20,6 @@
 namespace builder::internals
 {
 
-
 struct HelperToken
 {
     std::string name = "";
@@ -61,10 +60,23 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& hel
                           helperToken.args[0]);
 }
 
+// operators (==, !=, <, >, <=, >=)
+enum class ExpressionOperator
+{
+    EQUAL,
+    NOT_EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_OR_EQUAL,
+    LESS_THAN,
+    LESS_THAN_OR_EQUAL
+};
+
+
+
 struct ExpressionToken
 {
     std::string field;
-    std::string op;
+    ExpressionOperator op;
     json::Json value;
 };
 
@@ -120,6 +132,8 @@ inline parsec::Parser<BuildToken> getTermParser()
                 if (next + 1 < sv.size())
                 {
                     // Expecting escapeable character
+                    // I think we don't need to scape the whitespace and cut the whitespace at the end before
+                    // parenthesis close/arg anchor
                     if (sv[next + 1] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next + 1] == syntax::PARENTHESIS_CLOSE
                         || sv[next + 1] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE || std::isspace(sv[next + 1]))
                     {
@@ -129,6 +143,11 @@ inline parsec::Parser<BuildToken> getTermParser()
                     {
                         return parsec::makeError<std::string>("Invalid escape sequence", next);
                     }
+                }
+                else
+                {
+                    // TODO CHECK if we are here, next shuld increase by 1 or return error
+                    return parsec::makeError<std::string>("Invalid escape sequence", next);
                 }
             }
             // Check for end of argument
@@ -152,7 +171,7 @@ inline parsec::Parser<BuildToken> getTermParser()
         auto next = pos;
         if (sv[next] == syntax::FUNCTION_HELPER_ARG_ANCHOR)
         {
-            // Optional whitespaces
+            // Optional whitespaces (TODO check case ( a    , c    ))
             ++next;
             while (next < sv.size() && std::isspace(sv[next]))
             {
@@ -169,6 +188,8 @@ inline parsec::Parser<BuildToken> getTermParser()
         {
             res = parsec::makeError<std::string>("Argument separator or parenthesis close expected", pos);
         }
+
+        return res;
     };
 
     auto helperArgsParser = parsec::many(argParser << endArgParser);
@@ -185,11 +206,28 @@ inline parsec::Parser<BuildToken> getTermParser()
 
     parsec::Parser<json::Json> jsonParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
     {
-        return {};
+        if (sv.size() <= pos)
+        {
+            return parsec::makeError<json::Json>("Empty json", pos);
+        }
+
+        rapidjson::Reader reader;
+        rapidjson::StringStream ss(sv.substr(pos).data());
+        rapidjson::Document doc;
+
+        doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
+        if (doc.HasParseError())
+        {
+            return parsec::makeError<json::Json>("Error parsing json", pos);
+        }
+
+        return parsec::makeSuccess(json::Json (std::move(doc)), pos + ss.Tell());
     };
 
-    std::string fieldExtended = syntax::FIELD_EXTENDED;
-    parsec::Parser<std::string> fieldParser = [=](auto sv, auto pos) -> parsec::Result<std::string>
+    // TODO Field name can contains scaped dot, check this
+    parsec::Parser<std::string> fieldParser =
+        [fieldExtended = std::string(syntax::FIELD_EXTENDED) + syntax::JSON_PATH_SEPARATOR
+                         + syntax::FUNCTION_HELPER_DEFAULT_ESCAPE](auto sv, auto pos) -> parsec::Result<std::string>
     {
         if (sv[pos] != syntax::REFERENCE_ANCHOR)
         {
@@ -199,8 +237,7 @@ inline parsec::Parser<BuildToken> getTermParser()
         auto next = pos + 1;
 
         while (next < sv.size()
-               && (std::isalnum(sv[next]) || sv[next] == syntax::JSON_PATH_SEPARATOR
-                   || fieldExtended.find(sv[next]) != std::string::npos))
+               && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos))    // TODO check this
         {
             ++next;
         }
@@ -242,9 +279,44 @@ inline parsec::Parser<BuildToken> getTermParser()
 
     auto valueParser =  valueRefParser | jsonParser | wordParser;
 
-    parsec::Parser<std::string> opParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    parsec::Parser<ExpressionOperator> operatorParser = [](auto sv, auto pos) -> parsec::Result<ExpressionOperator>
     {
-        return {};
+        auto next = pos;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        if (next == pos)
+        {
+            return parsec::makeError<ExpressionOperator>("Empty operator", pos);
+        }
+
+
+        if (next + 1 > sv.size())
+        {
+            return parsec::makeError<ExpressionOperator>("Operator expected", pos);
+        }
+
+        std::vector<std::pair<std::string_view, ExpressionOperator>> compareList = {
+            {"==", ExpressionOperator::EQUAL},
+            {"!=", ExpressionOperator::NOT_EQUAL},
+            {"<=", ExpressionOperator::LESS_THAN_OR_EQUAL},
+            {">=", ExpressionOperator::GREATER_THAN_OR_EQUAL},
+            {"<", ExpressionOperator::LESS_THAN},
+            {">", ExpressionOperator::GREATER_THAN},
+        };
+
+        for (auto&& compare : compareList)
+        {
+            if (sv.substr(next, compare.first.size()) == compare.first)
+            {
+                return parsec::makeSuccess(ExpressionOperator(compare.second), next + compare.first.size());
+            }
+        }
+
+        return parsec::makeError<ExpressionOperator>("Unknown operator", pos);
+
     };
 
     // <$field><op><value>
@@ -252,7 +324,7 @@ inline parsec::Parser<BuildToken> getTermParser()
     // $field==$ref
     // $field=="json"
 
-    parsec::Parser<ExpressionToken> expressionParser = parsec::fmap<ExpressionToken, std::tuple<std::tuple<std::string, std::string>, json::Json>>(
+    parsec::Parser<ExpressionToken> expressionParser = parsec::fmap<ExpressionToken, std::tuple<std::tuple<std::string, ExpressionOperator>, json::Json>>(
         [](auto&& tuple) -> ExpressionToken
         {
             ExpressionToken expressionToken;
@@ -261,7 +333,7 @@ inline parsec::Parser<BuildToken> getTermParser()
             expressionToken.value = std::move(std::get<1>(tuple));
             return std::move(expressionToken);
         },
-        fieldParser & opParser & valueParser);
+        fieldParser & operatorParser & valueParser);
 
     parsec::Parser<BuildToken> helperParserToken = parsec::fmap<BuildToken, HelperToken>(
         [](auto&& helperToken) -> BuildToken
