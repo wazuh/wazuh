@@ -220,7 +220,12 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
     };
 
     // Evaluator function
-    auto evaluator = logicExpression::buildDijstraEvaluator<base::Event>(expressionString, termBuilder, termParser);
+   // auto evaluator = logicexpr::buildDijstraEvaluator<base::Event>(expressionString, termBuilder, termParser);
+
+    auto evaluator = [](base::Event event) -> bool
+    {
+        return true;
+    };
 
     // Trace
     auto name = fmt::format("check: {}", expressionString);
