@@ -27,10 +27,11 @@ namespace logicexpr
  * @param termParser Parser to parse the term's of the expression.
  * @return std::function<bool(Event)> Evaluation function.
  */
-template<typename Event, typename TermBuilder, typename TermParser>
+template<typename Event,typename TermType, typename TermBuilder, typename TermParser>
 std::function<bool(Event)>
 buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, TermParser&& termParser)
 {
+
     // visitor to generate an evaluator::Expression tree from a
     // parser::Expression tree and a term builder function.
     auto visit = [termBuilder](const std::shared_ptr<const parser::Expression>& tokenExpr,
@@ -40,7 +41,9 @@ buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, 
 
         if (tokenExpr->m_token->isTerm()) {
             builtExpr->m_type = evaluator::ExpressionType::TERM;
-            builtExpr->m_function = termBuilder(tokenExpr->m_token->text());
+            // Cast token to TermToken and build the term.
+            auto& termToken = static_cast<parser::TermToken<TermType>&>(*tokenExpr->m_token);
+            builtExpr->m_function = termBuilder(termToken.buildToken());
             return builtExpr;
         }
 
