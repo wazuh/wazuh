@@ -71,8 +71,6 @@ enum class ExpressionOperator
     LESS_THAN_OR_EQUAL
 };
 
-
-
 struct ExpressionToken
 {
     std::string field;
@@ -111,23 +109,38 @@ inline parsec::Parser<BuildToken> getTermParser()
         return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_OPEN), pos + 1);
     };
 
-    parsec::Parser<std::string> parenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    parsec::Parser<std::string> lookbehindParenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
-        if (sv[pos] != syntax::PARENTHESIS_CLOSE)
+        if (pos == 0)
         {
-            return parsec::makeError<std::string>("Parenthesis close expected", pos);
+            return parsec::makeError<std::string>("Lookbehind parenthesis close expected", pos);
+        }
+        else if (sv[pos - 1] != syntax::PARENTHESIS_CLOSE)
+        {
+            return parsec::makeError<std::string>("Lookbehind parenthesis close expected", pos);
         }
 
-        return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_CLOSE), pos + 1);
+        return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_CLOSE), pos);
     };
 
     parsec::Parser<std::string> argParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
         auto next = pos;
+
+        if (next >= sv.size())
+        {
+            return parsec::makeError<std::string>("EOA", pos);
+        }
+
         while (next < sv.size())
         {
             // Check for escape sequence
-            if (sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE)
+            if (sv[next] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next] == syntax::PARENTHESIS_CLOSE)
+            {
+                break;
+            }
+            // Check for end of argument
+            else if (sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE)
             {
                 if (next + 1 < sv.size())
                 {
@@ -150,16 +163,7 @@ inline parsec::Parser<BuildToken> getTermParser()
                     return parsec::makeError<std::string>("Invalid escape sequence", next);
                 }
             }
-            // Check for end of argument
-            else if (sv[next] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next] == syntax::PARENTHESIS_CLOSE)
-            {
-                break;
-            }
-            // Continue
-            else
-            {
-                ++next;
-            }
+            ++next;
         }
 
         return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
@@ -182,7 +186,7 @@ inline parsec::Parser<BuildToken> getTermParser()
         }
         else if (sv[next] == syntax::PARENTHESIS_CLOSE)
         {
-            res = parsec::makeSuccess(std::string(sv.substr(pos, 1)), pos);
+            res = parsec::makeSuccess(std::string(sv.substr(pos, 1)), pos + 1);
         }
         else
         {
@@ -192,8 +196,8 @@ inline parsec::Parser<BuildToken> getTermParser()
         return res;
     };
 
-    auto helperArgsParser = parsec::many(argParser << endArgParser);
-    auto helperParserRaw = (helperNameParser << parenthOpenParser) & (helperArgsParser << parenthCloseParser);
+    auto helperArgsParser = parsec::many1(argParser << endArgParser);
+    auto helperParserRaw = (helperNameParser << parenthOpenParser) & (helperArgsParser << lookbehindParenthCloseParser);
     auto helperParser = parsec::fmap<HelperToken, std::tuple<std::string, parsec::Values<std::string>>>(
         [](auto&& tuple) -> HelperToken
         {
@@ -221,7 +225,7 @@ inline parsec::Parser<BuildToken> getTermParser()
             return parsec::makeError<json::Json>("Error parsing json", pos);
         }
 
-        return parsec::makeSuccess(json::Json (std::move(doc)), pos + ss.Tell());
+        return parsec::makeSuccess(json::Json(std::move(doc)), pos + ss.Tell());
     };
 
     // TODO Field name can contains scaped dot, check this
@@ -237,7 +241,7 @@ inline parsec::Parser<BuildToken> getTermParser()
         auto next = pos + 1;
 
         while (next < sv.size()
-               && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos))    // TODO check this
+               && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos)) // TODO check this
         {
             ++next;
         }
@@ -277,7 +281,7 @@ inline parsec::Parser<BuildToken> getTermParser()
         return parsec::makeSuccess(std::move(word), next);
     };
 
-    auto valueParser =  valueRefParser | jsonParser | wordParser;
+    auto valueParser = valueRefParser | jsonParser | wordParser;
 
     parsec::Parser<ExpressionOperator> operatorParser = [](auto sv, auto pos) -> parsec::Result<ExpressionOperator>
     {
@@ -291,7 +295,6 @@ inline parsec::Parser<BuildToken> getTermParser()
         {
             return parsec::makeError<ExpressionOperator>("Empty operator", pos);
         }
-
 
         if (next + 1 > sv.size())
         {
@@ -316,7 +319,6 @@ inline parsec::Parser<BuildToken> getTermParser()
         }
 
         return parsec::makeError<ExpressionOperator>("Unknown operator", pos);
-
     };
 
     // <$field><op><value>
@@ -324,29 +326,22 @@ inline parsec::Parser<BuildToken> getTermParser()
     // $field==$ref
     // $field=="json"
 
-    parsec::Parser<ExpressionToken> expressionParser = parsec::fmap<ExpressionToken, std::tuple<std::tuple<std::string, ExpressionOperator>, json::Json>>(
-        [](auto&& tuple) -> ExpressionToken
-        {
-            ExpressionToken expressionToken;
-            expressionToken.field = std::get<0>(std::get<0>(tuple));
-            expressionToken.op = std::get<1>(std::get<0>(tuple));
-            expressionToken.value = std::move(std::get<1>(tuple));
-            return std::move(expressionToken);
-        },
-        fieldParser & operatorParser & valueParser);
+    parsec::Parser<ExpressionToken> expressionParser =
+        parsec::fmap<ExpressionToken, std::tuple<std::tuple<std::string, ExpressionOperator>, json::Json>>(
+            [](auto&& tuple) -> ExpressionToken
+            {
+                ExpressionToken expressionToken;
+                expressionToken.field = std::get<0>(std::get<0>(tuple));
+                expressionToken.op = std::get<1>(std::get<0>(tuple));
+                expressionToken.value = std::move(std::get<1>(tuple));
+                return std::move(expressionToken);
+            },
+            fieldParser& operatorParser& valueParser);
 
     parsec::Parser<BuildToken> helperParserToken = parsec::fmap<BuildToken, HelperToken>(
-        [](auto&& helperToken) -> BuildToken
-        {
-            return std::move(helperToken);
-        },
-        helperParser);
+        [](auto&& helperToken) -> BuildToken { return std::move(helperToken); }, helperParser);
     parsec::Parser<BuildToken> expressionParserToken = parsec::fmap<BuildToken, ExpressionToken>(
-        [](auto&& expressionToken) -> BuildToken
-        {
-            return std::move(expressionToken);
-        },
-        expressionParser);
+        [](auto&& expressionToken) -> BuildToken { return std::move(expressionToken); }, expressionParser);
 
     parsec::Parser<BuildToken> parser = helperParserToken | expressionParserToken;
 
