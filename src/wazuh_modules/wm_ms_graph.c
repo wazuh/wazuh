@@ -171,8 +171,14 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
         else{
             cJSON* response_body = NULL;
             if(response_body = cJSON_Parse(response->body), response_body){
-                os_strdup(cJSON_GetObjectItem(response_body, "access_token")->valuestring, auth_config->access_token);
-                auth_config->token_expiration_time = time(NULL) + cJSON_GetObjectItem(response_body, "expires_in")->valueint;
+                cJSON* access_token_value = cJSON_GetObjectItem(response_body, "access_token");
+                cJSON* access_token_expiration = cJSON_GetObjectItem(response_body, "expires_in");
+                if (cJSON_IsString(access_token_value) && cJSON_IsNumber(access_token_expiration)){
+                    os_strdup(access_token_value->valuestring, auth_config->access_token);
+                    auth_config->token_expiration_time = time(NULL) + access_token_expiration->valueint;
+                } else {
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Incomplete access token response, value or expiration time not present.");
+                }
                 cJSON_Delete(response_body);
             }
             else{

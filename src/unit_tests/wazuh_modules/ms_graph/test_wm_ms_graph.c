@@ -1686,6 +1686,9 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     cJSON *parse_json = __real_cJSON_Parse("{\"no_access_token\":\"token_value\",\"expires_in\":123}");
     will_return(__wrap_cJSON_Parse, parse_json);
 
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
+
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
     os_free(module_data->resources[0].relationships[0]);
@@ -1753,6 +1756,9 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
 
     cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"no_expires_in\":123}");
     will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
