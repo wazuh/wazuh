@@ -31,7 +31,10 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "socket_test.cpp"
     "rocksDBSafeQueue_test.cpp"
     "threadEventDispatcher_test.cpp"
+    "xzHelper_test.cpp"
 )
+
+file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
@@ -77,6 +80,7 @@ else()
         dl
         pthread
         rt
+        lzma
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
@@ -88,3 +92,5 @@ endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_test(NAME utils_unit_test
          COMMAND utils_unit_test)
+
+

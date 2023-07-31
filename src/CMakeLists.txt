@@ -69,6 +69,8 @@ set(BENCHMARK_ENABLE_TESTING "OFF")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
 link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/external/lzma/build/)
+
 add_subdirectory(external/benchmark EXCLUDE_FROM_ALL)
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 
@@ -85,6 +87,7 @@ include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
 include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
 
 add_subdirectory(shared_modules/utils)
 add_subdirectory(shared_modules/router)
