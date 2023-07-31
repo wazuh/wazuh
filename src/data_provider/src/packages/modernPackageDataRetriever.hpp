@@ -12,41 +12,46 @@
 #ifndef _MODERN_PACKAGE_DATA_RETRIEVER_PP
 #define _MODERN_PACKAGE_DATA_RETRIEVER_PP
 
-#include "packagesNPM.hpp"
-#include "packagesPYPI.hpp"
+#include "json.hpp"
+#include "sharedDefs.h"
+#include <functional>
+#include <map>
 
-// Exception template
-template <class T, StandardType standardType>
+#if defined(HAS_STDFILESYSTEM) && HAS_STDFILESYSTEM==true
+#include "packages/packagesNPM.hpp"
+#include "packages/packagesPYPI.hpp"
+#else
+class PYPI
+{
+    public:
+        void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/);
+};
+class NPM
+{
+    public:
+        void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/);
+};
+#endif
+
+template <bool>
 class ModernFactoryPackagesCreator final
 {
     public:
-        static void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/)
+        static void getPackages(const std::map<std::string, std::set<std::string>>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/)
         {
-            throw std::runtime_error{"Error creating modern package data retriever."};
         }
 };
 
 // Standard template to extract package information in fully compatible Linux
 // systems
-template <class T>
-class ModernFactoryPackagesCreator<T, StandardType::CPP17> final
+template <>
+class ModernFactoryPackagesCreator<true> final
 {
     public:
-        static void getPackages(const std::set<std::string>& paths, std::function<void(nlohmann::json&)> callback)
+        static void getPackages(const std::map<std::string, std::set<std::string>>& paths, std::function<void(nlohmann::json&)> callback)
         {
-            T().getPackages(paths, callback);
-        }
-};
-
-// Template to extract package information in partially incompatible Linux
-// systems
-template <class T>
-class ModernFactoryPackagesCreator<T, StandardType::OLDEST> final
-{
-    public:
-
-        static void getPackages(const std::set<std::string>& /*paths*/, std::function<void(nlohmann::json&)> /*callback*/)
-        {
+            PYPI().getPackages(paths.at("PYPI"), callback);
+            NPM().getPackages(paths.at("NPM"), callback);
         }
 };
 

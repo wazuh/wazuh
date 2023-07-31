@@ -14,13 +14,23 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-# If is Linux, Windows or macOS > 10.15, use C++17
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Windows" OR (CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND NOT CMAKE_HOST_SYSTEM_VERSION VERSION_LESS "19.0.0"))
+#Check if filesystem is available
+include(CheckCXXSourceCompiles)
+
+check_cxx_source_compiles("
+    #include <filesystem>
+    int main() {
+        std::filesystem::path p;
+        return 0;
+    }
+" HAS_FILESYSTEM)
+
+if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_STANDARD 17)
-  add_definitions(-DSTANDARD_TYPE=StandardType::CPP17)
+  add_definitions(-DHAS_STDFILESYSTEM=true)
 else()
   set(CMAKE_CXX_STANDARD 14)
-  add_definitions(-DSTANDARD_TYPE=StandardType::OLDEST)
+  add_definitions(-DHAS_STDFILESYSTEM=false)
 endif()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -431,8 +431,12 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         }
     }
 
-    ModernFactoryPackagesCreator<PYPI<>, STANDARD_TYPE>::getPackages(UNIX_PYPI_DEFAULT_BASE_DIRS, callback);
-    ModernFactoryPackagesCreator<NPM<>, STANDARD_TYPE>::getPackages(UNIX_NPM_DEFAULT_BASE_DIRS, callback);
+    static const std::map<std::string, std::set<std::string>> searchPaths =
+    {
+        {"PYPI", UNIX_PYPI_DEFAULT_BASE_DIRS},
+        {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
+    };
+    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
