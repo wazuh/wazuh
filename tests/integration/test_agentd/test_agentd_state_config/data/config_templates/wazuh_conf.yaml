@@ -1,4 +1,4 @@
-- tags:
+    - tags:
       - all
       apply_to_modules:
       - test_agentd_reconnection

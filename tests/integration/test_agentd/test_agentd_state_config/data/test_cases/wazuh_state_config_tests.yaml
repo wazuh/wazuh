@@ -1,48 +1,53 @@
-- name: "Negative state interval"
-  test_case:
-    interval: -1
-    state_file_exist: false
-    agentd_ends: true
+- name: Negative_state_interval
+  description: Check negative state interval
+  configuration_parameters:
+    interval: '-1'
+    state_file_exist: 'false'
+    agentd_ends: 'true'
   metadata:
     event_monitor: 'interval_not_valid'
 
-- name: "Undefined state interval value"
-  test_case:
-    interval: " "
-    state_file_exist: false
-    agentd_ends: false
+- name: Undefined_state_interval_value
+  description: Check undefined state interval option
+  configuration_parameters:
+    interval: ' '
+    state_file_exist: 'false'
+    agentd_ends: 'false'
   metadata:
     event_monitor: 'file_not_enabled'
 
-- name: "State interval option dont exist"
-  test_case:
-    interval: null
-    state_file_exist: false
-    agentd_ends: true
+- name: State_interval_option_dont_exist
+  description: Check state interval option dont exist
+  configuration_parameters:
+    interval: 'null'
+    state_file_exist: 'false'
+    agentd_ends: 'true'
   metadata:
     event_monitor: 'interval_not_found'
 
-- name: "Zero state interval"
-  test_case:
-    interval: 0
-    state_file_exist: false
-    agentd_ends: false
+- name: Zero_state_interval
+  description: Check zero big state interval
+  configuration_parameters:
+    interval: '0'
+    state_file_exist: 'false'
+    agentd_ends: 'false'
   metadata:
     event_monitor: 'file_not_enabled'
 
-- name: "Too big state interval"
-  test_case:
-    interval: 86401
-    state_file_exist: false
-    agentd_ends: true
+- name: Too_big_state_interval
+  description: Check too big state interval
+  configuration_parameters:
+    interval: '86401'
+    state_file_exist: 'false'
+    agentd_ends: 'true'
   metadata:
     event_monitor: 'interval_not_valid'
 
-
-- name: "Default state interval"
-  test_case:
-    interval: 5
-    state_file_exist: true
-    agentd_ends: false
+- name: Default_state_interval
+  description: Check default state interval
+  configuration_parameters:
+    interval: '5'
+    state_file_exist: 'true'
+    agentd_ends: 'false'
   metadata:
     event_monitor: 'file_enabled'

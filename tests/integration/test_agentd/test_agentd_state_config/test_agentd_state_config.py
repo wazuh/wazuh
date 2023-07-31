@@ -52,7 +52,7 @@ import sys
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.modules.modulesd.agentd import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
@@ -76,8 +76,12 @@ if sys.platform == WINDOWS:
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 
+print(test_configuration)
+
+print(test_metadata)
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state_config(test_case, set_local_internal_options):
+def test_agentd_state_config(test_configuration, test_metadata, configure_local_internal_options):
     '''
     description: Check that the 'wazuh-agentd.state' statistics file is created
                  automatically and verify that it is updated at the set intervals.
