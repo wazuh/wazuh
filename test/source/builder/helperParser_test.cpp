@@ -189,9 +189,33 @@ INSTANTIATE_TEST_SUITE_P(
                     expToken {"$field",
                               eOp::EQUAL,
                               json::Json {R"({"key_str":"asd","key_num":123,"key_obj":{"custom_key":true}})"}}),
-        // TODO: Expression fail - bad operator
-        // TODO: Expression fail - bad field
-        // TODO: Expression fail - bad value
+        // Expression fail - bad operator
+        TermParserT(false, R"($field=!123)", expToken {}),
+        TermParserT(false, R"($field=123)", expToken {}),
+        TermParserT(false, R"($field->123)", expToken {}),
+        TermParserT(false, R"($field.123)", expToken {}),
+        TermParserT(false, R"($field!123)", expToken {}),
+        TermParserT(false, R"($field|123)", expToken {}),
+        TermParserT(false, R"($field?123)", expToken {}),
+        TermParserT(false, R"($field =! 123)", expToken {}),
+        TermParserT(false, R"($field = 123)", expToken {}),
+        TermParserT(false, R"($field -> 123)", expToken {}),
+        // Expression fail - bad field
+        TermParserT(false , R"(field == 123)", expToken {}),
+        TermParserT(false , R"(field == "123")", expToken {}),
+        TermParserT(false , R"(field == $field2)", expToken {}),
+        TermParserT(false , R"(field == {})", expToken {}),
+        TermParserT(false , R"(field == null)", expToken {}),
+        TermParserT(false , R"(field == true)", expToken {}),
+        TermParserT(false , R"(field >= 123)", expToken {}),
+        TermParserT(false , R"(field > 123)", expToken {}),
+        TermParserT(false , R"(field <= "123")", expToken {}),
+        TermParserT(false , R"(field < "123")", expToken {}),
+        TermParserT(false , R"(field != $field2)", expToken {}),
+        // Expression fail - Missing field
+        TermParserT(false , R"($field == )", expToken {}),
+        TermParserT(false , R"($ == 123)", expToken {}),
+        TermParserT(false , R"($field 123)", expToken {}),
         //**************************
         // Helper TEST
         //**************************
@@ -216,15 +240,18 @@ INSTANTIATE_TEST_SUITE_P(
         TermParserT(true, R"(hp(   $f1,   $f2,   $f3,   ))", helpToken {"hp", {"$f1", "$f2", "$f3", ""}}),
         TermParserT(true, R"(hp(   $f1,   f2,   f3,   f4))", helpToken {"hp", {"$f1", "f2", "f3", "f4"}}),
         TermParserT(true, R"(hp(   $f1,   f2,   f3,   f4,   ))", helpToken {"hp", {"$f1", "f2", "f3", "f4", ""}}),
-        TermParserT(true, R"(hp(   $f1,   ,   ,   f4,   ))", helpToken {"hp", {"$f1", "", "", "f4", ""}}),
+        TermParserT(true, R"(hp(   $f1,\   ,  \ ,   f4,   ))", helpToken {"hp", {"$f1", "\\   ", "\\ ", "f4", ""}}),
         TermParserT(true, R"(hp(   $f1,   ,   ,   f4,   ))", helpToken {"hp", {"$f1", "", "", "f4", ""}}),
         // Helper Ok - with spaces before and after separator
-        TermParserT(true, R"(hp(   $f1   ,   $f2   ,   $f3   ))", helpToken {"hp", {"$f1", "$f2", "$f3"}}),
-        TermParserT(true, R"(hp(   $f1   ,   $f2   ,   $f3   ,   ))", helpToken {"hp", {"$f1", "$f2", "$f3", ""}}),
-        TermParserT(true, R"(hp(   $f1   ,   f2   ,   f3   ,   f4   ))", helpToken {"hp", {"$f1", "f2", "f3", "f4"}}),
+        TermParserT(true, R"(hp(   $f1   ,   $f2   ,   $f3   ))", helpToken {"hp", {"$f1   ", "$f2   ", "$f3   "}}),
+        TermParserT(true, R"(hp(   $f1   ,   $f2   ,   $f3   ,   ))", helpToken {"hp", {"$f1   ", "$f2   ", "$f3   ", ""}}),
+        TermParserT(true, R"(hp(   $f1   ,   f2   ,   f3   ,   f4   ))", helpToken {"hp", {"$f1   ", "f2   ", "f3   ", "f4   "}}),
         TermParserT(true,
-                    R"(hp(   $f1   ,   f2   ,   f3   ,   f4   ,   ))",
-                    helpToken {"hp", {"$f1", "f2", "f3", "f4", ""}}),
-        // Helper Fail - bad target field
-        TermParserT(false, R"(helper_name123())", helpToken {"helper_name123", {}}),
-        TermParserT(false, R"(helper_name123(rawvalue))", helpToken {"helper_name123", {}})));
+                    R"(hp(   $f1   ,\   f2   ,   f3   ,   f4   ,   ))",
+                    helpToken {"hp", {"$f1   ", "\\   f2   ", "f3   ", "f4   ", ""}}),
+        // Scape characters
+        TermParserT(true, R"(hp(\ \, ,,,\,\,,\,\,\,))", helpToken {"hp", {"\\ \\, ", "", "", "\\,\\,", "\\,\\,\\,"}}),
+        TermParserT(true, R"(hp(   \ \, ,  ,  ,  \,\, ,  \,\,\,))", helpToken {"hp", {"\\ \\, ", "", "", "\\,\\, ", "\\,\\,\\,"}}),
+        // Helper Ok - Check in builder time the validity of the helper name and content of parameters
+        TermParserT(true, R"(helper_name123())", helpToken {"helper_name123", {""}}),
+        TermParserT(true, R"(helper_name123(rawvalue))", helpToken {"helper_name123", {"rawvalue"}})));

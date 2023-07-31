@@ -74,6 +74,7 @@ TermBuilder getTermBuilder(std::shared_ptr<Registry<Builder>> registry, std::sha
 {
     return [registry, definitions](const BuildToken& token)
     {
+        std::function<bool(base::Event)> buildedFn;
         std::any opBuilderInput;
 
         if (std::holds_alternative<HelperToken>(token))
@@ -88,7 +89,30 @@ TermBuilder getTermBuilder(std::shared_ptr<Registry<Builder>> registry, std::sha
         }
 
         auto op = registry->getBuilder("operation.condition")(opBuilderInput, definitions);
-        return op->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+        if (op->isAnd()) {
+            std::vector<std::function<bool(base::Event)>> andOps;
+            auto andOp = op->getPtr<base::And>();
+            for (auto& ops : andOp->getOperands()) {
+                if (ops->isTerm()) {
+                    andOps.push_back(ops->getPtr<base::Term<base::EngineOp>>()->getFn());
+                } else {
+                    throw std::runtime_error("Check stage: Only 1 level of AND is supported.");
+                }
+            }
+            buildedFn = [andOps](base::Event event) -> bool {
+                for (auto& op : andOps) {
+                    if (!op(event)) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+        } else {
+            buildedFn = op->getPtr<base::Term<base::EngineOp>>()->getFn();
+        }
+
+        return buildedFn;
     };
 }
 
