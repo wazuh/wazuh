@@ -6,7 +6,7 @@ inputs:
     required: true
     description: "Path to the module we want to generate documentation for"
     default: src/
-  doxygen-config:
+  doxygen_config:
     required: true
     description: "Path to the doxygen configuration file"
     default: Doxyfile
@@ -25,5 +25,15 @@ runs:
       - name: Generate documentation
         run: |
 
+          DOXYGEN_CONFIG=$(cat ${{ inputs.doxygen_config }}; echo -e "OUTPUT_DIRECTORY=${{ inputs.path }}/doc INPUT=${{ inputs.path }}" )
           
+          errors=$(echo $DOXYGEN_CONFIG | doxygen - 2>) 
+
+          if [ -n "$errors" ]; then
+            echo "Documentation generation failed: $errors"
+            exit 1
+          else
+            echo "Documentation generated successfully"
+          fi
+
         shell: bash
