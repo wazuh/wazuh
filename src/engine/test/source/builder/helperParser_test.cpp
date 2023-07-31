@@ -254,4 +254,20 @@ INSTANTIATE_TEST_SUITE_P(
         TermParserT(true, R"(hp(   \ \, ,  ,  ,  \,\, ,  \,\,\,))", helpToken {"hp", {"\\ \\, ", "", "", "\\,\\, ", "\\,\\,\\,"}}),
         // Helper Ok - Check in builder time the validity of the helper name and content of parameters
         TermParserT(true, R"(helper_name123())", helpToken {"helper_name123", {""}}),
-        TermParserT(true, R"(helper_name123(rawvalue))", helpToken {"helper_name123", {"rawvalue"}})));
+        TermParserT(true, R"(helper_name123(rawvalue))", helpToken {"helper_name123", {"rawvalue"}}),
+        TermParserT(true, R"(hp($wazuh.queue) )" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue) )" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue) ())" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue)==())" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue) AND)" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue)==)" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue)!!)" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue)>)" , helpToken {"hp", {"$wazuh.queue"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) )" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) ())" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)==())" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) AND)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)==)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)!!)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)>)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}})
+        ));
