@@ -163,7 +163,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
         if(response->status_code != 200){
             char status_code[4];
             snprintf(status_code, 4, "%ld", response->status_code);
-            mtwarn(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: Status code was '%s' & response was '%s'", status_code, response->body);
+            mtwarn(WM_MS_GRAPH_LOGTAG, "Received unsuccessful status code when attempting to obtain access token: Status code was '%s' & response was '%s'", status_code, response->body);
         }
         else if (response->max_size_reached){
             mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
@@ -182,7 +182,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
         wurl_free_response(response);
     }
     else{
-        mtwarn(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
+        mtwarn(WM_MS_GRAPH_LOGTAG, "No response received when attempting to obtain access token.");
     }
 
     os_free(headers);
