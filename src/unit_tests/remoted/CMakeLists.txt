@@ -19,7 +19,6 @@ set_target_properties(
 
 link_directories(${SRC_FOLDER}/build/shared_modules/router)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
-
 target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -lrouter)
 
 #include wrappers
