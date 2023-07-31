@@ -1,6 +1,36 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.5.1]
+
+### Manager
+
+#### Fixed
+
+- Fixed a race condition in some RBAC unit tests by clearing the SQLAlchemy mappers. ([#17866](https://github.com/wazuh/wazuh/pull/17866))
+
+### Agent
+
+#### Added
+
+- Added the `discard_regex` functionality to Inspector and CloudWatchLogs AWS integrations. ([#17748](https://github.com/wazuh/wazuh/pull/17748))
+- Added new validations for the AWS integration arguments. ([#17673](https://github.com/wazuh/wazuh/pull/17673))
+
+#### Fixed
+
+- Fixed `InvalidRange` error in Azure Storage integration when trying to get data from an empty blob. ([#17524](https://github.com/wazuh/wazuh/pull/17524))
+
+### RESTful API
+
+#### Changed
+
+- Changed `PUT /agents/upgrade_custom` endpoint to validate that the file extension is `.wpk`. ([#17632](https://github.com/wazuh/wazuh/pull/17632))
+
+#### Fixed
+
+- Fixed errors in API endpoints to get `labels` and `reports` active configuration from managers. ([#17660](https://github.com/wazuh/wazuh/pull/17660))
+
+
 ## [v4.5.0]
 
 
