@@ -181,15 +181,11 @@ inline parsec::Parser<BuildToken> getTermParser()
         return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_OPEN), next);
     };
 
-    parsec::Parser<std::string> lookbehindParenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    parsec::Parser<std::string> behindParenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
-        if (pos == 0)
+        if (pos == 0 || sv[pos - 1] != syntax::PARENTHESIS_CLOSE)
         {
-            return parsec::makeError<std::string>("Lookbehind parenthesis close expected", pos);
-        }
-        else if (sv[pos - 1] != syntax::PARENTHESIS_CLOSE)
-        {
-            return parsec::makeError<std::string>("Lookbehind parenthesis close expected", pos);
+            return parsec::makeError<std::string>("Parenthesis close expected", pos);
         }
 
         return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_CLOSE), pos);
@@ -267,8 +263,9 @@ inline parsec::Parser<BuildToken> getTermParser()
         return res;
     };
 
-    auto helperArgsParser = parsec::many1(argParser << endArgParser);
-    auto helperParserRaw = (helperNameParser << parenthOpenParser) & (helperArgsParser << lookbehindParenthCloseParser);
+    auto helperArgsParser = parsec::many1(parsec::negativeLook(behindParenthCloseParser) >> argParser << endArgParser);
+    auto helperParserRaw =
+        (helperNameParser << parenthOpenParser) & (helperArgsParser << parsec::positiveLook(behindParenthCloseParser));
     auto helperParser = parsec::fmap<HelperToken, std::tuple<std::string, parsec::Values<std::string>>>(
         [](auto&& tuple) -> HelperToken
         {
