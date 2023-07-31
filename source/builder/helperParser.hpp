@@ -78,6 +78,66 @@ struct ExpressionToken
     json::Json value;
 };
 
+inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken& expressionToken)
+{
+    if (expressionToken.field.empty())
+    {
+        throw std::runtime_error("Expression field is empty");
+    }
+
+    if (expressionToken.op == ExpressionOperator::EQUAL)
+    {
+        return std::make_tuple(expressionToken.field, expressionToken.value);
+    }
+
+    if (expressionToken.op == ExpressionOperator::NOT_EQUAL && !expressionToken.value.isString() && !expressionToken.value.isNumber())
+    {
+        throw std::runtime_error("Not equal operator is not supported for non string or number values");
+    }
+
+    // Rest of operators only support string or number values
+    if (!expressionToken.value.isString() && !expressionToken.value.isNumber())
+    {
+        throw std::runtime_error("Expression value is not string or number");
+    }
+
+    HelperToken helperToken {};
+
+    if (expressionToken.value.isNumber())
+    {
+        helperToken.name = "int";
+        helperToken.args = {std::to_string(expressionToken.value.getInt().value())};
+    }
+    else
+    {
+        helperToken.name = "string";
+        helperToken.args = {expressionToken.value.getString().value()};
+    }
+
+    switch(expressionToken.op)
+    {
+        case ExpressionOperator::GREATER_THAN:
+            helperToken.name += "_greater";
+            break;
+        case ExpressionOperator::GREATER_THAN_OR_EQUAL:
+            helperToken.name += "_greater_or_equal";
+            break;
+        case ExpressionOperator::LESS_THAN:
+            helperToken.name += "_less";
+            break;
+        case ExpressionOperator::LESS_THAN_OR_EQUAL:
+            helperToken.name += "_less_or_equal";
+            break;
+        case ExpressionOperator::NOT_EQUAL:
+            helperToken.name += "_not_equal";
+            break;
+        default:
+            throw std::logic_error("Unknown expression operator");
+    }
+
+    return toBuilderInput(helperToken, expressionToken.field);
+}
+
 using BuildToken = std::variant<HelperToken, ExpressionToken>;
 
 inline parsec::Parser<BuildToken> getTermParser()
@@ -286,14 +346,10 @@ inline parsec::Parser<BuildToken> getTermParser()
     parsec::Parser<ExpressionOperator> operatorParser = [](auto sv, auto pos) -> parsec::Result<ExpressionOperator>
     {
         auto next = pos;
+
         while (next < sv.size() && std::isspace(sv[next]))
         {
             ++next;
-        }
-
-        if (next == pos)
-        {
-            return parsec::makeError<ExpressionOperator>("Empty operator", pos);
         }
 
         if (next + 1 > sv.size())
@@ -310,15 +366,31 @@ inline parsec::Parser<BuildToken> getTermParser()
             {">", ExpressionOperator::GREATER_THAN},
         };
 
+        ExpressionOperator op;
+        bool found = false;
         for (auto&& compare : compareList)
         {
             if (sv.substr(next, compare.first.size()) == compare.first)
             {
-                return parsec::makeSuccess(ExpressionOperator(compare.second), next + compare.first.size());
+                op = compare.second;
+                next += compare.first.size();
+                found = true;
+                break;
             }
         }
 
-        return parsec::makeError<ExpressionOperator>("Unknown operator", pos);
+        if (!found)
+        {
+            return parsec::makeError<ExpressionOperator>("Unknown operator", pos);
+        }
+
+        // Ignore spaces after operator
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+    
+        return parsec::makeSuccess(std::move(op), next);
     };
 
     // <$field><op><value>

@@ -40,10 +40,9 @@ buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, 
         auto builtExpr = evaluator::Expression<Event>::create();
 
         if (tokenExpr->m_token->isTerm()) {
+            auto termToken = tokenExpr->m_token->getPtr<parser::TermToken<TermType>>();
             builtExpr->m_type = evaluator::ExpressionType::TERM;
-            // Cast token to TermToken and build the term.
-            auto& termToken = static_cast<parser::TermToken<TermType>&>(*tokenExpr->m_token);
-            builtExpr->m_function = termBuilder(termToken.buildToken());
+            builtExpr->m_function = termBuilder(termToken->buildToken());
             return builtExpr;
         }
 
