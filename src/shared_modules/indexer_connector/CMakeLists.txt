@@ -24,12 +24,12 @@ include_directories(${SRC_FOLDER}/external/rocksdb/include)
 
 include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)
-include_directories(${SHARED_MODULES}/wazuh-http-request/include)
+include_directories(${SHARED_MODULES}/http-request/include)
 
 # Link directories
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 link_directories(${SRC_FOLDER}/external/curl/lib/.libs)
-link_directories(${SHARED_MODULES}/wazuh-http-request/build)
+link_directories(${SHARED_MODULES}/http-request/build)
 
 file(GLOB INDEXER_CONNECTOR_SRC
     "src/*.cpp"

@@ -11,9 +11,9 @@
 #ifndef _API_DOWNLOADER_HPP
 #define _API_DOWNLOADER_HPP
 
+#include "http-request/include/HTTPRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
-#include "wazuh-http-request/include/HTTPRequest.hpp"
 #include <iostream>
 #include <memory>
 
@@ -35,7 +35,7 @@ private:
     {
         const auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
 
-        const auto onError {[](const std::string& message)
+        const auto onError {[](const std::string& message, const long /*statusCode*/)
                             {
                                 std::cout << "APIDownloader - Could not get response from API because: " << message
                                           << std::endl;

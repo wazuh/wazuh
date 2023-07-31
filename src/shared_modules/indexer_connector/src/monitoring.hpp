@@ -135,7 +135,7 @@ public:
                                         value.second = false;
                                     }
                                 },
-                                [&](const std::string& error) { value.second = false; });
+                                [&](const std::string& error, const long /*statusCode*/) { value.second = false; });
                         }
                     }
                 }

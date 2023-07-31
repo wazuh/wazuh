@@ -54,7 +54,8 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config)
                     HttpURL(url),
                     bulkData,
                     [&](const std::string& response) { std::cout << "Response: " << response << std::endl; },
-                    [&](const std::string& error) { std::cout << "Error: " << error << std::endl; });
+                    [&](const std::string& error, const long statusCode)
+                    { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; });
             }
             catch (const std::exception& e)
             {
