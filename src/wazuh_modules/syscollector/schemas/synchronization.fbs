@@ -1,0 +1,60 @@
+namespace Syscollector.SyncMessage;
+
+//Common
+union Data { PackageData, HotfixData }
+
+//For packages
+table PackageAttribute
+{
+  architecture:string;
+  checksum:string;
+  description:string; //For unix ony
+  format:string;
+  install_time: string; //For windows only
+  groups:string; //For unix only
+  item_id:string;
+  multiarch:string; //For unix only
+  name:string;
+  location: string;
+  priority:string; //For unix only
+  scan_time:string;
+  size:int; //For unix only
+  source:string;
+  vendor:string;
+  version:string;
+}
+
+table PackageData
+{
+    data: PackageAttribute;
+    index: string;
+    timestamp: string;
+}
+
+
+//For hotfixies
+table HotfixAttribute
+{
+
+  checksum:string;
+  hotfix:string;
+  scan_time:string;
+}
+
+table HotfixData
+{
+  data: HotfixAttribute;
+  index: string;
+  timestamp: string;
+}
+
+
+table SyncMsg
+{
+  component:string;
+  data: Data;
+  type:string;
+}
+
+root_type SyncMsg;
+
