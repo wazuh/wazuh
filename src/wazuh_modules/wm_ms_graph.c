@@ -185,6 +185,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
         mtwarn(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
     }
 
+    os_free(payload);
     os_free(headers);
 }
 
