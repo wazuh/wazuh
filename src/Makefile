@@ -135,6 +135,7 @@ GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 SYSCOLLECTOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 SYSINFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 SYSCHECK_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
 
 ifeq (${COVERITY}, YES)
@@ -882,7 +883,7 @@ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
-ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)/build/librocksdb.so
+ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 
@@ -933,6 +934,10 @@ external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 external: build_gtest
+endif
+
+ifeq (${TARGET},server)
+external: $(ROCKSDB_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1660,7 +1665,7 @@ endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
-	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} && ${MAKE}
+	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
