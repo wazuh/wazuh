@@ -401,6 +401,58 @@ Parser<T> opt(const Parser<T>& p)
     };
 }
 
+
+/**
+ * @brief Creates a parser that succeeds if the given parser fails, and fails if the
+ * given parser succeeds. The resulting parser consumes no input.
+ *
+ * @tparam T type of the value returned by the parser
+ * @param p parser to negate
+ * @return Parser<T> Combined parser
+ */
+template<typename T>
+Parser<T> negativeLook(const Parser<T>& p)
+{
+    return [=](std::string_view s, size_t i)
+    {
+        auto res = p(s, i);
+        if (res.success())
+        {
+            return makeError<T>("NEG(P), P succeeded", res.index(), {{res.trace()}});
+        }
+        else
+        {
+            return makeSuccess<T>({}, i, "NEG(P), P failed", {{res.trace()}});
+        }
+    };
+}
+
+
+/**
+ * @brief Creates a parser that succeeds if the given parser succeeds, and fails if the
+ * given parser fails. The resulting parser consumes no input.
+ *
+ * @tparam T type of the value returned by the parser
+ * @param p parser to negate
+ * @return Parser<T> Combined parser
+ */
+template<typename T>
+Parser<T> positiveLook(const Parser<T>& p)
+{
+    return [=](std::string_view s, size_t i)
+    {
+        auto res = p(s, i);
+        if (res.success())
+        {
+            return makeSuccess<T>({}, i, "POS(P), P succeeded", {{res.trace()}});
+        }
+        else
+        {
+            return makeError<T>("POS(P), P failed", res.index(), {{res.trace()}});
+        }
+    };
+}
+
 /**
  * @brief Creates a parser that returns result of the first parser and ignores the
  * result of the second. If any of the parsers fails, the result will be a failure.
