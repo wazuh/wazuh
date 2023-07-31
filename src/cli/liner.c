@@ -164,7 +164,7 @@ void linerMode(linerSession_t *s, linerHideMode_t m){
 
 void linerWriteString(linerSession_t *ls, char *str){
     if(str)
-        ls->stream.write(str, strlen(str));
+        ls->stream.write(ls->stream.custom, str, strlen(str));
 }
 
 char * liner(linerSession_t *ls){
@@ -172,9 +172,9 @@ char * liner(linerSession_t *ls){
     int i;
     keyAction_t action;
 
-    ls->stream.task();
+    ls->stream.task(ls->stream.custom);
 
-    if(!ls->stream.isOnline())
+    if(!ls->stream.isOnline(ls->stream.custom))
         return NULL;
 
     if(ls->start){
@@ -187,10 +187,10 @@ char * liner(linerSession_t *ls){
         linerWriteString(ls, "wazuh:/>");
     }
 
-    if(!ls->stream.dataAvailable())
+    if(!ls->stream.dataAvailable(ls->stream.custom))
         return NULL;
 
-    i = ls->stream.getChar(&c);
+    i = ls->stream.getChar(ls->stream.custom, &c);
     if(i != 1)
         return NULL;
     
@@ -342,7 +342,7 @@ static __attribute((unused)) void actionEnter(UNUSED linerSession_t *ls,UNUSED s
     }
     linerWriteString(ls, ls->input);
 
-    s->write("\r\n", 2);
+    s->write(ls->stream.custom, "\r\n", 2);
 
     ls->tabCount = 0;
     ls->historyIndex = 0;

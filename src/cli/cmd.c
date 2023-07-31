@@ -256,8 +256,8 @@ int cmdGetKey(cmdStatus_t *s, char *c){
 #define SPECIAL_GRAPH_G1                    ESC_S ")0"
 #define ALTERNATE_ROM_STANDARD_CHARSET_G0   ESC_S "(1"
 #define ALTERNATE_ROM_STANDARD_CHARSET_G1   ESC_S ")1"
-#define ALTERNATE_ROM_SCPECIAL_GRAPH ESC_G0 ESC_S "(2"
-#define ALTERNATE_ROM_SCPECIAL_GRAPH ESC_G1 ESC_S ")2"
+#define ALTERNATE_ROM_SCPECIAL_GRAPH_ESC_G0 ESC_S "(2"
+#define ALTERNATE_ROM_SCPECIAL_GRAPH_ESC_G1 ESC_S ")2"
 
 void cmdDraw(cmdStatus_t *c, char *str, ...){
     unsigned int i, j, len;

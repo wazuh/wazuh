@@ -32,20 +32,6 @@ static streamTcpStatus_t streamTcpStatus = {
     .isOnline = 0
 };
 
-static const stream_t st = {
-    .getChar       = streamTCPGetChar,
-    .clearInput    = streamTCPClearInput,
-    .dataAvailable = streamTCPDataAvailable,
-    .flushOutput   = streamTCPFlushOutput,
-    .sendChar      = streamTCPSendChar,
-    .task          = streamTCPTask,
-    .write         = streamTCPWrite,
-    .isOnline      = streamTCPIsOnline,
-    .custom        = NULL
-}streamTemplate;
-
-static streamTCPMainTask(void);
-
 static int  streamTCPDataAvailable(streamTcpStatus_t *tcpStatus);
 static int  streamTCPGetChar      (streamTcpStatus_t *tcpStatus, char *c);
 static int  streamTCPSendChar     (streamTcpStatus_t *tcpStatus, char c);
@@ -55,6 +41,22 @@ static int  streamTCPFlushOutput  (streamTcpStatus_t *tcpStatus);
 static int  streamTCPEnableRawMode(streamTcpStatus_t *tcpStatus);
 static void streamTCPTask         (streamTcpStatus_t *tcpStatus);
 static int  streamTCPIsOnline     (streamTcpStatus_t *tcpStatus);
+
+static const stream_t streamTemplate = {
+    .getChar       = ( int (*)(void *, char *c)    )streamTCPGetChar,
+    .clearInput    = ( int (*)(void *)             )streamTCPClearInput,
+    .dataAvailable = ( int (*)(void *)             )streamTCPDataAvailable,
+    .flushOutput   = ( int (*)(void *)             )streamTCPFlushOutput,
+    .sendChar      = ( int (*)(void *, char)       )streamTCPSendChar,
+    .task          = (void (*)(void *)             )streamTCPTask,
+    .write         = (int  (*)(void *, char *, int))streamTCPWrite,
+    .isOnline      = (int  (*)(void *)             )streamTCPIsOnline,
+    .custom        = NULL
+};
+
+void streamTcpInit(void){
+
+}
 
 static stream_t *streamTcpNewCli(streamTcpStatus_t *status){
     streamTcpStatus_t *tcpStatus = calloc(1, sizeof(streamTcpStatus_t));
@@ -67,7 +69,7 @@ static stream_t *streamTcpNewCli(streamTcpStatus_t *status){
         return NULL;
     }
 
-    *stream = *streamTemplate;
+    *stream = streamTemplate;
     *tcpStatus = *status;
     stream->custom = tcpStatus;
     return stream;
@@ -115,7 +117,7 @@ static void streamTcpMainTask(void){
             break;
         case 3:
             len = sizeof(cli);
-            streamTcpStatus.con = accept(streamTcpStatus.sck, (SA*)&cli, &len);
+            streamTcpStatus.con = accept(streamTcpStatus.sck, (SA*)&cli, (socklen_t *)&len);
             if (streamTcpStatus.con < 0) {
                 usleep(10000);
             }

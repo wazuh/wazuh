@@ -162,7 +162,7 @@ static int cliPrintf(cliSession_t *cliSession, char *fmt, ...){
 
     return len;
 }
-int cliVPrintf(cliSession_t *cliSession, char *fmt, va_list arg){
+int cliVPrintf(cliSession_t *cs, char *fmt, va_list arg){
     int len;
     char *p;
     va_list arg2;
@@ -176,28 +176,28 @@ int cliVPrintf(cliSession_t *cliSession, char *fmt, va_list arg){
         return 0;
 
     len = vsprintf(p, fmt, arg);
-    cliSession->stream->write(p, len);
+    cs->stream->write(cs->stream->custom, p, len);
 
     free(p);
     return len;
 }
 
-void cliString(cliSession_t *cliSession, char *str){
-    cliSession->stream->write(str, strlen(str));
+void cliString(cliSession_t *cs, char *str){
+    cs->stream->write(cs->stream->custom, str, strlen(str));
 }
 
-int cliDataAvailable(cliSession_t *cliSession){
-    return cliSession->stream->dataAvailable();
+int cliDataAvailable(cliSession_t *cs){
+    return cs->stream->dataAvailable(cs->stream->custom);
 }
 
-int cliGetChar(cliSession_t *cliSession, char *c){
-    return cliSession->stream->getChar(c);
+int cliGetChar(cliSession_t *cs, char *c){
+    return cs->stream->getChar(cs->stream->custom, c);
 }
 
-stream_t * cliStreamGet(cliSession_t *cliSession){
-    return cliSession->stream;
+stream_t * cliStreamGet(cliSession_t *cs){
+    return cs->stream;
 }
 
-int cliUserLevelGet(cliSession_t *cliSession){
-    return cliSession->userLevel;
+int cliUserLevelGet(cliSession_t *cs){
+    return cs->userLevel;
 }

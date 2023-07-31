@@ -14,11 +14,11 @@ keyAction_t keyActionGet(stream_t *s, keyActions_t *actions, unsigned char c){
 
     switch(c){
         case ESC:
-            remainingBytes = s->dataAvailable();
+            remainingBytes = s->dataAvailable(s->custom);
             printf("ESC ");
             if(remainingBytes < 5) {
                 for (i = 0; i < remainingBytes; i++) {
-                    s->getChar(cs + i);
+                    s->getChar(s->custom, (char *)cs + i);
                     printf("%02X ", (char) *(cs + i));
                 }
             }
@@ -86,18 +86,18 @@ keyAction_t keyActionGet(stream_t *s, keyActions_t *actions, unsigned char c){
             }
             break;
         case 0xC2: // Multibytes characters
-            remainingBytes = s->dataAvailable();
+            remainingBytes = s->dataAvailable(s->custom);
             if(remainingBytes < 5) {
                 for (i = 0; i < remainingBytes; i++) {
-                    s->getChar(cs + i);
+                    s->getChar(s->custom, cs + i);
                 }
             }
             break;
         case CR:
             /* Discard null byte if present */
-            remainingBytes = s->dataAvailable();
+            remainingBytes = s->dataAvailable(s->custom);
             if(remainingBytes) {
-                s->getChar(cs);
+                s->getChar(s->custom, (char *)cs);
             }
             return actions->Enter;
         case BEL:  return actions->Bell;
