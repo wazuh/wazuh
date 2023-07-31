@@ -14,6 +14,7 @@
 
 #include "ipackageWrapper.h"
 #include "sqliteWrapperTemp.h"
+#include "sharedDefs.h"
 
 const std::map<std::string, int> columnIndexes
 {
@@ -24,10 +25,12 @@ const std::map<std::string, int> columnIndexes
     {"archs", 4}
 };
 
+#define DATE_STR_SIZE 20
+
 class MacportsWrapper final : public IPackageWrapper
 {
     public:
-        explicit MacportsWrapper(SQLite::Statement& stmt)
+        explicit MacportsWrapper(SQLite::IStatement& stmt)
             : m_version{UNKNOWN_VALUE}
             , m_groups {UNKNOWN_VALUE}
             , m_description {UNKNOWN_VALUE}
@@ -108,7 +111,7 @@ class MacportsWrapper final : public IPackageWrapper
             return m_multiarch;
         }
     private:
-        void getPkgData(SQLite::Statement& stmt)
+        void getPkgData(SQLite::IStatement& stmt)
         {
             const int& columnsNumber = columnIndexes.size();
 
@@ -127,12 +130,16 @@ class MacportsWrapper final : public IPackageWrapper
 
                 if (version->hasValue())
                 {
-                    m_version = version->value(std::string {});
+                    const auto versionStr = version->value(std::string{});
+                    if (!versionStr.empty())
+                    {
+                        m_version = versionStr;
+                    }
                 }
 
                 if (date->hasValue())
                 {
-                    char formattedTime[20] {0};
+                    char formattedTime[DATE_STR_SIZE] {0};
                     const long epochTime = date->value(std::int64_t {});
                     std::strftime(formattedTime, sizeof(formattedTime), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTime));
                     m_installTime = formattedTime;
@@ -140,12 +147,20 @@ class MacportsWrapper final : public IPackageWrapper
 
                 if (location->hasValue())
                 {
-                    m_location = location->value(std::string {});
+                    const auto locationStr = location->value(std::string {});
+                    if (!locationStr.empty())
+                    {
+                        m_location = locationStr;
+                    }
                 }
 
                 if (archs->hasValue())
                 {
-                    m_architecture = archs->value(std::string {});
+                    const auto archsStr = archs->value(std::string {});
+                    if (!archsStr.empty())
+                    {
+                        m_architecture = archsStr;
+                    }
                 }
             }
         }
