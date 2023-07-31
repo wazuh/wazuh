@@ -48,16 +48,22 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& hel
 
 inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& helperToken)
 {
-    if (helperToken.args.empty())
+    if (helperToken.args.empty() || helperToken.args[0].empty())
     {
         std::stringstream ss {};
         ss << helperToken;
         throw std::runtime_error(
             fmt::format("Helper {} has no arguments, expected to have target field as first argument", ss.str()));
+    } else if ( helperToken.args[0][0] != syntax::REFERENCE_ANCHOR) {
+        std::stringstream ss {};
+        ss << helperToken;
+        throw std::runtime_error(
+            fmt::format("Helper {} has no target field as first argument", ss.str()));
     }
 
+    // Remove reference anchor
     return toBuilderInput({helperToken.name, {helperToken.args.begin() + 1, helperToken.args.end()}},
-                          helperToken.args[0]);
+                          helperToken.args[0].substr(1));
 }
 
 // operators (==, !=, <, >, <=, >=)
