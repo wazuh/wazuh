@@ -14,9 +14,16 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# If is Linux, Windows or macOS > 10.15, use C++17
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Windows" OR (CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND NOT CMAKE_HOST_SYSTEM_VERSION VERSION_LESS "19.0.0"))
+  set(CMAKE_CXX_STANDARD 17)
+  add_definitions(-DSTANDARD_TYPE=StandardType::CPP17)
+else()
+  set(CMAKE_CXX_STANDARD 14)
+  add_definitions(-DSTANDARD_TYPE=StandardType::OLDEST)
+endif()
 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")

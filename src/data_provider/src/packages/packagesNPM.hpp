@@ -13,7 +13,7 @@
 #define _PACKAGES_NPM_HPP
 
 #include "fileSystem.hpp"
-#include "filesystemHelper.h"
+#include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "jsonIO.hpp"
 #include "sharedDefs.h"
