@@ -14718,6 +14718,7 @@ paths:
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of decoders files"
