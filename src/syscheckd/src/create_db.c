@@ -232,7 +232,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
         if (aux = cJSON_GetObjectItem(dbsync_event, "uid"), aux != NULL) {
             char *uid = cJSON_GetStringValue(aux);
             if (uid != NULL && *uid != '\0') {
-                cJSON_AddStringToObject(attributes, "uid", cJSON_GetStringValue(aux));
+                cJSON_AddStringToObject(attributes, "uid", uid);
             }
         }
     }
@@ -241,7 +241,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
         if (aux = cJSON_GetObjectItem(dbsync_event, "gid"), aux != NULL) {
             char *gid = cJSON_GetStringValue(aux);
             if (gid != NULL && *gid != '\0') {
-                cJSON_AddStringToObject(attributes, "gid", cJSON_GetStringValue(aux));
+                cJSON_AddStringToObject(attributes, "gid", gid);
             }
         }
     }
