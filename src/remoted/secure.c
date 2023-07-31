@@ -44,6 +44,9 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
+// Mutex for router provider handle
+static pthread_mutex_t router_provider_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -163,6 +166,9 @@ void HandleSecure()
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
 
     // Create message handler thread pool
     {
@@ -747,43 +753,76 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
     key_unlock();
 
-    // Print first letter of the message
-    if (tmp_msg[0] == SYSCOLLECTOR_MQ) {
+
+
+    /* If we can't send the message, try to connect to the
+    * socket again. If it not exit.
+    */
+    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+        // Try to reconnect infinitely
+        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+            // Something went wrong sending a message after an immediate reconnection...
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        } else {
+            rem_inc_recv_evt(agentid_str);
+        }
+    } else {
+        rem_inc_recv_evt(agentid_str);
+    }
+
+    // Both syscollector delta and sync messages are sent to the router
+    if (tmp_msg[0] == SYSCOLLECTOR_MQ || tmp_msg[0] == DBSYNC_MQ) {
+        w_mutex_lock(&router_provider_mutex);
         if (!router_provider_handle) {
             if (router_provider_handle = router_provider_create("syscollector"), !router_provider_handle)
             {
                 os_free(agentid_str);
+                mdebug2("Failed to create router provider handle.");
+                w_mutex_unlock(&router_provider_mutex);
                 return;
             }
         }
 
-        router_provider_send(router_provider_handle, tmp_msg, msg_length);
+        // We only send the JSON part of the message
+        char* msg_start = strchr(tmp_msg, '{');
+        if(msg_start) {
+            size_t msg_size = strlen(msg_start);
+            if(msg_size < OS_MAXSTR) {
+                msg_start[msg_size] = '\0';
 
-    } else {
-        if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
-        }
+                cJSON* agent_info = cJSON_CreateObject();
+                cJSON_AddStringToObject(agent_info, "agent_id", keys.keyentries[agentid]->id);
+                cJSON_AddStringToObject(agent_info, "node_name", node_name);
 
-        /* If we can't send the message, try to connect to the
-        * socket again. If it not exit.
-        */
-        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                cJSON* object= cJSON_CreateObject();
+                cJSON_AddItemToObject(object, "agent_info", agent_info);
 
-            // Try to reconnect infinitely
-            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+                char* str_agent_info = cJSON_PrintUnformatted(object);
+                if(str_agent_info) {
+                    size_t agent_info_size = strlen(str_agent_info);
 
-            minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+                    if((msg_size + agent_info_size) < OS_MAXSTR) {
+                        /* We need to replace the last '}' with a ',', that's why we begin in 'msg_start + msg_size - 1'.
+                           The first '{' of the agen info JSON is ommited, so we use 'str_agent_info + 1'.
+                        */
+                        snprintf(msg_start + msg_size - 1, agent_info_size + 1 , ",%s", str_agent_info + 1);
+                        msg_size += agent_info_size + 1;
+                        msg_start[msg_size] = '\0';
+                    }
+                }
+                router_provider_send(router_provider_handle, msg_start, msg_size + 1);
 
-            if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-                // Something went wrong sending a message after an immediate reconnection...
-                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-            } else {
-                rem_inc_recv_evt(agentid_str);
+                cJSON_Delete(object);
+                os_free(str_agent_info);
             }
-        } else {
-            rem_inc_recv_evt(agentid_str);
         }
+        w_mutex_unlock(&router_provider_mutex);
     }
 
     os_free(agentid_str);
