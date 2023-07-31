@@ -165,8 +165,14 @@ inline parsec::Parser<BuildToken> getTermParser()
         {
             return parsec::makeError<std::string>("Parenthesis open expected", pos);
         }
+        // Skip whitespace
+        auto next = pos + 1;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
 
-        return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_OPEN), pos + 1);
+        return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_OPEN), next);
     };
 
     parsec::Parser<std::string> lookbehindParenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
@@ -192,7 +198,7 @@ inline parsec::Parser<BuildToken> getTermParser()
             return parsec::makeError<std::string>("EOA", pos);
         }
 
-        while (next < sv.size())
+        for (;next < sv.size(); ++next)
         {
             // Check for escape sequence
             if (sv[next] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next] == syntax::PARENTHESIS_CLOSE)
@@ -210,7 +216,7 @@ inline parsec::Parser<BuildToken> getTermParser()
                     if (sv[next + 1] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next + 1] == syntax::PARENTHESIS_CLOSE
                         || sv[next + 1] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE || std::isspace(sv[next + 1]))
                     {
-                        next += 2;
+                        next += 1;
                     }
                     else
                     {
@@ -223,7 +229,6 @@ inline parsec::Parser<BuildToken> getTermParser()
                     return parsec::makeError<std::string>("Invalid escape sequence", next);
                 }
             }
-            ++next;
         }
 
         return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
@@ -389,7 +394,7 @@ inline parsec::Parser<BuildToken> getTermParser()
         {
             ++next;
         }
-    
+
         return parsec::makeSuccess(std::move(op), next);
     };
 
