@@ -30,6 +30,7 @@
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
+#include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
@@ -1282,6 +1283,487 @@ void test_dump(void **state) {
     module_data->num_resources = 0;
 }
 
+void test_wm_ms_graph_get_access_token_no_response(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, NULL);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    assert_null(module_data->auth_config.access_token);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 400;
+    os_strdup("{\"error\":\"bad_request\"}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to obtain access token: Status code was '400' & response was '{\"error\":\"bad_request\"}'");
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    assert_null(module_data->auth_config.access_token);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = true;
+    os_strdup("{\"error\":\"bad_request\"}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    assert_null(module_data->auth_config.access_token);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("no json", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    will_return(__wrap_cJSON_Parse, NULL);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse access token JSON body.");
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    assert_null(module_data->auth_config.access_token);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_wm_ms_graph_get_access_token_success(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"access_token\":\"token_value\",\"expires_in\":123}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"expires_in\":123}");
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    assert_string_equal(module_data->auth_config.access_token, "token_value");
+    assert_int_equal(module_data->auth_config.token_expiration_time, 1606798007);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"access_token\":\"token_value\",\"expires_in\":123}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    cJSON *parse_json = __real_cJSON_Parse("{\"no_access_token\":\"token_value\",\"expires_in\":123}");
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"access_token\":\"token_value\",\"no_expires_in\":123}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"no_expires_in\":123}");
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
 int main(void) {
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_bad_tag, setup_test_read, teardown_test_read),
@@ -1323,7 +1805,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_disabled, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_relationships, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_dump, setup_conf, teardown_conf)
+        cmocka_unit_test_setup_teardown(test_dump, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_response, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_unsuccessful_status_code, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_curl_max_size, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_parse_json_fail, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_success, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_access_token, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_expire_time, setup_conf, teardown_conf)
     };
     int result = 0;
     result = cmocka_run_group_tests(tests_without_startup, NULL, NULL);
