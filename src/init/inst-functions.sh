@@ -1159,6 +1159,7 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
 
     if [ ! -f ${INSTALLDIR}/queue/agents-timestamp ]; then
         ${INSTALL} -m 0600 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
