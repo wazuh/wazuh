@@ -48,7 +48,7 @@ class FactoryPackageFamilyCreator<OSPlatformType::BSDBASED> final
             return FactoryBSDPackage::create(ctx);
         }
 #ifdef __APPLE__
-        static std::shared_ptr<IPackage> create(std::pair<SQLite::Statement&, const int&>& ctx)
+        static std::shared_ptr<IPackage> create(std::pair<SQLite::IStatement&, const int&>& ctx)
         {
             return FactoryBSDPackage::create(ctx);
         }

@@ -116,7 +116,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     MACPORTS_QUERY
                 };
 
-                std::pair<SQLite::Statement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
+                std::pair<SQLite::IStatement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
 
                 while (SQLITE_ROW == stmt.step())
                 {
