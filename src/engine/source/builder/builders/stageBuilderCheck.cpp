@@ -5,12 +5,14 @@
 
 #include <json/json.hpp>
 #include <regex>
+#include <logicexpr/logicexpr.hpp>
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
 #include "helperParser.hpp"
 #include "registry.hpp"
 #include "syntax.hpp"
+
 
 namespace
 {
@@ -67,6 +69,29 @@ base::Expression stageBuilderCheckList(const std::any& definition,
     return expression;
 }
 
+using TermBuilder = std::function<std::function<bool(base::Event)>(const BuildToken&)>;
+TermBuilder getTermBuilder(std::shared_ptr<Registry<Builder>> registry, std::shared_ptr<defs::IDefinitions> definitions)
+{
+    return [registry, definitions](const BuildToken& token)
+    {
+        std::any opBuilderInput;
+
+        if (std::holds_alternative<HelperToken>(token))
+        {
+            auto helperToken = std::get<HelperToken>(token);
+            opBuilderInput = toBuilderInput(helperToken);
+        }
+        else
+        {
+            auto expressionToken = std::get<ExpressionToken>(token);
+            opBuilderInput = toBuilderInput(expressionToken);
+        }
+
+        auto op = registry->getBuilder("operation.condition")(opBuilderInput, definitions);
+        return op->getPtr<base::Term<base::EngineOp>>()->getFn();
+    };
+}
+
 base::Expression stageBuilderCheckExpression(const std::any& definition,
                                              std::shared_ptr<defs::IDefinitions> definitions,
                                              std::shared_ptr<Registry<Builder>> registry)
@@ -74,158 +99,9 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
     // Obtain expressionString
     auto expressionString = std::any_cast<json::Json>(definition).getString().value();
     expressionString = definitions->replace(expressionString);
-    std::string keyboarder;
 
-    // Obtain field and value
-    auto extractFieldAndValue = [&](const std::string& term) -> std::pair<std::string, json::Json>
-    {
-        std::string field;
-        std::string value;
-        json::Json valueJson;
-
-        auto getField = [](const std::string& field) -> std::string
-        {
-            if (field[0] != syntax::REFERENCE_ANCHOR)
-            {
-                throw std::runtime_error(fmt::format("Check stage: the fild must be a reference, but got '{}'", field));
-            }
-            return field.substr(1);
-        };
-
-        auto isHelper = parseHelper(term);
-
-        if (std::holds_alternative<HelperToken>(isHelper))
-        {
-            auto helperToken = std::get<HelperToken>(isHelper);
-
-            // In expressions the target field is always the first argument
-            auto [targetField, value] = toBuilderInput(helperToken);
-
-            // Remove the first character from the target field
-            field = std::string(targetField.begin() + 1, targetField.end());
-            valueJson = std::move(value);
-        }
-        else
-        {
-            // Pattern looking for '<', '>', '<=', '>=', '==' or '!='
-            const std::string opPattern = R"(^[^=<>!]+([<>]=?|==|!=))";
-            const std::regex opRegex(opPattern);
-
-            std::smatch match;
-            if (std::regex_search(term, match, opRegex))
-            {
-                keyboarder = match[1];
-                auto pos = term.find(keyboarder);
-
-                field = getField(term.substr(0, pos));
-
-                auto operand = term.substr(pos + keyboarder.length());
-
-                if (keyboarder == "==" || keyboarder == "!=")
-                {
-                    try
-                    {
-                        valueJson = json::Json(operand.c_str());
-                    }
-                    catch (std::runtime_error& e)
-                    {
-                        valueJson.setString(operand);
-                    }
-                }
-                else
-                {
-                    try
-                    {
-                        valueJson = json::Json(operand.c_str());
-                    }
-                    catch (std::runtime_error& e)
-                    {
-                        valueJson.setString(operand);
-                    }
-
-                    if (!valueJson.isInt64() && !valueJson.isString())
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "Check stage: The '{}' operator only allows operate with numbers or string", keyboarder));
-                    }
-
-                    const auto prefix = valueJson.isInt64() ? "int_" : "string_";
-                    const auto suffix = ((keyboarder == "<=")   ? "less_or_equal("
-                                         : (keyboarder == ">=") ? "greater_or_equal("
-                                         : (keyboarder == "<")  ? "less("
-                                                                : "greater(")
-                                        + operand;
-                    value = prefix + suffix + ")";
-                    valueJson.setString(value);
-                }
-            }
-            else
-            {
-                throw std::runtime_error {fmt::format("Check stage: Invalid operator '{}'", term)};
-            }
-        }
-
-        return {field, valueJson};
-    };
-
-    // Inject builder
-    auto termBuilder = [&](std::string term) -> std::function<bool(base::Event)>
-    {
-        auto [field, valueJson] = extractFieldAndValue(term);
-        auto conditionDef = std::make_tuple(field, valueJson);
-        auto opEx = registry->getBuilder("operation.condition")(conditionDef, definitions);
-
-        if (opEx->isTerm())
-        {
-            auto fn = opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
-            if (keyboarder == "!=")
-            {
-                return [fn](base::Event event) -> bool
-                {
-                    return !fn(event);
-                };
-            }
-
-            return fn;
-        }
-        else
-        {
-            std::vector<base::EngineOp> fnVec;
-            for (const auto& t : opEx->getPtr<base::Operation>()->getOperands())
-            {
-                if (t->isTerm())
-                {
-                    fnVec.push_back(t->getPtr<base::Term<base::EngineOp>>()->getFn());
-                }
-                else
-                {
-                    throw std::runtime_error {
-                        fmt::format("Check stage: Comparison of objects that have objects inside is not supported.")};
-                }
-            }
-
-            auto negated = (keyboarder == "!=");
-            return [fnVec, negated](base::Event event) -> bool
-            {
-                for (const auto& fn : fnVec)
-                {
-                    if (negated == fn(event))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            };
-        }
-    };
-
-    // Evaluator function
-   // auto evaluator = logicexpr::buildDijstraEvaluator<base::Event>(expressionString, termBuilder, termParser);
-
-    auto evaluator = [](base::Event event) -> bool
-    {
-        return true;
-    };
+    // Get expression evaluator
+    auto evaluator = logicexpr::buildDijstraEvaluator<base::Event, BuildToken>(expressionString, getTermBuilder(registry, definitions), getTermParser());
 
     // Trace
     auto name = fmt::format("check: {}", expressionString);
