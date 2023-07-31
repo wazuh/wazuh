@@ -28,6 +28,7 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
+#include "packages/modernPackageDataRetriever.hpp"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -203,6 +204,8 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             // else: invalid package
         }
     }
+
+
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -427,6 +430,9 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
         }
     }
+
+    ModernFactoryPackagesCreator<PYPI<>, STANDARD_TYPE>::getPackages(UNIX_PYPI_DEFAULT_BASE_DIRS, callback);
+    ModernFactoryPackagesCreator<NPM<>, STANDARD_TYPE>::getPackages(UNIX_NPM_DEFAULT_BASE_DIRS, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const

@@ -14,9 +14,10 @@
 
 #include "fileIO.hpp"
 #include "fileSystem.hpp"
-#include "filesystemHelper.h"
+#include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "sharedDefs.h"
+#include <iostream>
 #include <set>
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};

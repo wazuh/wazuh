@@ -40,6 +40,7 @@
 #include "packages/appxWindowsWrapper.h"
 #include "packages/packagesPYPI.hpp"
 #include "packages/packagesNPM.hpp"
+#include "packages/modernPackageDataRetriever.hpp"
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
@@ -806,7 +807,7 @@ void expandFromRegistry(const HKEY key, const std::string& subKey, const std::st
     }
 }
 
-std::set<std::string> getPythonDirectories()
+const std::set<std::string> getPythonDirectories()
 {
     std::set<std::string> pythonDirList;
 
@@ -829,7 +830,7 @@ std::set<std::string> getPythonDirectories()
     return pythonDirList;
 }
 
-std::set<std::string> getNodeDirectories()
+const std::set<std::string> getNodeDirectories()
 {
     std::set<std::string> nodeDirList;
 
@@ -878,8 +879,8 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         getStorePackages(HKEY_USERS, user, fillList);
     }
 
-    PYPI().getPackages(getPythonDirectories(), callback);
-    NPM().getPackages(getNodeDirectories(), callback);
+    ModernFactoryPackagesCreator<PYPI<>, STANDARD_TYPE>::getPackages(getPythonDirectories(), callback);
+    ModernFactoryPackagesCreator<NPM<>, STANDARD_TYPE>::getPackages(getNodeDirectories(), callback);
 }
 nlohmann::json SysInfo::getHotfixes() const
 {

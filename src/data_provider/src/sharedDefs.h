@@ -58,6 +58,11 @@ enum LinuxType
     LEGACY
 };
 
+enum StandardType
+{
+    OLDEST,
+    CPP17
+};
 enum PortType
 {
     UDP_IPV4,
