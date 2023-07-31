@@ -160,11 +160,6 @@ FIMDBErrorCode fim_db_init(int storage,
                         json["data"]["attributes"].erase("options");
                         json["data"]["attributes"].erase("path");
                         json["data"]["attributes"].erase("scanned");
-                        // Type different from server.
-                        json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
-                                                                           .get<int>());
-                        json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
-                                                                           .get<int>());
 
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
@@ -206,10 +201,6 @@ FIMDBErrorCode fim_db_init(int storage,
                             }
 
                             json["data"]["attributes"]["type"] = "registry_key";
-                            json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
-                                                                               .get<uint32_t>());
-                            json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
-                                                                               .get<uint32_t>());
                         }
 
                         json["data"]["path"] = json["data"]["attributes"]["path"];
