@@ -172,6 +172,52 @@ void test_invalid_enabled(void **state) {
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
+void test_enabled_no(void **state) {
+    const char* config =
+        "<enabled>no</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 0);
+    assert_int_equal(module_data->only_future_events, 1);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_string_equal(module_data->version, "v1.0");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config.client_id, "example_string");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
+}
+
 void test_invalid_only_future_events(void **state) {
     const char* config =
         "<enabled>yes</enabled>\n"
@@ -200,6 +246,52 @@ void test_invalid_only_future_events(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'only_future_events': invalid.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
+void test_disabled_only_future_events(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>no</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 1);
+    assert_int_equal(module_data->only_future_events, 0);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_string_equal(module_data->version, "v1.0");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config.client_id, "example_string");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
 void test_invalid_curl_max_size(void **state) {
@@ -232,6 +324,67 @@ void test_invalid_curl_max_size(void **state) {
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
+void test_invalid_negative_curl_max_size(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>-1</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Module 'ms-graph' has invalid content in tag 'curl_max_size': the minimum size is 1KB.");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
+void test_value_curl_max_size(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>4k</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->curl_max_size, 4096);
+}
+
 void test_invalid_run_on_start(void **state) {
     const char* config =
         "<enabled>yes</enabled>\n"
@@ -260,6 +413,52 @@ void test_invalid_run_on_start(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'run_on_start': invalid.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
+void test_disabled_run_on_start(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 1);
+    assert_int_equal(module_data->only_future_events, 1);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
+    assert_int_equal(module_data->run_on_start, 0);
+    assert_string_equal(module_data->version, "v1.0");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config.client_id, "example_string");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
 void test_invalid_interval(void **state) {
@@ -344,6 +543,31 @@ void test_missing_api_auth(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'api_auth' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
+}
+
+void test_empty_api_auth(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth></api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'api_auth': .");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
 void test_invalid_client_id(void **state) {
@@ -582,6 +806,62 @@ void test_missing_api_type(void **state){
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
+void test_empty_api_type(void **state){
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type></api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'api_type': .");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
+void test_invalid_attribute_api_type(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "  <invalid>attribute</invalid>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
 void test_missing_resource(void **state) {
     const char* config =
         "<enabled>yes</enabled>\n"
@@ -601,6 +881,28 @@ void test_missing_resource(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'resource' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
+}
+
+void test_empty_resource(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource></resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'resource': .");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
 void test_missing_name(void **state) {
@@ -632,6 +934,36 @@ void test_missing_name(void **state) {
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
+void test_empty_name(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name></name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'name': .");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
 void test_missing_relationship(void **state) {
     const char* config =
         "<enabled>yes</enabled>\n"
@@ -658,6 +990,64 @@ void test_missing_relationship(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'relationship' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
+}
+
+void test_empty_relationship(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship></relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'relationship': .");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+}
+
+void test_invalid_attribute_resource(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <invalid>resource</invalid>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
 // Main program tests
@@ -698,6 +1088,102 @@ void test_normal_config(void **state) {
     assert_string_equal(module_data->auth_config.tenant_id, "example_string");
     assert_string_equal(module_data->auth_config.client_id, "example_string");
     assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
+}
+
+void test_normal_config_api_type_gcc(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>gcc-high</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 1);
+    assert_int_equal(module_data->only_future_events, 1);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_string_equal(module_data->version, "v1.0");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config.client_id, "example_string");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config.login_fqdn, "login.microsoftonline.us");
+    assert_string_equal(module_data->auth_config.query_fqdn, "graph.microsoft.us");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
+}
+
+void test_normal_config_api_type_dod(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
+        "  <api_type>dod</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 1);
+    assert_int_equal(module_data->only_future_events, 1);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_string_equal(module_data->version, "v1.0");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config.client_id, "example_string");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config.login_fqdn, "login.microsoftonline.us");
+    assert_string_equal(module_data->auth_config.query_fqdn, "dod-graph.microsoft.us");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -801,11 +1287,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_bad_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_empty_module, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_enabled, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_enabled_no, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_only_future_events, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_disabled_only_future_events, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_curl_max_size, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_negative_curl_max_size, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_value_curl_max_size, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_run_on_start, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_disabled_run_on_start, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_version, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_api_auth, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_empty_api_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_client_id, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_client_id, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_tenant_id, setup_test_read, teardown_test_read),
@@ -814,10 +1306,18 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_missing_secret_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_api_type, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_api_type, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_empty_api_type, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_attribute_api_type, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_resource, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_empty_resource, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_empty_name, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_relationship, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_normal_config, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_empty_relationship, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_attribute_resource, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_normal_config, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_normal_config_api_type_gcc, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_normal_config_api_type_dod, setup_test_read, teardown_test_read)
     };
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_disabled, setup_conf, teardown_conf),
