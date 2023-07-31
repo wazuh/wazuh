@@ -3,11 +3,7 @@ from pathlib import Path
 from .generate_manifest import run as gen_manifest
 import json
 import sys
-import yaml
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
+import ruamel.yaml
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
 
@@ -182,7 +178,8 @@ def run(args, resource_handler: rs.ResourceHandler):
             asset_old_content = item[2]
             updateable = len(asset_old_content)
             if updateable:
-                old_content_yml = yaml.load(asset_old_content, Loader=Loader)
+                yaml = ruamel.yaml.YAML()
+                old_content_yml = yaml.load(asset_old_content)
                 pos = cm.add_command(func_to_update_catalog(api_socket, asset_name.split('/')[0], asset_name, asset_new_content,
                                                             rs.Format.YML),  # update to new
                                      func_to_update_catalog(api_socket, asset_name.split('/')[0], asset_name, old_content_yml,
@@ -199,7 +196,8 @@ def run(args, resource_handler: rs.ResourceHandler):
         old_content = resource_handler.get_catalog_file(
             api_socket, full_asset_name.split('/')[0], full_asset_name, rs.Format.YML)
         old_content = old_content['data']['content']
-        old_content_yml = yaml.load(asset_old_content, Loader=Loader)
+        yaml = ruamel.yaml.YAML()
+        old_content_yml = yaml.load(asset_old_content)
 
         pos = cm.add_command(func_to_delete_catalog(api_socket, full_asset_name.split('/')[0], full_asset_name),
                              func_to_add_catalog(api_socket, full_asset_name.split('/')[0], full_asset_name,

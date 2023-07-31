@@ -350,13 +350,19 @@ std::variant<std::string, base::Error> Catalog::getResource(const Resource& reso
                                         std::get<base::Error>(storeResult).message)};
     }
 
+    auto json = std::get<json::Json>(storeResult);
+
     // Format the content to the expected output format
     if (!original)
     {
-        auto jsonObject = std::get<json::Json>(storeResult).getJson("/json");
-        if (!jsonObject.has_value())
+        if (!json.isArray())
         {
-            return base::Error {"/original path not found in JSON."};
+            auto jsonObject = json.getJson("/json");
+            if (!jsonObject.has_value())
+            {
+                return base::Error {"/json path not found in JSON."};
+            }
+            json = std::move(jsonObject.value());
         }
 
         const auto formatterIt = m_outFormat.find(resource.m_format);
@@ -365,7 +371,7 @@ std::variant<std::string, base::Error> Catalog::getResource(const Resource& reso
             return base::Error {
                 fmt::format("Formatter was not found for format '{}'", Resource::formatToStr(resource.m_format))};
         }
-        const auto formatResult = formatterIt->second(jsonObject.value());
+        const auto formatResult = formatterIt->second(json);
         if (std::holds_alternative<base::Error>(formatResult))
         {
             return base::Error {fmt::format("JSON object could not be created from '{} {}': {}",
@@ -377,7 +383,7 @@ std::variant<std::string, base::Error> Catalog::getResource(const Resource& reso
         return std::get<std::string>(formatResult);
     }
 
-    return std::get<json::Json>(storeResult).getString("/original").value_or("empty");
+    return json.getString("/original").value_or("empty");
 }
 
 std::optional<base::Error> Catalog::deleteResource(const Resource& resource)
