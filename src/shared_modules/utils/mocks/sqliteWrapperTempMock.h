@@ -14,7 +14,7 @@
 
 #include <gmock/gmock.h>
 #include <string>
-#include "../shared_modules/utils/sqliteWrapperTemp.h"
+#include "sqliteWrapperTemp.h"
 
 class MockConnection : public SQLite::IConnection
 {

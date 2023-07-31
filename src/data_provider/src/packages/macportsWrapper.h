@@ -131,6 +131,7 @@ class MacportsWrapper final : public IPackageWrapper
                 if (version->hasValue())
                 {
                     const auto versionStr = version->value(std::string{});
+
                     if (!versionStr.empty())
                     {
                         m_version = versionStr;
@@ -148,6 +149,7 @@ class MacportsWrapper final : public IPackageWrapper
                 if (location->hasValue())
                 {
                     const auto locationStr = location->value(std::string {});
+
                     if (!locationStr.empty())
                     {
                         m_location = locationStr;
@@ -157,6 +159,7 @@ class MacportsWrapper final : public IPackageWrapper
                 if (archs->hasValue())
                 {
                     const auto archsStr = archs->value(std::string {});
+
                     if (!archsStr.empty())
                     {
                         m_architecture = archsStr;

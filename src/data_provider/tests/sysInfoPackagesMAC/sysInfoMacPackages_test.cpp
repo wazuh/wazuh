@@ -12,8 +12,8 @@
 #include "sysInfoMacPackages_test.h"
 #include "packages/packageMac.h"
 #include "packages/macportsWrapper.h"
-#include "../shared_modules/utils/mocks/sqliteWrapperTempMock.h"
-#include "../shared_modules/utils/sqliteWrapperTemp.h"
+#include "mocks/sqliteWrapperTempMock.h"
+#include "sqliteWrapperTemp.h"
 
 void SysInfoMacPackagesTest::SetUp() {};
 
