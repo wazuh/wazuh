@@ -409,7 +409,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config) {
     if (end = strchr(timestamp->valuestring, '.'), end)
         *end = '\0';
 
-    if (end = strptime(timestamp->valuestring, "%FT%T", &tm), !end || *end) {
+    if (end = strptime(timestamp->valuestring, "%Y-%m-%dT%H:%M:%S", &tm), !end || *end) {
         merror("Could not parse timestamp '%s'.", timestamp->valuestring);
     }
 
