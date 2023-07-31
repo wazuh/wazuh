@@ -3,13 +3,17 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-from socket import AF_UNIX, SOCK_DGRAM
+
 import hashlib
-import pytest
-import maltiverse
 import json
+import maltiverse
+import pytest
+import socket
 
 from unittest.mock import patch, mock_open
+
+UNABLE_TO_CONNECT_SOCKET_ERROR_CODE = 6
+SENDING_MESSAGE_SOCKET_ERROR_CODE = 7
 
 response_example = {
     "blacklist": [
@@ -46,15 +50,14 @@ def test_get_ip():
     example_ip = "77.53.9.158"
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
-    with patch("maltiverse.requests.get") as mock_get:
+    with patch("maltiverse.requests.Session.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
 
         result = testing_maltiverse.ip_get(example_ip)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(
-            f'https://api.maltiverse.com/ip/{example_ip}',
-            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+            f'https://api.maltiverse.com/ip/{example_ip}'
         )
 
 
@@ -64,15 +67,14 @@ def test_get_hostname():
     example_hostname = "paypal.com-information-update-activity-account.gq"
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
-    with patch("maltiverse.requests.get") as mock_get:
+    with patch("maltiverse.requests.Session.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
 
         result = testing_maltiverse.hostname_get(example_hostname)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(
-            f'https://api.maltiverse.com/hostname/{example_hostname}',
-            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+            f'https://api.maltiverse.com/hostname/{example_hostname}'
         )
 
 
@@ -83,15 +85,14 @@ def test_get_url():
     example_urlchecksum = hashlib.sha256(example_url.encode("utf-8")).hexdigest()
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
-    with patch("maltiverse.requests.get") as mock_get:
+    with patch("maltiverse.requests.Session.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
 
         result = testing_maltiverse.url_get(example_urlchecksum)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(
-            f'https://api.maltiverse.com/url/{example_urlchecksum}',
-            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+            f'https://api.maltiverse.com/url/{example_urlchecksum}'
         )
 
 
@@ -121,15 +122,14 @@ def test_get_by_md5():
     example_sample = "someSample"
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
-    with patch("maltiverse.requests.get") as mock_get:
+    with patch("maltiverse.requests.Session.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
 
         result = testing_maltiverse.sample_get_by_md5(example_sample)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(
-            f'https://api.maltiverse.com/sample/md5/{example_sample}',
-            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+            f'https://api.maltiverse.com/sample/md5/{example_sample}'
         )
 
 
@@ -139,15 +139,14 @@ def test_get_by_sha1():
     example_sample = "someSample"
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
-    with patch("maltiverse.requests.get") as mock_get:
+    with patch("maltiverse.requests.Session.get") as mock_get:
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
 
         result = testing_maltiverse.sample_get_by_sha1(example_sample)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(
-            f'https://api.maltiverse.com/sample/sha1/{example_sample}',
-            headers={'Accept': 'application/json', 'Authorization': f'Bearer {example_token}'}
+            f'https://api.maltiverse.com/sample/sha1/{example_sample}'
         )
 
 
@@ -183,7 +182,7 @@ def test_process_args_exit_with_invalid_hook_url(invalid_url):
     with pytest.raises(SystemExit) as excinfo:
         maltiverse.process_args(["a", "b", "c", invalid_url])
 
-    assert excinfo.value.code == 3
+    assert excinfo.value.code == 5
 
 
 def test_load_alert():
@@ -251,7 +250,8 @@ def test_load_alert_exit_with_invalid_file_content():
 )
 def test_request_maltiverse_info_make_expected_calls(data, expected_call):
     """Test that the `request_maltiverse_info` function makes the expected API calls."""
-    testing_maltiverse = maltiverse.Maltiverse()
+    example_token = "example_token"
+    testing_maltiverse = maltiverse.Maltiverse(example_token)
 
     with patch("maltiverse.maltiverse_alert") as alert_mock, patch(
         expected_call
@@ -305,15 +305,40 @@ def test_get_ioc_confidence(data, expected):
 )
 def test_send_event(msg, agent, expected):
     """Test sending an event to a specific agent."""
-    with patch("maltiverse.socket") as mock_socket:
+    with patch("maltiverse.socket.socket") as mock_socket:
         maltiverse.send_event(msg, agent)
 
-    mock_socket.assert_called_with(AF_UNIX, SOCK_DGRAM)
+    mock_socket.assert_called_with(socket.AF_UNIX, socket.SOCK_DGRAM)
     mock_socket.return_value.connect.assert_called_once_with(maltiverse.SOCKET_ADDR)
     mock_socket.return_value.send.assert_called_with(
         expected.encode()
     )
     mock_socket.return_value.close.assert_called()
+
+
+@pytest.mark.parametrize("error_code, expected_exit_code", [
+    (111, UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
+    (90, SENDING_MESSAGE_SOCKET_ERROR_CODE),
+])
+def test_send_event_exits_when_socket_exception_raised(error_code, expected_exit_code):
+    """Test `send_event` function exits with the expected code when socket methods raise an exception.
+
+    Parameters
+    ----------
+    error_code : int
+        Error code number for the socket error to be raised.
+    expected_exit_code : int
+        Error code number for the expected exit exception.
+    """
+    test_msg = {}
+    error = socket.error()
+    error.errno = error_code
+
+    with patch('maltiverse.socket.socket') as mock_socket:
+        mock_socket.side_effect = error
+        with pytest.raises(SystemExit) as e:
+            maltiverse.send_event(test_msg)
+        assert e.value.code == expected_exit_code
 
 
 def test_maltiverse_alert():
