@@ -28,11 +28,11 @@ normalize:
    - event.sequence: $windows.EventData.SequenceNumber
 
   # User fields
-   - temp.user_parts: split($windows.EventData.User, \)
+   - temp.user_parts: split($windows.EventData.User, \\)
    - destination.user.domain: $temp.user_parts.0
    - destination.user.name: $temp.user_parts.1
    - related.user: array_append(destination.user.name)
-   - temp.connected_user_parts: split($windows.EventData.ConnectedUser, \)
+   - temp.connected_user_parts: split($windows.EventData.ConnectedUser, \\)
    - source.user.domain: $temp.connected_user_parts.0
    - source.user.name: $temp.connected_user_parts.1
    - user.name: $source.user.name

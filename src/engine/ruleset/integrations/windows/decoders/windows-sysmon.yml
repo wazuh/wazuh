@@ -53,8 +53,8 @@ normalize:
     - process.name: $temp.file_data.name
     - temp.file_data: parse_file($process.parent.executable)
     - process.parent.name: $temp.file_data.name
-    - process.args: split($process.command_line,  )
-    - process.parent.args: split($process.parent.command_line,  )
+    - process.args: split($process.command_line, \ )
+    - process.parent.args: split($process.parent.command_line, \ )
 
 
   ## File fields
@@ -83,7 +83,7 @@ normalize:
 
   ## User fields
     - user.id: $windows.System.Security.@UserID
-    - temp.user_parts: split($windows.EventData.User, \)
+    - temp.user_parts: split($windows.EventData.User, \\)
     - user.domain: $temp.user_parts.0
     - user.name: $temp.user_parts.1
 
@@ -154,7 +154,7 @@ normalize:
  - check: $event.code=="12" OR $event.code=="13" OR $event.code=="14"
    map:
     - registry.path: $windows.EventData.TargetObject
-    - temp.registry.array: split($registry.path, \)
+    - temp.registry.array: split($registry.path, \\)
     - registry.hive: $temp.registry.array.0
     - temp.registry.array.0: delete()
     - registry.key: join($temp.registry.array, \\)
@@ -163,12 +163,12 @@ normalize:
  - check: ( $event.code=="12" OR $event.code=="13" OR $event.code=="14" ) AND starts_with($windows.Event.EventData.Details,QWORD)
    map:
     - registry.data.type: SZ_QWORD
-    - registry.data.strings: regex_extract($windows.EventData.Details, ^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\))
+    - registry.data.strings: regex_extract($windows.EventData.Details, ^QWORD\\s*\\((0x[0-9A-F]+-0x[0-9A-F]+\)\\\))
 
  - check: ( $event.code=="12" OR $event.code=="13" OR $event.code=="14" ) AND starts_with($windows.EventData.Details,DWORD)
    map:
     - registry.data.type: SZ_DWORD
-    - temp.value: regex_extract($windows.EventData.Details, DWORD \((0x[0-9A-F]{8})\))
+    - temp.value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
     - registry.data.strings: hex_to_number($temp.value)
 
  - check:
