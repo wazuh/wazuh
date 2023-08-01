@@ -336,11 +336,11 @@ class DistributedAPI:
 
         :return: client. Maybe an instance of LocalClient, WorkerHandler or MasterHandler
         """
-        if self.node == local_client:
+        if isinstance(self.node, local_client.LocalClient):
+            client = self.node
+        else:
             client = local_client.LocalClient()
             self.local_clients.append(client)
-        else:
-            client = self.node
 
         return client
 
