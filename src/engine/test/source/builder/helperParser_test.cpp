@@ -50,12 +50,13 @@ INSTANTIATE_TEST_SUITE_P(
         HelperParserT(true, "test(arg1,)", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(true, "test(arg1, )", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(true, "test(arg1,\\ )", {.name = "test", .args {"arg1", " "}}),
-        HelperParserT(true, "test(arg1,  )", {.name = "test", .args {"arg1", " "}}),
-        HelperParserT(true, "test(arg1, ())", {.name = "test", .args {"arg1", "()"}}),
+        HelperParserT(true, "test(arg1,  )", {.name = "test", .args {"arg1", ""}}),
+        HelperParserT(false, "test(arg1, ())", {}),
+        HelperParserT(true, "test(arg1, (\\))", {.name = "test", .args {"arg1", "()"}}),
         HelperParserT(true, "test(arg1, ( arg2)", {.name = "test", .args = {"arg1", "( arg2"}}),
-        HelperParserT(true, "test(arg1, ) arg2)", {.name = "test", .args = {"arg1", ") arg2"}}),
-        HelperParserT(true, "test(arg1, ) arg2))))", {.name = "test", .args = {"arg1", ") arg2)))"}})
-
+        HelperParserT(true, "test(arg1, \\) arg2)", {.name = "test", .args = {"arg1", ") arg2"}}),
+        HelperParserT(true, "test(arg1, \\)\\ arg2\\)\\)\\))", {.name = "test", .args = {"arg1", ") arg2)))"}}),
+        HelperParserT(false, "test(arg1)leftover", {})
             ));
 
 using TermParserT = std::tuple<bool, std::string, builder::internals::BuildToken>;
@@ -240,7 +241,7 @@ INSTANTIATE_TEST_SUITE_P(
         TermParserT(true, R"(hp(   $f1,   $f2,   $f3,   ))", helpToken {"hp", {"$f1", "$f2", "$f3", ""}}),
         TermParserT(true, R"(hp(   $f1,   f2,   f3,   f4))", helpToken {"hp", {"$f1", "f2", "f3", "f4"}}),
         TermParserT(true, R"(hp(   $f1,   f2,   f3,   f4,   ))", helpToken {"hp", {"$f1", "f2", "f3", "f4", ""}}),
-        TermParserT(true, R"(hp(   $f1,\   ,  \ ,   f4,   ))", helpToken {"hp", {"$f1", "\\   ", "\\ ", "f4", ""}}),
+        TermParserT(true, R"(hp(   $f1,\   ,  \ ,   f4,   ))", helpToken {"hp", {"$f1", "   ", " ", "f4", ""}}),
         TermParserT(true, R"(hp(   $f1,   ,   ,   f4,   ))", helpToken {"hp", {"$f1", "", "", "f4", ""}}),
         // Helper Ok - with spaces before and after separator
         TermParserT(true, R"(hp(   $f1   ,   $f2   ,   $f3   ))", helpToken {"hp", {"$f1   ", "$f2   ", "$f3   "}}),
@@ -248,12 +249,12 @@ INSTANTIATE_TEST_SUITE_P(
         TermParserT(true, R"(hp(   $f1   ,   f2   ,   f3   ,   f4   ))", helpToken {"hp", {"$f1   ", "f2   ", "f3   ", "f4   "}}),
         TermParserT(true,
                     R"(hp(   $f1   ,\   f2   ,   f3   ,   f4   ,   ))",
-                    helpToken {"hp", {"$f1   ", "\\   f2   ", "f3   ", "f4   ", ""}}),
+                    helpToken {"hp", {"$f1   ", "   f2   ", "f3   ", "f4   ", ""}}),
         // Scape characters
-        TermParserT(true, R"(hp(\ \, ,,,\,\,,\,\,\,))", helpToken {"hp", {"\\ \\, ", "", "", "\\,\\,", "\\,\\,\\,"}}),
-        TermParserT(true, R"(hp(   \ \, ,  ,  ,  \,\, ,  \,\,\,))", helpToken {"hp", {"\\ \\, ", "", "", "\\,\\, ", "\\,\\,\\,"}}),
+        TermParserT(true, R"(hp(\ \, ,,,\,\,,\,\,\,))", helpToken {"hp", {" , ", "", "", ",,", ",,,"}}),
+        TermParserT(true, R"(hp(   \ \, ,  ,  ,  \,\, ,  \,\,\\\,))", helpToken {"hp", {" , ", "", "", ",, ", ",,\\,"}}),
         // Helper Ok - Check in builder time the validity of the helper name and content of parameters
-        TermParserT(true, R"(helper_name123())", helpToken {"helper_name123", {""}}),
+        TermParserT(true, R"(helper_name123())", helpToken {"helper_name123", {}}),
         TermParserT(true, R"(helper_name123(rawvalue))", helpToken {"helper_name123", {"rawvalue"}}),
         TermParserT(true, R"(hp($wazuh.queue) )" , helpToken {"hp", {"$wazuh.queue"}}),
         TermParserT(true, R"(hp($wazuh.queue) )" , helpToken {"hp", {"$wazuh.queue"}}),
@@ -263,11 +264,11 @@ INSTANTIATE_TEST_SUITE_P(
         TermParserT(true, R"(hp($wazuh.queue)==)" , helpToken {"hp", {"$wazuh.queue"}}),
         TermParserT(true, R"(hp($wazuh.queue)!!)" , helpToken {"hp", {"$wazuh.queue"}}),
         TermParserT(true, R"(hp($wazuh.queue)>)" , helpToken {"hp", {"$wazuh.queue"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) )" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) ())" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)==())" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) AND)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)==)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)!!)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}}),
-        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)>)" , helpToken {"hp", {"$wazuh.queue", "", "\\ \\,"}})
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) )" , helpToken {"hp", {"$wazuh.queue", "", " ,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) ())" , helpToken {"hp", {"$wazuh.queue", "", " ,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)==())" , helpToken {"hp", {"$wazuh.queue", "", " ,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,) AND)" , helpToken {"hp", {"$wazuh.queue", "", " ,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)==)" , helpToken {"hp", {"$wazuh.queue", "", " ,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)!!)" , helpToken {"hp", {"$wazuh.queue", "", " ,"}}),
+        TermParserT(true, R"(hp($wazuh.queue, ,\ \,)>)" , helpToken {"hp", {"$wazuh.queue", "", " ,"}})
         ));
