@@ -57,8 +57,8 @@ normalize:
     - service.type: kvdb_get(windows-service-type,$windows.EventData.ServiceType)
 
     # Set Audit Information -> "SubcategoryGuid": "{0cce9243-69ae-11d9-bed3-505054503030}"
-    - windows.EventData.SubcategoryGuid: replace({, )
-    - windows.EventData.SubcategoryGuid: replace(}, )
+    - windows.EventData.SubcategoryGuid: replace({,\ )
+    - windows.EventData.SubcategoryGuid: replace(},\ )
     - windows.EventData.SubcategoryGuid: upcase($windows.EventData.SubcategoryGuid)
     - _AuditAsset: kvdb_get(windows-audit-information,$windows.EventData.SubcategoryGuid)
     - winlog.AuditCategory: $_AuditAsset/1
@@ -69,14 +69,14 @@ normalize:
   # Failure reason for logon
  - check: exists($windows.EventData.FailureReason)
    map:
-    - windows.EventData.FailureReason: replace(%%, )
+    - windows.EventData.FailureReason: replace(%%,\ )
     - event.action: logon failed
     - event.reason: kvdb_get(windows-messages,$windows.EventData.FailureReason # Possible ECS -> failure code)
 
   # Set Audit Policy Changes Descriptions
  - check: exists($windows.EventData.AuditPolicyChanges)
    map:
-     - winlog.AuditPolicyChanges: replace(%%, )
+     - winlog.AuditPolicyChanges: replace(%%,\ )
      - winlog.AuditPolicyChanges: replace(\, ,\,)
      - winlog.policy_changes: split($winlog.AuditPolicyChanges,\,)
 
@@ -93,8 +93,8 @@ normalize:
   # Set Access List Descripitions
  - check: exists($windows.EventData.AccessList)
    map:
-     - windows.EventData.AccessList: replace(%%, )
-     - winlog.AccessList: split($windows.EventData.AccessList,  )
+     - windows.EventData.AccessList: replace(%%,\ )
+     - winlog.AccessList: split($windows.EventData.AccessList,\ )
 
  - check: exists($winlog.AccessList) AND is_not_array($winlog.AccessList)
    map:
@@ -200,14 +200,14 @@ normalize:
 
  - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.name)
    map:
-    - windows.EventData.TargetDomainName: replace(DC=, )
-    - windows.EventData.TargetDomainName: replace(dc=, )
+    - windows.EventData.TargetDomainName: replace(DC=,\ )
+    - windows.EventData.TargetDomainName: replace(dc=,\ )
     - group.name: $windows.EventData.TargetUserName
 
  - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.domain)
    map:
-    - windows.EventData.TargetDomainName: replace(DC=, )
-    - windows.EventData.TargetDomainName: replace(dc=, )
+    - windows.EventData.TargetDomainName: replace(DC=,\ )
+    - windows.EventData.TargetDomainName: replace(dc=,\ )
     - group.domain: $windows.EventData.TargetDomainName
 
  - check: exists($user.target)
@@ -301,7 +301,7 @@ normalize:
  # Normalize event 4688
  - check: $event.code=="4688"
    map:
-    - process.args: split($windows.EventData.CommandLine,  )
+    - process.args: split($windows.EventData.CommandLine, \ )
     - process.pid: hex_to_number($windows.EventData.NewProcessId)
     - process.executable: $windows.EventData.NewProcessName
     - _file_data: parse_file($windows.EventData.NewProcessName)
@@ -350,8 +350,8 @@ normalize:
     - _privilege_list: kvdb_get(windows-events-arrays,privilege_list)
  - check: array_contains($_privilege_list,$event.code)
    map:
-   - windows.EventData.PrivilegeList: replace(     ,  )
-   - winlog.User_PrivilegeList: split($windows.EventData.PrivilegeList,  )
+   - windows.EventData.PrivilegeList: replace(\     , \ )
+   - winlog.User_PrivilegeList: split($windows.EventData.PrivilegeList, \ )
 
   #cleanup
  - map:
