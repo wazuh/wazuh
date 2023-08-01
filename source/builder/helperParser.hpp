@@ -173,7 +173,7 @@ using BuildToken = std::variant<HelperToken, ExpressionToken>;
  *
  * @return parsec::Parser<HelperToken>
  */
-inline parsec::Parser<HelperToken> getHelperParser()
+inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
 {
     std::string helperExtended = syntax::HELPER_NAME_EXTENDED;
     parsec::Parser<std::string> helperNameParser = [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>
@@ -218,7 +218,7 @@ inline parsec::Parser<HelperToken> getHelperParser()
         return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_CLOSE), pos);
     };
 
-    parsec::Parser<std::string> argParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    parsec::Parser<std::string> argParser = [eraseScapeChars](auto sv, auto pos) -> parsec::Result<std::string>
     {
         auto next = pos;
         auto arg = std::string();
@@ -244,6 +244,10 @@ inline parsec::Parser<HelperToken> getHelperParser()
                     if (sv[next + 1] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next + 1] == syntax::PARENTHESIS_CLOSE
                         || sv[next + 1] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE || std::isspace(sv[next + 1]))
                     {
+                        if (!eraseScapeChars)
+                        {
+                            arg += sv[next];
+                        }
                         ++next;
                     }
                     else
@@ -304,7 +308,7 @@ inline parsec::Parser<HelperToken> getHelperParser()
             {
                 helperToken.args.clear();
             }
-            
+
             return helperToken;
         },
         helperParserRaw);
@@ -486,23 +490,23 @@ inline parsec::Parser<BuildToken> getTermParser()
 
 /**
  * @brief Parses a helper function string
- * 
+ *
  * @param sv string to parse
  * @return std::variant<HelperToken, base::Error> HelperToken if success, Error otherwise
  */
-inline std::variant<HelperToken, base::Error>parseHelper(std::string_view sv)
+inline std::variant<HelperToken, base::Error> parseHelper(std::string_view sv)
 {
-    auto helperParser = getHelperParser();
+    auto helperParser = getHelperParser(true);
     auto result = helperParser(sv, 0);
 
     if (result.failure())
     {
-        return base::Error{result.error()};
+        return base::Error {result.error()};
     }
 
     if (result.index() != sv.size())
     {
-        return base::Error{"Expected end of string"};
+        return base::Error {"Expected end of string"};
     }
 
     return result.value();
