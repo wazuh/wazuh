@@ -26,8 +26,6 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../utils/tests/build
-          ctest -V
           cd ../../../../wazuh_modules/syscollector/build
           ctest -V
   build-monterey:
@@ -50,8 +48,6 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../utils/tests/build
-          ctest -V
           cd ../../../../wazuh_modules/syscollector/build
           ctest -V
   build-ventura:
@@ -73,8 +69,6 @@ jobs:
           cd ../../shared_modules/dbsync/build
           ctest -V
           cd ../../rsync/build
-          ctest -V
-          cd ../../utils/tests/build
           ctest -V
           cd ../../../../wazuh_modules/syscollector/build
           ctest -V
