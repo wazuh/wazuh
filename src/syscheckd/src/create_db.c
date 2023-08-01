@@ -1465,11 +1465,11 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
 #endif
     }
 
-    if (data->options & CHECK_OWNER) {
+    if (data->options & CHECK_OWNER && data->uid && *data->uid != '\0' ) {
         cJSON_AddStringToObject(attributes, "uid", data->uid);
     }
 
-    if (data->options & CHECK_GROUP) {
+    if (data->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
         cJSON_AddStringToObject(attributes, "gid", data->gid);
     }
 
