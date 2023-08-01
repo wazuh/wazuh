@@ -70,7 +70,8 @@ public:
 
     inline friend bool operator>=(const BaseToken& lhs, const BaseToken& rhs)
     {
-        if (lhs.isTerm() || rhs.isTerm()) {
+        if (lhs.isTerm() || rhs.isTerm())
+        {
             return true;
         }
         return lhs.getPrecedence() >= rhs.getPrecedence();
@@ -286,16 +287,16 @@ using NotToken = details::NotToken<details::DefaultPrecedencePolicy>;
 
 namespace traits
 {
-    template<typename T>
-    struct is_term_token : std::false_type
-    {
-    };
+template<typename T>
+struct is_term_token : std::false_type
+{
+};
 
-    template<typename T>
-    struct is_term_token<std::shared_ptr<TermToken<T>>> : std::true_type
-    {
-    };
-}
+template<typename T>
+struct is_term_token<std::shared_ptr<TermToken<T>>> : std::true_type
+{
+};
+} // namespace traits
 
 } // namespace logicexpr::parser
 
