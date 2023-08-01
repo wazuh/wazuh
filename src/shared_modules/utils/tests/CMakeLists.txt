@@ -76,6 +76,7 @@ else()
         crypto
         dl
         pthread
+        rt
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
