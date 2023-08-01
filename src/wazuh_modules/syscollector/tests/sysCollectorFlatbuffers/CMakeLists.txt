@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(syscollectorfb_unit_test)
 
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../../../ ABSOLUTE)
+get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
@@ -10,15 +10,15 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB SYSCOLLECTOR_SCHEMAS_UNIT_TEST
-    "${SRC_FOLDER}/wazuh-modules/syscollector/schemas/*.fbs")
+    "${SRC_FOLDER}/wazuh_modules/syscollector/schemas/*.fbs")
 
 add_definitions(-DWAZUH_UNIT_TESTING)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # === flatbuffers
     set(FLATBUFFERS_SRC_DIR "${SRC_FOLDER}/external/flatbuffers")
-    set(FLATBUFFERS_BINARY_DIR "$${SRC_FOLDER}/external/flatbuffers/build")
-    set(FLATBUFFERS_INCLUDE_DIR "$${SRC_FOLDER}/external/flatbuffers/include")
+    set(FLATBUFFERS_BINARY_DIR "${SRC_FOLDER}/external/flatbuffers/build")
+    set(FLATBUFFERS_INCLUDE_DIR "${SRC_FOLDER}/external/flatbuffers/include")
 
     # set flatbuffers CMake options
     set(FLATBUFFERS_BUILD_FLATLIB ON CACHE BOOL "Enable the build of the flatbuffers library")
