@@ -13,10 +13,6 @@
             "flags": "-r"
         },
         {
-            "name": "shared_modules/utils",
-            "flags": "-r"
-        },
-        {
             "name": "wazuh_modules/syscollector",
             "flags": "-r"
         },
