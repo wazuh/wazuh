@@ -20,6 +20,12 @@
 namespace builder::internals
 {
 
+/**
+ * @brief Token representing a helper function
+ *
+ * @details Helper function is represented by a name and a list of arguments.
+ *
+ */
 struct HelperToken
 {
     std::string name = "";
@@ -36,6 +42,13 @@ struct HelperToken
     }
 };
 
+/**
+ * @brief Obtain builder input parameters from helper token
+ *
+ * @param helperToken Token representing a helper function
+ * @param targetField Target field for the helper function
+ * @return std::tuple<std::string, json::Json>
+ */
 inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& helperToken,
                                                           const std::string& targetField)
 {
@@ -46,6 +59,12 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& hel
     return std::make_tuple(targetField, std::move(value));
 }
 
+/**
+ * @brief Obtain builder input parameters from helper token, where the first argument is the target field
+ *
+ * @param helperToken Token representing a helper function
+ * @return std::tuple<std::string, json::Json>
+ */
 inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& helperToken)
 {
     if (helperToken.args.empty() || helperToken.args[0].empty())
@@ -54,11 +73,12 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& hel
         ss << helperToken;
         throw std::runtime_error(
             fmt::format("Helper {} has no arguments, expected to have target field as first argument", ss.str()));
-    } else if ( helperToken.args[0][0] != syntax::REFERENCE_ANCHOR) {
+    }
+    else if (helperToken.args[0][0] != syntax::REFERENCE_ANCHOR)
+    {
         std::stringstream ss {};
         ss << helperToken;
-        throw std::runtime_error(
-            fmt::format("Helper {} has no target field as first argument", ss.str()));
+        throw std::runtime_error(fmt::format("Helper {} has no target field as first argument", ss.str()));
     }
 
     // Remove reference anchor
@@ -77,6 +97,12 @@ enum class ExpressionOperator
     LESS_THAN_OR_EQUAL
 };
 
+/**
+ * @brief Token representing an expression
+ *
+ * @details Expression is represented by a field, an operator and a value.
+ *
+ */
 struct ExpressionToken
 {
     std::string field;
@@ -84,6 +110,12 @@ struct ExpressionToken
     json::Json value;
 };
 
+/**
+ * @brief Obtain builder input parameters from expression token
+ *
+ * @param expressionToken Token representing an expression
+ * @return std::tuple<std::string, json::Json>
+ */
 inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken& expressionToken)
 {
     if (expressionToken.field.empty())
@@ -96,7 +128,8 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
         return std::make_tuple(expressionToken.field, expressionToken.value);
     }
 
-    if (expressionToken.op == ExpressionOperator::NOT_EQUAL && !expressionToken.value.isString() && !expressionToken.value.isNumber())
+    if (expressionToken.op == ExpressionOperator::NOT_EQUAL && !expressionToken.value.isString()
+        && !expressionToken.value.isNumber())
     {
         throw std::runtime_error("Not equal operator is not supported for non string or number values");
     }
@@ -120,25 +153,14 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
         helperToken.args = {expressionToken.value.getString().value()};
     }
 
-    switch(expressionToken.op)
+    switch (expressionToken.op)
     {
-        case ExpressionOperator::GREATER_THAN:
-            helperToken.name += "_greater";
-            break;
-        case ExpressionOperator::GREATER_THAN_OR_EQUAL:
-            helperToken.name += "_greater_or_equal";
-            break;
-        case ExpressionOperator::LESS_THAN:
-            helperToken.name += "_less";
-            break;
-        case ExpressionOperator::LESS_THAN_OR_EQUAL:
-            helperToken.name += "_less_or_equal";
-            break;
-        case ExpressionOperator::NOT_EQUAL:
-            helperToken.name += "_not_equal";
-            break;
-        default:
-            throw std::logic_error("Unknown expression operator");
+        case ExpressionOperator::GREATER_THAN: helperToken.name += "_greater"; break;
+        case ExpressionOperator::GREATER_THAN_OR_EQUAL: helperToken.name += "_greater_or_equal"; break;
+        case ExpressionOperator::LESS_THAN: helperToken.name += "_less"; break;
+        case ExpressionOperator::LESS_THAN_OR_EQUAL: helperToken.name += "_less_or_equal"; break;
+        case ExpressionOperator::NOT_EQUAL: helperToken.name += "_not_equal"; break;
+        default: throw std::logic_error("Unknown expression operator");
     }
 
     return toBuilderInput(helperToken, expressionToken.field);
@@ -146,7 +168,12 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
 
 using BuildToken = std::variant<HelperToken, ExpressionToken>;
 
-inline parsec::Parser<BuildToken> getTermParser()
+/**
+ * @brief Get a parser that parses a helper function
+ *
+ * @return parsec::Parser<HelperToken>
+ */
+inline parsec::Parser<HelperToken> getHelperParser()
 {
     std::string helperExtended = syntax::HELPER_NAME_EXTENDED;
     parsec::Parser<std::string> helperNameParser = [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>
@@ -194,31 +221,30 @@ inline parsec::Parser<BuildToken> getTermParser()
     parsec::Parser<std::string> argParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
         auto next = pos;
+        auto arg = std::string();
 
         if (next >= sv.size())
         {
             return parsec::makeError<std::string>("EOA", pos);
         }
 
-        for (;next < sv.size(); ++next)
+        for (; next < sv.size(); ++next)
         {
-            // Check for escape sequence
+            // Check for end of argument
             if (sv[next] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next] == syntax::PARENTHESIS_CLOSE)
             {
                 break;
             }
-            // Check for end of argument
+            // Check for escape sequence
             else if (sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE)
             {
                 if (next + 1 < sv.size())
                 {
                     // Expecting escapeable character
-                    // I think we don't need to scape the whitespace and cut the whitespace at the end before
-                    // parenthesis close/arg anchor
                     if (sv[next + 1] == syntax::FUNCTION_HELPER_ARG_ANCHOR || sv[next + 1] == syntax::PARENTHESIS_CLOSE
                         || sv[next + 1] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE || std::isspace(sv[next + 1]))
                     {
-                        next += 1;
+                        ++next;
                     }
                     else
                     {
@@ -227,13 +253,14 @@ inline parsec::Parser<BuildToken> getTermParser()
                 }
                 else
                 {
-                    // TODO CHECK if we are here, next shuld increase by 1 or return error
                     return parsec::makeError<std::string>("Invalid escape sequence", next);
                 }
             }
+
+            arg += sv[next];
         }
 
-        return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
+        return parsec::makeSuccess(std::move(arg), next);
     };
 
     parsec::Parser<std::string> endArgParser = [](auto sv, auto pos) -> parsec::Result<std::string>
@@ -272,10 +299,26 @@ inline parsec::Parser<BuildToken> getTermParser()
             HelperToken helperToken;
             helperToken.name = std::get<0>(tuple);
             helperToken.args = std::vector<std::string>(std::get<1>(tuple).begin(), std::get<1>(tuple).end());
+            // When empty args parser returns one empty string
+            if (helperToken.args.size() == 1 && helperToken.args[0].empty())
+            {
+                helperToken.args.clear();
+            }
+            
             return helperToken;
         },
         helperParserRaw);
 
+    return helperParser;
+}
+
+/**
+ * @brief Get a parser that parses a expression
+ *
+ * @return parsec::Parser<ExpressionToken>
+ */
+inline parsec::Parser<ExpressionToken> getExpressionParser()
+{
     parsec::Parser<json::Json> jsonParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
     {
         if (sv.size() <= pos)
@@ -418,6 +461,19 @@ inline parsec::Parser<BuildToken> getTermParser()
             },
             fieldParser& operatorParser& valueParser);
 
+    return expressionParser;
+}
+
+/**
+ * @brief Get a parsec::Parser that parses a logicexpr term, where a term is a helper function or an expression
+ *
+ * @return parsec::Parser<BuildToken>
+ */
+inline parsec::Parser<BuildToken> getTermParser()
+{
+    auto helperParser = getHelperParser();
+    auto expressionParser = getExpressionParser();
+
     parsec::Parser<BuildToken> helperParserToken = parsec::fmap<BuildToken, HelperToken>(
         [](auto&& helperToken) -> BuildToken { return std::move(helperToken); }, helperParser);
     parsec::Parser<BuildToken> expressionParserToken = parsec::fmap<BuildToken, ExpressionToken>(
@@ -428,53 +484,28 @@ inline parsec::Parser<BuildToken> getTermParser()
     return parser;
 }
 
-inline std::variant<HelperToken, base::Error> parseHelper(const std::string& text)
+/**
+ * @brief Parses a helper function string
+ * 
+ * @param sv string to parse
+ * @return std::variant<HelperToken, base::Error> HelperToken if success, Error otherwise
+ */
+inline std::variant<HelperToken, base::Error>parseHelper(std::string_view sv)
 {
-    static const auto regexPattern = R"(^([\w_]+)\((.*)\)$)";
-    static const re2::RE2 pattern(regexPattern);
+    auto helperParser = getHelperParser();
+    auto result = helperParser(sv, 0);
 
-    std::string helperName;
-    std::string strArgs;
-
-    HelperToken result;
-
-    if (re2::RE2::FullMatch(text, pattern, &result.name, &strArgs))
+    if (result.failure())
     {
-        if (!strArgs.empty())
-        {
-            size_t pos = 0;
-            while ((pos = strArgs.find(',', pos)) != std::string::npos)
-            {
-                // if the comma is escaped skip it
-                if (pos != 0 && strArgs[pos - 1] == '\\')
-                {
-                    ++pos;
-                    continue;
-                }
-
-                // if a space is found after the comma, erase it
-                if ((pos + 1) < strArgs.size() && strArgs[pos + 1] == ' ')
-                {
-                    strArgs.erase(pos + 1, 1);
-                }
-                // if the space is scaped, delete the backslash
-                else if ((pos + 2) < strArgs.size() && strArgs[pos + 1] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE
-                         && strArgs[pos + 2] == ' ')
-                {
-                    strArgs.erase(pos + 1, 1);
-                }
-
-                ++pos;
-            }
-
-            result.args = base::utils::string::splitEscaped(
-                strArgs, syntax::FUNCTION_HELPER_ARG_ANCHOR, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE);
-        }
-
-        return result;
+        return base::Error{result.error()};
     }
 
-    return base::Error {"No match found!"};
+    if (result.index() != sv.size())
+    {
+        return base::Error{"Expected end of string"};
+    }
+
+    return result.value();
 }
 } // namespace builder::internals
 

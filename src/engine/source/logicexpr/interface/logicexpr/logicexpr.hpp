@@ -27,7 +27,7 @@ namespace logicexpr
  * @param termParser Parser to parse the term's of the expression.
  * @return std::function<bool(Event)> Evaluation function.
  */
-template<typename Event,typename TermType, typename TermBuilder, typename TermParser>
+template<typename Event, typename TermType, typename TermBuilder, typename TermParser>
 std::function<bool(Event)>
 buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, TermParser&& termParser)
 {
@@ -39,35 +39,39 @@ buildDijstraEvaluator(const std::string& expression, TermBuilder&& termBuilder, 
     {
         auto builtExpr = evaluator::Expression<Event>::create();
 
-        if (tokenExpr->m_token->isTerm()) {
+        if (tokenExpr->m_token->isTerm())
+        {
             auto termToken = tokenExpr->m_token->getPtr<parser::TermToken<TermType>>();
             builtExpr->m_type = evaluator::ExpressionType::TERM;
             builtExpr->m_function = termBuilder(termToken->buildToken());
             return builtExpr;
         }
 
-        if (tokenExpr->m_token->isNot()) {
+        if (tokenExpr->m_token->isNot())
+        {
             builtExpr->m_type = evaluator::ExpressionType::NOT;
             builtExpr->m_left = visitRef(tokenExpr->m_left, visitRef);
             return builtExpr;
         }
 
-        if (tokenExpr->m_token->isOr()) {
+        if (tokenExpr->m_token->isOr())
+        {
             builtExpr->m_type = evaluator::ExpressionType::OR;
             builtExpr->m_left = visitRef(tokenExpr->m_left, visitRef);
             builtExpr->m_right = visitRef(tokenExpr->m_right, visitRef);
             return builtExpr;
         }
 
-        if (tokenExpr->m_token->isAnd()) {
+        if (tokenExpr->m_token->isAnd())
+        {
             builtExpr->m_type = evaluator::ExpressionType::AND;
             builtExpr->m_left = visitRef(tokenExpr->m_left, visitRef);
             builtExpr->m_right = visitRef(tokenExpr->m_right, visitRef);
             return builtExpr;
         }
 
-        throw std::runtime_error(fmt::format("Engine logic expression: Unexpected token type of token '{}'",
-                                             tokenExpr->m_token->text()));
+        throw std::runtime_error(
+            fmt::format("Engine logic expression: Unexpected token type of token '{}'", tokenExpr->m_token->text()));
     };
 
     // Parse, build and return the evaluator function.

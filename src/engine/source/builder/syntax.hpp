@@ -10,12 +10,12 @@
 namespace builder::internals::syntax
 {
 
-constexpr char REFERENCE_ANCHOR {'$'};
-constexpr char FUNCTION_HELPER_ARG_ANCHOR {','};
-constexpr char FUNCTION_HELPER_DEFAULT_ESCAPE {'\\'};
-constexpr char JSON_PATH_SEPARATOR {'.'};
-constexpr char CUSTOM_FIELD_ANCHOR {'~'};
-constexpr char VARIABLE_ANCHOR {'_'};
+constexpr auto REFERENCE_ANCHOR {'$'};
+constexpr auto FUNCTION_HELPER_ARG_ANCHOR {','};
+constexpr auto FUNCTION_HELPER_DEFAULT_ESCAPE {'\\'};
+constexpr auto JSON_PATH_SEPARATOR {'.'};
+constexpr auto CUSTOM_FIELD_ANCHOR {'~'};
+constexpr auto VARIABLE_ANCHOR {'_'};
 constexpr auto FIELD_EXTENDED = "_@#";
 constexpr auto HELPER_NAME_EXTENDED = "_";
 constexpr auto PARENTHESIS_OPEN = '(';
