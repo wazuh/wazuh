@@ -153,7 +153,8 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         }
         else
         {
-            while (!operatorStack.empty() && !operatorStack.top()->isParenthesisOpen() && *(operatorStack.top()) >= *token)
+            while (!operatorStack.empty() && !operatorStack.top()->isParenthesisOpen()
+                   && *(operatorStack.top()) >= *token)
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();
