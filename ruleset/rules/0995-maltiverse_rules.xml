@@ -3,7 +3,7 @@
     <rule id="99500" level="10">
         <decoded_as>json</decoded_as>
         <field name="integration">maltiverse</field>
-        <description>Maltiverse integration messages</description>
+        <description>Maltiverse integration messages.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -12,7 +12,7 @@
         <if_sid>99500</if_sid>
         <decoded_as>json</decoded_as>
         <field name="threat.software.id" type="pcre2">^S\d{4}$</field>
-        <description>Maltiverse: Alert Software $(threat.software.name) - Detected IoC $(threat.indicator.name) of type $(threat.indicator.type) with [$(threat.indicator.confidence)] that is related to $(threat.software.id)-$(threat.software.name) software known attack</description>
+        <description>Maltiverse: Alert Software $(threat.software.name) - Detected IoC $(threat.indicator.name) of type $(threat.indicator.type) with [$(threat.indicator.confidence)] that is related to $(threat.software.id)-$(threat.software.name) software known attack.</description>
         <options>no_full_log</options>
         <mitre>
             <id>$(threat.software.id)</id>
@@ -24,7 +24,7 @@
         <if_sid>99500</if_sid>
         <decoded_as>json</decoded_as>
         <field name="threat.indicator.confidence">Low|Medium|High</field>
-        <description>Maltiverse: Alert Indicator $(threat.indicator.name) - Detected IoC of type $(threat.indicator.type) with [$(threat.indicator.confidence)] confidence</description>
+        <description>Maltiverse: Alert Indicator $(threat.indicator.name) - Detected IoC of type $(threat.indicator.type) with [$(threat.indicator.confidence)] confidence.</description>
         <options>no_full_log</options>
     </rule>
 

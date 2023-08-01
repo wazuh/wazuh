@@ -79,7 +79,8 @@ now: str = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 # Set paths
 LOG_FILE: str = os.path.join(pwd, 'logs', 'integrations.log')
 SOCKET_ADDR: str = os.path.join(pwd, 'queue', 'sockets', 'queue')
-
+# Max size of the event that ANALYSISID can handle
+MAX_EVENT_SIZE = 65535
 
 class Maltiverse:
     """This class is a simplification of maltiverse pypi package."""
@@ -579,7 +580,7 @@ def send_event(msg: str, agent: dict = None):
         The agent information.
     """
     if not agent or agent["id"] == "000":
-        string = f"1:maltiverse:{json.dumps(msg)}"
+        event = f"1:maltiverse:{json.dumps(msg)}"
     else:
         location = "[{0}] ({1}) {2}".format(
             agent["id"],
@@ -587,13 +588,15 @@ def send_event(msg: str, agent: dict = None):
             agent["ip"] if "ip" in agent else "any",
         )
         location = location.replace("|", "||").replace(":", "|:")
-        string = f"1:{location}->maltiverse:{json.dumps(msg)}"
+        event = f"1:{location}->maltiverse:{json.dumps(msg)}"
 
-    debug(string)
+    debug(event)
+    if len(event) > MAX_EVENT_SIZE:
+        debug(f"# WARNING: Message size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         sock.connect(SOCKET_ADDR)
-        sock.send(string.encode())
+        sock.send(event.encode())
         sock.close()
     except socket.error as e:
         if e.errno == 111:
