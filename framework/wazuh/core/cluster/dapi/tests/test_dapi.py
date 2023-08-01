@@ -347,7 +347,7 @@ def test_DistributedAPI_get_client(loop_mock):
             self.cluster_items = {"cluster_items": ["worker1", "worker2"]}
 
         def get_node(self):
-            pass
+            return local_client.LocalClient()
 
     logger = logging.getLogger("test")
     dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
