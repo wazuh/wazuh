@@ -26,13 +26,12 @@ static void* wm_ms_graph_main(wm_ms_graph* ms_graph);
 static bool wm_ms_graph_setup(wm_ms_graph* ms_graph);
 static bool wm_ms_graph_check();
 static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size);
-static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
+static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan);
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
 
 static int queue_fd; // Socket ID
-time_t last_scan;
 
 const wm_context WM_MS_GRAPH_CONTEXT = {
     .name = MS_GRAPH_WM_NAME,
@@ -52,8 +51,9 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
         return NULL;
     }
     else{
-        last_scan = time(NULL);
         mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
+
+        bool initial = true;
 
         while(FOREVER()){
             const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
@@ -77,7 +77,8 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
 
             if(ms_graph->auth_config.access_token && time(NULL) < ms_graph->auth_config.token_expiration_time){
                 mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", ms_graph->auth_config.tenant_id);
-            wm_ms_graph_scan_relationships(ms_graph);
+                wm_ms_graph_scan_relationships(ms_graph, initial);
+                initial = false;
             }
         }
     }    
@@ -187,22 +188,54 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     os_free(headers);
 }
 
-void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
+void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
     char url[OS_SIZE_8192];
     char auth_header[OS_SIZE_2048];
     char** headers = NULL;
-    char last_scan_timestamp[OS_SIZE_32];
-    struct tm time_struct = { .tm_sec = 0 };
     curl_response* response;
+    char relationship_state_name[OS_SIZE_1024];
+    char start_time_str[80];
+    struct tm tm_aux = { .tm_sec = 0 };
     char* payload;
+    wm_ms_graph_state_t relationship_state_struc;
+    time_t now;
+    bool fail;
 
     for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
         
         for(unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
 
-            memset(last_scan_timestamp, '\0', OS_SIZE_32);
-            gmtime_r(&last_scan, &time_struct);
-            strftime(last_scan_timestamp, sizeof(last_scan_timestamp), "%Y-%m-%dT%H:%M:%SZ", &time_struct);
+            memset(relationship_state_name, '\0', OS_SIZE_1024);
+            snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
+                ms_graph->auth_config.tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
+
+            memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
+
+            // Load state for tenant-resource-relationship
+            if (wm_state_io(relationship_state_name, WM_IO_READ, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
+                memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
+            }
+
+            now = time(0);
+
+            if ((initial_scan && (!relationship_state_struc.next_time || ms_graph->only_future_events)) ||
+                (!initial_scan && !relationship_state_struc.next_time)) {
+                relationship_state_struc.next_time = now;
+                if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
+                    mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
+                } else if (isDebug()) {
+                    memset(start_time_str, '\0', 80);
+                    gmtime_r(&now, &tm_aux);
+                    strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                    mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
+                        start_time_str, ms_graph->auth_config.tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
+                }
+                continue;
+            }
+
+            memset(start_time_str, '\0', 80);
+            gmtime_r(&relationship_state_struc.next_time, &tm_aux);
+            strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
             memset(auth_header, '\0', OS_SIZE_2048);
             snprintf(auth_header, OS_SIZE_2048 - 1, "Authorization: Bearer %s", ms_graph->auth_config.access_token);
@@ -216,20 +249,23 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             ms_graph->version,
             ms_graph->resources[resource_num].name,
             ms_graph->resources[resource_num].relationships[relationship_num],
-            ms_graph->only_future_events ? last_scan_timestamp : "1970-01-01T00:00:00Z");
+            start_time_str);
+
             mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
 
+            fail = true;
+
             response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+            // It takes the time right after the response to be saved for the next scan.
+            now = time(0);
             if(response){
                 if(response->status_code != 200){
                     char status_code[4];
                     snprintf(status_code, 4, "%ld", response->status_code);
-                    mtwarn(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: Status code was '%s' & response was '%s'",
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Received unsuccessful status code when attempting to get relationship '%s' logs: Status code was '%s' & response was '%s'",
                     ms_graph->resources[resource_num].relationships[relationship_num],
                     status_code,
                     response->body);
-                    wurl_free_response(response);
-                    goto failed;
                 }
                 else if (response->max_size_reached){
                     mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
@@ -264,9 +300,11 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                                 mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
                                 }
                             }
+                            fail = false;
                         }
                         else{
-                            mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs recieved.");
+                            mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs received.");
+                            fail = false;
                         }
                         cJSON_Delete(logs);
                     }
@@ -277,17 +315,28 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                 wurl_free_response(response);
             }
             else{
-                mtwarn(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
+                mtwarn(WM_MS_GRAPH_LOGTAG, "No response received when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
                 ms_graph->resources[resource_num].relationships[relationship_num],
                 ms_graph->resources[resource_num].name,
                 ms_graph->version);
             }
+
+            if (!fail) {
+                relationship_state_struc.next_time = now;
+                memset(start_time_str, '\0', 80);
+                gmtime_r(&relationship_state_struc.next_time, &tm_aux);
+                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
+                    mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
+                } else {
+                    mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run next scan.",
+                        start_time_str, ms_graph->auth_config.tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
+                }
+            }
+
+            os_free(headers[0]);
+            os_free(headers);
         }
-    }
-    last_scan = time(NULL);
-    failed:
-    if(headers){
-        os_free(headers);
     }
 }
 
