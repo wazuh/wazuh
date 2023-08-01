@@ -51,6 +51,7 @@ from pathlib import Path
 import sys
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd import patterns
@@ -70,6 +71,7 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 # Test configurations.
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
@@ -81,7 +83,9 @@ print(test_configuration)
 print(test_metadata)
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state_config(test_configuration, test_metadata, configure_local_internal_options):
+def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_configuration,  configure_local_internal_options,
+                             truncate_monitored_files, remove_state_file, daemons_handler):
+    
     '''
     description: Check that the 'wazuh-agentd.state' statistics file is created
                  automatically and verify that it is updated at the set intervals.
@@ -112,13 +116,6 @@ def test_agentd_state_config(test_configuration, test_metadata, configure_local_
         - r'file_enabled'
         - r'file_not_enabled'
     '''
-    control_service('stop', 'wazuh-agentd')
-
-    # Truncate ossec.log in order to watch it correctly
-    truncate_file(LOG_FILE_PATH)
-
-    # Remove state file to check if agent behavior is as expected
-    os.remove(state_file_path) if os.path.exists(state_file_path) else None
 
     # Set state interval value according to test case specs
     set_state_interval(test_case['interval'], internal_options)
