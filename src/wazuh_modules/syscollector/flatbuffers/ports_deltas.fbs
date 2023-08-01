@@ -1,0 +1,21 @@
+namespace Syscollector;
+
+table Sys_ports {
+    scan_time:string;
+    protocol:string;
+    local_ip:string;
+    local_port:int;
+    remote_ip:string;
+    remote_port:int;
+    tx_queue:int;
+    rx_queue:int;
+    inode:long;
+    state:string;
+    PID:int;
+    process:string;
+    item_id:string;
+    checksum:string;
+}
+
+root_type Sys_ports;
+

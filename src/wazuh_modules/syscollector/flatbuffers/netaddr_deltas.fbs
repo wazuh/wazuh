@@ -1,0 +1,13 @@
+namespace Syscollector;
+
+table Sys_netaddr {
+    iface:string;
+    proto:string;
+    address:string;
+    netmask:string;
+    broadcast:string;
+    item_id:string;
+    checksum:string;
+}
+
+root_type Sys_netaddr;

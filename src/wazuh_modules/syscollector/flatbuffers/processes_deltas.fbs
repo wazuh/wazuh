@@ -1,0 +1,37 @@
+namespace Syscollector;
+
+table Sys_processes {
+    scan_time:string;
+    pid:string;
+    name:string;
+    state:string;
+    ppid:int;
+    utime:int;
+    stime:int;
+    cmd:string;
+    argvs:string;
+    euser:string;
+    ruser:string;
+    suser:string;
+    egroup:string;
+    rgroup:string;
+    sgroup:string;
+    fgroup:string;
+    priority:int;
+    nice:int;
+    size:int;
+    vm_size:int;
+    resident:int;
+    share:int;
+    start_time:long;
+    pgrp:int;
+    session:int;
+    nlwp:int;
+    tgid:int;
+    tty:int;
+    processor:int;
+    checksum:string;
+}
+
+root_type Sys_processes;
+

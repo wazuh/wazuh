@@ -1,0 +1,13 @@
+namespace Syscollector;
+
+table Sys_netproto {
+    iface:string;
+    type:string;
+    gateway:string;
+    dhcp:string;
+    metric:int;
+    item_id:string;
+    checksum:string;
+}
+
+root_type Sys_netproto;

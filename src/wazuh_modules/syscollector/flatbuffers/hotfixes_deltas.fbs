@@ -1,0 +1,10 @@
+namespace Syscollector;
+
+table Sys_hotfixes {
+    scan_time:string;
+    hotfix:string;
+    checksum:string;
+}
+
+root_type Sys_hotfixes;
+

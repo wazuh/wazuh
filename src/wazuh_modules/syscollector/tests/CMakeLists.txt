@@ -9,7 +9,6 @@ include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
-
 add_subdirectory(sysCollectorImp)
 add_subdirectory(sysNormalizer)
 if (NOT ${TARGET} STREQUAL "")
