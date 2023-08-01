@@ -26,10 +26,15 @@ include_directories(${SHARED_MODULES}/router/include)
 include_directories(${SHARED_MODULES}/http-request/include)
 include_directories(${SHARED_MODULES}/content_manager/src/components)
 
+# Compile dependencies
+add_subdirectory(${SHARED_MODULES}/http-request http-request)
+add_subdirectory(${SHARED_MODULES}/router router)
+
 # Link directories
 link_directories(${SRC_FOLDER})
 link_directories(${SHARED_MODULES}/router/build)
 link_directories(${SHARED_MODULES}/http-request/build)
+link_directories(${SRC_FOLDER}/external/curl/lib/.libs)
 
 file(GLOB CONTENT_DOWNLOAD_SRC
     "src/*.cpp"
