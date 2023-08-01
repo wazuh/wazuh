@@ -11,4 +11,4 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 add_subdirectory(sysCollectorImp)
 add_subdirectory(sysNormalizer)
-
+add_subdirectory(sysCollectorFlatbuffers)

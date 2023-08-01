@@ -12,6 +12,8 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
 file(GLOB SYSCOLLECTOR_SCHEMAS_UNIT_TEST
     "${SRC_FOLDER}/wazuh-modules/syscollector/schemas/*.fbs")
 
+add_definitions(-DWAZUH_UNIT_TESTING)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # === flatbuffers
     set(FLATBUFFERS_SRC_DIR "${SRC_FOLDER}/external/flatbuffers")
