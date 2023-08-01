@@ -201,9 +201,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
     time_t now;
     bool fail;
 
-    for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
+    for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
         
-        for(unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
+        for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
 
             memset(relationship_state_name, '\0', OS_SIZE_1024);
             snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
@@ -258,28 +258,26 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
             response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
             // It takes the time right after the response to be saved for the next scan.
             now = time(0);
-            if(response){
-                if(response->status_code != 200){
+            if (response) {
+                if (response->status_code != 200) {
                     char status_code[4];
                     snprintf(status_code, 4, "%ld", response->status_code);
                     mtwarn(WM_MS_GRAPH_LOGTAG, "Received unsuccessful status code when attempting to get relationship '%s' logs: Status code was '%s' & response was '%s'",
                     ms_graph->resources[resource_num].relationships[relationship_num],
                     status_code,
                     response->body);
-                }
-                else if (response->max_size_reached){
+                } else if (response->max_size_reached) {
                     mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
                     ms_graph->resources[resource_num].relationships[relationship_num]);
-                }
-                else{
+                } else {
                     cJSON* logs = NULL;
-                    if(logs = cJSON_Parse(response->body), logs){
+                    if (logs = cJSON_Parse(response->body), logs) {
                         logs = cJSON_GetObjectItem(logs, "value");
                         int num_logs = cJSON_GetArraySize(logs);
-                        if(num_logs > 0){
-                            for(int log_index = 0; log_index < num_logs; log_index++){
+                        if (num_logs > 0) {
+                            for (int log_index = 0; log_index < num_logs; log_index++) {
                                 cJSON* log = NULL;
-                                if(log = cJSON_GetArrayItem(logs, log_index), log){
+                                if (log = cJSON_GetArrayItem(logs, log_index), log) {
                                     cJSON* full_log = cJSON_CreateObject();
 
                                     cJSON_AddStringToObject(log, "resource", ms_graph->resources[resource_num].name);
@@ -295,26 +293,22 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
 
                                     os_free(payload);
                                     cJSON_Delete(full_log);
-                                }
-                                else{
-                                mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
+                                } else {
+                                    mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
                                 }
                             }
                             fail = false;
-                        }
-                        else{
+                        } else {
                             mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs received.");
                             fail = false;
                         }
                         cJSON_Delete(logs);
-                    }
-                    else{
+                    } else {
                         mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }
                 }
                 wurl_free_response(response);
-            }
-            else{
+            } else {
                 mtwarn(WM_MS_GRAPH_LOGTAG, "No response received when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
                 ms_graph->resources[resource_num].relationships[relationship_num],
                 ms_graph->resources[resource_num].name,
