@@ -40,12 +40,12 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.7.0'
-  x-revision: '40700'
+  version: '4.8.0'
+  x-revision: '40800'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v4.7.0/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v4.8.0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -538,6 +538,14 @@ x-rbac-catalog:
         actions: [ 'vulnerability:run' ]
         resources: [ '*:*:*' ]
         effect: "allow"
+    'event:ingest':
+      description: "Ingest events"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['event:ingest']
+        resources: ['*:*:*']
+        effect: "allow"
 
 components:
   responses:
@@ -564,7 +572,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.7/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.8/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -631,7 +639,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/4.7/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.8/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -644,7 +652,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.7/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.8/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -3880,7 +3888,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.7/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.8/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_queue_size:
           type: number
@@ -5324,7 +5332,7 @@ components:
         </tr>
         <tr>
         <td>monitor</td>
-        <td>internal</td>
+        <td>reports</td>
         <td><code>&lt;reports&gt;</code></td>
         </tr>
         <tr>
@@ -6903,7 +6911,7 @@ components:
       required: True
       schema:
         type: string
-        format: wazuh_path
+        format: wpk_path
     installer:
       in: query
       name: installer
@@ -6985,7 +6993,6 @@ components:
         type: string
         format: xml_filename_path
 
-
 tags:
   - name: API Info
     description: "Wazuh API information"
@@ -7029,6 +7036,8 @@ tags:
     description: "Tasks information"
   - name: Vulnerability
     description: "Vulnerabilities information"
+  - name: Events
+    description: "Ingestion endpoints"
 
 security:
   - jwt: []
@@ -7058,7 +7067,7 @@ paths:
                 api_version: "v4.5.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v4.7.0/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v4.8.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -9208,8 +9217,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/4.7/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/4.7/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/4.8/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/4.8/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -13986,6 +13995,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Rule content"
@@ -14762,6 +14772,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Decoder content"
@@ -19056,6 +19067,70 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /events:
+    post:
+      tags:
+      - Events
+      summary: "Ingest events"
+      description: |-
+        Send security events to analysisd.
+
+        The endpoint is limited to receiving a max of 30 requests per minute and a max bulk size of 100 events per request.
+      operationId: api.controllers.event_controller.forward_event
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/event:ingest'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    description: "Bulk of events"
+                    type: array
+                    items:
+                      type: string
+                required:
+                - events
+              example:
+                events:
+                  - "Event value 1"
+                  - "{\"someKey\": \"Event value 2\"}"
+      responses:
+        '200':
+          description: "Events accepted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - "Event value 1"
+                    - "{\"someKey\": \"Event value 2\"}"
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All events were forwarded to analisysd"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.7/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.8/user-manual/api/index.html'

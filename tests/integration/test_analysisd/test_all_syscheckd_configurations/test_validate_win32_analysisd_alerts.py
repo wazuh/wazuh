@@ -52,6 +52,7 @@ from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
 from wazuh_testing.constants.keys.alerts import *
 from wazuh_testing.constants.keys.events import *
 from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.analysisd import patterns, utils, configuration as analysisd_config
 from wazuh_testing.modules.monitord import configuration as monitord_config
 from wazuh_testing.tools import mitm
@@ -145,4 +146,4 @@ def test_validate_all_win32_alerts(test_metadata, configure_local_internal_optio
     alert = next(read_alerts_syscheck)
     path = alert[ALERTS_SYSCHECK][SYSCHECK_PATH]
     mode = alert[ALERTS_SYSCHECK][ALERTS_SYSCHECK_EVENT].title()
-    utils.validate_analysis_alert_syscheck(alert, events_dict[path][mode], schema='win32')
+    utils.validate_analysis_alert_syscheck(alert, events_dict[path][mode], schema=WINDOWS)

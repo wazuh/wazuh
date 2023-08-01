@@ -740,7 +740,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     unsigned long mask = 0;
     directory_t *configuration;
 
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
 
@@ -1103,7 +1103,7 @@ error:
 }
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+   SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
 
     int exists;
     whodata_dir_status *d_status;

@@ -539,3 +539,208 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSuccess)
     EXPECT_EQ("apk", jsPackageInfo.at("format"));
     EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
 }
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)
+{
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"(
+            {
+            "id": "rw36mkAjdIKl13dzfwyxP87cejpyIcct",
+            "title": "gnome-3-38-2004",
+            "summary": "Shared GNOME 3.38 Ubuntu stack",
+            "description": "This snap includes a GNOME 3.38 stack (the base libraries and desktop \nintegration components) and shares it through the content interface. \n",
+            "icon": "/v2/icons/gnome-3-38-2004/icon",
+            "installed-size": 363151360,
+            "name": "gnome-3-38-2004",
+            "publisher": {
+                "id": "canonical",
+                "username": "canonical",
+                "display-name": "Canonical",
+                "validation": "verified"
+            },
+            "developer": "canonical",
+            "status": "active",
+            "type": "app",
+            "base": "core20",
+            "version": "0+git.6f39565",
+            "channel": "latest/stable",
+            "tracking-channel": "latest/stable/ubuntu-22.04",
+            "ignore-validation": false,
+            "revision": "119",
+            "confinement": "strict",
+            "private": false,
+            "devmode": false,
+            "jailmode": false,
+            "contact": "",
+            "mounted-from": "/var/lib/snapd/snaps/gnome-3-38-2004_119.snap",
+            "media": [
+                {
+                "type": "icon",
+                "url": "https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png"
+                }
+            ],
+            "install-date": "2022-11-23T20:33:59.025662696-03:00"
+            }
+        )"_json) };
+
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("gnome-3-38-2004", jsPackageInfo["name"]);
+    EXPECT_EQ(363151360, jsPackageInfo["size"]);
+    EXPECT_EQ("2022/11/23 20:33:59", jsPackageInfo["install_time"]);
+    EXPECT_EQ(" ", jsPackageInfo["groups"]);
+    EXPECT_EQ("0+git.6f39565", jsPackageInfo["version"]);
+    EXPECT_EQ(" ", jsPackageInfo["architecture"]);
+    EXPECT_EQ("snap", jsPackageInfo["format"]);
+    EXPECT_EQ("Canonical", jsPackageInfo["vendor"]);
+    EXPECT_EQ("Shared GNOME 3.38 Ubuntu stack", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapInvalidInputName)
+{
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"(
+            {
+            "id": "rw36mkAjdIKl13dzfwyxP87cejpyIcct",
+            "title": "gnome-3-38-2004",
+            "summary": "Shared GNOME 3.38 Ubuntu stack",
+            "description": "This snap includes a GNOME 3.38 stack (the base libraries and desktop \nintegration components) and shares it through the content interface. \n",
+            "icon": "/v2/icons/gnome-3-38-2004/icon",
+            "installed-size": 363151360,
+            "publisher": {
+                "id": "canonical",
+                "username": "canonical",
+                "display-name": "Canonical",
+                "validation": "verified"
+            },
+            "developer": "canonical",
+            "status": "active",
+            "type": "app",
+            "base": "core20",
+            "version": "0+git.6f39565",
+            "channel": "latest/stable",
+            "tracking-channel": "latest/stable/ubuntu-22.04",
+            "ignore-validation": false,
+            "revision": "119",
+            "confinement": "strict",
+            "private": false,
+            "devmode": false,
+            "jailmode": false,
+            "contact": "",
+            "mounted-from": "/var/lib/snapd/snaps/gnome-3-38-2004_119.snap",
+            "media": [
+                {
+                "type": "icon",
+                "url": "https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png"
+                }
+            ],
+            "install-date": "2022-11-23T20:33:59.025662696-03:00"
+            }
+        )"_json) };
+
+    EXPECT_TRUE(jsPackageInfo.empty());
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapInvalidInputVersion)
+{
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"(
+            {
+            "id": "rw36mkAjdIKl13dzfwyxP87cejpyIcct",
+            "title": "gnome-3-38-2004",
+            "summary": "Shared GNOME 3.38 Ubuntu stack",
+            "description": "This snap includes a GNOME 3.38 stack (the base libraries and desktop \nintegration components) and shares it through the content interface. \n",
+            "icon": "/v2/icons/gnome-3-38-2004/icon",
+            "installed-size": 363151360,
+            "name": "gnome-3-38-2004",
+            "publisher": {
+                "id": "canonical",
+                "username": "canonical",
+                "display-name": "Canonical",
+                "validation": "verified"
+            },
+            "developer": "canonical",
+            "status": "active",
+            "type": "app",
+            "base": "core20",
+            "channel": "latest/stable",
+            "tracking-channel": "latest/stable/ubuntu-22.04",
+            "ignore-validation": false,
+            "revision": "119",
+            "confinement": "strict",
+            "private": false,
+            "devmode": false,
+            "jailmode": false,
+            "contact": "",
+            "mounted-from": "/var/lib/snapd/snaps/gnome-3-38-2004_119.snap",
+            "media": [
+                {
+                "type": "icon",
+                "url": "https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png"
+                }
+            ],
+            "install-date": "2022-11-23T20:33:59.025662696-03:00"
+            }
+        )"_json) };
+
+    EXPECT_TRUE(jsPackageInfo.empty());
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapValidSizeAsString)
+{
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"(
+            {
+            "id": "rw36mkAjdIKl13dzfwyxP87cejpyIcct",
+            "title": "gnome-3-38-2004",
+            "summary": "Shared GNOME 3.38 Ubuntu stack",
+            "description": "This snap includes a GNOME 3.38 stack (the base libraries and desktop \nintegration components) and shares it through the content interface. \n",
+            "icon": "/v2/icons/gnome-3-38-2004/icon",
+            "installed-size": "363151360",
+            "name": "gnome-3-38-2004",
+            "publisher": {
+                "id": "canonical",
+                "username": "canonical",
+                "display-name": "Canonical",
+                "validation": "verified"
+            },
+            "developer": "canonical",
+            "status": "active",
+            "type": "app",
+            "base": "core20",
+            "version": "0+git.6f39565",
+            "channel": "latest/stable",
+            "tracking-channel": "latest/stable/ubuntu-22.04",
+            "ignore-validation": false,
+            "revision": "119",
+            "confinement": "strict",
+            "private": false,
+            "devmode": false,
+            "jailmode": false,
+            "contact": "",
+            "mounted-from": "/var/lib/snapd/snaps/gnome-3-38-2004_119.snap",
+            "media": [
+                {
+                "type": "icon",
+                "url": "https://dashboard.snapcraft.io/site_media/appmedia/2021/01/icon_FvbmexL.png"
+                }
+            ],
+            "install-date": "2022-11-23T20:33:59.025662696-03:00"
+            }
+        )"_json) };
+
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ(363151360, jsPackageInfo["size"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapEmptyJSON)
+{
+    const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"({})"_json) };
+
+    EXPECT_TRUE(jsPackageInfo.empty());
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapWrongJSON)
+{
+    EXPECT_NO_THROW(
+    {
+        const auto& jsPackageInfo { PackageLinuxHelper::parseSnap( R"(curl: (7) Couldn't connect to server)") };
+        EXPECT_TRUE(jsPackageInfo.empty());
+    });
+}
+

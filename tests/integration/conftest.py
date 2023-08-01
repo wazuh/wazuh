@@ -1,6 +1,8 @@
-# Copyright (C) 2015-2023, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+"""
 import os
 import subprocess
 import pytest
@@ -9,12 +11,20 @@ from typing import List
 
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
-from wazuh_testing.constants.daemons import WAZUH_MANAGER
+from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
+from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, \
+                                               WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.logger import logger
-from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.tools import socket_controller
+from wazuh_testing.tools.monitors import queue_monitor
+from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
+from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
+from wazuh_testing.utils.file import remove_file
+from wazuh_testing.utils.manage_agents import remove_agents
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
@@ -150,7 +160,7 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
 def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH]
+        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 
@@ -200,7 +210,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         daemons_handler_configuration = getattr(request.module, 'daemons_handler_configuration')
         if 'daemons' in daemons_handler_configuration and not all_daemons:
             daemons = daemons_handler_configuration['daemons']
-            if not daemons or (type(daemons) == list and len(daemons) == 0):
+            if not daemons or (type(daemons) == list and len(daemons) == 0) or type(daemons) != list:
                 logger.error('Daemons list is not set')
                 raise ValueError
 
@@ -241,6 +251,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         logger.debug('Stopping wazuh using wazuh-control')
         services.control_service('stop')
     else:
+        if daemons == API_DAEMONS_REQUIREMENTS: daemons.reverse() # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
             services.control_service('stop', daemon=daemon)
@@ -333,7 +344,7 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
         )
         daemon_first and mitm is not None and mitm.start()
         if mitm is not None:
-            monitored_sockets.append(queue_monitor.QueueMonitor(monitored_queue=mitm.queue))
+            monitored_sockets.append(queue_monitor.QueueMonitor(monitored_object=mitm.queue))
             mitm_list.append(mitm)
 
     setattr(request.module, 'monitored_sockets', monitored_sockets)
@@ -459,3 +470,126 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
     yield package_names
 
     mocking.delete_mocked_packages(agent_id=mock_agent_with_custom_system)
+
+@pytest.fixture()
+def remoted_simulator() -> RemotedSimulator:
+    """
+    Fixture for an RemotedSimulator instance.
+
+    This fixture creates an instance of the RemotedSimulator and starts it.
+    The simulator is yielded to the test function, allowing to interact
+    with it. After the test function finishes, the simulator is shut down.
+
+    Returns:
+        RemotedSimulator: An instance of the RemotedSimulator.
+
+    """
+    remoted = RemotedSimulator()
+    remoted.start()
+
+    yield remoted
+
+    remoted.shutdown()
+
+
+@pytest.fixture()
+def authd_simulator() -> AuthdSimulator:
+    """
+    Fixture for an AuthdSimulator instance.
+
+    This fixture creates an instance of the AuthdSimulator and starts it.
+    The simulator is yielded to the test function, allowing to interact
+    with it. After the test function finishes, the simulator is shut down.
+
+    Returns:
+        AuthdSimulator: An instance of the AuthdSimulator.
+
+    """
+    authd = AuthdSimulator()
+    authd.start()
+
+    yield authd
+
+    authd.shutdown()
+
+
+@pytest.fixture
+def prepare_test_files(request: pytest.FixtureRequest) -> None:
+    """Create the files/directories required by the test, and then delete them to clean up the environment.
+
+    The test module must define a variable called `test_files` which is a list of files (defined as str or os.PathLike)
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    files_required = request.module.test_files
+
+    created_files = file.create_files(files_required)
+
+    yield
+
+    # Reverse to delete in the correct order
+    file.delete_files(created_files.reverse())
+
+
+@pytest.fixture
+def simulate_agent():
+    """Simulate an agent and remove it using the API."""
+    agent = create_agents(1, 'localhost')[0]
+    _, injector = connect(agent)
+
+    yield agent
+
+    # Stop and delete simulated agent
+    injector.stop_receive()
+    remove_agents(agent.id, 'api')
+
+
+@pytest.fixture
+def remove_test_file(request):
+    """Remove a test file before and after the test execution."""
+    remove_file(request.module.test_file)
+
+    yield
+
+    remove_file(request.module.test_file)
+
+
+@pytest.fixture
+def add_user_in_rbac(request):
+    """Add a new user in the RBAC database."""
+
+    database.run_sql_script(RBAC_DATABASE_PATH, request.module.add_user_sql_script)
+
+    yield
+
+    database.run_sql_script(RBAC_DATABASE_PATH, request.module.delete_user_sql_script)
+
+
+@pytest.fixture(autouse=True)
+def autostart_simulators(request: pytest.FixtureRequest) -> None:
+    """
+    Fixture for starting simulators in wazuh-agent executions.
+
+    This fixture starts both Authd and Remoted simulators only in the cases where the service is not
+    WAZUH_MANAGER, and when the test function is not already using the simulator fixture, if it does
+    use one of them, only start the remaining simulator.
+
+    This is required so all wazuh-agent instances are being tested with the wazuh-manager connection
+    being mocked.
+    """
+    create_authd = 'authd_simulator' not in request.fixturenames
+    create_remoted = 'remoted_simulator' not in request.fixturenames
+
+    if services.get_service() is not WAZUH_MANAGER:
+        authd = AuthdSimulator() if create_authd else None
+        remoted = RemotedSimulator() if create_remoted else None
+
+        authd.start() if create_authd else None
+        remoted.start() if create_remoted else None
+
+    yield
+
+    if services.get_service() is not WAZUH_MANAGER:
+        authd.shutdown() if create_authd else None
+        remoted.shutdown() if create_remoted else None

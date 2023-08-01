@@ -9,8 +9,29 @@
 
 #define QUERY_MAX_SIZE OS_SIZE_2048
 
-STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value,
-                                           bool convert_empty_string_as_null);
+#define GT(X, Y) (X > Y ? true : false)
+#define LT(X, Y) (X < Y ? true : false)
+#define EQ(X, Y) (X == Y ? true : false)
+
+#define IS_VALID_HWINFO_VALUE(field_name, field_value) ( \
+    !strncmp(field_name, "cpu_cores", 9) ? \
+        GT(field_value, 0) : \
+    !strncmp(field_name, "cpu_mhz", 7) ? \
+        GT(field_value, 0) : \
+    !strncmp(field_name, "ram_total", 9) ? \
+        GT(field_value, 0) : \
+    !strncmp(field_name, "ram_free", 8) ? \
+        GT(field_value, 0) : \
+    !strncmp(field_name, "ram_usage", 9) ? \
+        (GT(field_value, 0) && (EQ(field_value, 100) || LT(field_value, 100))): true \
+)
+
+#define IS_VALID_VALUE(table_name, field_name, field_value) (\
+    !strncmp(table_name, "sys_hwinfo", 10) ? IS_VALID_HWINFO_VALUE(field_name, field_value) : true \
+)
+
+STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, const char * field_name,
+                                           const char * table_name, bool convert_empty_string_as_null);
 
 STATIC const char * wdb_dbsync_translate_field(const struct field * field) {
     return NULL == field->source_name ? field->target_name : field->source_name;
@@ -104,8 +125,8 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                 }
 
                 if (NULL != field_value) {
-                    if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                        column->value.convert_empty_string_as_null)) {
+                    if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value, field_name,
+                                                        kv_value->value, column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -120,8 +141,8 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     const char * field_name = wdb_dbsync_translate_field(&column->value);
                     cJSON * field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL != field_value &&
-                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                        column->value.convert_empty_string_as_null)) {
+                        !wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value, field_name,
+                                                        kv_value->value, column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -174,8 +195,8 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     cJSON * field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL == field_value) {
                         has_error = true;
-                    } else if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
-                                                               column->value.convert_empty_string_as_null)) {
+                    } else if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value, field_name,
+                                                               kv_value->value, column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
@@ -190,8 +211,8 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
     return ret_val;
 }
 
-STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value,
-                                           bool convert_empty_string_as_null) {
+STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, const char * field_name,
+                                           const char * table_name, bool convert_empty_string_as_null) {
 
     bool ret_val = false;
 
@@ -228,17 +249,34 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                 case cJSON_String: {
                     char * endptr;
                     const int integer_number = (int) strtol(value->valuestring, &endptr, 10);
-                    if (NULL != endptr && '\0' == *endptr &&
-                        SQLITE_OK == sqlite3_bind_int(stmt, index, integer_number)) {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (NULL != endptr && '\0' == *endptr) {
+                        if (IS_VALID_VALUE(table_name, field_name, integer_number)) {
+                            sqlite3_bind = sqlite3_bind_int(stmt, index, integer_number);
+                        } else {
+                            sqlite3_bind = sqlite3_bind_null(stmt, index);
+                        }
+                    }
+
+                    if (SQLITE_OK == sqlite3_bind) {
+                        ret_val = true;
+                    }
+
+                    break;
+                }
+                case cJSON_Number: {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (IS_VALID_VALUE(table_name, field_name, value->valueint)) {
+                        sqlite3_bind = sqlite3_bind_int(stmt, index, value->valueint);
+                    } else {
+                        sqlite3_bind = sqlite3_bind_null(stmt, index);
+                    }
+
+                    if (SQLITE_OK == sqlite3_bind) {
                         ret_val = true;
                     }
                     break;
                 }
-                case cJSON_Number:
-                    if (SQLITE_OK == sqlite3_bind_int(stmt, index, value->valueint)) {
-                        ret_val = true;
-                    }
-                    break;
                 }
                 break;
             case FIELD_REAL:
@@ -246,17 +284,32 @@ STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field
                 case cJSON_String: {
                     char * endptr;
                     const double real_value = strtod(value->valuestring, &endptr);
-                    if (NULL != endptr && '\0' == *endptr &&
-                        SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (NULL != endptr && '\0' == *endptr) {
+                        if (IS_VALID_VALUE(table_name, field_name, real_value)) {
+                            sqlite3_bind = sqlite3_bind_double(stmt, index, real_value);
+                        } else {
+                            sqlite3_bind = sqlite3_bind_null(stmt, index);
+                        }
+                    }
+
+                    if (SQLITE_OK == sqlite3_bind) {
                         ret_val = true;
                     }
                     break;
                 }
-                case cJSON_Number:
-                    if (SQLITE_OK == sqlite3_bind_double(stmt, index, value->valuedouble)) {
+                case cJSON_Number: {
+                    int sqlite3_bind = SQLITE_ERROR;
+                    if (IS_VALID_VALUE(table_name, field_name, value->valuedouble)) {
+                        sqlite3_bind = sqlite3_bind_double(stmt, index, value->valuedouble);
+                    } else {
+                        sqlite3_bind = sqlite3_bind_null(stmt, index);
+                    }
+                    if (SQLITE_OK == sqlite3_bind) {
                         ret_val = true;
                     }
                     break;
+                }
                 }
                 break;
             case FIELD_INTEGER_LONG:

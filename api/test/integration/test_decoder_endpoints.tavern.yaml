@@ -954,11 +954,10 @@ stages:
       status_code: 200
 
 ---
-test_name: GET /decoders/files/{file}
+test_name: GET /decoders/files/(filename)
 
 stages:
 
-    # GET /decoders/files/{file}
   - name: Download a decoders file (JSON format)
     request:
       verify: False
@@ -977,7 +976,6 @@ stages:
           total_failed_items: 0
         error: 0
 
-    # GET /decoders/files/{file}
   - name: Download a decoders file (raw format)
     request:
       verify: False
@@ -1012,6 +1010,29 @@ stages:
           total_failed_items: 1
         error: 1
 
+  - name: Download a decoders file (user ruleset, decoder belongs to default ruleset)
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/decoders'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1503
+              id:
+                - "0005-wazuh_decoders.xml"
+          total_failed_items: 1
+        error: 1
+        
   - name: Download decoder (invalid file 1)
     request:
       verify: False

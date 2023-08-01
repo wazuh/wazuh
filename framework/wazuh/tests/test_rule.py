@@ -5,7 +5,7 @@
 import os
 import sys
 from unittest.mock import patch, mock_open, MagicMock
-
+from wazuh.core.common import USER_RULES_PATH
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -27,9 +27,7 @@ data_path = 'core/tests/data/rules'
 
 rule_ossec_conf = {
   "ruleset": {
-    "rule_dir": [
-      "core/tests/data/rules"
-    ],
+    "rule_dir": ["core/tests/data/rules"],
     "rule_exclude": ["0010-rules_config.xml"]
   }
 }
@@ -43,6 +41,15 @@ other_rule_ossec_conf = {
     }
 }
 
+get_rule_file_ossec_conf = {
+  "ruleset": {
+    "rule_dir": [
+        "core/tests/data/rules",
+        "tests/data/etc/rules",
+        "tests/data/etc/rules/subpath",],
+    "rule_exclude": ["0010-rules_config.xml"]
+  }
+}
 
 rule_contents = '''
 <group name="ossec,">
@@ -227,43 +234,60 @@ def test_get_requirement_invalid(mocked_config, requirement):
     assert result.total_affected_items == 0
 
 
-@pytest.mark.parametrize('file_, raw', [
-    ('0010-rules_config.xml', True),
-    ('0015-ossec_rules.xml', False)
+@pytest.mark.parametrize('filename, raw, relative_dirname, contains', [
+    ('0010-rules_config.xml', True, None, None),
+    ('0015-ossec_rules.xml', False, None, None),
+    ('test_rules.xml', False, None, 'NEW RULE WITHOUT SUBPATH'),
+    ('test_rules.xml', True, 'tests/data/etc/rules/subpath', 'NEW RULE SUBPATH'),
+    ('test_rules.xml', True, 'tests/data/etc/rules/subpath/', 'NEW RULE SUBPATH'),
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file(mock_config, file_, raw):
+@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
+@patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests","data", "etc", "rules"))
+def test_get_rule_file(filename, raw, relative_dirname, contains):
     """Test downloading a specified rule filter."""
-    d_files = rule.get_rule_file(filename=file_, raw=raw)
-    if raw:
-        assert isinstance(d_files, str)
-    else:
-        assert isinstance(d_files, AffectedItemsWazuhResult)
-        assert d_files.affected_items
-        assert not d_files.failed_items
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
+        d_files = rule.get_rule_file(filename=filename, raw=raw, relative_dirname=relative_dirname)
+        if raw:
+            assert isinstance(d_files, str)
+            if contains:
+                assert d_files.find(contains)
+        else:
+            assert isinstance(d_files, AffectedItemsWazuhResult)
+            assert d_files.affected_items
+            assert not d_files.failed_items
 
 
-@pytest.mark.parametrize('item, file_, error_code', [
-    ([{'relative_dirname': 'ruleset/rules'}], 'no_exists_os_error.xml', 1414),
-    ([], 'no_exists_unk_error.xml', 1415)
-])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_failed(mock_config, item, file_, error_code):
-    """Test downloading a specified rule filter."""
-    with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-            all_msg='test', affected_items=item)):
-        result = rule.get_rule_file(filename=file_)
+@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
+@patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests", "data", "etc", "rules"))
+def test_get_rule_file_exceptions():
+    """Test file exceptions on get_rule_file method."""
+    # File does not exist in default ruleset
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
+        result = rule.get_rule_file(filename='non_existing_file.xml')
         assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == error_code
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
 
+        # File does not exist in user ruleset
+        result = rule.get_rule_file(filename='non_existing_file.xml', raw=False)
+        assert not result.affected_items
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
 
-@patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-    affected_items=[{'relative_dirname': 'tests/data'}]))
-def test_get_rules_file_invalid_xml(get_rules_mock):
-    """Test downloading a rule with invalid XML."""
-    result = rule.get_rule_file(filename='test_invalid_rules.xml')
-    assert not result.affected_items
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1413
+        # File exist in default ruleset but not in custom ruleset
+        result = rule.get_rule_file(filename='0010-rules_config.xml', raw=False, 
+                                    relative_dirname=USER_RULES_PATH)
+        assert not result.affected_items
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
+        
+        # Invalid XML
+        result = rule.get_rule_file(filename='wrong_rules.xml', raw=False)
+        assert not result.affected_items
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1413
+
+        # File permissions
+        with patch('builtins.open', side_effect=PermissionError):
+            result = rule.get_rule_file(filename='0010-rules_config.xml')
+            assert not result.affected_items
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
 
 
 @pytest.mark.parametrize('file, overwrite', [

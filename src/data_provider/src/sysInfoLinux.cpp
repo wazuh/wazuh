@@ -123,7 +123,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["nice"]       = process->nice;
     jsProcessInfo["size"]       = process->size;
     jsProcessInfo["vm_size"]    = process->vm_size;
-    jsProcessInfo["resident"]   = process->resident;
+    jsProcessInfo["resident"]   = process->vm_rss;
     jsProcessInfo["share"]      = process->share;
     jsProcessInfo["start_time"] = Utils::timeTick2unixTime(process->start_time);
     jsProcessInfo["pgrp"]       = process->pgrp;
@@ -135,7 +135,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     return jsProcessInfo;
 }
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     std::string serial;
     std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
@@ -152,7 +152,7 @@ std::string SysInfo::getSerialNumber() const
     return serial;
 }
 
-std::string SysInfo::getCpuName() const
+static std::string getCpuName()
 {
     std::string retVal { UNKNOWN_VALUE };
     std::map<std::string, std::string> systemInfo;
@@ -167,7 +167,7 @@ std::string SysInfo::getCpuName() const
     return retVal;
 }
 
-int SysInfo::getCpuCores() const
+static int getCpuCores()
 {
     int retVal { 0 };
     std::map<std::string, std::string> systemInfo;
@@ -182,7 +182,7 @@ int SysInfo::getCpuCores() const
     return retVal;
 }
 
-int SysInfo::getCpuMHz() const
+static int getCpuMHz()
 {
     int retVal { 0 };
     std::map<std::string, std::string> systemInfo;
@@ -235,7 +235,7 @@ int SysInfo::getCpuMHz() const
     return retVal;
 }
 
-void SysInfo::getMemory(nlohmann::json& info) const
+static void getMemory(nlohmann::json& info)
 {
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
@@ -266,6 +266,17 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_total"] = ramTotal;
     info["ram_free"] = memFree;
     info["ram_usage"] = 100 - (100 * memFree / ramTotal);
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["board_serial"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_mhz"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -386,7 +397,7 @@ nlohmann::json SysInfo::getNetworks() const
 
         for (auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
 
             if (networkInterfacePtr)
             {

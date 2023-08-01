@@ -23,7 +23,7 @@
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
 #define WM_BUFFER_MIN   1024                        // Starting JSON buffer length.
 #define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
-#define WM_MAX_WAIT     1                           // Max. wait between attempts.
+#define WM_MAX_WAIT     500                           // Max. wait between attempts in milliseconds.
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.

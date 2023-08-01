@@ -1,7 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.8.0]
+
+
 ## [v4.7.0]
+
+
+## [v4.6.0]
 
 
 ## [v4.5.0]
@@ -55,7 +61,17 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
 
 
-## [v4.4.4] - 2023-06-13
+## [v4.4.5] - 2023-07-10
+
+### Installer
+
+#### Fixed
+
+- Fixed an error in the DEB package that prevented the agent and manager from being installed on Debian 12. ([#2256](https://github.com/wazuh/wazuh-packages/pull/2256))
+- Fixed a service requirement in the RPM package that prevented the agent and manager from being installed on Oracle Linux 9. ([#2257](https://github.com/wazuh/wazuh-packages/pull/2257))
+
+
+## [v4.4.4] - 2023-06-14
 
 ### Manager
 

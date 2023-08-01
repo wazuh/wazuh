@@ -1,0 +1,7 @@
+- name: REQUEST_TIMEOUT
+  description: Check if the request does not finish successfully when the timeout is reached
+  configuration_parameters:
+    REQUEST_TIMEOUT: 0
+  metadata:
+    expected_status_code: 500
+    expected_error_code: 3021

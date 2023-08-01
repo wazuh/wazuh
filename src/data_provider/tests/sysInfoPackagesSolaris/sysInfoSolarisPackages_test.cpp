@@ -60,7 +60,7 @@ TEST_F(SysInfoSolarisPackagesTest, Test_Success_Data)
     EXPECT_CALL(*mock, install_time()).Times(1).WillOnce(Return("2022/01/13 14:48:58"));
     EXPECT_CALL(*mock, multiarch()).Times(1).WillOnce(Return(""));
 
-    EXPECT_NO_THROW(FactoryPackageFamilyCreator<OSType::SOLARIS>::create(mock)->buildPackageData(packages));
+    EXPECT_NO_THROW(FactoryPackageFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildPackageData(packages));
 
     EXPECT_EQ("libstdc++6", packages.at("name").get_ref<const std::string&>());
     EXPECT_EQ("5.5.0", packages.at("version").get_ref<const std::string&>());

@@ -150,7 +150,7 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     interval : int
         Time interval between every healthcheck.
     node_type : str
-        Can be agent or manager.
+        Can be agent, manager or nginx-lb.
     agents : list
         List of active agents for the current test
         (only needed if the agents need a custom healthcheck).
@@ -170,14 +170,21 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
                 f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
-        return True
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
                 f"docker inspect env_wazuh-agent{agent}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
-        return True
+    elif node_type == 'nginx-lb':
+        health = subprocess.check_output(
+            f"docker inspect env_nginx-lb_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+        if not health.startswith(b'"healthy"'):
+            return False
+    else:
+        raise ValueError(f"Invalid node_type value: '{node_type}'.")
+        
+    return True
 
 
 def general_procedure(module: str):
@@ -290,6 +297,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
 
 def save_logs(test_name: str):
     """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
+    Save nginx-lb log.
 
     Examples:
     "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
@@ -323,6 +331,13 @@ def save_logs(test_name: str):
                 shell=True)
         except subprocess.CalledProcessError:
             continue
+
+    # Save nginx log
+    with open(os.path.join(test_logs_path, f'test_{test_name}-nginx-lb.log'), mode='w') as f_log:
+        current_process = subprocess.Popen(
+                ["docker", "logs", "env_nginx-lb_1"],
+                stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process.wait()
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -377,6 +392,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         managers_health = check_health(interval=values['interval'],
                                        only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
+        nginx_health = check_health(interval=values['interval'], node_type='nginx-lb')
         # Check if entrypoint was successful
         try:
             error_message = subprocess.check_output(["docker", "exec", "-t", "env_wazuh-master_1", "sh", "-c",
@@ -385,7 +401,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         except subprocess.CalledProcessError:
             pass
 
-        if managers_health and agents_health:
+        if managers_health and agents_health and nginx_health:
             time.sleep(values['interval'])
             return
         else:
@@ -521,3 +537,39 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
+
+
+@pytest.fixture
+def big_events_payload() -> list:
+    """Return a payload with a number of events larger than the maximum allowed.
+
+    Returns
+    -------
+    list
+        Events payload.
+    """
+    return [f"Event {i}" for i in range(101)]
+
+
+@pytest.fixture
+def max_size_event() -> str:
+    """Return an event with the max size allowed.
+
+    Returns
+    -------
+    str
+        The max size event.
+    """
+    return " ".join(str(i) for i in range(12772))
+
+
+@pytest.fixture
+def large_event() -> str:
+    """Return an event with the size larger than the maximum allowed.
+
+    Returns
+    -------
+    str
+        The larger event.
+    """
+    return " ".join(str(i) for i in range(12773))

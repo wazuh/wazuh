@@ -26,7 +26,7 @@ namespace Utils
                 return {}; // Default constructor
             }
 
-            T & build()
+            T& build()
             {
                 return static_cast<T&>(*this); // Return reference to self
             }

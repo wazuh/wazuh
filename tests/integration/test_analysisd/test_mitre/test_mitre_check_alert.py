@@ -54,7 +54,7 @@ import pytest
 
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
 from wazuh_testing.modules.analysisd import patterns, utils
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 
 from . import RULES_SAMPLE_PATH

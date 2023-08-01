@@ -130,7 +130,125 @@ void test_get_unix_version_centos(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_opensuse_tumbleweed(void **state)
+void test_get_unix_version_archlinux_distro_based(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Manjaro Linux\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=manjaro");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    // Attempt to open /etc/centos-release
+    expect_string(__wrap_fopen, path, "/etc/centos-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Attempt to open /etc/fedora-release
+    expect_string(__wrap_fopen, path, "/etc/fedora-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Attempt to open /etc/redhat-release
+    expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Arch Linux");
+    assert_string_equal(ret->os_version, "");
+    assert_string_equal(ret->os_platform, "arch");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_archlinux_no_version_id(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Arch Linux\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=arch");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Arch Linux");
+    assert_string_equal(ret->os_version, "");
+    assert_string_equal(ret->os_platform, "arch");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_archlinux(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Arch Linux\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"TEMPLATE_VERSION_ID\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=arch");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Arch Linux");
+    assert_string_equal(ret->os_version, "");
+    assert_string_equal(ret->os_platform, "arch");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_opensuse_tumbleweed_no_version_id(void **state)
 {
     (void) state;
     os_info *ret;
@@ -142,8 +260,6 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "NAME=\"openSUSE Tumbleweed\"");
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "# VERSION=\"20211202\"");
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "ID=opensuse-tumbleweed");
     expect_value(__wrap_fgets, __stream, 1);
@@ -160,7 +276,38 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     assert_string_equal(ret->os_version, "");
     assert_string_equal(ret->os_platform, "opensuse-tumbleweed");
     assert_string_equal(ret->sysname, "Linux");
-    assert_string_equal(ret->os_build, "rolling");
+}
+
+void test_get_unix_version_opensuse_tumbleweed(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"openSUSE Tumbleweed\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"20230619\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=opensuse-tumbleweed");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "openSUSE Tumbleweed");
+    assert_string_equal(ret->os_version, "");
+    assert_string_equal(ret->os_platform, "opensuse-tumbleweed");
+    assert_string_equal(ret->sysname, "Linux");
 }
 
 void test_get_unix_version_alpine(void **state)
@@ -1750,7 +1897,8 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(20), "Big Sur");
     assert_string_equal(OSX_ReleaseName(21), "Monterey");
     assert_string_equal(OSX_ReleaseName(22), "Ventura");
-    assert_string_equal(OSX_ReleaseName(23), "Unknown");
+    assert_string_equal(OSX_ReleaseName(23), "Sonoma");
+    assert_string_equal(OSX_ReleaseName(24), "Unknown");
 }
 
 #endif
@@ -1881,6 +2029,10 @@ int main(void) {
 #ifdef __linux__
             cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_centos, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_archlinux_distro_based, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_archlinux_no_version_id, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_archlinux, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed_no_version_id, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_alpine, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),

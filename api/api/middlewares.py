@@ -7,14 +7,16 @@ from logging import getLogger
 
 from aiohttp import web, web_request
 from aiohttp.web_exceptions import HTTPException
-from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
+from connexion.exceptions import OAuthProblem, ProblemException, Unauthorized
 from connexion.problem import problem as connexion_problem
 from secure import SecureHeaders
+from wazuh.core.exception import WazuhPermissionError, WazuhTooManyRequests
+from wazuh.core.utils import get_utc_now
 
 from api.configuration import api_conf
 from api.util import raise_if_exc
-from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
-from wazuh.core.utils import get_utc_now
+
+MAX_REQUESTS_EVENTS_DEFAULT = 30
 
 # API secure headers
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
@@ -47,8 +49,10 @@ async def set_secure_headers(request, handler):
 
 ip_stats = dict()
 ip_block = set()
-request_counter = 0
-current_time = None
+general_request_counter = 0
+general_current_time = None
+events_request_counter = 0
+events_current_time = None
 
 
 async def unlock_ip(request: web_request.BaseRequest, block_time: int):
@@ -112,36 +116,68 @@ async def request_logging(request, handler):
 
 
 @web.middleware
-async def prevent_denial_of_service(request: web_request.BaseRequest, max_requests: int = 300):
-    """This function checks that the maximum number of requests per minute set in the configuration is not exceeded.
+async def check_rate_limit(
+    request: web_request.BaseRequest,
+    request_counter_key: str,
+    current_time_key: str,
+    max_requests: int
+) -> None:
+    """This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
 
     Parameters
     ----------
     request : web_request.BaseRequest
         API request.
-    max_requests : int
+    request_counter_key : str
+        Key of the request counter variable to get from globals() dict.
+    current_time_key : str
+        Key of the current time variable to get from globals() dict.
+    max_requests : int, optional
         Maximum number of requests per minute permitted.
     """
-    global current_time, request_counter
-    if not current_time:
-        current_time = get_utc_now().timestamp()
 
-    if get_utc_now().timestamp() - 60 <= current_time:
-        request_counter += 1
+    error_code_mapping = {
+        'general_request_counter': {'code': 6001},
+        'events_request_counter': {
+            'code': 6005,
+            'extra_message': f'For POST /events endpoint the limit is set to {max_requests} requests.'
+        }
+    }
+    if not globals()[current_time_key]:
+        globals()[current_time_key] = get_utc_now().timestamp()
+
+    if get_utc_now().timestamp() - 60 <= globals()[current_time_key]:
+        globals()[request_counter_key] += 1
     else:
-        request_counter = 0
-        current_time = get_utc_now().timestamp()
+        globals()[request_counter_key] = 0
+        globals()[current_time_key] = get_utc_now().timestamp()
 
-    if request_counter > max_requests:
+    if globals()[request_counter_key] > max_requests:
         logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
-        raise_if_exc(WazuhTooManyRequests(6001))
+        raise_if_exc(WazuhTooManyRequests(**error_code_mapping[request_counter_key]))
 
 
 @web.middleware
 async def security_middleware(request, handler):
     access_conf = api_conf['access']
-    if access_conf['max_request_per_minute'] > 0:
-        await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+    max_request_per_minute = access_conf['max_request_per_minute']
+
+    if max_request_per_minute > 0:
+        await check_rate_limit(
+            request,
+            'general_request_counter',
+            'general_current_time',
+            max_request_per_minute
+        )
+
+        if request.path == '/events':
+            await check_rate_limit(
+                request,
+                'events_request_counter',
+                'events_current_time',
+                MAX_REQUESTS_EVENTS_DEFAULT
+            )
+
     await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)

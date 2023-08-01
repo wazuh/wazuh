@@ -499,7 +499,7 @@ time_t fim_scan() {
 #endif
 
 #ifdef WIN32
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
 #endif
     cputime_start = clock();
     gettime(&start);

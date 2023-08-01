@@ -9,17 +9,17 @@
  * Foundation
  */
 
-#ifndef DEF_UTILS_WRAPPER_LINUX_HPP
-#define DEF_UTILS_WRAPPER_LINUX_HPP
+#ifndef _UTILS_WRAPPER_LINUX_H
+#define _UTILS_WRAPPER_LINUX_H
 
 #include <string>
 
 
-class UtilsWrapper final
+class UtilsWrapperLinux final
 {
     public:
         static std::string exec(const std::string& cmd, const size_t bufferSize = 128);
         static bool existsRegular(const std::string& path);
 };
 
-#endif // DEF_UTILS_WRAPPER_LINUX_HPP
+#endif // _UTILS_WRAPPER_LINUX_H

@@ -65,17 +65,17 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 test_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_limitation.yaml')
 test_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_limitation.yaml')
 
-test2_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_queueing_events_after_limitation.yaml')
-test2_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_queueing_events_after_limitation.yaml')
+test2_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_queue_events_after_limit.yaml')
+test2_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_queue_events_after_limit.yaml')
 
-test3_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_drop_events_when_queue_is_full.yaml')
-test3_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_drop_events_when_queue_is_full.yaml')
+test3_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_drop_events_queue_full.yaml')
+test3_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_drop_events_queue_full.yaml')
 
-test4_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_processing_events_in_order_single_thread.yaml')
-test4_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_processing_events_in_order_single_thread.yaml')
+test4_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_process_events_single.yaml')
+test4_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_process_events_single.yaml')
 
-test5_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_processing_events_in_order_multi_thread.yaml')
-test5_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_processing_events_in_order_multi_thread.yaml')
+test5_configs_path = Path(CONFIGS_PATH, 'event_processing_test_module', 'configuration_process_events_multi.yaml')
+test5_cases_path = Path(TEST_CASES_PATH, 'event_processing_test_module', 'cases_process_events_multi.yaml')
 
 # Test configurations.
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
@@ -278,8 +278,8 @@ def test_queueing_events_after_limitation(test_configuration, test_metadata, loa
         - Check that the queue usage continues to grow after stopping processing events.
 
     input_description:
-        - The `configuration_queueing_events_after_limitation` file provides the module configuration for this test.
-        - The `cases_queueing_events_after_limitation` file provides the test cases.
+        - The `configuration_queue_events_after_limit` file provides the module configuration for this test.
+        - The `cases_queue_events_after_limit` file provides the test cases.
     """
     # Get initial queue usage
     analysisd_state = utils.get_analysisd_state()

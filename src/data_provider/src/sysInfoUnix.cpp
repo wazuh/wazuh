@@ -44,26 +44,42 @@ static void getOsInfoFromUname(nlohmann::json& info)
 }
 
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     return UNKNOWN_VALUE;
 }
-std::string SysInfo::getCpuName() const
+
+static std::string getCpuName()
 {
     return UNKNOWN_VALUE;
 }
-int SysInfo::getCpuMHz() const
+
+static int getCpuMHz()
 {
     return 0;
 }
-int SysInfo::getCpuCores() const
+
+static int getCpuCores()
 {
     return 0;
 }
-void SysInfo::getMemory(nlohmann::json& /*info*/) const
+
+static void getMemory(nlohmann::json& /*info*/)
 {
 
 }
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["board_serial"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_mhz"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
     return nlohmann::json {};

@@ -46,7 +46,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.analysisd import patterns
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import configuration, callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
