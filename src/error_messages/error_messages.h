@@ -431,7 +431,6 @@
 #define VU_NVD_EMPTY                "(5582): Unavailable vulnerabilities at the NVD database. The scan is aborted."
 #define VU_DEB_STATUS_FEED_ERROR    "(5583): Couldn't get the Debian feed '%s' to check the vulnerable packages."
 #define VU_FILTER_VULN_NVD_ERROR    "(5584): Couldn't verify if the vulnerability '%s' is reported in the NVD feed."
-#define VU_GET_NVD_YEAR_ERROR       "(5585): Couldn't get the NVD configured year."
 #define VU_NO_ENABLED_FEEDS         "(5586): No feeds specified for '%s' provider. Enabling all the available ones."
 #define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
