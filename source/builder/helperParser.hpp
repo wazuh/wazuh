@@ -125,7 +125,7 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
 
     if (expressionToken.op == ExpressionOperator::EQUAL)
     {
-        return std::make_tuple(expressionToken.field, expressionToken.value);
+        return std::make_tuple(expressionToken.field.substr(1), expressionToken.value);
     }
 
     if (expressionToken.op == ExpressionOperator::NOT_EQUAL && !expressionToken.value.isString()
@@ -163,7 +163,7 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
         default: throw std::logic_error("Unknown expression operator");
     }
 
-    return toBuilderInput(helperToken, expressionToken.field);
+    return toBuilderInput(helperToken, expressionToken.field.substr(1));
 }
 
 using BuildToken = std::variant<HelperToken, ExpressionToken>;
