@@ -19,7 +19,7 @@ metadata:
     - https://httpd.apache.org/docs/2.4/logs.html
 
 check:
-  - event.original: regex_match(\S+\s-\s\S+\s\[)
+  - event.original: regex_match(\\S+\\s-\\s\\S+\\s\\[)
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
 # - event.module: apache-http
 # - event.dataset: apache-access
@@ -57,12 +57,12 @@ normalize:
       - _http_request: <http.request.method> <url.original> HTTP/<http.version>
 
   - check:
-      - _tls-1: regex_match(\d+\.\d+)
+      - _tls-1: regex_match(\\d+\\.\\d+)
     map:
       - tls.version: $_tls-1
 
   - check:
-      - _tls-1: regex_not_match(\d+\.\d+)
+      - _tls-1: regex_not_match(\\d+\\.\\d+)
     map:
       - tls.version: concat($_tls-1, .0)
 
@@ -79,4 +79,4 @@ normalize:
       - source.domain: parse_fqdn($source.address)
 
   - map:
-      - url.extension: regex_extract($url.original, .*\.([^.]+)$)
+      - url.extension: regex_extract($url.original, .*\\.([^.]+\)$)
