@@ -21,9 +21,10 @@ check:
 
 normalize:
  - map:
+   # TODO: check this replaces
    - windows.EventData.2: replace(\t, )
-   - windows.EventData.2: replace(   ,   )
-   - windows.EventData.2: replace(  ,\,)
+   - windows.EventData.2: replace(\   , \  )
+   - windows.EventData.2: replace(\  ,\,)
  - logpar:
     - windows.EventData.2: <temp.event_data/kv/=/,/'/'>
 
@@ -42,7 +43,7 @@ normalize:
    - process.executable: $temp.event_data.ScriptName
 
   ## User fields.
-   - temp.user_parts: split($temp.event_data.UserId, \)
+   - temp.user_parts: split($temp.event_data.UserId, \\)
    - user.domain: $temp.user_parts.0
    - user.name: $temp.user_parts.1
    - related.user: array_append($user.name)
