@@ -193,18 +193,18 @@ normalize:
     - user.target.domain: $_split_memberName.3
     - related.user: array_append($_split_memberName.0)
 
- - check: array_contains($_IdMemberName,$event.code) AND not_exists(group.id)
+ - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.id)
    map:
     - user.target.id: $windows.EventData.TargetSid
     - group.id: $windows.EventData.TargetUserSid
 
- - check: array_contains($_IdMemberName,$event.code) AND not_exists(group.name)
+ - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.name)
    map:
     - windows.EventData.TargetDomainName: replace(DC=, )
     - windows.EventData.TargetDomainName: replace(dc=, )
     - group.name: $windows.EventData.TargetUserName
 
- - check: array_contains($_IdMemberName,$event.code) AND not_exists(group.domain)
+ - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.domain)
    map:
     - windows.EventData.TargetDomainName: replace(DC=, )
     - windows.EventData.TargetDomainName: replace(dc=, )
@@ -262,12 +262,12 @@ normalize:
    map:
     - user.effective.id: $windows.EventData.TargetUserSid
 
- - check: ( $event.code=="4648" OR $event.code=="4688" ) AND string_not_equal(windows.EventData.TargetUserName,-)
+ - check: ( $event.code=="4648" OR $event.code=="4688" ) AND string_not_equal($windows.EventData.TargetUserName,-)
    map:
     - _name_part: split($windows.EventData.TargetUserName,@)
     - user.effective.name: $_name_part.0
 
- - check: ( $event.code=="4648" OR $event.code=="4688" ) AND string_not_equal(windows.EventData.TargetDomainName,-)
+ - check: ( $event.code=="4648" OR $event.code=="4688" ) AND string_not_equal($windows.EventData.TargetDomainName,-)
    map:
     - user.effective.domain: $windows.EventData.TargetDomainName
 
@@ -291,7 +291,7 @@ normalize:
     - _file_data: parse_file($windows.EventData.ProcessName)
     - process.name: $_file_data.name
 
- - check: array_contains($_IdRenameCommonAuthFields,$event.code) AND string_not_equal(windows.EventData.IpAddress,-)
+ - check: array_contains($_IdRenameCommonAuthFields,$event.code) AND string_not_equal($windows.EventData.IpAddress,-)
    map:
     - source.ip: $windows.EventData.IpAddress
     - source.port: $windows.EventData.IpPort
