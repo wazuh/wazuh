@@ -20,6 +20,8 @@ void __wrap_rem_inc_tcp();
 
 void __wrap_rem_dec_tcp();
 
+void __wrap_rem_inc_recv_evt();
+
 void __wrap_rem_inc_recv_ctrl_request(const char *agent_id);
 
 void __wrap_rem_inc_recv_ctrl_startup(const char *agent_id);

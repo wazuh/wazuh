@@ -26,3 +26,12 @@ size_t __wrap_CreateSecMSG(__attribute__((unused)) keystore *keys, const char *m
 
     return size;
 }
+
+int __wrap_ReadSecMSG(keystore *keys, char *buffer, __attribute__((unused)) char *cleartext, int id,  __attribute__((unused)) unsigned int buffer_size,  __attribute__((unused)) size_t *final_size, const char *srcip,  __attribute__((unused)) char **output) {
+    check_expected(keys);
+    check_expected(buffer);
+    check_expected(id);
+    check_expected(srcip);
+
+    return mock_type(int);
+}
