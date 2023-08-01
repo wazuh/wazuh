@@ -27,8 +27,8 @@ include_directories(${SHARED_MODULES}/common)
 include_directories(${SHARED_MODULES}/http-request/include)
 
 # Link directories
+link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
-link_directories(${SRC_FOLDER}/external/curl/lib/.libs)
 link_directories(${SHARED_MODULES}/http-request/build)
 
 file(GLOB INDEXER_CONNECTOR_SRC

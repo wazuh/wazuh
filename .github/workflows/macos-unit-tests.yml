@@ -26,7 +26,7 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../../../wazuh_modules/syscollector/build
+          cd ../../../wazuh_modules/syscollector/build
           ctest -V
   build-monterey:
     runs-on: macos-12
@@ -48,7 +48,7 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../../../wazuh_modules/syscollector/build
+          cd ../../../wazuh_modules/syscollector/build
           ctest -V
   build-ventura:
     runs-on: macos-13
@@ -70,5 +70,5 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../../../wazuh_modules/syscollector/build
+          cd ../../../wazuh_modules/syscollector/build
           ctest -V
