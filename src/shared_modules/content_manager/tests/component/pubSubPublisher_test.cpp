@@ -1,7 +1,7 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager - Component Tests
  * Copyright (C) 2015, Wazuh Inc.
- * Jun 07, 2023.
+ * Jun 20, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,11 +10,10 @@
  */
 
 #include "pubSubPublisher_test.hpp"
-#include "mocks/MockRouterProvider.hpp"
-#include "pubSubPublisher.hpp"
-#include "updaterContext.hpp"
-#include <gmock/gmock.h>
+#include "routerProvider.hpp"
+#include "gtest/gtest.h"
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 /*
@@ -31,11 +30,7 @@ TEST_F(PubSubPublisherTest, instantiation)
  */
 TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 {
-    auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-    EXPECT_CALL(*mockRouterProvider, start).Times(1);
-    EXPECT_CALL(*mockRouterProvider, stop).Times(1);
-
-    m_spUpdaterBaseContext->spChannel = mockRouterProvider;
+    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
     m_spUpdaterBaseContext->spChannel->start();
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
@@ -52,18 +47,13 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
  */
 TEST_F(PubSubPublisherTest, TestPublishValidData)
 {
-    std::string message {"Hello World!"};
+    std::string data {"Hello World!"};
 
-    auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-    EXPECT_CALL(*mockRouterProvider, start).Times(1);
-    EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
-    EXPECT_CALL(*mockRouterProvider, stop).Times(1);
-
-    m_spUpdaterBaseContext->spChannel = mockRouterProvider;
+    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
     m_spUpdaterBaseContext->spChannel->start();
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = std::vector<char>(message.begin(), message.end());
+    m_spUpdaterContext->data = std::vector<char>(data.begin(), data.end());
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 
@@ -73,17 +63,13 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
 }
 
 /*
- * @brief Tests publish valid data without start the MockRouterProvider.
+ * @brief Tests publish valid data without start the RouterProvider.
  */
-TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheMockRouterProvider)
+TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheRouterProvider)
 {
     std::string message {"Hello World!"};
 
-    auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-    EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1).WillOnce([]() { throw std::runtime_error(""); });
-    EXPECT_CALL(*mockRouterProvider, stop).Times(1).WillOnce([] { throw std::runtime_error(""); });
-
-    m_spUpdaterBaseContext->spChannel = mockRouterProvider;
+    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
     m_spUpdaterContext->data = std::vector<char>(message.begin(), message.end());
@@ -96,15 +82,11 @@ TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheMockRouterProvider
 }
 
 /*
- * @brief Tests publish empty data without start the MockRouterProvider.
+ * @brief Tests publish empty data without start the RouterProvider.
  */
-TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheMockRouterProvider)
+TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheRouterProvider)
 {
-    auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-
-    EXPECT_CALL(*mockRouterProvider, stop).Times(1).WillOnce([] { throw std::runtime_error(""); });
-
-    m_spUpdaterBaseContext->spChannel = mockRouterProvider;
+    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 

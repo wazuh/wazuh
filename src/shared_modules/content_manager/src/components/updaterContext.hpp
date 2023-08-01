@@ -12,6 +12,7 @@
 #ifndef _UPDATER_CONTEXT_HPP
 #define _UPDATER_CONTEXT_HPP
 
+#include "iRouterProvider.hpp"
 #include "routerProvider.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -33,7 +34,7 @@ struct UpdaterBaseContext
      * @brief Channel where the data will be published.
      *
      */
-    std::shared_ptr<RouterProvider> spChannel;
+    std::shared_ptr<IRouterProvider> spChannel;
 
     /**
      * @brief Path to the output folder where the data will be stored.
