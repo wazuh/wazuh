@@ -1195,6 +1195,42 @@ void test_normal_config_api_type_dod(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
+void test_setup_complete(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_string", module_data->auth_config.client_id);
+    os_strdup("example_string", module_data->auth_config.tenant_id);
+    os_strdup("example_string", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+
+    expect_string(__wrap_wm_state_io, tag, "ms-graph");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &module_data->state);
+    expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+    will_return(__wrap_wm_state_io, -1);
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Unable to connect to Message Queue. Exiting...");
+ 
+    wm_ms_graph_setup(module_data);
+}
+
+
 void test_disabled(void **state) {
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     module_data->enabled = false;
@@ -1808,6 +1844,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_normal_config_api_type_dod, setup_test_read, teardown_test_read)
     };
     const struct CMUnitTest tests_with_startup[] = {
+        cmocka_unit_test_setup_teardown(test_setup_complete, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_disabled, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_relationships, setup_conf, teardown_conf),
