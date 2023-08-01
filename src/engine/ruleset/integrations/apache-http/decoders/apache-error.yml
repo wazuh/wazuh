@@ -54,11 +54,11 @@ normalize:
       - source.ip: parse_ip($source.address)
 
   - check:
-      - log.level: regex_match(^(?:emerg|alert|crit|error|warn)$)
+      - log.level: regex_match(^(?:emerg|alert|crit|error|warn\)$)
     map:
       - event.type: array_append(error)
   - check:
-      - log.level: regex_not_match(^(?:emerg|alert|crit|error|warn)?$)
+      - log.level: regex_not_match(^(?:emerg|alert|crit|error|warn\)?$)
     map:
       - event.type: array_append(info)
 
