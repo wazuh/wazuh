@@ -202,6 +202,7 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
                                     body={})
             f_kwargs = {'filename': None,
                         'overwrite': False,
+                        'relative_dirname': None,
                         'content': mock_dbody.return_value
                         }
             mock_dapi.assert_called_once_with(f=rule_framework.upload_rule_file,
@@ -225,8 +226,9 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'delete_file' endpoint is working as expected."""
     result = await delete_file(request=mock_request)
-    f_kwargs = {'filename': None
-                }
+    f_kwargs = {'filename': None, 
+                'relative_dirname': None}
+    
     mock_dapi.assert_called_once_with(f=rule_framework.delete_rule_file,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',

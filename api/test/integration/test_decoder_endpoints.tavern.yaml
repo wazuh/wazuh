@@ -1132,7 +1132,7 @@ stages:
       status_code: 400
 
 ---
-test_name: PUT /rule/decoders/{filename}
+test_name: PUT /decoders/files/{filename}
 
 stages:
 
@@ -1193,6 +1193,29 @@ stages:
     response:
       <<: *upload_valid_decoder
 
+  - name: Upload decoder with relative_dirname
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      method: PUT
+      data: "{new_decoder:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        relative_dirname: 'etc/decoders/subdir'        
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'etc/decoders/subdir/new_decoder.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
   - name: Upload decoder with invalid name
     request:
       verify: False
@@ -1246,6 +1269,26 @@ stages:
         data:
           affected_items:
             - "etc/decoders/new_decoder.xml"
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+        error: 0
+
+  - name: Delete user decoder in subdir
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/decoders/subdir'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "etc/decoders/subdir/new_decoder.xml"
           total_affected_items: 1
           failed_items: []
           total_failed_items: 0

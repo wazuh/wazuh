@@ -11657,7 +11657,7 @@ paths:
                       name: "wazuh"
                       node: "master-node"
                     full_log: "ERROR"
-                    decoder:
+                    decoder: None
                     location: "/var/log/syslog"
                   alert: false
                   codemsg: 1
@@ -14166,6 +14166,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/overwrite'
+        - $ref: '#/components/parameters/get_dirnames_path'
       requestBody:
         description: "Content of the rule to be uploaded"
         required: true
@@ -14221,6 +14222,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -14943,6 +14945,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/overwrite'
+        - $ref: '#/components/parameters/get_dirnames_path'
       requestBody:
         description: "Content of the decoder to be uploaded"
         required: true
@@ -14998,6 +15001,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Confirmation message"

@@ -1,8 +1,10 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+import typing
 from os import remove
-from os.path import join, exists, normpath
+from os.path import join, exists, normpath, commonpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -189,6 +191,42 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
 
     return result
 
+def get_decoder_file_path(filename: str,
+                     relative_dirname: str = None) -> str:
+    """Find decoder file with or without relative directory name.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the decoder file.
+    relative_dirname : str
+        Relative directory where the decoder file is located.
+
+    Returns
+    -------
+    str
+        Full file path or an empty string if no decoder file is located.
+    """
+
+    # if the filename doesn't have a relative path, the search is only by name
+    # relative_dirname parameter is set to None.
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
+    decoders = get_decoders_files(filename=filename, 
+                                  relative_dirname=relative_dirname).affected_items
+    if len(decoders) == 0:
+        return ''
+    elif len(decoders) > 1:
+        # if many files match the filename criteria, 
+        # filter decoders that starts with rel_dir of the file
+        # and from the result, select the decoder with the shorter
+        # relative path length
+        relative_dirname = relative_dirname if relative_dirname else ''
+        decoders = list(filter(lambda x: x['relative_dirname'].startswith(
+            relative_dirname), decoders))
+        decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
+        return join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
+    else:
+        return normpath(join(common.WAZUH_PATH,  decoders[0]['relative_dirname'], filename))
 
 def get_decoder_file(filename: str, raw: bool = False, 
                      relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
@@ -201,7 +239,7 @@ def get_decoder_file(filename: str, raw: bool = False,
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
     relative_dirname : str
-        Relative directory where de decoder is found. Default None.
+        Relative directory where the decoder file is located.
 
     Returns
     -------
@@ -211,39 +249,24 @@ def get_decoder_file(filename: str, raw: bool = False,
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       all_msg='Selected decoder was returned')
 
-    # if the filename doesn't have a relative path, the search is only by name
-    # relative_dirname parameter is set to None.
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
-    decoders = get_decoders_files(filename=[filename], 
-                                  relative_dirname=relative_dirname).affected_items
-    if len(decoders) == 0:
+    full_path = get_decoder_file_path(filename, relative_dirname)
+    if not full_path:
         result.add_failed_item(id_=filename, 
-                               error=WazuhError(1503, extra_message=f"{filename}"))
+                                error=WazuhError(1503, extra_message=f"{filename}"))
         return result
-    elif len(decoders) > 1:
-        # if many files match the filename criteria, 
-        # filter decoders that starts with rel_dir of the file
-        # and from the result, select the decoder with the shorter
-        # relative path length
-        relative_dirname = relative_dirname if relative_dirname else ''
-        decoders = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), decoders))
-        decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
-        full_path = join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
-    else:
-        full_path = normpath(join(common.WAZUH_PATH,  decoders[0]['relative_dirname'], filename))
-        
+
     try:
-        with open(full_path) as f:
-            file_content = f.read()
+        with open(full_path, encoding='utf-8') as file:
+            file_content = file.read()
         if raw:
             result = file_content
         else:
             # Missing root tag in decoder file
             result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
             result.total_affected_items = 1
-    except ExpatError as e:
+    except ExpatError as exc:
         result.add_failed_item(id_=filename, 
-                               error=WazuhError(1501, extra_message=f"{filename}: {str(e)}"))
+                               error=WazuhError(1501, extra_message=f"{filename}: {str(exc)}"))
     except OSError:
         result.add_failed_item(id_=filename, 
                                error=WazuhError(1502, extra_message=f"{filename}"))
@@ -252,8 +275,18 @@ def get_decoder_file(filename: str, raw: bool = False,
 
 
 @expose_resources(actions=['decoders:update'], resources=['*:*:*'])
-def upload_decoder_file(filename: str, content: str, overwrite: bool = False) -> AffectedItemsWazuhResult:
+def upload_decoder_file(filename: str, 
+                        content: str, 
+                        relative_dirname: str = None,
+                        overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new decoder file or update an existing one.
+    
+    If relative_dirname is None, upload the file to default user rules path.
+    If relative_dirname is not defined as a rule_dir in ruleset, 
+    raise an exception.
+    If relative_dirname is set and valid, search the file. 
+    If the file is found, update the file if overwrite is true.
+    If the file is not found, upload a new file.
 
     Parameters
     ----------
@@ -261,6 +294,8 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
         Name of the decoder file.
     content : str
         Content of the file. It must be a valid XML file.
+    relative_dirname : str
+        Relative directory where the decoder is located.
     overwrite : bool
         True for updating existing files. False otherwise.
 
@@ -272,11 +307,22 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
                                       )
-    full_path = join(common.USER_DECODERS_PATH, filename)
+
+    # Validate if the relative_dir is a decoder_dir
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
+        else to_relative_path(common.USER_DECODERS_PATH)
+    if not relative_dirname in ruleset_conf['decoder_dir']:
+        raise WazuhError(1505)
+
+    full_path = join(common.WAZUH_PATH, relative_dirname, filename)
+
     backup_file = ''
     try:
         if len(content) == 0:
             raise WazuhError(1112)
+        if commonpath([full_path, common.DECODERS_PATH]) == common.DECODERS_PATH:
+            raise WazuhError(1506)
 
         validate_wazuh_xml(content)
         # If file already exists and overwrite is False, raise exception
@@ -290,8 +336,8 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
-    except WazuhError as e:
-        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    except WazuhError as exc:
+        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     finally:
         exists(backup_file) and safe_move(backup_file, full_path)
 
@@ -299,36 +345,46 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
 
 
 @expose_resources(actions=['decoders:delete'], resources=['decoder:file:{filename}'])
-def delete_decoder_file(filename: str) -> AffectedItemsWazuhResult:
+def delete_decoder_file(filename: typing.Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a decoder file.
 
     Parameters
     ----------
     filename : str
         Name of the decoder file.
-
+    relative_dirname : str
+        Relative directory where the decoder file is located.
+        
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
+    file = filename[0] if isinstance(filename, list) else filename
+
     result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
-                                      none_msg='Could not delete decoder file'
-                                      )
+                                      none_msg='Could not delete decoder file')
+    # Validate if the relative_dir is a decoder_dir
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
+        else to_relative_path(common.USER_DECODERS_PATH)
+    if not relative_dirname in ruleset_conf['decoder_dir']:
+        raise WazuhError(1505)
 
-    full_path = join(common.USER_DECODERS_PATH, filename[0])
-
+    full_path = join(common.WAZUH_PATH, relative_dirname, file)
     try:
+        if commonpath([full_path, common.DECODERS_PATH]) == common.DECODERS_PATH:
+            raise WazuhError(1506)
         if exists(full_path):
             try:
                 remove(full_path)
                 result.affected_items.append(to_relative_path(full_path))
-            except IOError:
-                raise WazuhError(1907)
+            except IOError as exc:
+                raise WazuhError(1907) from exc
         else:
             raise WazuhError(1906)
-    except WazuhError as e:
-        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    except WazuhError as exc:
+        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     result.total_affected_items = len(result.affected_items)
 
     return result

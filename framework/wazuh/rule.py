@@ -2,8 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import typing
 from os import remove
-from os.path import exists, join, normpath
+from os.path import exists, join, normpath, commonpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -317,19 +318,54 @@ def get_requirement(requirement: str = None, offset: int = 0, limit: int = commo
 
     return result
 
+def get_rule_file_path(filename: str = None, relative_dirname: str = None) -> str:
+    """Find file with or without relative directory name.
 
-def get_rule_file(filename: str = None, raw: bool = False, 
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the rule file.
+    relative_dirname : str
+        Relative directory where the rule file is located.
+
+    Returns
+    -------
+    str
+        Full file path or an empty string if no rule file is located.
+    """
+
+    # if the filename doesn't have a relative path, the search is only by name
+    # relative_dirname parameter is set to None.
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else ''
+    rules = get_rules_files(filename=[filename], 
+                                  relative_dirname=relative_dirname).affected_items
+    if len(rules) == 0:
+        return ''
+    elif len(rules) > 1:
+        # if many files match the filename criteria, 
+        # filter decoders that starts with rel_dir of the file
+        # and from the result, select the decoder with the shorter
+        # relative path length
+        rules = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), rules))
+        rule = min(rules, key=lambda x: len(x['relative_dirname']))
+        return join(common.WAZUH_PATH, rule['relative_dirname'], filename)
+    else:
+        return normpath(join(common.WAZUH_PATH, rules[0]['relative_dirname'], filename))
+
+
+def get_rule_file(filename: str = None, raw: bool = False,
                   relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
 
     Parameters
     ----------
     filename : str, optional
-        Name of the rule file. Default `None`.
+        Name of the rule file.
     raw : bool, optional
-        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format).
-    relative_direname : str
-        relative directory where de rule is found. Default None.
+        Whether to return the content in raw format (str->XML) or JSON. 
+        Default `False` (JSON format).
+    relative_dirname : str
+        Relative directory where the rule file is located.
 
     Returns
     -------
@@ -341,37 +377,24 @@ def get_rule_file(filename: str = None, raw: bool = False,
 
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
-    rules = get_rules_files(filename=[filename], 
-                            relative_dirname=relative_dirname).affected_items
-    if len(rules) == 0:
-        result.add_failed_item(id_=filename, 
+    full_path = get_rule_file_path(filename, relative_dirname)
+    if not full_path:
+        result.add_failed_item(id_=filename,
                                error=WazuhError(1415, extra_message=f"{filename}"))
         return result
-    elif len(rules) > 1:
-        # if many files match the filename criteria, 
-        # filter rules that starts with rel_dir of the file
-        # and from the result, select the rule with the shorter
-        # relative path length
-        relative_dirname = relative_dirname if relative_dirname else ''
-        rules = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), rules))
-        rule = min(rules, key=lambda x: len(x['relative_dirname']))
-        full_path = join(common.WAZUH_PATH, rule['relative_dirname'], filename)
-    else:
-        full_path = normpath(join(common.WAZUH_PATH, rules[0]['relative_dirname'], filename))
-        
+
     try:
-        with open(full_path) as f:
-            content = f.read()
+        with open(full_path, encoding='utf-8') as file:
+            content = file.read()
         if raw:
             result = content
         else:
             # Missing root tag in rule file
             result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
             result.total_affected_items = 1
-    except ExpatError as e:
+    except ExpatError as exc:
         result.add_failed_item(id_=filename,
-                               error=WazuhError(1413, extra_message=f"{filename}: {str(e)}"))
+                               error=WazuhError(1413, extra_message=f"{filename}: {str(exc)}"))
     except OSError:
         result.add_failed_item(id_=filename,
                                error=WazuhError(1414, extra_message=f"{filename}"))
@@ -380,18 +403,27 @@ def get_rule_file(filename: str = None, raw: bool = False,
 
 
 @expose_resources(actions=['rules:update'], resources=['*:*:*'])
-def upload_rule_file(filename: str = None, content: str = None, overwrite: bool = False) -> AffectedItemsWazuhResult:
+def upload_rule_file(filename: str = None, content: str = None, overwrite: bool = False,
+                     relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Upload a new rule file or update an existing one.
 
+    If relative_dirname is None, upload the file to default user rules path.
+    If relative_dirname is not defined as a rule_dir in ruleset, 
+    raise an exception.
+    If relative_dirname is set and valid, search the file. 
+    If the file is found, update the file if overwrite is true.
+    If the file is not found, upload a new file.
+        
     Parameters
     ----------
     filename : str, optional
-        Name of the rule file. Default `None`
+        Name of the rule file.
     content : str, optional
-        Content of the file. It must be a valid XML file. Default `None`
+        Content of the file. It must be a valid XML file.
     overwrite : bool, optional
         True for updating existing files. False otherwise. Default `False`
-
+    relative_dirname : str
+        Relative directory where the rule file is located.
 
     Returns
     -------
@@ -399,11 +431,21 @@ def upload_rule_file(filename: str = None, content: str = None, overwrite: bool 
         Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
-                                      none_msg='Could not upload rule'
-                                      )
-    full_path = join(common.USER_RULES_PATH, filename)
+                                      none_msg='Could not upload rule')
+
+    # Validate if the relative_dir is a decoder_dir
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
+        else to_relative_path(common.USER_RULES_PATH)
+    if not relative_dirname in ruleset_conf['rule_dir']:
+        raise WazuhError(1209)
+
+    full_path = join(common.WAZUH_PATH, relative_dirname, filename)
+
     backup_file = ''
     try:
+        if commonpath([full_path, common.RULES_PATH]) == common.RULES_PATH:
+            raise WazuhError(1210)
         if len(content) == 0:
             raise WazuhError(1112)
 
@@ -420,8 +462,8 @@ def upload_rule_file(filename: str = None, content: str = None, overwrite: bool 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
-    except WazuhError as e:
-        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    except WazuhError as exc:
+        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     finally:
         exists(backup_file) and safe_move(backup_file, full_path)
 
@@ -429,36 +471,48 @@ def upload_rule_file(filename: str = None, content: str = None, overwrite: bool 
 
 
 @expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
-def delete_rule_file(filename: str = None) -> AffectedItemsWazuhResult:
+def delete_rule_file(filename: typing.Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a rule file.
 
     Parameters
     ----------
     filename : str, optional
-        Name of the rule file. Default `None`
+        Name of the rule file.
+    relative_dirname : str
+        Relative directory where the rule file is located.
 
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
+    file = filename if isinstance(filename, str) else filename[0]
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
-                                      none_msg='Could not delete rule'
-                                      )
+                                      none_msg='Could not delete rule')
 
-    full_path = join(common.USER_RULES_PATH, filename[0])
+    # Validate if the relative_dir is a decoder_dir
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
+        else to_relative_path(common.USER_RULES_PATH)
+    if not relative_dirname in ruleset_conf['rule_dir']:
+        raise WazuhError(1209)
+
+    # expose_resources transform the parameter into a list, use first element
+    full_path = join(common.WAZUH_PATH, relative_dirname, file)
 
     try:
+        if commonpath([full_path, common.RULES_PATH]) == common.RULES_PATH:
+            raise WazuhError(1210)
         if exists(full_path):
             try:
                 remove(full_path)
                 result.affected_items.append(to_relative_path(full_path))
-            except IOError:
-                raise WazuhError(1907)
+            except IOError as exc:
+                raise WazuhError(1907) from exc
         else:
             raise WazuhError(1906)
-    except WazuhError as e:
-        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    except WazuhError as exc:
+        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     result.total_affected_items = len(result.affected_items)
 
     return result
