@@ -194,7 +194,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
     char** headers = NULL;
     curl_response* response;
     char relationship_state_name[OS_SIZE_1024];
-    char start_time_str[80];
+    char start_time_str[WM_MS_GRAPH_TIMESTAMP_SIZE_80];
     struct tm tm_aux = { .tm_sec = 0 };
     char* payload;
     wm_ms_graph_state_t relationship_state_struc;
@@ -224,7 +224,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
                 if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                     mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
                 } else if (isDebug()) {
-                    memset(start_time_str, '\0', 80);
+                    memset(start_time_str, '\0', WM_MS_GRAPH_TIMESTAMP_SIZE_80);
                     gmtime_r(&now, &tm_aux);
                     strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                     mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
@@ -233,7 +233,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
                 continue;
             }
 
-            memset(start_time_str, '\0', 80);
+            memset(start_time_str, '\0', WM_MS_GRAPH_TIMESTAMP_SIZE_80);
             gmtime_r(&relationship_state_struc.next_time, &tm_aux);
             strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
@@ -317,7 +317,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
 
             if (!fail) {
                 relationship_state_struc.next_time = now;
-                memset(start_time_str, '\0', 80);
+                memset(start_time_str, '\0', WM_MS_GRAPH_TIMESTAMP_SIZE_80);
                 gmtime_r(&relationship_state_struc.next_time, &tm_aux);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                 if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
