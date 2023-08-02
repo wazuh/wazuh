@@ -9,8 +9,11 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-rbac.yml"
+        - ".github/workflows/integration-tests-rbac-tier-0-1.yml"
         - "framework/wazuh/rbac/"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_api/test_rbac/**"
 
 jobs:
   build:
