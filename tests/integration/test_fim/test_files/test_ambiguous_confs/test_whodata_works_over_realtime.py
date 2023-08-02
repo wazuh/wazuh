@@ -165,7 +165,6 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
         - who_data
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    test_file = test_metadata['test_file']
     
     file.write_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(FIM_ADDED_EVENT))
