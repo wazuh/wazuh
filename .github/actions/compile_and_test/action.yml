@@ -6,17 +6,18 @@ inputs:
     required: true
     description: "Path to compile and test"
     default: src/
-      
+
 runs:
   using: "composite"
-  steps:    
+  steps:
       - name: Compile
         run: |
+          SRC_FOLDER=$(pwd)/src
           cd ${{ inputs.path }}
           mkdir -p build && cd build
-          cmake .. && make -j2
+          cmake .. -DSRC_FOLDER=${SRC_FOLDER} && make -j2
         shell: bash
-      
+
       - name: Test
         run: |
           cd ${{ inputs.path }}/build

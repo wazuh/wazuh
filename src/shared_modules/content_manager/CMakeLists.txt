@@ -27,7 +27,7 @@ include_directories(${SHARED_MODULES}/http-request/include)
 include_directories(${SHARED_MODULES}/content_manager/src/components)
 
 # Link directories
-link_directories(${SRC_FOLDER}/external/curl/lib/.libs)
+link_directories(${SRC_FOLDER})
 link_directories(${SHARED_MODULES}/router/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 
@@ -39,7 +39,7 @@ add_library(content_manager SHARED
     ${CONTENT_DOWNLOAD_SRC}
     )
 
-target_link_libraries(content_manager router urlrequest gcc_s curl)
+target_link_libraries(content_manager router urlrequest gcc_s wazuhext)
 
 set_target_properties(content_manager PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE

@@ -32,8 +32,6 @@ void RouterCInterfaceTest::TearDown()
 
 TEST_F(RouterCInterfaceTest, TestProviderSubscriberSimple)
 {
-    auto handle = router_provider_create("test");
-
     // TO DO - Add C interface for subscribers.
 }
 
