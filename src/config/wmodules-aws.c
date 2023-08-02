@@ -644,8 +644,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_subscriber->discard_regex);
                             os_strdup(children[j]->content, cur_subscriber->discard_regex);
                         } else {
-                            free(cur_service->discard_regex);
-                            os_strdup(children[j]->content, cur_service->discard_regex);
+                            free(cur_subscriber->discard_regex);
+                            os_strdup(children[j]->content, cur_subscriber->discard_regex);
                             }
                     } else {
                         mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);

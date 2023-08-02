@@ -3418,11 +3418,13 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
 
     @staticmethod
     def is_csv(file):
-        try:
-            csv.Sniffer().sniff(file.read(1024))
-            file.seek(0)
-        except csv.Error:
-            return False
+        # Read the first line (header row) from the file
+        header_row = file.readline().strip()
+        file.seek(0)
+        # Define the regex pattern for invalid CSV header characters
+        not_header_pattern = re.compile(r'.*\d+.*')
+        # Check if the header row matches the regex pattern
+        return not bool(not_header_pattern.match(header_row))
 
     def obtain_logs(self, bucket: str, log_path: str) -> list[dict]:
         """Fetch a file from a bucket and obtain a list of events from it.
@@ -3448,7 +3450,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                 return [dict(event.get('detail', event), source="custom")
                         for event in self._json_event_generator(f.read())]
 
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, AttributeError):
                 debug("+++ Log file does not contain JSON objects. Trying with other formats.", 2)
                 f.seek(0)
                 if self.is_csv(f):
@@ -3461,7 +3463,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                 else:
                     debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
                     try:
-                        return [dict(full_log=event, source="custom") for event in f.readlines()]
+                        return [dict(full_log=event, source="custom") for event in f.read().splitlines() ]
                     except OSError:
                         print(f"ERROR: Data in the file does not seem to be plain text either.")
                         sys.exit(9)
@@ -3490,10 +3492,16 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
         for log in formatted_logs:
             self._remove_none_fields(log)
-            if self.event_should_be_skipped(log):
+            if 'full_log' in log:
+                # The processed logs origin is a plain text log file
+                if re.match(self.discard_regex, log['full_log']):
+                    debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. The event will be skipped.', 2)
+                    continue
+            elif self.event_should_be_skipped(log):
                 debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                       f'field. The event will be skipped.', 2)
                 continue
+
             msg['aws'].update(log)
             self.send_msg(msg)
 
@@ -3642,7 +3650,7 @@ class AWSSQSQueue(WazuhIntegration):
         """
         try:
             self.client.delete_message(QueueUrl=self.sqs_url, ReceiptHandle=message["handle"])
-            debug(f'Message deleted from: {self.sqs_name}', 2)
+            debug(f'Message deleted from queue: {self.sqs_name}', 2)
         except Exception as e:
             debug(f'ERROR: Error deleting message from SQS: {e}', 1)
             sys.exit(21)
@@ -3690,6 +3698,7 @@ class AWSSQSQueue(WazuhIntegration):
                     message_without_handle = {k: v for k, v in message.items() if k != 'handle'}
                     debug(f"Processed message {message_without_handle} does not contain the expected format, "
                           f"omitting message.", 2)
+                    continue
                 self.delete_message(message)
             messages = self.get_messages()
 
