@@ -1978,14 +1978,13 @@ def test_agents_versions(new_conf, agents_conf):
     """Check if ossec.conf agents versions are protected by the API.
 
     When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
-    cannot be changed. However, other configuration sections can be added, removed or modified.
+    cannot be changed, unless it's specified in the exceptions. However, other configuration sections can be added, 
+    removed or modified.
 
     Parameters
     ----------
     new_conf : str
         New ossec.conf to be uploaded.
-    unchanged_agents_conf : bool
-        Whether the agents section in ossec.conf is the same as the original one.
     agents_conf : dict
         API configuration for the agents section.
     """
