@@ -70,6 +70,8 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 
 # Test configurations.
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
+print(config_parameters)
+
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
@@ -83,7 +85,7 @@ print(test_configuration)
 print(test_metadata)
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_configuration,  configure_local_internal_options,
+def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_configuration, set_state_interval, configure_local_internal_options,
                              truncate_monitored_files, remove_state_file, daemons_handler):
     
     '''
@@ -116,9 +118,6 @@ def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_config
         - r'file_enabled'
         - r'file_not_enabled'
     '''
-
-    # Set state interval value according to test case specs
-    set_state_interval(test_case['interval'], internal_options)
 
     if sys.platform == 'win32':
         if test_case['agentd_ends']:
