@@ -2,6 +2,11 @@ name: Integration tests for Execd on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
   pull_request:
     paths:
         - ".github/workflows/integration-tests-execd-tier-0-1-lin.yml"
@@ -12,6 +17,9 @@ on:
 
 jobs:
   build:
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -58,9 +66,14 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          BRANCH_NAME=main
-          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${GITHUB_HEAD_REF}`" != "X" ]; then BRANCH_NAME=${GITHUB_HEAD_REF}; fi
-          git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
+          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_NAME}
+          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_BASE}
+          else
+              QA_BRANCH="main"
+          fi
+          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run execd integration tests.
