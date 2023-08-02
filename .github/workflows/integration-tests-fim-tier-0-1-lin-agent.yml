@@ -65,6 +65,11 @@ jobs:
           git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
+      # Install audit required by FIM
+      - name: Install audit
+        run: |
+          apt-get update
+          apt-get install audit -y
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
