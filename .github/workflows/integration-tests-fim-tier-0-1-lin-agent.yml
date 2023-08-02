@@ -69,7 +69,7 @@ jobs:
       - name: Install audit
         run: |
           apt-get update
-          apt-get install audit -y
+          apt-get install auditd -y
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
