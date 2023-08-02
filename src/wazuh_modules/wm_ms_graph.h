@@ -23,6 +23,7 @@
 #define WM_MS_GRAPH_DEFAULT_VERSION "v1.0"
 
 #define WM_MS_GRAPH_DEFAULT_TIMEOUT 60L
+#define WM_MS_GRAPH_TIMESTAMP_SIZE_80 80
 
 #define WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN "login.microsoftonline.com"
 #define WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN "graph.microsoft.com"
