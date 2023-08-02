@@ -116,7 +116,7 @@ TEST_F(Handlers, resourseGet_CatalogError)
     json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
     auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Content 'decoder/name/fail' could not be obtained from store: error"})");
+        R"({"status":"ERROR","error":"Engine utils: Asset 'decoder/name/fail' could not be obtained from the store: error."})");
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -176,7 +176,7 @@ TEST_F(Handlers, resourcePost)
     params.setObject();
     params.setString(name.fullName(), "/type");
     params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
+    params.setString(successJsonOriginal.str(), "/content");
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"OK"})");
@@ -203,7 +203,7 @@ TEST_F(Handlers, resourcePost_Persist)
     params.setObject();
     params.setString(name.fullName(), "/type");
     params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
+    params.setString(successJsonOriginal.str(), "/content");
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"OK"})");
@@ -328,7 +328,7 @@ TEST_F(Handlers, resourcePut)
     params.setObject();
     params.setString(name.fullName(), "/name");
     params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
+    params.setString(successJsonOriginal.str(), "/content");
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"OK"})");
@@ -357,7 +357,7 @@ TEST_F(Handlers, resourcePut_Persist)
     params.setObject();
     params.setString(name.fullName(), "/name");
     params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
+    params.setString(successJsonOriginal.str(), "/content");
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"OK"})");
