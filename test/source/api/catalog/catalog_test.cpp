@@ -44,7 +44,7 @@ TEST_F(CatalogTest, GetResourceSpecificJson)
     std::variant<std::string, base::Error> result;
     ASSERT_NO_THROW(result = catalog.getResource(successResourceAssetJson));
     ASSERT_TRUE(std::holds_alternative<std::string>(result));
-    ASSERT_EQ(std::get<std::string>(result), successJson.str());
+    ASSERT_EQ(std::get<std::string>(result),  successJson.getJson("/json").value().str());
 }
 
 TEST_F(CatalogTest, GetResourceSpecificYml)
@@ -91,7 +91,7 @@ TEST_F(CatalogTest, PostResourceCollectioJson)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.postResource(successCollectionAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.postResource(successCollectionAssetJson, successJsonOriginal.str()));
     ASSERT_FALSE(error);
 }
 
@@ -154,7 +154,7 @@ TEST_F(CatalogTest, PutResourceSpecificJson)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.putResource(successResourceAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.putResource(successResourceAssetJson, successJsonOriginal.str()));
     ASSERT_FALSE(error);
 }
 

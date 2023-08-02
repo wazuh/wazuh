@@ -11,6 +11,7 @@
 
 #include <json/json.hpp>
 #include <store/istore.hpp>
+#include <store/utils.hpp>
 
 #include "asset.hpp"
 #include "expression.hpp"
@@ -132,7 +133,7 @@ public:
      * @throws std::runtime_error if the policy cannot be built.
      */
     Policy(const json::Json& jsonDefinition,
-                std::shared_ptr<const store::IStoreRead> storeRead,
+                std::shared_ptr<store::IStoreRead> storeRead,
                 std::shared_ptr<internals::Registry<internals::Builder>> registry)
 
     {
@@ -179,21 +180,13 @@ public:
                     throw std::runtime_error("Integration name is not a string");
                 }
 
-                auto integrationDef = storeRead->get(integration.getString().value());
-                if (std::holds_alternative<base::Error>(integrationDef))
+                auto jsonObject = store::get(storeRead, integration.getString().value());
+                if (std::holds_alternative<base::Error>(jsonObject))
                 {
-                    throw std::runtime_error(fmt::format("Error loading {}: ",
-                                                         integration.getString().value(),
-                                                         std::get<base::Error>(integrationDef).message));
+                    throw std::runtime_error(std::get<base::Error>(jsonObject).message);
                 }
 
-                auto jsonObject = std::get<json::Json>(integrationDef).getJson("/json");
-                if (!jsonObject.has_value())
-                {
-                    throw std::runtime_error ("/json path not found in JSON.");
-                }
-
-                auto integrationAssets = getManifestAssets(jsonObject.value(), storeRead, registry);
+                auto integrationAssets = getManifestAssets(std::get<json::Json>(jsonObject), storeRead, registry);
                 for (auto& [key, value] : integrationAssets)
                 {
                     assets[key].insert(assets[key].end(), value.begin(), value.end());
@@ -277,7 +270,7 @@ public:
 
     static std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
     getManifestAssets(const json::Json& jsonDefinition,
-                      std::shared_ptr<const store::IStoreRead> storeRead,
+                      std::shared_ptr<store::IStoreRead> storeRead,
                       std::shared_ptr<internals::Registry<internals::Builder>> registry);
 };
 

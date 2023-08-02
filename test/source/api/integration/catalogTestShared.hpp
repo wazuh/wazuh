@@ -53,7 +53,9 @@ const api::catalog::Resource policyNoIntegrations {
     api::catalog::Resource::Format::json};
 
 const json::Json policyNoIntegrationsJson(R"({
-    "name": "policy/no_integrations/ok"
+    "json": {
+        "name": "policy/no_integrations/ok"
+    }
 })");
 
 const api::catalog::Resource policyResource {
@@ -63,8 +65,10 @@ const api::catalog::Resource policyResource {
     api::catalog::Resource::Format::json};
 
 const json::Json policyJson(R"({
-    "name": "policy/name/ok",
-    "integrations": []
+    "json": {
+        "name": "policy/name/ok",
+        "integrations": []
+    }
 })");
 
 const api::catalog::Resource policyDuplicated {
@@ -80,10 +84,12 @@ const api::catalog::Resource integrationResource {
     api::catalog::Resource::Format::json};
 
 const json::Json policyDuplicatedJson(R"({
-    "name": "policy/duplicated/ok",
-    "integrations": [
-        "integration/name/ok"
-    ]
+    "json": {
+        "name": "policy/duplicated/ok",
+        "integrations": [
+            "integration/name/ok"
+        ]
+    }
 })");
 
 class FakeStore : public store::IStore
