@@ -3,10 +3,10 @@ name: Integration tests for Execd on Linux - Tier 0 and 1
 on:
   workflow_dispatch:
     inputs:
-    base_branch:
-      description: 'Base branch'
-      required: true
-      default: 'main'
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
   pull_request:
     paths:
         - ".github/workflows/integration-tests-execd-tier-0-1-lin.yml"
