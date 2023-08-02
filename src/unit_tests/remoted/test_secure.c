@@ -608,7 +608,6 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
     key->rcvd = 0;
     key->ip->ip = "127.0.0.1";
 
-
     keys.keyentries[1] = key;
 
     global_counter = 0;
@@ -697,7 +696,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
     key->rcvd = 0;
     key->ip->ip = "127.0.0.1";
 
-
     keys.keyentries[1] = key;
 
     global_counter = 0;
@@ -757,6 +755,149 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
 
     os_free(key->id);
     os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+}
+
+void test_HandleSecureMessage_close_idle_sock_disabled(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "12!";
+    message_t message = { .buffer = buffer, .size = 4, .sock = 1};
+    struct sockaddr_in peer_info;
+    int wdb_sock;
+
+    current_ts = 61;
+
+    connection_overtake_time = 0;
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 0;
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, &wdb_sock);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+}
+
+void test_HandleSecureMessage_close_idle_sock_disabled_2(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = { .buffer = buffer, .size = 7, .sock = 1};
+    struct sockaddr_in peer_info;
+    int wdb_sock;
+
+    current_ts = 61;
+
+    connection_overtake_time = 0;
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 0;
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 1);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, &wdb_sock);
+
+    os_free(key->id);
     os_free(key);
     os_free(keyentries);
 }
@@ -1236,6 +1377,8 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_2),
+        cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled),
+        cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled_2),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock_2),
         // Tests handle_new_tcp_connection
