@@ -10,6 +10,7 @@
 #include <json/json.hpp>
 #include <name.hpp>
 #include <store/istore.hpp>
+#include <store/utils.hpp>
 #include <utils/getExceptionStack.hpp>
 
 #include "asset.hpp"
@@ -34,22 +35,13 @@ public:
 
     Policy buildPolicy(const base::Name& name) const
     {
-        auto envJson = m_storeRead->get(name);
+        auto envJson = store::get(m_storeRead, name);
         if (std::holds_alternative<base::Error>(envJson))
         {
-            throw std::runtime_error(fmt::format("Engine builder: Policy '{}' could not be obtained from the "
-                                                 "store: {}.",
-                                                 name.fullName(),
-                                                 std::get<base::Error>(envJson).message));
+            throw std::runtime_error(std::get<base::Error>(envJson).message);
         }
 
-        auto jsonObject = std::get<json::Json>(envJson).getJson("/json");
-        if (!jsonObject.has_value())
-        {
-            throw std::runtime_error ("/json path not found in JSON.");
-        }
-
-        return Policy {jsonObject.value(), m_storeRead, m_registry};
+        return Policy {std::get<json::Json>(envJson), m_storeRead, m_registry};
     }
 
     /**
@@ -62,22 +54,13 @@ public:
      */
     Asset buildFilter(const base::Name& name) const
     {
-        auto routeJson = m_storeRead->get(name);
+        auto routeJson = store::get(m_storeRead, name);
         if (std::holds_alternative<base::Error>(routeJson))
         {
-            throw std::runtime_error(fmt::format("Engine builder: Filter '{}' could not be obtained from the "
-                                                 "store: {}.",
-                                                 name.fullName(),
-                                                 std::get<base::Error>(routeJson).message));
+            throw std::runtime_error(std::get<base::Error>(routeJson).message);
         }
 
-        auto jsonObject = std::get<json::Json>(routeJson).getJson("/json");
-        if (!jsonObject.has_value())
-        {
-            throw std::runtime_error ("/json path not found in JSON.");
-        }
-
-        return Asset {jsonObject.value(), Asset::Type::FILTER, m_registry};
+        return Asset {std::get<json::Json>(routeJson), Asset::Type::FILTER, m_registry};
     }
 
     std::optional<base::Error> validatePolicy(const json::Json& json) const override

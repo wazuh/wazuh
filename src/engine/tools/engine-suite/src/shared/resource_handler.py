@@ -5,7 +5,13 @@ from enum import Enum, auto
 from pathlib import Path, PurePath
 from typing import Tuple
 import socket
-import ruamel.yaml
+
+import yaml
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
 
 class Format(Enum):
     JSON = auto()
@@ -26,9 +32,8 @@ class ResourceHandler:
 
     def _read_yml(self, content: str) -> dict:
         try:
-            yaml = ruamel.yaml.YAML()
-            read = yaml.load(content)
-        except ruamel.yaml.YAMLError:
+            read = yaml.load(content, Loader=Loader)  # yaml.SafeLoader
+        except yaml.YAMLError:
             print("Error while reading YAML file")
         return read
 
@@ -46,10 +51,7 @@ class ResourceHandler:
             content_str = json.dumps(content)
             path = path.with_suffix('.json')
         elif Format.YML == format:
-            yaml = ruamel.yaml.YAML(typ='safe')
-            stream = ruamel.yaml.StringIO()  # We create an output stream in memory
-            yaml.dump(content, stream)
-            content_str = stream.getvalue()
+            content_str = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             path = path.with_suffix('.yml')
         else:
             raise Exception(f'Trying to store file with format not supported')
@@ -115,10 +117,7 @@ class ResourceHandler:
             raw_message = json.dumps(content)
             format_str = 'json'
         elif format is Format.YML:
-            yaml = ruamel.yaml.YAML()
-            stream = ruamel.yaml.StringIO()  # We create an output stream in memory
-            yaml.dump(content, stream)
-            raw_message = stream.getvalue()
+            raw_message = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             format_str = 'yaml'
         elif command != 'delete':
             raise Exception(f'Format not supported for catalog {name}')
@@ -136,7 +135,7 @@ class ResourceHandler:
                 s.sendall(request_bytes)
                 data = s.recv(65507)
             except:
-                raise Exception(f'Could not connect and send information through [{path}]')
+                raise Exception(f'Could not connect and send information throug [{path}]')
 
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
@@ -170,6 +169,8 @@ class ResourceHandler:
 
     def _base_catalog_get_command(self, path: str, type: str, name: str, format: Format) -> dict:
         format_str = ''
+        # if command == 'get':
+        #     format_str = 'yaml'
         if format is Format.JSON:
             format_str = 'json'
         elif format is Format.YML:
@@ -190,7 +191,7 @@ class ResourceHandler:
                 s.sendall(request_bytes)
                 data = s.recv(65507)
             except:
-                raise Exception(f'Could not connect and send information through [{path}]')
+                raise Exception(f'Could not connect and send information throug [{path}]')
 
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
@@ -205,12 +206,14 @@ class ResourceHandler:
         except:
             raise Exception(
                 f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'Could not execute [get] to [{name}] due to: {response["data"]["error"]}')
 
         if format is Format.JSON:
             return response
         else:
-            yaml = ruamel.yaml.YAML()
-            return yaml.load(resp_message)
+            return yaml.load(resp_message, Loader=Loader)
 
     def get_catalog_file(self, path: str, type: str, name: str, format: Format):
         return self._base_catalog_get_command(path, type, name, format)
