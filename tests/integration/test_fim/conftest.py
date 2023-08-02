@@ -23,8 +23,10 @@ from wazuh_testing.utils.services import get_service
 @pytest.fixture()
 def file_to_monitor(test_metadata: dict) -> Any:
     path = test_metadata.get('file_to_monitor')
+    path = os.path.abspath(path)
 
     file.write_file(path)
+
     yield path
 
     file.remove_file(path)
@@ -33,6 +35,7 @@ def file_to_monitor(test_metadata: dict) -> Any:
 @pytest.fixture()
 def folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
+    path = os.path.abspath(path)
 
     file.create_folder(path)
 
