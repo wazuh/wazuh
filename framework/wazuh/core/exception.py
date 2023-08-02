@@ -122,6 +122,10 @@ class WazuhException(Exception):
                               'in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1128: {'message': 'Invalid configuration for the given component'},
+        1129: {'message': 'Higher version agents detected',
+               'remediation': f'To solve this issue, please enable agents higher versions in the API settings or add an '
+                              f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
+                              f'configuration.html#agents'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',

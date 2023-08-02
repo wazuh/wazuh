@@ -1761,8 +1761,9 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 
 @patch('wazuh.core.utils.check_wazuh_limits_unchanged')
 @patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.utils.check_agents_versions')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_remote_commands, mock_unchanged_limits):
+def test_validate_wazuh_xml(mock_remote_commands, mock_agents_versions, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1773,10 +1774,12 @@ def test_validate_wazuh_xml(mock_remote_commands, mock_unchanged_limits):
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file)
     mock_remote_commands.assert_not_called()
+    mock_agents_versions.assert_not_called()
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file, config_file=True)
     mock_remote_commands.assert_called_once()
+    mock_agents_versions.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -1956,3 +1959,51 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
         else:
             with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
                 utils.check_wazuh_limits_unchanged(new_conf, original_conf)
+
+
+@pytest.mark.parametrize("new_conf", [
+    ("<ossec_config><agents><allow_higher_versions>yes</allow_higher_versions></agents></ossec_config>"),
+    ("<ossec_config><agents><allow_higher_versions>no</allow_higher_versions></agents></ossec_config>"),
+    ("<ossec_config><agents><allow_higher_versions>no</allow_higher_versions><version>4.4.0</version>"
+     "</agents></ossec_config>"),
+     ("<ossec_config><agents><allow_higher_versions>no</allow_higher_versions><version>4.3.0</version>"
+     "</agents></ossec_config>"),
+])
+@pytest.mark.parametrize("agents_conf", [
+    ({'allow_higher_versions': {'allow': True}}),
+    ({'allow_higher_versions': {'allow': False}}),
+    ({'allow_higher_versions': {'allow': False, 'exceptions': ['4.4.0']}}),
+])
+def test_agents_versions(new_conf, agents_conf):
+    """Check if ossec.conf agents versions are protected by the API.
+
+    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
+    cannot be changed. However, other configuration sections can be added, removed or modified.
+
+    Parameters
+    ----------
+    new_conf : str
+        New ossec.conf to be uploaded.
+    unchanged_agents_conf : bool
+        Whether the agents section in ossec.conf is the same as the original one.
+    agents_conf : dict
+        API configuration for the agents section.
+    """
+    api_conf = utils.configuration.api_conf
+    api_conf['upload_configuration']['agents'].update(agents_conf)
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        if agents_conf['allow_higher_versions']['allow']:
+            utils.check_agents_versions(new_conf)
+        else:
+            exception_match = False
+            for version in agents_conf['allow_higher_versions'].get('exceptions', []):
+                if new_conf.find(version) != -1:
+                    exception_match = True
+                    return
+
+            if exception_match:
+                utils.check_agents_versions(new_conf)
+            else:
+                with pytest.raises(exception.WazuhError, match=".* 1124 .*"):
+                    utils.check_agents_versions(new_conf)
