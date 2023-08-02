@@ -279,9 +279,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                     mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
                     ms_graph->resources[resource_num].relationships[relationship_num]);
                 } else {
-                    cJSON* logs = NULL;
-                    if (logs = cJSON_Parse(response->body), logs) {
-                        logs = cJSON_GetObjectItem(logs, "value");
+                    cJSON* body_parse = NULL;
+                    if (body_parse = cJSON_Parse(response->body), body_parse) {
+                        cJSON* logs = cJSON_GetObjectItem(body_parse, "value");
                         int num_logs = cJSON_GetArraySize(logs);
                         if (num_logs > 0) {
                             for (int log_index = 0; log_index < num_logs; log_index++) {
@@ -294,7 +294,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                                     cJSON_AddStringToObject(full_log, "integration", WM_MS_GRAPH_CONTEXT.name);
                                     cJSON_AddItemToObject(full_log, WM_MS_GRAPH_CONTEXT.name, cJSON_Duplicate(log, true));
 
-                                    os_strdup(cJSON_PrintUnformatted(full_log), payload);
+                                    payload = cJSON_PrintUnformatted(full_log);
                                     mtdebug2(WM_MS_GRAPH_LOGTAG, "Sending log: '%s'", payload);
                                     if (wm_sendmsg(1000000 / wm_max_eps, queue_fd, payload, WM_MS_GRAPH_CONTEXT.name, LOCALFILE_MQ) < 0) {
                                         mterror(WM_MS_GRAPH_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
@@ -311,7 +311,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                             mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs received.");
                             fail = false;
                         }
-                        cJSON_Delete(logs);
+                        cJSON_Delete(body_parse);
                     } else {
                         mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }

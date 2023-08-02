@@ -8,7 +8,8 @@
 # Tests list and flags
 list(APPEND tests_names "test_wm_ms_graph")
 list(APPEND tests_flags "-Wl,--wrap=_merror -Wl,--wrap=_mtinfo -Wl,--wrap=_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap=_mterror -Wl,--wrap,wurl_http_request \
-                        -Wl,--wrap,cJSON_Parse -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,time")
+                        -Wl,--wrap,cJSON_Parse -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,time -Wl,--wrap,gmtime_r -Wl,--wrap,isDebug \
+                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
