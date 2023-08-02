@@ -343,7 +343,6 @@ inline parsec::Parser<ExpressionToken> getExpressionParser()
         return parsec::makeSuccess(json::Json(std::move(doc)), pos + ss.Tell());
     };
 
-    // TODO Field name can contains scaped dot, check this
     parsec::Parser<std::string> fieldParser =
         [fieldExtended = std::string(syntax::FIELD_EXTENDED) + syntax::JSON_PATH_SEPARATOR
                          + syntax::FUNCTION_HELPER_DEFAULT_ESCAPE](auto sv, auto pos) -> parsec::Result<std::string>
@@ -356,7 +355,7 @@ inline parsec::Parser<ExpressionToken> getExpressionParser()
         auto next = pos + 1;
 
         while (next < sv.size()
-               && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos)) // TODO check this
+               && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos))
         {
             ++next;
         }
