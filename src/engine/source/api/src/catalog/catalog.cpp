@@ -177,16 +177,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection, con
                                         std::get<base::Error>(formatResult).message)};
     }
 
-    // Wraps the content in both json and yml
-    auto wrappedContent = json::Json {R"({})"};
-
-    // Json formed from yml
-    auto contentJson = std::get<json::Json>(formatResult);
-
-    // Save the original json and yml
-    wrappedContent.set("/json", contentJson);
-    wrappedContent.setString(content, "/original");
-
+    const auto contentJson = std::get<json::Json>(formatResult);
     const auto contentNameStr = contentJson.getString("/name");
     if (!contentNameStr)
     {
@@ -243,7 +234,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection, con
     }
 
     // All pre-conditions are met, post the content in the store
-    const auto storeError = m_store->add(contentResource.m_name, wrappedContent);
+    const auto storeError = store::add(m_store, contentResource.m_name, contentJson, content);
     if (storeError)
     {
         return base::Error {fmt::format(
@@ -279,16 +270,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
                                         std::get<base::Error>(formatResult).message)};
     }
 
-    // Wraps the content in both json and yml
-    auto wrappedContent = json::Json {R"({})"};
-
-    // Json formed from yml
-    auto contentJson = std::get<json::Json>(formatResult);
-
-    // Save the original json and yml
-    wrappedContent.set("/json", contentJson);
-    wrappedContent.setString(content, "/original");
-
+    const auto contentJson = std::get<json::Json>(formatResult);
     const auto contentNameStr = contentJson.getString("/name");
     if (!contentNameStr)
     {
@@ -329,7 +311,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
     }
 
     // All pre-conditions are met, update the content in the store
-    const auto storeError = m_store->update(item.m_name, wrappedContent);
+    const auto storeError = store::update(m_store, item.m_name, contentJson, content);
     if (storeError)
     {
         return base::Error {fmt::format(
@@ -341,36 +323,35 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
 
 std::variant<std::string, base::Error> Catalog::getResource(const Resource& resource, const bool original) const
 {
+    using Type = ::com::wazuh::api::engine::catalog::ResourceType;
+
     // Get the content from the store
-    const auto storeResult = m_store->get(resource.m_name);
+    const auto storeResult = store::get(m_store, resource.m_name, original);
     if (std::holds_alternative<base::Error>(storeResult))
     {
-        return base::Error {fmt::format("Content '{}' could not be obtained from store: {}",
-                                        resource.m_name.fullName(),
-                                        std::get<base::Error>(storeResult).message)};
+        return base::Error {std::get<base::Error>(storeResult).message};
     }
 
     auto json = std::get<json::Json>(storeResult);
 
-    // Format the content to the expected output format
-    if (!original)
+    if (!original || resource.m_type == Type::collection || resource.m_type == Type::policy)
     {
-        if (!json.isArray())
+        // If getting a policy is required, the yml is returned from the json. It is the only case where the original
+        // yml is not returned.
+        if (json.exists("/original"))
         {
-            auto jsonObject = json.getJson("/json");
-            if (!jsonObject.has_value())
-            {
-                return base::Error {"/json path not found in JSON."};
-            }
-            json = std::move(jsonObject.value());
+            json.erase("/original");
+            json = json.getJson("/json").value();
         }
 
+        // Format the content to the expected output format
         const auto formatterIt = m_outFormat.find(resource.m_format);
         if (formatterIt == m_outFormat.end())
         {
             return base::Error {
                 fmt::format("Formatter was not found for format '{}'", Resource::formatToStr(resource.m_format))};
         }
+
         const auto formatResult = formatterIt->second(json);
         if (std::holds_alternative<base::Error>(formatResult))
         {
@@ -383,7 +364,7 @@ std::variant<std::string, base::Error> Catalog::getResource(const Resource& reso
         return std::get<std::string>(formatResult);
     }
 
-    return json.getString("/original").value_or("empty");
+    return json.getString("/original").value();
 }
 
 std::optional<base::Error> Catalog::deleteResource(const Resource& resource)

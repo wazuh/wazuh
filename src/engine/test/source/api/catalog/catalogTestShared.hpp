@@ -9,7 +9,8 @@
 
 const base::Name successName({"decoder", "name", "ok"});
 const base::Name failName {{"decoder", "name", "fail"}};
-const json::Json successJson(fmt::format("{{\"name\": \"{}\"}}", successName.fullName()).c_str());
+const json::Json successJsonOriginal(fmt::format("{{\"name\": \"{}\"}}", successName.fullName()).c_str());
+const json::Json successJson(fmt::format("{{\"json\":{{\"name\": \"{}\"}}}}", successName.fullName()).c_str());
 const json::Json successCollectionJson(fmt::format("[\"{}\"]", successName.fullName()).c_str());
 const std::string successYml(fmt::format("name: {}", successName.fullName()).c_str());
 const std::string successCollectionYml(fmt::format("- {}", successName.fullName()));
