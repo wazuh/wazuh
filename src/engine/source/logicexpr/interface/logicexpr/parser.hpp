@@ -116,8 +116,13 @@ struct syntaxChecker
     }
 };
 
-// Transform a queue of tokens in infix notation into a stack of tokens in
-// postfix notation using Shunting-Yard algorithm.
+/**
+ * @brief Transforms a queue of tokens in infix notation into a stack of tokens in postfix notation using the Shunting-Yard algorithm.
+ *
+ * @param infix Queue of tokens in infix notation.
+ * @return std::stack<Token> Stack of tokens in postfix notation.
+ * @throw std::runtime_error if the parenthesis are not balanced.
+ */
 std::stack<Token> infixToPostfix(std::queue<Token>& infix)
 {
     std::stack<Token> postfix;
@@ -154,7 +159,7 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
         else
         {
             while (!operatorStack.empty() && !operatorStack.top()->isParenthesisOpen()
-                   && *(operatorStack.top()) >= *token)
+                   && operatorStack.top()->getPtr<OpToken>()->precedence() >= token->getPtr<OpToken>()->precedence())
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();

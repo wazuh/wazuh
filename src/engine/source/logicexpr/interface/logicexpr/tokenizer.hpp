@@ -31,6 +31,11 @@ const static std::string P_OPEN = "(";
 const static std::string P_CLOSE = ")";
 } // namespace opstr
 
+/**
+ * @brief Tokenizer class that converts a string into a queue of tokens.
+ *
+ * @tparam TermP The type of the term parser.
+ */
 template<typename TermP>
 class Tokenizer
 {
@@ -40,6 +45,13 @@ class Tokenizer
 private:
     TermP m_termParser;
 
+    /**
+     * @brief Parses a term token from a string.
+     *
+     * @param sv The string to parse.
+     * @param pos The starting position of the string to parse.
+     * @return A parsec::Result object containing the parsed token or an error message.
+     */
     parsec::Result<Token> termParser(std::string_view sv, size_t pos) const
     {
         auto res = m_termParser(sv, pos);
@@ -57,6 +69,13 @@ private:
         }
     }
 
+    /**
+     * @brief Parses an operator token from a string.
+     *
+     * @param sv The string to parse.
+     * @param pos The starting position of the string to parse.
+     * @return A parsec::Result object containing the parsed token or an error message.
+     */
     parsec::Result<Token> operatorParser(std::string_view sv, size_t pos) const
     {
         if (sv.substr(pos, opstr::OR.size()) == opstr::OR)
@@ -87,6 +106,14 @@ private:
         }
     }
 
+    /**
+     * @brief Parses a token from a string by trying to parse a term token first, and if that fails, parsing an operator
+     * token.
+     *
+     * @param sv The string to parse.
+     * @param pos The starting position of the string to parse.
+     * @return A parsec::Result object containing the parsed token or an error message.
+     */
     parsec::Result<Token> tokenParser(std::string_view sv, size_t pos) const
     {
         // The term parser must be tried first, to avoid scaping other tokens
@@ -102,6 +129,13 @@ private:
         }
     }
 
+    /**
+     * @brief Parses a queue of tokens from a string.
+     *
+     * @param sv The string to parse.
+     * @param pos The starting position of the string to parse.
+     * @return A parsec::Result object containing the parsed queue of tokens or an error message.
+     */
     parsec::Result<std::queue<Token>> parser(std::string_view sv, size_t pos) const
     {
         if (sv.empty())
@@ -159,11 +193,23 @@ private:
     }
 
 public:
+    /**
+     * @brief Construct a new Tokenizer
+     *
+     * @param termParser The term parser to use to parse terms.
+     */
     Tokenizer(TermP termParser)
         : m_termParser {termParser}
     {
     }
 
+    /**
+     * @brief Tokenizes a given input string into a queue of tokens.
+     *
+     * @param input The input string to tokenize.
+     * @return A queue of tokens.
+     * @throws std::runtime_error if parsing fails.
+     */
     std::queue<Token> operator()(std::string_view input) const
     {
         // Tokenizer algorithm
