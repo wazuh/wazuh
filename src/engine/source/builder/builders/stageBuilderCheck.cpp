@@ -2,9 +2,9 @@
 
 #include <algorithm>
 #include <any>
+#include <regex>
 
 #include <json/json.hpp>
-#include <regex>
 #include <logicexpr/logicexpr.hpp>
 
 #include "baseTypes.hpp"
@@ -12,7 +12,6 @@
 #include "helperParser.hpp"
 #include "registry.hpp"
 #include "syntax.hpp"
-
 
 namespace
 {
@@ -69,8 +68,8 @@ base::Expression stageBuilderCheckList(const std::any& definition,
     return expression;
 }
 
-using TermBuilder = std::function<std::function<bool(base::Event)>(const BuildToken&)>;
-TermBuilder getTermBuilder(std::shared_ptr<Registry<Builder>> registry, std::shared_ptr<defs::IDefinitions> definitions)
+std::function<std::function<bool(base::Event)>(const BuildToken&)>
+getTermBuilder(std::shared_ptr<Registry<Builder>> registry, std::shared_ptr<defs::IDefinitions> definitions)
 {
     return [registry, definitions](const BuildToken& token)
     {
