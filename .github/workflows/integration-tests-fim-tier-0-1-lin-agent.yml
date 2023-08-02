@@ -68,8 +68,8 @@ jobs:
       # Install audit required by FIM
       - name: Install audit
         run: |
-          apt-get update
-          apt-get install auditd -y
+          sudo apt-get update
+          sudo apt-get install auditd -y
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
