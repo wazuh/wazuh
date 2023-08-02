@@ -92,12 +92,9 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LO
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 
-GET_FIM_EVENT_JSON =  r'.*Sending FIM event: (.+)$'
-
-
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                                     truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, fill_folder_to_monitor):
+                                     truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring):
     '''
     description: Check if when using the options who-data and real-time at the same time
                  the value of 'whodata' is the one used. For example, when using 'whodata=yes'
@@ -165,15 +162,24 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
         - who_data
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    
+    file_to_monitor = test_metadata.get('file_to_monitor')
+
+    # Write the file
     file.write_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(FIM_ADDED_EVENT))
-    event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
 
+    callback_result = wazuh_log_monitor.callback_result 
+    assert callback_result
+
+    event_data = get_fim_event_data(callback_result)
     assert event_data.get('mode') == 'whodata'
-    
+
+    # Remove the file
     file.remove_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(FIM_DELETED_EVENT))
-    event_data = get_fim_event_data(wazuh_log_monitor.callback_result)
 
+    callback_result = wazuh_log_monitor.callback_result 
+    assert callback_result
+
+    event_data = get_fim_event_data(callback_result)
     assert event_data.get('mode') == 'whodata'
