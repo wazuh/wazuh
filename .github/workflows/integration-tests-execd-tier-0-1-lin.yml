@@ -71,7 +71,7 @@ jobs:
           elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
-              QA_BRANCH=main
+              QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
