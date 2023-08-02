@@ -589,8 +589,7 @@ class WazuhIntegration:
         self.db_connector.close()
 
     def _decompress_gzip(self, raw_object: io.BytesIO):
-        """
-        Method that decompress gzip compressed data.
+        """Method that decompress gzip compressed data.
 
         Parameters
         ----------
@@ -614,8 +613,7 @@ class WazuhIntegration:
                 sys.exit(8)
 
     def _decompress_zip(self, raw_object: io.BytesIO):
-        """
-        Method that decompress zip compressed data.
+        """Method that decompress zip compressed data.
 
         Parameters
         ----------
@@ -636,8 +634,7 @@ class WazuhIntegration:
             sys.exit(8)
 
     def decompress_file(self, bucket: str, log_key: str):
-        """
-        Method that returns a file stored in a bucket decompressing it if necessary.
+        """Method that returns a file stored in a bucket decompressing it if necessary.
 
         Parameters
         ----------
@@ -3348,8 +3345,7 @@ class AWSSSecLakeMessageProcessor(AWSQueueMessageProcessor):
 
 class AWSS3LogHandler:
     def obtain_logs(self, bucket: str, log_path: str) -> list:
-        """
-        Fetch a file from a bucket and obtain a list of events from it.
+        """Fetch a file from a bucket and obtain a list of events from it.
 
         Parameters
         ----------
@@ -3377,8 +3373,7 @@ class AWSS3LogHandler:
 
 
 class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
-    """
-    Class for processing events from AWS S3 buckets.
+    """Class for processing events from AWS S3 buckets.
 
     Attributes
     ----------
@@ -3396,9 +3391,41 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                                   sts_endpoint=sts_endpoint,
                                   **kwargs)
 
+    @staticmethod
+    def _process_jsonl(self, file):
+        json_list = list(file)
+        result = []
+        for json_item in json_list:
+            x = json.loads(json_item)
+            result.append(dict(x, integration='aws'))
+        return result
+
+    @staticmethod
+    def _json_event_generator(data):
+        decoder = json.JSONDecoder()
+        while data:
+            json_data, json_index = decoder.raw_decode(data)
+            data = data[json_index:]
+            yield json_data
+
+    @staticmethod
+    def _remove_none_fields(event):
+        for key, value in list(event.items()):
+            if isinstance(value, dict):
+                AWSSubscriberBucket._remove_none_fields(event[key])
+            elif value is None:
+                del event[key]
+
+    @staticmethod
+    def is_csv(file):
+        try:
+            csv.Sniffer().sniff(file.read(1024))
+            file.seek(0)
+        except csv.Error:
+            return False
+
     def obtain_logs(self, bucket: str, log_path: str) -> list[dict]:
-        """
-        Fetch a file from a bucket and obtain a list of events from it.
+        """Fetch a file from a bucket and obtain a list of events from it.
 
         Parameters
         ----------
@@ -3413,41 +3440,31 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
             List of extracted events to send to Wazuh.
         """
 
-        def _process_jsonl(file):
-            json_list = list(file)
-            result = []
-            for json_item in json_list:
-                x = json.loads(json_item)
-                result.append(dict(x, integration='aws'))
-            return result
-
-        def json_event_generator(data):
-            while data:
-                json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
-                yield json_data
-
         with self.decompress_file(bucket, log_key=log_path) as f:
             try:
                 if log_path.endswith('.jsonl.gz'):
-                    return _process_jsonl(f)
+                    return self._process_jsonl(f)
 
-                decoder = json.JSONDecoder()
                 return [dict(event.get('detail', event), source="custom")
-                        for event in json_event_generator(f.read())]
+                        for event in self._json_event_generator(f.read())]
 
             except json.JSONDecodeError:
-                debug(f"+++ Log file does not contain JSON objects. Trying with csv format.", 2)
+                debug("+++ Log file does not contain JSON objects. Trying with other formats.", 2)
                 f.seek(0)
-                try:
+                if self.is_csv(f):
+                    debug("+++ Log file is CSV formatted.", 2)
                     dialect = csv.Sniffer().sniff(f.read(1024))
                     f.seek(0)
                     reader = csv.DictReader(f, dialect=dialect)
                     return [dict({k: v for k, v in row.items() if v is not None},
                                  source='custom') for row in reader]
-                except csv.Error:
-                    print(f"ERROR: Data in the file does not seem to be CSV either.")
-                    sys.exit(9)
+                else:
+                    debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
+                    try:
+                        return [dict(full_log=event, source="custom") for event in f.readlines()]
+                    except OSError:
+                        print(f"ERROR: Data in the file does not seem to be plain text either.")
+                        sys.exit(9)
 
     def process_file(self, message_body: dict) -> None:
         """Parse an SQS message, obtain the events associated, and send them to Analysisd.
@@ -3457,13 +3474,6 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         message_body : dict
             An SQS message received from the queue.
         """
-
-        def remove_none_fields(event):
-            for key, value in list(event.items()):
-                if isinstance(value, dict):
-                    remove_none_fields(event[key])
-                elif value is None:
-                    del event[key]
 
         log_path = message_body['log_path']
         bucket_path = message_body['bucket_path']
@@ -3479,7 +3489,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         }
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
         for log in formatted_logs:
-            remove_none_fields(log)
+            self._remove_none_fields(log)
             if self.event_should_be_skipped(log):
                 debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                       f'field. The event will be skipped.', 2)
@@ -3489,8 +3499,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
 
 
 class AWSSLSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
-    """
-    Class for processing AWS Security Lake events from S3.
+    """Class for processing AWS Security Lake events from S3.
 
     Attributes
     ----------
@@ -3558,8 +3567,7 @@ class AWSSLSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
 
 
 class AWSSQSQueue(WazuhIntegration):
-    """
-    Class for getting AWS SQS Queue notifications.
+    """Class for getting AWS SQS Queue notifications.
 
     Attributes
     ----------
@@ -3608,7 +3616,7 @@ class AWSSQSQueue(WazuhIntegration):
         self.message_processor = message_processor()
 
     def _get_sqs_url(self) -> str:
-        """Get the URL of the AWS SQS queue
+        """Get the URL of the AWS SQS queue.
 
         Returns
         -------
@@ -3671,8 +3679,7 @@ class AWSSQSQueue(WazuhIntegration):
         return self.message_processor.extract_message_info(sqs_messages)
 
     def sync_events(self) -> None:
-        """
-        Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
+        """Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
         """
         messages = self.get_messages()
         while messages:
