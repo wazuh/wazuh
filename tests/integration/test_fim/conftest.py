@@ -23,7 +23,6 @@ from wazuh_testing.utils.services import get_service
 @pytest.fixture()
 def file_to_monitor(test_metadata: dict) -> Any:
     path = test_metadata.get('file_to_monitor')
-    path = os.path.abspath(path)
 
     file.write_file(path)
     yield path
@@ -34,7 +33,6 @@ def file_to_monitor(test_metadata: dict) -> Any:
 @pytest.fixture()
 def folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
-    path = os.path.abspath(path)
 
     file.create_folder(path)
 
@@ -46,7 +44,6 @@ def folder_to_monitor(test_metadata: dict) -> None:
 @pytest.fixture()
 def fill_folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
-    path = os.path.abspath(path)
     amount = test_metadata.get('files_amount')
     amount = 2 if not amount else amount
 

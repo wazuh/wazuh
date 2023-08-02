@@ -3,8 +3,8 @@
   configuration_parameters:
     WHODATA1: 'yes'
     WHODATA2: 'no'
-    TEST_DIR1: !!python/object/apply:os.path.join [/test_dir_1]
-    TEST_DIR2: !!python/object/apply:os.path.join [/test_dir_1]
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_1]
   metadata:
     whodata: false
 
@@ -13,8 +13,8 @@
   configuration_parameters:
     WHODATA1: 'no'
     WHODATA2: 'yes'
-    TEST_DIR1: !!python/object/apply:os.path.join [/test_dir_1]
-    TEST_DIR2: !!python/object/apply:os.path.join [/test_dir_1]
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_1]
   metadata:
     whodata: true
 
@@ -23,8 +23,8 @@
   configuration_parameters:
     WHODATA1: 'no'
     WHODATA2: 'yes'
-    TEST_DIR1: !!python/object/apply:os.path.join [/test_dir_1]
-    TEST_DIR2: !!python/object/apply:os.path.join [/test_dir_2]
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_2]
   metadata:
     whodata: true
 
@@ -33,7 +33,7 @@
   configuration_parameters:
     WHODATA1: 'yes'
     WHODATA2: 'no'
-    TEST_DIR1: !!python/object/apply:os.path.join [/test_dir_1]
-    TEST_DIR2: !!python/object/apply:os.path.join [/test_dir_2]
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_2]
   metadata:
     whodata: true
