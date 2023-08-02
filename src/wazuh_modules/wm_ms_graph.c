@@ -26,7 +26,7 @@ static void* wm_ms_graph_main(wm_ms_graph* ms_graph);
 static bool wm_ms_graph_setup(wm_ms_graph* ms_graph);
 static bool wm_ms_graph_check();
 static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size);
-static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan);
+static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_scan);
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
@@ -81,7 +81,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 initial = false;
             }
         }
-    }    
+    }
     return NULL;
 }
 
@@ -120,7 +120,7 @@ bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
         #else
         pthread_exit(NULL);
         #endif
-        
+
     }
     else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0){
         mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
@@ -184,11 +184,11 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     else{
         mtwarn(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
     }
-    
+
     os_free(headers);
 }
 
-void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
+void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_scan) {
     char url[OS_SIZE_8192];
     char auth_header[OS_SIZE_2048];
     char** headers = NULL;
@@ -202,7 +202,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, bool initial_scan) {
     bool fail;
 
     for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
-        
+
         for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
 
             memset(relationship_state_name, '\0', OS_SIZE_1024);
