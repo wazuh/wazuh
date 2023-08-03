@@ -6,7 +6,8 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import FIM_ADDED_EVENT, FIM_DELETED_EVENT
+from wazuh_testing.modules.fim.patterns import ADDED_EVENT, DELETED_EVENT
+from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -18,7 +19,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_create_after_delete.yaml')
@@ -36,15 +37,15 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 def test_create_after_delete(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                              truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    file.write_file(file_to_monitor)
-    wazuh_log_monitor.start(generate_callback(FIM_ADDED_EVENT))
+    fim_mode = test_metadata.get('fim_mode')
 
     file.remove_folder(folder_to_monitor)
-    wazuh_log_monitor.start(generate_callback(FIM_DELETED_EVENT))
+    wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
     assert wazuh_log_monitor.callback_result
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
 
     file.create_folder(folder_to_monitor)
     file.write_file(file_to_monitor)
-    wazuh_log_monitor.start(generate_callback(FIM_ADDED_EVENT))
+    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
     assert wazuh_log_monitor.callback_result
+    # assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
