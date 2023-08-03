@@ -446,6 +446,7 @@
 #define VU_WIN_CPE_GEN_ERROR        "(5594): Could not generate the OS CPE for the agent '%.3d'"
 #define VU_ALMA_VERSION_ERROR       "(5595): Invalid AlmaLinux OS version."
 
+
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."
