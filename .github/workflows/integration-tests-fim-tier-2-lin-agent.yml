@@ -21,6 +21,11 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      # Install audit required by FIM
+      - name: Install audit
+        run: |
+          sudo apt-get update
+          sudo apt-get install auditd -y
       # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |
