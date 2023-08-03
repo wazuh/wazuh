@@ -12,9 +12,9 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "limits_wrappers.h"
+#include "limits_op_wrappers.h"
 
-bool __wrap_limit_reached(unsigned int *value) {
+bool __wrap_limit_reached(void *limits, unsigned int *value) {
     *value = mock_type(unsigned int);
     return mock_type(bool);
 }
