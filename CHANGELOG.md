@@ -22,12 +22,9 @@ All notable changes to this project will be documented in this file.
 
 ### RESTful API
 
-#### Changed
-
-- Changed `PUT /agents/upgrade_custom` endpoint to validate that the file extension is `.wpk`. ([#17632](https://github.com/wazuh/wazuh/pull/17632))
-
 #### Fixed
 
+- Fixed `PUT /agents/upgrade_custom` endpoint to validate that the file extension is `.wpk`. ([#17632](https://github.com/wazuh/wazuh/pull/17632))
 - Fixed errors in API endpoints to get `labels` and `reports` active configuration from managers. ([#17660](https://github.com/wazuh/wazuh/pull/17660))
 
 
