@@ -315,6 +315,16 @@ Expression operationBuilder(const std::any& definition,
     }
     else
     {
+        // Unescape \$ at the beginning of the parameter
+        if (value.isString())
+        {
+            auto vStr = value.getString().value();
+            if (vStr.size() >= 2 && vStr[0] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE
+                && vStr[1] == syntax::REFERENCE_ANCHOR)
+            {
+                value.setString(vStr.substr(1));
+            }
+        }
         checkSchemaTypes(targetField, value, schema, operationName);
         switch (type)
         {
