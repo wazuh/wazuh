@@ -6,7 +6,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import DELETED_EVENT
+from wazuh_testing.modules.fim.patterns import DELETED_EVENT, INODE_ENTRIES_PATH_COUNT
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
@@ -42,6 +42,13 @@ def test_delete_multiple_files(test_configuration, test_metadata, set_wazuh_conf
     files_amount = test_metadata.get('files_amount')
 
     file.delete_files_in_folder(folder_to_monitor)
+
+    # Assert
+    wazuh_log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
+    inode_entries, path_count = wazuh_log_monitor.callback_result
+    assert inode_entries == path_count
+    assert int(path_count) == files_amount
+
     wazuh_log_monitor.start(generate_callback(DELETED_EVENT), accumulations=files_amount)
     assert wazuh_log_monitor.callback_result
     assert wazuh_log_monitor.matches == files_amount
