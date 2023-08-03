@@ -1,4 +1,4 @@
-name: Fim integration tests tier 0 and 1 on Linux Agent
+name: Integration tests for FIM on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
