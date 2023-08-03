@@ -1,3 +1,4 @@
+import os
 import sys
 import pytest
 
@@ -6,7 +7,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import DELETED_EVENT, INODE_ENTRIES
+from wazuh_testing.modules.fim.patterns import DELETED_EVENT, INODE_ENTRIES_PATH_COUNT
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
@@ -35,15 +36,15 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_delete_hardlink_symlink(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                 configure_local_internal_options, folder_to_monitor, file_to_monitor, create_links_to_file,
+                                 configure_local_internal_options, folder_to_monitor, create_links_to_file,
                                  daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    fim_mode = test_metadata.get('fim_mode')
     hardlink_amount = test_metadata.get('hardlink_amount')
     symlink_amount = test_metadata.get('symlink_amount')
 
     file.delete_files_in_folder(folder_to_monitor)
-    wazuh_log_monitor.start(generate_callback(INODE_ENTRIES))
-    print(wazuh_log_monitor.callback_result)
-    assert wazuh_log_monitor.callback_result
-    # assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+    wazuh_log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
+    inode_entries, path_count = wazuh_log_monitor.callback_result
+
+    assert int(inode_entries) == 1 + hardlink_amount
+    assert int(path_count) == 1 + hardlink_amount + symlink_amount
