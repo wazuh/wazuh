@@ -116,14 +116,13 @@ def test_get_ossec_logs(log_format):
     logs = get_logs(json_log=log_format == LoggingFormat.json).splitlines()
 
     with patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=log_format):
-        if log_format == LoggingFormat.plain:
-            with pytest.raises(WazuhInternalError, match=".*1020.*"):
-                get_ossec_logs()
-        else:
-            with patch('wazuh.core.manager.exists', return_value=True):
-                with patch('wazuh.core.manager.tail', return_value=logs):
-                    result = get_ossec_logs()
-                    assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
+        with pytest.raises(WazuhInternalError, match=".*1020.*"):
+            get_ossec_logs()
+
+        with patch('wazuh.core.manager.exists', return_value=True):
+            with patch('wazuh.core.manager.tail', return_value=logs):
+                result = get_ossec_logs()
+                assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
 
 
 @patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
