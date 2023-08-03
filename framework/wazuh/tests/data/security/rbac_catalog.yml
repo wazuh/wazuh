@@ -622,46 +622,6 @@ get_rbac_actions:
         related_endpoints:
           - DELETE /syscheck/{agent_id}
           - DELETE /experimental/syscheck
-      decoders:read:
-        description: Read decoders files
-        resources:
-          - decoder:file
-        example:
-          actions:
-            - decoders:read
-          resources:
-            - decoder:file:*
-          effect: allow
-        related_endpoints:
-          - GET /decoders
-          - GET /decoders/files
-          - GET /decoders/files/{filename}
-          - GET /decoders/parents
-      decoders:update:
-        description: Update or upload custom decoder files
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - decoders:update
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /decoders/files/{filename}
-      decoders:delete:
-        description: Delete custom decoder files
-        resources:
-          - decoder:file
-        example:
-          actions:
-            - decoders:delete
-          resources:
-            - decoder:file:local_decoder.xml
-          effect: allow
-        related_endpoints:
-          - PUT /decoders/files/{filename}
-          - DELETE /decoders/files/{filename}
       syscollector:read:
         description: Access agents syscollector information
         resources:
@@ -880,8 +840,6 @@ get_rbac_resources:
         description: Reference agent groups via group ID (i.e. group:id:default)
       node:id:
         description: Reference cluster nodes via node ID (i.e. node:id:worker1)
-      decoder:file:
-        description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
       list:file:
         description: Reference list files via its filename (i.e. list:file:audit-keys)
       rule:file:
