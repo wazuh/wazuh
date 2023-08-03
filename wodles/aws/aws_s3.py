@@ -3392,16 +3392,38 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                                   **kwargs)
 
     @staticmethod
-    def _process_jsonl(self, file):
+    def _process_jsonl(file: io.TextIOWrapper) -> list[dict]:
+        """Process JSON objects present in a JSONL file.
+
+        Parameters
+        ----------
+        file : io.TextIOWrapper
+            File object.
+        Returns
+        -------
+        list[dict]
+            List of events from the file.
+        """
         json_list = list(file)
         result = []
         for json_item in json_list:
             x = json.loads(json_item)
-            result.append(dict(x, integration='aws'))
+            result.append(dict(x))
         return result
 
     @staticmethod
-    def _json_event_generator(data):
+    def _json_event_generator(data: str):
+        """Obtain events from string of JSON objects.
+
+        Parameters
+        ----------
+        data : str
+            String of JSON data.
+        Yields
+        -------
+        dict
+            Extracted JSON event.
+        """
         decoder = json.JSONDecoder()
         while data:
             json_data, json_index = decoder.raw_decode(data)
@@ -3409,7 +3431,14 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
             yield json_data
 
     @staticmethod
-    def _remove_none_fields(event):
+    def _remove_none_fields(event: dict):
+        """Remove None fields from events.
+
+        Parameters
+        ----------
+        event : dict
+            Event to send to Analysisd.
+        """
         for key, value in list(event.items()):
             if isinstance(value, dict):
                 AWSSubscriberBucket._remove_none_fields(event[key])
@@ -3417,7 +3446,19 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                 del event[key]
 
     @staticmethod
-    def is_csv(file):
+    def is_csv(file: io.TextIOWrapper) -> bool:
+        """Determine if the given file is a CSV according to its headers.
+
+        Parameters
+        ----------
+        file : io.TextIOWrapper
+            File object.
+
+        Returns
+        -------
+        bool
+            Whether a file contains csv data or not.
+        """
         # Read the first line (header row) from the file
         header_row = file.readline().strip()
         file.seek(0)
@@ -3445,7 +3486,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         with self.decompress_file(bucket, log_key=log_path) as f:
             try:
                 if log_path.endswith('.jsonl.gz'):
-                    return self._process_jsonl(f)
+                    return self._process_jsonl(file=f)
 
                 return [dict(event.get('detail', event), source="custom")
                         for event in self._json_event_generator(f.read())]
