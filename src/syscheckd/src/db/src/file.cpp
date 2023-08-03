@@ -75,12 +75,12 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["perm"] = data.at("perm");
     }
 
-    if (ctx->config->options & CHECK_OWNER)
+    if (data.contains("uid") && data.at("uid") != "" && ctx->config->options & CHECK_OWNER)
     {
         jsonEvent["data"]["attributes"]["uid"] = data.at("uid");
     }
 
-    if (ctx->config->options & CHECK_GROUP)
+    if (data.contains("gid") && data.at("gid") != "" && ctx->config->options & CHECK_GROUP)
     {
         jsonEvent["data"]["attributes"]["gid"] = data.at("gid");
     }
@@ -175,7 +175,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             }
         }
 
-        if (ctx->config->options & CHECK_OWNER)
+        if (data.contains("uid") && data.at("uid") != "" && ctx->config->options & CHECK_OWNER)
         {
             if (old_data.contains("uid"))
             {
@@ -188,7 +188,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             }
         }
 
-        if (ctx->config->options & CHECK_GROUP)
+        if (data.contains("gid") && data.at("gid") != "" && ctx->config->options & CHECK_GROUP)
         {
             if (old_data.contains("gid"))
             {
