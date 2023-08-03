@@ -5,6 +5,7 @@ from enum import Enum, auto
 from pathlib import Path, PurePath
 from typing import Tuple
 import socket
+import shared.executor as exec
 
 import yaml
 try:
@@ -81,6 +82,10 @@ class ResourceHandler:
 
     def _load_file(self, path: Path, format: Format = Format.YML) -> dict:
         content = path.read_text()
+
+        if format == Format.TEXT:
+            return content
+        
         read = {}
         try:
             read = self._read(content, format)
@@ -88,9 +93,16 @@ class ResourceHandler:
             raise Exception(f'Failed to read {path.name}')
         return read
 
-    def load_file(self, path_str: str, format: Format = Format.YML) -> dict:
+    def load_file(self, path_str: str, format: Format = Format.YML):
         path = Path(path_str)
         return self._load_file(path, format)
+    
+    def load_original_asset(self, path_str: str, format: Format = Format.YML) -> Tuple[str, str]:
+        as_dict = self.load_file(path_str, format)
+        name = as_dict['name']
+        original = self.load_file(path_str, Format.TEXT)
+
+        return name, original
 
     def load_module_files(self, module_path_str: str) -> Tuple[dict, dict]:
         module_path = Path(module_path_str)
@@ -110,20 +122,17 @@ class ResourceHandler:
 
         self._write_file(pure_path, content, format)
 
-    def _base_catalog_command(self, path: str, type: str, name: str, content: dict, format: Format, command: str):
-        raw_message = ''
+    def _base_catalog_command(self, path: str, type: str, name: str, content: str, format: Format, command: str):
         format_str = ''
         if format is Format.JSON:
-            raw_message = json.dumps(content)
             format_str = 'json'
         elif format is Format.YML:
-            raw_message = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             format_str = 'yaml'
         elif command != 'delete':
             raise Exception(f'Format not supported for catalog {name}')
 
         request = {'version': 1, 'command': 'catalog.resource/' + command, 'origin': {
-            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': raw_message, 'format': format_str}}
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': content, 'format': format_str}}
         request_raw = json.dumps(request)
         request_bytes = len(request_raw).to_bytes(4, 'little')
         request_bytes += request_raw.encode('utf-8')
@@ -156,13 +165,26 @@ class ResourceHandler:
                 f'Could not parse response message "{resp_message}".')
         if response['data']['status'] != 'OK':
             raise Exception(
-                f'Could not execute [{command}] to [{name}] due to: {response["data"]["error"]}')
+                f'{response["data"]["error"]}')
 
     def update_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
         self._base_catalog_command(path, type, name, content, format, 'put')
 
-    def add_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
+    def add_catalog_file(self, path: str, type: str, name: str, content: str, format: Format):
         self._base_catalog_command(path, type, name, content, format, 'post')
+
+    def get_add_catalog_task(self, path: str, type: str, name: str, content: str, format: Format = Format.YML) -> exec.RecoverableTask:
+        def do_task():
+            self.add_catalog_file(path, type, name, content, format)
+            return None
+        
+        def undo_task():
+            self.delete_catalog_file(path, type, name)
+            return None
+
+        info = f'Add {name} to catalog'
+
+        return exec.RecoverableTask(do_task, undo_task, info)
 
     def delete_catalog_file(self, path: str, type: str, name: str):
         self._base_catalog_command(path, type, name, [], format, 'delete')
@@ -208,15 +230,21 @@ class ResourceHandler:
                 f'Could not parse response message "{resp_message}".')
         if response['data']['status'] != 'OK':
             raise Exception(
-                f'Could not execute [get] to [{name}] due to: {response["data"]["error"]}')
+                f'{response["data"]["error"]}')
 
         if format is Format.JSON:
             return response
         else:
             return yaml.load(resp_message, Loader=Loader)
 
-    def get_catalog_file(self, path: str, type: str, name: str, format: Format):
+    def get_catalog_file(self, path: str, type: str, name: str, format: Format = Format.YML):
         return self._base_catalog_get_command(path, type, name, format)
+
+    def list_catalog(self, path: str, name: str) -> list:
+        response = self._base_catalog_get_command(path, '', name, Format.JSON)
+        assets = json.loads(response['data']['content'])
+
+        return assets
 
     def save_plain_text_file(self, path_str: str, name: str, content: str):
         path = Path(path_str)
@@ -280,20 +308,34 @@ class ResourceHandler:
 
         try:
             resp_message = json.loads(resp_message)
-            if resp_message['data']['status'] != 'OK':
-                raise Exception(
-                    f'Could not execute [{subcommand}] in [{name}] due to: {resp_message["data"]["error"]}')
-            elif subcommand == 'get':
-                return resp_message
         except:
             raise Exception(
                 f'Could not parse response message "{resp_message}".')
+        
+        if resp_message['data']['status'] != 'OK':
+            raise Exception(
+                f'{resp_message["data"]["error"]}')
+        elif subcommand == 'get':
+            return resp_message
 
     def create_kvdb(self, api_socket: str, name: str, path: str):
         self._base_command_kvdb(api_socket, name, path, 'post')
 
-    def delete_kvdb(self, api_socket: str, name: str, path: str):
-        self._base_command_kvdb(api_socket, name, path, 'delete')
+    def delete_kvdb(self, api_socket: str, name: str):
+        self._base_command_kvdb(api_socket, name, '', 'delete')
+    
+    def get_create_kvdb_task(self, api_socket: str, name: str, path: str) -> exec.RecoverableTask:
+        def do_task():
+            self.create_kvdb(api_socket, name, path)
+            return None
+        
+        def undo_task():
+            self.delete_kvdb(api_socket, name)
+            return None
+        
+        info = f'Add KVDB {name}'
+
+        return exec.RecoverableTask(do_task, undo_task, info)
 
     def get_kvdb_list(self, api_socket: str):
         return self._base_command_kvdb(api_socket, '', '', 'get')
@@ -351,3 +393,4 @@ class ResourceHandler:
 
     def get_store_integration(self, path: str,name: str):
         return self.get_catalog_file(path, 'integration', f'integration/{name}/0', Format.JSON)
+    
