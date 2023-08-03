@@ -8,8 +8,10 @@
       realtime: 'yes'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: realtime
-    files_amount: 4
+    hardlink_amount: 1
+    symlink_amount: 1
 
 - name: Delete folder - Scheduled
   description: When a scheduled monitored directory es deleted
@@ -22,5 +24,7 @@
       realtime: 'no'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: scheduled
-    files_amount: 4
+    hardlink_amount: 1
+    symlink_amount: 1
