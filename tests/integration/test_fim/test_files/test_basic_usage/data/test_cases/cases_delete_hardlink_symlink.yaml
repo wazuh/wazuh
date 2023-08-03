@@ -1,4 +1,4 @@
-- name: Delete folder - Real-time
+- name: Delete hardlink symlink - One hardlink plus one symlink
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -13,18 +13,62 @@
     hardlink_amount: 1
     symlink_amount: 1
 
-- name: Delete folder - Scheduled
-  description: When a scheduled monitored directory es deleted
-               or added FIM raises a log in the next scan, in
-               this case the scan are made every 3 secconds. 
+- name: Delete hardlink symlink - One hardlink plus four symlink
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
-    FREQUENCY: 3
+    FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
-      realtime: 'no'
+      realtime: 'yes'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
-    fim_mode: scheduled
+    fim_mode: realtime
     hardlink_amount: 1
+    symlink_amount: 4
+
+- name: Delete hardlink symlink - Four hardlink plus one symlink
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: realtime
+    hardlink_amount: 4
     symlink_amount: 1
+
+- name: Delete hardlink symlink - No hardlink plus one symlink
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: realtime
+    hardlink_amount: 0
+    symlink_amount: 1
+
+- name: Delete hardlink symlink - One hardlink plus no symlink
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: realtime
+    hardlink_amount: 1
+    symlink_amount: 0
