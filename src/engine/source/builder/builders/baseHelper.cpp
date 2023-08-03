@@ -62,6 +62,13 @@ std::vector<Parameter> processParameters(const std::string& name,
                        }
                        else
                        {
+                            // Unescape \$ at the beginning of the parameter
+                            if (parameter.size() >= 2 &&
+                                parameter[0] == builder::internals::syntax::FUNCTION_HELPER_DEFAULT_ESCAPE &&
+                                parameter[1] == builder::internals::syntax::REFERENCE_ANCHOR)
+                            {
+                                return {Parameter::Type::VALUE, parameter.substr(1)};
+                            }
                            return {Parameter::Type::VALUE, parameter};
                        }
                    });

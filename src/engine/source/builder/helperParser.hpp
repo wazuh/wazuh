@@ -228,6 +228,13 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
             return parsec::makeError<std::string>("EOA", pos);
         }
 
+        // Unescape \$ at the beginning of the parameter
+        if (next + 1 < sv.size() && sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE && sv[next + 1] == syntax::REFERENCE_ANCHOR)
+        {
+            arg += '\\';
+            ++next;
+        }
+
         for (; next < sv.size(); ++next)
         {
             // Check for end of argument
