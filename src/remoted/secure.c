@@ -532,9 +532,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
-                    keys.keyentries[agentid]->sock = message->sock;
-
-                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                 } else {
                     mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
@@ -548,9 +545,9 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     rem_inc_recv_unknown();
                     return;
                 }
-            } else {
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
+
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
@@ -598,9 +595,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
-                    keys.keyentries[agentid]->sock = message->sock;
-
-                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                 } else {
                     mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
@@ -614,11 +608,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     rem_inc_recv_unknown();
                     return;
                 }
-            } else {
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
 
             ip_found = 1;
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         tmp_msg = buffer;
@@ -680,7 +673,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
         if (protocol == REMOTED_NET_PROTOCOL_TCP) {
-            if (message->counter > rem_getCounter(message->sock)) {
+            if (sock_idle >= 0 || message->counter > rem_getCounter(message->sock)) {
                 keys.keyentries[agentid]->sock = message->sock;
             }
 

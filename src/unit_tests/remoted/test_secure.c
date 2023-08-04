@@ -624,6 +624,15 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Close idle socket [4] to agent ID '001'");
 
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -644,15 +653,6 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
-
-    // ReadSecMSG
-    expect_value(__wrap_ReadSecMSG, keys, &keys);
-    expect_string(__wrap_ReadSecMSG, buffer, buffer);
-    expect_value(__wrap_ReadSecMSG, id, 1);
-    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
-    will_return(__wrap_ReadSecMSG, 0);
-
-    expect_function_call(__wrap_key_unlock);
 
     // SendMSG
     expect_string(__wrap_SendMSG, message, "12!");
@@ -713,6 +713,14 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Close idle socket [4] to agent ID '001'");
 
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 0);
+
+    expect_function_call(__wrap_key_unlock);
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -733,15 +741,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
-
-    // ReadSecMSG
-    expect_value(__wrap_ReadSecMSG, keys, &keys);
-    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
-    expect_value(__wrap_ReadSecMSG, id, 1);
-    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
-    will_return(__wrap_ReadSecMSG, 0);
-
-    expect_function_call(__wrap_key_unlock);
 
     // SendMSG
     expect_string(__wrap_SendMSG, message, "AAA");
