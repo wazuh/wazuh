@@ -1,5 +1,5 @@
 - name: Test_Enabled_Run_On_Start
-  description: Check ms-graph integration start when it is enabled
+  description: Check ms-graph integration start when it is enabled and started
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: '1m'
@@ -8,7 +8,7 @@
     msg: 'INFO: Obtaining access token.'
 
 - name: Test_Enabled_No_Run_On_Start
-  description: Check ms-graph integration start when it is enabled
+  description: Check ms-graph integration start when it is enabled and start delayed
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: '1m'
