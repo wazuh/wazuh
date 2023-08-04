@@ -1,39 +1,9 @@
 import shared.resource_handler as rs
+import shared.executor as exec
 from pathlib import Path
 from .generate_manifest import run as gen_manifest
-import sys
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
-
-class CommandsManager:
-    commands_list = []
-    last_command = 0
-
-    def add_command(self, command, counter_command):
-        self.commands_list.append((command, counter_command))
-        return len(self.commands_list) - 1
-
-    def execute(self):
-        for idx, pair in enumerate(self.commands_list):
-            try:
-                print(f'Executing {idx}')
-                pair[0]()
-            except Exception as err_inst:
-                self.last_command = idx - 1
-                if idx == 0:
-                    print(f'Finishing proccess due to error: "{err_inst}"')
-                else:
-                    print(f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
-                    self.undo()
-                return 1
-        return 0
-
-    def undo(self):
-        undo_list = self.commands_list[:(
-            self.last_command+1)]
-        undo_list.reverse()
-        for pair in undo_list:
-            pair[1]()
 
 
 def run(args, resource_handler: rs.ResourceHandler):
@@ -47,98 +17,97 @@ def run(args, resource_handler: rs.ResourceHandler):
             working_path = str(path.resolve())
         else:
             print(f'Error: Directory does not exist ')
-            exit(1)
+            return -1
 
-    # Check if integration exist, if so, then inform error
     integration_name = working_path.split('/')[-1]
-
-    available_integration_assets = []
-    try:
-        available_integration_assets = resource_handler.get_store_integration(api_socket, integration_name)
-        if available_integration_assets['data']['content']:
-            print(f'Error can\'t add if the integration [{integration_name}] already exist')
-            exit(1)
-    except:
-        pass
-
 
     print(f'Adding integration from: {working_path}')
 
-    cm = CommandsManager()
+    # Load manifest, if it doesn't exists, it will be created with all the assets found
+    manifest = dict()
+    integration_full_name = ''
+    manifest_str = ''
+    try:
+        print(f'Loading manifest.yml...')
+        manifest = resource_handler.load_file(working_path + '/manifest.yml')
+        integration_full_name = manifest['name']
+        manifest_str = resource_handler.load_file(
+            working_path + '/manifest.yml', rs.Format.TEXT)
+    except Exception as e:
+        print(f'Error: {e}')
+        integration_full_name = 'integration/' + integration_name + '/0'
+        print(
+            f'The manifest will be generated for {integration_full_name} with all the assets found in {working_path}')
+        # Generate manifest
+        try:
+            gen_args = {'output-path': working_path}
+            gen_manifest(gen_args, resource_handler)
+            manifest = resource_handler.load_file(
+                working_path + '/manifest.yml')
+            integration_full_name = manifest['name']
+            manifest_str = resource_handler.load_file(
+                working_path + '/manifest.yml', rs.Format.TEXT)
+        except Exception as e:
+            print(f'Error: {e}')
+            return -1
 
-    # Catalog Functions to functions for undo / redo
-    def func_to_add_catalog(api_socket: str, type: str, name: str, content: dict, format: rs.Format):
-        def add_catalog():
-            resource_handler.add_catalog_file(
-                api_socket, type, name, content, format)
-        return add_catalog
+    # Check if integration exists, if so, then inform error
+    if not args['dry-run']:
+        try:
+            resource_handler.get_store_integration(
+                api_socket, integration_name)
+            print(
+                f'Error {integration_full_name} already exists in the catalog')
+            return -1
+        except:
+            pass
 
-    def func_to_delete_catalog(api_socket: str, type: str, name: str):
-        def delete_catalog():
-            resource_handler.delete_catalog_file(api_socket, type, name)
-        return delete_catalog
+    executor = exec.Executor()
 
-    # KVDB Functions to functions for undo / redo
-    def func_to_func_create_kvdb(api_socket: str, name: str, path: str):
-        def func_create_kvdb():
-            resource_handler.create_kvdb(api_socket, name, path)
-        return func_create_kvdb
-
-    def func_to_func_delete_kvdb(api_socket: str, name: str, path: str):
-        def func_delete_kvdb():
-            resource_handler.delete_kvdb(api_socket, name, path)
-        return func_delete_kvdb
-
-    # get kvdbs from directory and if possible mark for addition
+    # Create tasks to add kvdbs
     path = Path(working_path) / 'kvdbs'
     if path.exists():
         for entry in path.rglob('*.json'):
-                pos = cm.add_command(func_to_func_create_kvdb(api_socket, entry.stem, str(entry)),
-                                     func_to_func_delete_kvdb(api_socket, entry.stem, str(entry)))
-                print(f'{pos}: {entry.stem} Kvdb addition')
+            recoverable_task = resource_handler.get_create_kvdb_task(
+                api_socket, entry.stem, str(entry))
+            executor.add(recoverable_task)
 
+    # Create tasks to add decoders, rules, outputs and filters
     asset_type = ['decoders', 'rules', 'outputs', 'filters']
-    # get decoder from directory and clasiffy if present in store
     for type_name in asset_type:
-        path = Path(working_path) / type_name
-        if path.exists():
-            for entry in path.rglob('*'):
-                if entry.is_file():
-                    new_content = resource_handler.load_file(
-                        entry, rs.Format.YML)
-                    full_name = f'{type_name[:-1]}/{entry.stem}/0'
-                    pos = cm.add_command(func_to_add_catalog(api_socket, type_name[:-1], full_name,
-                                        new_content, rs.Format.YML),
-                                        func_to_delete_catalog(api_socket, type_name[:-1], full_name))
-                    print(f'{pos}: {full_name} addition.')
+        if type_name in manifest:
+            path = Path(working_path) / type_name
+            if path.exists():
+                for entry in path.rglob('*.yml'):
+                    if entry.is_file():
+                        try:
+                            name, original = resource_handler.load_original_asset(
+                                entry)
+                        except Exception as e:
+                            print(f'Error: {e}')
+                            return -1
 
+                        # Create task to add asset
+                        if name in manifest[type_name]:
+                            task = resource_handler.get_add_catalog_task(
+                                api_socket, name.split('/')[0], name, original)
+                            executor.add(task)
+
+    # Create task to add integration
+    integration_task = resource_handler.get_add_catalog_task(
+        api_socket, 'integration', integration_full_name, manifest_str)
+    executor.add(integration_task)
+
+    # Inform the user and execute the tasks
+    print(f'Adding {integration_full_name} to the catalog')
+    print('\nTasks:')
+    executor.list_tasks()
+    print('\nExecuting tasks...')
+    executor.execute(args['dry-run'])
+    print('\nDone')
     if args['dry-run']:
-        print(f'Finished test run.')
-    elif cm.execute() == 0:
-        # Creates a manifest.yml if it doesn't exists
-        manifest_file = working_path + '/manifest.yml'
-        path = Path(manifest_file)
-        if not path.is_file():
-            args = {'output-path':working_path} #Is there a better way of doing this?
-            print(f'"manifest.yml" not found creating one...')
-            gen_manifest(args,resource_handler)
-        else:
-            print(f'Check if available file is up to date.')
-
-        # integration name is taken from the directory name
-        name = path.resolve().parent.name
-        print(f'Loading integration [{name}] manifest...')
-        try:
-            manifest = resource_handler.load_file(manifest_file)
-            resource_handler.add_catalog_file(
-                api_socket, 'integration', f'integration/{name}/0', manifest, rs.Format.YML)
-        except:
-            #TODO: should be neccesary to undo the whole proccess for this single step?
-            print('Couldnt add integration to the store, try manually with catalog update')
-            resource_handler.delete_catalog_file(
-                api_socket, 'integration', f'integration/{name}/0')
-    else:
-        print('An error occurred on the adding proccess, policy cleaned')
+        print(
+            f'If you want to apply the changes, run again without the --dry-run flag')
 
 
 def configure(subparsers):
@@ -151,6 +120,6 @@ def configure(subparsers):
                             help=f'[default=current directory] Integration directory path')
 
     parser_add.add_argument('--dry-run', dest='dry-run', action='store_true',
-                               help=f'When set it will print all the steps to apply but wont affect the store')
+                            help=f'When set it will print all the steps to apply but wont affect the store')
 
     parser_add.set_defaults(func=run)
