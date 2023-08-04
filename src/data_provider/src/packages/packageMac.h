@@ -30,7 +30,7 @@ class FactoryBSDPackage
     public:
         static std::shared_ptr<IPackage>create(const std::pair<PackageContext, int>& ctx);
 #ifdef __APPLE__
-        static std::shared_ptr<IPackage>create(std::pair<SQLite::IStatement&, const int&>& ctx);
+        static std::shared_ptr<IPackage>create(const std::pair<SQLite::IStatement&, const int>& ctx);
 #endif
 };
 
