@@ -17,4 +17,6 @@ target_link_libraries(${PROJECT_NAME}
     router
 )
 
+target_link_libraries(${PROJECT_NAME} content_manager)
+
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
