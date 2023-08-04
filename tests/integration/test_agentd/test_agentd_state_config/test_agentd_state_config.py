@@ -49,6 +49,7 @@ import os
 import pytest
 from pathlib import Path
 import sys
+import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
@@ -59,6 +60,8 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
 from wazuh_testing.utils.configuration import load_configuration_template
 from wazuh_testing.utils import callbacks
+from wazuh_testing.utils.services import check_if_process_is_running, control_service
+
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
@@ -70,7 +73,6 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 
 # Test configurations.
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
-print(config_parameters)
 
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
@@ -80,13 +82,11 @@ if sys.platform == WINDOWS:
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 
-print(test_configuration)
-
 print(test_metadata)
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_configuration, set_state_interval, configure_local_internal_options,
-                             truncate_monitored_files, remove_state_file, daemons_handler):
+def test_agentd_state_config(test_configuration, test_metadata, remove_state_file, set_wazuh_configuration, configure_interval_local_internal_options,
+                             truncate_monitored_files, daemons_handler):
     
     '''
     description: Check that the 'wazuh-agentd.state' statistics file is created
@@ -119,11 +119,11 @@ def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_config
         - r'file_not_enabled'
     '''
 
-    if sys.platform == 'win32':
-        if test_case['agentd_ends']:
+    if sys.platform == WINDOWS:
+        if test_metadata['agentd_ends']:
             with pytest.raises(ValueError):
                 control_service('start')
-            assert (test_case['agentd_ends']
+            assert (test_metadata['agentd_ends']
                     is not check_if_process_is_running('wazuh-agentd'))
         else:
             control_service('start')
@@ -131,8 +131,8 @@ def test_agentd_state_config(test_configuration, test_metadata, set_wazuh_config
         control_service('start', 'wazuh-agentd')
         # Sleep enough time to Wazuh load agent.state_interval configuration and
         # boot wazuh-agentd
-        time.sleep(wait_daemon_control) 
-        assert (test_case['agentd_ends']
+        time.sleep(1) 
+        assert (test_metadata['agentd_ends']
                     is not check_if_process_is_running('wazuh-agentd'))
     
     # Check if the test requires checking state file existence
