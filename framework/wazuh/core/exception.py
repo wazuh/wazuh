@@ -152,19 +152,27 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
-        1209: {'message': 'Invalid relative directory, a rule_dir tag must be declared in '
-               'ossec.conf ruleset section.',
+        1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
+                          'be declared in ossec.conf ruleset section.',
                'remediation': f'Please, visit the official documentation '
                               f'(https://documentation.wazuh.com/' 
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
+                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
+                              ' to get more information about the rules'
         },
-        1210: {'message': 'Uploading or deleting default rules is not allowed.',
+        1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
                'remediation': f'Please, visit the official documentation '
                               f'(https://documentation.wazuh.com/' 
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
+                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
+                              ' to get more information about the rules'
         },
+        1211: {'message': 'Invalid relative directory. A \'rule_dir\' tag is declared in ossec.conf '
+                          'ruleset section, but the directory does not exists.',
+               'remediation': f'Please, visit the official documentation'
+                               '(https://documentation.wazuh.com/'
+                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
+                              ' to get more information about the rules'
+               },
+
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, '
@@ -225,17 +233,24 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about the decoders'
                },
-        1505: {'message': 'Invalid relative directory, '
-               'a decoder_dir tag must be declared in ossec.conf ruleset section.',
+        1505: {'message': 'Invalid relative directory. A \'decoder_dir\' '
+                          'tag must be declared in ossec.conf ruleset section.',
                'remediation': f'Please, visit the official documentation'
                                '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
+                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the decoders'
                },
-        1506: {'message': 'Uploading or deleting default decoders is not allowed.',
+        1506: {'message': 'Uploading, updating or deleting default decoders is not allowed.',
                'remediation': f'Please, visit the official documentation'
                                '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
+                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
+                              ' to get more information about the decoders'
+               },
+        1507: {'message': 'Invalid relative directory. A \'decoder_dir\' tag is declared '
+                          'in ossec.conf ruleset section, but the directory does not exists.',
+               'remediation': f'Please, visit the official documentation'
+                               '(https://documentation.wazuh.com/'
+                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the decoders'
                },
 

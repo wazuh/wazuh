@@ -31,6 +31,7 @@ decoder_ossec_conf = {
     'ruleset': {
         'decoder_dir': ['tests/data/decoders', 
                         'tests/data/etc/decoders',
+                        'tests/data/etc/decoders2',
                         'tests/data/etc/decoders/subpath'],
         'decoder_exclude': 'test2_decoders.xml'
     }
@@ -140,6 +141,21 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
     assert result_files == expected_files
 
 
+@pytest.mark.parametrize('filename, relative_dirname, result', [
+    ('test1_decoders.xml', None, 'tests/data/decoders/test1_decoders.xml'),
+    ('test3_decoders.xml', None, 'tests/data/etc/decoders/test3_decoders.xml'),
+    ('test2_decoders.xml', 'tests/data/etc/decoders/subpath', 'tests/data/etc/decoders/subpath/test2_decoders.xml'),
+    ('test3_decoders.xml', 'tests/data/etc/decoders/subpath', 'tests/data/etc/decoders/subpath/test3_decoders.xml'),
+    ('test3_decoders.xml', 'tests/data/etc/decoders/subpath/', 'tests/data/etc/decoders/subpath/test3_decoders.xml'),
+    ('not_found.xml', None, ''),
+])
+def test_get_decoder_file_path(filename, relative_dirname, result, mock_wazuh_paths):
+    """Test get_decoder_file_path function."""
+    res = decoder.get_decoder_file_path(filename=filename, 
+                                         relative_dirname=relative_dirname)
+    assert res == os.path.join(wazuh.core.common.WAZUH_PATH, result) if result else not res and isinstance(res, str)
+
+
 @pytest.mark.parametrize('filename, raw, relative_dirname, contains', [
     ('test1_decoders.xml', True, None, None),
     ('test1_decoders.xml', False, None, None),
@@ -211,6 +227,21 @@ def test_get_decoder_file_exceptions():
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
 
 
+@pytest.mark.parametrize('relative_dirname, res_path, err_code', [
+    (None, 'tests/data/etc/decoders', None),
+    ('tests/data/etc/decoders/', 'tests/data/etc/decoders', None),
+    ('tests/data/etc/decoders/subpath', 'tests/data/etc/decoders/subpath', None),
+    ('tests/data/etc/decoders/subpath/', 'tests/data/etc/decoders/subpath', None),
+    ('tests/data/etc/decoders3', 'tests/data/etc/decoders3', 1505),
+    ('tests/data/decoders', 'tests/data/decoders', 1506),
+    ('tests/data/etc/decoders2', 'tests/data/etc/decoders2', 1507),
+])
+def test_validate_upload_delete_dir(relative_dirname, res_path, err_code):
+    """Test validate_upload_delete_dir function."""
+    ret_path, ret_err = decoder.validate_upload_delete_dir(relative_dirname = relative_dirname)
+    assert ret_path == res_path and (ret_err.code == err_code if err_code else not ret_err)
+
+
 @pytest.mark.parametrize('file, relative_dirname, overwrite, decoder_path', [
     ('test1_decoders.xml', None, True, "tests/data/etc/decoders/test1_decoders.xml"),
     ('test2_decoders.xml', 'tests/data/etc/decoders/subpath', True,
@@ -243,27 +274,29 @@ def test_upload_file(mock_safe_move, mock_remove, mock_upload_file,
     """
 
     content = 'test'
-    with patch('wazuh.decoder.exists', return_value=overwrite):
-        with patch('wazuh.decoder.to_relative_path',
-                   side_effect=lambda x: os.path.relpath(x, wazuh.core.common.WAZUH_PATH)):
-            result = decoder.upload_decoder_file(filename=file, content=content,
-                                                    relative_dirname=relative_dirname,
-                                                    overwrite=overwrite)
+    ret_validation = decoder.validate_upload_delete_dir(relative_dirname=relative_dirname)
+    with patch('wazuh.decoder.validate_upload_delete_dir', return_value=ret_validation):
+        with patch('wazuh.decoder.exists', return_value=overwrite):
+            with patch('wazuh.decoder.to_relative_path',
+                    side_effect=lambda x: os.path.relpath(x, wazuh.core.common.WAZUH_PATH)):
+                result = decoder.upload_decoder_file(filename=file, content=content,
+                                                        relative_dirname=relative_dirname,
+                                                        overwrite=overwrite)
 
-        # Assert data match what was expected, type of the result 
-        # and correct parameters in delete() method.
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            # Assert data match what was expected, type of the result 
+            # and correct parameters in delete() method.
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
 
-        mock_xml.assert_called_once_with(content)
-        mock_upload_file.assert_called_once_with(content, decoder_path)
-        if overwrite:
-            full_path = os.path.join(wazuh.common.WAZUH_PATH, decoder_path)
-            backup_file = full_path+'.backup'
-            mock_delete.assert_called_once_with(backup_file, full_path,
-                                                decoder.delete_decoder_file), \
-            'delete_decoder_file method not called with expected parameters'
-            mock_remove.assert_called_once()
-            mock_safe_move.assert_called_once()
+            mock_xml.assert_called_once_with(content)
+            mock_upload_file.assert_called_once_with(content, decoder_path)
+            if overwrite:
+                full_path = os.path.join(wazuh.common.WAZUH_PATH, decoder_path)
+                backup_file = full_path+'.backup'
+                mock_delete.assert_called_once_with(backup_file, full_path,
+                                                    decoder.delete_decoder_file), \
+                'delete_decoder_file method not called with expected parameters'
+                mock_remove.assert_called_once()
+                mock_safe_move.assert_called_once()
 
 
 @patch('wazuh.decoder.delete_decoder_file', side_effect=WazuhError(1019))
@@ -272,13 +305,15 @@ def test_upload_file(mock_safe_move, mock_remove, mock_upload_file,
 @patch('wazuh.core.utils.check_remote_commands')
 def test_upload_file_ko(*_):
     """Test exceptions on upload function."""
-    with patch('wazuh.decoder.exists'):
-        # Error when file exists and overwrite is not True
-        result = decoder.upload_decoder_file(filename='test_decoders.xml',
-                                             content='test', overwrite=False)
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1905,\
-        'Error code not expected.'
+    ret_validation = decoder.validate_upload_delete_dir(relative_dirname=None)
+    with patch('wazuh.decoder.validate_upload_delete_dir', return_value=ret_validation):
+        with patch('wazuh.decoder.exists'):
+            # Error when file exists and overwrite is not True
+            result = decoder.upload_decoder_file(filename='test_decoders.xml',
+                                                content='test', overwrite=False)
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1905,\
+            'Error code not expected.'
 
     # Error when content is empty
     result = decoder.upload_decoder_file(filename='no_exist.xml', content='', overwrite=False)
@@ -293,6 +328,14 @@ def test_upload_file_ko(*_):
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1019,\
         'Error code not expected.'
 
+    # Error relative_path is not declared in decoder_dir
+    result = decoder.upload_decoder_file(filename='test3_decoders.xml',
+                                        relative_dirname='tests/data/etc/decoders3',
+                                        content='test')
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1505,\
+        'Error code not expected.'
+
     # Error uploading decoder to default ruleset
     result = decoder.upload_decoder_file(filename='test3_decoders.xml',
                                          relative_dirname='tests/data/decoders',
@@ -301,6 +344,14 @@ def test_upload_file_ko(*_):
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1506,\
         'Error code not expected.'
 
+    # Error upload file to existing decoder_dir but the directory is not found
+    result = decoder.upload_decoder_file(filename='test3_decoders.xml',
+                                        relative_dirname='tests/data/etc/decoders2',
+                                        content='test')
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1507,\
+        'Error code not expected.'
+    
     # clean backup files
     search_pattern = os.path.join(wazuh.core.common.WAZUH_PATH, "**", "*.backup")
     for bkp in glob.glob(search_pattern, recursive=True):
@@ -341,10 +392,11 @@ def test_delete_decoder_file_ko():
         'Error code not expected.'
 
     # Assert error code passing invalid relative_dirname
-    with pytest.raises(WazuhError) as exc_info:
-        result = decoder.delete_decoder_file(filename='test_decoder.xml',
-                                             relative_dirname='etc/not_exists')
-        assert exc_info.value.code == 1505
+    result = decoder.delete_decoder_file(filename='test_decoder.xml',
+                                            relative_dirname='etc/not_exists')
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1505,\
+        'Error code not expected.'
 
     # Assert error code when decoder file is in default ruleset
     result = decoder.delete_decoder_file(filename='test1_decoder.xml',

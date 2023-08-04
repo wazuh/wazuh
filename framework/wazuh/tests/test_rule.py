@@ -48,7 +48,8 @@ get_rule_file_ossec_conf = {
     "rule_dir": [
         core_data_path,
         tests_data_path,
-        os.path.join(tests_data_path, 'subpath'),],
+        os.path.join(tests_data_path, 'subpath'),
+        os.path.join(tests_data_path, 'subpath2'),],
     "rule_exclude": ["0010-rules_config.xml"]
   }
 }
@@ -232,6 +233,22 @@ def test_get_requirement_invalid(mocked_config, requirement):
     assert result.total_affected_items == 0
 
 
+@pytest.mark.parametrize('filename, relative_dirname, result', [
+    ('0010-rules_config.xml', None, 'core/tests/data/rules/0010-rules_config.xml'),
+    ('test_rules.xml', None, 'tests/data/etc/rules/test_rules.xml'),
+    ('test_rules.xml', 'tests/data/etc/rules', 'tests/data/etc/rules/test_rules.xml'),
+    ('test_rules.xml', 'tests/data/etc/rules/subpath', 'tests/data/etc/rules/subpath/test_rules.xml'),
+    ('test_rules.xml', 'tests/data/etc/rules/subpath/', 'tests/data/etc/rules/subpath/test_rules.xml'),
+    ('not_found.xml', None, ''),
+])
+def test_get_rule_file_path(filename, relative_dirname, result, mock_wazuh_paths):
+    """Test get_rule_file_path function."""
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
+        res = rule.get_rule_file_path(filename=filename, 
+                                            relative_dirname=relative_dirname)
+        assert res == os.path.join(wazuh.core.common.WAZUH_PATH, result) if result else not res
+
+
 @pytest.mark.parametrize('filename, raw, relative_dirname, contains', [
     ('0010-rules_config.xml', True, None, None),
     ('0015-ossec_rules.xml', False, None, None),
@@ -255,6 +272,7 @@ def test_get_rule_file(filename, raw, relative_dirname, contains):
 
 def test_get_rule_file_exceptions():
     """Test file exceptions on get_rule_file method."""
+
     # File does not exist in default ruleset
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
         result = rule.get_rule_file(filename='non_existing_file.xml')
@@ -282,6 +300,22 @@ def test_get_rule_file_exceptions():
             result = rule.get_rule_file(filename='0010-rules_config.xml')
             assert not result.affected_items
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
+
+
+@pytest.mark.parametrize('relative_dirname, res_path, err_code', [
+    (None, 'tests/data/etc/rules', None),
+    ('tests/data/etc/rules/', 'tests/data/etc/rules', None),
+    ('tests/data/etc/rules/subpath', 'tests/data/etc/rules/subpath', None),
+    ('tests/data/etc/rules/subpath/', 'tests/data/etc/rules/subpath', None),
+    ('tests/data/etc/rules/subpath3', 'tests/data/etc/rules/subpath3', 1209),
+    ('core/tests/data/rules', 'core/tests/data/rules', 1210),
+    ('tests/data/etc/rules/subpath2', 'tests/data/etc/rules/subpath2', 1211),
+])
+def test_validate_upload_delete_dir(relative_dirname, res_path, err_code):
+    """Test validate_upload_delete_dir function."""
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
+        ret_path, ret_err = rule.validate_upload_delete_dir(relative_dirname = relative_dirname)
+        assert ret_path == res_path and (ret_err.code == err_code if err_code else not ret_err)
 
 
 @pytest.mark.parametrize('file, relative_dirname, overwrite, rule_path', [
@@ -312,21 +346,24 @@ def test_upload_file(mock_safe_move, mock_remove, mock_xml, mock_delete,
 
     content = 'test'
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
-        with patch('wazuh.rule.exists', return_value=overwrite):
-            result = rule.upload_rule_file(filename=file, relative_dirname=relative_dirname,
-                                            content=content, overwrite=overwrite)
+        ret_validation = rule.validate_upload_delete_dir(relative_dirname=relative_dirname)
+        with patch('wazuh.rule.validate_upload_delete_dir', return_value=ret_validation):
+            with patch('wazuh.rule.exists', return_value=overwrite):
+                result = rule.upload_rule_file(filename=file, relative_dirname=relative_dirname,
+                                                content=content, overwrite=overwrite)
 
-            # Assert data match what was expected, type of the result and correct parameters in delete() method.
-            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-            assert result.affected_items[0] == rule_path, 'Expected item not found'
-            mock_xml.assert_called_once_with(content, rule_path)
-            if overwrite:
-                full_path = os.path.join(wazuh.common.WAZUH_PATH, rule_path)
-                backup_file = full_path+'.backup'
-                mock_delete.assert_called_once_with(backup_file, full_path, rule.delete_rule_file), 'delete_rule_file method not called with expected ' \
-                                                                    'parameter'
-                mock_remove.assert_called_once()
-                mock_safe_move.assert_called_once()
+                # Assert data match what was expected, type of the result and correct parameters in delete() method.
+                assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+                assert result.affected_items[0] == rule_path, 'Expected item not found'
+                mock_xml.assert_called_once_with(content, rule_path)
+                if overwrite:
+                    full_path = os.path.join(wazuh.common.WAZUH_PATH, rule_path)
+                    backup_file = full_path+'.backup'
+                    mock_delete.assert_called_once_with(backup_file, 
+                                                        full_path, rule.delete_rule_file), \
+                        'delete_rule_file method not called with expected parameter'
+                    mock_remove.assert_called_once()
+                    mock_safe_move.assert_called_once()
 
 
 @patch('wazuh.rule.delete_rule_file', side_effect=WazuhError(1019))
@@ -337,10 +374,12 @@ def test_upload_file_ko(*args):
     """Test exceptions on upload function."""
     content = 'test'
     with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
-        # Error when file exists and overwrite is not True
-        result = rule.upload_rule_file(filename='test_rules.xml', content=content, overwrite=False)
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
+        ret_validation = rule.validate_upload_delete_dir(relative_dirname=None)
+        with patch('wazuh.rule.validate_upload_delete_dir', return_value=ret_validation):
+            # Error when file exists and overwrite is not True
+            result = rule.upload_rule_file(filename='test_rules.xml', content=content, overwrite=False)
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
 
         # Error when content is empty
         result = rule.upload_rule_file(filename='test_rules.xml', content='', overwrite=False)
@@ -352,18 +391,34 @@ def test_upload_file_ko(*args):
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1019, 'Error code not expected.'
 
+        # Error relative_path is not declared in rule_dir
+        result = rule.upload_rule_file(filename='test_rule.xml',
+                                            relative_dirname='tests/data/etc/rules/subpath3',
+                                            content='test')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1209,\
+            'Error code not expected.'
+        
         # Error uploading rule in default ruleset dir
-        result = rule.upload_rule_file(filename='test1_rules.xml', 
-                                       relative_dirname='core/tests/data/rules',
-                                       content=content, overwrite=True)
+        result = rule.upload_rule_file(filename='test_rules.xml', 
+                                    relative_dirname='core/tests/data/rules',
+                                    content=content, overwrite=True)
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1210,\
             'Error code not expected.'
 
-    # clean backup files
-    search_pattern = os.path.join(wazuh.core.common.WAZUH_PATH, "**", "*.backup")
-    for bkp in glob.glob(search_pattern, recursive=True):
-        os.remove(bkp)
+        # Error upload file to existing rule_dir but the directory is not found
+        result = rule.upload_rule_file(filename='test_rule.xml',
+                                            relative_dirname='tests/data/etc/rules/subpath2',
+                                            content='test')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1211,\
+            'Error code not expected.'
+        
+        # clean backup files
+        search_pattern = os.path.join(wazuh.core.common.WAZUH_PATH, "**", "*.backup")
+        for bkp in glob.glob(search_pattern, recursive=True):
+            os.remove(bkp)
 
 
 @pytest.mark.parametrize('file, relative_dirname', [
@@ -390,21 +445,21 @@ def test_delete_rule_file_ko():
                 'Error code not expected.'
 
         # Assert error code when exists() method returns False
-        with patch('wazuh.rule.exists', return_value=False):
-            result = rule.delete_rule_file(filename='file')
-            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1906,\
-                'Error code not expected.'
+        result = rule.delete_rule_file(filename='file')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1906,\
+            'Error code not expected.'
 
         # Assert error code passing invalid relative_dirname
-        with pytest.raises(WazuhError) as exc_info:
-            result = rule.delete_rule_file(filename='test_rules.xml', 
-                                           relative_dirname='etc/not_exists')
-        assert exc_info.value.code == 1209
+        result = rule.delete_rule_file(filename='test_rules.xml', 
+                                        relative_dirname='etc/not_exists')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1209,\
+            'Error code not expected.'
 
         # Error uploading rule in default ruleset dir
         result = rule.delete_rule_file(filename='test1_rules.xml',
-                                       relative_dirname='core/tests/data/rules')
+                                        relative_dirname='core/tests/data/rules')
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1210,\
             'Error code not expected.'

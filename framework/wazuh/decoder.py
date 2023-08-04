@@ -2,10 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import typing
 from os import remove
 from os.path import join, exists, normpath, commonpath
-from typing import Union
+from typing import Union, Tuple
 from xml.parsers.expat import ExpatError
 
 import xmltodict
@@ -191,6 +190,7 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
 
     return result
 
+
 def get_decoder_file_path(filename: str,
                      relative_dirname: str = None) -> str:
     """Find decoder file with or without relative directory name.
@@ -227,6 +227,7 @@ def get_decoder_file_path(filename: str,
         return join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
     else:
         return normpath(join(common.WAZUH_PATH,  decoders[0]['relative_dirname'], filename))
+
 
 def get_decoder_file(filename: str, raw: bool = False, 
                      relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
@@ -274,19 +275,49 @@ def get_decoder_file(filename: str, raw: bool = False,
     return result
 
 
+def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str, WazuhError]:
+    """Validate relative_dirname parameter
+
+    Parameters
+    ----------
+    relative_dirname : str
+        relative path to validate.
+
+    Returns
+    -------
+    Tuple (str, WazuhError)
+        The first element of the tuple is the normalized relative path.
+            if relative_dirname is None, return USER_DECODERS_PATH.
+            If relative_dirname is not None, return relative_dirname without trailing slash
+        The second element of the tuple is a WazuhError exception
+            If relative_dirname has no 'decoder_dir' tag in ruleset return WazuhError(1505).
+            If relative_dirname is inside the default DECODERS_PATH return WazuhError(1506).
+            If relative_dirname has a 'decoder_dir' tag in ruleset but it doesn't exists return WazuhError(1507).
+            If the path is valid, return None
+    """
+
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
+        else to_relative_path(common.USER_DECODERS_PATH)
+    wazuh_error = None
+    if not relative_dirname in ruleset_conf['decoder_dir']:
+        wazuh_error = WazuhError(1505)
+    elif commonpath([join(common.WAZUH_PATH, relative_dirname), common.DECODERS_PATH]) == common.DECODERS_PATH:
+        wazuh_error = WazuhError(1506)
+    elif not exists(join(common.WAZUH_PATH, relative_dirname)):
+        wazuh_error = WazuhError(1507)
+    return relative_dirname, wazuh_error
+
+
 @expose_resources(actions=['decoders:update'], resources=['*:*:*'])
-def upload_decoder_file(filename: str, 
-                        content: str, 
-                        relative_dirname: str = None,
+def upload_decoder_file(filename: str, content: str, relative_dirname: str = None,
                         overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new decoder file or update an existing one.
     
-    If relative_dirname is None, upload the file to default user rules path.
-    If relative_dirname is not defined as a rule_dir in ruleset, 
-    raise an exception.
-    If relative_dirname is set and valid, search the file. 
-    If the file is found, update the file if overwrite is true.
-    If the file is not found, upload a new file.
+    If relative_dirname is not valid, raise an exception.
+    If the content is not valid, raise an exception.
+    If the decoder file is found, update the file if overwrite is true.
+    If the decoder file is not found, upload a new file.
 
     Parameters
     ----------
@@ -307,23 +338,16 @@ def upload_decoder_file(filename: str,
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
                                       )
-
-    # Validate if the relative_dir is a decoder_dir
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
-        else to_relative_path(common.USER_DECODERS_PATH)
-    if not relative_dirname in ruleset_conf['decoder_dir']:
-        raise WazuhError(1505)
-
-    full_path = join(common.WAZUH_PATH, relative_dirname, filename)
-
     backup_file = ''
     try:
+        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
+        full_path = join(common.WAZUH_PATH, relative_dirname, filename)
+        if wazuh_error:
+            raise wazuh_error
+        
         if len(content) == 0:
             raise WazuhError(1112)
-        if commonpath([full_path, common.DECODERS_PATH]) == common.DECODERS_PATH:
-            raise WazuhError(1506)
-
+        
         validate_wazuh_xml(content)
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(full_path):
@@ -345,8 +369,11 @@ def upload_decoder_file(filename: str,
 
 
 @expose_resources(actions=['decoders:delete'], resources=['decoder:file:{filename}'])
-def delete_decoder_file(filename: typing.Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
+def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a decoder file.
+
+    If relative_dirname is not valid, raise an exception
+    If the file does not exist, raise an exception
 
     Parameters
     ----------
@@ -364,17 +391,12 @@ def delete_decoder_file(filename: typing.Union[str, list], relative_dirname: str
 
     result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
                                       none_msg='Could not delete decoder file')
-    # Validate if the relative_dir is a decoder_dir
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
-        else to_relative_path(common.USER_DECODERS_PATH)
-    if not relative_dirname in ruleset_conf['decoder_dir']:
-        raise WazuhError(1505)
-
-    full_path = join(common.WAZUH_PATH, relative_dirname, file)
     try:
-        if commonpath([full_path, common.DECODERS_PATH]) == common.DECODERS_PATH:
-            raise WazuhError(1506)
+        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
+        full_path = join(common.WAZUH_PATH, relative_dirname, file)
+        if wazuh_error:
+            raise wazuh_error
+
         if exists(full_path):
             try:
                 remove(full_path)

@@ -2,10 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import typing
 from os import remove
 from os.path import exists, join, normpath, commonpath
-from typing import Union
+from typing import Union, Tuple
 from xml.parsers.expat import ExpatError
 
 import xmltodict
@@ -343,8 +342,8 @@ def get_rule_file_path(filename: str = None, relative_dirname: str = None) -> st
         return ''
     elif len(rules) > 1:
         # if many files match the filename criteria, 
-        # filter decoders that starts with rel_dir of the file
-        # and from the result, select the decoder with the shorter
+        # filter rules that starts with rel_dir of the file
+        # and from the result, select the rule with the shorter
         # relative path length
         rules = list(filter(lambda x: x['relative_dirname'].startswith(relative_dirname), rules))
         rule = min(rules, key=lambda x: len(x['relative_dirname']))
@@ -402,17 +401,49 @@ def get_rule_file(filename: str = None, raw: bool = False,
     return result
 
 
+def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str, WazuhError]:
+    """Validate relative_dirname parameter
+
+    Parameters
+    ----------
+    relative_dirname : str
+        relative path to validate.
+
+    Returns
+    -------
+    Tuple (str, WazuhError)
+        The first element of the tuple is the normalized relative path.
+            if relative_dirname is None, return USER_RULES_PATH.
+            If relative_dirname is not None, return relative_dirname without trailing slash
+        The second element of the tuple is a WazuhError exception
+            If relative_dirname has no 'rule_dir' tag in ruleset return WazuhError(1505).
+            If relative_dirname is inside the default RULES_PATH return WazuhError(1506).
+            If relative_dirname has a 'rule_dir' tag in ruleset but it doesn't exists return WazuhError(1507).
+            If the path is valid, return None
+    """
+
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
+        else to_relative_path(common.USER_RULES_PATH)
+    wazuh_error = None
+    if not relative_dirname in ruleset_conf['rule_dir']:
+        wazuh_error = WazuhError(1209)
+    elif commonpath([join(common.WAZUH_PATH, relative_dirname), common.RULES_PATH]) == common.RULES_PATH:
+        wazuh_error = WazuhError(1210)
+    elif not exists(join(common.WAZUH_PATH, relative_dirname)):
+        wazuh_error = WazuhError(1211)
+    return relative_dirname, wazuh_error
+
+
 @expose_resources(actions=['rules:update'], resources=['*:*:*'])
-def upload_rule_file(filename: str = None, content: str = None, overwrite: bool = False,
-                     relative_dirname: str = None) -> AffectedItemsWazuhResult:
+def upload_rule_file(filename: str, content: str, relative_dirname: str = None, 
+                     overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new rule file or update an existing one.
 
-    If relative_dirname is None, upload the file to default user rules path.
-    If relative_dirname is not defined as a rule_dir in ruleset, 
-    raise an exception.
-    If relative_dirname is set and valid, search the file. 
-    If the file is found, update the file if overwrite is true.
-    If the file is not found, upload a new file.
+    If relative_dirname is not valid, raise an exception.
+    If the content is not valid, raise an exception.
+    If the rule file is found, update the file if overwrite is true.
+    If the rule file is not found, upload a new file.
         
     Parameters
     ----------
@@ -433,19 +464,12 @@ def upload_rule_file(filename: str = None, content: str = None, overwrite: bool 
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule')
 
-    # Validate if the relative_dir is a decoder_dir
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
-        else to_relative_path(common.USER_RULES_PATH)
-    if not relative_dirname in ruleset_conf['rule_dir']:
-        raise WazuhError(1209)
-
-    full_path = join(common.WAZUH_PATH, relative_dirname, filename)
-
     backup_file = ''
     try:
-        if commonpath([full_path, common.RULES_PATH]) == common.RULES_PATH:
-            raise WazuhError(1210)
+        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
+        full_path = join(common.WAZUH_PATH, relative_dirname, filename)
+        if wazuh_error:
+            raise wazuh_error
         if len(content) == 0:
             raise WazuhError(1112)
 
@@ -471,7 +495,7 @@ def upload_rule_file(filename: str = None, content: str = None, overwrite: bool 
 
 
 @expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
-def delete_rule_file(filename: typing.Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
+def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a rule file.
 
     Parameters
@@ -490,19 +514,12 @@ def delete_rule_file(filename: typing.Union[str, list], relative_dirname: str = 
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
                                       none_msg='Could not delete rule')
 
-    # Validate if the relative_dir is a decoder_dir
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
-        else to_relative_path(common.USER_RULES_PATH)
-    if not relative_dirname in ruleset_conf['rule_dir']:
-        raise WazuhError(1209)
-
-    # expose_resources transform the parameter into a list, use first element
-    full_path = join(common.WAZUH_PATH, relative_dirname, file)
-
     try:
-        if commonpath([full_path, common.RULES_PATH]) == common.RULES_PATH:
-            raise WazuhError(1210)
+        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
+        full_path = join(common.WAZUH_PATH, relative_dirname, file)
+        if wazuh_error:
+            raise wazuh_error
+        
         if exists(full_path):
             try:
                 remove(full_path)
