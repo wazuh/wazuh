@@ -33,14 +33,14 @@ TEST_F(RouterTest, build_ok_from_table)
 {
     expectBuildTable(INTERNAL_TABLE);
     // TODO: check update calls, seems to be called once foreach entry in the router table
-    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).Times(3).WillRepeatedly(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).Times(3).WillRepeatedly(::testing::Return(updateSuccess));
     ASSERT_NO_THROW(router::Router router(m_builder, m_store));
 }
 
 TEST_F(RouterTest, build_ok_no_table)
 {
-    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
-    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(addSuccess));
 
     ASSERT_NO_THROW(router::Router router(m_builder, m_store));
 }
@@ -93,9 +93,9 @@ TEST_F(RouterTest, build_fail)
 
 TEST_F(RouterTest, add_list_remove_routes)
 {
-    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
-    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
-    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(addSuccess));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(updateSuccess));
 
     router::Router router(m_builder, m_store);
     ASSERT_EQ(router.getRouteTable().size(), 0);
@@ -151,9 +151,9 @@ TEST_F(RouterTest, add_list_remove_routes)
 
 TEST_F(RouterTest, priorityChanges)
 {
-    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
-    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
-    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(addSuccess));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(updateSuccess));
 
     router::Router router(m_builder, m_store);
 
@@ -266,9 +266,9 @@ TEST_F(RouterTest, checkRouting)
     const auto POLICY_C3 = "deco_C3";
     const auto PATH_DECODER = json::Json::formatJsonPath("~decoder");
 
-    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError()));
-    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(okRes()));
-    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(okRes()));
+    EXPECT_CALL(*m_store, get(base::Name(INTERNAL_TABLE))).WillOnce(::testing::Return(getError));
+    EXPECT_CALL(*m_store, add(base::Name(INTERNAL_TABLE), ::testing::_)).WillOnce(::testing::Return(addSuccess));
+    EXPECT_CALL(*m_store, update(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return(updateSuccess));
 
     // Run the router
     auto testQueue = aux::testQueue {};

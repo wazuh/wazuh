@@ -3,8 +3,6 @@
 The `generateCode.sh` script formats and generates the code for all the *.proto files in the src folder and saves them in the include folder. It is important to note that every time a change is made to any *.proto file in the src folder, this script must be run to update the generated code in the include folder.
 CMake takes care of finding all the *.cpp/hpp files in the include folder and generating the corresponding static library. However, if you delete or rename *.proto files, you need to manually delete the corresponding auto-generated files in the include folder. This is important to keep in mind to avoid adding deprecated files to the library.
 
-Translated with www.DeepL.com/Translator (free version)
-
 Style guide: https://protobuf.dev/programming-guides/style/ </br>
 syntax: Proto3  </br>
 proto version: 12.21  </br>
