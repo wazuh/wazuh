@@ -32,6 +32,8 @@ runs:
 
       - name: Compile
         run: |
+          SRC_FOLDER=$(pwd)/src
+
           cd ${{ inputs.path }}
 
           if [[ "${{ inputs.asan }}" != "false" ]]; then
@@ -45,8 +47,6 @@ runs:
           fi
 
           mkdir -p build && cd build
-          
-          SRC_FOLDER=$(pwd)/src
           cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" .. && make -j2
         shell: bash
 
