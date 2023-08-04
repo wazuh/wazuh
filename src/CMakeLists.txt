@@ -89,6 +89,7 @@ include_directories(${SRC_FOLDER}/external/openssl/include)
 add_subdirectory(shared_modules/utils)
 add_subdirectory(shared_modules/router)
 add_subdirectory(shared_modules/content_manager)
+
 set(CURL_DEP wazuhext)
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/indexer_connector)
