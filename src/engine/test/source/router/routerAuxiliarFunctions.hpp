@@ -75,7 +75,7 @@ protected:
 
         EXPECT_CALL(*m_store, get(base::Name(name)))
             .Times(times)
-            .WillRepeatedly(::testing::Return(getJson(aux::assets[name])));
+            .WillRepeatedly(::testing::Return(getSuccess(json::Json(aux::assets[name]))));
     }
 
     void expectBuildPolicy(const std::string& name, int times = 1)

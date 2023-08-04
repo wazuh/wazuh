@@ -8,23 +8,28 @@
 namespace store::mocks
 {
 
-std::variant<json::Json, base::Error> getError = base::Error {"Mocked get error"};
+const static std::variant<json::Json, base::Error> getError = base::Error {"Mocked get error"};
 inline std::variant<json::Json, base::Error> getSuccess(json::Json& expected)
 {
     return expected;
 }
 
-std::optional<base::Error> addError = base::Error {"Mocked add error"};
-std::optional<base::Error> addSuccess = std::nullopt;
+inline std::variant<json::Json, base::Error> getSuccess(const json::Json& expected)
+{
+    return expected;
+}
 
-std::optional<base::Error> delError = base::Error {"Mocked del error"};
-std::optional<base::Error> delSuccess = std::nullopt;
+const static std::optional<base::Error> addError = base::Error {"Mocked add error"};
+const static std::optional<base::Error> addSuccess = std::nullopt;
 
-std::optional<base::Error> updateError = base::Error {"Mocked update error"};
-std::optional<base::Error> updateSuccess = std::nullopt;
+const static std::optional<base::Error> delError = base::Error {"Mocked del error"};
+const static std::optional<base::Error> delSuccess = std::nullopt;
 
-std::optional<base::Error> addUpdateError = base::Error {"Mocked addUpdate error"};
-std::optional<base::Error> addUpdateSuccess = std::nullopt;
+const static std::optional<base::Error> updateError = base::Error {"Mocked update error"};
+const static std::optional<base::Error> updateSuccess = std::nullopt;
+
+const static std::optional<base::Error> addUpdateError = base::Error {"Mocked addUpdate error"};
+const static std::optional<base::Error> addUpdateSuccess = std::nullopt;
 
 class MockStoreRead : public store::IStoreRead
 {
