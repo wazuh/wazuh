@@ -27,13 +27,81 @@ requirements:
     - "f:/proc/sys/kernel/ostype -> Linux"
 
 checks:
-  # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled. (Automated) - Not Implemented
+  # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled. (Automated)
+  - id: 31000
+    title: "Ensure mounting of cramfs filesystems is disabled."
+    description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: "Run the following script to disable the cramfs module: If the module is available in the running kernel: - Create a file with install cramfs /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist cramfs in the /etc/modprobe.d/ directory - Unload cramfs from the kernel If available in ANY installed kernel: - Create a file with blacklist cramfs in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"cramfs\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
+    compliance:
+      - cis: ["1.1.1.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:install /bin/false|Module cramfs not found'
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*cramfs'
+
   # 1.1.1.2 Ensure mounting of freevxfs filesystems is disabled. (Automated) - Not Implemented
   # 1.1.1.3 Ensure mounting of jffs2 filesystems is disabled. (Automated) - Not Implemented
   # 1.1.1.4 Ensure mounting of hfs filesystems is disabled. (Automated) - Not Implemented
   # 1.1.1.5 Ensure mounting of hfsplus filesystems is disabled. (Automated) - Not Implemented
-  # 1.1.1.6 Ensure mounting of squashfs filesystems is disabled. (Automated) - Not Implemented
-  # 1.1.1.7 Ensure mounting of udf filesystems is disabled. (Automated) - Not Implemented
+
+  # 1.1.1.6 Ensure mounting of squashfs filesystems is disabled. (Automated)
+  - id: 31005
+    title: "Ensure mounting of squashfs filesystems is disabled."
+    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: 'As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
+    remediation: "Run the following script to disable the squashfs module: If the module is available in the running kernel: - Create a file with install squashfs /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist squashfs in the /etc/modprobe.d/ directory - Unload squashfs from the kernel If available in ANY installed kernel: - Create a file with blacklist squashfs in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"squashfs\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
+    compliance:
+      - cis: ["1.1.1.6"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:install /bin/false|Module squashfs not found'
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*squashfs'
+
+  # 1.1.1.7 Ensure mounting of udf filesystems is disabled. (Automated)
+  - id: 31006
+    title: "Ensure mounting of udf filesystems is disabled."
+    description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
+    remediation: "Run the following script to disable the udf module: If the module is available in the running kernel: - Create a file with install udf /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist udf in the /etc/modprobe.d/ directory - Unload udf from the kernel If available in ANY installed kernel: - Create a file with blacklist udf in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"udf\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
+    compliance:
+      - cis: ["1.1.1.7"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:install /bin/false|Module udf not found'
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*udf'
 
   # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
   - id: 31007
@@ -665,7 +733,26 @@ checks:
       - "c: dpkg -s autofs -> r:package 'autofs' is not installed"
       - "c: systemctl is-enabled autofs -> r:No such file or directory|disabled"
 
-  # 1.1.10 Disable USB Storage. (Automated) - Not Implemented
+  # 1.1.10 Disable USB Storage. (Automated)
+  - id: 31033
+    title: "Disable USB Storage."
+    description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
+    rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
+    impact: "Disabling the usb-storage module will disable any usage of USB storage devices. If requirements and local site policy allow the use of such devices, other solutions should be configured accordingly instead. One example of a commonly used solution is USBGuard."
+    remediation: "Run the following script to disable the cramfs module: If the module is available in the running kernel: - Create a file with install usb-storage /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist usb-storage in the /etc/modprobe.d/ directory - Unload usb-storage from the kernel If available in ANY installed kernel: - Create a file with blacklist usb-storage in the /etc/modprobe.d/ directory If the kernel module is not available on the system: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"usb-storage\" # set module name l_mtype=\"drivers\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
+    compliance:
+      - cis: ["1.1.10"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["8.5", "13.7"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.12.2.1", "A.8.3.1"]
+      - mitre_mitigations: ["M1034"]
+      - mitre_tactics: ["TA0001", "TA0010"]
+      - mitre_techniques: ["T1052", "T1052.001", "T1091", "T1200"]
+    condition: all
+    rules:
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:install /bin/true'
 
   # 1.2.1 Ensure AIDE is installed. (Automated)
   - id: 31034
@@ -1099,11 +1186,101 @@ checks:
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r: unknown ok not-installed"
       - "c:dpkg -s gdm3 -> r: package 'gdm3' is not installed"
 
-  # 1.8.2 Ensure GDM login banner is configured. (Automated) - Not Implemented
-  # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated) - Not Implemented
-  # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated) - Not Implemented
+  # 1.8.2 Ensure GDM login banner is configured. (Automated)
+  - id: 31058
+    title: "Ensure GDM login banner is configured."
+    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
+    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
+    remediation: "Run the following script to verify that the banner message is enabled and set: #!/usr/bin/env bash { l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done if [ -n \"$l_pkgoutput\" ]; then l_gdmprofile=\"gdm\" # Set this to desired profile name IaW Local site policy l_bmessage=\"'Authorized uses only. All activity may be monitored and reported'\" # Set to desired banner message if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*banner-message-enable\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*; then l_kfile=\"/etc/dconf/db/$l_gdmprofile.d/01-banner-message\" echo -e \"\\n[org/gnome/login-screen]\\nbanner-message-enable=true\" >> \"$l_kfile\" else l_kfile=\"$(grep -Pil -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*)\" ! grep -Pq '^\\h*\\[org\\/gnome\\/login-screen\\]' \"$l_kfile\" && sed -ri '/^\\s*banner- message-enable/ i\\[org/gnome/login-screen]' \"$l_kfile\" ! grep -Pq '^\\h*banner-message-enable\\h*=\\h*true\\b' \"$l_kfile\" && sed -ri 's/^\\s*(banner-message-enable\\s*=\\s*)(\\S+)(\\s*.*$)/\\1true \\3//' \"$l_kfile\" # sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\\\nbanner-message-enable=true' \"$l_kfile\" fi fi if ! grep -Piq \"^\\h*banner-message-text=[\\'\\\"]+\\S+\" \"$l_kfile\"; then sed -ri \"/^\\s*banner-message-enable/ a\\banner-message-text=$l_bmessage\" \"$l_kfile\" fi dconf update else echo -e \"\\n\\n - GNOME Desktop Manager isn't installed\\n - Recommendation is Not Applicable\\n - No remediation required\\n\" fi } Note: - There is no character limit for the banner message. gnome-shell autodetects longer stretches of text and enters two column mode. - The banner message cannot be read from an external file. OR Run the following command to remove the gdm3 package: # apt purge gdm3."
+    references:
+      - "https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en"
+    compliance:
+      - cis: ["1.8.2"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
+
+  # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated)
+  - id: 31059
+    title: "Ensure GDM disable-user-list option is enabled."
+    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls if a list of users is displayed on the login screen."
+    rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
+    remediation: "Run the following script to enable the disable-user-list option: Note: the l_gdm_profile variable in the script can be changed if a different profile name is desired in accordance with local site policy. #!/usr/bin/env bash { l_gdmprofile=\"gdm\" if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*disable-user-list\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*\\[org\\/gnome\\/login-screen\\]' /etc/dconf/db/$l_gdmprofile.d/*; then echo -e \"\\n[org/gnome/login-screen]\\n# Do not show the user list\\ndisable-user-list=true\" >> /etc/dconf/db/$l_gdmprofile.d/00-login- screen else sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\# Do not show the user list\\ndisable-user-list=true' $(grep -Pil -- '^\\h*\\[org\\/gnome\\/login- screen\\]' /etc/dconf/db/$l_gdmprofile.d/*) fi fi dconf update } Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied. OR Run the following command to remove the GNOME package: # apt purge gdm3."
+    references:
+      - "https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-"
+    compliance:
+      - cis: ["1.8.3"]
+      - mitre_mitigations: ["M1028"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
+    condition: all
+    rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:disable-user-list=true'
+
+  # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated)
+  - id: 31060
+    title: "Ensure GDM screen locks when the user is idle."
+    description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. - idle-delay=uint32 {n} - Number of seconds of inactivity before the screen goes blank - lock-delay=uint32 {n} - Number of seconds after the screen is blank before locking the screen Example key file: # Specify the dconf path [org/gnome/desktop/session] # Number of seconds of inactivity before the screen goes blank # Set to 0 seconds if you want to deactivate the screensaver. idle-delay=uint32 900 # Specify the dconf path [org/gnome/desktop/screensaver] # Number of seconds after the screen is blank before locking the screen lock-delay=uint32 5."
+    rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended."
+    remediation: "Create or edit a file in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. Example: # echo -e '\\nuser-db:user\\nsystem-db:local' >> /etc/dconf/profile/user Create the directory /etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/ if it doesn't already exist: Example: # mkdir /etc/dconf/db/local.d Create the key file `/etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/{FILE_NAME} to provide information for the {NAME_OF_DCONF_DATABASE} database: Example script: #!/usr/bin/env bash { l_key_file=\"/etc/dconf/db/local.d/00-screensaver\" l_idmv=\"900\" # Set max value for idle-delay in seconds (between 1 and 900) l_ldmv=\"5\" # Set max value for lock-delay in seconds (between 0 and 5) { echo '# Specify the dconf path' echo '[org/gnome/desktop/session]' echo '' echo '# Number of seconds of inactivity before the screen goes blank' echo '# Set to 0 seconds if you want to deactivate the screensaver.' echo \"idle-delay=uint32 $l_idmv\" echo '' echo '# Specify the dconf path' echo '[org/gnome/desktop/screensaver]' echo '' echo '# Number of seconds after the screen is blank before locking the screen' echo \"lock-delay=uint32 $l_ldmv\" } > \"$l_key_file\" } Note: You must include the uint32 along with the integer key values as shown. Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
+    references:
+      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
+    compliance:
+      - cis: ["1.8.4"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - mitre_tactics: ["TA0027"]
+      - mitre_techniques: ["T1461"]
+      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - pci_dss_v3.2.1: ["8.1.8"]
+      - pci_dss_v4.0: ["8.2.8"]
+    condition: all
+    rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - 'd:/etc/dconf/db/local.d -> r:\.+ -> r:lock-delay=uint32'
+
   # 1.8.5 Ensure GDM screen locks cannot be overridden. (Automated) - Not Implemented
-  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled. (Automated) - Not Implemented
+
+  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled. (Automated)
+  - id: 31062
+    title: "Ensure GDM automatic mounting of removable media is disabled."
+    description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
+    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
+    impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
+    remediation: "Run the following script to disable automatic mounting of media for all GNOME users: #!/usr/bin/env bash { l_pkgoutput=\"\" l_output=\"\" l_output2=\"\" l_gpname=\"local\" # Set to desired dconf profile name (defaule is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done echo -e \"$l_packageout\" # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then echo -e \"$l_pkgoutput\" # Look for existing settings and set variables if they exist l_kfile=\"$(grep -Prils -- '^\\h*automount\\b' /etc/dconf/db/*.d)\" l_kfile2=\"$(grep -Prils -- '^\\h*automount-open\\b' /etc/dconf/db/*.d)\" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f \"$l_kfile\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" elif [ -f \"$l_kfile2\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" fi # check for consistency (Clean up configuration if needed) if [ -f \"$l_kfile\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount\\s*=/s/^/# /\" \"$l_kfile\" l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media-automount\" fi if [ -f \"$l_kfile2\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount-open\\s*=/s/^/# /\" \"$l_kfile2\" fi [ -z \"$l_kfile\" ] && l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media- automount\" # Check if profile file exists if grep -Pq -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*; then echo -e \"\\n - dconf database profile exists in: \\\"$(grep -Pl -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*)\\\"\" else [ ! -f \"/etc/dconf/profile/user\" ] && l_gpfile=\"/etc/dconf/profile/user\" || l_gpfile=\"/etc/dconf/profile/user2\" echo -e \" - creating dconf database profile\" { echo -e \"\\nuser-db:user\" echo \"system-db:$l_gpname\" } >> \"$l_gpfile\" fi # create dconf directory if it doesn't exists l_gpdir=\"/etc/dconf/db/$l_gpname.d\" if [ -d \"$l_gpdir\" ]; then echo \" - The dconf database directory \\\"$l_gpdir\\\" exists\" else echo \" - creating dconf database directory \\\"$l_gpdir\\\"\" mkdir \"$l_gpdir\" fi # check automount-open setting if grep -Pqs -- '^\\h*automount-open\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount-open\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount-open\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount-open=false' \"$l_kfile\" fi # check automount setting if grep -Pqs -- '^\\h*automount\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount=false' \"$l_kfile\" fi else echo -e \"\\n - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi # update dconf database dconf update } OR Run the following command to uninstall the GNOME desktop Manager package: # apt purge gdm3."
+    references:
+      - "https://access.redhat.com/solutions/20107"
+    compliance:
+      - cis: ["1.8.6"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["8.5"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.12.2.1"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_techniques: ["T1091"]
+    condition: all
+    rules:
+      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:^false"
+
   # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated) - Not Implemented
   # 1.8.8 Ensure GDM autorun-never is enabled. (Automated) - Not Implemented
   # 1.8.9 Ensure GDM autorun-never is not overridden. (Automated) - Not Implemented
