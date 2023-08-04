@@ -54,12 +54,14 @@ def run(args, resource_handler: rs.ResourceHandler):
 
     resource_handler.save_file(
         output_path, 'manifest.yml', manifest, rs.Format.YML)
+    
+    return 0
 
 
 def configure(subparsers):
     parser_generate_manifest = subparsers.add_parser(
         'generate-manifest', help='Generate the manifest file of all assets of the '
-        'currentintegration. Name of the integration is taken from the dname of the'
+        'currentintegration. Name of the integration is taken from the name of the'
         'directory used')
 
     parser_generate_manifest.add_argument('-p', '--output-path', type=str,
