@@ -48,16 +48,28 @@ All notable changes to this project will be documented in this file.
 
 ### Ruleset
 
+#### Changed
+
+- The SCA SCA policy for Ubuntu Linux 20.04 (CIS v2.0.0) has been remade. ([#17794](https://github.com/wazuh/wazuh/pull/17794))
+
 #### Fixed
 
 - Fixed CredSSP encryption enforcement at Windows Benchmarks for SCA. ([#17941](https://github.com/wazuh/wazuh/pull/17941))
 - Fixed an inverse logic in MS Windows Server 2022 Benchmark for SCA. ([#17940](https://github.com/wazuh/wazuh/pull/17940))
+- Fixed a false positive in Windows Eventchannel rule due to substring false positive. ([#17779](https://github.com/wazuh/wazuh/pull/17779))
+- Fixed missing whitespaces in SCA policies for Windows. ([#17813](https://github.com/wazuh/wazuh/pull/17813))
+- Fixed the description of a Fortigate rule. ([#17798](https://github.com/wazuh/wazuh/pull/17798))
+
+#### Removed
+
+- Removed check 1.1.5 from Windows 10 SCA policy. ([#17812](https://github.com/wazuh/wazuh/pull/17812))
 
 ### Other
 
 #### Changed
 
 - The CURL library has been updated to v7.88.1. ([#16990](https://github.com/wazuh/wazuh/pull/16990))
+
 
 ## [v4.5.0]
 
