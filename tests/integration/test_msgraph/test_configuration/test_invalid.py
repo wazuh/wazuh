@@ -106,8 +106,8 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
     assertions:
         - Verify that the 'ms-graph' module generates error events when invalid configurations are used.
 
-    input_description: A configuration template (ms-graph_integration) is contained in an external YAML file
-                       (wazuh_conf.yaml). That template is combined with different test cases defined in
+    input_description: A configuration template is contained in an external YAML file
+                       (config_invalid_configuration.yaml). That template is combined with different test cases defined in
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
