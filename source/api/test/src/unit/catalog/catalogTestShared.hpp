@@ -104,6 +104,16 @@ public:
 
         return base::Error {"error"};
     }
+
+    std::optional<base::Error> addUpdate(const base::Name& name, const json::Json& content) override
+    {
+        if (name.parts()[2] == successName.parts()[2])
+        {
+            return std::nullopt;
+        }
+
+        return base::Error {"error"};
+    }
 };
 
 class FakeValidator : public builder::IValidator
