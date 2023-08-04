@@ -448,6 +448,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     char ip_found = 0;
     int r;
     int recv_b = message->size;
+    int sock_idle = -1;
 
     /* Set the source IP */
     switch (message->addr.ss_family) {
@@ -526,7 +527,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
                 if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
-                    int sock_idle = keys.keyentries[agentid]->sock;
+                    sock_idle = keys.keyentries[agentid]->sock;
 
                     mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
 
@@ -534,8 +535,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     keys.keyentries[agentid]->sock = message->sock;
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-
-                    _close_sock(&keys, sock_idle);
                 } else {
                     mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
@@ -594,7 +593,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
                 if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
-                    int sock_idle = keys.keyentries[agentid]->sock;
+                    sock_idle = keys.keyentries[agentid]->sock;
 
                     mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
 
@@ -602,8 +601,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                     keys.keyentries[agentid]->sock = message->sock;
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-
-                    _close_sock(&keys, sock_idle);
                 } else {
                     mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
@@ -634,6 +631,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             _close_sock(&keys, message->sock);
         }
 
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
+        }
+
         rem_inc_recv_unknown();
         return;
     }
@@ -654,6 +655,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         if (message->sock >= 0) {
             mwarn("Decrypt the message fail, socket %d", message->sock);
             _close_sock(&keys, message->sock);
+        }
+
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
         }
 
         rem_inc_recv_unknown();
@@ -703,6 +708,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
         key_unlock();
 
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
+        }
+
         // The critical section for readers closes within this function
         save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
         rem_inc_recv_ctrl(key->id);
@@ -719,6 +728,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
 
     key_unlock();
+
+    if (sock_idle >= 0) {
+        _close_sock(&keys, sock_idle);
+    }
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
