@@ -69,6 +69,9 @@ class ResourceHandler:
             raise Exception(f'Failed to read {full_name}')
 
         return readed
+    
+    def delete_file(self, path: str):
+        Path(path).unlink()
 
     def download_file(self, url: str, format: Format = Format.YML) -> dict:
         file = requests.get(url)
@@ -186,9 +189,41 @@ class ResourceHandler:
 
         return exec.RecoverableTask(do_task, undo_task, info)
 
+    def get_update_catalog_task(self, path: str, type: str, name: str, content: str, format: Format = Format.YML) -> exec.RecoverableTask:
+        backup = self.get_catalog_file(path, type, name)['data']['content']
+        if backup == content:
+            return None
+
+        def do_task():
+            self.update_catalog_file(path, type, name, content, format)
+            return None
+        
+        def undo_task():
+            self.update_catalog_file(path, type, name, backup, format)
+            return None
+
+        info = f'Update {name} to catalog'
+
+        return exec.RecoverableTask(do_task, undo_task, info)
+
     def delete_catalog_file(self, path: str, type: str, name: str):
         self._base_catalog_command(path, type, name, [], format, 'delete')
 
+    def get_delete_catalog_file_task(self, path:str, type: str, name: str) -> exec.RecoverableTask:
+        backup = self.get_catalog_file(path, type, name, Format.JSON)['data']['content']
+
+        def do_task():
+            self.delete_catalog_file(path, type, name)
+            return None
+        
+        def undo_task():
+            self.add_catalog_file(path, type, name, backup, Format.JSON)
+            return None
+
+        info = f'Delete {name} from catalog'
+
+        return exec.RecoverableTask(do_task, undo_task, info)
+    
     def _base_catalog_get_command(self, path: str, type: str, name: str, format: Format) -> dict:
         format_str = ''
         # if command == 'get':
@@ -336,6 +371,9 @@ class ResourceHandler:
         info = f'Add KVDB {name}'
 
         return exec.RecoverableTask(do_task, undo_task, info)
+
+    def dump_kvdb(self, api_socket: str, name: str, path: str):
+        self._base_command_kvdb(api_socket, name, path, 'dump')
 
     def get_kvdb_list(self, api_socket: str):
         return self._base_command_kvdb(api_socket, '', '', 'get')

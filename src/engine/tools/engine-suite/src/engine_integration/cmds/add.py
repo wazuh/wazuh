@@ -2,9 +2,9 @@ import shared.resource_handler as rs
 import shared.executor as exec
 from pathlib import Path
 from .generate_manifest import run as gen_manifest
-import sys
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
+
 
 def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
@@ -18,69 +18,84 @@ def run(args, resource_handler: rs.ResourceHandler):
         else:
             print(f'Error: Directory does not exist ')
             return -1
-    
+
     integration_name = working_path.split('/')[-1]
 
     print(f'Adding integration from: {working_path}')
 
     # Load manifest, if it doesn't exists, it will be created with all the assets found
     manifest = dict()
-    gen_manifest = False
     integration_full_name = ''
     manifest_str = ''
     try:
         print(f'Loading manifest.yml...')
         manifest = resource_handler.load_file(working_path + '/manifest.yml')
         integration_full_name = manifest['name']
-        manifest_str = resource_handler.load_file(working_path + '/manifest.yml', rs.Format.TEXT)
+        manifest_str = resource_handler.load_file(
+            working_path + '/manifest.yml', rs.Format.TEXT)
     except Exception as e:
         print(f'Error: {e}')
         integration_full_name = 'integration/' + integration_name + '/0'
-        print(f'Generating manifest for {integration_full_name} with all the assets found in {working_path}')
-        gen_manifest = True    
+        print(
+            f'The manifest will be generated for {integration_full_name} with all the assets found in {working_path}')
+        # Generate manifest
+        try:
+            gen_args = {'output-path': working_path}
+            gen_manifest(gen_args, resource_handler)
+            manifest = resource_handler.load_file(
+                working_path + '/manifest.yml')
+            integration_full_name = manifest['name']
+            manifest_str = resource_handler.load_file(
+                working_path + '/manifest.yml', rs.Format.TEXT)
+        except Exception as e:
+            print(f'Error: {e}')
+            return -1
 
     # Check if integration exists, if so, then inform error
     if not args['dry-run']:
-        available_integration_assets = []
         try:
-            available_integration_assets = resource_handler.get_store_integration(api_socket, integration_name)
-            if available_integration_assets['data']['content']:
-                print(f'Error {integration_full_name} already exists in the catalog')
-                return -1
+            resource_handler.get_store_integration(
+                api_socket, integration_name)
+            print(
+                f'Error {integration_full_name} already exists in the catalog')
+            return -1
         except:
             pass
-    
+
     executor = exec.Executor()
 
     # Create tasks to add kvdbs
     path = Path(working_path) / 'kvdbs'
     if path.exists():
         for entry in path.rglob('*.json'):
-            recoverable_task = resource_handler.get_create_kvdb_task(api_socket, entry.stem, str(entry))
+            recoverable_task = resource_handler.get_create_kvdb_task(
+                api_socket, entry.stem, str(entry))
             executor.add(recoverable_task)
 
     # Create tasks to add decoders, rules, outputs and filters
     asset_type = ['decoders', 'rules', 'outputs', 'filters']
     for type_name in asset_type:
-        path = Path(working_path) / type_name
-        if path.exists():
-            for entry in path.rglob('*.yml'):
-                if entry.is_file():
-                    name, original = resource_handler.load_original_asset(entry)
-                   
-                    # Create task to add asset
-                    if gen_manifest or (type_name in manifest and name in manifest[type_name]):
-                        task = resource_handler.get_add_catalog_task(api_socket, name.split('/')[0], name, original)
-                        executor.add(task)
+        if type_name in manifest:
+            path = Path(working_path) / type_name
+            if path.exists():
+                for entry in path.rglob('*.yml'):
+                    if entry.is_file():
+                        try:
+                            name, original = resource_handler.load_original_asset(
+                                entry)
+                        except Exception as e:
+                            print(f'Error: {e}')
+                            return -1
 
-                    # Add to manifest
-                    if gen_manifest:
-                        if type_name not in manifest:
-                            manifest[type_name] = []
-                        manifest[type_name].append(name)
-    
+                        # Create task to add asset
+                        if name in manifest[type_name]:
+                            task = resource_handler.get_add_catalog_task(
+                                api_socket, name.split('/')[0], name, original)
+                            executor.add(task)
+
     # Create task to add integration
-    integration_task = resource_handler.get_add_catalog_task(api_socket, 'integration', integration_full_name, manifest_str)
+    integration_task = resource_handler.get_add_catalog_task(
+        api_socket, 'integration', integration_full_name, manifest_str)
     executor.add(integration_task)
 
     # Inform the user and execute the tasks
@@ -90,6 +105,9 @@ def run(args, resource_handler: rs.ResourceHandler):
     print('\nExecuting tasks...')
     executor.execute(args['dry-run'])
     print('\nDone')
+    if args['dry-run']:
+        print(
+            f'If you want to apply the changes, run again without the --dry-run flag')
 
 
 def configure(subparsers):
@@ -102,6 +120,6 @@ def configure(subparsers):
                             help=f'[default=current directory] Integration directory path')
 
     parser_add.add_argument('--dry-run', dest='dry-run', action='store_true',
-                               help=f'When set it will print all the steps to apply but wont affect the store')
+                            help=f'When set it will print all the steps to apply but wont affect the store')
 
     parser_add.set_defaults(func=run)
