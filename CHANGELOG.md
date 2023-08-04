@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed an error in the installation commands of the API and Framework modules when performing upgrades from sources. ([#17656](https://github.com/wazuh/wazuh/pull/17656))
+- Fixed embedded Python interpreter to remove old Wazuh packages from it. ([#18123](https://github.com/wazuh/wazuh/issues/18123))
 
 ### RESTful API
 
