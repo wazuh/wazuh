@@ -38,14 +38,22 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_provider_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
 // Mutex for router provider handle
-static pthread_mutex_t router_provider_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t router_rsync_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t router_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
+#define DBSYNC_SYSCOLLECTOR_HEADER "5:syscollector:"
+#define RSYNC_SYSCOLLECTOR_HEADER "d:syscollector:"
+#define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
+#define RSYNC_SYSCOLLECTOR_HEADER_SIZE 15
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -777,52 +785,69 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     }
 
     // Both syscollector delta and sync messages are sent to the router
-    if (tmp_msg[0] == SYSCOLLECTOR_MQ || tmp_msg[0] == DBSYNC_MQ) {
-        w_mutex_lock(&router_provider_mutex);
-        if (!router_provider_handle) {
-            if (router_provider_handle = router_provider_create("syscollector"), !router_provider_handle)
-            {
+    ROUTER_PROVIDER_HANDLE router_handle = NULL;
+    int message_header_size = 0;
+
+    if(strncmp(tmp_msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        w_mutex_lock(&router_syscollector_mutex);
+        if (!router_syscollector_handle) {
+            if (router_syscollector_handle = router_provider_create("syscollector"), !router_syscollector_handle) {
+                mdebug2("Failed to create router handle for 'syscollector'.");
+                w_mutex_unlock(&router_syscollector_mutex);
                 os_free(agentid_str);
-                mdebug2("Failed to create router provider handle.");
-                w_mutex_unlock(&router_provider_mutex);
                 return;
             }
         }
-
-        // We only send the JSON part of the message
-        char* msg_start = strchr(tmp_msg, '{');
-        if(msg_start) {
-            size_t msg_size = strlen(msg_start);
-            if(msg_size < OS_MAXSTR) {
-                msg_start[msg_size] = '\0';
-
-                cJSON* agent_info = cJSON_CreateObject();
-                cJSON_AddStringToObject(agent_info, "agent_id", keys.keyentries[agentid]->id);
-                cJSON_AddStringToObject(agent_info, "node_name", node_name);
-
-                cJSON* object= cJSON_CreateObject();
-                cJSON_AddItemToObject(object, "agent_info", agent_info);
-
-                char* str_agent_info = cJSON_PrintUnformatted(object);
-                if(str_agent_info) {
-                    size_t agent_info_size = strlen(str_agent_info);
-
-                    if((msg_size + agent_info_size) < OS_MAXSTR) {
-                        /* We need to replace the last '}' with a ',', that's why we begin in 'msg_start + msg_size - 1'.
-                           The first '{' of the agen info JSON is ommited, so we use 'str_agent_info + 1'.
-                        */
-                        snprintf(msg_start + msg_size - 1, agent_info_size + 1 , ",%s", str_agent_info + 1);
-                        msg_size += agent_info_size + 1;
-                        msg_start[msg_size] = '\0';
-                    }
-                }
-                router_provider_send(router_provider_handle, msg_start, msg_size + 1);
-
-                cJSON_Delete(object);
-                os_free(str_agent_info);
+        router_handle = router_syscollector_handle;
+        message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        w_mutex_unlock(&router_syscollector_mutex);
+    } else if(strncmp(tmp_msg, RSYNC_SYSCOLLECTOR_HEADER, RSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        w_mutex_lock(&router_rsync_mutex);
+        if (!router_rsync_handle) {
+            if (router_rsync_handle = router_provider_create("rsync"), !router_rsync_handle) {
+                mdebug2("Failed to create router handle for 'rsync'.");
+                w_mutex_unlock(&router_rsync_mutex);
+                os_free(agentid_str);
+                return;
             }
         }
-        w_mutex_unlock(&router_provider_mutex);
+        router_handle = router_rsync_handle;
+        message_header_size = RSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        w_mutex_unlock(&router_rsync_mutex);
+    }
+
+    if (router_handle != NULL) {
+        // We only send the JSON part of the message
+        char* msg_start = tmp_msg + message_header_size;
+        size_t msg_size = strnlen(msg_start, OS_MAXSTR);
+        if ((msg_size + message_header_size) < OS_MAXSTR) {
+            msg_start[msg_size] = '\0';
+
+            cJSON* agent_info = cJSON_CreateObject();
+            cJSON_AddStringToObject(agent_info, "agent_id", keys.keyentries[agentid]->id);
+            cJSON_AddStringToObject(agent_info, "node_name", node_name);
+
+            cJSON* object= cJSON_CreateObject();
+            cJSON_AddItemToObject(object, "agent_info", agent_info);
+
+            char* str_agent_info = cJSON_PrintUnformatted(object);
+            if(str_agent_info) {
+                size_t agent_info_size = strlen(str_agent_info);
+
+                if((msg_size + message_header_size + agent_info_size ) < OS_MAXSTR) {
+                    /* We need to replace the last '}' with a ',', that's why we begin in 'msg_start + msg_size - 1'.
+                        The first '{' of the agen info JSON is ommited, so we use 'str_agent_info + 1'.
+                    */
+                    snprintf(msg_start + msg_size - 1, agent_info_size + 1 , ",%s", str_agent_info + 1);
+                    msg_size += agent_info_size + 1;
+                    msg_start[msg_size] = '\0';
+                }
+            }
+            router_provider_send(router_handle, msg_start, msg_size + 1);
+
+            cJSON_Delete(object);
+            os_free(str_agent_info);
+        }
     }
 
     os_free(agentid_str);
