@@ -415,7 +415,7 @@ nlohmann::json SysInfo::getNetworks() const
 ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_t>& inodes)
 {
     ProcessInfo ret;
-    auto getProcessName = [](const std::string& filePath) -> std::string
+    auto getProcessName = [](const std::string & filePath) -> std::string
     {
         // Get stat file content.
         std::string processInfo { UNKNOWN_VALUE };
@@ -432,7 +432,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
         return processInfo;
     };
 
-    auto findInode = [](const std::string& filePath) -> int64_t
+    auto findInode = [](const std::string & filePath) -> int64_t
     {
         constexpr size_t MAX_LENGTH {256};
         char buffer[MAX_LENGTH];
