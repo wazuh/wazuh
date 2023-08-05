@@ -448,7 +448,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
         const auto closeBracketPos {bufferStr.find("]")};
         const auto match {bufferStr.substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1)};
 
-        return std::stoi(match);
+        return std::stoll(match);
     };
 
     if (Utils::existsDir(procPath))
