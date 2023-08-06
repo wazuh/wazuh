@@ -21,6 +21,7 @@ constexpr auto WM_SYS_IF_FILE {"/etc/network/interfaces"};
 constexpr auto WM_SYS_IF_DIR_RH {"/etc/sysconfig/network-scripts/"};
 constexpr auto WM_SYS_IF_DIR_SUSE {"/etc/sysconfig/network/"};
 constexpr auto WM_SYS_NET_DIR {"/proc/net/" };
+constexpr auto WM_SYS_PROC_DIR {"/proc/"};
 
 constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
