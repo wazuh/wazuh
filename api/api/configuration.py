@@ -86,8 +86,7 @@ default_api_configuration = {
         },
         "agents": {
             "allow_higher_versions": {
-                "allow": True,
-                "exceptions": []
+                "allow": True
             }
         }
     }

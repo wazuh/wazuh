@@ -199,8 +199,9 @@ api_config_schema = {
                             "type": "object",
                             "additionalProperties": False,
                             "properties": {
-                                "allow": {"type": "boolean"},
-                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                                "allow": {
+                                    "type": "boolean"
+                                }
                             },
                         }
                     }

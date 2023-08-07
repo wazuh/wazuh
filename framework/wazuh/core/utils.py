@@ -940,9 +940,8 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
             raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
-def check_agents_versions(data: str):
+def check_agents_allow_higher_versions(data: str):
     """Check if higher version agents are allowed.
-    If not, it will check if the agent version is in the list of exceptions.
 
     Parameters
     ----------
@@ -951,12 +950,12 @@ def check_agents_versions(data: str):
     """
     blocked_configurations = configuration.api_conf['upload_configuration']
 
-    def check_section(versions_regex, split_section):
+    def check_section(agents_regex, split_section):
         try:
-            for line in versions_regex.findall(data)[0].split(split_section):
-                versions_matches = re.match(r".*<version>(.*)</version>.*", line, flags=re.MULTILINE | re.DOTALL)
-                if versions_matches is None or (versions_matches.group(1) not in
-                         blocked_configurations['agents']['allow_higher_versions'].get('exceptions', [])):
+            for line in agents_regex.findall(data)[0].split(split_section):
+                tag_matches = re.match(r".*<allow_higher_versions>(.*)</allow_higher_versions>.*",
+                                            line, flags=re.MULTILINE | re.DOTALL)
+                if tag_matches and (tag_matches.group(1) == 'yes'):
                     raise WazuhError(1124)
         except IndexError:
             pass
@@ -1976,7 +1975,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
             with open(common.OSSEC_CONF, 'r') as f:
                 current_xml = f.read()
             check_wazuh_limits_unchanged(final_xml, current_xml)
-            check_agents_versions(final_xml)
+            check_agents_allow_higher_versions(final_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
     except ExpatError:
