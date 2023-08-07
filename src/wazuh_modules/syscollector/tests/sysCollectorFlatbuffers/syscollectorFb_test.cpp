@@ -17,73 +17,98 @@ constexpr auto SYNC_PMSG_TEST_PATH {"sync_pmsg.mom"};
 constexpr auto COMPONENT {"syscollector"};
 constexpr auto TYPE {"state"};
 
+const std::string package_fbs {SCHEMA_ROOT_PATH "package_synchronization.fbs"};
+
+const std::string hotfix_fbs {SCHEMA_ROOT_PATH "hotfix_synchronization.fbs"};
+
 void SyscollectorFbTest::SetUp() {};
 
 void SyscollectorFbTest::TearDown() {};
 
-TEST(SyscollectorFbTest, createBinaryHotfix)
+
+TEST(SyscollectorFbTest, packageJSONParserUnix)
 {
-    flatbuffers::FlatBufferBuilder builder;
 
-    auto component = builder.CreateString(COMPONENT);
-    auto type = builder.CreateString(TYPE);
+    const std::string alert_json =
+        "{\n  component: \"syscollector_packages\",\n  data: {\n    attributes: {\n      architecture: \"amd64\",\n      checksum: \"409378153d05da4d49900316be982e575cb2586b\",\n      description: \"GNU C++ compiler for MinGW-w64 targeting Win64\",\n      format: \"deb\",\n      groups: \"devel\",\n      item_id: \"65a25b9b9fe7cb173aa5cc36dc437d9875af8a8e\",\n      name: \"g++-mingw-w64-x86-64\",\n      priority: \"optional\",\n      scan_time: \"2023/07/25 00:22:55\",\n      size: 155993,\n      source: \"gcc-mingw-w64 (22~exp1ubuntu4)\",\n      vendor: \"Stephen Kitt <skitt@debian.org>\",\n      version: \"9.3.0-7ubuntu1+22~exp1ubuntu4\"\n    },\n    index: \"65a25b9b9fe7cb173aa5cc36dc437d9875af8a8e\",\n    timestamp: \"\"\n  },\n  type: \"state\"\n}\n";
 
-    auto checksum = builder.CreateString("md5sha1md5sha1");
-    auto hotfix = builder.CreateString("KBXXXXX");
-    auto scan_time = builder.CreateString("00");
+    flatbuffers::Parser parser;
+    std::string schemaFile;
 
-    auto data = CreateHotfixAttribute(builder, checksum, hotfix, scan_time);
+    bool loadSuccess = flatbuffers::LoadFile(package_fbs.c_str(), false, &schemaFile);
 
-    auto index = builder.CreateString("00");
-    auto timestamp = builder.CreateString("00/00/0000T00:00:00.000");
+    EXPECT_TRUE(loadSuccess);
 
-    auto hotfixData = CreateHotfixData(builder, data, index, timestamp);
+    bool parseSuccess = parser.Parse(schemaFile.c_str()) && parser.Parse(alert_json.c_str());
 
+    EXPECT_TRUE(parseSuccess);
 
-    auto sync_msg = CreateSyncMsg(builder, component, Data_HotfixData, hotfixData.Union(), type);
+    std::string json_gen;
 
-    builder.Finish(sync_msg);
+    bool genSuccess = GenText(parser, parser.builder_.GetBufferPointer(), &json_gen);
 
-    uint8_t* buf = builder.GetBufferPointer();
-    int size = builder.GetSize();
+    EXPECT_FALSE(genSuccess);
 
-    std::ofstream ofile(SYNC_HMSG_TEST_PATH, std::ios::binary);
-    ofile.write((char*)buf, size);
-    ofile.close();
+    EXPECT_STREQ(alert_json.c_str(), json_gen.c_str());
+
 }
 
-TEST(SyscollectorFbTest, readBinaryHotfix)
+TEST(SyscollectorFbTest, hotfixJSONParser)
 {
-    std::ifstream infile;
-    infile.open(SYNC_HMSG_TEST_PATH, std::ios::binary | std::ios::in);
-    infile.seekg(0, std::ios::end);
-    int length = infile.tellg();
-    infile.seekg(0, std::ios::beg);
-    char* raw_data = new char[length];
-    infile.read(raw_data, length);
-    infile.close();
+    const std::string alert_json =
+        "{\n  component: \"syscollector_hotfixes\",\n  data: {\n    attributes: {\n      checksum: \"5cfcee837ce896ef9229da1064b2844439ff3cc6\",\n      hotfix: \"KB5026037\",\n      scan_time: \"2023/08/04 09:55:48\"\n    },\n    index: \"KB5026037\",\n    timestamp: \"\"\n  },\n  type: \"state\"\n}\n";
 
-    auto sync_msg = GetSyncMsg(raw_data);
+    flatbuffers::Parser parser;
+    std::string schemaFile;
 
-    EXPECT_STREQ(sync_msg->component()->c_str(), COMPONENT);
-    EXPECT_STREQ(sync_msg->type()->c_str(), TYPE);
-    EXPECT_EQ(sync_msg->data_type(), Data_HotfixData);
+    bool loadSuccess = flatbuffers::LoadFile(hotfix_fbs.c_str(), false, &schemaFile);
 
-    auto data = static_cast<const HotfixData*>(sync_msg->data());
+    EXPECT_TRUE(loadSuccess);
 
-    EXPECT_STREQ(data->index()->c_str(), "00");
-    EXPECT_STREQ(data->timestamp()->c_str(), "00/00/0000T00:00:00.000");
-    EXPECT_STREQ(data->data()->checksum()->c_str(), "md5sha1md5sha1");
-    EXPECT_STREQ(data->data()->hotfix()->c_str(), "KBXXXXX");
-    EXPECT_STREQ(data->data()->scan_time()->c_str(), "00");
+    bool parseSuccess = parser.Parse(schemaFile.c_str()) && parser.Parse(alert_json.c_str());
 
-    std::remove(SYNC_HMSG_TEST_PATH);
-    delete []raw_data;
+    EXPECT_TRUE(parseSuccess);
+
+    std::string json_gen;
+
+    bool genSuccess = GenText(parser, parser.builder_.GetBufferPointer(), &json_gen);
+
+    EXPECT_FALSE(genSuccess);
+
+    EXPECT_STREQ(alert_json.c_str(), json_gen.c_str());
+
+}
+
+TEST(SyscollectorFbTest, packageJSONParserWin)
+{
+    const std::string alert_json =
+        "{\n  component: \"syscollector_packages\",\n  data: {\n    attributes: {\n      architecture: \"\",\n      checksum: \"9141d4744f95aad5db1cf8cf17c33c2f7dffed40\",\n      format: \"win\",\n      install_time: \"20230804\",\n      item_id: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n      name: \"Microsoft Edge WebView2 Runtime\",\n      location: \"C:Windows \",\n      scan_time: \"2023/07/25 00:22:55\",\n      vendor: \"Microsoft Corporation\",\n      version: \"115.0.1901.188\"\n    },\n    index: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n    timestamp: \"\"\n  },\n  type: \"state\"\n}\n";
+
+    flatbuffers::Parser parser;
+    std::string schemaFile;
+
+    bool loadSuccess = flatbuffers::LoadFile(package_fbs.c_str(), false, &schemaFile);
+
+    EXPECT_TRUE(loadSuccess);
+
+    bool parseSuccess = parser.Parse(schemaFile.c_str()) && parser.Parse(alert_json.c_str());
+
+    EXPECT_TRUE(parseSuccess);
+
+    std::string json_gen;
+
+    bool genSuccess = GenText(parser, parser.builder_.GetBufferPointer(), &json_gen);
+
+    EXPECT_FALSE(genSuccess);
+
+    EXPECT_STREQ(alert_json.c_str(), json_gen.c_str());
+
 }
 
 TEST(SyscollectorFbTest, createBinaryPackageUnix)
 {
     flatbuffers::FlatBufferBuilder builder;
+    std::ifstream infile;
 
     auto component = builder.CreateString(COMPONENT);
     auto type = builder.CreateString(TYPE);
@@ -105,33 +130,33 @@ TEST(SyscollectorFbTest, createBinaryPackageUnix)
     auto vendor = builder.CreateString("wazuh");
     auto version = builder.CreateString("v1");
 
-    auto data = CreatePackageAttribute(
-                    builder,
-                    architecture,
-                    checksum,
-                    description,
-                    format,
-                    install_time,
-                    groups,
-                    item_id,
-                    multiarch,
-                    name,
-                    location,
-                    priority,
-                    scan_time,
-                    size_attr,
-                    source,
-                    vendor,
-                    version);
+    auto attributes = CreatePackageAttribute(
+                          builder,
+                          architecture,
+                          checksum,
+                          description,
+                          format,
+                          install_time,
+                          groups,
+                          item_id,
+                          multiarch,
+                          name,
+                          location,
+                          priority,
+                          scan_time,
+                          size_attr,
+                          source,
+                          vendor,
+                          version);
 
     auto index = builder.CreateString("00");
     auto timestamp = builder.CreateString("00/00/0000T00:00:00.000");
 
-    auto packageData = CreatePackageData(builder, data, index, timestamp);
+    auto packageData = CreatePackageData(builder, attributes, index, timestamp);
 
-    auto sync_msg = CreateSyncMsg(builder, component, Data_PackageData, packageData.Union(), type);
+    auto sync_msg_w = CreateSyncMsgPkg(builder, component, packageData, type);
 
-    builder.Finish(sync_msg);
+    builder.Finish(sync_msg_w);
 
     uint8_t* buf = builder.GetBufferPointer();
     int size = builder.GetSize();
@@ -139,11 +164,7 @@ TEST(SyscollectorFbTest, createBinaryPackageUnix)
     std::ofstream ofile(SYNC_PMSG_TEST_PATH, std::ios::binary);
     ofile.write((char*)buf, size);
     ofile.close();
-}
 
-TEST(SyscollectorFbTest, readBinaryPackageUnix)
-{
-    std::ifstream infile;
     infile.open(SYNC_PMSG_TEST_PATH, std::ios::binary | std::ios::in);
     infile.seekg(0, std::ios::end);
     int length = infile.tellg();
@@ -152,40 +173,37 @@ TEST(SyscollectorFbTest, readBinaryPackageUnix)
     infile.read(raw_data, length);
     infile.close();
 
-    auto sync_msg = GetSyncMsg(raw_data);
+    auto sync_msg_r = GetSyncMsgPkg(raw_data);
 
-    EXPECT_STREQ(sync_msg->component()->c_str(), COMPONENT);
-    EXPECT_STREQ(sync_msg->type()->c_str(), TYPE);
-    EXPECT_EQ(sync_msg->data_type(), Data_PackageData);
-
-    auto data = static_cast<const PackageData*>(sync_msg->data());
-
-    EXPECT_STREQ(data->index()->c_str(), "00");
-    EXPECT_STREQ(data->timestamp()->c_str(), "00/00/0000T00:00:00.000");
-    EXPECT_STREQ(data->data()->architecture()->c_str(), "x86");
-    EXPECT_STREQ(data->data()->checksum()->c_str(), "md5sha1md5sha1");
-    EXPECT_STREQ(data->data()->description()->c_str(), "Nice");
-    EXPECT_STREQ(data->data()->format()->c_str(), "UTF-8");
-    EXPECT_STREQ(data->data()->install_time()->c_str(), "");
-    EXPECT_STREQ(data->data()->groups()->c_str(), "wazuh");
-    EXPECT_STREQ(data->data()->item_id()->c_str(), "00");
-    EXPECT_STREQ(data->data()->multiarch()->c_str(), "yes");
-    EXPECT_STREQ(data->data()->name()->c_str(), "NicePackage");
-    EXPECT_STREQ(data->data()->location()->c_str(), "\\home");
-    EXPECT_STREQ(data->data()->priority()->c_str(), "01");
-    EXPECT_STREQ(data->data()->scan_time()->c_str(), "00/00/0000T00:00:00.000");
-    EXPECT_EQ(data->data()->size(), 1);
-    EXPECT_STREQ(data->data()->source()->c_str(), "wazuh");
-    EXPECT_STREQ(data->data()->vendor()->c_str(), "wazuh");
-    EXPECT_STREQ(data->data()->version()->c_str(), "v1");
+    EXPECT_STREQ(sync_msg_r->component()->c_str(), COMPONENT);
+    EXPECT_STREQ(sync_msg_r->type()->c_str(), TYPE);
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->architecture()->c_str(), "x86");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->checksum()->c_str(), "md5sha1md5sha1");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->description()->c_str(), "Nice");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->format()->c_str(), "UTF-8");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->install_time()->c_str(), "");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->groups()->c_str(), "wazuh");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->item_id()->c_str(), "00");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->multiarch()->c_str(), "yes");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->name()->c_str(), "NicePackage");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->location()->c_str(), "\\home");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->priority()->c_str(), "01");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->scan_time()->c_str(), "00/00/0000T00:00:00.000");
+    EXPECT_EQ(sync_msg_r->data()->attributes()->size(), 1);
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->source()->c_str(), "wazuh");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->vendor()->c_str(), "wazuh");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->version()->c_str(), "v1");
+    EXPECT_STREQ(sync_msg_r->data()->index()->c_str(), "00");
+    EXPECT_STREQ(sync_msg_r->data()->timestamp()->c_str(), "00/00/0000T00:00:00.000");
 
     std::remove(SYNC_PMSG_TEST_PATH);
     delete []raw_data;
 }
 
-TEST(SyscollectorFbTest, createBinaryPackageWindows)
+TEST(SyscollectorFbTest, createBinaryPackageWin)
 {
     flatbuffers::FlatBufferBuilder builder;
+    std::ifstream infile;
 
     auto component = builder.CreateString(COMPONENT);
     auto type = builder.CreateString(TYPE);
@@ -207,33 +225,33 @@ TEST(SyscollectorFbTest, createBinaryPackageWindows)
     auto vendor = builder.CreateString("wazuh");
     auto version = builder.CreateString("v1");
 
-    auto data = CreatePackageAttribute(
-                    builder,
-                    architecture,
-                    checksum,
-                    description,
-                    format,
-                    install_time,
-                    groups,
-                    item_id,
-                    multiarch,
-                    name,
-                    location,
-                    priority,
-                    scan_time,
-                    size_attr,
-                    source,
-                    vendor,
-                    version);
+    auto attributes = CreatePackageAttribute(
+                          builder,
+                          architecture,
+                          checksum,
+                          description,
+                          format,
+                          install_time,
+                          groups,
+                          item_id,
+                          multiarch,
+                          name,
+                          location,
+                          priority,
+                          scan_time,
+                          size_attr,
+                          source,
+                          vendor,
+                          version);
 
     auto index = builder.CreateString("00");
     auto timestamp = builder.CreateString("00/00/0000T00:00:00.000");
 
-    auto packageData = CreatePackageData(builder, data, index, timestamp);
+    auto packageData = CreatePackageData(builder, attributes, index, timestamp);
 
-    auto sync_msg = CreateSyncMsg(builder, component, Data_PackageData, packageData.Union(), type);
+    auto sync_msg_w = CreateSyncMsgPkg(builder, component, packageData, type);
 
-    builder.Finish(sync_msg);
+    builder.Finish(sync_msg_w);
 
     uint8_t* buf = builder.GetBufferPointer();
     int size = builder.GetSize();
@@ -241,11 +259,8 @@ TEST(SyscollectorFbTest, createBinaryPackageWindows)
     std::ofstream ofile(SYNC_PMSG_TEST_PATH, std::ios::binary);
     ofile.write((char*)buf, size);
     ofile.close();
-}
 
-TEST(SyscollectorFbTest, readBinaryPackageWindows)
-{
-    std::ifstream infile;
+
     infile.open(SYNC_PMSG_TEST_PATH, std::ios::binary | std::ios::in);
     infile.seekg(0, std::ios::end);
     int length = infile.tellg();
@@ -254,33 +269,83 @@ TEST(SyscollectorFbTest, readBinaryPackageWindows)
     infile.read(raw_data, length);
     infile.close();
 
-    auto sync_msg = GetSyncMsg(raw_data);
+    auto sync_msg_r = GetSyncMsgPkg(raw_data);
 
-    EXPECT_STREQ(sync_msg->component()->c_str(), COMPONENT);
-    EXPECT_STREQ(sync_msg->type()->c_str(), TYPE);
-    EXPECT_EQ(sync_msg->data_type(), Data_PackageData);
-
-    auto data = static_cast<const PackageData*>(sync_msg->data());
-
-    EXPECT_STREQ(data->index()->c_str(), "00");
-    EXPECT_STREQ(data->timestamp()->c_str(), "00/00/0000T00:00:00.000");
-    EXPECT_STREQ(data->data()->architecture()->c_str(), "x86");
-    EXPECT_STREQ(data->data()->checksum()->c_str(), "md5sha1md5sha1");
-    EXPECT_STREQ(data->data()->description()->c_str(), "");
-    EXPECT_STREQ(data->data()->format()->c_str(), "UTF-8");
-    EXPECT_STREQ(data->data()->install_time()->c_str(), "00/00/0000T00:00:00.000");
-    EXPECT_STREQ(data->data()->groups()->c_str(), "");
-    EXPECT_STREQ(data->data()->item_id()->c_str(), "00");
-    EXPECT_STREQ(data->data()->multiarch()->c_str(), "");
-    EXPECT_STREQ(data->data()->name()->c_str(), "NicePackage");
-    EXPECT_STREQ(data->data()->location()->c_str(), "\\home");
-    EXPECT_STREQ(data->data()->priority()->c_str(), "");
-    EXPECT_STREQ(data->data()->scan_time()->c_str(), "00/00/0000T00:00:00.000");
-    EXPECT_EQ(data->data()->size(), 0);
-    EXPECT_STREQ(data->data()->source()->c_str(), "wazuh");
-    EXPECT_STREQ(data->data()->vendor()->c_str(), "wazuh");
-    EXPECT_STREQ(data->data()->version()->c_str(), "v1");
+    EXPECT_STREQ(sync_msg_r->component()->c_str(), COMPONENT);
+    EXPECT_STREQ(sync_msg_r->type()->c_str(), TYPE);
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->architecture()->c_str(), "x86");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->checksum()->c_str(), "md5sha1md5sha1");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->description()->c_str(), "");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->format()->c_str(), "UTF-8");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->install_time()->c_str(), "00/00/0000T00:00:00.000");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->groups()->c_str(), "");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->item_id()->c_str(), "00");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->multiarch()->c_str(), "");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->name()->c_str(), "NicePackage");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->location()->c_str(), "\\home");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->priority()->c_str(), "");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->scan_time()->c_str(), "00/00/0000T00:00:00.000");
+    EXPECT_EQ(sync_msg_r->data()->attributes()->size(), 0);
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->source()->c_str(), "wazuh");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->vendor()->c_str(), "wazuh");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->version()->c_str(), "v1");
+    EXPECT_STREQ(sync_msg_r->data()->index()->c_str(), "00");
+    EXPECT_STREQ(sync_msg_r->data()->timestamp()->c_str(), "00/00/0000T00:00:00.000");
 
     std::remove(SYNC_PMSG_TEST_PATH);
+    delete []raw_data;
+}
+
+TEST(SyscollectorFbTest, createBinaryHotfix)
+{
+    flatbuffers::FlatBufferBuilder builder;
+    std::ifstream infile;
+
+
+    auto component = builder.CreateString(COMPONENT);
+    auto type = builder.CreateString(TYPE);
+
+    auto checksum = builder.CreateString("md5sha1md5sha1");
+    auto hotfix = builder.CreateString("KBXXXXX");
+    auto scan_time = builder.CreateString("00");
+
+    auto attributes = CreateHotfixAttribute(builder, checksum, hotfix, scan_time);
+
+    auto index = builder.CreateString("00");
+    auto timestamp = builder.CreateString("00/00/0000T00:00:00.000");
+
+    auto data = CreateHotfixData(builder, attributes, index, timestamp);
+
+
+    auto sync_msg_w = CreateSyncMsgHtx(builder, component, data, type);
+
+    builder.Finish(sync_msg_w);
+
+    uint8_t* buf = builder.GetBufferPointer();
+    int size = builder.GetSize();
+
+    std::ofstream ofile(SYNC_HMSG_TEST_PATH, std::ios::binary);
+    ofile.write((char*)buf, size);
+    ofile.close();
+
+    infile.open(SYNC_HMSG_TEST_PATH, std::ios::binary | std::ios::in);
+    infile.seekg(0, std::ios::end);
+    int length = infile.tellg();
+    infile.seekg(0, std::ios::beg);
+    char* raw_data = new char[length];
+    infile.read(raw_data, length);
+    infile.close();
+
+    auto sync_msg_r = GetSyncMsgHtx(raw_data);
+
+    EXPECT_STREQ(sync_msg_r->component()->c_str(), COMPONENT);
+    EXPECT_STREQ(sync_msg_r->type()->c_str(), TYPE);
+    EXPECT_STREQ(sync_msg_r->data()->index()->c_str(), "00");
+    EXPECT_STREQ(sync_msg_r->data()->timestamp()->c_str(), "00/00/0000T00:00:00.000");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->checksum()->c_str(), "md5sha1md5sha1");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->hotfix()->c_str(), "KBXXXXX");
+    EXPECT_STREQ(sync_msg_r->data()->attributes()->scan_time()->c_str(), "00");
+
+    std::remove(SYNC_HMSG_TEST_PATH);
     delete []raw_data;
 }

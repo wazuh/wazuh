@@ -11,12 +11,16 @@
 #ifndef _SYSCOLLECTOR_FB_TEST_H
 #define _SYSCOLLECTOR_FB_TEST_H
 #include "flatbuffers/flatbuffers.h"
-#include "synchronization_generated.h"
+#include "flatbuffers/idl.h"
+#include "flatbuffers/util.h"
+#include "../../include/package_synchronization_generated.h"
+#include "../../include/hotfix_synchronization_generated.h"
 #include <fstream>
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-using namespace Syscollector::SyncMessage;
+using namespace Syscollector::SyncPackageMessage;
+using namespace Syscollector::SyncHotfixMessage;
 
 class SyscollectorFbTest : public ::testing::Test
 {
