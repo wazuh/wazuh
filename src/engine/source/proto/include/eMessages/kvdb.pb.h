@@ -66,6 +66,12 @@ extern dbGet_ResponseDefaultTypeInternal _dbGet_Response_default_instance_;
 class dbPut_Request;
 struct dbPut_RequestDefaultTypeInternal;
 extern dbPut_RequestDefaultTypeInternal _dbPut_Request_default_instance_;
+class dbSearch_Request;
+struct dbSearch_RequestDefaultTypeInternal;
+extern dbSearch_RequestDefaultTypeInternal _dbSearch_Request_default_instance_;
+class dbSearch_Response;
+struct dbSearch_ResponseDefaultTypeInternal;
+extern dbSearch_ResponseDefaultTypeInternal _dbSearch_Response_default_instance_;
 class managerDelete_Request;
 struct managerDelete_RequestDefaultTypeInternal;
 extern managerDelete_RequestDefaultTypeInternal _managerDelete_Request_default_instance_;
@@ -95,6 +101,8 @@ template<> ::com::wazuh::api::engine::kvdb::dbDelete_Request* Arena::CreateMaybe
 template<> ::com::wazuh::api::engine::kvdb::dbGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::dbGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::kvdb::dbGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::dbGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::kvdb::dbPut_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::dbPut_Request>(Arena*);
+template<> ::com::wazuh::api::engine::kvdb::dbSearch_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::dbSearch_Request>(Arena*);
+template<> ::com::wazuh::api::engine::kvdb::dbSearch_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::dbSearch_Response>(Arena*);
 template<> ::com::wazuh::api::engine::kvdb::managerDelete_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::managerDelete_Request>(Arena*);
 template<> ::com::wazuh::api::engine::kvdb::managerDump_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::managerDump_Request>(Arena*);
 template<> ::com::wazuh::api::engine::kvdb::managerDump_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::kvdb::managerDump_Response>(Arena*);
@@ -655,6 +663,373 @@ class dbGet_Response final :
 };
 // -------------------------------------------------------------------
 
+class dbSearch_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.kvdb.dbSearch_Request) */ {
+ public:
+  inline dbSearch_Request() : dbSearch_Request(nullptr) {}
+  ~dbSearch_Request() override;
+  explicit PROTOBUF_CONSTEXPR dbSearch_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  dbSearch_Request(const dbSearch_Request& from);
+  dbSearch_Request(dbSearch_Request&& from) noexcept
+    : dbSearch_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline dbSearch_Request& operator=(const dbSearch_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline dbSearch_Request& operator=(dbSearch_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const dbSearch_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const dbSearch_Request* internal_default_instance() {
+    return reinterpret_cast<const dbSearch_Request*>(
+               &_dbSearch_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    3;
+
+  friend void swap(dbSearch_Request& a, dbSearch_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(dbSearch_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(dbSearch_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  dbSearch_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<dbSearch_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const dbSearch_Request& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const dbSearch_Request& from) {
+    dbSearch_Request::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(dbSearch_Request* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.kvdb.dbSearch_Request";
+  }
+  protected:
+  explicit dbSearch_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kNameFieldNumber = 1,
+    kPrefixFieldNumber = 2,
+  };
+  // optional string name = 1;
+  bool has_name() const;
+  private:
+  bool _internal_has_name() const;
+  public:
+  void clear_name();
+  const std::string& name() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_name(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_name();
+  PROTOBUF_NODISCARD std::string* release_name();
+  void set_allocated_name(std::string* name);
+  private:
+  const std::string& _internal_name() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
+  std::string* _internal_mutable_name();
+  public:
+
+  // optional string prefix = 2;
+  bool has_prefix() const;
+  private:
+  bool _internal_has_prefix() const;
+  public:
+  void clear_prefix();
+  const std::string& prefix() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_prefix(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_prefix();
+  PROTOBUF_NODISCARD std::string* release_prefix();
+  void set_allocated_prefix(std::string* prefix);
+  private:
+  const std::string& _internal_prefix() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_prefix(const std::string& value);
+  std::string* _internal_mutable_prefix();
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.kvdb.dbSearch_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr prefix_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_kvdb_2eproto;
+};
+// -------------------------------------------------------------------
+
+class dbSearch_Response final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.kvdb.dbSearch_Response) */ {
+ public:
+  inline dbSearch_Response() : dbSearch_Response(nullptr) {}
+  ~dbSearch_Response() override;
+  explicit PROTOBUF_CONSTEXPR dbSearch_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  dbSearch_Response(const dbSearch_Response& from);
+  dbSearch_Response(dbSearch_Response&& from) noexcept
+    : dbSearch_Response() {
+    *this = ::std::move(from);
+  }
+
+  inline dbSearch_Response& operator=(const dbSearch_Response& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline dbSearch_Response& operator=(dbSearch_Response&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const dbSearch_Response& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const dbSearch_Response* internal_default_instance() {
+    return reinterpret_cast<const dbSearch_Response*>(
+               &_dbSearch_Response_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    4;
+
+  friend void swap(dbSearch_Response& a, dbSearch_Response& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(dbSearch_Response* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(dbSearch_Response* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  dbSearch_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<dbSearch_Response>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const dbSearch_Response& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const dbSearch_Response& from) {
+    dbSearch_Response::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(dbSearch_Response* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.kvdb.dbSearch_Response";
+  }
+  protected:
+  explicit dbSearch_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kEntriesFieldNumber = 3,
+    kErrorFieldNumber = 2,
+    kStatusFieldNumber = 1,
+  };
+  // repeated .com.wazuh.api.engine.kvdb.Entry entries = 3;
+  int entries_size() const;
+  private:
+  int _internal_entries_size() const;
+  public:
+  void clear_entries();
+  ::com::wazuh::api::engine::kvdb::Entry* mutable_entries(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::kvdb::Entry >*
+      mutable_entries();
+  private:
+  const ::com::wazuh::api::engine::kvdb::Entry& _internal_entries(int index) const;
+  ::com::wazuh::api::engine::kvdb::Entry* _internal_add_entries();
+  public:
+  const ::com::wazuh::api::engine::kvdb::Entry& entries(int index) const;
+  ::com::wazuh::api::engine::kvdb::Entry* add_entries();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::kvdb::Entry >&
+      entries() const;
+
+  // optional string error = 2;
+  bool has_error() const;
+  private:
+  bool _internal_has_error() const;
+  public:
+  void clear_error();
+  const std::string& error() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_error(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error();
+  PROTOBUF_NODISCARD std::string* release_error();
+  void set_allocated_error(std::string* error);
+  private:
+  const std::string& _internal_error() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
+  std::string* _internal_mutable_error();
+  public:
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  void clear_status();
+  ::com::wazuh::api::engine::ReturnStatus status() const;
+  void set_status(::com::wazuh::api::engine::ReturnStatus value);
+  private:
+  ::com::wazuh::api::engine::ReturnStatus _internal_status() const;
+  void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.kvdb.dbSearch_Response)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::kvdb::Entry > entries_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    int status_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_kvdb_2eproto;
+};
+// -------------------------------------------------------------------
+
 class dbDelete_Request final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.kvdb.dbDelete_Request) */ {
  public:
@@ -703,7 +1078,7 @@ class dbDelete_Request final :
                &_dbDelete_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    3;
+    5;
 
   friend void swap(dbDelete_Request& a, dbDelete_Request& b) {
     a.Swap(&b);
@@ -881,7 +1256,7 @@ class dbPut_Request final :
                &_dbPut_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    4;
+    6;
 
   friend void swap(dbPut_Request& a, dbPut_Request& b) {
     a.Swap(&b);
@@ -1059,7 +1434,7 @@ class managerGet_Request final :
                &_managerGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    5;
+    7;
 
   friend void swap(managerGet_Request& a, managerGet_Request& b) {
     a.Swap(&b);
@@ -1228,7 +1603,7 @@ class managerGet_Response final :
                &_managerGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    6;
+    8;
 
   friend void swap(managerGet_Response& a, managerGet_Response& b) {
     a.Swap(&b);
@@ -1423,7 +1798,7 @@ class managerPost_Request final :
                &_managerPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    7;
+    9;
 
   friend void swap(managerPost_Request& a, managerPost_Request& b) {
     a.Swap(&b);
@@ -1601,7 +1976,7 @@ class managerDelete_Request final :
                &_managerDelete_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    10;
 
   friend void swap(managerDelete_Request& a, managerDelete_Request& b) {
     a.Swap(&b);
@@ -1759,7 +2134,7 @@ class managerDump_Request final :
                &_managerDump_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    11;
 
   friend void swap(managerDump_Request& a, managerDump_Request& b) {
     a.Swap(&b);
@@ -1917,7 +2292,7 @@ class managerDump_Response final :
                &_managerDump_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    12;
 
   friend void swap(managerDump_Response& a, managerDump_Response& b) {
     a.Swap(&b);
@@ -2539,6 +2914,278 @@ inline void dbGet_Response::set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* 
   }
   _impl_.value_ = value;
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.kvdb.dbGet_Response.value)
+}
+
+// -------------------------------------------------------------------
+
+// dbSearch_Request
+
+// optional string name = 1;
+inline bool dbSearch_Request::_internal_has_name() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool dbSearch_Request::has_name() const {
+  return _internal_has_name();
+}
+inline void dbSearch_Request::clear_name() {
+  _impl_.name_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const std::string& dbSearch_Request::name() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.dbSearch_Request.name)
+  return _internal_name();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void dbSearch_Request::set_name(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.kvdb.dbSearch_Request.name)
+}
+inline std::string* dbSearch_Request::mutable_name() {
+  std::string* _s = _internal_mutable_name();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.kvdb.dbSearch_Request.name)
+  return _s;
+}
+inline const std::string& dbSearch_Request::_internal_name() const {
+  return _impl_.name_.Get();
+}
+inline void dbSearch_Request::_internal_set_name(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.name_.Set(value, GetArenaForAllocation());
+}
+inline std::string* dbSearch_Request::_internal_mutable_name() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  return _impl_.name_.Mutable(GetArenaForAllocation());
+}
+inline std::string* dbSearch_Request::release_name() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.kvdb.dbSearch_Request.name)
+  if (!_internal_has_name()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.name_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void dbSearch_Request::set_allocated_name(std::string* name) {
+  if (name != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.kvdb.dbSearch_Request.name)
+}
+
+// optional string prefix = 2;
+inline bool dbSearch_Request::_internal_has_prefix() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool dbSearch_Request::has_prefix() const {
+  return _internal_has_prefix();
+}
+inline void dbSearch_Request::clear_prefix() {
+  _impl_.prefix_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& dbSearch_Request::prefix() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.dbSearch_Request.prefix)
+  return _internal_prefix();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void dbSearch_Request::set_prefix(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.prefix_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.kvdb.dbSearch_Request.prefix)
+}
+inline std::string* dbSearch_Request::mutable_prefix() {
+  std::string* _s = _internal_mutable_prefix();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.kvdb.dbSearch_Request.prefix)
+  return _s;
+}
+inline const std::string& dbSearch_Request::_internal_prefix() const {
+  return _impl_.prefix_.Get();
+}
+inline void dbSearch_Request::_internal_set_prefix(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.prefix_.Set(value, GetArenaForAllocation());
+}
+inline std::string* dbSearch_Request::_internal_mutable_prefix() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.prefix_.Mutable(GetArenaForAllocation());
+}
+inline std::string* dbSearch_Request::release_prefix() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.kvdb.dbSearch_Request.prefix)
+  if (!_internal_has_prefix()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.prefix_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.prefix_.IsDefault()) {
+    _impl_.prefix_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void dbSearch_Request::set_allocated_prefix(std::string* prefix) {
+  if (prefix != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.prefix_.SetAllocated(prefix, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.prefix_.IsDefault()) {
+    _impl_.prefix_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.kvdb.dbSearch_Request.prefix)
+}
+
+// -------------------------------------------------------------------
+
+// dbSearch_Response
+
+// .com.wazuh.api.engine.ReturnStatus status = 1;
+inline void dbSearch_Response::clear_status() {
+  _impl_.status_ = 0;
+}
+inline ::com::wazuh::api::engine::ReturnStatus dbSearch_Response::_internal_status() const {
+  return static_cast< ::com::wazuh::api::engine::ReturnStatus >(_impl_.status_);
+}
+inline ::com::wazuh::api::engine::ReturnStatus dbSearch_Response::status() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.dbSearch_Response.status)
+  return _internal_status();
+}
+inline void dbSearch_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  
+  _impl_.status_ = value;
+}
+inline void dbSearch_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  _internal_set_status(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.kvdb.dbSearch_Response.status)
+}
+
+// optional string error = 2;
+inline bool dbSearch_Response::_internal_has_error() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool dbSearch_Response::has_error() const {
+  return _internal_has_error();
+}
+inline void dbSearch_Response::clear_error() {
+  _impl_.error_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const std::string& dbSearch_Response::error() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.dbSearch_Response.error)
+  return _internal_error();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void dbSearch_Response::set_error(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.kvdb.dbSearch_Response.error)
+}
+inline std::string* dbSearch_Response::mutable_error() {
+  std::string* _s = _internal_mutable_error();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.kvdb.dbSearch_Response.error)
+  return _s;
+}
+inline const std::string& dbSearch_Response::_internal_error() const {
+  return _impl_.error_.Get();
+}
+inline void dbSearch_Response::_internal_set_error(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.error_.Set(value, GetArenaForAllocation());
+}
+inline std::string* dbSearch_Response::_internal_mutable_error() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  return _impl_.error_.Mutable(GetArenaForAllocation());
+}
+inline std::string* dbSearch_Response::release_error() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.kvdb.dbSearch_Response.error)
+  if (!_internal_has_error()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.error_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void dbSearch_Response::set_allocated_error(std::string* error) {
+  if (error != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.error_.SetAllocated(error, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.kvdb.dbSearch_Response.error)
+}
+
+// repeated .com.wazuh.api.engine.kvdb.Entry entries = 3;
+inline int dbSearch_Response::_internal_entries_size() const {
+  return _impl_.entries_.size();
+}
+inline int dbSearch_Response::entries_size() const {
+  return _internal_entries_size();
+}
+inline void dbSearch_Response::clear_entries() {
+  _impl_.entries_.Clear();
+}
+inline ::com::wazuh::api::engine::kvdb::Entry* dbSearch_Response::mutable_entries(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.kvdb.dbSearch_Response.entries)
+  return _impl_.entries_.Mutable(index);
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::kvdb::Entry >*
+dbSearch_Response::mutable_entries() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.kvdb.dbSearch_Response.entries)
+  return &_impl_.entries_;
+}
+inline const ::com::wazuh::api::engine::kvdb::Entry& dbSearch_Response::_internal_entries(int index) const {
+  return _impl_.entries_.Get(index);
+}
+inline const ::com::wazuh::api::engine::kvdb::Entry& dbSearch_Response::entries(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.dbSearch_Response.entries)
+  return _internal_entries(index);
+}
+inline ::com::wazuh::api::engine::kvdb::Entry* dbSearch_Response::_internal_add_entries() {
+  return _impl_.entries_.Add();
+}
+inline ::com::wazuh::api::engine::kvdb::Entry* dbSearch_Response::add_entries() {
+  ::com::wazuh::api::engine::kvdb::Entry* _add = _internal_add_entries();
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.kvdb.dbSearch_Response.entries)
+  return _add;
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::kvdb::Entry >&
+dbSearch_Response::entries() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.kvdb.dbSearch_Response.entries)
+  return _impl_.entries_;
 }
 
 // -------------------------------------------------------------------
@@ -3521,6 +4168,10 @@ managerDump_Response::entries() const {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

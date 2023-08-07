@@ -23,6 +23,7 @@ constexpr auto API_KVDB_GET_SUBCOMMAND {"get"};
 constexpr auto API_KVDB_INSERT_SUBCOMMAND {"insert"};
 constexpr auto API_KVDB_LIST_SUBCOMMAND {"list"};
 constexpr auto API_KVDB_REMOVE_SUBCOMMAND {"remove"};
+constexpr auto API_KVDB_SEARCH_SUBCOMMAND {"search"};
 
 } // namespace details
 
@@ -36,7 +37,7 @@ void runInsertKV(std::shared_ptr<apiclnt::Client> client,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue);
 void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey);
-
+void runSearch(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& prefix);
 void configure(const CLI::App_p& app);
 
 } // namespace cmd::kvdb

@@ -214,7 +214,8 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             const auto res = eMessage::eMessageFromJson<google::protobuf::Value>(value);
             if (std::holds_alternative<base::Error>(res)) // Should not happen but just in case
             {
-                const auto msg = fmt::format("{}. For key '{}' and value {}", std::get<base::Error>(res).message, key, value);
+                const auto msg =
+                    fmt::format("{}. For key '{}' and value {}", std::get<base::Error>(res).message, key, value);
                 return ::api::adapter::genericError<ResponseType>(msg);
             }
             const auto json_value = std::get<google::protobuf::Value>(res);
@@ -288,7 +289,8 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(resultGet));
         if (std::holds_alternative<base::Error>(protoVal)) // Should not happen but just in case
         {
-            const auto msj = std::get<base::Error>(protoVal).message + ". For value " + std::get<std::string>(resultGet);
+            const auto msj =
+                std::get<base::Error>(protoVal).message + ". For value " + std::get<std::string>(resultGet);
             return ::api::adapter::genericError<ResponseType>(msj);
         }
 
@@ -438,6 +440,90 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
     };
 }
 
+api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+{
+    return [kvdbManager, kvdbScopeName](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = eKVDB::dbSearch_Request;
+        using ResponseType = eKVDB::dbSearch_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+        const auto& eRequest = std::get<RequestType>(res);
+
+        // Validate the params request
+        auto errorMsg = !eRequest.has_name()  ? std::make_optional("Missing /name")
+                        : !eRequest.has_prefix() ? std::make_optional("Missing /prefix")
+                                              : std::nullopt;
+        if (errorMsg.has_value())
+        {
+            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+        }
+
+        if (eRequest.name().empty())
+        {
+            return ::api::adapter::genericError<ResponseType>("Field /name is empty");
+        }
+
+        if (eRequest.prefix().empty())
+        {
+            return ::api::adapter::genericError<ResponseType>("Field /prefix is empty");
+        }
+
+        const auto resultExists = kvdbManager->existsDB(eRequest.name());
+
+        if (!resultExists)
+        {
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+        }
+
+        auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
+
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(resultHandler).message);
+        }
+
+        auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
+        const auto searchRes = handler->search(eRequest.prefix());
+
+        if (std::holds_alternative<base::Error>(searchRes))
+        {
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(searchRes).message);
+        }
+        const auto& resultSearch = std::get<std::unordered_map<std::string, std::string>>(searchRes);
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        auto entries = eResponse.mutable_entries();
+        for (const auto& [key, value] : resultSearch)
+        {
+            auto entry = eKVDB::Entry();
+            entry.mutable_key()->assign(key);
+
+            const auto res = eMessage::eMessageFromJson<google::protobuf::Value>(value);
+            if (std::holds_alternative<base::Error>(res)) // Should not happen but just in case
+            {
+                const auto msg =
+                    fmt::format("{}. For key '{}' and value {}", std::get<base::Error>(res).message, key, value);
+                return ::api::adapter::genericError<ResponseType>(msg);
+            }
+            const auto json_value = std::get<google::protobuf::Value>(res);
+            entry.mutable_value()->CopyFrom(json_value);
+            entries->Add(std::move(entry));
+        }
+
+        // Adapt the response to wazuh api
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+    };
+}
+
 void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
                       const std::string& kvdbScopeName,
                       std::shared_ptr<api::Api> api)
@@ -451,7 +537,8 @@ void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
                     // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
                     api->registerHandler("kvdb.db/put", dbPut(kvdbManager, kvdbScopeName))
                     && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager, kvdbScopeName))
-                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager, kvdbScopeName));
+                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager, kvdbScopeName))
+                    && api->registerHandler("kvdb.db/search", dbSearch(kvdbManager, kvdbScopeName));
 
     if (!ok)
     {

@@ -32,6 +32,25 @@ message dbGet_Response
     optional google.protobuf.Value value = 3; // JSON value of the entry
 }
 
+/******************** Operation with a DB ********************/
+/***************************************************
+ * Get an entries filtered from a DB
+ *
+ * command: kvdb.db/search (<resource>/<action>)
+ **************************************************/
+message dbSearch_Request
+{
+    optional string name = 1;   // Name of the db to get the entry
+    optional string prefix = 2; // prefix of the entries to get
+}
+
+message dbSearch_Response
+{
+    ReturnStatus status = 1;    // Status of the query
+    optional string error = 2;  // Error message if status is ERROR
+    repeated Entry entries = 3; // List of entries if status is OK (Empty on error)
+}
+
 /***************************************************
  * Delete an entry from a DB
  *
