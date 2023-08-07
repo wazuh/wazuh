@@ -3,51 +3,57 @@
   configuration_parameters:
   metadata:
     event_monitor: 'interval_not_valid'
-    interval: '-1'
     state_file_exist: 'false'
     agentd_ends: 'true'
+    local_internal_options:
+      agent.state_interval: '-1'
 
 - name: Undefined_state_interval_value
   description: Check undefined state interval option
   configuration_parameters:
   metadata:
     event_monitor: 'file_not_enabled'
-    interval: ' '
     state_file_exist: 'false'
     agentd_ends: 'false'
+    local_internal_options:
+      agent.state_interval: ' '
 
 - name: State_interval_option_dont_exist
   description: Check state interval option dont exist
   configuration_parameters:
   metadata:
     event_monitor: 'interval_not_found'
-    interval: 'null'
     state_file_exist: 'false'
     agentd_ends: 'true'
+    local_internal_options:
+      agent.state_interval: 'null'
 
 - name: Zero_state_interval
   description: Check zero big state interval
   configuration_parameters:
   metadata:
     event_monitor: 'file_not_enabled'
-    interval: '0'
     state_file_exist: 'false'
     agentd_ends: 'false'
+    local_internal_options:
+      agent.state_interval: '0'
 
 - name: Too_big_state_interval
   description: Check too big state interval
   configuration_parameters:
   metadata:
     event_monitor: 'interval_not_valid'
-    interval: '86401'
     state_file_exist: 'false'
     agentd_ends: 'true'
+    local_internal_options:
+      agent.state_interval: '86401'
 
 - name: Default_state_interval
   description: Check default state interval
   configuration_parameters:
   metadata:
     event_monitor: 'file_enabled'
-    interval: '5'
     state_file_exist: 'true'
     agentd_ends: 'false'
+    local_internal_options:
+      agent.state_interval: '5'
