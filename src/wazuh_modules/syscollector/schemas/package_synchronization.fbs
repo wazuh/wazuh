@@ -1,0 +1,38 @@
+namespace Syscollector.SyncPackageMessage;
+
+//For packages
+table PackageAttribute
+{
+  architecture:string;
+  checksum:string;
+  description:string; //For unix ony
+  format:string;
+  install_time: string; //For windows only
+  groups:string; //For unix only
+  item_id:string;
+  multiarch:string; //For unix only
+  name:string;
+  location: string;
+  priority:string; //For unix only
+  scan_time:string;
+  size:int; //For unix only
+  source:string;
+  vendor:string;
+  version:string;
+}
+
+table PackageData
+{
+    attributes: PackageAttribute;
+    index: string;
+    timestamp: string;
+}
+
+table SyncMsgPkg
+{
+  component:string;
+  data: PackageData;
+  type:string;
+}
+
+root_type SyncMsgPkg;

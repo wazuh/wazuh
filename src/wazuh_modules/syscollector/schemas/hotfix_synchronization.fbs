@@ -1,0 +1,26 @@
+namespace Syscollector.SyncHotfixMessage;
+
+//For hotfixies
+table HotfixAttribute
+{
+
+  checksum:string;
+  hotfix:string;
+  scan_time:string;
+}
+
+table HotfixData
+{
+  attributes: HotfixAttribute;
+  index: string;
+  timestamp: string;
+}
+
+table SyncMsgHtx
+{
+  component:string;
+  data: HotfixData;
+  type:string;
+}
+
+root_type SyncMsgHtx;
