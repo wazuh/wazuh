@@ -15,6 +15,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <time.h>
+#include <stdlib.h>
 
 #include "shared.h"
 #include "../../wazuh_modules/wmodules.h"
@@ -1253,166 +1254,167 @@ void test_setup_complete(void **state) {
 
 }
 
-// void test_main_token(void **state) {
+void test_main_token(void **state) {
 
-//     unsigned int run_on_start = 1;
-//     wm_ms_graph* module_data = (wm_ms_graph *)*state;
-//     module_data->enabled = true;
-//     module_data->only_future_events = false;
-//     module_data->curl_max_size = 1024L;
-//     module_data->run_on_start = true;
-//     os_strdup("v1.0", module_data->version);
-//     os_strdup("example_client", module_data->auth_config.client_id);
-//     os_strdup("example_tenant", module_data->auth_config.tenant_id);
-//     os_strdup("example_secret", module_data->auth_config.secret_value);
-//     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-//     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-//     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
-//     os_strdup("security", module_data->resources[0].name);
-//     module_data->num_resources = 1;
-//     os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
-//     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
-//     module_data->resources[0].num_relationships = 1;
-//     size_t max_size = OS_SIZE_8192;
-//     curl_response* response;
+    current_time = 1;
+    unsigned int run_on_start = 1;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    curl_response* response;
 
-//     os_calloc(1, sizeof(curl_response), response);
-//     response->status_code = 200;
-//     response->max_size_reached = false;
-//     os_strdup("{\"access_token\":\"token_value\",\"expires_in\":-1}", response->body);
-//     os_strdup("test", response->header);
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"access_token\":\"token_value\",\"expires_in\":-1}", response->body);
+    os_strdup("test", response->header);
 
-//     expect_string(__wrap_wm_state_io, tag, "ms-graph");
-//     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
-//     expect_value(__wrap_wm_state_io, state, &module_data->state);
-//     expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
-//     will_return(__wrap_wm_state_io, -1);
+    expect_string(__wrap_wm_state_io, tag, "ms-graph");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &module_data->state);
+    expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+    will_return(__wrap_wm_state_io, -1);
 
-//     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-//     expect_value(__wrap_StartMQ, type, WRITE);
-//     will_return(__wrap_StartMQ, 1);
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 1);
 
-//     expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &module_data->scan_config);
-//     expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_MS_GRAPH_LOGTAG);
-//     expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
-//     will_return(__wrap_sched_scan_get_time_until_next_scan, 1);
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
 
-//     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-//     expect_string(__wrap__mtdebug1, formatted_msg, "Waiting until: 1969/12/31 19:00:00");
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &module_data->scan_config);
+    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_MS_GRAPH_LOGTAG);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
+    will_return(__wrap_sched_scan_get_time_until_next_scan, 1);
 
-//     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
-//     expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
+    expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Waiting until: 1969/12/31 19:00:00");
 
-//     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
-//     expect_string(__wrap__mtinfo, formatted_msg, "Obtaining access token.");
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Obtaining access token.");
 
-//     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-//     expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
-//     expect_any(__wrap_wurl_http_request, method);
-//     expect_any(__wrap_wurl_http_request, header);
-//     expect_any(__wrap_wurl_http_request, url);
-//     expect_any(__wrap_wurl_http_request, payload);
-//     expect_any(__wrap_wurl_http_request, max_size);
-//     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-//     will_return(__wrap_wurl_http_request, response);
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
 
-//     cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"expires_in\":-1}");
-//     will_return(__wrap_cJSON_Parse, parse_json);
+    cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"expires_in\":-1}");
+    will_return(__wrap_cJSON_Parse, parse_json);
 
-//     wm_ms_graph_main(module_data);
+    wm_ms_graph_main(module_data);
 
-//     os_free(module_data->resources[0].relationships[0]);
-//     os_free(module_data->resources[0].relationships);
-//     module_data->resources[0].num_relationships = 0;
-//     os_free(module_data->resources[0].name);
-//     os_free(module_data->resources);
-//     module_data->num_resources = 0;
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
 
-// }
+}
 
-// void test_main_relationships(void **state) {
+void test_main_relationships(void **state) {
 
-//     wm_ms_graph* module_data = (wm_ms_graph *)*state;
-//     module_data->enabled = true;
-//     module_data->only_future_events = false;
-//     module_data->curl_max_size = 1024L;
-//     module_data->run_on_start = true;
-//     module_data->scan_config.interval = 60;
-//     os_strdup("v1.0", module_data->version);
-//     os_strdup("example_client", module_data->auth_config.client_id);
-//     os_strdup("example_tenant", module_data->auth_config.tenant_id);
-//     os_strdup("example_secret", module_data->auth_config.secret_value);
-//     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-//     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-//     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
-//     os_strdup("security", module_data->resources[0].name);
-//     module_data->num_resources = 1;
-//     os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
-//     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
-//     module_data->resources[0].num_relationships = 1;
-//     size_t max_size = OS_SIZE_8192;
-//     bool initial = true;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    module_data->scan_config.interval = 60;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config.client_id);
+    os_strdup("example_tenant", module_data->auth_config.tenant_id);
+    os_strdup("example_secret", module_data->auth_config.secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    bool initial = true;
 
-//     os_strdup("token", module_data->auth_config.access_token);
-//     module_data->auth_config.token_expiration_time = 99999999999999;
+    os_strdup("token", module_data->auth_config.access_token);
+    module_data->auth_config.token_expiration_time = 99999999999999;
 
-//     expect_string(__wrap_wm_state_io, tag, "ms-graph");
-//     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
-//     expect_value(__wrap_wm_state_io, state, &module_data->state);
-//     expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
-//     will_return(__wrap_wm_state_io, -1);
+    expect_string(__wrap_wm_state_io, tag, "ms-graph");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &module_data->state);
+    expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+    will_return(__wrap_wm_state_io, -1);
 
-//     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-//     expect_value(__wrap_StartMQ, type, WRITE);
-//     will_return(__wrap_StartMQ, 1);
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 1);
 
-//     expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &module_data->scan_config);
-//     expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_MS_GRAPH_LOGTAG);
-//     expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
-//     will_return(__wrap_sched_scan_get_time_until_next_scan, 0);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &module_data->scan_config);
+    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_MS_GRAPH_LOGTAG);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
+    will_return(__wrap_sched_scan_get_time_until_next_scan, 0);
 
-//     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
-//     expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
 
-//     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
-//     expect_string(__wrap__mtinfo, formatted_msg, "Scanning tenant 'example_tenant'");
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Scanning tenant 'example_tenant'");
 
-//     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
-//     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
-//     expect_any(__wrap_wm_state_io, state);
-//     expect_any(__wrap_wm_state_io, size);
-//     will_return(__wrap_wm_state_io, -1);
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, -1);
 
-//     will_return(__wrap_isDebug, 1);
+    will_return(__wrap_isDebug, 1);
 
-// #ifndef WIN32
-//     will_return(__wrap_gmtime_r, 1);
-// #endif
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
 
-//     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-//     will_return(__wrap_strftime, 20);
+    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, 20);
 
-//     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
-//     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
-//     expect_any(__wrap_wm_state_io, state);
-//     expect_any(__wrap_wm_state_io, size);
-//     will_return(__wrap_wm_state_io, 1);
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
 
-//     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-//     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
-//     wm_ms_graph_main(module_data);
+    wm_ms_graph_main(module_data);
 
-//     os_free(module_data->resources[0].relationships[0]);
-//     os_free(module_data->resources[0].relationships);
-//     module_data->resources[0].num_relationships = 0;
-//     os_free(module_data->resources[0].name);
-//     os_free(module_data->resources);
-//     module_data->num_resources = 0;
-//     os_free(module_data->auth_config.access_token);
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
+    os_free(module_data->auth_config.access_token);
 
-// }
+}
 
 void test_disabled(void **state) {
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
@@ -1917,7 +1919,7 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
     assert_string_equal(module_data->auth_config.access_token, "token_value");
-    assert_int_equal(module_data->auth_config.token_expiration_time, 1606798007);
+    assert_int_equal(module_data->auth_config.token_expiration_time, 124);
 
     os_free(module_data->resources[0].relationships[0]);
     os_free(module_data->resources[0].relationships);
@@ -3332,8 +3334,8 @@ int main(void) {
     };
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_setup_complete, setup_conf, teardown_conf),
-        //cmocka_unit_test_setup_teardown(test_main_token, setup_conf, teardown_conf),
-        //cmocka_unit_test_setup_teardown(test_main_relationships, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_main_token, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_main_relationships, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_disabled, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_relationships, setup_conf, teardown_conf),
