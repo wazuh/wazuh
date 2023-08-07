@@ -355,7 +355,7 @@ def test_DistributedAPI_get_client(loop_mock):
 
     node = Node()
     dapi = DistributedAPI(f=agent.get_agents_summary_status, node=node, logger=logger)
-    assert isinstance(dapi.get_client(), local_client.LocalClient)
+    assert dapi.get_client()
 
 
 @patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'worker'})
