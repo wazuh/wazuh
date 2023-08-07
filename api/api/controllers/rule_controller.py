@@ -295,7 +295,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`.
     relative_dirname : str
-        Relative directory where the rule is located. Default None.
+        Relative directory where the rule is located.
 
     Returns
     -------
@@ -324,7 +324,8 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body: dict, filename: str = None, overwrite: bool = False, pretty: bool = False,
+async def put_file(request, body: dict, filename: str = None, overwrite: bool = False,
+                   pretty: bool = False, relative_dirname: str = None,
                    wait_for_complete: bool = False) -> web.Response:
     """Upload a rule file.
     
@@ -334,11 +335,14 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
     body : dict
         Body request with the file content to be uploaded.
     filename : str, optional
-        Name of the file. Default `None`
+        Name of the file.
     overwrite : bool, optional
-        If set to false, an exception will be raised when updating contents of an already existing file. Default `False`
+        If set to false, an exception will be raised when updating 
+        contents of an already existing file. Default `False`
     pretty : bool, optional
         Show results in human-readable format. Default `False`
+    relative_dirname : str
+        Relative directory where the rule is located.
     wait_for_complete : bool, optional
         Disable timeout response. Default `False`
 
@@ -353,6 +357,7 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
 
     f_kwargs = {'filename': filename,
                 'overwrite': overwrite,
+                'relative_dirname': relative_dirname,
                 'content': parsed_body}
 
     dapi = DistributedAPI(f=rule_framework.upload_rule_file,
@@ -368,7 +373,9 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, filename: str = None, pretty: bool = False,
+async def delete_file(request, filename: str = None, 
+                      relative_dirname: str = None, 
+                      pretty: bool = False,
                       wait_for_complete: bool = False) -> web.Response:
     """Delete a rule file.
 
@@ -376,7 +383,9 @@ async def delete_file(request, filename: str = None, pretty: bool = False,
     ----------
     request : connexion.request
     filename : str, optional
-        Name of the file. Default `None`
+        Name of the file.
+    relative_dirname : str
+        Relative directory where the rule file is located.
     pretty : bool, optional
         Show results in human-readable format. Default `False`
     wait_for_complete : bool, optional
@@ -387,7 +396,7 @@ async def delete_file(request, filename: str = None, pretty: bool = False,
     web.Response
         API response.
     """
-    f_kwargs = {'filename': filename}
+    f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=rule_framework.delete_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

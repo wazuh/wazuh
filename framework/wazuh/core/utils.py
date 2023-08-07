@@ -1978,6 +1978,8 @@ def upload_file(content: str, file_path: str, check_xml_formula_values: bool = T
         Error reading file.
     WazuhInternalError(1016)
         Error moving file.
+    WazuhError(1006)
+        Permision error accessing File or Directory.
 
     Returns
     -------
@@ -2012,15 +2014,17 @@ def upload_file(content: str, file_path: str, check_xml_formula_values: bool = T
             final_file = escape_formula_values(content) if check_xml_formula_values else content
             tmp_file.write(final_file)
         chmod(tmp_file_path, 0o660)
-    except IOError:
-        raise WazuhInternalError(1005)
+    except IOError as exc:
+        raise WazuhInternalError(1005) from exc
 
     # Move temporary file to group folder
     try:
         new_conf_path = path.join(common.WAZUH_PATH, file_path)
         safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
-    except Error:
-        raise WazuhInternalError(1016)
+    except PermissionError as exc:
+        raise WazuhError(1006) from exc
+    except Error as exc:
+        raise WazuhInternalError(1016) from exc
 
     return results.WazuhResult({'message': 'File was successfully updated'})
 
