@@ -166,7 +166,7 @@ class WazuhException(Exception):
                               ' to get more information about the rules'
         },
         1211: {'message': 'Invalid relative directory. A \'rule_dir\' tag is declared in ossec.conf '
-                          'ruleset section, but the directory does not exists.',
+                          'ruleset section, but the directory does not exist.',
                'remediation': f'Please, visit the official documentation'
                                '(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
@@ -247,7 +247,7 @@ class WazuhException(Exception):
                               ' to get more information about the decoders'
                },
         1507: {'message': 'Invalid relative directory. A \'decoder_dir\' tag is declared '
-                          'in ossec.conf ruleset section, but the directory does not exists.',
+                          'in ossec.conf ruleset section, but the directory does not exist.',
                'remediation': f'Please, visit the official documentation'
                                '(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'

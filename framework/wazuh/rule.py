@@ -402,18 +402,18 @@ def get_rule_file(filename: str = None, raw: bool = False,
 
 
 def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str, WazuhError]:
-    """Validate relative_dirname parameter
+    """Validate relative_dirname parameter.
 
     Parameters
     ----------
     relative_dirname : str
-        relative path to validate.
+        Relative path to validate.
 
     Returns
     -------
     Tuple (str, WazuhError)
         The first element of the tuple is the normalized relative path.
-            if relative_dirname is None, return USER_RULES_PATH.
+            If relative_dirname is None, return USER_RULES_PATH.
             If relative_dirname is not None, return relative_dirname without trailing slash
         The second element of the tuple is a WazuhError exception
             If relative_dirname has no 'rule_dir' tag in ruleset return WazuhError(1505).

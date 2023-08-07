@@ -276,20 +276,20 @@ def get_decoder_file(filename: str, raw: bool = False,
 
 
 def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str, WazuhError]:
-    """Validate relative_dirname parameter
+    """Validate relative_dirname parameter.
 
     Parameters
     ----------
     relative_dirname : str
-        relative path to validate.
+        Relative path to validate.
 
     Returns
     -------
     Tuple (str, WazuhError)
         The first element of the tuple is the normalized relative path.
-            if relative_dirname is None, return USER_DECODERS_PATH.
+            If relative_dirname is None, return USER_DECODERS_PATH.
             If relative_dirname is not None, return relative_dirname without trailing slash
-        The second element of the tuple is a WazuhError exception
+        The second element of the tuple is a WazuhError exception.
             If relative_dirname has no 'decoder_dir' tag in ruleset return WazuhError(1505).
             If relative_dirname is inside the default DECODERS_PATH return WazuhError(1506).
             If relative_dirname has a 'decoder_dir' tag in ruleset but it doesn't exists return WazuhError(1507).
