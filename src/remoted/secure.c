@@ -529,7 +529,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
                     sock_idle = keys.keyentries[agentid]->sock;
 
-                    mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
+                    mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
                 } else {
@@ -592,7 +592,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
                 if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
                     sock_idle = keys.keyentries[agentid]->sock;
 
-                    mdebug2("Close idle socket [%d] to agent ID '%s'", sock_idle, keys.keyentries[agentid]->id);
+                    mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
                 } else {
@@ -658,9 +658,8 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         return;
     }
 
-    /* Recieved valid message timestamp and protocol updated. */
+    /* Recieved valid message timestamp updated. */
     keys.keyentries[agentid]->rcvd = current_ts;
-    keys.keyentries[agentid]->net_protocol = protocol;
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
@@ -668,6 +667,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         /* We need to save the peerinfo if it is a control msg */
 
         w_mutex_lock(&keys.keyentries[agentid]->mutex);
+        keys.keyentries[agentid]->net_protocol = protocol;
         memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
 
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);

@@ -62,7 +62,9 @@ list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -
                             -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send \
                             -Wl,--wrap=rem_add_send -Wl,--wrap=OS_IsAllowedIP ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,rem_add_recv -Wl,--wrap,rem_add_send -Wl,--wrap,rem_inc_tcp -Wl,--wrap,rem_dec_tcp \
-                            -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,ReadSecMSG -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt")
+                            -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,ReadSecMSG -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
+                            -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_AddSocket -Wl,--wrap,save_controlmsg -Wl,--wrap,rem_inc_recv_ctrl \
+                            -Wl,--wrap,OS_FreeKey")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
