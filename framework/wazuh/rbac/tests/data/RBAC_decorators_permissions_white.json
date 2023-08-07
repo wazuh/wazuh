@@ -845,7 +845,7 @@
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
       "file:path:*": ["etc/ossec.conf", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": null
+    "allowed_resources": [[]]
   },
   {
     "rbac": {

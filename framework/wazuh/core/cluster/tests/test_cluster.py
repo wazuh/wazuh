@@ -288,7 +288,7 @@ def test_get_ruleset_status(mock_get_cluster_items):
     with patch("wazuh.core.cluster.cluster.walk_dir", side_effect=Exception):
         with patch.object(wazuh.core.cluster.cluster.logger, "warning") as logger_mock:
             cluster.get_ruleset_status({})
-            logger_mock.assert_has_calls([call('Error getting file status: .')]*3)
+            logger_mock.assert_has_calls([call('Error getting file status: .')]*2)
 
 
 @pytest.mark.parametrize('failed_item, exists, expected_result', [

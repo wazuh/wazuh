@@ -122,6 +122,10 @@ class WazuhException(Exception):
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1128: {'message': 'Invalid configuration for the given component'},
 
+        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
+               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
+               },
+
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, '

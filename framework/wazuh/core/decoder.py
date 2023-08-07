@@ -4,6 +4,7 @@
 
 import os
 from enum import Enum
+from glob import glob
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -119,3 +120,53 @@ def load_decoders_from_file(decoder_file: str, decoder_path: str, decoder_status
         raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))
 
     return decoders
+
+def _remove_files(tmp_data, parameters):
+    data = list(tmp_data)
+    for d in tmp_data:
+        for key, value in parameters.items():
+            if key == 'status':
+                value and value != Status.S_ALL.value and value != d[key] and data.remove(d)
+            elif value and value != d[key] and d in data:
+                data.remove(d)
+
+    return data
+
+
+def item_format(data, all_items, exclude_filenames):
+    for item in glob(all_items):
+        item_name = os.path.basename(item)
+        item_dir = os.path.relpath(os.path.dirname(item), start=common.WAZUH_PATH)
+        item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
+        data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
+
+
+def _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
+    items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
+    for item_dir in items:
+        all_rules = f"{common.WAZUH_PATH}/{item_dir}/*.xml"
+        item_format(data, all_rules, exclude_filenames)
+
+
+def _create_dict(ruleset_conf, tag, exclude_filenames, data):
+    item_status = Status.S_DISABLED.value if tag == 'decoder_exclude' \
+        else Status.S_ENABLED.value
+    items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
+    for item in items:
+        item_name = os.path.basename(item)
+        full_dir = os.path.dirname(item)
+        item_dir = os.path.relpath(full_dir if full_dir else common.RULES_PATH, start=common.WAZUH_PATH)
+        exclude_filenames.append(item_name) if tag == 'decoder_exclude' else \
+            data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
+
+
+def format_decoder_file(ruleset_conf, parameters, tags):
+    tmp_data, exclude_filenames = list(), list()
+    for tag in tags:
+        if tag in ruleset_conf:
+            if tag == 'decoder_dir':
+                _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
+            else:
+                _create_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
+
+    return _remove_files(tmp_data, parameters)

@@ -1750,7 +1750,7 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 def test_validate_wazuh_xml(mock_remote_commands, mock_disabled_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
-    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
+    with open(os.path.join(test_files_path, 'test_decoders.xml')) as f:
         xml_file = f.read()
 
     m = mock_open(read_data=xml_file)

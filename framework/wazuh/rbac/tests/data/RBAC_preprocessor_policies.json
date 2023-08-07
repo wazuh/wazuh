@@ -373,7 +373,7 @@
     ],
     "processed_policies": {
       "cluster:read_file": {
-        "node:id:*&file:path:*": "deny",
+        "node:id:*&file:path:*": "deny"
       }
     }
   },
