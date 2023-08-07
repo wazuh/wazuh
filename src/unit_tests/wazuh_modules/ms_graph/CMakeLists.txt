@@ -5,11 +5,18 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Tests list and flags
 list(APPEND tests_names "test_wm_ms_graph")
 list(APPEND tests_flags "-Wl,--wrap=_merror -Wl,--wrap=_mtinfo -Wl,--wrap=_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap=_mterror -Wl,--wrap,wurl_http_request \
-                        -Wl,--wrap,cJSON_Parse -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,atexit -Wl,--wrap,time -Wl,--wrap,gmtime_r -Wl,--wrap,isDebug \
-                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,sched_scan_get_time_until_next_scan -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror")
+                        -Wl,--wrap,atexit -Wl,--wrap,time -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,gmtime_r -Wl,--wrap,isDebug \
+                        -Wl,--wrap,sched_scan_get_time_until_next_scan -Wl,--wrap,is_fim_shutdown -Wl,--wrap,fim_db_teardown -Wl,--wrap,Start_win32_Syscheck \
+                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror -Wl,--wrap,_imp__rsync_initialize \
+                        -Wl,--wrap,syscom_dispatch -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,w_get_timestamp")
+                        
+
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
@@ -36,12 +43,6 @@ set_target_properties(
 
 target_link_libraries(MS_GRAPH_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
-
-# Compiling tests
-if(COMMAND cmake_policy)
-  cmake_policy(SET CMP0003 NEW)
-endif(COMMAND cmake_policy)
-
 list(LENGTH tests_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
@@ -55,21 +56,28 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        MS_GRAPH_O
-        -lcmocka
-        -ldl
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    if(${TARGET} STREQUAL "server")
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            MS_GRAPH_O
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${TEST_DEPS}
+        )
+    endif()
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}
             ${test_flags}
         )
     endif()
-    add_test(${test_name} ${test_name})
+    add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()

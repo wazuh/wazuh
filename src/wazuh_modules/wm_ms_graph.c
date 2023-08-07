@@ -52,9 +52,9 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     }
     else{
         mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
-            
+
         bool initial = true;
-            
+
         while(FOREVER()){
             const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
 

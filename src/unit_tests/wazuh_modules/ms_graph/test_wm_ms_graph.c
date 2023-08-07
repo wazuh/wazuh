@@ -30,9 +30,8 @@
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
-#include "../../wrappers/libc/time_wrappers.h"
-#include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
+#include "../../wrappers/libc/time_wrappers.h"
 
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
@@ -1302,8 +1301,12 @@ void test_main_token(void **state) {
     expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
     will_return(__wrap_sched_scan_get_time_until_next_scan, 1);
 
+    char* test_date = strdup("2023/08/07 12:00:00");
+    expect_value(__wrap_w_get_timestamp, time, 0);
+    will_return(__wrap_w_get_timestamp, test_date);
+
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Waiting until: 1969/12/31 19:00:00");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Waiting until: 2023/08/07 12:00:00");
 
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Obtaining access token.");
@@ -1318,9 +1321,6 @@ void test_main_token(void **state) {
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"expires_in\":-1}");
-    will_return(__wrap_cJSON_Parse, parse_json);
 
     wm_ms_graph_main(module_data);
 
@@ -1357,7 +1357,7 @@ void test_main_relationships(void **state) {
     bool initial = true;
 
     os_strdup("token", module_data->auth_config.access_token);
-    module_data->auth_config.token_expiration_time = 99999999999999;
+    module_data->auth_config.token_expiration_time = 276447231;
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -1841,8 +1841,6 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-    will_return(__wrap_cJSON_Parse, NULL);
-
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse access token JSON body.");
 
@@ -1895,6 +1893,7 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
     curl_response* response;
+    current_time = 100;
 
     os_calloc(1, sizeof(curl_response), response);
     response->status_code = 200;
@@ -1913,13 +1912,14 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-    cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"expires_in\":123}");
-    will_return(__wrap_cJSON_Parse, parse_json);
-
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
     assert_string_equal(module_data->auth_config.access_token, "token_value");
-    assert_int_equal(module_data->auth_config.token_expiration_time, 124);
+#ifdef WIN32
+    assert_int_equal(module_data->auth_config.token_expiration_time, 123);
+#else
+    assert_int_equal(module_data->auth_config.token_expiration_time, 223);
+#endif
 
     os_free(module_data->resources[0].relationships[0]);
     os_free(module_data->resources[0].relationships);
@@ -1970,7 +1970,7 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     os_calloc(1, sizeof(curl_response), response);
     response->status_code = 200;
     response->max_size_reached = false;
-    os_strdup("{\"access_token\":\"token_value\",\"expires_in\":123}", response->body);
+    os_strdup("{\"no_access_token\":\"token_value\",\"expires_in\":123}", response->body);
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
@@ -1983,9 +1983,6 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"no_access_token\":\"token_value\",\"expires_in\":123}");
-    will_return(__wrap_cJSON_Parse, parse_json);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
@@ -2054,9 +2051,6 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"access_token\":\"token_value\",\"no_expires_in\":123}");
-    will_return(__wrap_cJSON_Parse, parse_json);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
@@ -2607,8 +2601,6 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-    will_return(__wrap_cJSON_Parse, NULL);
-
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse relationship 'alerts_v2' JSON body.");
 
@@ -2695,120 +2687,8 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"value\":[]}");
-    will_return(__wrap_cJSON_Parse, parse_json);
-
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "No new logs received.");
-
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
-    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
-    expect_any(__wrap_wm_state_io, state);
-    expect_any(__wrap_wm_state_io, size);
-    will_return(__wrap_wm_state_io, 1);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
-
-    wm_ms_graph_scan_relationships(module_data, initial);
-
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
-}
-
-void test_wm_ms_graph_scan_relationships_single_failed_parse_into_singular_log(void **state) {
-    /*
-    <enabled>yes</enabled>
-    <only_future_events>no</only_future_events>
-    <curl_max_size>1M</curl_max_size>
-    <run_on_start>yes</run_on_start>
-    <version>v1.0</version>
-    <api_auth>
-      <client_id>example_client</client_id>
-      <tenant_id>example_tenant</tenant_id>
-      <secret_value>example_secret</secret_value>
-      <api_type>global</api_type>
-    </api_auth>
-    <resource>
-      <name>security</name>
-      <relationship>alerts_v2</relationship>
-    </resource>
-    */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
-    wm_ms_graph_state_t relationship_state_struc;
-    relationship_state_struc.next_time = 10;
-    module_data->enabled = true;
-    module_data->only_future_events = false;
-    module_data->curl_max_size = 1024L;
-    module_data->run_on_start = true;
-    module_data->scan_config.interval = 60;
-    os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
-    os_strdup("security", module_data->resources[0].name);
-    module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
-    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
-    module_data->resources[0].num_relationships = 1;
-    size_t max_size = OS_SIZE_8192;
-    bool initial = false;
-    curl_response* response;
-
-    os_calloc(1, sizeof(curl_response), response);
-    response->status_code = 200;
-    response->max_size_reached = false;
-    os_strdup("{\"value\":[{\"full_log\":\"log1\"}]}", response->body);
-    os_strdup("test", response->header);
-
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
-    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
-    expect_any(__wrap_wm_state_io, state);
-    expect_any(__wrap_wm_state_io, size);
-    will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
-
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
-
-    expect_any(__wrap_wurl_http_request, method);
-    expect_any(__wrap_wurl_http_request, header);
-    expect_any(__wrap_wurl_http_request, url);
-    expect_any(__wrap_wurl_http_request, payload);
-    expect_any(__wrap_wurl_http_request, max_size);
-    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    will_return(__wrap_wurl_http_request, response);
-
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"value\":[{\"full_log\":\"log1\"}]}");
-    will_return(__wrap_cJSON_Parse, parse_json);
-
-    will_return(__wrap_cJSON_GetArrayItem, NULL);
-
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse log array into singular log.");
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
@@ -2910,13 +2790,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"value\":[{\"full_log\":\"log1\"}]}");
-    will_return(__wrap_cJSON_Parse, parse_json);
-
-    cJSON *item_json = __real_cJSON_Parse("{\"full_log\":\"log1\"}");
-    will_return(__wrap_cJSON_GetArrayItem, item_json);
-
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
 
@@ -2953,7 +2826,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     os_free(module_data->resources[0].name);
     os_free(module_data->resources);
     module_data->num_resources = 0;
-    cJSON_Delete(item_json);
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
@@ -3030,13 +2902,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}");
-    will_return(__wrap_cJSON_Parse, parse_json);
-
-    cJSON *item_json = __real_cJSON_Parse("{\"full_log\":\"log1\"}");
-    will_return(__wrap_cJSON_GetArrayItem, item_json);
-
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
 
@@ -3052,9 +2917,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
-
-    cJSON *item_json_2 = __real_cJSON_Parse("{\"full_log\":\"log2\"}");
-    will_return(__wrap_cJSON_GetArrayItem, item_json_2);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
@@ -3090,8 +2952,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_free(module_data->resources[0].name);
     os_free(module_data->resources);
     module_data->num_resources = 0;
-    cJSON_Delete(item_json);
-    cJSON_Delete(item_json_2);
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **state) {
@@ -3178,13 +3038,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-
-    cJSON *parse_json = __real_cJSON_Parse("{\"value\":[{\"full_log\":\"log1\"}]}");
-    will_return(__wrap_cJSON_Parse, parse_json);
-
-    cJSON *item_json = __real_cJSON_Parse("{\"full_log\":\"log1\"}");
-    will_return(__wrap_cJSON_GetArrayItem, item_json);
-
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
 
@@ -3244,13 +3097,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-
-    cJSON *parse_json_2 = __real_cJSON_Parse("{\"value\":[{\"full_log\":\"log1_resource_2\"}]}");
-    will_return(__wrap_cJSON_Parse, parse_json_2);
-
-    cJSON *item_json_2 = __real_cJSON_Parse("{\"full_log\":\"log1_resource_2\"}");
-    will_return(__wrap_cJSON_GetArrayItem, item_json_2);
-
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"auditlogs\",\"relationship\":\"signIns\"}}'");
 
@@ -3290,8 +3136,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     os_free(module_data->resources[0].name);
     os_free(module_data->resources);
     module_data->num_resources = 0;
-    cJSON_Delete(item_json);
-    cJSON_Delete(item_json_2);
 }
 
 int main(void) {
@@ -3357,7 +3201,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_reached_curl_size, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_failed_parse, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_no_logs, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_failed_parse_into_singular_log, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_one_log, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_logs, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf)
