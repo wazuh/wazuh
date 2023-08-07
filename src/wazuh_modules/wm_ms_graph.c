@@ -80,6 +80,10 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 wm_ms_graph_scan_relationships(ms_graph, initial);
                 initial = false;
             }
+
+            #ifdef WAZUH_UNIT_TESTING
+                break;
+            #endif
         }
     }
     return NULL;
