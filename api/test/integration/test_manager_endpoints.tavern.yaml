@@ -914,22 +914,6 @@ test_name: GET /manager/validation (KO)
 
 stages:
 
-  #### Upload corrupted rules file
-  # PUT /rules/files
-  - name: Upload corrupted
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: PUT
-      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-      json:
-        error: 0
-
   # GET /manager/configuration/validation
   - name: Request validation
     request:

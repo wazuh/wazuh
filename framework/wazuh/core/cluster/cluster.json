@@ -33,17 +33,6 @@
             "description": "shared configuration files"
         },
 
-        "etc/rules/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user rules"
-        },
-
         "etc/decoders/": {
             "permissions": "0o660",
             "source": "master",

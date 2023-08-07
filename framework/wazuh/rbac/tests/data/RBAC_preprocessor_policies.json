@@ -369,17 +369,11 @@
         "actions": ["cluster:read_file"],
         "resources": ["node:id:*&file:path:*"],
         "effect": "deny"
-      },
-      {
-        "actions": ["cluster:read_file"],
-        "resources": ["node:id:worker1&file:path:etc/rules/local_rules.xml"],
-        "effect": "allow"
       }
     ],
     "processed_policies": {
       "cluster:read_file": {
         "node:id:*&file:path:*": "deny",
-        "node:id:worker1&file:path:etc/rules/local_rules.xml": "allow"
       }
     }
   },

@@ -525,47 +525,6 @@ get_rbac_actions:
         related_endpoints:
           - GET /rootcheck/{agent_id}
           - GET /rootcheck/{agent_id}/last_scan
-      rules:read:
-        description: Read rules files
-        resources:
-          - rule:file
-        example:
-          actions:
-            - rules:read
-          resources:
-            - rule:file:0610-win-ms_logs_rules.xml
-          effect: allow
-        related_endpoints:
-          - GET /rules
-          - GET /rules/groups
-          - GET /rules/requirement/{requirement}
-          - GET /rules/files
-          - GET /rules/files/{filename}
-      rules:update:
-        description: Update or upload custom rule files
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - rules:update
-          resources:
-            - '*:*:*'
-          effect: allow
-        related_endpoints:
-          - PUT /rules/files/{filename}
-      rules:delete:
-        description: Delete custom rule files
-        resources:
-          - rule:file
-        example:
-          actions:
-            - rules:delete
-          resources:
-            - rule:file:0610-win-ms_logs_rules.xml
-          effect: allow
-        related_endpoints:
-          - PUT /rules/files/{filename}
-          - DELETE /rules/files/{filename}
       sca:read:
         description: Access agents security configuration assessment
         resources:

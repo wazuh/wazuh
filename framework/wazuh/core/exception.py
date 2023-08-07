@@ -122,36 +122,6 @@ class WazuhException(Exception):
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1128: {'message': 'Invalid configuration for the given component'},
 
-        # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
-               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
-               },
-        1203: {'message': 'Error in argument \'level\'',
-               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
-               },
-        1205: {'message': 'Requirement not valid',
-               'remediation': 'Please indicate one of the following values:'
-               },
-
-        1207: {'message': 'Error reading rule files, wrong permissions',
-               'remediation': 'Please, check your permissions over the file'
-               },
-        1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, '
@@ -184,13 +154,6 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-        1413: {'message': 'Error reading rules file'},
-        1414: {'message': 'Error reading rules file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1415: {'message': 'Rules file not found',
-               'remediation': 'Please, use GET /rules/files to list all available rules'
-               },
 
         # Decoders: 1500 - 1599
         1500: {'message': 'Error reading decoders from ossec.conf',

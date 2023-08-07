@@ -1511,29 +1511,6 @@ stages:
             related_endpoints:
               - PUT /active-response
 
-  - name: Testing RBAC's actions catalog
-    request:
-      <<: *rbac_actions_request
-      params:
-        endpoint: "GET /rules/files"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          rules:read:
-            description: !anystr
-            resources:
-              - rule:file
-            example:
-              actions:
-                - rules:read
-              resources:
-                - rule:file:0610-win-ms_logs_rules.xml
-              effect: allow
-            related_endpoints:
-              - GET /rules/files
-
 ---
 test_name: GET /security/resources
 
