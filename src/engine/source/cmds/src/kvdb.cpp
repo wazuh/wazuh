@@ -12,11 +12,12 @@ struct Options
 {
     std::string serverApiSock {};
     bool loaded {false};
-    std::string kvdbName;
-    std::string kvdbInputFilePath;
-    std::string kvdbKey;
-    std::string kvdbValue;
-    int clientTimeout;
+    std::string kvdbName {};
+    std::string kvdbInputFilePath {};
+    std::string kvdbKey {};
+    std::string kvdbValue {};
+    std::string prefix {};
+    int clientTimeout {};
 };
 
 } // namespace
@@ -193,6 +194,28 @@ void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvd
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
+void runSearch(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& prefix)
+{
+    using RequestType = eKVDB::dbSearch_Request;
+    using ResponseType = eKVDB::dbSearch_Response;
+    const std::string command = "kvdb.db/search";
+
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(kvdbName);
+    eRequest.set_prefix(prefix);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print the dump
+    const auto& dump = eResponse.entries();
+    const auto json = eMessage::eRepeatedFieldToJson<eKVDB::Entry>(dump);
+    std::cout << std::get<std::string>(json) << std::endl;
+}
+
 void configure(const CLI::App_p& app)
 {
     auto kvdbApp = app->add_subcommand("kvdb", "Manage the key-value databases (KVDBs).");
@@ -303,12 +326,22 @@ void configure(const CLI::App_p& app)
     remove_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // remove key
     auto key = remove_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be removed.")->required();
-    remove_subcommand->callback(
-        [options]()
-        {
-            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runRemoveKV(client, options->kvdbName, options->kvdbKey);
-        });
+    remove_subcommand->callback([options]()
+    {
+        const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+        runRemoveKV(client, options->kvdbName, options->kvdbKey);
+    });
+
+    // KVDB search subcommand
+    auto search_subcommand = kvdbApp->add_subcommand(details::API_KVDB_SEARCH_SUBCOMMAND,
+                                                  "Gets a list of keys filtered by a prefix of a DB named db-name.");
+    search_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
+    search_subcommand->add_option("-p, --prefix", options->prefix, "prefix to filter.")->required();
+    search_subcommand->callback([options]()
+    {
+        const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+        runSearch(client, options->kvdbName, options->prefix);
+    });
 }
 
 } // namespace cmd::kvdb
