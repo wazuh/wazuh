@@ -71,6 +71,37 @@ struct dbGet_ResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 dbGet_ResponseDefaultTypeInternal _dbGet_Response_default_instance_;
+PROTOBUF_CONSTEXPR dbSearch_Request::dbSearch_Request(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.prefix_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+struct dbSearch_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR dbSearch_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~dbSearch_RequestDefaultTypeInternal() {}
+  union {
+    dbSearch_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 dbSearch_RequestDefaultTypeInternal _dbSearch_Request_default_instance_;
+PROTOBUF_CONSTEXPR dbSearch_Response::dbSearch_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.entries_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct dbSearch_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR dbSearch_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~dbSearch_ResponseDefaultTypeInternal() {}
+  union {
+    dbSearch_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 dbSearch_ResponseDefaultTypeInternal _dbSearch_Response_default_instance_;
 PROTOBUF_CONSTEXPR dbDelete_Request::dbDelete_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
@@ -196,7 +227,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_kvdb_2eproto[11];
+static ::_pb::Metadata file_level_metadata_kvdb_2eproto[13];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_kvdb_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_kvdb_2eproto = nullptr;
 
@@ -233,6 +264,28 @@ const uint32_t TableStruct_kvdb_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,
   0,
   1,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Request, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Request, _impl_.prefix_),
+  0,
+  1,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbSearch_Response, _impl_.entries_),
+  ~0u,
+  0,
+  ~0u,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbDelete_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::dbDelete_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -318,20 +371,24 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 0, 8, -1, sizeof(::com::wazuh::api::engine::kvdb::Entry)},
   { 10, 18, -1, sizeof(::com::wazuh::api::engine::kvdb::dbGet_Request)},
   { 20, 29, -1, sizeof(::com::wazuh::api::engine::kvdb::dbGet_Response)},
-  { 32, 40, -1, sizeof(::com::wazuh::api::engine::kvdb::dbDelete_Request)},
-  { 42, 50, -1, sizeof(::com::wazuh::api::engine::kvdb::dbPut_Request)},
-  { 52, 60, -1, sizeof(::com::wazuh::api::engine::kvdb::managerGet_Request)},
-  { 62, 71, -1, sizeof(::com::wazuh::api::engine::kvdb::managerGet_Response)},
-  { 74, 82, -1, sizeof(::com::wazuh::api::engine::kvdb::managerPost_Request)},
-  { 84, 91, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDelete_Request)},
-  { 92, 99, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Request)},
-  { 100, 109, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Response)},
+  { 32, 40, -1, sizeof(::com::wazuh::api::engine::kvdb::dbSearch_Request)},
+  { 42, 51, -1, sizeof(::com::wazuh::api::engine::kvdb::dbSearch_Response)},
+  { 54, 62, -1, sizeof(::com::wazuh::api::engine::kvdb::dbDelete_Request)},
+  { 64, 72, -1, sizeof(::com::wazuh::api::engine::kvdb::dbPut_Request)},
+  { 74, 82, -1, sizeof(::com::wazuh::api::engine::kvdb::managerGet_Request)},
+  { 84, 93, -1, sizeof(::com::wazuh::api::engine::kvdb::managerGet_Response)},
+  { 96, 104, -1, sizeof(::com::wazuh::api::engine::kvdb::managerPost_Request)},
+  { 106, 113, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDelete_Request)},
+  { 114, 121, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Request)},
+  { 122, 131, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::kvdb::_Entry_default_instance_._instance,
   &::com::wazuh::api::engine::kvdb::_dbGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::kvdb::_dbGet_Response_default_instance_._instance,
+  &::com::wazuh::api::engine::kvdb::_dbSearch_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::kvdb::_dbSearch_Response_default_instance_._instance,
   &::com::wazuh::api::engine::kvdb::_dbDelete_Request_default_instance_._instance,
   &::com::wazuh::api::engine::kvdb::_dbPut_Request_default_instance_._instance,
   &::com::wazuh::api::engine::kvdb::_managerGet_Request_default_instance_._instance,
@@ -352,26 +409,32 @@ const char descriptor_table_protodef_kvdb_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "key\"\230\001\n\016dbGet_Response\0222\n\006status\030\001 \001(\0162\""
   ".com.wazuh.api.engine.ReturnStatus\022\022\n\005er"
   "ror\030\002 \001(\tH\000\210\001\001\022*\n\005value\030\003 \001(\0132\026.google.p"
-  "rotobuf.ValueH\001\210\001\001B\010\n\006_errorB\010\n\006_value\"H"
-  "\n\020dbDelete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\020\n"
-  "\003key\030\002 \001(\tH\001\210\001\001B\007\n\005_nameB\006\n\004_key\"k\n\rdbPu"
-  "t_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\0224\n\005entry\030\002 "
-  "\001(\0132 .com.wazuh.api.engine.kvdb.EntryH\001\210"
-  "\001\001B\007\n\005_nameB\010\n\006_entry\"\\\n\022managerGet_Requ"
-  "est\022\026\n\016must_be_loaded\030\001 \001(\010\022\033\n\016filter_by"
-  "_name\030\020 \001(\tH\000\210\001\001B\021\n\017_filter_by_name\"t\n\023m"
-  "anagerGet_Response\0222\n\006status\030\001 \001(\0162\".com"
-  ".wazuh.api.engine.ReturnStatus\022\022\n\005error\030"
-  "\002 \001(\tH\000\210\001\001\022\013\n\003dbs\030\003 \003(\tB\010\n\006_error\"M\n\023man"
-  "agerPost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\021\n\004p"
-  "ath\030\002 \001(\tH\001\210\001\001B\007\n\005_nameB\007\n\005_path\"3\n\025mana"
-  "gerDelete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005"
-  "_name\"1\n\023managerDump_Request\022\021\n\004name\030\001 \001"
-  "(\tH\000\210\001\001B\007\n\005_name\"\233\001\n\024managerDump_Respons"
-  "e\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engine"
-  ".ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0221\n\007ent"
-  "ries\030\003 \003(\0132 .com.wazuh.api.engine.kvdb.E"
-  "ntryB\010\n\006_errorb\006proto3"
+  "rotobuf.ValueH\001\210\001\001B\010\n\006_errorB\010\n\006_value\"N"
+  "\n\020dbSearch_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n"
+  "\006prefix\030\002 \001(\tH\001\210\001\001B\007\n\005_nameB\t\n\007_prefix\"\230"
+  "\001\n\021dbSearch_Response\0222\n\006status\030\001 \001(\0162\".c"
+  "om.wazuh.api.engine.ReturnStatus\022\022\n\005erro"
+  "r\030\002 \001(\tH\000\210\001\001\0221\n\007entries\030\003 \003(\0132 .com.wazu"
+  "h.api.engine.kvdb.EntryB\010\n\006_error\"H\n\020dbD"
+  "elete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\020\n\003key\030"
+  "\002 \001(\tH\001\210\001\001B\007\n\005_nameB\006\n\004_key\"k\n\rdbPut_Req"
+  "uest\022\021\n\004name\030\001 \001(\tH\000\210\001\001\0224\n\005entry\030\002 \001(\0132 "
+  ".com.wazuh.api.engine.kvdb.EntryH\001\210\001\001B\007\n"
+  "\005_nameB\010\n\006_entry\"\\\n\022managerGet_Request\022\026"
+  "\n\016must_be_loaded\030\001 \001(\010\022\033\n\016filter_by_name"
+  "\030\020 \001(\tH\000\210\001\001B\021\n\017_filter_by_name\"t\n\023manage"
+  "rGet_Response\0222\n\006status\030\001 \001(\0162\".com.wazu"
+  "h.api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\t"
+  "H\000\210\001\001\022\013\n\003dbs\030\003 \003(\tB\010\n\006_error\"M\n\023managerP"
+  "ost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\021\n\004path\030\002"
+  " \001(\tH\001\210\001\001B\007\n\005_nameB\007\n\005_path\"3\n\025managerDe"
+  "lete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name"
+  "\"1\n\023managerDump_Request\022\021\n\004name\030\001 \001(\tH\000\210"
+  "\001\001B\007\n\005_name\"\233\001\n\024managerDump_Response\0222\n\006"
+  "status\030\001 \001(\0162\".com.wazuh.api.engine.Retu"
+  "rnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0221\n\007entries\030"
+  "\003 \003(\0132 .com.wazuh.api.engine.kvdb.EntryB"
+  "\010\n\006_errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_kvdb_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -379,9 +442,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_kvdb_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_kvdb_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_kvdb_2eproto = {
-    false, false, 1142, descriptor_table_protodef_kvdb_2eproto,
+    false, false, 1377, descriptor_table_protodef_kvdb_2eproto,
     "kvdb.proto",
-    &descriptor_table_kvdb_2eproto_once, descriptor_table_kvdb_2eproto_deps, 2, 11,
+    &descriptor_table_kvdb_2eproto_once, descriptor_table_kvdb_2eproto_deps, 2, 13,
     schemas, file_default_instances, TableStruct_kvdb_2eproto::offsets,
     file_level_metadata_kvdb_2eproto, file_level_enum_descriptors_kvdb_2eproto,
     file_level_service_descriptors_kvdb_2eproto,
@@ -1259,6 +1322,566 @@ void dbGet_Response::InternalSwap(dbGet_Response* other) {
 
 // ===================================================================
 
+class dbSearch_Request::_Internal {
+ public:
+  using HasBits = decltype(std::declval<dbSearch_Request>()._impl_._has_bits_);
+  static void set_has_name(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_prefix(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+dbSearch_Request::dbSearch_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.kvdb.dbSearch_Request)
+}
+dbSearch_Request::dbSearch_Request(const dbSearch_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  dbSearch_Request* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.name_){}
+    , decltype(_impl_.prefix_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.name_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.name_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_name()) {
+    _this->_impl_.name_.Set(from._internal_name(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.prefix_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.prefix_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_prefix()) {
+    _this->_impl_.prefix_.Set(from._internal_prefix(), 
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.kvdb.dbSearch_Request)
+}
+
+inline void dbSearch_Request::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.name_){}
+    , decltype(_impl_.prefix_){}
+  };
+  _impl_.name_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.name_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.prefix_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.prefix_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+dbSearch_Request::~dbSearch_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void dbSearch_Request::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.name_.Destroy();
+  _impl_.prefix_.Destroy();
+}
+
+void dbSearch_Request::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void dbSearch_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.name_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.prefix_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* dbSearch_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // optional string name = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_name();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.kvdb.dbSearch_Request.name"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string prefix = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_prefix();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.kvdb.dbSearch_Request.prefix"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* dbSearch_Request::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // optional string name = 1;
+  if (_internal_has_name()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.kvdb.dbSearch_Request.name");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_name(), target);
+  }
+
+  // optional string prefix = 2;
+  if (_internal_has_prefix()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_prefix().data(), static_cast<int>(this->_internal_prefix().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.kvdb.dbSearch_Request.prefix");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_prefix(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  return target;
+}
+
+size_t dbSearch_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional string name = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_name());
+    }
+
+    // optional string prefix = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_prefix());
+    }
+
+  }
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData dbSearch_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    dbSearch_Request::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*dbSearch_Request::GetClassData() const { return &_class_data_; }
+
+
+void dbSearch_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<dbSearch_Request*>(&to_msg);
+  auto& from = static_cast<const dbSearch_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_name(from._internal_name());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_prefix(from._internal_prefix());
+    }
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void dbSearch_Request::CopyFrom(const dbSearch_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.kvdb.dbSearch_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool dbSearch_Request::IsInitialized() const {
+  return true;
+}
+
+void dbSearch_Request::InternalSwap(dbSearch_Request* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.name_, lhs_arena,
+      &other->_impl_.name_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.prefix_, lhs_arena,
+      &other->_impl_.prefix_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata dbSearch_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
+      file_level_metadata_kvdb_2eproto[3]);
+}
+
+// ===================================================================
+
+class dbSearch_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<dbSearch_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+};
+
+dbSearch_Response::dbSearch_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.kvdb.dbSearch_Response)
+}
+dbSearch_Response::dbSearch_Response(const dbSearch_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  dbSearch_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.entries_){from._impl_.entries_}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.kvdb.dbSearch_Response)
+}
+
+inline void dbSearch_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.entries_){arena}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+dbSearch_Response::~dbSearch_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void dbSearch_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.entries_.~RepeatedPtrField();
+  _impl_.error_.Destroy();
+}
+
+void dbSearch_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void dbSearch_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.entries_.Clear();
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    _impl_.error_.ClearNonDefaultToEmpty();
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* dbSearch_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.kvdb.dbSearch_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated .com.wazuh.api.engine.kvdb.Entry entries = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            ptr = ctx->ParseMessage(_internal_add_entries(), ptr);
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<26>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* dbSearch_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.kvdb.dbSearch_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // repeated .com.wazuh.api.engine.kvdb.Entry entries = 3;
+  for (unsigned i = 0,
+      n = static_cast<unsigned>(this->_internal_entries_size()); i < n; i++) {
+    const auto& repfield = this->_internal_entries(i);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+        InternalWriteMessage(3, repfield, repfield.GetCachedSize(), target, stream);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  return target;
+}
+
+size_t dbSearch_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated .com.wazuh.api.engine.kvdb.Entry entries = 3;
+  total_size += 1UL * this->_internal_entries_size();
+  for (const auto& msg : this->_impl_.entries_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
+  }
+
+  // optional string error = 2;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error());
+  }
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData dbSearch_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    dbSearch_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*dbSearch_Response::GetClassData() const { return &_class_data_; }
+
+
+void dbSearch_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<dbSearch_Response*>(&to_msg);
+  auto& from = static_cast<const dbSearch_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.entries_.MergeFrom(from._impl_.entries_);
+  if (from._internal_has_error()) {
+    _this->_internal_set_error(from._internal_error());
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void dbSearch_Response::CopyFrom(const dbSearch_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.kvdb.dbSearch_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool dbSearch_Response::IsInitialized() const {
+  return true;
+}
+
+void dbSearch_Response::InternalSwap(dbSearch_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  _impl_.entries_.InternalSwap(&other->_impl_.entries_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata dbSearch_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
+      file_level_metadata_kvdb_2eproto[4]);
+}
+
+// ===================================================================
+
 class dbDelete_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<dbDelete_Request>()._impl_._has_bits_);
@@ -1533,7 +2156,7 @@ void dbDelete_Request::InternalSwap(dbDelete_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata dbDelete_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[3]);
+      file_level_metadata_kvdb_2eproto[5]);
 }
 
 // ===================================================================
@@ -1802,7 +2425,7 @@ void dbPut_Request::InternalSwap(dbPut_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata dbPut_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[4]);
+      file_level_metadata_kvdb_2eproto[6]);
 }
 
 // ===================================================================
@@ -2046,7 +2669,7 @@ void managerGet_Request::InternalSwap(managerGet_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata managerGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[5]);
+      file_level_metadata_kvdb_2eproto[7]);
 }
 
 // ===================================================================
@@ -2332,7 +2955,7 @@ void managerGet_Response::InternalSwap(managerGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata managerGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[6]);
+      file_level_metadata_kvdb_2eproto[8]);
 }
 
 // ===================================================================
@@ -2611,7 +3234,7 @@ void managerPost_Request::InternalSwap(managerPost_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata managerPost_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[7]);
+      file_level_metadata_kvdb_2eproto[9]);
 }
 
 // ===================================================================
@@ -2828,7 +3451,7 @@ void managerDelete_Request::InternalSwap(managerDelete_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata managerDelete_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[8]);
+      file_level_metadata_kvdb_2eproto[10]);
 }
 
 // ===================================================================
@@ -3045,7 +3668,7 @@ void managerDump_Request::InternalSwap(managerDump_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata managerDump_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[9]);
+      file_level_metadata_kvdb_2eproto[11]);
 }
 
 // ===================================================================
@@ -3326,7 +3949,7 @@ void managerDump_Response::InternalSwap(managerDump_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata managerDump_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_kvdb_2eproto_getter, &descriptor_table_kvdb_2eproto_once,
-      file_level_metadata_kvdb_2eproto[10]);
+      file_level_metadata_kvdb_2eproto[12]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -3347,6 +3970,14 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::kvdb::dbGet_Request >(Aren
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::kvdb::dbGet_Response*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::kvdb::dbGet_Response >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::kvdb::dbGet_Response >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::kvdb::dbSearch_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::kvdb::dbSearch_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::kvdb::dbSearch_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::kvdb::dbSearch_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::kvdb::dbSearch_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::kvdb::dbSearch_Response >(arena);
 }
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::kvdb::dbDelete_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::kvdb::dbDelete_Request >(Arena* arena) {

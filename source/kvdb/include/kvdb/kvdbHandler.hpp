@@ -94,6 +94,12 @@ public:
      */
     std::variant<std::unordered_map<std::string, std::string>, base::Error> dump() override;
 
+    /**
+     * @copydoc IKVDBHandler::search
+     *
+     */
+    std::variant<std::unordered_map<std::string, std::string>, base::Error> search(const std::string& filter) override;
+
 protected:
     /**
      *  @brief Weak Pointer to the RocksDB:ColumnFamilyHandle instance.

@@ -158,12 +158,49 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHand
             for (iter->SeekToFirst(); iter->Valid(); iter->Next())
             {
                 content[iter->key().ToString()] = iter->value().ToString();
+            }
 
-                if (!iter->status().ok())
-                {
-                    return base::Error {fmt::format(
-                        "Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
-                }
+            if (!iter->status().ok())
+            {
+                return base::Error {fmt::format(
+                    "Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
+            }
+
+            return content;
+        }
+        else
+        {
+            return base::Error {"Cannot access RocksDB Column Family Handle"};
+        }
+    }
+
+    return base::Error {"Cannot access RocksDB::DB"};
+}
+
+std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHandler::search(const std::string& prefix)
+{
+    auto pRocksDB = m_weakDB.lock();
+    if (pRocksDB)
+    {
+        auto pCFhandle = m_weakCFHandle.lock();
+        if (pCFhandle)
+        {
+            std::unordered_map<std::string, std::string> content {};
+            std::shared_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
+            rocksdb::Slice sliceFilter(prefix);
+
+            // if Iterator::Valid() is true, status() is guaranteed to be OK() so it's
+            // safe to proceed other operations without checking status():
+            for (iter->Seek(sliceFilter); iter->Valid() && iter->key().starts_with(sliceFilter); iter->Next())
+            {
+                content[iter->key().ToString()] = iter->value().ToString();
+            }
+
+            // errors include I/O errors, checksum mismatch, unsupported operations, internal errors, or other errors.
+            if (!iter->status().ok())
+            {
+                return base::Error {fmt::format(
+                    "Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
             }
 
             return content;

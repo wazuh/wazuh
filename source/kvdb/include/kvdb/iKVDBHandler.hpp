@@ -79,6 +79,14 @@ public:
      * @return std::variant<std::unordered_map<std::string, std::string>, base::Error> Map of key-value pairs. Specific error otherwise.
      */
     virtual std::variant<std::unordered_map<std::string, std::string>, base::Error> dump() = 0;
+
+    /**
+     * @brief Retrieves all filtered content.
+     *
+     * @param key Filter value.
+     * @return std::variant<std::unordered_map<std::string, std::string>, base::Error> Map of key-value pairs. Specific error otherwise.
+     */
+    virtual std::variant<std::unordered_map<std::string, std::string>, base::Error> search(const std::string& prefix) = 0;
 };
 
 } // namespace kvdbManager

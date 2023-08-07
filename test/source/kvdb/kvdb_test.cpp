@@ -20,8 +20,8 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
-    std::shared_ptr<kvdbManager::KVDBManager> m_spKVDBManager;
-    std::string kvdbPath;
+    std::shared_ptr<kvdbManager::KVDBManager> m_spKVDBManager {};
+    std::string kvdbPath {};
 
     void SetUp() override
     {
@@ -255,6 +255,58 @@ TEST_F(KVDBTest, ScopeInfoSingleOneHandler)
     auto handler = m_spKVDBManager->getKVDBHandler("db_test", "scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 1);
+}
+
+TEST_F(KVDBTest, SearchWithResultsOk)
+{
+    ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
+    auto resultHandler = m_spKVDBManager->getKVDBHandler("test_db", "scope1");
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+    auto result = handler->set("key1", "value");
+    result = handler->set("key11", "value");
+    result = handler->set("key12", "value");
+    result = handler->set("key13", "value");
+    result = handler->set("key14", "value");
+    result = handler->set("key15", "value");
+    result = handler->set("key21", "value");
+    result = handler->set("key22", "value");
+    result = handler->set("key23", "value");
+    result = handler->set("key31", "value");
+    result = handler->set("key32", "value");
+    result = handler->set("key33", "value");
+
+    auto result2 = handler->search("key2");
+    auto list = std::get<std::unordered_map<std::string, std::string>>(result2);
+    ASSERT_EQ(list.size(), 3);
+
+    result2 = handler->search("key1");
+    list = std::get<std::unordered_map<std::string, std::string>>(result2);
+    ASSERT_EQ(list.size(), 6);
+
+    result2 = handler->search("key3");
+    list = std::get<std::unordered_map<std::string, std::string>>(result2);
+    ASSERT_EQ(list.size(), 3);
+
+    result2 = handler->search("other");
+    list = std::get<std::unordered_map<std::string, std::string>>(result2);
+    ASSERT_EQ(list.size(), 0);
+}
+
+TEST_F(KVDBTest, SearchWithoutResultsOk)
+{
+    ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
+    auto resultHandler = m_spKVDBManager->getKVDBHandler("test_db", "scope1");
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
+    auto result2 = handler->search("key");
+    auto list = std::get<std::unordered_map<std::string, std::string>>(result2);
+    ASSERT_EQ(list.size(), 0);
 }
 
 } // namespace
