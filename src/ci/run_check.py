@@ -57,7 +57,7 @@ def checkCoverage(output):
         raise ValueError(errorString)
 
 
-def runASAN(moduleName, testToolConfig):
+def runASAN(moduleName, testToolConfig, targetType):
     """
     Execute Address Sanitizer dynamic analysis tool using the test tool
     defined for a library.
@@ -66,6 +66,8 @@ def runASAN(moduleName, testToolConfig):
         - moduleName(str): Library to be analyzed using ASAN dynamic analysis
                            tool.
         - testToolConfig(map): Test tool parameters.
+
+        - targetType(str): Target build type.
 
     Returns:
         - None
@@ -80,7 +82,8 @@ def runASAN(moduleName, testToolConfig):
     build_tools.configureCMake(moduleName=moduleName,
                                debugMode=True,
                                testMode=False,
-                               withAsan=True)
+                               withAsan=True,
+                               withTarget=targetType)
     build_tools.makeLib(moduleName)
     module = testToolConfig[moduleName]
     if moduleName == "syscheckd":
@@ -355,7 +358,8 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # Running this type of check in Windows will be analyzed in #17019
     if moduleName != "shared_modules/utils" and target != "winagent":
         runASAN(moduleName=moduleName,
-                testToolConfig=smokeTestConfig)
+                testToolConfig=smokeTestConfig,
+                targetType=target)
     if clean:
         os.chdir(os.path.join(utils.rootPath(), moduleName))
         utils.deleteLogs(moduleName=moduleName)

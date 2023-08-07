@@ -214,7 +214,7 @@ def cleanLib(moduleName):
         raise ValueError(errorString)
 
 
-def configureCMake(moduleName, debugMode, testMode, withAsan):
+def configureCMake(moduleName, debugMode, testMode, withAsan, withTarget):
     """
     Configure cmake command with specific configuration based on
     the parameters passed to the function.
@@ -253,6 +253,10 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
 
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
+
+    if moduleName == "wazuh_modules/syscollector":
+        configureCMakeCommand += " -DTARGET={}".format(withTarget)
+
     out = subprocess.run(configureCMakeCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
