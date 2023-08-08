@@ -74,7 +74,7 @@ void Policy::addFilters(const std::string& graphName)
 
 std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
 Policy::getManifestAssets(const json::Json& jsonDefinition,
-                          std::shared_ptr<store::IStoreRead> storeRead,
+                          std::shared_ptr<const store::IStoreRead> storeRead,
                           std::shared_ptr<internals::Registry<internals::Builder>> registry)
 {
     if (!jsonDefinition.isObject())
@@ -125,13 +125,13 @@ Policy::getManifestAssets(const json::Json& jsonDefinition,
                                    throw std::runtime_error("Asset name is not a string");
                                }
 
-                               auto jsonObject = store::get(storeRead, name.value());
-                               if (std::holds_alternative<base::Error>(jsonObject))
+                               auto assetDef = store::utils::get(storeRead, name.value());
+                               if (std::holds_alternative<base::Error>(assetDef))
                                {
-                                   throw std::runtime_error(std::get<base::Error>(jsonObject).message);
+                                   throw std::runtime_error(std::get<base::Error>(assetDef).message);
                                }
 
-                               return std::make_shared<Asset>(std::get<json::Json>(jsonObject), assetType, registry);
+                               return std::make_shared<Asset>(std::get<json::Json>(assetDef), assetType, registry);
                            });
 
             assets[key] = assetList;

@@ -38,7 +38,6 @@ struct Options
     std::string path;
     bool recursive;
     bool abortOnError;
-    bool original;
     std::string policy;
     std::string integration;
     int clientTimeout;
@@ -118,7 +117,7 @@ void readCinIfEmpty(std::string& content)
 
 } // namespace
 
-void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr, const bool original)
+void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
 {
     using RequestType = eCatalog::ResourceGet_Request;
     using ResponseType = eCatalog::ResourceGet_Response;
@@ -128,7 +127,6 @@ void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, 
     RequestType eRequest;
     eRequest.set_name(nameStr);
     eRequest.set_format(toResourceFormat(format));
-    eRequest.set_original(original);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);

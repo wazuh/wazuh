@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <logging/logging.hpp>
 
+#include <store/utils.hpp>
 #include <yml/yml.hpp>
 
 namespace api::catalog
@@ -177,7 +178,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection, con
                                         std::get<base::Error>(formatResult).message)};
     }
 
-    const auto contentJson = std::get<json::Json>(formatResult);
+    const auto& contentJson = std::get<json::Json>(formatResult);
     const auto contentNameStr = contentJson.getString("/name");
     if (!contentNameStr)
     {
@@ -234,7 +235,8 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection, con
     }
 
     // All pre-conditions are met, post the content in the store
-    const auto storeError = store::add(m_store, contentResource.m_name, contentJson, content);
+    const auto storeError = store::utils::add(
+        m_store, contentResource.m_name, Resource::formatToStr(collection.m_format), contentJson, content);
     if (storeError)
     {
         return base::Error {fmt::format(
@@ -270,7 +272,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
                                         std::get<base::Error>(formatResult).message)};
     }
 
-    const auto contentJson = std::get<json::Json>(formatResult);
+    const auto& contentJson = std::get<json::Json>(formatResult);
     const auto contentNameStr = contentJson.getString("/name");
     if (!contentNameStr)
     {
@@ -311,7 +313,8 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
     }
 
     // All pre-conditions are met, update the content in the store
-    const auto storeError = store::update(m_store, item.m_name, contentJson, content);
+    const auto storeError =
+        store::utils::update(m_store, item.m_name, Resource::formatToStr(item.m_format), contentJson, content);
     if (storeError)
     {
         return base::Error {fmt::format(
@@ -321,50 +324,65 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
     return std::nullopt;
 }
 
-std::variant<std::string, base::Error> Catalog::getResource(const Resource& resource, const bool original) const
+std::variant<std::string, base::Error> Catalog::getResource(const Resource& resource) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
+    using Format = ::com::wazuh::api::engine::catalog::ResourceFormat;
 
-    // Get the content from the store
-    const auto storeResult = store::get(m_store, resource.m_name, original);
+    const auto formatContent = [outFormat = m_outFormat, format = resource.m_format, name = resource.m_name](
+                                   const json::Json& content) -> std::variant<std::string, base::Error>
+    {
+        const auto formatterIt = outFormat.find(format);
+        if (formatterIt == outFormat.end())
+        {
+            return base::Error {fmt::format("Formatter was not found for format '{}'", Resource::formatToStr(format))};
+        }
+
+        const auto formatResult = formatterIt->second(content);
+        if (std::holds_alternative<base::Error>(formatResult))
+        {
+            return base::Error {fmt::format("JSON object could not be created from '{} {}': {}",
+                                            Resource::formatToStr(format),
+                                            name.fullName(),
+                                            std::get<base::Error>(formatResult).message)};
+        }
+
+        return std::get<std::string>(formatResult);
+    };
+
+    const auto storeResult = store::utils::get(m_store, resource.m_name, true);
     if (std::holds_alternative<base::Error>(storeResult))
     {
         return base::Error {std::get<base::Error>(storeResult).message};
     }
 
-    auto json = std::get<json::Json>(storeResult);
+    const auto& content = std::get<json::Json>(storeResult);
 
-    if (!original || resource.m_type == Type::collection || resource.m_type == Type::policy)
+    if (resource.m_format == Format::json || resource.m_type == Type::collection || resource.m_type == Type::policy)
     {
-        // If getting a policy is required, the yml is returned from the json. It is the only case where the original
-        // yml is not returned.
-        if (json.exists("/original"))
+        if (content.exists("/original"))
         {
-            json.erase("/original");
-            json = json.getJson("/json").value();
+            auto original = content.getJson("/json");
+            if (original)
+            {
+                return formatContent(std::move(original.value()));
+            }
+            else
+            {
+                return base::Error {"Could not get the original content from the store"};
+            }
         }
 
-        // Format the content to the expected output format
-        const auto formatterIt = m_outFormat.find(resource.m_format);
-        if (formatterIt == m_outFormat.end())
-        {
-            return base::Error {
-                fmt::format("Formatter was not found for format '{}'", Resource::formatToStr(resource.m_format))};
-        }
-
-        const auto formatResult = formatterIt->second(json);
-        if (std::holds_alternative<base::Error>(formatResult))
-        {
-            return base::Error {fmt::format("JSON object could not be created from '{} {}': {}",
-                                            Resource::formatToStr(resource.m_format),
-                                            resource.m_name.fullName(),
-                                            std::get<base::Error>(formatResult).message)};
-        }
-
-        return std::get<std::string>(formatResult);
+        return formatContent(content);
     }
 
-    return json.getString("/original").value();
+    if (Resource::formatToStr(Format::json) == content.getString("/format").value()
+        && Resource::formatToStr(Format::yaml) == Resource::formatToStr(resource.m_format))
+    {
+        return formatContent(content.getJson("/json").value());
+    }
+
+    return content.getString("/original").value();
 }
 
 std::optional<base::Error> Catalog::deleteResource(const Resource& resource)
