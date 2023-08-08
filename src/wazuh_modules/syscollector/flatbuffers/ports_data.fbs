@@ -1,21 +1,18 @@
 namespace Syscollector;
 
-table Sys_ports {
+table dbsync_ports {
     scan_time:string;
     protocol:string;
     local_ip:string;
-    local_port:int;
+    local_port:long;
     remote_ip:string;
-    remote_port:int;
-    tx_queue:int;
-    rx_queue:int;
+    remote_port:long;
+    tx_queue:long;
+    rx_queue:long;
     inode:long;
     state:string;
-    PID:int;
+    pid:long;
     process:string;
-    item_id:string;
     checksum:string;
+    item_id:string;
 }
-
-root_type Sys_ports;
-

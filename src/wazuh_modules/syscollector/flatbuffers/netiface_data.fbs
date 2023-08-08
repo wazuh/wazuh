@@ -1,6 +1,6 @@
 namespace Syscollector;
 
-table Sys_netiface {
+table dbsync_network_iface {
     scan_time:string;
     name:string;
     adapter:string;
@@ -16,9 +16,6 @@ table Sys_netiface {
     rx_errors:int;
     tx_dropped:int;
     rx_dropped:int;
-    item_id:string;
     checksum:string;
+    item_id:string;
 }
-
-root_type Sys_netiface;
-

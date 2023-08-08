@@ -1,0 +1,30 @@
+include "hotfixes_data.fbs";
+include "hwinfo_data.fbs";
+include "netaddr_data.fbs";
+include "netiface_data.fbs";
+include "netproto_data.fbs";
+include "osinfo_data.fbs";
+include "ports_data.fbs";
+include "processes_data.fbs";
+include "programs_data.fbs";
+
+namespace Syscollector;
+
+union Provider {
+    dbsync_network_iface,
+    dbsync_network_protocol,
+    dbsync_network_address,
+    dbsync_osinfo,
+    dbsync_hwinfo,
+    dbsync_ports,
+    dbsync_packages,
+    dbsync_hotfixes,
+    dbsync_processes
+}
+
+table Syscollector_delta {
+    data:Provider;
+    operation:string;
+}
+
+root_type Syscollector_delta;

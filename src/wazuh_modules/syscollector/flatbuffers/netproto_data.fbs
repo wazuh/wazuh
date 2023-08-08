@@ -1,13 +1,12 @@
 namespace Syscollector;
 
-table Sys_netproto {
+table dbsync_network_protocol {
+    scan_time:string;
     iface:string;
     type:string;
     gateway:string;
     dhcp:string;
-    metric:int;
-    item_id:string;
+    metric:string;
     checksum:string;
+    item_id:string;
 }
-
-root_type Sys_netproto;

@@ -1,6 +1,6 @@
 namespace Syscollector;
 
-table Sys_osinfo {
+table dbsync_osinfo {
     scan_time:string;
     hostname:string;
     architecture:string;
@@ -17,9 +17,5 @@ table Sys_osinfo {
     version:string;
     os_release:string;
     os_display_version:string;
-    triaged:int;
-    reference:string;
     checksum:string;
 }
-
-root_type Sys_osinfo;

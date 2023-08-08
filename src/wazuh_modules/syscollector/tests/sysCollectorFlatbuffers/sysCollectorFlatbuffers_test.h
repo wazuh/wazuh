@@ -14,6 +14,10 @@
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "flatbuffers/util.h"
+
+const std::string schemaRootPath {"../../flatbuffers/syscollector_deltas.fbs"};
+std::string flatbufferSchemaStr;
 
 class SyscollectorFlatbuffersTest : public ::testing::Test
 {
@@ -21,6 +25,13 @@ class SyscollectorFlatbuffersTest : public ::testing::Test
 
         SyscollectorFlatbuffersTest() = default;
         virtual ~SyscollectorFlatbuffersTest() = default;
+        /**
+         * @brief Initialize string variable with flatbuffer schema.
+         */
+        static void SetUpTestSuite()
+        {
+            flatbuffers::LoadFile(schemaRootPath.c_str(), false, &flatbufferSchemaStr);
+        }
 };
 
 #endif //_SYSCOLLECTOR_FLATBUFFERS_TEST_H

@@ -6,6 +6,11 @@ get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
+file(GLOB FLATBUFFER_SCHEMAS
+  "${CMAKE_SOURCE_DIR}/flatbuffers/*_data.fbs"
+)
+file(COPY ${FLATBUFFER_SCHEMAS} DESTINATION ${CMAKE_SOURCE_DIR}/build/bin/)
+
 file(GLOB SYSCOLLECTOR_FLATBUFFERS_UNIT_TEST_SRC
     "*.cpp")
 

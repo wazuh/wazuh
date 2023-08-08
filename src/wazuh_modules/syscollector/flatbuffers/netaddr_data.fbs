@@ -1,13 +1,12 @@
 namespace Syscollector;
 
-table Sys_netaddr {
+table dbsync_network_address {
+    scan_time:string;
     iface:string;
-    proto:string;
+    proto:int;
     address:string;
     netmask:string;
     broadcast:string;
-    item_id:string;
     checksum:string;
+    item_id:string;
 }
-
-root_type Sys_netaddr;

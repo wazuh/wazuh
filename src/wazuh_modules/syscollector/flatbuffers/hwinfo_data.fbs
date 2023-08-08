@@ -1,15 +1,13 @@
 namespace Syscollector;
 
-table Sys_hwinfo {
+table dbsync_hwinfo {
     scan_time:string;
     board_serial:string;
     cpu_name:string;
     cpu_cores:int;
-    cpu_MHz:double;
+    cpu_mhz:double;
     ram_total:int;
     ram_free:int;
     ram_usage:int;
     checksum:string;
 }
-
-root_type Sys_hwinfo;

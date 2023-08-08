@@ -143,15 +143,16 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if (NOT ${TARGET} STREQUAL "")
   if(${TARGET} STREQUAL "server")
     list(APPEND Schemas
-                netiface_deltas
-                netproto_deltas
-                netaddr_deltas
-                osinfo_deltas
-                hwinfo_deltas
-                ports_deltas
-                programs_deltas
-                hotfixes_deltas
-                processes_deltas
+                          netiface_data
+                          netproto_data
+                          netaddr_data
+                          osinfo_data
+                          hwinfo_data
+                          ports_data
+                          programs_data
+                          hotfixes_data
+                          processes_data
+                          syscollector_deltas
     )
 
     foreach(schema IN LISTS Schemas)
