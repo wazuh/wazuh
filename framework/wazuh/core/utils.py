@@ -946,7 +946,7 @@ def check_agents_allow_higher_versions(data: str):
     Parameters
     ----------
     data : str
-        Configuration file content
+        Configuration file content.
     """
     blocked_configurations = configuration.api_conf['upload_configuration']
 
@@ -956,7 +956,7 @@ def check_agents_allow_higher_versions(data: str):
                 tag_matches = re.match(r".*<allow_higher_versions>(.*)</allow_higher_versions>.*",
                                             line, flags=re.MULTILINE | re.DOTALL)
                 if tag_matches and (tag_matches.group(1) == 'yes'):
-                    raise WazuhError(1124)
+                    raise WazuhError(1129)
         except IndexError:
             pass
 

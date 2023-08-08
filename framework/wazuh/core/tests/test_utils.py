@@ -1990,5 +1990,5 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         if agents_conf['allow_higher_versions']['allow'] or new_conf.find('no') != -1:
             utils.check_agents_allow_higher_versions(new_conf)
         else:
-            with pytest.raises(exception.WazuhError, match=".* 1124 .*"):
+            with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
                 utils.check_agents_allow_higher_versions(new_conf)

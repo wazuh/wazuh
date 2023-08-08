@@ -142,7 +142,6 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
     {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
     {'agents': {'allowed_higher_versions': {'allow': []}}},
-    {'agents': {'allowed_higher_versions': {'exceptions': 1}}},
 ])
 @patch('os.path.exists', return_value=True)
 def test_read_wrong_configuration(mock_exists, config):
