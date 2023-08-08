@@ -9,7 +9,6 @@
 #include <builder/ivalidator.hpp>
 #include <json/json.hpp>
 #include <name.hpp>
-#include <store/istore.hpp>
 #include <store/utils.hpp>
 #include <utils/getExceptionStack.hpp>
 
@@ -35,7 +34,7 @@ public:
 
     Policy buildPolicy(const base::Name& name) const
     {
-        auto envJson = store::get(m_storeRead, name);
+        auto envJson = store::utils::get(m_storeRead, name);
         if (std::holds_alternative<base::Error>(envJson))
         {
             throw std::runtime_error(std::get<base::Error>(envJson).message);
@@ -54,7 +53,7 @@ public:
      */
     Asset buildFilter(const base::Name& name) const
     {
-        auto routeJson = store::get(m_storeRead, name);
+        auto routeJson = store::utils::get(m_storeRead, name);
         if (std::holds_alternative<base::Error>(routeJson))
         {
             throw std::runtime_error(std::get<base::Error>(routeJson).message);

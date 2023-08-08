@@ -116,7 +116,7 @@ TEST_F(Handlers, resourseGet_CatalogError)
     json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
     auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Engine utils: Asset 'decoder/name/fail' could not be obtained from the store: error."})");
+        R"({"status":"ERROR","error":"Engine utils: 'decoder/name/fail' could not be obtained from the store: error."})");
 
     // check response
     ASSERT_TRUE(response.isValid());

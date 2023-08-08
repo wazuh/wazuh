@@ -10,7 +10,6 @@
 #include <fmt/format.h>
 
 #include <json/json.hpp>
-#include <store/istore.hpp>
 #include <store/utils.hpp>
 
 #include "asset.hpp"
@@ -133,7 +132,7 @@ public:
      * @throws std::runtime_error if the policy cannot be built.
      */
     Policy(const json::Json& jsonDefinition,
-                std::shared_ptr<store::IStoreRead> storeRead,
+                std::shared_ptr<const store::IStoreRead> storeRead,
                 std::shared_ptr<internals::Registry<internals::Builder>> registry)
 
     {
@@ -180,13 +179,13 @@ public:
                     throw std::runtime_error("Integration name is not a string");
                 }
 
-                auto jsonObject = store::get(storeRead, integration.getString().value());
-                if (std::holds_alternative<base::Error>(jsonObject))
+                auto integrationDef = store::utils::get(storeRead, integration.getString().value());
+                if (std::holds_alternative<base::Error>(integrationDef))
                 {
-                    throw std::runtime_error(std::get<base::Error>(jsonObject).message);
+                    throw std::runtime_error(std::get<base::Error>(integrationDef).message);
                 }
 
-                auto integrationAssets = getManifestAssets(std::get<json::Json>(jsonObject), storeRead, registry);
+                auto integrationAssets = getManifestAssets(std::get<json::Json>(integrationDef), storeRead, registry);
                 for (auto& [key, value] : integrationAssets)
                 {
                     assets[key].insert(assets[key].end(), value.begin(), value.end());
@@ -270,7 +269,7 @@ public:
 
     static std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
     getManifestAssets(const json::Json& jsonDefinition,
-                      std::shared_ptr<store::IStoreRead> storeRead,
+                      std::shared_ptr<const store::IStoreRead> storeRead,
                       std::shared_ptr<internals::Registry<internals::Builder>> registry);
 };
 
