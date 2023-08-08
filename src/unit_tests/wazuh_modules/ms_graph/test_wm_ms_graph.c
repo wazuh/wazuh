@@ -1268,10 +1268,10 @@ void test_main_token(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1328,12 +1328,6 @@ void test_main_token(void **state) {
 
     wm_ms_graph_main(module_data);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 
 }
 
@@ -1351,10 +1345,10 @@ void test_main_relationships(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1414,13 +1408,6 @@ void test_main_relationships(void **state) {
 
     wm_ms_graph_main(module_data);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
-    os_free(module_data->auth_config.access_token);
 
 }
 
@@ -1448,7 +1435,7 @@ void test_no_resources(void **state) {
 void test_no_relationships(void **state) {
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     module_data->enabled = true;
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     module_data->resources[0].num_relationships = 0;
     module_data->num_resources = 1;
 
@@ -1490,10 +1477,10 @@ void test_dump(void **state) {
     os_strdup("example_string", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
 
@@ -1504,12 +1491,6 @@ void test_dump(void **state) {
 
     cJSON_Delete(dump);
     os_free(dump_text);
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_dump_gcc_configuration(void **state) {
@@ -1539,7 +1520,7 @@ void test_dump_gcc_configuration(void **state) {
     os_strdup("example_string", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     module_data->resources[0].name = NULL;
     module_data->num_resources = 1;
 
@@ -1621,10 +1602,10 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1647,12 +1628,6 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
 
     assert_null(module_data->auth_config.access_token);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
@@ -1684,10 +1659,10 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1716,12 +1691,6 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
 
     assert_null(module_data->auth_config.access_token);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
@@ -1753,10 +1722,10 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1786,12 +1755,6 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
 
     assert_null(module_data->auth_config.access_token);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
@@ -1823,10 +1786,10 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1856,12 +1819,6 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
 
     assert_null(module_data->auth_config.access_token);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_get_access_token_success(void **state) {
@@ -1893,10 +1850,10 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1929,12 +1886,6 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     assert_int_equal(module_data->auth_config.token_expiration_time, 223);
 #endif
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
@@ -1966,10 +1917,10 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -1997,12 +1948,6 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
@@ -2034,10 +1979,10 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2065,12 +2010,6 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
@@ -2103,10 +2042,10 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2138,12 +2077,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void **state) {
@@ -2176,10 +2109,10 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2202,12 +2135,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response(void **state) {
@@ -2243,10 +2170,10 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
     os_strdup("token", module_data->auth_config.access_token);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2282,12 +2209,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **state) {
@@ -2322,10 +2243,10 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2357,12 +2278,6 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **state) {
@@ -2397,10 +2312,10 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2442,12 +2357,6 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) {
@@ -2482,10 +2391,10 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2528,12 +2437,6 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
@@ -2568,10 +2471,10 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2614,12 +2517,6 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
@@ -2654,10 +2551,10 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2716,12 +2613,6 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
@@ -2756,10 +2647,10 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2828,12 +2719,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
@@ -2868,10 +2753,10 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
-    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
@@ -2954,12 +2839,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **state) {
@@ -3000,7 +2879,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     os_strdup("example_secret", module_data->auth_config.secret_value);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_malloc(sizeof(wm_ms_graph_resource) * 3, module_data->resources);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     os_strdup("auditlogs", module_data->resources[1].name);
     module_data->num_resources = 2;
@@ -3134,16 +3013,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
 
     wm_ms_graph_scan_relationships(module_data, initial);
 
-    os_free(module_data->resources[1].relationships[0]);
-    os_free(module_data->resources[1].relationships);
-    module_data->resources[1].num_relationships = 0;
-    os_free(module_data->resources[1].name);
-    os_free(module_data->resources[0].relationships[0]);
-    os_free(module_data->resources[0].relationships);
-    module_data->resources[0].num_relationships = 0;
-    os_free(module_data->resources[0].name);
-    os_free(module_data->resources);
-    module_data->num_resources = 0;
 }
 
 int main(void) {
