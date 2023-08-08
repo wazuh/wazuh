@@ -15,16 +15,15 @@ void StdFileSystemHelperTest::SetUp() {};
 
 void StdFileSystemHelperTest::TearDown() {};
 
-
 TEST_F(StdFileSystemHelperTest, FilesystemExpandSimpleWildcard)
 {
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
-    Utils::expandAbsolutePath("/tmp/wazuh_test/dum*", output);
+    Utils::expandAbsolutePath(PATH_TO_EXPAND_1, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == "/tmp/wazuh_test/dummy" || item == "/tmp/wazuh_test/dummy.txt");
+        EXPECT_TRUE(item == EXPAND_PATH_5 || item == EXPAND_PATH_6);
     }
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
@@ -34,14 +33,14 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcard)
 {
     constexpr auto PATH_MATCH_SIZE { 4ull };
     std::vector<std::string> output;
-    Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/*", output);
+    Utils::expandAbsolutePath(PATH_TO_EXPAND_2, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
-                    item == "/tmp/wazuh_test/prefix_1_data/prefix1_2" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_1" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_2");
+        EXPECT_TRUE(item == EXPAND_PATH_1 ||
+                    item == EXPAND_PATH_2 ||
+                    item == EXPAND_PATH_3 ||
+                    item == EXPAND_PATH_4);
     }
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
@@ -51,14 +50,14 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithPrefix)
 {
     constexpr auto PATH_MATCH_SIZE { 4ull };
     std::vector<std::string> output;
-    Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/prefix*", output);
+    Utils::expandAbsolutePath(PATH_TO_EXPAND_3, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
-                    item == "/tmp/wazuh_test/prefix_1_data/prefix1_2" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_1" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_2");
+        EXPECT_TRUE(item == EXPAND_PATH_1 ||
+                    item == EXPAND_PATH_2 ||
+                    item == EXPAND_PATH_3 ||
+                    item == EXPAND_PATH_4);
     }
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
@@ -68,12 +67,12 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithSuffix)
 {
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
-    Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/*_1", output);
+    Utils::expandAbsolutePath(PATH_TO_EXPAND_4, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_1");
+        EXPECT_TRUE(item == EXPAND_PATH_1 ||
+                    item == EXPAND_PATH_3);
     }
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
@@ -82,12 +81,12 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark)
 {
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
-    Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_?_data/*_1", output);
+    Utils::expandAbsolutePath(PATH_TO_EXPAND_5, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_1");
+        EXPECT_TRUE(item == EXPAND_PATH_1 ||
+                    item == EXPAND_PATH_3);
     }
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
@@ -97,15 +96,14 @@ TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark2)
 {
     constexpr auto PATH_MATCH_SIZE { 2ull };
     std::vector<std::string> output;
-    Utils::expandAbsolutePath("/tmp/wazuh_test/prefix_*_data/prefix?*1", output);
+    Utils::expandAbsolutePath(PATH_TO_EXPAND_6, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == "/tmp/wazuh_test/prefix_1_data/prefix1_1" ||
-                    item == "/tmp/wazuh_test/prefix_2_data/prefix2_1");
+        EXPECT_TRUE(item == EXPAND_PATH_1 ||
+                    item == EXPAND_PATH_3);
     }
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
-
 
