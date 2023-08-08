@@ -323,15 +323,6 @@
                 ]
             },
             {
-                "name": "rule_controller.py",
-                "tag": "rule",
-                "tests": [
-                    "test_rbac_black_rule_endpoints.tavern.yaml",
-                    "test_rbac_white_rule_endpoints.tavern.yaml",
-                    "test_rule_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "sca_controller.py",
                 "tag": "sca",
                 "tests": [
@@ -666,15 +657,6 @@
                 ]
             },
             {
-                "name": "rule.py",
-                "tag": "rule",
-                "tests": [
-                    "test_rbac_black_rule_endpoints.tavern.yaml",
-                    "test_rbac_white_rule_endpoints.tavern.yaml",
-                    "test_rule_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "sca.py",
                 "tag": "sca",
                 "tests": [
@@ -939,15 +921,6 @@
                     "test_rbac_black_rootcheck_endpoints.tavern.yaml",
                     "test_rbac_white_rootcheck_endpoints.tavern.yaml",
                     "test_rootcheck_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "rule.py",
-                "tag": "rule",
-                "tests": [
-                    "test_rbac_black_rule_endpoints.tavern.yaml",
-                    "test_rbac_white_rule_endpoints.tavern.yaml",
-                    "test_rule_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1797,7 +1770,6 @@
                     "test_rbac_black_mitre_endpoints.tavern.yaml",
                     "test_rbac_black_overview_endpoints.tavern.yaml",
                     "test_rbac_black_rootcheck_endpoints.tavern.yaml",
-                    "test_rbac_black_rule_endpoints.tavern.yaml",
                     "test_rbac_black_sca_endpoints.tavern.yaml",
                     "test_rbac_black_security_endpoints.tavern.yaml",
                     "test_rbac_black_syscheck_endpoints.tavern.yaml",
@@ -1817,7 +1789,6 @@
                     "test_rbac_white_mitre_endpoints.tavern.yaml",
                     "test_rbac_white_overview_endpoints.tavern.yaml",
                     "test_rbac_white_rootcheck_endpoints.tavern.yaml",
-                    "test_rbac_white_rule_endpoints.tavern.yaml",
                     "test_rbac_white_sca_endpoints.tavern.yaml",
                     "test_rbac_white_security_endpoints.tavern.yaml",
                     "test_rbac_white_syscheck_endpoints.tavern.yaml",
@@ -2241,13 +2212,6 @@
                 ]
             },
             {
-                "name": "test_rbac_black_rule_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_black_rule_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "test_rbac_black_sca_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -2381,13 +2345,6 @@
                 ]
             },
             {
-                "name": "test_rbac_white_rule_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_white_rule_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "test_rbac_white_sca_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -2434,13 +2391,6 @@
                 "tag": "test",
                 "tests": [
                     "test_rootcheck_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "test_rule_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rule_endpoints.tavern.yaml"
                 ]
             },
             {
