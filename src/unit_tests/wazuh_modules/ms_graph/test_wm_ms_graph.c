@@ -1283,6 +1283,8 @@ void test_main_token(void **state) {
     os_strdup("{\"access_token\":\"token_value\",\"expires_in\":-1}", response->body);
     os_strdup("test", response->header);
 
+    will_return(__wrap_FOREVER, 1);
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_value(__wrap_wm_state_io, state, &module_data->state);
@@ -1322,6 +1324,8 @@ void test_main_token(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
+    will_return(__wrap_FOREVER, 0);
+
     wm_ms_graph_main(module_data);
 
     os_free(module_data->resources[0].relationships[0]);
@@ -1358,6 +1362,8 @@ void test_main_relationships(void **state) {
 
     os_strdup("token", module_data->auth_config.access_token);
     module_data->auth_config.token_expiration_time = 276447231;
+
+    will_return(__wrap_FOREVER, 1);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -1403,6 +1409,8 @@ void test_main_relationships(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+
+    will_return(__wrap_FOREVER, 0);
 
     wm_ms_graph_main(module_data);
 
