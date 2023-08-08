@@ -437,7 +437,7 @@ TEST_F(KVDBApiTest, managerDeleteDBNotExists)
     kvdbManager->createDB(KVDB_TEST_2);
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB test1 does not exist."})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'test1' does not exist."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -883,7 +883,7 @@ TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
 
     ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB default2 does not exist."})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'default2' does not exist."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -1080,7 +1080,7 @@ TEST_F(KVDBApiTest, dbPutKeyDBNotExists)
 
     ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1", "value1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB default2 does not exist."})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'default2' does not exist."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
