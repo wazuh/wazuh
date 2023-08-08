@@ -324,12 +324,13 @@ def test_validate_upload_delete_dir(relative_dirname, res_path, err_code):
     ('test_new_rule.xml', None, False, 'tests/data/etc/rules/test_new_rule.xml'),
     ('test_new_rule.xml', 'tests/data/etc/rules/subpath', False, 'tests/data/etc/rules/subpath/test_new_rule.xml'),    
 ])
-@patch('wazuh.rule.delete_file_with_backup')
+@patch('wazuh.rule.delete_rule_file')
+@patch('wazuh.rule.full_copy')
 @patch('wazuh.rule.upload_file')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
-def test_upload_file(mock_safe_move, mock_remove, mock_xml, mock_delete, 
-                     file, relative_dirname, overwrite, rule_path):
+def test_upload_file(mock_safe_move, mock_remove, mock_xml, mock_full_copy,
+                     mock_delete, file, relative_dirname, overwrite, rule_path):
     """Test uploading a rule file.
 
     Parameters
@@ -352,15 +353,18 @@ def test_upload_file(mock_safe_move, mock_remove, mock_xml, mock_delete,
                 result = rule.upload_rule_file(filename=file, relative_dirname=relative_dirname,
                                                 content=content, overwrite=overwrite)
 
-                # Assert data match what was expected, type of the result and correct parameters in delete() method.
+                # Assert data match what was expected, type of the result and correct
+                # parameters in delete() method.
                 assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
                 assert result.affected_items[0] == rule_path, 'Expected item not found'
                 mock_xml.assert_called_once_with(content, rule_path)
                 if overwrite:
                     full_path = os.path.join(wazuh.common.WAZUH_PATH, rule_path)
                     backup_file = full_path+'.backup'
-                    mock_delete.assert_called_once_with(backup_file, 
-                                                        full_path, rule.delete_rule_file), \
+                    mock_full_copy.assert_called_once_with(full_path, backup_file), \
+                    'full_copy function not called with expected parameters'
+                    mock_delete.assert_called_once_with(filename= file,
+                                                        relative_dirname=os.path.dirname(rule_path)), \
                         'delete_rule_file method not called with expected parameter'
                     mock_remove.assert_called_once()
                     mock_safe_move.assert_called_once()

@@ -358,7 +358,7 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
                 full_copy(full_path, backup_file)
             except IOError as exc:
                 raise WazuhError(1019) from exc
-            
+
             delete_decoder_file(filename=filename,
                                 relative_dirname=relative_dirname)
 
