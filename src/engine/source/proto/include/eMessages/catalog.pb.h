@@ -459,7 +459,6 @@ class ResourceGet_Request final :
   enum : int {
     kNameFieldNumber = 1,
     kFormatFieldNumber = 2,
-    kOriginalFieldNumber = 3,
   };
   // optional string name = 1;
   bool has_name() const;
@@ -492,19 +491,6 @@ class ResourceGet_Request final :
   void _internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value);
   public:
 
-  // optional bool original = 3;
-  bool has_original() const;
-  private:
-  bool _internal_has_original() const;
-  public:
-  void clear_original();
-  bool original() const;
-  void set_original(bool value);
-  private:
-  bool _internal_original() const;
-  void _internal_set_original(bool value);
-  public:
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.ResourceGet_Request)
  private:
   class _Internal;
@@ -517,7 +503,6 @@ class ResourceGet_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     int format_;
-    bool original_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -1488,34 +1473,6 @@ inline void ResourceGet_Request::_internal_set_format(::com::wazuh::api::engine:
 inline void ResourceGet_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
   _internal_set_format(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceGet_Request.format)
-}
-
-// optional bool original = 3;
-inline bool ResourceGet_Request::_internal_has_original() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
-  return value;
-}
-inline bool ResourceGet_Request::has_original() const {
-  return _internal_has_original();
-}
-inline void ResourceGet_Request::clear_original() {
-  _impl_.original_ = false;
-  _impl_._has_bits_[0] &= ~0x00000004u;
-}
-inline bool ResourceGet_Request::_internal_original() const {
-  return _impl_.original_;
-}
-inline bool ResourceGet_Request::original() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceGet_Request.original)
-  return _internal_original();
-}
-inline void ResourceGet_Request::_internal_set_original(bool value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  _impl_.original_ = value;
-}
-inline void ResourceGet_Request::set_original(bool value) {
-  _internal_set_original(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceGet_Request.original)
 }
 
 // -------------------------------------------------------------------
