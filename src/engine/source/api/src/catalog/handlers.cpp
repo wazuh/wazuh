@@ -95,12 +95,6 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
             return ::api::adapter::genericError<ResponseType>(error.value());
         }
 
-        auto original {false};
-        if (eRequest.has_original())
-        {
-            original = eRequest.original();
-        }
-
         // Validate the name
         base::Name name;
         try
@@ -123,7 +117,7 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        auto query = catalog->getResource(targetResource, original);
+        auto query = catalog->getResource(targetResource);
         if (std::holds_alternative<base::Error>(query))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(query).message);
