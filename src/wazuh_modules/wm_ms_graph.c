@@ -47,18 +47,17 @@ const wm_context WM_MS_GRAPH_CONTEXT = {
 void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     char* timestamp = NULL;
 
-    if (!wm_ms_graph_setup(ms_graph)){
+    if (!wm_ms_graph_setup(ms_graph)) {
         return NULL;
-    }
-    else{
+    } else {
         mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
 
         bool initial = true;
 
-        while(FOREVER()){
+        while (FOREVER()) {
             const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
 
-            if(ms_graph->state.next_time == 0){
+            if (ms_graph->state.next_time == 0) {
                 ms_graph->state.next_time = ms_graph->scan_config.time_start + time_sleep;
             }
 
@@ -70,12 +69,12 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 w_sleep_until(next_scan_time);
             }
 
-            if(!ms_graph->auth_config.access_token || time(NULL) >= ms_graph->auth_config.token_expiration_time){
+            if (!ms_graph->auth_config.access_token || time(NULL) >= ms_graph->auth_config.token_expiration_time) {
                 mtinfo(WM_MS_GRAPH_LOGTAG, "Obtaining access token.");
                 wm_ms_graph_get_access_token(&ms_graph->auth_config, ms_graph->curl_max_size);
             }
 
-            if(ms_graph->auth_config.access_token && time(NULL) < ms_graph->auth_config.token_expiration_time){
+            if (ms_graph->auth_config.access_token && time(NULL) < ms_graph->auth_config.token_expiration_time) {
                 mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", ms_graph->auth_config.tenant_id);
                 wm_ms_graph_scan_relationships(ms_graph, initial);
                 initial = false;
@@ -88,11 +87,11 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
 
 bool wm_ms_graph_setup(wm_ms_graph* ms_graph) {
 
-    if (!wm_ms_graph_check(ms_graph)){
+    if (!wm_ms_graph_check(ms_graph)) {
         return false;
     }
 
-    if(wm_state_io(WM_MS_GRAPH_CONTEXT.name, WM_IO_READ, &ms_graph->state, sizeof(ms_graph->state)) < 0){
+    if (wm_state_io(WM_MS_GRAPH_CONTEXT.name, WM_IO_READ, &ms_graph->state, sizeof(ms_graph->state)) < 0) {
         memset(&ms_graph->state, 0, sizeof(ms_graph->state));
     }
 
@@ -114,7 +113,7 @@ bool wm_ms_graph_setup(wm_ms_graph* ms_graph) {
 
 bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
 
-    if(!ms_graph->enabled){
+    if (!ms_graph->enabled) {
         mtinfo(WM_MS_GRAPH_LOGTAG, "Module disabled. Exiting...");
         #ifdef WAZUH_UNIT_TESTING
         return false;
@@ -122,18 +121,16 @@ bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
         pthread_exit(NULL);
         #endif
 
-    }
-    else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0){
+    } else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0) {
         mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
         #ifdef WAZUH_UNIT_TESTING
         return false;
         #else
         pthread_exit(NULL);
         #endif
-    }
-    else {
-        for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
-            if(ms_graph->resources[resource].num_relationships == 0){
+    } else {
+        for (unsigned int resource = 0; resource < ms_graph->num_resources; resource++) {
+            if (ms_graph->resources[resource].num_relationships == 0) {
                 mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
                 #ifdef WAZUH_UNIT_TESTING
                 return false;
@@ -160,29 +157,26 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     headers[1] = NULL;
 
     response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    if(response){
-        if(response->status_code != 200){
+    if (response) {
+        if (response->status_code != 200) {
             char status_code[4];
             snprintf(status_code, 4, "%ld", response->status_code);
             mtwarn(WM_MS_GRAPH_LOGTAG, "Received unsuccessful status code when attempting to obtain access token: Status code was '%s' & response was '%s'", status_code, response->body);
-        }
-        else if (response->max_size_reached){
+        } else if (response->max_size_reached) {
             mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
-        }
-        else{
+        } else {
             cJSON* response_body = NULL;
-            if(response_body = cJSON_Parse(response->body), response_body){
+            if (response_body = cJSON_Parse(response->body), response_body) {
                 cJSON* access_token_value = cJSON_GetObjectItem(response_body, "access_token");
                 cJSON* access_token_expiration = cJSON_GetObjectItem(response_body, "expires_in");
-                if (cJSON_IsString(access_token_value) && cJSON_IsNumber(access_token_expiration)){
+                if (cJSON_IsString(access_token_value) && cJSON_IsNumber(access_token_expiration)) {
                     os_strdup(access_token_value->valuestring, auth_config->access_token);
                     auth_config->token_expiration_time = time(NULL) + access_token_expiration->valueint;
                 } else {
                     mtwarn(WM_MS_GRAPH_LOGTAG, "Incomplete access token response, value or expiration time not present.");
                 }
                 cJSON_Delete(response_body);
-            }
-            else{
+            } else {
                 mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse access token JSON body.");
             }
         }
@@ -346,8 +340,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
 
 void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 
-    for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
-        for(unsigned int relationship = 0; relationship < ms_graph->resources[resource].num_relationships; relationship++){
+    for (unsigned int resource = 0; resource < ms_graph->num_resources; resource++) {
+        for (unsigned int relationship = 0; relationship < ms_graph->resources[resource].num_relationships; relationship++) {
             os_free(ms_graph->resources[resource].relationships[relationship]);
         }
         os_free(ms_graph->resources[resource].name);
@@ -377,77 +371,70 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     cJSON* ms_graph_info = cJSON_CreateObject();
     cJSON* ms_graph_auth = cJSON_CreateObject();
 
-    if(ms_graph->enabled){
+    if (ms_graph->enabled) {
         cJSON_AddStringToObject(ms_graph_info, "enabled", "yes");
-    }
-    else{
+    } else {
         cJSON_AddStringToObject(ms_graph_info, "enabled", "no");
     }
-    if(ms_graph->only_future_events){
+    if (ms_graph->only_future_events) {
         cJSON_AddStringToObject(ms_graph_info, "only_future_events", "yes");
-    }
-    else{
+    } else {
         cJSON_AddStringToObject(ms_graph_info, "only_future_events", "no");
     }
-    if(ms_graph->curl_max_size){
+    if (ms_graph->curl_max_size) {
         cJSON_AddNumberToObject(ms_graph_info, "curl_max_size", ms_graph->curl_max_size);
     }
-    if(ms_graph->run_on_start){
+    if (ms_graph->run_on_start) {
         cJSON_AddStringToObject(ms_graph_info, "run_on_start", "yes");
-    }
-    else{
+    } else {
         cJSON_AddStringToObject(ms_graph_info, "run_on_start", "no");
     }
-    if(ms_graph->version){
+    if (ms_graph->version) {
         cJSON_AddStringToObject(ms_graph_info, "version", ms_graph->version);
     }
     sched_scan_dump(&ms_graph->scan_config, ms_graph_info);
 
-    if(ms_graph->auth_config.client_id){
+    if (ms_graph->auth_config.client_id) {
         cJSON_AddStringToObject(ms_graph_auth, "client_id", ms_graph->auth_config.client_id);
     }
-    if(ms_graph->auth_config.tenant_id){
+    if (ms_graph->auth_config.tenant_id) {
         cJSON_AddStringToObject(ms_graph_auth, "tenant_id", ms_graph->auth_config.tenant_id);
     }
-    if(ms_graph->auth_config.secret_value){
+    if (ms_graph->auth_config.secret_value) {
         cJSON_AddStringToObject(ms_graph_auth, "secret_value", ms_graph->auth_config.secret_value);
     }
     // The FQDN used for querying the API is unique across types, so we can ignore the login FQDN
-    if(!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN)){
+    if (!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN)) {
         cJSON_AddStringToObject(ms_graph_auth, "api_type", "global");
-    }
-    else if(!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN)){
+    } else if (!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN)) {
         cJSON_AddStringToObject(ms_graph_auth, "api_type", "gcc-high");
-    }
-    else if(!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_DOD_API_QUERY_FQDN)){
+    } else if (!strcmp(ms_graph->auth_config.query_fqdn, WM_MS_GRAPH_DOD_API_QUERY_FQDN)) {
         cJSON_AddStringToObject(ms_graph_auth, "api_type", "dod");
     }
     cJSON_AddItemToObject(ms_graph_info, "api_auth", ms_graph_auth);
 
-    if(ms_graph->resources){
+    if (ms_graph->resources) {
         cJSON* resource_array = cJSON_CreateArray();
-        for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
+        for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
             cJSON* resource = cJSON_CreateObject();
-            if(ms_graph->resources[resource_num].name){
+            if (ms_graph->resources[resource_num].name) {
                 cJSON_AddStringToObject(ms_graph_auth, "name", ms_graph->resources[resource_num].name);
-            }
-            else{
+            } else {
                 cJSON_free(resource);
                 continue;
             }
-            if(ms_graph->resources[resource_num].relationships){
-                for(unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
-                    if(ms_graph->resources[resource_num].relationships[relationship_num]){
+            if (ms_graph->resources[resource_num].relationships) {
+                for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
+                    if (ms_graph->resources[resource_num].relationships[relationship_num]) {
                         cJSON_AddStringToObject(resource, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }
                 }
             }
             cJSON_AddItemToArray(resource_array, resource);
         }
-        if(cJSON_GetArraySize(resource_array) > 0){
+        if (cJSON_GetArraySize(resource_array) > 0) {
             cJSON_AddItemToObject(ms_graph_info, "resources", resource_array);
-        }
-        else{
+        } else {
             cJSON_free(resource_array);
         }
     }
