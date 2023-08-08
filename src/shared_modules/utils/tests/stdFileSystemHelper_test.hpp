@@ -23,6 +23,46 @@ constexpr auto FS_MS_WAIT_TIME
     50ull
 };
 
+#ifndef _WIN32
+constexpr auto EXPAND_PATH_1 { "/tmp/wazuh_test/prefix_1_data/prefix1_1" };
+constexpr auto EXPAND_PATH_2 { "/tmp/wazuh_test/prefix_1_data/prefix1_2" };
+constexpr auto EXPAND_PATH_3 { "/tmp/wazuh_test/prefix_2_data/prefix2_1" };
+constexpr auto EXPAND_PATH_4 { "/tmp/wazuh_test/prefix_2_data/prefix2_2" };
+constexpr auto EXPAND_PATH_5 { "/tmp/wazuh_test/dummy" };
+constexpr auto EXPAND_PATH_6 { "/tmp/wazuh_test/dummy.txt" };
+constexpr auto PATH_TO_EXPAND_1 { "/tmp/wazuh_test/dum*" };
+constexpr auto PATH_TO_EXPAND_2 { "/tmp/wazuh_test/prefix_*_data/*" };
+constexpr auto PATH_TO_EXPAND_3 { "/tmp/wazuh_test/prefix_*_data/prefix*" };
+constexpr auto PATH_TO_EXPAND_4 { "/tmp/wazuh_test/prefix_*_data/*_1" };
+constexpr auto PATH_TO_EXPAND_5 { "/tmp/wazuh_test/prefix_?_data/*_1" };
+constexpr auto PATH_TO_EXPAND_6 { "/tmp/wazuh_test/prefix_*_data/prefix?*1" };
+constexpr auto TMP_PATH { "/tmp" };
+constexpr auto ROOT_PATH { "/tmp/wazuh_test" };
+constexpr auto ROOT_PATH_1 { "/tmp/wazuh_test/prefix_1_data" };
+constexpr auto ROOT_PATH_2 { "/tmp/wazuh_test/prefix_2_data" };
+constexpr auto ROOT_PATH_DUMMY { "/tmp/wazuh_test/dummy" };
+constexpr auto DUMMY_FILE { "/tmp/wazuh_test/dummy.txt" };
+#else
+constexpr auto EXPAND_PATH_1 { "C:\\tmp\\wazuh_test\\prefix_1_data\\prefix1_1" };
+constexpr auto EXPAND_PATH_2 { "C:\\tmp\\wazuh_test\\prefix_1_data\\prefix1_2" };
+constexpr auto EXPAND_PATH_3 { "C:\\tmp\\wazuh_test\\prefix_2_data\\prefix2_1" };
+constexpr auto EXPAND_PATH_4 { "C:\\tmp\\wazuh_test\\prefix_2_data\\prefix2_2" };
+constexpr auto EXPAND_PATH_5 { "C:\\tmp\\wazuh_test\\dummy" };
+constexpr auto EXPAND_PATH_6 { "C:\\tmp\\wazuh_test\\dummy.txt" };
+constexpr auto PATH_TO_EXPAND_1 { "C:\\tmp\\wazuh_test\\dum*" };
+constexpr auto PATH_TO_EXPAND_2 { "C:\\tmp\\wazuh_test\\prefix_*_data\\*" };
+constexpr auto PATH_TO_EXPAND_3 { "C:\\tmp\\wazuh_test\\prefix_*_data\\prefix*" };
+constexpr auto PATH_TO_EXPAND_4 { "C:\\tmp\\wazuh_test\\prefix_*_data\\*_1" };
+constexpr auto PATH_TO_EXPAND_5 { "C:\\tmp\\wazuh_test\\prefix_?_data\\*_1" };
+constexpr auto PATH_TO_EXPAND_6 { "C:\\tmp\\wazuh_test\\prefix_*_data\\prefix?*1" };
+constexpr auto TMP_PATH { "C:\\tmp" };
+constexpr auto ROOT_PATH { "C:\\tmp\\wazuh_test" };
+constexpr auto ROOT_PATH_1 { "C:\\tmp\\wazuh_test\\prefix_1_data" };
+constexpr auto ROOT_PATH_2 { "C:\\tmp\\wazuh_test\\prefix_2_data" };
+constexpr auto ROOT_PATH_DUMMY { "C:\\tmp\\wazuh_test\\dummy" };
+constexpr auto DUMMY_FILE { "C:\\tmp\\wazuh_test\\dummy.txt" };
+#endif
+
 class StdFileSystemHelperTest : public ::testing::Test
 {
     protected:
@@ -35,36 +75,52 @@ class StdFileSystemHelperTest : public ::testing::Test
 
         static void SetUpTestSuite()
         {
-            std::filesystem::remove_all("/tmp/wazuh_test");
+            std::filesystem::remove_all(ROOT_PATH);
 
-            while (std::filesystem::exists("/tmp/wazuh_test"))
+            while (std::filesystem::exists(ROOT_PATH))
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
 
-            std::filesystem::create_directory("/tmp/wazuh_test");
-            std::filesystem::create_directory("/tmp/wazuh_test/prefix_1_data");
-            std::filesystem::create_directory("/tmp/wazuh_test/prefix_2_data");
-            std::filesystem::create_directory("/tmp/wazuh_test/dummy");
+            std::filesystem::create_directory(TMP_PATH);
 
-            while (!std::filesystem::exists("/tmp/wazuh_test/prefix_1_data") ||
-                    !std::filesystem::exists("/tmp/wazuh_test/prefix_2_data") ||
-                    !std::filesystem::exists("/tmp/wazuh_test/dummy"))
+            while (!std::filesystem::exists(TMP_PATH))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
+            }
+
+            std::filesystem::create_directory(ROOT_PATH);
+
+            while (!std::filesystem::exists(ROOT_PATH))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
+            }
+
+            std::filesystem::create_directory(ROOT_PATH_1);
+            std::filesystem::create_directory(ROOT_PATH_2);
+            std::filesystem::create_directory(ROOT_PATH_DUMMY);
+
+            while (!std::filesystem::exists(ROOT_PATH_1) ||
+                    !std::filesystem::exists(ROOT_PATH_2) ||
+                    !std::filesystem::exists(ROOT_PATH_DUMMY))
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
 
             // Create dummy file
-            std::ofstream dummyFile("/tmp/wazuh_test/dummy.txt");
+            std::ofstream dummyFile(DUMMY_FILE);
             dummyFile << "dummy";
             dummyFile.close();
 
-            std::filesystem::create_directory("/tmp/wazuh_test/prefix_1_data/prefix1_1");
-            std::filesystem::create_directory("/tmp/wazuh_test/prefix_1_data/prefix1_2");
-            std::filesystem::create_directory("/tmp/wazuh_test/prefix_2_data/prefix2_1");
-            std::filesystem::create_directory("/tmp/wazuh_test/prefix_2_data/prefix2_2");
+            std::filesystem::create_directory(EXPAND_PATH_1);
+            std::filesystem::create_directory(EXPAND_PATH_2);
+            std::filesystem::create_directory(EXPAND_PATH_3);
+            std::filesystem::create_directory(EXPAND_PATH_4);
 
-            while (!std::filesystem::exists("/tmp/wazuh_test/prefix_1_data/prefix1_1"))
+            while (!std::filesystem::exists(EXPAND_PATH_1) ||
+                    !std::filesystem::exists(EXPAND_PATH_2) ||
+                    !std::filesystem::exists(EXPAND_PATH_3) ||
+                    !std::filesystem::exists(EXPAND_PATH_4))
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
