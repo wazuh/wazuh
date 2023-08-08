@@ -1,3 +1,4 @@
+#include "cmdArgsParser.hpp"
 #include "routerModule.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
@@ -7,37 +8,76 @@
 #include <thread>
 #include <vector>
 
-int main()
+std::unique_ptr<RouterProvider> PROVIDER;
+std::unique_ptr<RouterSubscriber> SUBSCRIPTOR;
+
+int main(int argc, const char* argv[])
 {
-    auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
-    auto provider = std::make_unique<RouterProvider>("test");
-    RouterModule::instance().start();
-    std::cout << "Initialized" << std::endl;
-    provider->start();
-    std::cout << "Provider initialized" << std::endl;
-    std::atomic<size_t> count = 0;
+    CmdLineArgs args(argc, argv);
 
-    subscriptor->subscribe(
-        [&](const std::vector<char>& message)
+    atexit(
+        []()
         {
-            ++count;
-            std::cout << "Data: " << message.data() << std::endl;
+            if (PROVIDER)
+            {
+                PROVIDER->stop();
+                PROVIDER.reset();
+            }
+            if (SUBSCRIPTOR)
+            {
+                SUBSCRIPTOR.reset();
+            }
+            RouterModule::instance().stop();
         });
-    std::cout << "Subscriber initialized" << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    std::string data {"Hello world"};
-    auto message = std::vector<char>(data.begin(), data.end());
-
-    for (int i = 0; i < 50; ++i)
+    if (args.mode() == "publisher")
     {
-        provider->send(message);
+        PROVIDER = std::make_unique<RouterProvider>(args.topic());
+        PROVIDER->start();
+    }
+    else if (args.mode() == "subscriber")
+    {
+        SUBSCRIPTOR = std::make_unique<RouterSubscriber>(args.topic(), args.subscriberId(), false);
+        std::atomic<size_t> count = 0;
+
+        SUBSCRIPTOR->subscribe(
+            [&](const std::vector<char>& message)
+            {
+                std::cout << "Received message #" << ++count << ": ";
+                std::cout << std::string(message.data(), message.size()) << std::endl;
+            });
+    }
+    else if (args.mode() == "broker")
+    {
+        RouterModule::instance().start();
+    }
+    else
+    {
+        CmdLineArgs::showHelp();
+        return 1;
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::cout << "Press 'q' to exit." << std::endl;
+    std::string data;
+    while (std::getline(std::cin, data))
+    {
+        const auto message = std::vector<char>(data.begin(), data.end());
 
-    std::cout << "Destroying " << count << std::endl;
-    RouterModule::instance().stop();
+        if (message.empty())
+        {
+            continue;
+        }
+
+        if (message[0] == 'q')
+        {
+            break;
+        }
+
+        if (PROVIDER)
+        {
+            std::cout << "Sending message: " << data << std::endl;
+            PROVIDER->send(message);
+        }
+    }
     return 0;
 }
