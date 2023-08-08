@@ -81,9 +81,6 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 initial = false;
             }
 
-            #ifdef WAZUH_UNIT_TESTING
-                break;;
-            #endif
         }
     }
     return NULL;

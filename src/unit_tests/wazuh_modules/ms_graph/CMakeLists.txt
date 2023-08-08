@@ -14,7 +14,7 @@ list(APPEND tests_flags "-Wl,--wrap=_merror -Wl,--wrap=_mtinfo -Wl,--wrap=_mtwar
                         -Wl,--wrap,atexit -Wl,--wrap,time -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,gmtime_r -Wl,--wrap,isDebug \
                         -Wl,--wrap,sched_scan_get_time_until_next_scan -Wl,--wrap,is_fim_shutdown -Wl,--wrap,fim_db_teardown -Wl,--wrap,Start_win32_Syscheck \
                         -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror -Wl,--wrap,_imp__rsync_initialize \
-                        -Wl,--wrap,syscom_dispatch -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,w_get_timestamp")
+                        -Wl,--wrap,syscom_dispatch -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,w_get_timestamp -Wl,--wrap,FOREVER")
                         
 
 list(APPEND use_shared_libs 1)
