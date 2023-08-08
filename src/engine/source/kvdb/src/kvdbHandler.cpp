@@ -168,10 +168,8 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHand
 
             return content;
         }
-        else
-        {
-            return base::Error {"Cannot access RocksDB Column Family Handle"};
-        }
+
+        return base::Error {"Cannot access RocksDB Column Family Handle"};
     }
 
     return base::Error {"Cannot access RocksDB::DB"};
@@ -205,10 +203,8 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHand
 
             return content;
         }
-        else
-        {
-            return base::Error {"Cannot access RocksDB Column Family Handle"};
-        }
+
+        return base::Error {"Cannot access RocksDB Column Family Handle"};
     }
 
     return base::Error {"Cannot access RocksDB::DB"};
