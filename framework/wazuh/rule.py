@@ -17,8 +17,8 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS, RULE_FILES_FIELDS, RULE_FILES_REQUIRED_FIELDS
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
-    to_relative_path
+from wazuh.core.utils import process_array, safe_move, \
+    validate_wazuh_xml, upload_file, full_copy, to_relative_path
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -466,7 +466,8 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
 
     backup_file = ''
     try:
-        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
+        relative_dirname, wazuh_error = validate_upload_delete_dir(
+            relative_dirname=relative_dirname)
         full_path = join(common.WAZUH_PATH, relative_dirname, filename)
         if wazuh_error:
             raise wazuh_error
@@ -480,12 +481,18 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
             raise WazuhError(1905)
         elif overwrite and exists(full_path):
             backup_file = f'{full_path}.backup'
-            delete_file_with_backup(backup_file, full_path, delete_rule_file)
+            try:
+                full_copy(full_path, backup_file)
+            except IOError as exc:
+                raise WazuhError(1019) from exc
+
+            delete_rule_file(filename=filename, relative_dirname=relative_dirname)
 
         upload_file(content, to_relative_path(full_path))
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
+
     except WazuhError as exc:
         result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     finally:
@@ -515,11 +522,12 @@ def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -
                                       none_msg='Could not delete rule')
 
     try:
-        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
+        relative_dirname, wazuh_error = validate_upload_delete_dir(
+            relative_dirname=relative_dirname)
         full_path = join(common.WAZUH_PATH, relative_dirname, file)
         if wazuh_error:
             raise wazuh_error
-        
+
         if exists(full_path):
             try:
                 remove(full_path)
