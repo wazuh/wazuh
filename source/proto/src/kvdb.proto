@@ -32,7 +32,6 @@ message dbGet_Response
     optional google.protobuf.Value value = 3; // JSON value of the entry
 }
 
-/******************** Operation with a DB ********************/
 /***************************************************
  * Get an entries filtered from a DB
  *
