@@ -62,7 +62,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
             }
 
             if (time_sleep) {
-                const int next_scan_time = sched_get_next_scan_time(ms_graph->scan_config);
+                const time_t next_scan_time = sched_get_next_scan_time(ms_graph->scan_config);
                 timestamp = w_get_timestamp(next_scan_time);
                 mtdebug1(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
                 os_free(timestamp);
@@ -113,15 +113,14 @@ bool wm_ms_graph_setup(wm_ms_graph* ms_graph) {
 
 bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
 
-    if (!ms_graph->enabled) {
+    if (!ms_graph || !ms_graph->enabled) {
         mtinfo(WM_MS_GRAPH_LOGTAG, "Module disabled. Exiting...");
         #ifdef WAZUH_UNIT_TESTING
         return false;
         #else
         pthread_exit(NULL);
         #endif
-
-    } else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0) {
+    } else if (!ms_graph->resources || ms_graph->num_resources == 0) {
         mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
         #ifdef WAZUH_UNIT_TESTING
         return false;
@@ -144,17 +143,14 @@ bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
 }
 
 void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size) {
-    char *url= calloc(1, sizeof(char) * OS_SIZE_8192);
-    char *payload = calloc(1, sizeof(char) * OS_SIZE_8192);
-    char** headers = NULL;
+    char url[OS_SIZE_8192] = { '\0' };
+    char payload[OS_SIZE_8192] = { '\0' };
+    char* headers[] = { "Content-Type: application/x-www-form-urlencoded", NULL };
     curl_response* response;
 
     snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config->login_fqdn, auth_config->tenant_id);
     mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Access Token URL: '%s'", url);
     snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config->query_fqdn, auth_config->client_id, auth_config->secret_value);
-    os_malloc(sizeof(char*) * 2, headers);
-    os_strdup("Content-Type: application/x-www-form-urlencoded", headers[0]);
-    headers[1] = NULL;
 
     response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     if (response) {
@@ -181,26 +177,19 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
             }
         }
         wurl_free_response(response);
-    }
-    else{
+    } else {
         mtwarn(WM_MS_GRAPH_LOGTAG, "No response received when attempting to obtain access token.");
     }
-
-    os_free(url);
-    os_free(payload);
-    os_free(headers[0]);
-    os_free(headers);
 }
 
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_scan) {
-    char url[OS_SIZE_8192];
-    char auth_header[OS_SIZE_2048];
-    char** headers = NULL;
+    char url[OS_SIZE_8192] = { '\0' };
+    char auth_header[OS_SIZE_2048] = { '\0' };
+    char* headers[] = { NULL, NULL };
     curl_response* response;
-    char relationship_state_name[OS_SIZE_1024];
-    char start_time_str[WM_MS_GRAPH_TIMESTAMP_SIZE_80];
+    char relationship_state_name[OS_SIZE_1024] = { '\0' };
+    char start_time_str[WM_MS_GRAPH_TIMESTAMP_SIZE_80] = { '\0' };
     struct tm tm_aux = { .tm_sec = 0 };
-    char* payload;
     wm_ms_graph_state_t relationship_state_struc;
     time_t now;
     bool fail;
@@ -209,7 +198,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
 
         for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
 
-            memset(relationship_state_name, '\0', OS_SIZE_1024);
             snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
                 ms_graph->auth_config.tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
 
@@ -228,7 +216,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                 if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                     mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
                 } else if (isDebug()) {
-                    memset(start_time_str, '\0', WM_MS_GRAPH_TIMESTAMP_SIZE_80);
                     gmtime_r(&now, &tm_aux);
                     strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                     mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
@@ -237,17 +224,12 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                 continue;
             }
 
-            memset(start_time_str, '\0', WM_MS_GRAPH_TIMESTAMP_SIZE_80);
             gmtime_r(&relationship_state_struc.next_time, &tm_aux);
             strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
-            memset(auth_header, '\0', OS_SIZE_2048);
             snprintf(auth_header, OS_SIZE_2048 - 1, "Authorization: Bearer %s", ms_graph->auth_config.access_token);
-            os_malloc(sizeof(char*) * 2, headers);
             os_strdup(auth_header, headers[0]);
-            headers[1] = NULL;
 
-            memset(url, '\0', OS_SIZE_8192);
             snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
             ms_graph->auth_config.query_fqdn,
             ms_graph->version,
@@ -283,6 +265,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                                 cJSON* log = NULL;
                                 if (log = cJSON_GetArrayItem(logs, log_index), log) {
                                     cJSON* full_log = cJSON_CreateObject();
+                                    char* payload;
 
                                     cJSON_AddStringToObject(log, "resource", ms_graph->resources[resource_num].name);
                                     cJSON_AddStringToObject(log, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
@@ -321,7 +304,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
 
             if (!fail) {
                 relationship_state_struc.next_time = now;
-                memset(start_time_str, '\0', WM_MS_GRAPH_TIMESTAMP_SIZE_80);
                 gmtime_r(&relationship_state_struc.next_time, &tm_aux);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                 if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
@@ -333,7 +315,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
             }
 
             os_free(headers[0]);
-            os_free(headers);
         }
     }
 }
