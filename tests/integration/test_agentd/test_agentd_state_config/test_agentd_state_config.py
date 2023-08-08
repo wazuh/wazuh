@@ -55,7 +55,6 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data
 from wazuh_testing.utils.configuration import load_configuration_template
@@ -75,7 +74,7 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
-daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
+#daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
@@ -85,8 +84,8 @@ else:
 print(test_metadata)
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state_config(test_configuration, test_metadata, remove_state_file, set_wazuh_configuration, configure_interval_local_internal_options,
-                             truncate_monitored_files, daemons_handler):
+def test_agentd_state_config(test_configuration, test_metadata, remove_state_file, set_wazuh_configuration, configure_local_internal_options,
+                             truncate_monitored_files):
     
     '''
     description: Check that the 'wazuh-agentd.state' statistics file is created
@@ -118,7 +117,7 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
         - r'file_enabled'
         - r'file_not_enabled'
     '''
-
+    #import pdb; pdb.set_trace()
     if sys.platform == WINDOWS:
         if test_metadata['agentd_ends']:
             with pytest.raises(ValueError):
@@ -136,15 +135,13 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
                     is not check_if_process_is_running('wazuh-agentd'))
     
     # Check if the test requires checking state file existence
-    if 'state_file_exist' in test_case:
-        if test_case['state_file_exist']:
-            # Wait until state file was dumped
-            time.sleep(test_case['interval'])
-        assert test_case['state_file_exist'] == os.path.exists(state_file_path)
+    if test_metadata['state_file_exist']:
+        time.sleep(int(test_metadata['local_internal_options']['agent.state_interval']))
+    assert test_metadata['state_file_exist'] == os.path.exists(AGENTD_STATE)
 
     # Follow ossec.log to find desired messages by a callback
-    wazuh_log_monitor = FileMonitor(LOG_FILE_PATH)
-    wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
-                            callback=callbacks.get(test_case['log_expect']),
-                            error_message='Event not found')
-    assert wazuh_log_monitor.result()
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(str(test_metadata['event_monitor'])))
+    
+    assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
