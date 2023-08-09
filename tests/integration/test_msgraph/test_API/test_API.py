@@ -159,8 +159,6 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
     else:
         assert (False)
 
-    remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
-
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_future_events_no(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
@@ -225,8 +223,6 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
     else:
         assert (False)
 
-    remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
-
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
 def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
@@ -275,5 +271,3 @@ def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuratio
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Reached maximum CURL size"))
     assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
-
-    remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
