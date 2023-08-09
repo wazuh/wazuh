@@ -181,3 +181,15 @@ def test_set_groups(groups, general_groups):
     rule.set_groups(groups, general_groups, empty_rule)
 
     assert empty_rule == expected_result
+
+@pytest.mark.parametrize('groups, general_groups', [
+    (['\n syslog', 'firewall\r'], ['amazon aws', '\n\r'])
+])
+def test_set_groups_names_format(groups, general_groups):
+    """Test set_groups names formatting."""
+    escaped_chars = ['\n', '\r', ' ']
+    result = {'groups': []}
+    rule.set_groups(groups, general_groups, result)
+
+    for group in result['groups']:
+        assert not any([x in group for x in escaped_chars])
