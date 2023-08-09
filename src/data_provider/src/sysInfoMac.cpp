@@ -120,18 +120,27 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
                 while (SQLITE_ROW == stmt.step())
                 {
-                    nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
-
-                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                    try
                     {
-                        // Only return valid content packages
-                        callback(jsPackage);
+                        nlohmann::json jsPackage;
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
+
+                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                        {
+                            // Only return valid content packages
+                            callback(jsPackage);
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << e.what() << std::endl;
                     }
                 }
             }
-            catch (...)
-            {}
+            catch (const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         }
     }
     else
@@ -144,13 +153,20 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             {
                 if (Utils::endsWith(package, ".app"))
                 {
-                    nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
-
-                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                    try
                     {
-                        // Only return valid content packages
-                        callback(jsPackage);
+                        nlohmann::json jsPackage;
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+
+                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                        {
+                            // Only return valid content packages
+                            callback(jsPackage);
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << e.what() << std::endl;
                     }
                 }
             }
@@ -164,13 +180,20 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     {
                         if (!Utils::startsWith(version, "."))
                         {
-                            nlohmann::json jsPackage;
-                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
-
-                            if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                            try
                             {
-                                // Only return valid content packages
-                                callback(jsPackage);
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
+                            }
+                            catch (const std::exception& e)
+                            {
+                                std::cerr << e.what() << std::endl;
                             }
                         }
                     }
