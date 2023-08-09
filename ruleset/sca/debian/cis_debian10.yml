@@ -2797,7 +2797,30 @@ checks:
     rules:
       - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/cron.d/" -> r:700\s*\t*drwx------ && r:0\s*\t*root\s*\t*0\s*\t*root'
 
-  # 4.1.8 Ensure cron is restricted to authorized users. (Automated) - Not Implemented
+  # 4.1.8 Ensure cron is restricted to authorized users. (Automated)
+  - id: 31154
+    title: "Ensure cron is restricted to authorized users."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: "Run the following script to: - Remove /etc/cron.deny if it exists - Create /etc/cron.allow if it doesn't exist - Change ownership of /etc/cron.allow to the root user - Change group ownership of /etc/cron.allow to the group crontab #!/usr/bin/env bash { if dpkg-query -W cron > /dev/null 2>&1; then l_file=\"/etc/cron.allow\" l_mask='0137' l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_mask)) )\" if [ -e /etc/cron.deny ]; then echo -e \" - Removing \\\"/etc/cron.deny\\\"\" rm -f /etc/cron.deny fi if [ ! -e /etc/cron.allow ]; then echo -e \" - creating \\\"$l_file\\\"\" touch \"$l_file\" fi while read l_mode l_fown l_fgroup; do if [ $(( $l_mode & $l_mask )) -gt 0 ]; then echo -e \" - Removing excessive permissions from \\\"$l_file\\\"\" chmod u-x,g-wx,o-rwx \"$l_file\" fi if [ \"$l_fown\" != \"root\" ]; then echo -e \" - Changing owner on \\\"$l_file\\\" from: \\\"$l_fown\\\" to: \\\"root\\\"\" chown root \"$l_file\" fi if [ \"$l_fgroup\" != \"crontab\" ]; then echo -e \" - Changing group owner on \\\"$l_file\\\" from: \\\"$l_fgroup\\\" to: \\\"crontab\\\"\" chgrp crontab \"$l_file\" fi done < <(stat -Lc '%#a %U %G' \"$l_file\") else echo -e \"- cron is not installed on the system, no remediation required\\n\" fi }."
+    compliance:
+      - cis: ["4.1.8"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1018"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
+      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 4.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 31155
@@ -2823,7 +2846,7 @@ checks:
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*crontab'
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/at.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 4.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 31156
