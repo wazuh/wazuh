@@ -2,58 +2,58 @@
   description: Check negative state interval
   configuration_parameters:
   metadata:
-    event_monitor: 'interval_not_valid'
-    state_file_exist: 'false'
-    agentd_ends: 'true'
+    event_monitor: '.*Invalid definition for agent.state_interval.*'
+    state_file_exist: False
+    agentd_ends: True
     local_internal_options:
-      agent.state_interval: '-1'
+      agent.state_interval: -1
 
 - name: Undefined_state_interval_value
   description: Check undefined state interval option
   configuration_parameters:
   metadata:
-    event_monitor: 'file_not_enabled'
-    state_file_exist: 'false'
-    agentd_ends: 'false'
+    event_monitor: '.*State file is disabled.*'
+    state_file_exist: False
+    agentd_ends: False
     local_internal_options:
-      agent.state_interval: ' '
+      agent.state_interval: ' ' 
 
 - name: State_interval_option_dont_exist
   description: Check state interval option dont exist
   configuration_parameters:
   metadata:
-    event_monitor: 'interval_not_found'
-    state_file_exist: 'false'
-    agentd_ends: 'true'
+    event_monitor: '.*Invalid definition for agent.state_interval.*'
+    state_file_exist: False
+    agentd_ends: True
     local_internal_options:
-      agent.state_interval: 'null'
+      agent.state_interval: null
 
 - name: Zero_state_interval
   description: Check zero big state interval
   configuration_parameters:
   metadata:
-    event_monitor: 'file_not_enabled'
-    state_file_exist: 'false'
-    agentd_ends: 'false'
+    event_monitor: '.*State file is disabled.*'
+    state_file_exist: False
+    agentd_ends: False
     local_internal_options:
-      agent.state_interval: '0'
+      agent.state_interval: 0
 
 - name: Too_big_state_interval
   description: Check too big state interval
   configuration_parameters:
   metadata:
-    event_monitor: 'interval_not_valid'
-    state_file_exist: 'false'
-    agentd_ends: 'true'
+    event_monitor: '.*Invalid definition for agent.state_interval.*'
+    state_file_exist: False
+    agentd_ends: True
     local_internal_options:
-      agent.state_interval: '86401'
+      agent.state_interval: 86401
 
 - name: Default_state_interval
   description: Check default state interval
   configuration_parameters:
   metadata:
-    event_monitor: 'file_enabled'
-    state_file_exist: 'true'
-    agentd_ends: 'false'
+    event_monitor: '.*State file updating thread started.*'
+    state_file_exist: True
+    agentd_ends: False
     local_internal_options:
-      agent.state_interval: '5'
+      agent.state_interval: 5
