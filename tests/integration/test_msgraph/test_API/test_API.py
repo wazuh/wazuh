@@ -58,15 +58,8 @@ from wazuh_testing.utils.file import truncate_file, remove_file
 from . import CONFIGS_PATH, TEST_CASES_PATH
 import subprocess
 import os
-m365proxy = subprocess.Popen(["/home/mcervilla/Others/m365-developer-proxy-linux-x64-v0.10.0/m365proxy"])
 # Marks
 pytestmark = pytest.mark.tier(level=0)
-
-# Configurate proxy for Wazuh (will only work for systemctl start/restart)
-subprocess.run("systemctl set-environment http_proxy=http://localhost:8000", shell=True)
-
-remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
-print(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_API.yaml')
@@ -93,10 +86,24 @@ t3_configurations = load_configuration_template(configs_path, t3_configuration_p
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 local_internal_options = {MODULESD_DEBUG: '2'}
 
+
+@pytest.fixture(scope="session")
+def proxy_setup():    
+    m365proxy = subprocess.Popen(["/tmp/m365proxy/m365proxy"])
+    # Configurate proxy for Wazuh (will only work for systemctl start/restart)
+    subprocess.run("systemctl set-environment http_proxy=http://localhost:8000", shell=True)
+    remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
+
+    yield
+
+    subprocess.run("systemctl unset-environment http_proxy", shell=True)
+    m365proxy.kill()
+    m365proxy.wait()
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
 def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start):
+                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):
     '''
     description: Check 'ms-graph' behavior when `only_future_events` tag is set to yes.
     wazuh_min_version: 4.6.0
@@ -157,7 +164,7 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_future_events_no(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start):
+                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):
     '''
     description: Check 'ms-graph' behavior when `only_future_events` tag is set to no.
     wazuh_min_version: 4.6.0
@@ -223,7 +230,7 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
 def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start):
+                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):
     '''
     description: Check 'ms-graph' behavior when `curl_max_size` is reached.
     wazuh_min_version: 4.6.0
@@ -270,11 +277,3 @@ def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuratio
     assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
 
     remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
-
-    # This is temporarily here, in the last test
-    subprocess.run("systemctl unset-environment http_proxy", shell=True)
-    m365proxy.kill()
-    m365proxy.wait()
-    
-    
-
