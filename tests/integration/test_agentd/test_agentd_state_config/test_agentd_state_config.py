@@ -117,7 +117,9 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
         - r'file_enabled'
         - r'file_not_enabled'
     '''
-    #import pdb; pdb.set_trace()
+
+    control_service('stop', 'wazuh-agentd')
+
     if sys.platform == WINDOWS:
         if test_metadata['agentd_ends']:
             with pytest.raises(ValueError):
