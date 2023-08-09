@@ -1,0 +1,32 @@
+include "common_agentInfo.fbs";
+
+include "hotfix_synchronization.fbs";
+include "hwinfo_syncrhonization.fbs";
+include "networkAddress_syncrhonization.fbs";
+include "networkIface_syncrhonization.fbs";
+include "osinfo_syncrhonization.fbs";
+include "package_synchronization.fbs";
+include "ports_syncrhonization.fbs";
+include "processes_syncrhonization.fbs";
+
+namespace Syscollector.SyncMessage;
+
+union DataMsg
+{
+    syscollector_hotfixes,
+    syscollector_hwinfo,
+    syscollector_network_address,
+    syscollector_network_iface,
+    syscollector_osinfo,
+    syscollector_packages,
+    syscollector_ports,
+    syscollector_processes
+}
+
+table SyncMsg
+{
+    agent_info: AgentInfo;
+    data: DataMsg;
+}
+
+root_type SyncMsg;

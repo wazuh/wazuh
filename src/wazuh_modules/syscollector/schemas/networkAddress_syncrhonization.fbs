@@ -1,0 +1,22 @@
+include "common_agentInfo.fbs";
+
+table syscollector_network_address
+{
+    attributes_type: string;
+    attributes: NetAddAttributeMsg;
+    index: string;
+    timestamp:string;
+}
+
+table NetAddAttributeMsg
+{
+    address: string;
+    broadcast: string;
+    checksum: string;
+    iface: string;
+    item_id: string;
+    netmask: string;
+    proto: int;
+    scan_time: string;
+}
+

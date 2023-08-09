@@ -1,26 +1,16 @@
-namespace Syscollector.SyncHotfixMessage;
+include "common_agentInfo.fbs";
 
-//For hotfixies
-table HotfixAttribute
+table syscollector_hotfixes
 {
-
-  checksum:string;
-  hotfix:string;
-  scan_time:string;
-}
-
-table HotfixData
-{
-  attributes: HotfixAttribute;
+  attributes_type: string;
+  attributes: HtxAttributeMsg;
   index: string;
   timestamp: string;
 }
 
-table SyncMsgHtx
+table HtxAttributeMsg
 {
-  component:string;
-  data: HotfixData;
-  type:string;
+  checksum:string;
+  hotfix:string;
+  scan_time:string;
 }
-
-root_type SyncMsgHtx;

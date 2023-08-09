@@ -1,38 +1,29 @@
-namespace Syscollector.SyncPackageMessage;
+include "common_agentInfo.fbs";
 
-//For packages
-table PackageAttribute
+table syscollector_packages
+{
+  attributes_type: string;
+  attributes: PkgAttributeMsg;
+  index: string;
+  timestamp: string;
+}
+
+table PkgAttributeMsg
 {
   architecture:string;
   checksum:string;
-  description:string; //For unix ony
+  description:string;
   format:string;
-  install_time: string; //For windows only
-  groups:string; //For unix only
+  install_time: string;
+  groups:string;
   item_id:string;
-  multiarch:string; //For unix only
+  multiarch:string;
   name:string;
   location: string;
-  priority:string; //For unix only
+  priority:string;
   scan_time:string;
-  size:int; //For unix only
+  size:int;
   source:string;
   vendor:string;
   version:string;
 }
-
-table PackageData
-{
-    attributes: PackageAttribute;
-    index: string;
-    timestamp: string;
-}
-
-table SyncMsgPkg
-{
-  component:string;
-  data: PackageData;
-  type:string;
-}
-
-root_type SyncMsgPkg;

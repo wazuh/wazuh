@@ -1,0 +1,6 @@
+table AgentInfo
+{
+    agent_id: string;
+    node_name: string;
+}
+
