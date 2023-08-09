@@ -16,7 +16,7 @@
 #include "gmock/gmock.h"
 #include "flatbuffers/util.h"
 
-const std::string schemaRootPath {"../../flatbuffers/syscollector_deltas.fbs"};
+const std::string schemaRootPath {"syscollector_deltas.fbs"};
 std::string flatbufferSchemaStr;
 
 class SyscollectorFlatbuffersTest : public ::testing::Test

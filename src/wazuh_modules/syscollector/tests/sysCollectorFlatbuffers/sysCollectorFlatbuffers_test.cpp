@@ -12,11 +12,11 @@
 #include "sysCollectorFlatbuffers_test.h"
 #include "flatbuffers/idl.h"
 
-bool parseJSON(const std::string& schemaPath, const std::string& jsonStr)
+bool parseJSON(const std::string& schemaStr, const std::string& jsonStr)
 {
     flatbuffers::Parser parser;
 
-    if (!parser.Parse(schemaPath.c_str()) && parser.Parse(jsonStr.c_str()))
+    if (!(parser.Parse(schemaStr.c_str()) && parser.Parse(jsonStr.c_str())))
     {
         return false;
     }
