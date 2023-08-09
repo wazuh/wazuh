@@ -13,6 +13,14 @@
                 value: 'yes'
             - crypto_method:
                 value: 'aes'
+            - server:
+                elements:
+                - address:
+                    value: '1.1.1.1'
+                - port:
+                    value: '1514'
+                - protocol:
+                    value: 'tcp'
       - section: active-response
         elements:
             - disabled:
@@ -40,7 +48,42 @@
                 value: 'yes'
             - crypto_method:
                 value: 'aes'
-
+            - server:
+                elements:
+                - address:
+                    value: SERVER_ADDRESS_1
+                - port:
+                    value: REMOTED_PORT_1
+                - protocol:
+                    value: PROTOCOL
+                - max_retries:
+                    value: 3
+                - retry_interval:
+                    value: 3
+            - server:
+                elements:
+                - address:
+                    value: SERVER_ADDRESS_2
+                - port:
+                    value: REMOTED_PORT_2
+                - protocol:
+                    value: PROTOCOL
+                - max_retries:
+                    value: 3
+                - retry_interval:
+                    value: 3
+            - server:
+                elements:
+                - address:
+                    value: SERVER_ADDRESS_3
+                - port:
+                    value: REMOTED_PORT_3
+                - protocol:
+                    value: PROTOCOL
+                - max_retries:
+                    value: 3
+                - retry_interval:
+                    value: 3
     - tags:
       - all
       apply_to_modules:
@@ -56,13 +99,22 @@
                 value: 'yes'
             - crypto_method:
                 value: 'aes'
+            - enrollment:
+                elements:
+                - enabled:
+                    value: 'ENROLL'
             - server:
                 elements:
                 - address:
                     value: '127.0.0.1'
                 - port:
                     value: '1514'
-
+                - protocol:
+                    value: PROTOCOL
+                - max_retries:
+                    value: MAX_RETRIES
+                - retry_interval:
+                    value: RETRY_INTERVAL
     - tags:
       - all
       apply_to_modules:

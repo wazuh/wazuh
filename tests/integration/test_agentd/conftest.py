@@ -6,8 +6,6 @@ import os
 import pytest
 
 from wazuh_testing.constants.paths.variables import AGENTD_STATE 
-from wazuh_testing.modules.agentd.configuration import AGENTD_INTERVAL
-from wazuh_testing.utils import configuration
 
 @pytest.fixture()
 def remove_state_file() -> None:
