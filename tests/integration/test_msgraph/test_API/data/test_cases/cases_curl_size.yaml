@@ -1,0 +1,7 @@
+- name: Test_Curl_Max_Size_Reached
+  description: Check ms-graph integration when `curl_max_size` is reached.
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE: 'no'
+    INTERVAL: '10s'
+    CURL_SIZE: '1K'
