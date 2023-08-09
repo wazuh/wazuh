@@ -190,6 +190,21 @@ api_config_schema = {
                             }
                         }
                     }
+                },
+                "agents": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "allow_higher_versions": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {
+                                    "type": "boolean"
+                                }
+                            },
+                        }
+                    }
                 }
             }
         },

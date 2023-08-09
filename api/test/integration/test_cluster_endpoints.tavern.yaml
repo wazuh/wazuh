@@ -990,6 +990,9 @@ stages:
                   limits:
                     eps:
                       allow: !anybool
+                  agents:
+                    allow_higher_versions:
+                      allow: !anybool
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config
