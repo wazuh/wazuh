@@ -23,7 +23,7 @@
     <rule id="99501" level="3">
         <if_sid>99500</if_sid>
         <field name="ms-graph.relationship">alerts|alerts_v2</field>
-        <description>Alert related events</description>
+        <description>Alert related events.</description>
     </rule>
 
 
@@ -217,7 +217,7 @@
         <if_sid>99501</if_sid>
         <options>no_full_log</options>
         <field name="ms-graph.remediationStatus">unknownFutureValue</field>
-        <description>MS Graph message: Unused value - Check for logging misconfigurations</description>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
     </rule>
 
 
@@ -378,7 +378,7 @@
         <if_sid>99501</if_sid>
         <options>no_full_log</options>
         <field name="ms-graph.severity">medium</field>
-        <description>MS Graph message: Alerts generated from detections and response post-breach behaviors that might be a part of an advanced persistent threat (APT). This includes observed behaviors typical of attack stages, anomalous registry change, execution of suspicious files, and so forth. Although some might be due to internal security testing, they are valid detections and require investigation as they may be a part of an advanced attack.</description>
+        <description>MS Graph message: Alerts generated from detections and response post-breach behaviors that might be a part of an advanced persistent threat (APT). This includes observed behaviors typical of attack stages, anomalous registry change, execution of suspicious files, and so forth. Although some might be due to internal security testing, they are valid detections and require investigation.</description>
     </rule>
 
     <rule id="99588" level="14">
@@ -542,7 +542,7 @@
         <if_sid>99601</if_sid>
         <options>no_full_log</options>
         <field name="ms-graph.determination">unknownFutureValue</field>
-        <description>MS Graph message: Unused value - Check for logging misconfigurations</description>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
     </rule>
 
 
@@ -566,7 +566,7 @@
         <if_sid>99601</if_sid>
         <options>no_full_log</options>
         <field name="ms-graph.severity">medium</field>
-        <description>MS Graph message: Severity | Alerts generated from detections and response post-breach behaviors that might be a part of an advanced persistent threat (APT). This includes observed behaviors typical of attack stages, anomalous registry change, execution of suspicious files, and so forth. Although some might be due to internal security testing, they are valid detections and require investigation as they may be a part of an advanced attack.</description>
+        <description>MS Graph message: Severity | Alerts generated from detections and response post-breach behaviors that might be a part of an advanced persistent threat (APT). This includes observed behaviors typical of attack stages, anomalous registry change, execution of suspicious files, and so forth. Although some might be due to internal security testing, they are valid detections and require investigation.</description>
     </rule>
 
     <rule id="99653" level="14">
