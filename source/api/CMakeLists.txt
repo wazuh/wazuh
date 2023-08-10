@@ -51,14 +51,26 @@ target_link_libraries(api
 # Tests
 if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
+set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
 
 add_executable(api_test
   ${TEST_SRC_DIR}/apiAuxiliarFunctions.hpp
-  ${TEST_SRC_DIR}/graph/handlers_test.cpp
-  ${TEST_SRC_DIR}/graph/fakeAssets.hpp
-  ${TEST_SRC_DIR}/test/session_test.cpp
-  ${TEST_SRC_DIR}/test/handlers_test.cpp
-  ${TEST_SRC_DIR}/test/fakeAssets.hpp
+  ${TEST_SRC_COMPONENT_DIR}/graph/handlers_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/graph/fakeAssets.hpp
+  ${TEST_SRC_COMPONENT_DIR}/test/session_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/test/handlers_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/test/fakeAssets.hpp
+  ${TEST_SRC_COMPONENT_DIR}/integration/handlers_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/integration/integration_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/kvdb/kvdb_api_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/catalog/catalog_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/catalog/handlers_test.cpp
+  ${TEST_SRC_COMPONENT_DIR}/catalog/resource_test.cpp
+
+  ${TEST_SRC_UNIT_DIR}/adapter_test.cpp
+  ${TEST_SRC_UNIT_DIR}/api_test.cpp
+  ${TEST_SRC_UNIT_DIR}/registry_test.cpp
 )
 
 # TODO: Replace test_mocks with the metrics executable when you have the test folder available.

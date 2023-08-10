@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <api/api.hpp>
-#include <testsCommon.hpp>
+#include "../apiAuxiliarFunctions.hpp"
 
 
 using namespace api;
