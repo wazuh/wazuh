@@ -32,7 +32,7 @@ STATIC int w_remoted_get_net_protocol(const char * content);
  * @param node XML node
  * @param logr remoted configuration structure
  */
-STATIC void w_parse_agents(XML_NODE node, remoted * logr);
+STATIC void w_remoted_parse_agents(XML_NODE node, remoted * logr);
 
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -255,7 +255,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 continue;
             }
 
-            w_parse_agents(children, logr);
+            w_remoted_parse_agents(children, logr);
 
             OS_ClearNode(children);
 
@@ -338,7 +338,7 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     return retval;
 }
 
-STATIC void w_parse_agents(XML_NODE node, remoted * logr) {
+STATIC void w_remoted_parse_agents(XML_NODE node, remoted * logr) {
     const char * ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
 
     int i = 0;

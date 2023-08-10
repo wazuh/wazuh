@@ -34,7 +34,7 @@ int w_read_force_config(XML_NODE node, authd_config_t *config);
  * @param node XML node
  * @param config auth configuration structure
  */
-STATIC void w_parse_agents(XML_NODE node, authd_config_t * config);
+STATIC void w_authd_parse_agents(XML_NODE node, authd_config_t * config);
 
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
@@ -248,7 +248,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                 continue;
             }
 
-            w_parse_agents(children, config);
+            w_authd_parse_agents(children, config);
 
             OS_ClearNode(children);
 
@@ -399,7 +399,7 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
     return OS_SUCCESS;
 }
 
-STATIC void w_parse_agents(XML_NODE node, authd_config_t * config) {
+STATIC void w_authd_parse_agents(XML_NODE node, authd_config_t * config) {
     const char * ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
 
     int i = 0;
