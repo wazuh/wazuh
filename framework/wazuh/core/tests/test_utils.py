@@ -65,7 +65,7 @@ input_array = [
     },
     {
         "count": 0,
-        "name": "test_nested2",
+        "name": "test@nested2",
         "mergedSum": {
             "nestedSum1": "value"
         },
@@ -1608,7 +1608,8 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
     ('mergedSum.nestedSum1=value', 2),
     ('configSum.nestedSum1.nestedSum11=value', 1),
     ('configSum.nestedSum2.nestedSum21=value1', 1),
-    ('configSum.nestedSum2.nestedSum21=value2', 1)
+    ('configSum.nestedSum2.nestedSum21=value2', 1),
+    ('name=test@nested2', 1),
 ])
 def test_filter_array_by_query(q, return_length):
     """Test filter by query in an array."""
