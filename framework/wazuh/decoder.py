@@ -17,7 +17,7 @@ from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
-    delete_file_with_backup, upload_file, to_relative_path
+    upload_file, to_relative_path, full_copy
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -354,7 +354,13 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
             raise WazuhError(1905)
         elif overwrite and exists(full_path):
             backup_file = f'{full_path}.backup'
-            delete_file_with_backup(backup_file, full_path, delete_decoder_file)
+            try:
+                full_copy(full_path, backup_file)
+            except IOError as exc:
+                raise WazuhError(1019) from exc
+
+            delete_decoder_file(filename=filename,
+                                relative_dirname=relative_dirname)
 
         upload_file(content, to_relative_path(full_path))
         result.affected_items.append(to_relative_path(full_path))

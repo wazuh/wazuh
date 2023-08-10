@@ -251,13 +251,14 @@ def test_validate_upload_delete_dir(relative_dirname, res_path, err_code):
     ('test_new_decoders.xml', 'tests/data/etc/decoders/subpath/', False,
      'tests/data/etc/decoders/subpath/test_new_decoders.xml'),
 ])
-@patch('wazuh.decoder.delete_file_with_backup')
+@patch('wazuh.decoder.delete_decoder_file')
+@patch('wazuh.decoder.full_copy')
 @patch('wazuh.decoder.validate_wazuh_xml')
 @patch('wazuh.decoder.upload_file')
 @patch('wazuh.decoder.remove')
 @patch('wazuh.decoder.safe_move')
-def test_upload_file(mock_safe_move, mock_remove, mock_upload_file, 
-                     mock_xml, mock_delete, mock_wazuh_paths,
+def test_upload_file(mock_safe_move, mock_remove, mock_upload_file,
+                     mock_xml, mock_full_copy, mock_delete, mock_wazuh_paths,
                      file, relative_dirname, overwrite, decoder_path):
     """Test uploading a decoder file.
 
@@ -292,9 +293,11 @@ def test_upload_file(mock_safe_move, mock_remove, mock_upload_file,
             if overwrite:
                 full_path = os.path.join(wazuh.common.WAZUH_PATH, decoder_path)
                 backup_file = full_path+'.backup'
-                mock_delete.assert_called_once_with(backup_file, full_path,
-                                                    decoder.delete_decoder_file), \
-                'delete_decoder_file method not called with expected parameters'
+                mock_full_copy.assert_called_once_with(full_path, backup_file), \
+                'full_copy function not called with expected parameters'
+                mock_delete.assert_called_once_with(filename=file,
+                                                    relative_dirname=os.path.dirname(decoder_path)), \
+                'delete_decoder_file function not called with expected parameters'
                 mock_remove.assert_called_once()
                 mock_safe_move.assert_called_once()
 
