@@ -106,7 +106,12 @@ cJSON *getRemoteConfig(void) {
             }
             if (logr.queue_size && (logr.conn[i] == SECURE_CONN)) {
                 sprintf(queue_size,"%ld",logr.queue_size);
-                cJSON_AddStringToObject(conn,"queue_size",queue_size); };
+                cJSON_AddStringToObject(conn,"queue_size", queue_size);
+
+                cJSON * agents = cJSON_CreateObject();
+                cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
+                cJSON_AddItemToArray(conn, agents);
+            }
             if (logr.allowips && (int)i!=logr.position) {
                 cJSON *list = cJSON_CreateArray();
                 for(j=0;logr.allowips[j];j++){
