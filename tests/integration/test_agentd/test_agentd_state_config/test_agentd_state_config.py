@@ -74,7 +74,6 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
-#daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}

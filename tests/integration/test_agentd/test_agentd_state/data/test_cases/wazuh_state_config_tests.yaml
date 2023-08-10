@@ -1,0 +1,42 @@
+- name: "No connection with remoted"
+  test_case:
+    input:
+      remoted: false
+    output:
+    - type: "file"
+      fields:
+        status: "pending"
+        last_keepalive: ""
+        last_ack: ""
+        msg_count: ""
+
+- name: "Successful connection with remoted"
+  test_case:
+    input:
+      remoted: true
+    output:
+    - type: "file"
+      fields:
+        status: "connected"
+        last_keepalive: true
+        last_ack: true
+        msg_count: true
+    - type: "remote"
+      fields:
+        status: "connected"
+        last_keepalive: true
+        last_ack: true
+        msg_count: true
+
+- name: "Only remote request available"
+  test_case:
+    input:
+      remoted: true
+      interval: '0'
+    output:
+    - type: "remote"
+      fields:
+        status: "connected"
+        last_keepalive: true
+        last_ack: true
+        msg_count: true

@@ -1,0 +1,395 @@
+'''
+copyright: Copyright (C) 2015-2022, Wazuh Inc.
+
+           Created by Wazuh, Inc. <info@wazuh.com>.
+
+           This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+type: integration
+
+brief: The 'wazuh-agentd' program is the client-side daemon that communicates with the server.
+       These tests will check if the content of the 'wazuh-agentd' daemon statistics file is valid.
+       The statistics files are documents that show real-time information about the Wazuh environment.
+
+components:
+    - agentd
+
+targets:
+    - agent
+
+daemons:
+    - wazuh-agentd
+    - wazuh-remoted
+
+os_platform:
+    - linux
+    - windows
+
+os_version:
+    - Arch Linux
+    - Amazon Linux 2
+    - Amazon Linux 1
+    - CentOS 8
+    - CentOS 7
+    - Debian Buster
+    - Red Hat 8
+    - Ubuntu Focal
+    - Ubuntu Bionic
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
+
+references:
+    - https://documentation.wazuh.com/current/user-manual/reference/statistics-files/wazuh-agentd-state.html
+
+tags:
+    - stats_file
+'''
+import os
+import pytest
+from pathlib import Path
+import sys
+import time
+
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.variables import AGENTD_STATE
+from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.utils.configuration import get_test_cases_data
+from wazuh_testing.utils.configuration import load_configuration_template
+from wazuh_testing.utils import callbacks
+from wazuh_testing.utils.services import check_if_process_is_running, control_service
+
+from . import CONFIGS_PATH, TEST_CASES_PATH
+# Marks
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0), pytest.mark.agent]
+
+from . import CONFIGS_PATH, TEST_CASES_PATH
+
+# Marks
+pytestmark = pytest.mark.tier(level=0)
+
+# Configuration and cases data.
+configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
+cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
+
+# Test configurations.
+config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
+
+test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
+
+if sys.platform == WINDOWS:
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+else:
+    local_internal_options = {AGENTD_DEBUG: '2'}
+
+# Fixtures
+@pytest.fixture(scope="module", params=configurations, ids=[""])
+def get_configuration(request):
+    """Get configurations from the module"""
+    return request.param
+
+
+# Functions
+def extra_configuration_before_yield():
+    change_internal_options('agent.debug', '2')
+
+
+def extra_configuration_after_yield():
+    if remoted_server is not None:
+        remoted_server.stop()
+
+    # Set default values
+    change_internal_options('agent.debug', '0')
+    set_state_interval(5, internal_options)
+    truncate_file(CLIENT_KEYS_PATH)
+
+
+def add_custom_key():
+    """Set test client.keys file"""
+    with open(CLIENT_KEYS_PATH, 'w+') as client_keys:
+        client_keys.write("100 ubuntu-agent any TopSecret")
+
+
+# Tests
+@pytest.mark.parametrize('test_case',
+                         [test_case['test_case'] for test_case in test_cases],
+                         ids=[test_case['name'] for test_case in test_cases])
+def test_agentd_state(configure_environment, test_case):
+    '''
+    description: Check that the statistics file 'wazuh-agentd.state' is created automatically
+                 and verify that the content of its fields is correct.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - configure_environment:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - test_case:
+            type: list
+            brief: List of tests to be performed.
+
+    assertions:
+        - Verify that the 'wazuh-agentd.state' statistics file has been created.
+        - Verify that the information stored in the 'wazuh-agentd.state' statistics file
+          is consistent with the connection status to the 'wazuh-remoted' daemon.
+
+    input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
+                       Different test cases that are contained in an external YAML file (wazuh_state_tests.yaml)
+                       that includes the parameters and their expected responses.
+
+    expected_output:
+        - r'pending'
+        - r'connected'
+    '''
+    global remoted_server
+    if remoted_server is not None:
+        remoted_server.stop()
+    # Stop service
+    control_service('stop')
+
+    if 'interval' in test_case['input']:
+        set_state_interval(test_case['input']['interval'], internal_options)
+    else:
+        set_state_interval(1, internal_options)
+
+    # Truncate ossec.log in order to watch it correctly
+    truncate_file(LOG_FILE_PATH)
+
+    # Remove state file to check if agent behavior is as expected
+    os.remove(state_file_path) if os.path.exists(state_file_path) else None
+
+    # Add dummy key in order to communicate with RemotedSimulator
+    add_custom_key()
+
+    # Start service
+    control_service('start')
+
+    # Start RemotedSimulator if test case need it
+    if 'remoted' in test_case['input'] and test_case['input']['remoted']:
+        remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=CLIENT_KEYS_PATH)
+
+    # Check fields for every expected output type
+    for expected_output in test_case['output']:
+        check_fields(expected_output)
+
+
+def parse_state_file():
+    """Parse state file
+
+    Returns:
+        state info
+    """
+    # Wait until state file is dumped
+    wait_state_update()
+    state = {}
+    with open(state_file_path) as state_file:
+        for line in state_file:
+            line = line.rstrip('\n')
+            # Remove empty lines or comments
+            if not line or line.startswith('#'):
+                continue
+            (key, value) = line.split('=', 1)
+            # Remove value's quotes
+            state[key] = value.strip("'")
+
+    return state
+
+
+def remoted_get_state():
+    """Get state via remoted
+
+    Send getstate request to agent (via RemotedSimulator) and return state info as dict.
+
+    Returns:
+        state info
+    """
+    remoted_server.request('agent getstate')
+    sleep(2)
+    response = json.loads(remoted_server.request_answer)
+    return response['data']
+
+
+def check_fields(expected_output):
+    """Check every field agains expected data
+
+    Args:
+        expected_output (dict): expected output block
+    """
+    checks = {
+        'last_ack': {'handler': check_last_ack, 'precondition': [wait_ack]},
+        'last_keepalive': {'handler': check_last_keepalive,
+                           'precondition': [wait_keepalive]},
+        'msg_count': {'handler': check_last_keepalive,
+                      'precondition': [wait_keepalive]},
+        'status': {'handler': check_status, 'precondition': []}
+        }
+
+    if expected_output['type'] == 'file':
+        get_state = parse_state_file
+    else:
+        get_state = remoted_get_state
+
+    for field, expected_value in expected_output['fields'].items():
+        # Check if expected value is valiable and mandatory
+
+        if expected_value != '':
+            for precondition in checks[field].get('precondition'):
+                precondition()
+        assert checks[field].get('handler')(expected_value, get_state_callback=get_state)
+
+
+def check_last_ack(expected_value=None, get_state_callback=None):
+    """Check `field` status
+
+    Args:
+        expected_value (string, optional): value to check against.
+                                           Defaults to None.
+        get_state_callback (function, optional): callback to get state.
+                                                 Defaults to None.
+
+    Returns:
+        boolean: `True` if check was successfull. `False` otherwise
+    """
+    if get_state_callback:
+        current_value = get_state_callback()['last_ack']
+        if expected_value == '':
+            return expected_value == current_value
+
+    received_msg = "Received message: '#!-agent ack '"
+
+    with open(LOG_FILE_PATH) as log:
+        for line in log:
+            if current_value.replace('-', '/') in line and received_msg in line:
+                return True
+    return False
+
+
+def check_last_keepalive(expected_value=None, get_state_callback=None):
+    """Check `field` status
+
+    Args:
+        expected_value (string, optional): value to check against.
+                                           Defaults to None.
+        get_state_callback (function, optional): callback to get state.
+                                                 Defaults to None.
+
+    Returns:
+        boolean: `True` if check was successfull. `False` otherwise
+    """
+    if get_state_callback:
+        current_value = get_state_callback()['last_keepalive']
+        if expected_value == '':
+            return expected_value == current_value
+
+    keep_alive_msg = 'Sending keep alive'
+    agent_notification_msg = 'Sending agent notification'
+
+    with open(LOG_FILE_PATH, 'r') as log:
+        for line in log:
+            if current_value.replace('-', '/') in line and (keep_alive_msg in line or agent_notification_msg in line):
+                return True
+    return False
+
+
+def check_msg_count(expected_value=None, get_state_callback=None):
+    """Check `field` status
+
+    Args:
+        expected_value (string, optional): value to check against.
+                                           Defaults to None.
+        get_state_callback (function, optional): callback to get state.
+                                                 Defaults to None.
+
+    Returns:
+        boolean: `True` if check was successfull. `False` otherwise
+    """
+    if get_state_callback:
+        current_value = get_state_callback()['msg_count']
+        if expected_value == '':
+            return expected_value == current_value
+
+    sent_messages = 0
+
+    with open(LOG_FILE_PATH, 'r') as log:
+        for line in log:
+            if 'Sending keep alive' in line:
+                sent_messages += 1
+
+    return sent_messages >= current_value
+
+
+def check_status(expected_value=None, get_state_callback=None):
+    """Check `field` status
+
+    Args:
+        expected_value (string, optional): value to check against.
+                                           Defaults to None.
+        get_state_callback (function, optional): callback to get state.
+                                                 Defaults to None.
+
+    Returns:
+        boolean: `True` if check was successfull. `False` otherwise
+    """
+    if expected_value != 'pending':
+        wait_keepalive(True)
+        if get_state_callback == parse_state_file:
+            wait_state_update(True)
+    current_value = get_state_callback()['status']
+    return expected_value == current_value
+
+
+def wait_connect(update_position=False):
+    """Watch ossec.conf until `callback_connected_to_server` is triggered
+
+    Args:
+        update_position (bool, optional): update position after reading.
+                                          Defaults to False.
+    """
+    wazuh_log_monitor.start(timeout=240,
+                            callback=callback_connected_to_server,
+                            update_position=update_position,
+                            error_message='Agent connected not found')
+
+
+def wait_ack(update_position=False):
+    """Watch ossec.conf until `callback_ack` is triggered
+
+    Args:
+        update_position (bool, optional): update position after reading.
+                                          Defaults to False.
+    """
+    wazuh_log_monitor.start(timeout=240,
+                            callback=callback_ack,
+                            update_position=update_position,
+                            error_message='Ack not found')
+
+
+def wait_keepalive(update_position=False):
+    """Watch ossec.conf until `callback_keepalive` is triggered
+
+    Args:
+        update_position (bool, optional): update position after reading.
+                                          Defaults to False.
+    """
+    wazuh_log_monitor.start(timeout=240,
+                            callback=callback_keepalive,
+                            update_position=update_position,
+                            error_message='Keepalive not found')
+
+
+def wait_state_update(update_position=True):
+    """Watch ossec.conf until `callback_state_file_updated` is triggered
+
+    Args:
+        update_position (bool, optional): update position after reading.
+                                          Defaults to True.
+    """
+    wazuh_log_monitor.start(timeout=240,
+                            callback=callback_state_file_updated,
+                            update_position=update_position,
+                            error_message='State file update not found')
