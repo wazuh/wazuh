@@ -26,9 +26,11 @@
         - resource:
             elements:
               - name:
-                  value: 'resource_name'
+                  value: 'RESOURCE_NAME'
               - relationship:
-                  value: 'resource_relationship'
+                  value: 'RESOURCE_RELATIONSHIP1'
+              - relationship:
+                  value: 'RESOURCE_RELATIONSHIP2'
 
     - section: sca
       elements:
