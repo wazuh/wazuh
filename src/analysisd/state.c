@@ -846,7 +846,7 @@ void w_inc_decoded_by_component_events(const char *component, const char *agent_
             w_inc_modules_office365_decoded_events(agent_id);
         } else if (!strcmp(component, "ms-graph")) {
             w_inc_modules_ms_graph_decoded_events(agent_id);
-        }else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
+        } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
             w_inc_modules_oscap_decoded_events(agent_id);
         } else if (!strcmp(component, "osquery")) {
             w_inc_modules_osquery_decoded_events(agent_id);
@@ -1174,7 +1174,7 @@ void w_inc_dropped_by_component_events(const char *component) {
             w_inc_modules_office365_dropped_events();
         } else if (!strcmp(component, "ms-graph")) {
             w_inc_modules_ms_graph_dropped_events();
-        }else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
+        } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
             w_inc_modules_oscap_dropped_events();
         } else if (!strcmp(component, "osquery")) {
             w_inc_modules_osquery_dropped_events();
