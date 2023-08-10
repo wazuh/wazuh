@@ -48,7 +48,8 @@ namespace PackageLinuxHelper
 
             std::string priority {UNKNOWN_VALUE};
             std::string groups {UNKNOWN_VALUE};
-            std::string multiarch {UNKNOWN_VALUE};
+            // The multiarch field won't have a default value
+            std::string multiarch;
             std::string architecture {UNKNOWN_VALUE};
             std::string source {UNKNOWN_VALUE};
             std::string version {UNKNOWN_VALUE};

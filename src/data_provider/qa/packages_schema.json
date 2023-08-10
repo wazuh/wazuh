@@ -47,8 +47,7 @@
                         "minLength": 1
                     },
                     "multiarch": {
-                        "type": "string",
-                        "minLength": 1
+                        "type": "string"
                     },
                     "source": {
                         "type": "string",
@@ -70,7 +69,6 @@
                     "description",
                     "size",
                     "priority",
-                    "multiarch",
                     "source",
                     "format"
                 ]
