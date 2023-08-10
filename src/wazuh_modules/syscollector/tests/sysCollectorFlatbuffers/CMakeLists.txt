@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 file(GLOB FLATBUFFER_SCHEMAS
   "${CMAKE_SOURCE_DIR}/flatbuffers/*_data.fbs"
   "${CMAKE_SOURCE_DIR}/flatbuffers/syscollector_deltas.fbs"
+  "${CMAKE_SOURCE_DIR}/flatbuffers/common_agentInfo.fbs"
 )
 file(COPY ${FLATBUFFER_SCHEMAS} DESTINATION ${CMAKE_SOURCE_DIR}/build/bin/)
 

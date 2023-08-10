@@ -2621,8 +2621,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SYSCOLLECTOR)build
-	rm -rf $(SYSCOLLECTOR)include/*_data_generated.h
-	rm -rf $(SYSCOLLECTOR)include/*_deltas_generated.h
+	rm -rf $(SYSCOLLECTOR)include/*_generated.h
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build

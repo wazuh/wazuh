@@ -153,6 +153,7 @@ if (NOT ${TARGET} STREQUAL "")
                           hotfixes_data
                           processes_data
                           syscollector_deltas
+                          common_agentInfo
     )
 
     foreach(schema IN LISTS Schemas)

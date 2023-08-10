@@ -7,6 +7,7 @@ include "osinfo_data.fbs";
 include "ports_data.fbs";
 include "processes_data.fbs";
 include "programs_data.fbs";
+include "common_agentInfo.fbs";
 
 namespace Syscollector;
 
@@ -23,6 +24,7 @@ union Provider {
 }
 
 table Syscollector_delta {
+    agent_info:AgentInfo;
     data:Provider;
     operation:string;
 }
