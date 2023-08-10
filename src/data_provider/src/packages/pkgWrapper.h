@@ -21,13 +21,11 @@
 #include "plist/plist.h"
 #include "filesystemHelper.h"
 
-static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
-static const std::string PLIST_BINARY_START { "bplist00"            };
-static const std::string UTILITIES_FOLDER   { "/Utilities"          };
-
 class PKGWrapper final : public IPackageWrapper
 {
     public:
+        static constexpr auto INFO_PLIST_PATH { "Contents/Info.plist" };
+
         explicit PKGWrapper(const PackageContext& ctx)
             : m_version{UNKNOWN_VALUE}
             , m_groups{UNKNOWN_VALUE}
@@ -41,14 +39,12 @@ class PKGWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
-            std::string packagePath = ctx.filePath + "/" + ctx.package;
+            std::string pathInfoPlist = ctx.filePath + "/" + ctx.package + "/" + INFO_PLIST_PATH;
 
-            if (Utils::endsWith(ctx.package, ".app"))
+            if (Utils::existsRegular(pathInfoPlist))
             {
-                packagePath = packagePath + "/" + APP_INFO_PATH;
+                getPkgData(pathInfoPlist);
             }
-
-            getPkgData(packagePath);
         }
 
         ~PKGWrapper() = default;
@@ -115,16 +111,20 @@ class PKGWrapper final : public IPackageWrapper
         }
 
     private:
+        static constexpr auto PLIST_BINARY_HEADER { "bplist00" };
+        static constexpr auto UTILITIES_FOLDER { "/Utilities" };
+
         void getPkgData(const std::string& filePath)
         {
             const auto isBinaryFnc
             {
                 [&filePath]()
                 {
-                    // If first line is "bplist00" it's a binary plist file
-                    std::fstream file {filePath, std::ios_base::in};
-                    std::string line;
-                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
+                    // If first bytes are "bplist00" it's a binary plist file
+                    std::array < char, (sizeof(PLIST_BINARY_HEADER) - 1) > headerBuffer;
+                    std::ifstream ifs {filePath, std::ios::binary};
+                    ifs.read(headerBuffer.data(), sizeof(headerBuffer));
+                    return !std::memcmp(headerBuffer.data(), PLIST_BINARY_HEADER, sizeof(PLIST_BINARY_HEADER) - 1);
                 }
             };
             const auto isBinary { isBinaryFnc() };
@@ -157,14 +157,13 @@ class PKGWrapper final : public IPackageWrapper
                     m_size = 0;
                     m_priority = UNKNOWN_VALUE;
                     m_multiarch = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                    m_source = (filePath.find(UTILITIES_FOLDER) != std::string::npos) ? "utilities" : "applications";
 
                     while (std::getline(data, line))
                     {
                         line = Utils::trim(line, " \t");
 
-                        if ((line == "<key>CFBundleName</key>" ||
-                                line == "<key>PackageIdentifier</key>") &&
+                        if (line == "<key>CFBundleName</key>" &&
                                 std::getline(data, line))
                         {
                             m_name = getValueFnc(line);
@@ -190,7 +189,8 @@ class PKGWrapper final : public IPackageWrapper
                                 m_groups = groups;
                             }
                         }
-                        else if (line == "<key>CFBundleIdentifier</key>" &&
+                        else if ((line == "<key>CFBundleIdentifier</key>" ||
+                                  line == "<key>PackageIdentifier</key>") &&
                                  std::getline(data, line))
                         {
                             auto description = getValueFnc(line);

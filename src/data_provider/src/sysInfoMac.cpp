@@ -29,8 +29,6 @@
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
 
-const std::string MAC_APPS_PATH{"/Applications"};
-const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
 const std::string MACPORTS_DB_NAME {"registry.db"};
 const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
@@ -48,13 +46,13 @@ static const std::vector<int> s_validFDSock =
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
-    { "/Applications/Utilities", PKG},
-    { "/System/Applications", PKG},
-    { "/System/Applications/Utilities", PKG},
-    { "/System/Library/CoreServices", PKG},
-    { "/private/var/db/receipts", PKG},
-    { "/Library/Apple/System/Library/Receipts", PKG},
-    { "/usr/local/Cellar", BREW},
+    { "/Library", PKG },
+    { "/System/Applications", PKG },
+    { "/System/Library", PKG },
+    { "/Users", PKG },
+    { "/Library/Apple/System/Library/Receipts", RCP },
+    { "/private/var/db/receipts", RCP },
+    { "/usr/local/Cellar", BREW },
     { "/opt/local/var/macports/registry", MACPORTS}
 };
 
@@ -104,30 +102,91 @@ nlohmann::json SysInfo::getHardware() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
-    if (MACPORTS == pkgType)
+    switch (pkgType)
     {
-        if (Utils::existsRegular(pkgDirectory + "/" + MACPORTS_DB_NAME))
-        {
-            try
+        case PKG:
             {
-                std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
+                std::function<void(const std::string&)> pkgAnalizeDirectory;
 
-                SQLite::Statement stmt
+                pkgAnalizeDirectory =
+                    [&](const std::string & directory)
                 {
-                    sqliteConnection,
-                    MACPORTS_QUERY
+                    const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
+
+                    for (const auto& subDirectory : subDirectories)
+                    {
+                        if ((subDirectory == ".") || (subDirectory == ".."))
+                        {
+                            continue;
+                        }
+
+                        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
+                        {
+                            std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
+
+                            if (Utils::existsRegular(pathInfoPlist))
+                            {
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
+                            }
+                        }
+
+                        std::string pathSubDirectory { directory + "/" + subDirectory };
+                        pkgAnalizeDirectory(pathSubDirectory);
+                    }
                 };
 
-                std::pair<SQLite::IStatement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
+                pkgAnalizeDirectory(pkgDirectory);
+                break;
+            }
 
-                while (SQLITE_ROW == stmt.step())
+        case RCP:
+            {
+                static auto isInPKGDirectory
                 {
-                    try
+                    [](const std::string & plistDirectory)
                     {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
+                        for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                        {
+                            if (packagesDirectory.second == RCP && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                            {
+                                return false;
+                            }
+                        }
 
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                        for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                        {
+                            if (packagesDirectory.second == PKG && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                            {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    }
+                };
+
+                const auto files { Utils::enumerateDir(pkgDirectory, DT_REG) };
+
+                for (const auto& file : files)
+                {
+                    if (Utils::endsWith(file, ".plist"))
+                    {
+                        std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
+
+                        nlohmann::json jsPackage;
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
+
+                        if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                                !jsPackage.at("location").get_ref<const std::string&>().empty() &&
+                                !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
+                           )
                         {
                             // Only return valid content packages
                             callback(jsPackage);
@@ -138,54 +197,62 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         std::cerr << e.what() << std::endl;
                     }
                 }
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-            }
-        }
-    }
-    else
-    {
-        const auto packages { Utils::enumerateDir(pkgDirectory) };
 
-        for (const auto& package : packages)
-        {
-            if (PKG == pkgType)
+                break;
+            }
+
+        case BREW:
             {
-                if (Utils::endsWith(package, ".app"))
+                const auto packages { Utils::enumerateDir(pkgDirectory) };
+
+                for (const auto& package : packages)
+                {
+                    if (!Utils::startsWith(package, "."))
+                    {
+                        const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
+
+                        for (const auto& version : packageVersions)
+                        {
+                            if (!Utils::startsWith(version, "."))
+                            {
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                break;
+            }
+
+        case MACPORTS:
+            {
+                if (Utils::existsRegular(pkgDirectory + "/" + MACPORTS_DB_NAME))
                 {
                     try
                     {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                        std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
 
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                        SQLite::Statement stmt
                         {
-                            // Only return valid content packages
-                            callback(jsPackage);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        std::cerr << e.what() << std::endl;
-                    }
-                }
-            }
-            else if (BREW == pkgType)
-            {
-                if (!Utils::startsWith(package, "."))
-                {
-                    const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
+                            sqliteConnection,
+                            MACPORTS_QUERY
+                        };
 
-                    for (const auto& version : packageVersions)
-                    {
-                        if (!Utils::startsWith(version, "."))
+                        std::pair<SQLite::IStatement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
+
+                        while (SQLITE_ROW == stmt.step())
                         {
                             try
                             {
                                 nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
 
                                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                                 {
@@ -199,11 +266,21 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                             }
                         }
                     }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << e.what() << std::endl;
+                    }
                 }
+
+
+                break;
             }
 
-            // else: invalid package
-        }
+        default:
+            throw std::runtime_error
+            {
+                "Unsupported pkgType argument"
+            };
     }
 }
 
