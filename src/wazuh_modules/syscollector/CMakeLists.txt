@@ -80,13 +80,13 @@ if (NOT ${TARGET} STREQUAL "")
     list(APPEND Schemas
               common_agentInfo
               hotfix_synchronization
-              hwinfo_syncrhonization
-              networkAddress_syncrhonization
-              networkIface_syncrhonization
-              osinfo_syncrhonization
+              hwinfo_synchronization
+              networkAddress_synchronization
+              networkIface_synchronization
+              osinfo_synchronization
               package_synchronization
-              ports_syncrhonization
-              processes_syncrhonization
+              ports_synchronization
+              processes_synchronization
               syscollector_synchronization
     )
     message("Compile schemas")
@@ -98,8 +98,7 @@ if (NOT ${TARGET} STREQUAL "")
       add_custom_command(
           TARGET compile_schemas
           COMMAND ${SRC_FOLDER}/external/flatbuffers/build/flatc
-          ARGS --gen-name-strings --force-empty --cpp
-          ARGS --gen-compare --cpp-str-flex-ctor
+          ARGS --cpp
           ARGS -o "${CMAKE_CURRENT_SOURCE_DIR}/include" "${FILE}"
           COMMENT "Building C++ header for ${schema} schema."
           DEPENDS ${FILE}
