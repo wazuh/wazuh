@@ -1,0 +1,39 @@
+name: "Doxygen documentation generartion"
+description: "Generates the documentation for a given module"
+
+inputs:
+  path:
+    required: true
+    description: "Path to the module we want to generate documentation for"
+    default: src/
+  doxygen_config:
+    required: true
+    description: "Path to the doxygen configuration file"
+    default: Doxyfile
+
+runs:
+  using: "composite"
+  steps:    
+      # Dependencies for testing:
+      # - doxygen 
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: doxygen
+          version: 1.0
+
+      - name: Generate documentation
+        run: |
+
+          DOXYGEN_CONFIG=$(cat ${{ inputs.doxygen_config }}; echo -e "OUTPUT_DIRECTORY=${{ inputs.path }}/doc INPUT=${{ inputs.path }}" )
+          
+          errors=$(echo $DOXYGEN_CONFIG | doxygen - 2>) 
+
+          if [ -n "$errors" ]; then
+            echo "Documentation generation failed: $errors"
+            exit 1
+          else
+            echo "Documentation generated successfully"
+          fi
+
+        shell: bash

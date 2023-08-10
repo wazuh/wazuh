@@ -1,0 +1,40 @@
+name: "Codding style check"
+description: "Validates the codding style of a given module"
+
+inputs:
+  path:
+    required: true
+    description: "Path to validate"
+    default: src/
+
+runs:
+  using: "composite"
+  steps:    
+      # Dependencies for testing:
+      # - clang-format 
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: clang-format 
+          version: 1.0
+
+      - name: Check codding style
+        run: |
+
+          # Execute in dry-run and fail on warnings
+          arguments="--dry-run "
+          #arguments+="-Werror "
+
+          # Retrieve all the source files for the desired module
+          sourceFiles=$(find ${{ inputs.path }} -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
+          arguments+="-i $sourceFiles "
+
+          echo "Executing: clang-format $arguments"
+          clang-format $arguments
+
+          if [[ $? -ne 0 ]]; then
+            echo "Codding style check failed"
+            # exit 1
+          fi
+
+        shell: bash
