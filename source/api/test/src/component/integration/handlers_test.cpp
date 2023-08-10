@@ -2,32 +2,51 @@
 
 #include <api/integration/handlers.hpp>
 #include <gtest/gtest.h>
-#include <testsCommon.hpp>
+
+#include "../../apiAuxiliarFunctions.hpp"
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
+constexpr auto POLICY_NOT_FOUND {2};
+constexpr auto INTEGRATION_NOT_FOUND {3};
 
-class Handlers : public ::testing::Test
+class IntegrationAddApiTest : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string>>
 {
 protected:
-    void SetUp() override { initLogging(); }
-
-    void TearDown() override {};
+    void SetUp() override
+    {
+        initLogging();
+        m_spIntegration = std::make_shared<api::integration::Integration>(getIntegration());
+    }
+    std::shared_ptr<api::integration::Integration> m_spIntegration;
 };
 
-TEST_F(Handlers, policyAddIntegration)
+TEST_P(IntegrationAddApiTest, IntegrationAdd)
 {
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
+    auto [execution, policy, integration, output] = GetParam();
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationAddTo(integration));
+    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationAddTo(m_spIntegration));
     json::Json params;
     params.setObject();
-    params.setString(policyResource.m_name.fullName(), "/policy");
-    params.setString(integrationResource.m_name.fullName(), "/integration");
+
+    if (POLICY_NOT_FOUND == execution)
+    {
+        params.setString(integration, "/integration");
+    }
+    else if (INTEGRATION_NOT_FOUND == execution)
+    {
+        params.setString(policy, "/policy");
+    }
+    else
+    {
+        params.setString(policy, "/policy");
+        params.setString(integration, "/integration");
+    }
+
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
+    const auto expectedData = json::Json(output.c_str());
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -37,18 +56,64 @@ TEST_F(Handlers, policyAddIntegration)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(Handlers, policyAddIntegration_MissingPolicy)
+INSTANTIATE_TEST_SUITE_P(
+    IntegrationAdd,
+    IntegrationAddApiTest,
+    ::testing::Values(
+        std::make_tuple(
+            1, policyResource.m_name.fullName(), integrationResource.m_name.fullName(), R"({"status":"OK"})"),
+        std::make_tuple(
+            2, "", integrationResource.m_name.fullName(), R"({"status":"ERROR","error":"Missing /policy parameter"})"),
+        std::make_tuple(
+            3, policyResource.m_name.fullName(), "", R"({"status":"ERROR","error":"Missing /integration parameter"})"),
+        std::make_tuple(
+            4,
+            "integration/name/ok",
+            integrationResource.m_name.fullName(),
+            R"({"status":"ERROR","error":"Expected policy resource type, got 'integration' for resource 'integration/name/ok'"})"),
+        std::make_tuple(
+            5,
+            policyResource.m_name.fullName(),
+            "policy/name/ok",
+            R"({"status":"ERROR","error":"Expected integration resource type, got 'policy' for resource 'policy/name/ok'"})")));
+
+class IntegrationRemoveApiTest : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string>>
 {
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
+protected:
+    void SetUp() override
+    {
+        initLogging();
+        m_spIntegration = std::make_shared<api::integration::Integration>(getIntegration());
+    }
+    std::shared_ptr<api::integration::Integration> m_spIntegration;
+};
+
+TEST_P(IntegrationRemoveApiTest, IntegrationRemove)
+{
+    auto [execution, policy, integration, output] = GetParam();
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationAddTo(integration));
+    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationRemoveFrom(m_spIntegration));
     json::Json params;
     params.setObject();
-    params.setString(integrationResource.m_name.fullName(), "/integration");
+
+    if (POLICY_NOT_FOUND == execution)
+    {
+        params.setString(integration, "/integration");
+    }
+    else if (INTEGRATION_NOT_FOUND == execution)
+    {
+        params.setString(policy, "/policy");
+    }
+    else
+    {
+        params.setString(policy, "/policy");
+        params.setString(integration, "/integration");
+    }
+
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /policy parameter"})");
+    const auto expectedData = json::Json(output.c_str());
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -58,99 +123,23 @@ TEST_F(Handlers, policyAddIntegration_MissingPolicy)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(Handlers, policyAddIntegration_MissingIntegration)
-{
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationAddTo(integration));
-    json::Json params;
-    params.setObject();
-    params.setString(policyResource.m_name.fullName(), "/policy");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /integration parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, policyAddIntegration_IncorrectPolicyName)
-{
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationAddTo(integration));
-    json::Json params;
-    params.setObject();
-    params.setString("integration/name/ok", "/policy");
-    params.setString(integrationResource.m_name.fullName(), "/integration");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Expected policy resource type, got 'integration' for resource 'integration/name/ok'"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, policyAddIntegration_IncorrectIntegrationName)
-{
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationAddTo(integration));
-    json::Json params;
-    params.setObject();
-    params.setString(policyResource.m_name.fullName(), "/policy");
-    params.setString("policy/name/ok", "/integration");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Expected integration resource type, got 'policy' for resource 'policy/name/ok'"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, integrationRemoveFrom)
-{
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::integration::handlers::integrationRemoveFrom(integration));
-    json::Json params;
-    params.setObject();
-    params.setString(policyResource.m_name.fullName(), "/policy");
-    params.setString(integrationResource.m_name.fullName(), "/integration");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, registerHandlers)
-{
-    auto integration = std::make_shared<api::integration::Integration>(getIntegration());
-    auto api = std::make_shared<api::Api>();
-
-    ASSERT_NO_THROW(api::integration::handlers::registerHandlers(integration, api));
-}
+INSTANTIATE_TEST_SUITE_P(
+    IntegrationRemove,
+    IntegrationRemoveApiTest,
+    ::testing::Values(
+        std::make_tuple(
+            1, policyResource.m_name.fullName(), integrationResource.m_name.fullName(), R"({"status":"OK"})"),
+        std::make_tuple(
+            2, "", integrationResource.m_name.fullName(), R"({"status":"ERROR","error":"Missing /policy parameter"})"),
+        std::make_tuple(
+            3, policyResource.m_name.fullName(), "", R"({"status":"ERROR","error":"Missing /integration parameter"})"),
+        std::make_tuple(
+            4,
+            "integration/name/ok",
+            integrationResource.m_name.fullName(),
+            R"({"status":"ERROR","error":"Expected policy resource type, got 'integration' for resource 'integration/name/ok'"})"),
+        std::make_tuple(
+            5,
+            policyResource.m_name.fullName(),
+            "policy/name/ok",
+            R"({"status":"ERROR","error":"Expected integration resource type, got 'policy' for resource 'policy/name/ok'"})")));
