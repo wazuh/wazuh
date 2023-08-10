@@ -46,46 +46,78 @@ const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyD
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
+std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+std::string kvdbPath;
+
+void Setup()
+{
+    initLogging();
+
+    // cleaning directory in order to start without garbage.
+    kvdbPath = generateRandomStringWithPrefix(6, KVDB_PATH) + "/";
+
+    if (std::filesystem::exists(kvdbPath))
+    {
+        std::filesystem::remove_all(kvdbPath);
+    }
+
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
+
+    kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    kvdbManager->initialize();
+}
+
+void TearDown()
+{
+    kvdbManager->finalize();
+
+    if (std::filesystem::exists(kvdbPath))
+    {
+        std::filesystem::remove_all(kvdbPath);
+    }
+}
+
+api::wpRequest dbSearchWRequest(const std::string& kvdbName, const std::string& prefix)
+{
+    // create request
+    json::Json data {};
+    data.setObject();
+    data.setString(kvdbName, "/name");
+    data.setString(prefix, "/prefix");
+
+    return api::wpRequest::create(rCommand, rOrigin, data);
+}
+
+class DbSearchTestParameters : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+{
+protected:
+    void SetUp() override { ::Setup(); }
+
+    void TearDown() override { ::TearDown(); };
+};
+
+class DbSearchTestFuncionality : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
+{
+protected:
+    void SetUp() override { ::Setup(); }
+
+    void TearDown() override { ::TearDown(); };
+};
+
 class KVDBApiTest : public ::testing::Test
 {
-
 protected:
-    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::string kvdbPath;
-
     void SetUp() override
     {
-        initLogging();
-
-        // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, KVDB_PATH) + "/";
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-
-        std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
-
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
-
-        kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
-
-        kvdbManager->initialize();
-
+        ::Setup();
         createJsonFileWithoutValueOK();
         createJsonFileNOK();
     };
 
-    void TearDown() override
-    {
-        kvdbManager->finalize();
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    };
+    void TearDown() override { ::TearDown(); };
 
     void createJsonFileWithValueOK()
     {
@@ -187,17 +219,6 @@ protected:
         return api::wpRequest::create(rCommand, rOrigin, data);
     }
 
-    api::wpRequest dbSearchWRequest(const std::string& kvdbName, const std::string& prefix)
-    {
-        // create request
-        json::Json data {};
-        data.setObject();
-        data.setString(kvdbName, "/name");
-        data.setString(prefix, "/prefix");
-
-        return api::wpRequest::create(rCommand, rOrigin, data);
-    }
-
     api::wpRequest dbWRequest(const std::string& kvdbName, const std::string& keyName, const std::string& keyValue)
     {
         // create request
@@ -221,13 +242,13 @@ TEST_F(KVDBApiTest, startup)
 
 TEST_F(KVDBApiTest, managerGetOk)
 {
-    ASSERT_NO_THROW(managerGet(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(managerGet(kvdbManager));
 }
 
 TEST_F(KVDBApiTest, managerGet)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerGet(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerGet(kvdbManager));
     const auto response = cmd(getWRequest(true));
     const auto expectedData = json::Json {R"({"status":"OK","dbs":[]})"};
 
@@ -244,7 +265,7 @@ TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
     kvdbManager->createDB(KVDB_TEST_2);
     kvdbManager->getKVDBHandler(KVDB_TEST_2, "test");
 
-    ASSERT_NO_THROW(cmd = managerGet(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerGet(kvdbManager));
     const auto response = cmd(getWRequest(true));
     const auto expectedData = json::Json {R"({"status":"OK","dbs":["test2"]})"};
 
@@ -256,13 +277,13 @@ TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
 
 TEST_F(KVDBApiTest, managerPostOk)
 {
-    ASSERT_NO_THROW(managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(managerPost(kvdbManager));
 }
 
 TEST_F(KVDBApiTest, managerPostNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest());
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
 
@@ -275,9 +296,9 @@ TEST_F(KVDBApiTest, managerPostNameMissing)
 TEST_F(KVDBApiTest, managerPostNameEmpty)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name can not be empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -288,7 +309,7 @@ TEST_F(KVDBApiTest, managerPostNameEmpty)
 TEST_F(KVDBApiTest, managerPost)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -302,7 +323,7 @@ TEST_F(KVDBApiTest, managerPostWithJsonWithValueOK)
 {
     api::Handler cmd;
     createJsonFileWithValueOK();
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_WITH_VALUE_OK));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -316,7 +337,7 @@ TEST_F(KVDBApiTest, managerPostWithJsonWithoutValueOK)
 {
     api::Handler cmd;
     createJsonFileWithoutValueOK();
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_WITHOUT_VALUE_OK));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -329,7 +350,7 @@ TEST_F(KVDBApiTest, managerPostWithJsonWithoutValueOK)
 TEST_F(KVDBApiTest, managerPostWithPathEmpty)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, {""}));
     const auto expectedData =
         json::Json {R"({"status":"ERROR","error":"The DB was created but loading data returned: The path is empty."})"};
@@ -344,7 +365,7 @@ TEST_F(KVDBApiTest, managerPostWithJsonPathNotExists)
 {
     api::Handler cmd;
     createJsonFileNOK();
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_NOT_EXISTS));
     const auto expectedData = json::Json {
         R"({"status":"ERROR","error":"The DB was created but loading data returned: An error occurred while opening the file '/tmp/kvdb_not_exists.json'"})"};
@@ -359,7 +380,7 @@ TEST_F(KVDBApiTest, managerPostWithJsonNOK)
 {
     api::Handler cmd;
     createJsonFileNOK();
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_NOK));
     const auto expectedData = json::Json {
         R"({"status":"ERROR","error":"The DB was created but loading data returned: An error occurred while parsing the JSON file '/tmp/kvdb_nok.json'"})"};
@@ -376,7 +397,7 @@ TEST_F(KVDBApiTest, managerPostDBExists)
 
     kvdbManager->createDB(KVDB_TEST_1);
 
-    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The Database already exists."})"};
 
@@ -388,13 +409,13 @@ TEST_F(KVDBApiTest, managerPostDBExists)
 
 TEST_F(KVDBApiTest, managerDeleteOk)
 {
-    ASSERT_NO_THROW(managerDelete(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(managerDelete(kvdbManager));
 }
 
 TEST_F(KVDBApiTest, managerDeleteNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest());
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
 
@@ -407,7 +428,7 @@ TEST_F(KVDBApiTest, managerDeleteNameMissing)
 TEST_F(KVDBApiTest, managerDeleteNameEmpty)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest(""));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
@@ -421,7 +442,7 @@ TEST_F(KVDBApiTest, managerDelete)
 {
     api::Handler cmd;
     kvdbManager->createDB(KVDB_TEST_1);
-    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -435,7 +456,7 @@ TEST_F(KVDBApiTest, managerDeleteDBNotExists)
 {
     api::Handler cmd;
     kvdbManager->createDB(KVDB_TEST_2);
-    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'test1' does not exist."})"};
 
@@ -454,7 +475,7 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
     auto handler3 = kvdbManager->getKVDBHandler("test2", "test3");
 
     ASSERT_TRUE(std::holds_alternative<std::shared_ptr<kvdbManager::IKVDBHandler>>(handler));
-    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest("test2"));
     const auto expectedData =
         json::Json {R"({"status":"ERROR","error":"Could not remove the DB 'test2'. Usage Reference Count: 3."})"};
@@ -467,13 +488,13 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
 
 TEST_F(KVDBApiTest, managerDumpOk)
 {
-    ASSERT_NO_THROW(managerDump(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(managerDump(kvdbManager, "test"));
 }
 
 TEST_F(KVDBApiTest, managerDumpNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
     const auto response = cmd(commonWRequest());
     const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Missing /name"})"};
 
@@ -486,7 +507,7 @@ TEST_F(KVDBApiTest, managerDumpNameMissing)
 TEST_F(KVDBApiTest, managerDumpNameEmpty)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
     const auto response = cmd(commonWRequest(""));
     const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Field /name cannot be empty"})"};
 
@@ -500,7 +521,7 @@ TEST_F(KVDBApiTest, managerDump)
 {
     api::Handler cmd;
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
     const auto response = cmd(commonWRequest("test_db"));
     const auto expectedData = json::Json {R"({"status":"OK","entries":[]})"};
 
@@ -512,13 +533,13 @@ TEST_F(KVDBApiTest, managerDump)
 
 TEST_F(KVDBApiTest, dbGetOk)
 {
-    ASSERT_NO_THROW(dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(dbGet(kvdbManager, "test"));
 }
 
 TEST_F(KVDBApiTest, dbGetNameArrayNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -534,7 +555,7 @@ TEST_F(KVDBApiTest, dbGetNameArrayNotString)
 TEST_F(KVDBApiTest, dbGetNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     json::Json params {R"({})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -550,7 +571,7 @@ TEST_F(KVDBApiTest, dbGetNameEmpty)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("", "key1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
@@ -564,7 +585,7 @@ TEST_F(KVDBApiTest, dbGetNameEmpty)
 TEST_F(KVDBApiTest, dbGetKeyMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     json::Json params {R"({"name":"test"})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -580,7 +601,7 @@ TEST_F(KVDBApiTest, dbGetKeyEmpty)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default", ""));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /key is empty"})"};
 
@@ -603,7 +624,7 @@ TEST_F(KVDBApiTest, dbGetOneKey)
     auto result = handler->set("key1", "\"value1\"");
     ASSERT_FALSE(result);
 
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK","value":"value1"})"};
 
@@ -623,7 +644,7 @@ TEST_F(KVDBApiTest, dbGetRepeatKeyNoError)
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->set("key1", "\"\"");
     ASSERT_FALSE(result);
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK","value":""})"};
 
@@ -654,7 +675,7 @@ TEST_F(KVDBApiTest, dbGetMoreThanOneKey)
     auto result2 = handler->set("key2", "\"\"");
     ASSERT_FALSE(result2);
 
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK","value":""})"};
 
@@ -683,7 +704,7 @@ TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
     auto result = handler->set("key1", "\"\"");
     ASSERT_FALSE(result);
 
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'default2' does not exist."})"};
 
@@ -698,7 +719,7 @@ TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
     api::Handler cmd;
 
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "keyNotExists"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Cannot get key ''. Error: keyNotExists"})"};
 
@@ -710,13 +731,13 @@ TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
 
 TEST_F(KVDBApiTest, dbDeleteOk)
 {
-    ASSERT_NO_THROW(dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(dbDelete(kvdbManager, "test"));
 }
 
 TEST_F(KVDBApiTest, dbDeleteNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     json::Json params {R"({})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -731,7 +752,7 @@ TEST_F(KVDBApiTest, dbDeleteNameMissing)
 TEST_F(KVDBApiTest, dbDeleteNameArrayNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -748,7 +769,7 @@ TEST_F(KVDBApiTest, dbDeleteNameEmpty)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("", "key1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
@@ -761,7 +782,7 @@ TEST_F(KVDBApiTest, dbDeleteNameEmpty)
 TEST_F(KVDBApiTest, dbDeleteKeyMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     json::Json params {R"({"name":"test"})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -777,7 +798,7 @@ TEST_F(KVDBApiTest, dbDeleteKeyEmpty)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default", ""));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /key is empty"})"};
 
@@ -800,7 +821,7 @@ TEST_F(KVDBApiTest, dbDeleteOneKey)
     auto result = handler->set("key1", "");
     ASSERT_FALSE(result);
 
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -822,7 +843,7 @@ TEST_F(KVDBApiTest, dbDeleteRepeatKeyNoError)
     auto result = handler->set("key1", "");
     ASSERT_FALSE(result);
 
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -853,7 +874,7 @@ TEST_F(KVDBApiTest, dbDeleteMoreThanOneKey)
     auto result2 = handler->set("key2", "");
     ASSERT_FALSE(result2);
 
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -881,7 +902,7 @@ TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
     auto result = handler->set("key1", "");
     ASSERT_FALSE(result);
 
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'default2' does not exist."})"};
 
@@ -896,7 +917,7 @@ TEST_F(KVDBApiTest, dbDeleteOneKeyNotExists)
     api::Handler cmd;
 
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "keyNotExists"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -908,13 +929,13 @@ TEST_F(KVDBApiTest, dbDeleteOneKeyNotExists)
 
 TEST_F(KVDBApiTest, dbPutOk)
 {
-    ASSERT_NO_THROW(dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(dbPut(kvdbManager, "test"));
 }
 
 TEST_F(KVDBApiTest, dbPutNameArrayNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -930,7 +951,7 @@ TEST_F(KVDBApiTest, dbPutNameArrayNotString)
 TEST_F(KVDBApiTest, dbPutNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"entry":{"key":"key1","value":"value1"}})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -946,7 +967,7 @@ TEST_F(KVDBApiTest, dbPutNameEmpty)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
@@ -959,7 +980,7 @@ TEST_F(KVDBApiTest, dbPutNameEmpty)
 TEST_F(KVDBApiTest, dbPutKeyMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"name":"test","entry":{"value":"value1"}})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -975,7 +996,7 @@ TEST_F(KVDBApiTest, dbPutKeyEmpty)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default", "", "value1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /key is empty"})"};
 
@@ -988,7 +1009,7 @@ TEST_F(KVDBApiTest, dbPutKeyEmpty)
 TEST_F(KVDBApiTest, dbPutValueMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"name":"test","entry":{"key":"key1"}})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
@@ -1005,7 +1026,7 @@ TEST_F(KVDBApiTest, dbPutValueEmpty)
     api::Handler cmd;
 
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1", ""));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -1020,7 +1041,7 @@ TEST_F(KVDBApiTest, dbPutOneKey)
     api::Handler cmd;
 
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -1035,7 +1056,7 @@ TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
     api::Handler cmd;
 
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -1057,7 +1078,7 @@ TEST_F(KVDBApiTest, dbPutMoreThanOneKey)
     api::Handler cmd;
 
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
@@ -1078,7 +1099,7 @@ TEST_F(KVDBApiTest, dbPutKeyDBNotExists)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'default2' does not exist."})"};
 
@@ -1091,23 +1112,23 @@ TEST_F(KVDBApiTest, dbPutKeyDBNotExists)
 TEST_F(KVDBApiTest, registerHandlers)
 {
     auto api = std::make_shared<api::Api>();
-    ASSERT_NO_THROW(registerHandlers(KVDBApiTest::kvdbManager, "test", api));
+    ASSERT_NO_THROW(registerHandlers(kvdbManager, "test", api));
 }
 
 TEST_F(KVDBApiTest, dbSearchOk)
 {
-    ASSERT_NO_THROW(dbSearch(KVDBApiTest::kvdbManager, "test"));
+    ASSERT_NO_THROW(dbSearch(kvdbManager, "test"));
 }
 
-TEST_F(KVDBApiTest, dbSearchNameArrayNotString)
+TEST_P(DbSearchTestParameters, ValidateParameters)
 {
+    auto [params, expectedMessage] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    json::Json params {R"({"name":["TEST_DB_2"]})"};
-    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
+    ASSERT_NO_THROW(cmd = dbSearch(kvdbManager, "test"));
+    json::Json jsonParams(params.c_str());
+    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, jsonParams));
 
-    const auto expectedData = json::Json {
-        R"({"status":"ERROR","entries":[],"error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
+    const auto expectedData = json::Json(expectedMessage.c_str());
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -1115,102 +1136,41 @@ TEST_F(KVDBApiTest, dbSearchNameArrayNotString)
     ASSERT_EQ(response.data(), expectedData);
 }
 
-TEST_F(KVDBApiTest, dbSearchNameMissing)
+INSTANTIATE_TEST_SUITE_P(
+    ValidateParameters,
+    DbSearchTestParameters,
+    ::testing::Values(
+        std::make_tuple(
+            R"({"name":["TEST_DB_2"]})",
+            R"({"status":"ERROR","entries":[],"error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"),
+        std::make_tuple(
+            R"({"prefix":["key1"]})",
+            R"({"status":"ERROR","entries":[],"error":"INVALID_ARGUMENT:prefix: Proto field is not repeating, cannot start list."})"),
+        std::make_tuple(R"({"prefix": "key1"})", R"({"status":"ERROR","entries": [],"error":"Missing /name"})"),
+        std::make_tuple(R"({"name":"TEST_DB"})", R"({"status":"ERROR","entries":[],"error":"Missing /prefix"})"),
+        std::make_tuple(R"({"name":"", "prefix":"key1"})",
+                        R"({"status":"ERROR","entries":[],"error":"Field /name is empty"})"),
+        std::make_tuple(R"({"name":"test", "prefix":""})",
+                        R"({"status":"ERROR","entries":[],"error":"Field /prefix is empty"})")));
+
+TEST_P(DbSearchTestFuncionality, Functionality)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    json::Json params {R"({})"};
-    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries": [],"error":"Missing /name"})"};
-
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData);
-}
-
-TEST_F(KVDBApiTest, dbSearchNameEmpty)
-{
-    api::Handler cmd;
-
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    const auto response = cmd(dbSearchWRequest("", "key1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Field /name is empty"})"};
-
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
-                                             << "Expected: " << expectedData.prettyStr() << std::endl;
-}
-
-TEST_F(KVDBApiTest, dbSearchPrefixMissing)
-{
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    json::Json params {R"({"name":"test"})"};
-    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Missing /prefix"})"};
-
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData);
-}
-
-TEST_F(KVDBApiTest, dbSearchPrefixEmpty)
-{
-    api::Handler cmd;
-
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    const auto response = cmd(dbSearchWRequest("default", ""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Field /prefix is empty"})"};
-
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData);
-}
-
-TEST_F(KVDBApiTest, dbSearch)
-{
-    api::Handler cmd;
-
+    auto [name, prefix, expectedValue] = GetParam();
     ASSERT_FALSE(kvdbManager->createDB("test"));
     auto resultHandler = kvdbManager->getKVDBHandler("test", "test");
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
 
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-    auto result = handler->set("key1", "\"value1\"");
-    result = handler->set("key11", "\"value1\"");
-    result = handler->set("key2", "\"value2\"");
 
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    const auto response = cmd(dbSearchWRequest("test", "key1"));
-    const auto expectedData =
-        json::Json {R"({"status":"OK","entries":[{"key":"key11","value":"value1"},{"key":"key1","value":"value1"}]})"};
+    handler->set("key1", "\"value1\"");
+    handler->set("key11", "\"value1\"");
+    handler->set("key2", "\"value2\"");
 
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData);
-}
-
-TEST_F(KVDBApiTest, dbSearchNotResult)
-{
-    api::Handler cmd;
-
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    const auto response = cmd(dbSearchWRequest("test_db", "key1"));
-    const auto expectedData = json::Json {R"({"status":"OK","entries":[]})"};
+    ASSERT_NO_THROW(cmd = dbSearch(kvdbManager, "test"));
+    const auto response = cmd(dbSearchWRequest(name.c_str(), prefix.c_str()));
+    const auto expectedData = json::Json(expectedValue.c_str());
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -1218,27 +1178,17 @@ TEST_F(KVDBApiTest, dbSearchNotResult)
     ASSERT_EQ(response.data(), expectedData);
 }
 
-TEST_F(KVDBApiTest, dbSearchKeyDBNotExists)
-{
-    api::Handler cmd;
-
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    auto result = handler->set("key1", "\"\"");
-    ASSERT_FALSE(result);
-
-    ASSERT_NO_THROW(cmd = dbSearch(KVDBApiTest::kvdbManager, "test"));
-    const auto response = cmd(dbSearchWRequest("default2", "key1"));
-    const auto expectedData =
-        json::Json {R"({"status":"ERROR","entries":[],"error":"The KVDB 'default2' does not exist."})"};
-
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData);
-}
+INSTANTIATE_TEST_SUITE_P(
+    Functionality,
+    DbSearchTestFuncionality,
+    ::testing::Values(
+        std::make_tuple(
+            "test",
+            "key1",
+            R"({"status":"OK","entries":[{"key":"key11","value":"value1"},{"key":"key1","value":"value1"}]})"),
+        std::make_tuple("test", "keyx", R"({"status":"OK","entries":[]})"),
+        std::make_tuple("default2",
+                        "keyx",
+                        R"({"status":"ERROR","entries":[],"error":"The KVDB 'default2' does not exist."})")));
 
 } // namespace
