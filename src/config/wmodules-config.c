@@ -625,8 +625,8 @@ int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1) {
         cur_wmodule_exists = *wmodules;
 
         while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+            if (cur_wmodule_exists->tag) {
+                if (strcmp(cur_wmodule_exists->tag,node->element) == 0) {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
