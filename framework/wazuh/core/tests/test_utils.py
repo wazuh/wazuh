@@ -7,10 +7,11 @@ import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
-from shutil import copyfile
+from shutil import copyfile, Error
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
 from xml.etree.ElementTree import Element
+from wazuh.core.common import OSSEC_TMP_PATH
 
 import pytest
 from defusedxml.ElementTree import parse
@@ -22,6 +23,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.agent import WazuhDBQueryAgents
         from wazuh.core import utils, exception
         from wazuh.core.common import WAZUH_PATH, AGENT_NAME_LEN_LIMIT
+        from wazuh.core.results import WazuhResult
 
 # all necessary params
 
@@ -2025,3 +2027,68 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         else:
             with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
                 utils.check_agents_allow_higher_versions(new_conf)
+
+
+@patch('wazuh.core.utils.tempfile.mkstemp', return_value=('handle', os.path.join(OSSEC_TMP_PATH, 'file.tmp')))
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.common.wazuh_gid')
+@patch('wazuh.core.common.wazuh_uid')
+def test_upload_file(mock_uid, mock_gid, mock_chmod, mock_mkstemp):
+    """Test upload_file function."""
+
+    mko = mock_open()
+    filename = "file.xml"
+    with patch('wazuh.core.utils.open', mko):
+        # Test upload simple content.
+        content = "Test"
+        with patch('wazuh.core.utils.safe_move') as mock_safe_move:
+            result = utils.upload_file(content, file_path=filename, check_xml_formula_values=False)
+            handle = mko()
+            assert isinstance(result, WazuhResult)
+            handle.write.assert_called_once_with(content)
+
+            tmp_path = os.path.join(OSSEC_TMP_PATH, 'file.tmp')
+            file_path = os.path.join(WAZUH_PATH, filename)
+            mock_safe_move.assert_called_once_with(tmp_path,
+                                                          file_path,
+                                                          ownership=(mock_uid(), mock_gid()),
+                                                          permissions=0o660)
+
+    mko = mock_open()
+    with patch('wazuh.core.utils.open', mko):
+        # Test upload formula content check_xml=True.
+        content = "<Test>+Tes't</Test>"
+        with patch('wazuh.core.utils.safe_move') as mock_safe_move:
+            result = utils.upload_file(content, file_path=filename, check_xml_formula_values=True)
+            handle = mko()
+            assert isinstance(result, WazuhResult)
+            handle.write.assert_called_once_with("<Test>'+Tes't</Test>")
+
+            tmp_path = os.path.join(OSSEC_TMP_PATH, 'file.tmp')
+            file_path = os.path.join(WAZUH_PATH, filename)
+            mock_safe_move.assert_called_once_with(tmp_path,
+                                                          file_path,
+                                                          ownership=(mock_uid(), mock_gid()),
+                                                          permissions=0o660)
+
+    # Test error 1005.
+    mko = mock_open()
+    with patch('wazuh.core.utils.open', mko):
+        with patch('wazuh.core.utils.safe_move') as mock_safe_move:
+            with pytest.raises(utils.WazuhInternalError, match=r'\b1005\b'):
+                mko().write.side_effect = IOError()
+                result = utils.upload_file(content, file_path=filename, check_xml_formula_values=False)
+
+    # Test error 1016.
+    mko = mock_open()
+    with patch('wazuh.core.utils.open', mko):
+        with patch('wazuh.core.utils.safe_move', side_effect=Error()) as mock_safe_move:
+            with pytest.raises(utils.WazuhInternalError, match=r'\b1016\b'):
+                result = utils.upload_file(content, file_path=filename, check_xml_formula_values=False)
+
+    # Test error 1006.
+    mko = mock_open()
+    with patch('wazuh.core.utils.open', mko):
+        with patch('wazuh.core.utils.safe_move', side_effect=PermissionError()) as mock_safe_move:
+            with pytest.raises(utils.WazuhError, match=r'\b1006\b'):
+                result = utils.upload_file(content, file_path=filename, check_xml_formula_values=False)
