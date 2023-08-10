@@ -15,6 +15,12 @@ namespace api::kvdb::handlers
 namespace eKVDB = ::com::wazuh::api::engine::kvdb;
 namespace eEngine = ::com::wazuh::api::engine;
 
+constexpr auto MESSAGE_DB_NOT_EXISTS = "The KVDB '{}' does not exist.";
+constexpr auto MESSAGE_MISSING_NAME = "Missing /name";
+constexpr auto MESSAGE_NAME_EMPTY = "Field /name is empty";
+constexpr auto MESSAGE_MISSING_KEY = "Missing /key";
+constexpr auto MESSAGE_KEY_EMPTY = "Field /key is empty";
+
 /* Manager Endpoint */
 
 api::Handler managerGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
@@ -66,8 +72,8 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 
         const auto& eRequest = std::get<RequestType>(res);
 
-        auto errorMsg = !eRequest.has_name()      ? std::make_optional("Missing /name")
-                        : eRequest.name().empty() ? std::make_optional("Field /name can not be empty")
+        auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
+                        : eRequest.name().empty() ? std::make_optional(MESSAGE_NAME_EMPTY)
                                                   : std::nullopt;
         if (errorMsg.has_value())
         {
@@ -118,8 +124,8 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
         }
         const auto& eRequest = std::get<RequestType>(res);
 
-        auto errorMsg = !eRequest.has_name()      ? std::make_optional("Missing /name")
-                        : eRequest.name().empty() ? std::make_optional("Field /name is empty")
+        auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
+                        : eRequest.name().empty() ? std::make_optional(MESSAGE_NAME_EMPTY)
                                                   : std::nullopt;
         if (errorMsg.has_value())
         {
@@ -129,7 +135,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
         if (!kvdbManager->existsDB(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         const auto resultDelete = kvdbManager->deleteDB(eRequest.name());
@@ -158,7 +164,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         }
 
         const auto& eRequest = std::get<RequestType>(res);
-        auto errorMsg = !eRequest.has_name()      ? std::make_optional("Missing /name")
+        auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
                         : eRequest.name().empty() ? std::make_optional("Field /name cannot be empty")
                                                   : std::nullopt;
         if (errorMsg.has_value())
@@ -169,7 +175,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         if (!kvdbManager->existsDB(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -231,10 +237,10 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        auto errorMsg = !eRequest.has_name()      ? std::make_optional("Missing /name")
-                        : eRequest.name().empty() ? std::make_optional("Field /name is empty")
-                        : !eRequest.has_key()     ? std::make_optional("Missing /key")
-                        : eRequest.key().empty()  ? std::make_optional("Field /key is empty")
+        auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
+                        : eRequest.name().empty() ? std::make_optional(MESSAGE_NAME_EMPTY)
+                        : !eRequest.has_key()     ? std::make_optional(MESSAGE_MISSING_KEY)
+                        : eRequest.key().empty()  ? std::make_optional(MESSAGE_KEY_EMPTY)
                                                   : std::nullopt;
         if (errorMsg.has_value())
         {
@@ -244,7 +250,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         if (!kvdbManager->existsDB(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -296,10 +302,10 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        auto errorMsg = !eRequest.has_name()      ? std::make_optional("Missing /name")
-                        : eRequest.name().empty() ? std::make_optional("Field /name is empty")
-                        : !eRequest.has_key()     ? std::make_optional("Missing /key")
-                        : eRequest.key().empty()  ? std::make_optional("Field /key is empty")
+        auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
+                        : eRequest.name().empty() ? std::make_optional(MESSAGE_NAME_EMPTY)
+                        : !eRequest.has_key()     ? std::make_optional(MESSAGE_MISSING_KEY)
+                        : eRequest.key().empty()  ? std::make_optional(MESSAGE_KEY_EMPTY)
                                                   : std::nullopt;
         if (errorMsg.has_value())
         {
@@ -309,7 +315,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
         if (!kvdbManager->existsDB(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -347,8 +353,8 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         }
         const auto& eRequest = std::get<RequestType>(res);
 
-        auto errorMsg = !eRequest.has_name()            ? std::make_optional("Missing /name")
-                        : eRequest.name().empty()       ? std::make_optional("Field /name is empty")
+        auto errorMsg = !eRequest.has_name()            ? std::make_optional(MESSAGE_MISSING_NAME)
+                        : eRequest.name().empty()       ? std::make_optional(MESSAGE_NAME_EMPTY)
                         : !eRequest.has_entry()         ? std::make_optional("Missing /entry")
                         : !eRequest.entry().has_key()   ? std::make_optional("Missing /entry/key")
                         : !eRequest.entry().has_value() ? std::make_optional("Missing /entry/value")
@@ -367,7 +373,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
 
         if (eRequest.entry().key().empty())
         {
-            return ::api::adapter::genericError<ResponseType>("Field /key is empty");
+            return ::api::adapter::genericError<ResponseType>(MESSAGE_KEY_EMPTY);
         }
 
         if (std::get<std::string>(value).empty())
@@ -378,7 +384,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
         if (!kvdbManager->existsDB(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -416,8 +422,8 @@ api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        auto errorMsg = !eRequest.has_name()        ? std::make_optional("Missing /name")
-                        : eRequest.name().empty()   ? std::make_optional("Field /name is empty")
+        auto errorMsg = !eRequest.has_name()        ? std::make_optional(MESSAGE_MISSING_NAME)
+                        : eRequest.name().empty()   ? std::make_optional(MESSAGE_NAME_EMPTY)
                         : !eRequest.has_prefix()    ? std::make_optional("Missing /prefix")
                         : eRequest.prefix().empty() ? std::make_optional("Field /prefix is empty")
                                                     : std::nullopt;
@@ -430,7 +436,7 @@ api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
         if (!kvdbManager->existsDB(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("The KVDB '{}' does not exist.", eRequest.name()));
+                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
