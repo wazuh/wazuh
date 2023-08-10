@@ -22,7 +22,6 @@ unsigned receive_chunk;
 unsigned send_chunk;
 unsigned send_buffer_size;
 int send_timeout_to_retry;
-int connection_overtake_time;
 int buffer_relax;
 
 /* Read the config file (the remote access) */
@@ -32,19 +31,23 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     modules |= CREMOTE;
 
+    if (!cfg->tcp) {
+        os_calloc(1, sizeof(tcp), cfg->tcp);
+    }
+
     cfg->port = NULL;
     cfg->conn = NULL;
     cfg->allowips = NULL;
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
     cfg->queue_size = 131072;
+    cfg->tcp->connection_overtake_time = 60;
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
     send_buffer_size = (unsigned)getDefine_Int("remoted", "send_buffer_size", 65536, 1048576);
     send_timeout_to_retry = getDefine_Int("remoted", "send_timeout_to_retry", 1, 60);
-    connection_overtake_time = getDefine_Int("remoted", "connection_overtake_time", 0, 3600);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 600;
@@ -78,6 +81,7 @@ cJSON *getRemoteConfig(void) {
     unsigned int i,j;
     char port[255] = {0};
     char queue_size[255] = {0};
+    char connection_overtake_time[255] = {0};
 
     if(logr.conn) {
         for(i=0;logr.conn[i];i++){
@@ -122,6 +126,14 @@ cJSON *getRemoteConfig(void) {
                 }
                 cJSON_AddItemToObject(conn,"denied-ips",list);
             }
+            if (logr.tcp && logr.tcp->connection_overtake_time) {
+                cJSON *tcp = cJSON_CreateObject();
+
+                sprintf(connection_overtake_time,"%d",logr.tcp->connection_overtake_time);
+
+                cJSON_AddStringToObject(tcp, "connection_overtake_time", connection_overtake_time);
+                cJSON_AddItemToObject(conn, "tcp", tcp);
+            }
             cJSON_AddItemToArray(rem,conn);
         }
     }
@@ -158,7 +170,6 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
     cJSON_AddNumberToObject(remoted,"send_buffer_size",send_buffer_size);
     cJSON_AddNumberToObject(remoted,"send_timeout_to_retry",send_timeout_to_retry);
-    cJSON_AddNumberToObject(remoted,"connection_overtake_time",connection_overtake_time);
     cJSON_AddNumberToObject(remoted,"tcp_keepidle",tcp_keepidle);
     cJSON_AddNumberToObject(remoted,"tcp_keepintvl",tcp_keepintvl);
     cJSON_AddNumberToObject(remoted,"tcp_keepcnt",tcp_keepcnt);

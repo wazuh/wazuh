@@ -26,8 +26,10 @@
  */
 STATIC int w_remoted_get_net_protocol(const char * content);
 
+int w_read_tcp_config(XML_NODE node, remoted *logr);
+
 /* Reads remote config */
-int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
@@ -52,6 +54,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_lip = "local_ip";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
+    const char *xml_tcp = "tcp";
 
     logr = (remoted *)d1;
 
@@ -127,6 +130,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
     while (node[i]) {
+        mwarn("-------------------------- entra al while");
+
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
@@ -238,6 +243,17 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             logr->rids_closing_time = (int) rids_closing_time;
 
+        } else if (strcmp(node[i]->element, xml_tcp) == 0) {
+            mwarn("-------------------------- entra al xml_tcp if");
+            xml_node **chld_node = NULL;
+
+            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
+                merror(XML_INVELEM, node[i]->element);
+            } else {
+                w_read_tcp_config(chld_node, logr);
+
+                OS_ClearNode(chld_node);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -315,4 +331,22 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     }
 
     return retval;
+}
+
+int w_read_tcp_config(XML_NODE node, remoted *logr) {
+    static const char *xml_connection_overtake_time = "connection_overtake_time";
+
+    for (int i = 0; node[i]; i++) {
+        if (!strcmp(node[i]->element, xml_connection_overtake_time)) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                minfo("Setting '%s' to default value: '%d'.", node[i]->element, logr->tcp->connection_overtake_time);
+                return OS_SUCCESS;
+            }
+
+            logr->tcp->connection_overtake_time = atoi(node[i]->content);
+        }
+
+    }
+    return OS_SUCCESS;
 }

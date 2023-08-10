@@ -526,7 +526,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
+                if ((logr.tcp->connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > logr.tcp->connection_overtake_time) {
                     sock_idle = keys.keyentries[agentid]->sock;
 
                     mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
@@ -589,7 +589,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > connection_overtake_time) {
+                if ((logr.tcp->connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > logr.tcp->connection_overtake_time) {
                     sock_idle = keys.keyentries[agentid]->sock;
 
                     mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
