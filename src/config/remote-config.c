@@ -130,8 +130,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
     while (node[i]) {
-        mwarn("-------------------------- entra al while");
-
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
@@ -244,7 +242,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             logr->rids_closing_time = (int) rids_closing_time;
 
         } else if (strcmp(node[i]->element, xml_tcp) == 0) {
-            mwarn("-------------------------- entra al xml_tcp if");
             xml_node **chld_node = NULL;
 
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
