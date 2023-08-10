@@ -199,7 +199,7 @@ def test_decompress_file_gz(log_key: str, decompression_function: str,
     """
     with patch(decompression_function) as mock_decompression, \
          patch('io.BytesIO') as mock_io:
-        aws_bucket.decompress_file(log_key)
+        aws_bucket.decompress_file(aws_bucket.bucket, log_key)
         mock_decompression.assert_called_once()
         mock_io.assert_called_once()
 
@@ -219,7 +219,7 @@ def test_decompress_file_snappy_skip(log_key: str, aws_bucket: aws_s3.AWSBucket)
     """
     aws_bucket.skip_on_error = True
     with patch('io.BytesIO'):
-        aws_bucket.decompress_file(log_key)
+        aws_bucket.decompress_file(aws_bucket.bucket, log_key)
 
 
 @pytest.mark.parametrize('log_key, skip_on_error, expected_exception', [
@@ -244,7 +244,7 @@ def test_decompress_snappy_ko(log_key: str, skip_on_error: bool, expected_except
     """
     aws_bucket.skip_on_error = skip_on_error
     with patch('io.BytesIO'), pytest.raises(expected_exception) as e:
-        aws_bucket.decompress_file(log_key)
+        aws_bucket.decompress_file(aws_bucket.bucket, log_key)
     assert e.value.code == 8
 
 
@@ -261,7 +261,7 @@ def test_decompress_file_ko(bad_compressed_file, aws_bucket: aws_s3.AWSBucket):
     with patch(
             'io.BytesIO', return_value=io.TextIOWrapper(bad_compressed_file)),\
          pytest.raises(SystemExit) as e:
-        aws_bucket.decompress_file(bad_compressed_file.name)
+        aws_bucket.decompress_file(aws_bucket.bucket, bad_compressed_file.name)
     assert e.value.code == 8
 
 
