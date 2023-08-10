@@ -5,6 +5,7 @@
     ONLY_FUTURE: 'no'
     INTERVAL: '10s'
     CURL_SIZE: '1K'
+    TENANT_ID: 'tenant_id'
     RESOURCE_NAME: 'resource_name'
     RESOURCE_RELATIONSHIP1: 'resource_relationship'
     RESOURCE_RELATIONSHIP2: 'resource_relationship'

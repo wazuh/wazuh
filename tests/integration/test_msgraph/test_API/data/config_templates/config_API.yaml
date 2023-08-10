@@ -16,7 +16,7 @@
         - api_auth:
             elements:
               - tenant_id:
-                  value: 'tenant_id'
+                  value: 'TENANT_ID'
               - client_id:
                   value: 'client_id'
               - secret_value:
