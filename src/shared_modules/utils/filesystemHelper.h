@@ -56,7 +56,7 @@ namespace Utils
         }
     };
 
-    static std::vector<std::string> enumerateDir(const std::string& path)
+    static std::vector<std::string> enumerateDir(const std::string& path, const unsigned char fileType = 0)
     {
         std::vector<std::string> ret;
         std::unique_ptr<DIR, DirSmartDeleter> spDir{opendir(path.c_str())};
@@ -67,7 +67,11 @@ namespace Utils
 
             while (entry)
             {
-                ret.push_back(entry->d_name);
+                if (!fileType || (entry->d_type == fileType))
+                {
+                    ret.push_back(entry->d_name);
+                }
+
                 entry = readdir(spDir.get());
             }
         }
