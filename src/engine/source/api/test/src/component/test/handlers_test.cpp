@@ -11,7 +11,7 @@
 #include <api/test/sessionManager.hpp>
 #include <cmds/src/defaultSettings.hpp>
 
-#include "../apiAuxiliarFunctions.hpp"
+#include "../../apiAuxiliarFunctions.hpp"
 #include "fakeAssets.hpp"
 
 using namespace api::test::handlers;
