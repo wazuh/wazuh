@@ -18,8 +18,23 @@
 
 #ifndef WIN32
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 static short eval_bool(const char *str);
 int w_read_force_config(XML_NODE node, authd_config_t *config);
+
+/**
+ * @brief gets the auth agents configuration
+ *
+ * @param node XML node
+ * @param config auth configuration structure
+ */
+STATIC void w_parse_agents(XML_NODE node, authd_config_t * config);
 
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
@@ -40,6 +55,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
+    static const char *xml_agents = "agents";
 #ifndef CLIENT
     static const char *xml_key_request = "key_request";
 #endif
@@ -73,6 +89,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->force_options.disconnected_time_enabled = true;
     config->force_options.disconnected_time = 3600;
     config->force_options.after_registration_time = 3600;
+    config->allow_higher_versions = AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
+
     short legacy_force_insert = -1;
     int legacy_force_time = -1;
     bool new_force_read = false;
@@ -224,6 +242,16 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.auto_negotiate = b;
+        } else if (strcasecmp(node[i]->element, xml_agents) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children == NULL) {
+                continue;
+            }
+
+            w_parse_agents(children, config);
+
+            OS_ClearNode(children);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
@@ -370,4 +398,25 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
     }
     return OS_SUCCESS;
 }
+
+STATIC void w_parse_agents(XML_NODE node, authd_config_t * config) {
+    const char * ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
+
+    int i = 0;
+    while (node[i]) {
+        if (strcasecmp(node[i]->element, ALLOW_HIGHER_VERSIONS) == 0) {
+            if (strcmp(node[i]->content, "no") == 0) {
+                config->allow_higher_versions = false;
+            }
+            else if (strcmp(node[i]->content, "yes") != 0) {
+                mwarn("Ignored invalid value '%s' for auth agent's 'allow_higher_versions'.", node[i]->content);
+            }
+        }
+        else {
+            mwarn("Invalid element in the auth agent's configuration: '%s'.", node[i]->element);
+        }
+        i++;
+    }
+}
+
 #endif

@@ -26,15 +26,23 @@
  */
 STATIC int w_remoted_get_net_protocol(const char * content);
 
+/**
+ * @brief gets the remoted agents configuration
+ *
+ * @param node XML node
+ * @param logr remoted configuration structure
+ */
+STATIC void w_parse_agents(XML_NODE node, remoted * logr);
+
 /* Reads remote config */
-int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
     unsigned int pl = 0;
     unsigned int allow_size = 1;
     unsigned int deny_size = 1;
-    remoted *logr;
+    remoted * logr = NULL;
     int defined_queue_size = 0;
     const int DEFAULT_RIDS_CLOSING_TIME = 300;
 
@@ -50,6 +58,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
+    const char *xml_remote_agents = "agents";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
 
@@ -125,6 +134,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->lip[pl + 1] = NULL;
 
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
+
+    logr->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -238,6 +249,16 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             logr->rids_closing_time = (int) rids_closing_time;
 
+        } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children == NULL) {
+                continue;
+            }
+
+            w_parse_agents(children, logr);
+
+            OS_ClearNode(children);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -315,4 +336,24 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     }
 
     return retval;
+}
+
+STATIC void w_parse_agents(XML_NODE node, remoted * logr) {
+    const char * ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
+
+    int i = 0;
+    while (node[i]) {
+        if (strcasecmp(node[i]->element, ALLOW_HIGHER_VERSIONS) == 0) {
+            if (strcmp(node[i]->content, "no") == 0) {
+                logr->allow_higher_versions = false;
+            }
+            else if (strcmp(node[i]->content, "yes") != 0) {
+                mwarn("Ignored invalid value '%s' for remote agent's 'allow_higher_versions'.", node[i]->content);
+            }
+        }
+        else {
+            mwarn("Invalid element in the remote agent's configuration: '%s'.", node[i]->element);
+        }
+        i++;
+    }
 }

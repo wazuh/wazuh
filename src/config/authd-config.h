@@ -15,6 +15,8 @@
 #define AD_CONF_UNPARSED 3
 #define AD_CONF_UNDEFINED 2
 
+#define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT true   ///< Default allow_higher_versions value (true)
+
 #include <time.h>
 
 /**
@@ -61,6 +63,7 @@ typedef struct authd_config_t {
     long timeout_usec;
     bool worker_node;
     bool ipv6;
+    bool allow_higher_versions;
 } authd_config_t;
 
 /**

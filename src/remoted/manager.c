@@ -302,8 +302,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
-                    if (compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
-                        send_wrong_version_response(key->id, HC_INVALID_VERSION, INVALID_VERSION, version->valuestring, wdb_sock);
+                    if (!logr.allow_higher_versions &&
+                        compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
+
+                        send_wrong_version_response(key->id, HC_INVALID_VERSION,
+                                                    INVALID_VERSION, version->valuestring,
+                                                    wdb_sock);
                         cJSON_Delete(agent_info);
                         os_free(clean);
                         return;
