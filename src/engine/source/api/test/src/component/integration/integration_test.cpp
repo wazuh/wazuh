@@ -4,56 +4,45 @@
 
 #include <api/catalog/catalog.hpp>
 #include <api/integration/integration.hpp>
-#include <testsCommon.hpp>
 
+#include "../../apiAuxiliarFunctions.hpp"
 #include "catalogTestShared.hpp"
 
-class IntegrationTest : public testing::Test {
+class IntegrationTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, api::catalog::Resource>>
+{
 protected:
-
-    void SetUp() override {
-        initLogging();
-    }
+    void SetUp() override { initLogging(); }
 };
 
-TEST_F(IntegrationTest, AddIntegrationPolicyNoIntegrations)
+TEST_P(IntegrationTest, AddAndRemoveIntegration)
 {
+    auto [execution, policy, integrations] = GetParam();
     auto integration = getIntegration();
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = integration.addTo(policyNoIntegrations, integrationResource));
-    ASSERT_FALSE(error);
+    if (execution < 3)
+    {
+        ASSERT_NO_THROW(error = integration.addTo(policy, integrations));
+        if (policy.m_name == policyDuplicated.m_name)
+        {
+            ASSERT_TRUE(error);
+        }
+        else
+        {
+            ASSERT_FALSE(error);
+        }
+    }
+    else
+    {
+        ASSERT_NO_THROW(error = integration.removeFrom(policy, integrations));
+        ASSERT_FALSE(error);
+    }
 }
 
-TEST_F(IntegrationTest, AddIntegrationPolicy)
-{
-    auto integration = getIntegration();
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = integration.addTo(policyResource, integrationResource));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(IntegrationTest, AddIntegrationPolicyDuplicated)
-{
-    auto integration = getIntegration();
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = integration.addTo(policyDuplicated, integrationResource));
-    ASSERT_TRUE(error);
-}
-
-TEST_F(IntegrationTest, RemoveIntegrationPolicy)
-{
-    auto integration = getIntegration();
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = integration.removeFrom(policyDuplicated, integrationResource));
-    ASSERT_FALSE(error);
-    ASSERT_NO_THROW(error = integration.removeFrom(policyResource, integrationResource));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(IntegrationTest, RemoveIntegrationPolicyNoIntegrations)
-{
-    auto integration = getIntegration();
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = integration.removeFrom(policyNoIntegrations, integrationResource));
-    ASSERT_FALSE(error);
-}
+INSTANTIATE_TEST_SUITE_P(AddAndRemoveIntegration,
+                         IntegrationTest,
+                         ::testing::Values(std::make_tuple(1, policyNoIntegrations, integrationResource),
+                                           std::make_tuple(2, policyResource, integrationResource),
+                                           std::make_tuple(3, policyDuplicated, integrationResource),
+                                           std::make_tuple(4, policyDuplicated, integrationResource),
+                                           std::make_tuple(5, policyResource, integrationResource),
+                                           std::make_tuple(5, policyNoIntegrations, integrationResource)));
