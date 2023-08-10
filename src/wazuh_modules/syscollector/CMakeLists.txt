@@ -78,8 +78,16 @@ link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 if (NOT ${TARGET} STREQUAL "")
   if(${TARGET} STREQUAL "server")
     list(APPEND Schemas
-                hotfix_synchronization
-                package_synchronization
+              common_agentInfo
+              hotfix_synchronization
+              hwinfo_syncrhonization
+              networkAddress_syncrhonization
+              networkIface_syncrhonization
+              osinfo_syncrhonization
+              package_synchronization
+              ports_syncrhonization
+              processes_syncrhonization
+              syscollector_synchronization
     )
     message("Compile schemas")
     message("${SRC_FOLDER}/external/flatbuffers/build/flatc")
