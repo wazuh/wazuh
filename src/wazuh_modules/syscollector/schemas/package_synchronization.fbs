@@ -1,14 +1,4 @@
-include "common_agentInfo.fbs";
-
 table syscollector_packages
-{
-  attributes_type: string;
-  attributes: PkgAttributeMsg;
-  index: string;
-  timestamp: string;
-}
-
-table PkgAttributeMsg
 {
   architecture:string;
   checksum:string;

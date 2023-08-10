@@ -1,14 +1,4 @@
-include "common_agentInfo.fbs";
-
 table syscollector_hotfixes
-{
-  attributes_type: string;
-  attributes: HtxAttributeMsg;
-  index: string;
-  timestamp: string;
-}
-
-table HtxAttributeMsg
 {
   checksum:string;
   hotfix:string;

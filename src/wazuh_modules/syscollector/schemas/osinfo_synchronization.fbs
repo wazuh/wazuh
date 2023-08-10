@@ -1,0 +1,17 @@
+table syscollector_osinfo
+{
+    architecture: string;
+    checksum: string;
+    hostname: string;
+    os_codename: string;
+    os_major: string;
+    os_minor: string;
+    os_name: string;
+    os_patch: string;
+    os_platform: string;
+    os_version: string;
+    release: string;
+    scan_time: string;
+    sysname: string;
+    version: string;
+}

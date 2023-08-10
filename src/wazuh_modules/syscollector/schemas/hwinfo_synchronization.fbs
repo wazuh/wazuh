@@ -1,0 +1,12 @@
+table syscollector_hwinfo
+{
+    board_serial: string;
+    checksum: string;
+    cpu_cores: int;
+    cpu_mhz: float;
+    cpu_name: string;
+    ram_free: int;
+    ram_total: int;
+    ram_usage: int;
+    scan_time: string;
+}

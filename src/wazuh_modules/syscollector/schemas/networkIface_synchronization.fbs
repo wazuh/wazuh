@@ -1,0 +1,20 @@
+table syscollector_network_iface
+{
+    adapter: string;
+    checksum: string;
+    item_id: string;
+    mac: string;
+    mtu: int;
+    name: string;
+    rx_bytes: int;
+    rx_dropped: int;
+    rx_errors: int;
+    rx_packets: int;
+    scan_time: string;
+    state: string;
+    tx_bytes: int;
+    tx_dropped: int;
+    tx_errors: int;
+    tx_packets: int;
+    type: string;
+}

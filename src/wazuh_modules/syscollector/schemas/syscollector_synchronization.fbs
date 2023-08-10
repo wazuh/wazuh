@@ -1,17 +1,17 @@
 include "common_agentInfo.fbs";
 
 include "hotfix_synchronization.fbs";
-include "hwinfo_syncrhonization.fbs";
-include "networkAddress_syncrhonization.fbs";
-include "networkIface_syncrhonization.fbs";
-include "osinfo_syncrhonization.fbs";
+include "hwinfo_synchronization.fbs";
+include "networkAddress_synchronization.fbs";
+include "networkIface_synchronization.fbs";
+include "osinfo_synchronization.fbs";
 include "package_synchronization.fbs";
-include "ports_syncrhonization.fbs";
-include "processes_syncrhonization.fbs";
+include "ports_synchronization.fbs";
+include "processes_synchronization.fbs";
 
 namespace Syscollector.SyncMessage;
 
-union DataMsg
+union AttributesUnion
 {
     syscollector_hotfixes,
     syscollector_hwinfo,
@@ -23,10 +23,53 @@ union DataMsg
     syscollector_processes
 }
 
+table state
+{
+  attributes: AttributesUnion;
+  index: string;
+  timestamp: string;
+}
+
+table integrity_check_global
+{
+  attributes_type:string;
+  id: int;
+  begin: string;
+  end: string;
+  checksum: string;
+}
+
+table integrity_check_right
+{
+  attributes_type:string;
+  id: int;
+  begin: string;
+  end: string;
+  checksum: string;
+}
+
+table integrity_check_left
+{
+  attributes_type:string;
+  id: int;
+  begin: string;
+  end: string;
+  tail: string;
+  checksum: string;
+}
+
+union DataUnion
+{
+    state,
+    integrity_check_global,
+    integrity_check_left,
+    integrity_check_right
+}
+
 table SyncMsg
 {
     agent_info: AgentInfo;
-    data: DataMsg;
+    data: DataUnion;
 }
 
 root_type SyncMsg;
