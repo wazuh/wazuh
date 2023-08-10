@@ -17,7 +17,9 @@ runs:
           packages: lcov
           version: 1.0
 
+      # Generate the coverage files
       - name: Generate coverage files
+        shell: bash
         run: |
 
           cd ${{ inputs.path }}
@@ -44,9 +46,28 @@ runs:
           echo "Executing: lcov $arguments"
           lcov $arguments
 
+      # Generate the HTML coverage report
+      - name: Generate coverage report
         shell: bash
-      
+        run: |
+
+          cd ${{ inputs.path }}/build
+
+          # Generate HTML report
+          genhtml coverage.info --output-directory coverage_report
+
+      # Upload the coverage report as an artifact
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Coverage Report
+          path: ./${{ inputs.path }}/build/coverage_report
+          retention-days: 1
+
+      # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
+        shell: bash
         run: |
 
           cd ${{ inputs.path }}
@@ -59,7 +80,7 @@ runs:
           echo "Lines coverage is: $linesCoverage %"
           if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
               echo "ERROR: Low lines coverage"
-              #exit 1
+              exit 1
           fi
           
           # Check if functions coverage is greater than 90%
@@ -67,7 +88,5 @@ runs:
           echo "Functions coverage is: $functionsCoverage %"
           if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
               echo "ERROR: Low functions coverage"
-              #exit 1
+              exit 1
           fi
-
-        shell: bash
