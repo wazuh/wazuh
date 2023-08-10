@@ -54,26 +54,28 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
 set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
 
-add_executable(api_test
-  ${TEST_SRC_DIR}/apiAuxiliarFunctions.hpp
-  ${TEST_SRC_COMPONENT_DIR}/graph/handlers_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/graph/fakeAssets.hpp
-  ${TEST_SRC_COMPONENT_DIR}/test/session_test.cpp
+add_executable(api_component_test
   ${TEST_SRC_COMPONENT_DIR}/test/handlers_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/test/fakeAssets.hpp
   ${TEST_SRC_COMPONENT_DIR}/integration/handlers_test.cpp
   ${TEST_SRC_COMPONENT_DIR}/integration/integration_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/kvdb/kvdb_api_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/catalog/catalog_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/catalog/handlers_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/catalog/resource_test.cpp
+)
 
+add_executable(api_unit_test
+  ${TEST_SRC_UNIT_DIR}/catalog/catalog_test.cpp
+  ${TEST_SRC_UNIT_DIR}/catalog/handlers_test.cpp
+  ${TEST_SRC_UNIT_DIR}/catalog/resource_test.cpp
+  ${TEST_SRC_UNIT_DIR}/graph/handlers_test.cpp
+  ${TEST_SRC_UNIT_DIR}/kvdb/kvdb_api_test.cpp
+  ${TEST_SRC_UNIT_DIR}/test/session_test.cpp
   ${TEST_SRC_UNIT_DIR}/adapter_test.cpp
   ${TEST_SRC_UNIT_DIR}/api_test.cpp
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp
 )
 
 # TODO: Replace test_mocks with the metrics executable when you have the test folder available.
-target_link_libraries(api_test gtest_main base api schemf::mocks test_mocks store_mocks)
-gtest_discover_tests(api_test)
+target_link_libraries(api_component_test gtest_main base api schemf::mocks test_mocks store_mocks)
+gtest_discover_tests(api_component_test)
+
+target_link_libraries(api_unit_test gtest_main base api schemf::mocks test_mocks store_mocks)
+gtest_discover_tests(api_unit_test)
 endif(ENGINE_BUILD_TEST)
