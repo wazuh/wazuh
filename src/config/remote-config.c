@@ -26,8 +26,19 @@
  */
 STATIC int w_remoted_get_net_protocol(const char * content);
 
+/**
+ * @brief Parse the <agents> block
+ *
+ * @param node Pointer to an XML node
+ * @param logr Pointer to the Remoted configuration
+ * @return Error code
+ * @retval Parsing successful
+ */
+
+STATIC int w_remoted_parse_agents(XML_NODE node, remoted * logr);
+
 /* Reads remote config */
-int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
@@ -52,6 +63,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_lip = "local_ip";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
+    const char *xml_agents = "agents";
 
     logr = (remoted *)d1;
 
@@ -237,7 +249,17 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             logr->rids_closing_time = (int) rids_closing_time;
+        } else if (strcmp(node[i]->element, xml_agents) == 0) {
+            XML_NODE children = OS_GetElementsbyNode(xml, node[i]);
 
+            if (children != NULL) {
+                int retval = w_remoted_parse_agents(children, logr);
+                OS_ClearNode(children);
+
+                if (retval != 0) {
+                    return OS_INVALID;
+                }
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -315,4 +337,38 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     }
 
     return retval;
+}
+
+// Parse the <agents> block
+
+int w_remoted_parse_agents(XML_NODE node, remoted * logr) {
+    const char * XML_ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
+    const char * XML_YES = "yes";
+    const char * XML_NO = "no";
+
+    for (int i = 0; node[i] != NULL; i++) {
+        if (node[i]->element == NULL) {
+            merror(XML_ELEMNULL);
+            return OS_INVALID;
+        }
+
+        if (node[i]->content == NULL) {
+            merror(XML_VALUENULL, node[i]->element);
+            return OS_INVALID;
+        }
+
+        if (strcasecmp(node[i]->element, XML_ALLOW_HIGHER_VERSIONS) == 0) {
+            if (strcasecmp(node[i]->content, XML_YES) == 0) {
+                logr->allow_higher_versions = true;
+            } else if (strcasecmp(node[i]->content, XML_NO) == 0) {
+                logr->allow_higher_versions = false;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, XML_ALLOW_HIGHER_VERSIONS);
+            }
+        } else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+
+    return 0;
 }
