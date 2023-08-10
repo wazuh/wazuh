@@ -186,9 +186,9 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
         truncate_file(WAZUH_LOG_PATH)
         control_service('start')
         wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run first scan"))
-        assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+        assert (wazuh_log_monitor.callback_result != None), f'Error, `first scan` not found in log'
     else:
-        assert (False)
+        assert (False), f'Error `Bookmark updated` not found in log'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
@@ -249,10 +249,10 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
         control_service('start')
         
         wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run next scan"))
-        assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+        assert (wazuh_log_monitor.callback_result != None), f'Error, `next scan` not found in log'
 
         wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run first scan"), timeout=10)
-        assert (wazuh_log_monitor.callback_result == None), f'Error module enabled event not detected'
+        assert (wazuh_log_monitor.callback_result == None), f'Error, `first scan` not found in log'
     else:
         assert (False)
 
@@ -306,7 +306,7 @@ def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuratio
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Reached maximum CURL size"))
-    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+    assert (wazuh_log_monitor.callback_result != None), f'Error, `maximum CURL size` not found in log'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t4_configurations, t4_configuration_metadata), ids=t4_case_ids)
@@ -360,10 +360,10 @@ def test_valid_resource(test_configuration, test_metadata, set_wazuh_configurati
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*microsoft.graph.security.alert"))
-    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+    assert (wazuh_log_monitor.callback_result != None), f'Error, `security.alert` not found in log'
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*microsoft.graph.security.incident"))
-    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+    assert (wazuh_log_monitor.callback_result != None), f'Error, `security.incident` not found in log'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t5_configurations, t5_configuration_metadata), ids=t5_case_ids)
@@ -419,7 +419,7 @@ def test_invalid_resource(test_configuration, test_metadata, set_wazuh_configura
     wazuh_log_monitor.start(
         callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Received unsuccessful "\
                                              r"status code when attempting to get relationship \'invalid\'"))
-    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+    assert (wazuh_log_monitor.callback_result != None), f'Error, `unsuccessful status code` not found in log'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t6_configurations, t6_configuration_metadata), ids=t6_case_ids)
@@ -471,7 +471,7 @@ def test_valid_auth(test_configuration, test_metadata, set_wazuh_configuration, 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*INFO: Scanning tenant"))
-    assert (wazuh_log_monitor.callback_result != None), f"ERRO: Recieved unsuccessful status code when attempting to obtain access token"
+    assert (wazuh_log_monitor.callback_result != None), f'Error, `Scanning tenant` not found in log'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t7_configurations, t7_configuration_metadata), ids=t7_case_ids)
@@ -524,6 +524,6 @@ def test_invalid_auth(test_configuration, test_metadata, set_wazuh_configuration
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(
-        callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*WARNING: Recieved unsuccessful "\
+        callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*WARNING: Received unsuccessful "\
                                              r"status code when attempting to obtain access token"))
-    assert (wazuh_log_monitor.callback_result != None), f"ERROR: A different error code has been received for an invalid customer."
+    assert (wazuh_log_monitor.callback_result != None), f'Error, `unsuccessful status code` not found in log'
