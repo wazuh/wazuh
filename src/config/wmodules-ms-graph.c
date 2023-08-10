@@ -70,65 +70,51 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		if (!nodes[i]->element) {
 			merror(XML_ELEMNULL);
 			return OS_CFGERR;
-		}
-		else if (!nodes[i]->content) {
+		} else if (!nodes[i]->content) {
 			merror(XML_ELEMNULL);
 			return OS_CFGERR;
-		}
-		else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
+		} else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
 			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->enabled = true;
-			}
-			else if (!strcmp(nodes[i]->content, "no")) {
+			} else if (!strcmp(nodes[i]->content, "no")) {
 				ms_graph->enabled = false;
-			}
-			else {
+			} else {
 				merror(XML_VALUEERR, XML_ENABLED, nodes[i]->content);
 				return OS_CFGERR;
 			}
-		}
-		else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS)) {
+		} else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS)) {
 			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->only_future_events = true;
-			}
-			else if (!strcmp(nodes[i]->content, "no")) {
+			} else if (!strcmp(nodes[i]->content, "no")) {
 				ms_graph->only_future_events = false;
-			}
-			else {
+			} else {
 				merror(XML_VALUEERR, XML_ONLY_FUTURE_EVENTS, nodes[i]->content);
 				return OS_CFGERR;
 			}
-		}
-		else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
+		} else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
 			ms_graph->curl_max_size = w_parse_size(nodes[i]->content);
 			if (ms_graph->curl_max_size < 1024L) {
 				merror("Module '%s' has invalid content in tag '%s': the minimum size is 1KB.", WM_MS_GRAPH_CONTEXT.name, XML_CURL_MAX_SIZE);
 				return OS_CFGERR;
 			}
-		}
-		else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
+		} else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
 			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->run_on_start = true;
-			}
-			else if (!strcmp(nodes[i]->content, "no")) {
+			} else if (!strcmp(nodes[i]->content, "no")) {
 				ms_graph->run_on_start = false;
-			}
-			else {
+			} else {
 				merror(XML_VALUEERR, XML_RUN_ON_START, nodes[i]->content);
 				return OS_CFGERR;
 			}
-		}
-		else if (!strcmp(nodes[i]->element, XML_VERSION)) {
+		} else if (!strcmp(nodes[i]->element, XML_VERSION)) {
 			if (!strcmp(nodes[i]->content, "v1.0") || !strcmp(nodes[i]->content, "beta")) {
 				os_free(ms_graph->version);
 				os_strdup(nodes[i]->content, ms_graph->version);
-			}
-			else {
+			} else {
 				merror(XML_VALUEERR, XML_VERSION, nodes[i]->content);
 				return OS_CFGERR;
 			}
-		}
-		else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
+		} else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				OS_ClearNode(children);
 				merror(XML_VALUEERR, XML_API_AUTH, nodes[i]->content);
@@ -138,64 +124,53 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
 					if (strlen(children[j]->content) > 1 ) {
 						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
-					}
-					else {
+					} else {
 						merror(XML_VALUEERR, XML_CLIENT_ID, children[j]->content);
 						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
-				}
-				else if (!strcmp(children[j]->element, XML_TENANT_ID)) {
+				} else if (!strcmp(children[j]->element, XML_TENANT_ID)) {
 					if (strlen(children[j]->content) > 1) {
 						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
-					}
-					else {
+					} else {
 						merror(XML_VALUEERR, XML_TENANT_ID, children[j]->content);
 						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
-				}
-				else if (!strcmp(children[j]->element, XML_SECRET_VALUE)) {
+				} else if (!strcmp(children[j]->element, XML_SECRET_VALUE)) {
 					if (strlen(children[j]->content) > 1) {
 						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
-					}
-					else {
+					} else {
 						merror(XML_VALUEERR, XML_SECRET_VALUE, children[j]->content);
 						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
-				}
-				else if (!strcmp(children[j]->element, XML_API_TYPE)) {
+				} else if (!strcmp(children[j]->element, XML_API_TYPE)) {
                     if (strlen(children[j]->content) == 0) {
 						merror(XML_VALUEERR, XML_API_TYPE, children[j]->content);
 						OS_ClearNode(children);
 						return OS_CFGERR;
-                    }
-                    else if (!strcmp(children[j]->content, "global")) {
+                    } else if (!strcmp(children[j]->content, "global")) {
                         os_free(ms_graph->auth_config.login_fqdn);
                         os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, ms_graph->auth_config.login_fqdn);
                         os_free(ms_graph->auth_config.query_fqdn);
                         os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, ms_graph->auth_config.query_fqdn);
-                    }
-                    else if (!strcmp(children[j]->content, "gcc-high")) {
+                    } else if (!strcmp(children[j]->content, "gcc-high")) {
                         os_free(ms_graph->auth_config.login_fqdn);
                         os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, ms_graph->auth_config.login_fqdn);
                         os_free(ms_graph->auth_config.query_fqdn);
                         os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, ms_graph->auth_config.query_fqdn);
-                    }
-                    else if (!strcmp(children[j]->content, "dod")) {
+                    } else if (!strcmp(children[j]->content, "dod")) {
                         os_free(ms_graph->auth_config.login_fqdn);
                         os_strdup(WM_MS_GRAPH_DOD_API_LOGIN_FQDN, ms_graph->auth_config.login_fqdn);
                         os_free(ms_graph->auth_config.query_fqdn);
                         os_strdup(WM_MS_GRAPH_DOD_API_QUERY_FQDN, ms_graph->auth_config.query_fqdn);
-                    }
-                    else {
+                    } else {
 						merror(XML_VALUEERR, XML_API_TYPE, children[j]->content);
                         OS_ClearNode(children);
                         return OS_CFGERR;
                     }
-				}
-				else {
+				} else {
 					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
 					OS_ClearNode(children);
 					return OS_CFGERR;
@@ -203,26 +178,23 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 			OS_ClearNode(children);
 
-			if(!ms_graph->auth_config.client_id){
+			if (!ms_graph->auth_config.client_id) {
 				merror(XML_NO_ELEM, XML_CLIENT_ID);
 				return OS_NOTFOUND;
-			}
-			else if (!ms_graph->auth_config.tenant_id){
+			} else if (!ms_graph->auth_config.tenant_id) {
 				merror(XML_NO_ELEM, XML_TENANT_ID);
 				return OS_NOTFOUND;
-			}
-			else if (!ms_graph->auth_config.secret_value){
+			} else if (!ms_graph->auth_config.secret_value) {
 				merror(XML_NO_ELEM, XML_SECRET_VALUE);
 				return OS_NOTFOUND;
 			}
 			// We only need to check one FQDN to see if the tag exists
-			else if (!ms_graph->auth_config.query_fqdn){
+			else if (!ms_graph->auth_config.query_fqdn) {
 				merror(XML_NO_ELEM, XML_API_TYPE);
 				return OS_NOTFOUND;
 			}
 
-		}
-		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
+		} else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				merror(XML_VALUEERR, XML_RESOURCE, nodes[i]->content);
 				OS_ClearNode(children);
@@ -240,31 +212,27 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_RESOURCE_NAME)) {
-					if(strlen(children[j]->content) > 0){
+					if (strlen(children[j]->content) > 0) {
 						name_set = true;
 						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].name);
-					}
-					else{
+					} else {
 						merror(XML_VALUEERR, XML_RESOURCE_NAME, children[j]->content);
 						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
-				}
-				else if(!strcmp(children[j]->element, XML_RESOURCE_RELATIONSHIP)) {
-					if(strlen(children[j]->content) > 0){
+				} else if (!strcmp(children[j]->element, XML_RESOURCE_RELATIONSHIP)) {
+					if (strlen(children[j]->content) > 0) {
 						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].relationships[ms_graph->resources[ms_graph->num_resources - 1].num_relationships++]);
 						// Check if power of 2
 						if (ms_graph->resources[ms_graph->num_resources - 1].num_relationships > 1 && !(ms_graph->resources[ms_graph->num_resources - 1].num_relationships & (ms_graph->resources[ms_graph->num_resources - 1].num_relationships - 1))) {
 							os_realloc(ms_graph->resources[ms_graph->num_resources - 1].relationships, (ms_graph->resources->num_relationships * 2) * sizeof(char*), ms_graph->resources[ms_graph->num_resources - 1].relationships);
 						}
-					}
-					else{
+					} else {
 						merror(XML_VALUEERR, XML_RESOURCE_RELATIONSHIP, children[j]->content);
 						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
-				}
-				else {
+				} else {
 					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
 					OS_ClearNode(children);
 					return OS_CFGERR;
@@ -272,16 +240,14 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 			OS_ClearNode(children);
 
-			if(!name_set){
+			if (!name_set) {
 				merror(XML_NO_ELEM, XML_RESOURCE_NAME);
 				return OS_NOTFOUND;
-			}
-			else if (ms_graph->resources[ms_graph->num_resources - 1].num_relationships == 0){
+			} else if (ms_graph->resources[ms_graph->num_resources - 1].num_relationships == 0) {
 				merror(XML_NO_ELEM, XML_RESOURCE_RELATIONSHIP);
 				return OS_NOTFOUND;
 			}
-		}
-		else if (!is_sched_tag(nodes[i]->element)) {
+		} else if (!is_sched_tag(nodes[i]->element)) {
 			merror(XML_INVATTR, nodes[i]->element, WM_MS_GRAPH_CONTEXT.name);
 			return OS_CFGERR;
 		}
@@ -292,12 +258,12 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
         return OS_INVALID;
     }
 	
-	if(!ms_graph->auth_config.client_id && !ms_graph->auth_config.tenant_id && !ms_graph->auth_config.secret_value){
+	if (!ms_graph->auth_config.client_id && !ms_graph->auth_config.tenant_id && !ms_graph->auth_config.secret_value) {
 		merror(XML_NO_ELEM, XML_API_AUTH);
 		return OS_NOTFOUND;
 	}
 
-	if(ms_graph->num_resources == 0){
+	if (ms_graph->num_resources == 0) {
 		merror(XML_NO_ELEM, XML_RESOURCE);
 		return OS_NOTFOUND;
 	}
