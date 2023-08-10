@@ -58,6 +58,7 @@ private:
 
 public:
     Name() = default;
+    ~Name() = default;
 
     /**
      * @brief Construct a new Name object
@@ -165,6 +166,19 @@ public:
             [](const std::string& a, const std::string& b) -> std::string
             { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
         return os;
+    }
+
+    /**
+     * @brief Operator to concatenate two names
+     *
+     * @param other Name to concatenate
+     * @return Name
+     */
+    Name operator+(const Name& other) const
+    {
+        std::vector<std::string> parts = m_parts;
+        parts.insert(parts.end(), other.m_parts.begin(), other.m_parts.end());
+        return Name {parts};
     }
 
     /**
