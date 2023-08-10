@@ -19,9 +19,6 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-using namespace Syscollector::SyncPackageMessage;
-using namespace Syscollector::SyncHotfixMessage;
-
 class SyscollectorFbTest : public ::testing::Test
 {
     protected:
