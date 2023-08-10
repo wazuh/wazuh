@@ -116,8 +116,9 @@ local_internal_options = {MODULESD_DEBUG: '2'}
 
 
 @pytest.fixture(scope="session")
-def proxy_setup():    
-    m365proxy = subprocess.Popen(["/tmp/m365proxy/m365proxy"])
+def proxy_setup():
+    mocks_path = Path(CONFIGS_PATH, 'responses.json')
+    m365proxy = subprocess.Popen(["/tmp/m365proxy/m365proxy", "--mocks-file", mocks_path])
     # Configurate proxy for Wazuh (will only work for systemctl start/restart)
     subprocess.run("systemctl set-environment http_proxy=http://localhost:8000", shell=True)
     remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
@@ -254,7 +255,7 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
         wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run first scan"), timeout=10)
         assert (wazuh_log_monitor.callback_result == None), f'Error, `first scan` not found in log'
     else:
-        assert (False)
+        assert (False), f'Error `Bookmark updated` not found in log'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
