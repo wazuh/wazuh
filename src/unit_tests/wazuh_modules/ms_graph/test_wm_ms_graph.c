@@ -177,7 +177,7 @@ void test_invalid_enabled(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'enabled': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'enabled' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -253,7 +253,7 @@ void test_invalid_only_future_events(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'only_future_events': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'only_future_events' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -329,7 +329,7 @@ void test_invalid_curl_max_size(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Module 'ms-graph' has invalid content in tag 'curl_max_size': the minimum size is 1KB.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'ms-graph'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -359,7 +359,7 @@ void test_invalid_negative_curl_max_size(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Module 'ms-graph' has invalid content in tag 'curl_max_size': the minimum size is 1KB.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'ms-graph'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -420,7 +420,7 @@ void test_invalid_run_on_start(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'run_on_start': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'run_on_start' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -496,7 +496,7 @@ void test_invalid_interval(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Unable to read scheduling configuration for module 'ms-graph'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'interval' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_INVALID);
 }
@@ -526,7 +526,7 @@ void test_invalid_version(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'version': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'version' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -575,7 +575,7 @@ void test_empty_api_auth(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'api_auth': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_auth' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -605,7 +605,7 @@ void test_invalid_client_id(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'client_id': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'client_id' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -664,7 +664,7 @@ void test_invalid_tenant_id(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'tenant_id': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'tenant_id' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -723,7 +723,7 @@ void test_invalid_secret_value(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'secret_value': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'secret_value' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -782,7 +782,7 @@ void test_invalid_api_type(void **state){
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'api_type': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'api_type' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -841,7 +841,7 @@ void test_empty_api_type(void **state){
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'api_type': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_type' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -910,7 +910,7 @@ void test_empty_resource(void **state) {
         "<resource></resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'resource': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'resource' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -969,7 +969,7 @@ void test_empty_name(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'name': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'name' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -1026,7 +1026,7 @@ void test_empty_relationship(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'relationship': .");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'relationship' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }

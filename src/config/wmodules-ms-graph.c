@@ -118,7 +118,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		} else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				OS_ClearNode(children);
-				merror("Invalid content for tag '%s' at module '%s'.", XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+				merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
@@ -197,7 +197,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 		} else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-				merror("Invalid content for tag '%s' at module '%s'.", XML_API_TYPE, WM_MS_GRAPH_CONTEXT.name);
+				merror("Empty content for tag '%s' at module '%s'.", XML_RESOURCE, WM_MS_GRAPH_CONTEXT.name);
 				OS_ClearNode(children);
 				return OS_CFGERR;
 			}
@@ -259,12 +259,12 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
     }
 	
 	if (!ms_graph->auth_config.client_id && !ms_graph->auth_config.tenant_id && !ms_graph->auth_config.secret_value) {
-		merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+		merror(XML_NO_ELEM, XML_API_AUTH);
 		return OS_NOTFOUND;
 	}
 
 	if (ms_graph->num_resources == 0) {
-		merror("Empty content for tag '%s' at module '%s'.", XML_RESOURCE, WM_MS_GRAPH_CONTEXT.name);
+		merror(XML_NO_ELEM, XML_RESOURCE);
 		return OS_NOTFOUND;
 	}
 
