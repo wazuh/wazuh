@@ -26,7 +26,7 @@
  */
 STATIC int w_remoted_get_net_protocol(const char * content);
 
-int w_read_tcp_config(XML_NODE node, remoted *logr);
+void w_read_tcp_config(XML_NODE node, remoted *logr);
 
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -330,20 +330,21 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     return retval;
 }
 
-int w_read_tcp_config(XML_NODE node, remoted *logr) {
+void w_read_tcp_config(XML_NODE node, remoted *logr) {
     static const char *xml_connection_overtake_time = "connection_overtake_time";
 
     for (int i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, xml_connection_overtake_time)) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                minfo("Setting '%s' to default value: '%d'.", node[i]->element, logr->tcp->connection_overtake_time);
-                return OS_SUCCESS;
+            if (OS_StrIsNum(node[i]->content)) {
+                int connection_overtake_time = atoi(node[i]->content);
+                if (connection_overtake_time >= 0 && connection_overtake_time <= 3600) {
+                    logr->tcp->connection_overtake_time = connection_overtake_time;
+                    return;
+                }
             }
-
-            logr->tcp->connection_overtake_time = atoi(node[i]->content);
+            merror(XML_VALUEERR, node[i]->element, node[i]->content);
+            minfo("Setting '%s' to default value: '%d'.", node[i]->element, logr->tcp->connection_overtake_time);
         }
-
     }
-    return OS_SUCCESS;
+    return;
 }

@@ -129,9 +129,7 @@ cJSON *getRemoteConfig(void) {
             if (logr.tcp && logr.tcp->connection_overtake_time) {
                 cJSON *tcp = cJSON_CreateObject();
 
-                sprintf(connection_overtake_time,"%d",logr.tcp->connection_overtake_time);
-
-                cJSON_AddStringToObject(tcp, "connection_overtake_time", connection_overtake_time);
+                cJSON_AddNumberToObject(tcp, "connection_overtake_time", logr.tcp->connection_overtake_time);
                 cJSON_AddItemToObject(conn, "tcp", tcp);
             }
             cJSON_AddItemToArray(rem,conn);
