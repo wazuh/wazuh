@@ -961,8 +961,11 @@ def check_agents_allow_higher_versions(data: str):
             pass
 
     if not blocked_configurations['agents']['allow_higher_versions']['allow']:
-        agents_section = re.compile(r"<agents>(.*)</agents>", flags=re.MULTILINE | re.DOTALL)
-        check_section(agents_section, split_section='</agents>')
+        remote_section = re.compile(r"<remote>(.*)</remote>", flags=re.MULTILINE | re.DOTALL)
+        check_section(remote_section, split_section='</remote>')
+
+        auth_section = re.compile(r"<auth>(.*)</auth>", flags=re.MULTILINE | re.DOTALL)
+        check_section(auth_section, split_section='</auth>')
 
 
 def load_wazuh_xml(xml_path, data=None):

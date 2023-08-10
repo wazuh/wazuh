@@ -1962,8 +1962,14 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
 
 
 @pytest.mark.parametrize("new_conf", [
-    ("<ossec_config><agents><allow_higher_versions>yes</allow_higher_versions></agents></ossec_config>"),
-    ("<ossec_config><agents><allow_higher_versions>no</allow_higher_versions></agents></ossec_config>"),
+    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>"),
+    ("<ossec_config><auth><agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
+    ("<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote></ossec_config>"),
+    ("<ossec_config><auth><agents><allow_higher_versions>no</allow_higher_versions></agents></auth></ossec_config>"),
+    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote><auth>" \
+     "<agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
+     ("<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote><auth>" \
+     "<agents><allow_higher_versions>no</allow_higher_versions></agents></auth></ossec_config>"),
 ])
 @pytest.mark.parametrize("agents_conf", [
     ({'allow_higher_versions': {'allow': True}}),
