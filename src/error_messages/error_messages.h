@@ -444,6 +444,8 @@
 #define VU_SUSE_VERSION_ERROR       "(5592): Invalid SUSE OS version."
 #define VU_INVALID_CPE_VERSION      "(5593): Couldn't get the version of the CPE for the %s package."
 #define VU_WIN_CPE_GEN_ERROR        "(5594): Could not generate the OS CPE for the agent '%.3d'"
+#define VU_ALMA_VERSION_ERROR       "(5595): Invalid AlmaLinux OS version."
+
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
