@@ -1,5 +1,5 @@
 /*
- * Wazuh SyscollectorImp
+ * Wazuh SyscollectorFlatbuffers
  * Copyright (C) 2015, Wazuh Inc.
  * August 1, 2023.
  *
