@@ -13,8 +13,6 @@
 #include "flatbuffers/flatbuffers.h"
 #include "flatbuffers/idl.h"
 #include "flatbuffers/util.h"
-#include "../../include/package_synchronization_generated.h"
-#include "../../include/hotfix_synchronization_generated.h"
 #include <fstream>
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
