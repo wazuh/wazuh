@@ -5,3 +5,6 @@
     ONLY_FUTURE: 'yes'
     INTERVAL: '10s'
     CURL_SIZE: '10M'
+    RESOURCE_NAME: 'resource_name'
+    RESOURCE_RELATIONSHIP1: 'resource_relationship'
+    RESOURCE_RELATIONSHIP2: 'resource_relationship'

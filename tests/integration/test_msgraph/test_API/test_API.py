@@ -82,6 +82,18 @@ t3_configuration_parameters, t3_configuration_metadata, t3_case_ids = get_test_c
 t3_configurations = load_configuration_template(configs_path, t3_configuration_parameters,
                                                 t3_configuration_metadata)
 
+# Test configurations
+t4_cases_path = Path(TEST_CASES_PATH, 'cases_valid_resource.yaml')
+t4_configuration_parameters, t4_configuration_metadata, t4_case_ids = get_test_cases_data(t4_cases_path)
+t4_configurations = load_configuration_template(configs_path, t4_configuration_parameters,
+                                                t4_configuration_metadata)
+
+# Test configurations
+t5_cases_path = Path(TEST_CASES_PATH, 'cases_invalid_resource.yaml')
+t5_configuration_parameters, t5_configuration_metadata, t5_case_ids = get_test_cases_data(t5_cases_path)
+t5_configurations = load_configuration_template(configs_path, t5_configuration_parameters,
+                                                t5_configuration_metadata)
+
 # Test configurations.
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 local_internal_options = {MODULESD_DEBUG: '2'}
@@ -208,7 +220,6 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Bookmark updated"))
-    # assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
 
     if(wazuh_log_monitor.callback_result != None):
         control_service('stop')
@@ -270,4 +281,111 @@ def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuratio
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Reached maximum CURL size"))
+    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t4_configurations, t4_configuration_metadata), ids=t4_case_ids)
+def test_valid_resource(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):
+    '''
+    description: Check 'ms-graph' behavior when `resource` tags `name` and `relationship` are valid.
+    wazuh_min_version: 4.6.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - daemons_handler:
+            type: fixture
+            brief: Manages daemons to reset Wazuh.
+        - wait_for_msgraph_start:
+            type: fixture
+            brief: Checks integration start message does not appear.
+
+    assertions:
+        - Verify that when the `resource` `name` equals `security` and has `relationship` as `alerts_v2` and `incidents`
+          it gets the correct responses.
+
+    input_description: A configuration template is contained in an external YAML file
+                       (config_API.yaml). That template is combined with different test cases defined in
+                       the module. Those include configuration settings for the 'ms-graph' module.
+
+    expected_output:
+        - r'.*wazuh-modulesd:ms-graph.*microsoft.graph.security.alert'
+        - r'.*wazuh-modulesd:ms-graph.*microsoft.graph.security.incident'
+    '''
+
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*microsoft.graph.security.alert"))
+    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*microsoft.graph.security.incident"))
+    assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t5_configurations, t5_configuration_metadata), ids=t5_case_ids)
+def test_invalid_resource(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                 truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):
+    '''
+    description: Check 'ms-graph' behavior when `resource` tags `name` and `relationship` are invalid.
+    wazuh_min_version: 4.6.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - daemons_handler:
+            type: fixture
+            brief: Manages daemons to reset Wazuh.
+        - wait_for_msgraph_start:
+            type: fixture
+            brief: Checks integration start message does not appear.
+
+    assertions:
+        - Verify that when the `resource` values `name` and `relationship` are invalid for the API
+          it gets the correct error.
+
+    input_description: A configuration template is contained in an external YAML file
+                       (config_API.yaml). That template is combined with different test cases defined in
+                       the module. Those include configuration settings for the 'ms-graph' module.
+
+    expected_output:
+        - r'.*wazuh-modulesd:ms-graph.*Received unsuccessful status
+            code when attempting to get relationship \'invalid\'
+    '''
+
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(
+        callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Received unsuccessful "\
+                                             r"status code when attempting to get relationship \'invalid\'"))
     assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
