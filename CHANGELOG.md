@@ -73,6 +73,28 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.5.0]
 
+### Manager
+
+#### Changed
+
+- Vulnerability Detector now fetches the NVD feed from https://feed.wazuh.com, based on the NVD API 2.0. ([#17954](https://github.com/wazuh/wazuh/pull/17954))
+  - The option `<update_from_year>` has been deprecated.
+
+#### Fixed
+
+- Fixed an error in the installation commands of the API and Framework modules when performing upgrades from sources. ([#17656](https://github.com/wazuh/wazuh/pull/17656))
+- Fixed embedded Python interpreter to remove old Wazuh packages from it. ([#18123](https://github.com/wazuh/wazuh/issues/18123))
+
+### RESTful API
+
+#### Changed
+
+- Changed API integration tests to include Nginx LB logs when tests failed. ([#17703](https://github.com/wazuh/wazuh/pull/17703))
+
+#### Fixed
+
+- Fixed error in the Nginx LB entrypoint of the API integration tests. ([#17703](https://github.com/wazuh/wazuh/pull/17703))
+
 
 ## [v4.4.5] - 2023-07-10
 

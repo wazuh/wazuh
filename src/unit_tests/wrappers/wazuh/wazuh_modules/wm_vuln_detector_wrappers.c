@@ -61,8 +61,9 @@ int __wrap_wm_vuldet_win_nvd_vulnerabilities(__attribute__((unused)) sqlite3 *db
     return mock();
 }
 
-int __wrap_wm_vuldet_json_nvd_parser(__attribute__((unused)) char *json_feed,
-                                     __attribute__((unused)) wm_vuldet_db *parsed_vulnerabilities) {
+int __wrap_wm_vuldet_json_nvd_parser(__attribute__((unused)) FILE * fp,
+                                     __attribute__((unused)) wm_vuldet_db *parsed_vulnerabilities,
+                                     __attribute__((unused)) bool* working) {
     return mock();
 }
 
