@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../apiAuxiliarFunctions.hpp"
+#include "../../apiAuxiliarFunctions.hpp"
 #include "fakeAssets.hpp"
 
 using namespace api::graph::handlers;

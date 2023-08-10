@@ -6,7 +6,8 @@
 #include <api/kvdb/handlers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <metrics/metricsManager.hpp>
-#include <testsCommon.hpp>
+
+#include "../../apiAuxiliarFunctions.hpp"
 
 using namespace api::kvdb::handlers;
 using namespace metricsManager;
