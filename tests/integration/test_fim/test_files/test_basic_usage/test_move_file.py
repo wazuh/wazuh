@@ -34,8 +34,8 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_move_dir(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                  truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
+def test_move_file(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                   truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     # Arrange
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
