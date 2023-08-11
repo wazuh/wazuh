@@ -1,7 +1,7 @@
 name: Syscollector test on Windows
 
 on:
-  pull_request:
+  push:
     paths:
       - ".github/workflows/windows-syscollector-tests.yml"
       - "src/data_provider/**"
@@ -116,7 +116,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r src/data_provider/qa/requirements.txt
+      - name: Install node chocolatey
+        run: |
+          choco install nodejs -y
       - name: Run tests
         run: |
           cd src/data_provider
-          python -m pytest -vv qa/
+          python -m pytest -rP -vv qa/
