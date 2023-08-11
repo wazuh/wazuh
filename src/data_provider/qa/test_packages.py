@@ -10,9 +10,10 @@ from jsonschema.exceptions import ValidationError
 
 def call_binary(binary_path, parameter):
     try:
+        command =  f"{binary_path}" if platform.system() == "Windows" else f"sudo {binary_path}"
         # Run the binary and capture its output
         result = subprocess.run(
-            [binary_path, parameter], capture_output=True, check=False, text=True)
+            [command, parameter], capture_output=True, check=False, text=True, shell=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Error while executing the binary: {e}") from e

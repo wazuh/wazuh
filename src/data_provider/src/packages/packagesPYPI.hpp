@@ -64,6 +64,7 @@ class PYPI final : public TFileSystem, public TFileIO
                 if (PYPI_FIELDS.end() != it)
                 {
                     const auto& [key, value] {*it};
+
                     if (!packageInfo.contains(value))
                     {
                         packageInfo[value] = line.substr(key.length());
