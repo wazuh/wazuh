@@ -42,7 +42,7 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), "operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -71,7 +71,7 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), "operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -100,7 +100,7 @@ TEST_F(PKGWrapperTest, NoName)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), "operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -129,7 +129,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), "operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -153,12 +153,12 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
     EXPECT_EQ(wrapper->version(), "100.0.4815.54");
-    EXPECT_EQ(wrapper->groups(), " ");
+    EXPECT_EQ(wrapper->groups(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->description(), "com.operasoftware.Opera");
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), "operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -183,11 +183,11 @@ TEST_F(PKGWrapperTest, NoDescription)
     EXPECT_EQ(wrapper->name(), "Opera");
     EXPECT_EQ(wrapper->version(), "100.0.4815.54");
     EXPECT_EQ(wrapper->groups(), "public.app-category.productivity");
-    EXPECT_EQ(wrapper->description(), " ");
+    EXPECT_EQ(wrapper->description(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -216,7 +216,7 @@ TEST_F(PKGWrapperTest, NoVendor)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + PKGWrapper::INFO_PLIST_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);

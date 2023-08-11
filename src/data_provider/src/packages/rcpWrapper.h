@@ -16,6 +16,7 @@
 #include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
+#include "plist/plist.h"
 #include "filesystemHelper.h"
 
 class RCPWrapper final : public IPackageWrapper
@@ -137,6 +138,16 @@ class RCPWrapper final : public IPackageWrapper
         std::string multiarch() const override
         {
             return m_multiarch;
+        }
+
+        std::string installPrefixPath() const
+        {
+            return m_installPrefixPath;
+        }
+
+        std::deque<std::string> bomPaths() const
+        {
+            return m_bomPaths;
         }
 
     private:
