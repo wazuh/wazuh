@@ -15,7 +15,7 @@ if(COVERITY)
 endif(COVERITY)
 
 include(CheckCXXSourceCompiles)
-
+set(CMAKE_CXX_STANDARD 17)
 #Check if std::optional is available, therefore C++17 is available
 check_cxx_source_compiles("
     #include <optional>
@@ -25,9 +25,7 @@ check_cxx_source_compiles("
     }
 " HAS_OPTIONAL)
 
-if(HAS_OPTIONAL OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(CMAKE_CXX_STANDARD 17)
-else()
+if(NOT HAS_OPTIONAL AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_STANDARD 14)
 endif()
 
