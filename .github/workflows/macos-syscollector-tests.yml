@@ -1,7 +1,7 @@
 name: Syscollector test on macOS
 
 on:
-  pull_request:
+  push:
     paths:
         - ".github/workflows/macos-syscollector-tests.yml"
         - "src/data_provider/**"
@@ -35,6 +35,8 @@ jobs:
           wget https://github.com/macports/macports-base/releases/download/v2.8.1/MacPorts-2.8.1-11-BigSur.pkg
           sudo installer -pkg MacPorts-2.8.1-11-BigSur.pkg -target /
           rm -rf MacPorts-2.8.1-11-BigSur.pkg
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Install port
         run: |
           sudo /opt/local/bin/port install neovim

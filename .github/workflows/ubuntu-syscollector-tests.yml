@@ -1,7 +1,7 @@
 name: Syscollector test on Ubuntu
 
 on:
-  pull_request:
+  push:
     paths:
         - ".github/workflows/ubuntu-syscollector-tests.yml"
         - "src/data_provider/**"
