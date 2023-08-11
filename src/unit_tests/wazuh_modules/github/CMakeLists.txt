@@ -17,7 +17,7 @@ set(WM_GITHUB_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merr
                           -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
                           -Wl,--wrap,isDebug")
 if(${TARGET} STREQUAL "winagent")
-    list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \ 
+    list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
                              -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
 else()
     list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS}")
@@ -49,6 +49,9 @@ set_target_properties(
 
 target_link_libraries(GITHUB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
 
 # Compiling tests
 list(LENGTH tests_names count)
@@ -80,6 +83,9 @@ foreach(counter RANGE ${count})
             ${test_name}
             ${TEST_DEPS}
         )
+        if(${TARGET} STREQUAL "winagent")
+            target_link_libraries(${test_name} fimdb)
+        endif(${TARGET} STREQUAL "winagent")
     endif()
 
 

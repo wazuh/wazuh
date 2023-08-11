@@ -16,7 +16,6 @@
 #include "analysisd.h"
 #include "state.h"
 #include "config.h"
-#include "limits.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -1434,7 +1433,7 @@ cJSON* asys_create_state_json() {
         cJSON *_eps = cJSON_CreateObject();
         cJSON_AddItemToObject(_metrics, "eps", _eps);
 
-        limit_reached(&available_credits);
+        limit_reached(analysisd_limits, &available_credits);
 
         cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
         cJSON_AddNumberToObject(_eps, "events_dropped", state_cpy.eps_state_breakdown.events_dropped);

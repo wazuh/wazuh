@@ -1050,6 +1050,7 @@ InstallLocal()
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack.py ${INSTALLDIR}/integrations/slack.py
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal.py ${INSTALLDIR}/integrations/virustotal.py
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/shuffle.py ${INSTALLDIR}/integrations/shuffle.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/maltiverse.py ${INSTALLDIR}/integrations/maltiverse.py
     touch ${INSTALLDIR}/logs/integrations.log
     chmod 640 ${INSTALLDIR}/logs/integrations.log
     chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/logs/integrations.log
@@ -1171,6 +1172,7 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/virustotal
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/shuffle
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/maltiverse
 
 }
 

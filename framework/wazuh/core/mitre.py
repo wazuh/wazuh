@@ -42,7 +42,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, table: str = '', sort: dict = None, default_sort_field: str = DEFAULT_PK,
                  default_sort_order: str = 'ASC', fields: dict = None, search: dict = None, select: list = None,
-                 min_select_fields: set = None, filters: dict = None, request_slice: int = DEFAULT_REQUEST_SLICE):
+                 min_select_fields: set = None, filters: dict = None, request_slice: int = DEFAULT_REQUEST_SLICE,
+                 distinct: bool = False):
         """Create an instance of the WazuhDBQueryMitre class.
 
         Parameters
@@ -75,6 +76,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
             Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
         request_slice : int
             Max limit used in the WazuhDBBacked backend object.
+        distinct : bool
+            Look for distinct values.
         """
 
         if filters is None:
@@ -85,7 +88,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               default_sort_order=default_sort_order, filters=filters, query=query, count=count,
                               get_data=True, min_select_fields=min_select_fields,
                               date_fields={'created_time', 'modified_time'},
-                              backend=WazuhDBBackend(query_format='mitre', request_slice=request_slice))
+                              backend=WazuhDBBackend(query_format='mitre', request_slice=request_slice),
+                              distinct=distinct)
 
         self.relation_fields = set()  # This variable contains valid fields not included in the database (relations)
 
@@ -347,7 +351,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
                  fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
-                 filters: dict = None):
+                 filters: dict = None, distinct: bool = False):
         """Create an instance of the WazuhDBQueryMitreMitigations class.
 
         Parameters
@@ -376,6 +380,8 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             Fields that must always be selected because they're necessary to compute other fields.
         filters : dict
             Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        distinct : bool
+            Look for distinct values.
         """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
@@ -392,7 +398,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
                                    select=list(set(self.fields.values()).intersection(set(select))),
-                                   request_slice=MITIGATIONS_REQUEST_SLICE)
+                                   request_slice=MITIGATIONS_REQUEST_SLICE, distinct=distinct)
 
         self.relation_fields = {'techniques', 'references'}
         self.extra_fields = EXTRA_FIELDS
@@ -488,7 +494,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
                  fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
-                 filters: dict = None):
+                 filters: dict = None, distinct: bool = False):
         """Create an instance of the WazuhDBQueryMitreTactics class.
 
         Parameters
@@ -517,6 +523,8 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
             Fields that must always be selected because they're necessary to compute other fields.
         filters : dict
             Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        distinct : bool
+            Look for distinct values.
         """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
@@ -530,7 +538,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
-                                   select=list(set(self.fields.values()).intersection(set(select))))
+                                   select=list(set(self.fields.values()).intersection(set(select))), distinct=distinct)
 
         self.relation_fields = {'techniques', 'references'}
         self.extra_fields = EXTRA_FIELDS
@@ -569,7 +577,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
                  fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
-                 filters: dict = None):
+                 filters: dict = None, distinct: bool = False):
         """Create an instance of the WazuhDBQueryMitreTechniques class.
 
         Parameters
@@ -598,6 +606,8 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             Fields that must always be selected because they're necessary to compute other fields.
         filters : dict
             Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        distinct : bool
+            Look for distinct values.
         """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
@@ -616,7 +626,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
                                    select=list(set(self.fields.values()).intersection(set(select))),
-                                   request_slice=TECHNIQUES_REQUEST_SLICE)
+                                   request_slice=TECHNIQUES_REQUEST_SLICE, distinct=distinct)
 
         self.relation_fields = {'tactics', 'mitigations', 'software', 'groups', 'references'}
         self.extra_fields = EXTRA_FIELDS
@@ -676,7 +686,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
                  fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
-                 filters: dict = None):
+                 filters: dict = None, distinct: bool = False):
         """Create an instance of the WazuhDBQueryMitreGroups class.
 
         Parameters
@@ -705,6 +715,8 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             Fields that must always be selected because they're necessary to compute other fields.
         filters : dict
             Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        distinct : bool
+            Look for distinct values.
         """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
@@ -722,7 +734,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
                                    select=list(set(self.fields.values()).intersection(set(select))),
-                                   request_slice=GROUPS_REQUEST_SLICE)
+                                   request_slice=GROUPS_REQUEST_SLICE, distinct=distinct)
 
         self.relation_fields = {'software', 'techniques', 'references'}
         self.extra_fields = EXTRA_FIELDS
@@ -773,7 +785,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
                  fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
-                 filters: dict = None):
+                 filters: dict = None, distinct: bool = False):
         """Create an instance of the WazuhDBQueryMitreGroups class.
 
         Parameters
@@ -802,6 +814,8 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             Fields that must always be selected because they're necessary to compute other fields.
         filters : dict
             Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        distinct : bool
+            Look for distinct values.
         """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
@@ -818,7 +832,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
                                    select=list(set(self.fields.values()).intersection(set(select))),
-                                   request_slice=SOFTWARE_REQUEST_SLICE)
+                                   request_slice=SOFTWARE_REQUEST_SLICE, distinct=distinct)
 
         self.relation_fields = {'groups', 'techniques', 'references'}
         self.extra_fields = EXTRA_FIELDS
@@ -888,7 +902,7 @@ def get_mitre_items(mitre_class: callable) -> tuple:
 
 def get_results_with_select(mitre_class: callable, filters: str, select: list, offset: int, limit: int, sort_by: dict,
                             sort_ascending: bool, search_text: str, complementary_search: bool, search_in_fields: list,
-                            q: str) -> list:
+                            q: str, distinct: bool = False) -> list:
     """Sanitize the select parameter and processes the list of MITRE resources.
 
     Parameters
@@ -915,6 +929,8 @@ def get_results_with_select(mitre_class: callable, filters: str, select: list, o
         Fields to search in.
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -928,4 +944,4 @@ def get_results_with_select(mitre_class: callable, filters: str, select: list, o
                          sort_ascending=sort_ascending, offset=offset, limit=limit, q=q,
                          allowed_sort_fields=fields_info['allowed_fields'],
                          allowed_select_fields=fields_info['allowed_fields'],
-                         required_fields=fields_info['min_select_fields'])
+                         required_fields=fields_info['min_select_fields'], distinct=distinct)

@@ -15,6 +15,7 @@
 #include "rsync_exception.h"
 #include "dbsyncWrapper.h"
 #include "rsyncImplementation.h"
+#include "loggerHelper.h"
 
 
 #ifdef __cplusplus
@@ -39,6 +40,13 @@ EXPORTED void rsync_initialize(log_fnc_t log_function)
     {
         log_function(msg.c_str());
     });
+}
+
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                                 full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
+                                                 full_log_fnc_t errorFunction)
+{
+    RemoteSync::initializeFullLogFunction(debugVerboseFunction, debugFunction, infoFunction, warningFunction, errorFunction);
 }
 
 EXPORTED void rsync_teardown(void)
@@ -214,6 +222,16 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     {
         gs_logFunction = logFunction;
     }
+}
+
+void RemoteSync::initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                           full_log_fnc_t infoFunction, full_log_fnc_t warningFunction, full_log_fnc_t errorFunction )
+{
+    Log::debugVerbose.assignLogFunction(debugVerboseFunction, RSYNC_LOG_TAG);
+    Log::debug.assignLogFunction(debugFunction, RSYNC_LOG_TAG);
+    Log::info.assignLogFunction(infoFunction, RSYNC_LOG_TAG);
+    Log::warning.assignLogFunction(warningFunction, RSYNC_LOG_TAG);
+    Log::error.assignLogFunction(errorFunction, RSYNC_LOG_TAG);
 }
 
 void RemoteSync::teardown()

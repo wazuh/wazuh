@@ -9,11 +9,11 @@
  * Foundation.
  */
 
-#ifndef ASYS_LIMITS_WRAPPERS_H
-#define ASYS_LIMITS_WRAPPERS_H
+#ifndef ASYS_LIMITS_OP_WRAPPERS_H
+#define ASYS_LIMITS_OP_WRAPPERS_H
 
 #include <stdbool.h>
 
-bool __wrap_limit_reached(unsigned int *value);
+bool __wrap_limit_reached(__attribute__((unused)) void *limits, unsigned int *value);
 
-#endif /* ASYS_LIMITS_WRAPPERS_H */
+#endif /* ASYS_LIMITS_OP_WRAPPERS_H */

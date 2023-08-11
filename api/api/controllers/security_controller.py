@@ -227,7 +227,7 @@ async def logout_user(request, pretty: bool = False, wait_for_complete: bool = F
 
 async def get_users(request, user_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, search: str = None, select: str = None,
-                    sort: str = None) -> web.Response:
+                    sort: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Returns information from all system users.
 
     Parameters
@@ -250,6 +250,10 @@ async def get_users(request, user_ids: list = None, pretty: bool = False, wait_f
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -260,7 +264,9 @@ async def get_users(request, user_ids: list = None, pretty: bool = False, wait_f
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -418,7 +424,7 @@ async def delete_users(request, user_ids: list = None, pretty: bool = False,
 
 async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, search: str = None, select: str = None,
-                    sort: str = None) -> web.Response:
+                    sort: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get information about the security roles in the system.
 
     Parameters
@@ -441,6 +447,10 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -451,7 +461,9 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'q': q,
+                'distinct': distinct
                 }
 
     dapi = DistributedAPI(f=security.get_roles,
@@ -573,7 +585,7 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
 
 async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, search: str = None, select: str = None,
-                    sort: str = None) -> web.Response:
+                    sort: str = None, q: str = '', distinct: bool = False) -> web.Response:
     """Get information about the security rules in the system.
 
     Parameters
@@ -596,6 +608,10 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -606,7 +622,9 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'q': q,
+                'distinct': distinct
                 }
 
     dapi = DistributedAPI(f=security.get_rules,
@@ -728,7 +746,7 @@ async def remove_rules(request, rule_ids: list = None, pretty: bool = False,
 
 async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = 0, limit: int = None, search: str = None, select: str = None,
-                       sort: str = None) -> web.Response:
+                       sort: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Returns information from all system policies.
 
     Parameters
@@ -751,6 +769,10 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -761,7 +783,9 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'q': q,
+                'distinct': distinct
                 }
 
     dapi = DistributedAPI(f=security.get_policies,

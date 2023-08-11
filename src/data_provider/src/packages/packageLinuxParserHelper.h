@@ -47,14 +47,15 @@ namespace PackageLinuxHelper
         {
             ret["name"] = info.at("Package");
 
-            std::string priority;
-            std::string groups;
+            std::string priority {UNKNOWN_VALUE};
+            std::string groups {UNKNOWN_VALUE};
+            // The multiarch field won't have a default value
             std::string multiarch;
-            std::string architecture;
-            std::string source;
-            std::string version;
-            std::string vendor;
-            std::string description;
+            std::string architecture {UNKNOWN_VALUE};
+            std::string source {UNKNOWN_VALUE};
+            std::string version {UNKNOWN_VALUE};
+            std::string vendor {UNKNOWN_VALUE};
+            std::string description {UNKNOWN_VALUE};
             int size                 { 0 };
 
             auto it{info.find("Priority")};
@@ -129,6 +130,7 @@ namespace PackageLinuxHelper
             ret["version"]      = version;
             ret["format"]       = "deb";
             ret["vendor"]       = vendor;
+            ret["install_time"] = UNKNOWN_VALUE;
             ret["description"]  = description;
         }
 

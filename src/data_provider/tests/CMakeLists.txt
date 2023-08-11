@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(unit_tests)
 
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${SRC_FOLDER}/shared_modules/utils)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)

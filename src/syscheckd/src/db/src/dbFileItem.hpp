@@ -24,16 +24,6 @@ struct FimFileDataDeleter
         {
             if (fimFile->file_entry.data)
             {
-                if (fimFile->file_entry.data->gid)
-                {
-                    std::free(fimFile->file_entry.data->gid);
-                }
-
-                if (fimFile->file_entry.data->uid)
-                {
-                    std::free(fimFile->file_entry.data->uid);
-                }
-
                 std::free(fimFile->file_entry.data);
             }
 
@@ -72,8 +62,8 @@ class FileItem final : public DBItem
             m_md5 = fim->file_entry.data->hash_md5[0] == '\0' ? "" : fim->file_entry.data->hash_md5;
             m_sha1 = fim->file_entry.data->hash_sha1[0] == '\0' ? "" : fim->file_entry.data->hash_sha1;
             m_sha256 = fim->file_entry.data->hash_sha256[0] == '\0' ? "" : fim->file_entry.data->hash_sha256;
-            m_uid = fim->file_entry.data->uid == NULL ? 0 : std::atoi(fim->file_entry.data->uid);
-            m_gid =  fim->file_entry.data->gid == NULL ? 0 : std::atoi(fim->file_entry.data->gid);
+            m_uid = fim->file_entry.data->uid == NULL ? "" : fim->file_entry.data->uid;
+            m_gid = fim->file_entry.data->gid == NULL ? "" : fim->file_entry.data->gid;
             createJSON();
             createFimEntry();
         };
@@ -113,8 +103,8 @@ class FileItem final : public DBItem
 
     private:
         int                                             m_options;
-        int                                             m_gid;
-        int                                             m_uid;
+        std::string                                     m_gid;
+        std::string                                     m_uid;
         unsigned int                                    m_size;
         unsigned long int                               m_dev;
         unsigned long long int                          m_inode;
