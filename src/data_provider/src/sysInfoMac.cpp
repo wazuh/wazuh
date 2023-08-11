@@ -112,11 +112,11 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 pkgAnalizeDirectory =
                     [&](const std::string & directory)
                 {
-                    const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
+                    const auto subDirectories { Utils::enumerateDir(directory) };
 
                     for (const auto& subDirectory : subDirectories)
                     {
-                        if ((subDirectory == ".") || (subDirectory == ".."))
+                        if ((subDirectory == ".") || (subDirectory == "..") || !Utils::existsDir(subDirectory))
                         {
                             continue;
                         }
@@ -173,11 +173,11 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     }
                 };
 
-                const auto files { Utils::enumerateDir(pkgDirectory, DT_REG) };
+                const auto files { Utils::enumerateDir(pkgDirectory) };
 
                 for (const auto& file : files)
                 {
-                    if (Utils::endsWith(file, ".plist"))
+                    if (Utils::existsRegular(file) && Utils::endsWith(file, ".plist"))
                     {
                         std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
 
