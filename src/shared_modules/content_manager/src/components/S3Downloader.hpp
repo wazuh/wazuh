@@ -31,7 +31,7 @@ private:
      *
      * @param context updater context.
      */
-    void download(const UpdaterContext& context) const
+    void download(UpdaterContext& context) const
     {
         const auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
 
@@ -41,6 +41,13 @@ private:
         // 2.1 If the content is compressed, save it in the output folder (context.spUpdaterBaseContext->outputFolder)
         // 2.2 If the content is not compressed, save it in the context (context.data)
         std::ignore = url;
+
+        // Update the status of the stage
+        for (auto& element : context.data.at("stageStatus"))
+        {
+            if (element.at("stage").get<std::string>() == "S3Downloader")
+                element.at("status") = "ok";
+        }
     }
 
 public:
@@ -52,6 +59,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        // Pre-set the status of the stage to fail
+        context->data.at("stageStatus").push_back(R"({"stage": "S3Downloader", "status": "fail"})"_json);
 
         download(*context);
 

@@ -41,6 +41,13 @@ private:
         // 2. Save the decompressed content in the context (context.data)
         std::ignore = outputFolder;
         std::ignore = fileName;
+
+        // Update the status of the stage
+        for (auto& element : context.data.at("stageStatus"))
+        {
+            if (element.at("stage").get<std::string>() == "XZDecompressor")
+                element.at("status") = "ok";
+        }
     }
 
 public:
@@ -52,6 +59,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        // Pre-set the status of the stage to fail
+        context->data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "fail"})"_json);
 
         decompress(*context);
 
