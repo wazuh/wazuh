@@ -5,6 +5,9 @@ inputs:
   path:
     required: true
     description: "Path to the module"
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
 
 runs:
   using: "composite"
@@ -17,7 +20,9 @@ runs:
           packages: lcov
           version: 1.0
 
+      # Generate the coverage files
       - name: Generate coverage files
+        shell: bash
         run: |
 
           cd ${{ inputs.path }}
@@ -44,9 +49,28 @@ runs:
           echo "Executing: lcov $arguments"
           lcov $arguments
 
+      # Generate the HTML coverage report
+      - name: Generate coverage report
         shell: bash
-      
+        run: |
+
+          cd ${{ inputs.path }}/build
+
+          # Generate HTML report
+          genhtml coverage.info --output-directory coverage_report
+
+      # Upload the coverage report as an artifact
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Coverage Report - ${{ inputs.id }}
+          path: ./${{ inputs.path }}/build/coverage_report
+          retention-days: 1
+
+      # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
+        shell: bash
         run: |
 
           cd ${{ inputs.path }}
@@ -58,16 +82,26 @@ runs:
           linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
           echo "Lines coverage is: $linesCoverage %"
           if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
-              echo "ERROR: Low lines coverage"
-              #exit 1
+            echo "-------------------------"
+            echo "FAILED: Lines coverage is lower than 90%"
+            echo "-------------------------"
+            exit 1
+          else
+            echo "-------------------------"
+            echo "PASSED: Lines coverage is greater than 90%"
+            echo "-------------------------"
           fi
           
           # Check if functions coverage is greater than 90%
           functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
           echo "Functions coverage is: $functionsCoverage %"
           if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
-              echo "ERROR: Low functions coverage"
-              #exit 1
+            echo "------------------------------"
+            echo "FAILED: Functions coverage is lower than 90%"
+            echo "------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------"
+            echo "PASSED: Functions coverage is greater than 90%"
+            echo "----------------------------------------------"
           fi
-
-        shell: bash

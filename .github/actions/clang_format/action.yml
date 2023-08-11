@@ -6,6 +6,9 @@ inputs:
     required: true
     description: "Path to validate"
     default: src/
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
 
 runs:
   using: "composite"
@@ -19,6 +22,7 @@ runs:
           version: 1.0
 
       - name: Check codding style
+        shell: bash
         run: |
 
           # Execute in dry-run and fail on warnings
@@ -29,12 +33,25 @@ runs:
           sourceFiles=$(find ${{ inputs.path }} -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
           arguments+="-i $sourceFiles "
 
-          echo "Executing: clang-format $arguments"
-          clang-format $arguments
+          ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
+          clang-format $arguments 2> ${ERRORS_FILE}
 
-          if [[ $? -ne 0 ]]; then
-            echo "Codding style check failed"
-            # exit 1
+          # Check if there are errors
+          if [ -s "${ERRORS_FILE}" ]; then
+            echo "---------------------------------"
+            echo "FAILED: Clang-format check failed"
+            echo "---------------------------------"
+            exit 1
+          else
+            echo "---------------------------------"
+            echo "PASSED: Clang-format check passed"
+            echo "---------------------------------"
           fi
 
-        shell: bash
+      # Upload errors as an artifact, when failed
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Clang-format errors - ${{ inputs.id }}
+          path: ${{ inputs.path }}/clang_format_errors.txt
+          retention-days: 1
