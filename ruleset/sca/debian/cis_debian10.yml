@@ -3916,8 +3916,7 @@ checks:
       - soc_2: ["PL1.4"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:^Storage=persistent"
-      - 'd:/etc/systemd/journald.conf.d -> r:\.* -> r:^Storage=persistent'
+      - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 5.1.1.6 Ensure journald log rotation is configured per site policy. (Manual)
   - id: 31211
