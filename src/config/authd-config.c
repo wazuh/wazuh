@@ -407,12 +407,14 @@ STATIC void w_authd_parse_agents(XML_NODE node, authd_config_t * config) {
             if (strcmp(node[i]->content, "no") == 0) {
                 config->allow_higher_versions = false;
             }
-            else if (strcmp(node[i]->content, "yes") != 0) {
-                mwarn("Ignored invalid value '%s' for auth agent's 'allow_higher_versions'.", node[i]->content);
+            else if (strcmp(node[i]->content, "yes") == 0) {
+                config->allow_higher_versions = true;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, ALLOW_HIGHER_VERSIONS);
             }
         }
         else {
-            mwarn("Invalid element in the auth agent's configuration: '%s'.", node[i]->element);
+            mwarn(XML_INVELEM, node[i]->element);
         }
         i++;
     }

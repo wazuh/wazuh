@@ -345,12 +345,14 @@ STATIC void w_remoted_parse_agents(XML_NODE node, remoted * logr) {
             if (strcmp(node[i]->content, "no") == 0) {
                 logr->allow_higher_versions = false;
             }
-            else if (strcmp(node[i]->content, "yes") != 0) {
-                mwarn("Ignored invalid value '%s' for remote agent's 'allow_higher_versions'.", node[i]->content);
+            else if (strcmp(node[i]->content, "yes") == 0) {
+                logr->allow_higher_versions = true;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, ALLOW_HIGHER_VERSIONS);
             }
         }
         else {
-            mwarn("Invalid element in the remote agent's configuration: '%s'.", node[i]->element);
+            mwarn(XML_INVELEM, node[i]->element);
         }
         i++;
     }
