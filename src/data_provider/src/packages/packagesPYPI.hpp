@@ -17,6 +17,7 @@
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "sharedDefs.h"
+#include "stringHelper.h"
 #include <iostream>
 #include <set>
 
@@ -57,13 +58,16 @@ class PYPI final : public TFileSystem, public TFileIO
                                  PYPI_FIELDS.end(),
                                  [&line](const auto & element)
                     {
-                        return line.find(element.first) != std::string::npos;
+                        return Utils::startsWith(line, element.first);
                     })};
 
                 if (PYPI_FIELDS.end() != it)
                 {
                     const auto& [key, value] {*it};
-                    packageInfo[value] = line.substr(key.length());
+                    if (!packageInfo.contains(value))
+                    {
+                        packageInfo[value] = line.substr(key.length());
+                    }
                 }
                 return true;
             });
