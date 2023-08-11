@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-msgraph-tier-0-1.yml"
+        - ".github/workflows/integration-tests-msgraph-tier-0-1-lin.yml"
         - "src/wazuh_modules/wm_ms_graph.h"
         - "src/wazuh_modules/wm_ms_graph.c"
         - "src/config/wmodules-ms-graph.c"
