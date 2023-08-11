@@ -14,9 +14,24 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-#Check if filesystem is available
 include(CheckCXXSourceCompiles)
 
+#Check if std::optional is available, therefore C++17 is available
+check_cxx_source_compiles("
+    #include <optional>
+    int main() {
+        std::optional<int> o;
+        return 0;
+    }
+" HAS_OPTIONAL)
+
+if(HAS_OPTIONAL OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(CMAKE_CXX_STANDARD 17)
+else()
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+#Check if filesystem is available
 check_cxx_source_compiles("
     #include <filesystem>
     int main() {
@@ -26,10 +41,8 @@ check_cxx_source_compiles("
 " HAS_FILESYSTEM)
 
 if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(CMAKE_CXX_STANDARD 17)
   add_definitions(-DHAS_STDFILESYSTEM=true)
 else()
-  set(CMAKE_CXX_STANDARD 14)
   add_definitions(-DHAS_STDFILESYSTEM=false)
 endif()
 

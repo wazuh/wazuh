@@ -80,7 +80,7 @@ class NPM final
             }
         }
 
-        void exploreExpandedPaths(const std::vector<std::string>& expandedPaths,
+        void exploreExpandedPaths(const std::deque<std::string>& expandedPaths,
                                   std::function<void(nlohmann::json&)> callback)
         {
             for (const auto& expandedPath : expandedPaths)
@@ -94,7 +94,6 @@ class NPM final
                     {
                         for (const auto& packageFolder : TFileSystem::directory_iterator(nodeModulesFolder))
                         {
-                            // const auto packageJsonFile {packageFolder.path() / "package.json"};
                             if (TFileSystem::is_directory(packageFolder))
                             {
                                 parsePackage(packageFolder, callback);
@@ -121,7 +120,7 @@ class NPM final
             {
                 try
                 {
-                    std::vector<std::string> expandedPaths;
+                    std::deque<std::string> expandedPaths;
 
                     // Expand paths
                     Utils::expandAbsolutePath(osRootFolder, expandedPaths);

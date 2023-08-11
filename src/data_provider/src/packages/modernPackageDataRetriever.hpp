@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSINFO
  * Copyright (C) 2015, Wazuh Inc.
- * April 16, 2021.
+ * July 29, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _MODERN_PACKAGE_DATA_RETRIEVER_PP
-#define _MODERN_PACKAGE_DATA_RETRIEVER_PP
+#ifndef _MODERN_PACKAGE_DATA_RETRIEVER_HPP
+#define _MODERN_PACKAGE_DATA_RETRIEVER_HPP
 
 #include "json.hpp"
 #include "sharedDefs.h"

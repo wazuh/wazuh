@@ -23,6 +23,7 @@
 #include "encodingWindowsHelper.h"
 #include "windowsHelper.h"
 #include "stringHelper.h"
+#include "globHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -402,7 +403,7 @@ namespace Utils
             try
             {
                 // Enumerate the registry keys and expand the path.
-                for (const auto& entry : Utils::Registry{key, baseDir, KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+                for (const auto& entry : Utils::Registry{key, baseDir, KEY_READ | KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_64KEY }.enumerate())
                 {
                     // If the base directory is empty, then the entry name is the entry.
                     // Otherwise, the entry name is the base directory, followed by a '\', followed by the entry.

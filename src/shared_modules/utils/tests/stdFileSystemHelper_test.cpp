@@ -17,93 +17,110 @@ void StdFileSystemHelperTest::TearDown() {};
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandSimpleWildcard)
 {
-    constexpr auto PATH_MATCH_SIZE { 2ull };
-    std::vector<std::string> output;
+    constexpr auto PATH_MATCH_SIZE { 2u };
+    std::deque<std::string> output;
+    std::unordered_map<std::string, uint32_t> outputMap;
+
     Utils::expandAbsolutePath(PATH_TO_EXPAND_1, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == EXPAND_PATH_5 || item == EXPAND_PATH_6);
+        outputMap[item]++;
     }
 
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_5) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_6) == 1);
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcard)
 {
-    constexpr auto PATH_MATCH_SIZE { 4ull };
-    std::vector<std::string> output;
+    constexpr auto PATH_MATCH_SIZE { 4u };
+    std::deque<std::string> output;
+    std::unordered_map<std::string, uint32_t> outputMap;
+
     Utils::expandAbsolutePath(PATH_TO_EXPAND_2, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == EXPAND_PATH_1 ||
-                    item == EXPAND_PATH_2 ||
-                    item == EXPAND_PATH_3 ||
-                    item == EXPAND_PATH_4);
+        outputMap[item]++;
     }
 
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_1) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_2) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_3) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_4) == 1);
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithPrefix)
 {
-    constexpr auto PATH_MATCH_SIZE { 4ull };
-    std::vector<std::string> output;
+    constexpr auto PATH_MATCH_SIZE { 4u };
+    std::deque<std::string> output;
+    std::unordered_map<std::string, uint32_t> outputMap;
+
     Utils::expandAbsolutePath(PATH_TO_EXPAND_3, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == EXPAND_PATH_1 ||
-                    item == EXPAND_PATH_2 ||
-                    item == EXPAND_PATH_3 ||
-                    item == EXPAND_PATH_4);
+        outputMap[item]++;
     }
 
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_1) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_2) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_3) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_4) == 1);
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithSuffix)
 {
-    constexpr auto PATH_MATCH_SIZE { 2ull };
-    std::vector<std::string> output;
+    constexpr auto PATH_MATCH_SIZE { 2u };
+    std::deque<std::string> output;
+    std::unordered_map<std::string, uint32_t> outputMap;
     Utils::expandAbsolutePath(PATH_TO_EXPAND_4, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == EXPAND_PATH_1 ||
-                    item == EXPAND_PATH_3);
+        outputMap[item]++;
     }
+
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_1) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_3) == 1);
 
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark)
 {
-    constexpr auto PATH_MATCH_SIZE { 2ull };
-    std::vector<std::string> output;
+    constexpr auto PATH_MATCH_SIZE { 2u };
+    std::deque<std::string> output;
+    std::unordered_map<std::string, uint32_t> outputMap;
     Utils::expandAbsolutePath(PATH_TO_EXPAND_5, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == EXPAND_PATH_1 ||
-                    item == EXPAND_PATH_3);
+        outputMap[item]++;
     }
 
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_1) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_3) == 1);
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
 
 TEST_F(StdFileSystemHelperTest, FilesystemExpandWildcardWithQuestionMark2)
 {
-    constexpr auto PATH_MATCH_SIZE { 2ull };
-    std::vector<std::string> output;
+    constexpr auto PATH_MATCH_SIZE { 2u };
+    std::deque<std::string> output;
+    std::unordered_map<std::string, uint32_t> outputMap;
     Utils::expandAbsolutePath(PATH_TO_EXPAND_6, output);
 
     for (const auto& item : output)
     {
-        EXPECT_TRUE(item == EXPAND_PATH_1 ||
-                    item == EXPAND_PATH_3);
+        outputMap[item]++;
     }
 
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_1) == 1);
+    EXPECT_TRUE(outputMap.at(EXPAND_PATH_3) == 1);
     EXPECT_EQ(output.size(), PATH_MATCH_SIZE);
 }
 

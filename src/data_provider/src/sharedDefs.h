@@ -116,7 +116,7 @@ static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS
     "/usr/local/lib/python*/*-packages",
     "/home/*/.local/lib/python*/*-packages",
     "/opt/homebrew/lib",
-    "/Libary/Python",
+    "/Library/Python",
 };
 
 static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
@@ -127,6 +127,7 @@ static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
     "/home/*/.npm-global/lib",
     "/Users/*/.npm-global/lib",
     "/home/*/.nvm/versions/node/v*/lib",
+    "/opt/local/lib",
 };
 
 #endif //_SHARED_DEFS_H

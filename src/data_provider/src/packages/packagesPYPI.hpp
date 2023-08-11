@@ -105,7 +105,7 @@ class PYPI final : public TFileSystem, public TFileIO
                 std::cerr << "Error parsing PYPI package: " << path.string() << ", " << e.what() << std::endl;
             }
         }
-        void exploreExpandedPaths(const std::vector<std::string>& expandedPaths,
+        void exploreExpandedPaths(const std::deque<std::string>& expandedPaths,
                                   std::function<void(nlohmann::json&)> callback)
         {
             for (const auto& expandedPath : expandedPaths)
@@ -134,7 +134,7 @@ class PYPI final : public TFileSystem, public TFileIO
 
             for (const auto& osFolder : osRootFolders)
             {
-                std::vector<std::string> expandedPaths;
+                std::deque<std::string> expandedPaths;
 
                 try
                 {
