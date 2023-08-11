@@ -46,7 +46,6 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -54,10 +53,9 @@ from wazuh_testing.utils.configuration import get_test_cases_data
 from wazuh_testing.utils.configuration import load_configuration_template
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.utils.file import truncate_file, remove_file
+from wazuh_testing.utils.file import truncate_file
 from . import CONFIGS_PATH, TEST_CASES_PATH
-import subprocess
-import os
+
 # Marks
 pytestmark = pytest.mark.tier(level=0)
 
@@ -114,20 +112,6 @@ t7_configurations = load_configuration_template(configs_path, t7_configuration_p
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 local_internal_options = {MODULESD_DEBUG: '2'}
 
-
-@pytest.fixture(scope="session")
-def proxy_setup():
-    mocks_path = Path(CONFIGS_PATH, 'responses.json')
-    m365proxy = subprocess.Popen(["/tmp/m365proxy/m365proxy", "--mocks-file", mocks_path])
-    # Configurate proxy for Wazuh (will only work for systemctl start/restart)
-    subprocess.run("systemctl set-environment http_proxy=http://localhost:8000", shell=True)
-    remove_file(os.path.join(WAZUH_PATH, 'var', 'wodles', 'ms-graph-tenant_id-resource_name-resource_relationship'))
-
-    yield
-
-    subprocess.run("systemctl unset-environment http_proxy", shell=True)
-    m365proxy.kill()
-    m365proxy.wait()
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
