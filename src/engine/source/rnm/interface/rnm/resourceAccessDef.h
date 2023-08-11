@@ -13,13 +13,12 @@ using RoleName = std::string; ///< Role Name
  */
 enum class VSOperation
 {
-    USE,  ///< Use a resources in the Virtual Space.
+    USE,   ///< Use a resources in the Virtual Space.
     READ,  ///< Read a resources in the Virtual Space.
     WRITE, ///< Write a resources in the Virtual Space.
-    LIST, ///< List the resources in the Virtual Space.
+    LIST,  ///< List the resources in the Virtual Space.
 };
 
-} // namespace name
-
+} // namespace rnm
 
 #endif

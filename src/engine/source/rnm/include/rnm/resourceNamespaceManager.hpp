@@ -11,7 +11,6 @@ namespace rnm
 {
 
 using AuthFn = std::function<bool(const VSName&, const RoleName&, VSOperation)>;
-// Store prefix for the resource namespace manager
 
 class ResourceNamespaceManager : public IResourceNamespaceManager
 {
@@ -31,11 +30,18 @@ private:
      * @param vsname The name of the virtual space.
      * @return base::Name The name of the resource in the store.
      */
-    inline base::Name translateName(const base::Name& resourceName, const VSName& vsname) const;
+    inline base::Name virtualToRealName(const base::Name& resourceName, const VSName& vsname) const;
 
+    /**
+     * @brief translate a real name to a virtual name.
+     *
+     * @param realName The name of the resource in the store.
+     * @return std::optional<std::pair<VSName, base::Name>> The name and namespace of the resource in the virtual space,
+     * or std::nullopt if the realName not represent a resource in a virtual space.
+     */
+    inline std::optional<std::pair<VSName, base::Name>> realToVirtualName(const base::Name& realName) const;
 
     std::variant<json::Json, base::Error> getItem(const base::Name& item, const RoleName& role) const;
-
     std::variant<json::Json, base::Error> getCollection(const base::Name& collection, const RoleName& role) const;
 public:
     /**
@@ -81,10 +87,6 @@ public:
      */
     std::optional<base::Error>
     setVSName(const base::Name& resourceName, const VSName& vsName, const RoleName& role) override;
-
-    /*************************************************************************
-     *                            KVDB
-     *************************************************************************/
 };
 
 } // namespace rnm
