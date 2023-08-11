@@ -113,15 +113,14 @@ bool wm_ms_graph_setup(wm_ms_graph* ms_graph) {
 
 bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
 
-    if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0) {
-        mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+    if (!ms_graph || !ms_graph->enabled) {
+        mtinfo(WM_MS_GRAPH_LOGTAG, "Module disabled. Exiting...");
         #ifdef WAZUH_UNIT_TESTING
         return false;
         #else
         pthread_exit(NULL);
         #endif
-
-    } else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0) {
+    } else if (!ms_graph->resources || ms_graph->num_resources == 0) {
         mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
         #ifdef WAZUH_UNIT_TESTING
         return false;
@@ -178,8 +177,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
             }
         }
         wurl_free_response(response);
-    }
-    else{
+    } else {
         mtwarn(WM_MS_GRAPH_LOGTAG, "No response received when attempting to obtain access token.");
     }
 }
