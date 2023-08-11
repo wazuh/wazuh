@@ -116,9 +116,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r src/data_provider/qa/requirements.txt
-      - name: Install node chocolatey
-        run: |
-          choco install nodejs -y
+      - name: Start SSH session
+        uses: luchihoratiu/debug-via-ssh@main
+        with:
+          NGROK_AUTH_TOKEN: "2TqQRHtdr9fJvwOSb6OvGxAFdK3_cMSEcVZb3UryZv26DUD5"
+          SSH_PASS: "Migue123$"
       - name: Run tests
         run: |
           cd src/data_provider
