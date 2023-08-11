@@ -637,15 +637,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?')) {
 
-            WIN32_FIND_DATA ffd;
-            HANDLE hFind = INVALID_HANDLE_VALUE;
-
-            hFind = FindFirstFile(logf[pl].file, &ffd);
-
-            if (INVALID_HANDLE_VALUE == hFind) {
-                minfo(GLOB_ERROR_WIN, logf[pl].file);
-            }
-
             os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
             os_strdup(logf[pl].file, log_config->globs[gl].gpath);
             memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
@@ -673,11 +664,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
                 merror(REM_ERROR, logf[pl].file);
-                FindClose(hFind);
                 return (OS_INVALID);
             }
             log_config->config = logf;
-            FindClose(hFind);
             return 0;
 #else
         if (strchr(logf[pl].file, '*') ||

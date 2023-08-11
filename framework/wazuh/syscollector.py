@@ -13,7 +13,7 @@ from wazuh.rbac.decorators import expose_resources
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_list}'])
 def get_item_agent(agent_list: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: dict = None,
                    search: dict = None, sort: dict = None, filters: dict = None, q: str = '', array: bool = True,
-                   nested: bool = True, element_type: str = 'os') -> AffectedItemsWazuhResult:
+                   nested: bool = True, element_type: str = 'os', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get syscollector information about a list of agents.
 
     Parameters
@@ -40,6 +40,8 @@ def get_item_agent(agent_list: list, offset: int = 0, limit: int = common.DATABA
         Type of element to get syscollector information from. Default: 'os'
     array : bool
         Array.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -64,7 +66,7 @@ def get_item_agent(agent_list: list, offset: int = 0, limit: int = common.DATABA
             with WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
                                           search=search,
                                           sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                          array=array, nested=nested, query=q) as db_query:
+                                          array=array, nested=nested, query=q, distinct=distinct) as db_query:
                 data = db_query.run()
 
             for item in data['items']:

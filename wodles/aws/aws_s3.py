@@ -3102,7 +3102,6 @@ class AWSCloudWatchLogs(AWSService):
                         max_end_time = event['timestamp']
                     elif event['timestamp'] > max_end_time:
                         max_end_time = event['timestamp']
-                debug(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
 
             if sent_events:
                 debug(f"+++ Sent {sent_events} events to Analysisd", 1)

@@ -13,7 +13,7 @@ from wazuh.core.utils import filter_array_by_query
 
 
 async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.DATABASE_LIMIT,
-                    sort=None, search=None, select=None, filter_type='all', q=''):
+                    sort=None, search=None, select=None, filter_type='all', q='', distinct: bool = False):
     """Get basic information of each of the cluster nodes.
 
     Parameters
@@ -36,6 +36,8 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         Type of node (worker/master).
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -45,10 +47,10 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
     if q:
         # If exists q parameter, apply limit and offset after filtering by q.
         arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': sort,
-                     'search': search, 'select': select, 'filter_type': filter_type}
+                     'search': search, 'select': select, 'filter_type': filter_type, 'distinct': distinct}
     else:
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                     'select': select, 'filter_type': filter_type}
+                     'select': select, 'filter_type': filter_type, 'distinct': distinct}
 
     response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
     result = json.loads(response, object_hook=as_wazuh_object)

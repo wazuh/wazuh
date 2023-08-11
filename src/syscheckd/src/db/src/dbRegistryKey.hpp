@@ -23,16 +23,6 @@ struct FimRegistryKeyDeleter
         {
             if (fimRegistryKey->registry_entry.key)
             {
-                if (fimRegistryKey->registry_entry.key->gid)
-                {
-                    std::free(fimRegistryKey->registry_entry.key->gid);
-                }
-
-                if (fimRegistryKey->registry_entry.key->uid)
-                {
-                    std::free(fimRegistryKey->registry_entry.key->uid);
-                }
-
                 std::free(fimRegistryKey->registry_entry.key);
             }
 
@@ -53,9 +43,8 @@ class RegistryKey final : public DBItem
         {
             m_oldData = old_data;
             m_arch = fim->registry_entry.key->arch;
-            m_gid = std::atoi(fim->registry_entry.key->gid);
-            m_uid = std::atoi(fim->registry_entry.key->uid);
-
+            m_gid = fim->registry_entry.key->gid ? fim->registry_entry.key->gid : "";
+            m_uid = fim->registry_entry.key->uid ? fim->registry_entry.key->uid : "";
             m_groupname = fim->registry_entry.key->group_name ? fim->registry_entry.key->group_name : "";
             m_perm = fim->registry_entry.key->perm ? fim->registry_entry.key->perm : "";
             m_username = fim->registry_entry.key->user_name ? fim->registry_entry.key->user_name : "";
@@ -99,8 +88,8 @@ class RegistryKey final : public DBItem
 
     private:
         int                                                 m_arch;
-        int                                                 m_gid;
-        int                                                 m_uid;
+        std::string                                         m_gid;
+        std::string                                         m_uid;
         std::string                                         m_groupname;
         std::string                                         m_perm;
         std::string                                         m_username;

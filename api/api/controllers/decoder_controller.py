@@ -21,7 +21,7 @@ logger = logging.getLogger('wazuh-api')
 async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = 0, limit: int = None, select: list = None, sort: str = None, search: str = None,
                        q: str = None, filename: str = None, relative_dirname: str = None,
-                       status: str = None) -> web.Response:
+                       status: str = None, distinct: bool = False) -> web.Response:
     """Get all decoders.
 
     Returns information about all the decoders included in the ossec.conf file.
@@ -55,6 +55,8 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
         Filters by relative dirname.
     status : str
         Filters by status.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -72,7 +74,8 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
                 'q': q,
                 'filename': filename,
                 'status': status,
-                'relative_dirname': relative_dirname}
+                'relative_dirname': relative_dirname,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -89,7 +92,8 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
 
 async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = None, sort: str = None, search: str = None, filename: str = None,
-                             relative_dirname: str = None, status: str = None) -> web.Response:
+                             relative_dirname: str = None, status: str = None, q: str = None,
+                             select: str = None, distinct: bool = False) -> web.Response:
     """Get all decoders' files.
 
     Returns information about all decoders' files used in Wazuh.
@@ -113,14 +117,18 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
         ascending or descending order.
     search : str
         Look for elements with the specified string.
-    q : str
-        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     filename : str
         List of filenames to filter by.
     relative_dirname : str
         Filters by relative dirname.
     status : str
         Filters by status.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    select : str
+        Select which fields to return (separated by comma).
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -135,7 +143,10 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'filename': filename,
                 'relative_dirname': relative_dirname,
-                'status': status}
+                'status': status,
+                'q': q,
+                'select': select,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoders_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -244,12 +255,14 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     if isinstance(data, AffectedItemsWazuhResult):
         response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
     else:
-        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
+        response = ConnexionResponse(body=data["message"], 
+                                     mimetype='application/xml', content_type='application/xml')
 
     return response
 
 
-async def put_file(request, body: dict, filename: str = None, overwrite: bool = False, pretty: bool = False,
+async def put_file(request, body: dict, filename: str = None, relative_dirname: str = None,
+                   overwrite: bool = False, pretty: bool = False,
                    wait_for_complete: bool = False) -> web.Response:
     """Upload a decoder file.
 
@@ -260,8 +273,11 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
         Body request with the file content to be uploaded.
     filename : str
         Name of the file.
+    relative_dirname : str
+        Relative directory where the decoder is located.
     overwrite : bool
-        If set to false, an exception will be raised when updating contents of an already existing file.
+        If set to false, an exception will be raised when  
+        updating contents of an already existing file.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -278,7 +294,8 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
 
     f_kwargs = {'filename': filename,
                 'overwrite': overwrite,
-                'content': parsed_body}
+                'content': parsed_body,
+                'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=decoder_framework.upload_decoder_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -293,7 +310,9 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, filename: str = None, pretty: bool = False,
+async def delete_file(request, filename: str = None, 
+                      relative_dirname: str = None,
+                      pretty: bool = False,
                       wait_for_complete: bool = False) -> web.Response:
     """Delete a decoder file.
 
@@ -302,6 +321,8 @@ async def delete_file(request, filename: str = None, pretty: bool = False,
     request : connexion.request
     filename : str
         Name of the file.
+    relative_dirname : str
+        Relative directory where the decoder is located.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -312,7 +333,7 @@ async def delete_file(request, filename: str = None, pretty: bool = False,
     web.Response
         API response.
     """
-    f_kwargs = {'filename': filename}
+    f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=decoder_framework.delete_decoder_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

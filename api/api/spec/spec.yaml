@@ -1453,10 +1453,6 @@ components:
 
     AgentGroup:
       type: object
-      required:
-      - count
-      - name
-      - configSum
       properties:
         count:
           type: integer
@@ -7213,6 +7209,7 @@ paths:
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
         - $ref: '#/components/parameters/group_config_status'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of agents or error description"
@@ -8315,6 +8312,9 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List all groups"
@@ -8425,6 +8425,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of agents or error description"
@@ -8668,6 +8669,9 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Get group files"
@@ -9527,6 +9531,7 @@ paths:
         - $ref: '#/components/parameters/node_type'
         - $ref: '#/components/parameters/nodes_list'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of connected nodes"
@@ -10258,7 +10263,6 @@ paths:
                         provider:
                           name: nvd
                           enabled: yes
-                          update_from_year: 2010
                           update_interval: "1h"
                       syscheck:
                         disabled: no
@@ -11066,6 +11070,8 @@ paths:
         - $ref: '#/components/parameters/tag'
         - $ref: '#/components/parameters/log_level'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Wazuh node logs"
@@ -11338,6 +11344,8 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Successfully got all CDB lists and the files where they are defined"
@@ -11834,6 +11842,7 @@ paths:
         - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Wazuh configuration"
@@ -12702,6 +12711,8 @@ paths:
         - $ref: '#/components/parameters/tag'
         - $ref: '#/components/parameters/log_level'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Wazuh logs"
@@ -13037,6 +13048,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Get MITRE groups information"
@@ -13181,6 +13193,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Get MITRE mitigations information"
@@ -13299,6 +13312,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Get MITRE software information"
@@ -13370,6 +13384,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Get MITRE tactics information"
@@ -13454,6 +13469,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Get MITRE techniques information"
@@ -13751,6 +13767,7 @@ paths:
         - $ref: '#/components/parameters/nist-800-53'
         - $ref: '#/components/parameters/tsc'
         - $ref: '#/components/parameters/mitre'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Rule"
@@ -13938,6 +13955,9 @@ paths:
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Rule"
@@ -14145,6 +14165,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/overwrite'
+        - $ref: '#/components/parameters/get_dirnames_path'
       requestBody:
         description: "Content of the rule to be uploaded"
         required: true
@@ -14200,6 +14221,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -14645,6 +14667,7 @@ paths:
         - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of decoders included in ossec.conf"
@@ -14718,6 +14741,9 @@ paths:
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of decoders files"
@@ -14918,6 +14944,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/overwrite'
+        - $ref: '#/components/parameters/get_dirnames_path'
       requestBody:
         description: "Content of the decoder to be uploaded"
         required: true
@@ -14973,6 +15000,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -16204,6 +16232,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/hotfix'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return an agent's hotfix results"
@@ -16264,6 +16293,7 @@ paths:
         - $ref: '#/components/parameters/broadcast'
         - $ref: '#/components/parameters/netmask'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of agent's network results"
@@ -16334,6 +16364,7 @@ paths:
         - $ref: '#/components/parameters/tx.dropped'
         - $ref: '#/components/parameters/rx.dropped'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -16407,6 +16438,7 @@ paths:
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of agent's network protocol results"
@@ -16532,6 +16564,7 @@ paths:
         - $ref: '#/components/parameters/file_format'
         - $ref: '#/components/parameters/package_version'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -16635,6 +16668,7 @@ paths:
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/process'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -16745,6 +16779,7 @@ paths:
         - $ref: '#/components/parameters/sgroup'
         - $ref: '#/components/parameters/suser'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of agent's processes results"
@@ -17291,6 +17326,8 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Information about user"
@@ -17556,6 +17593,8 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of roles"
@@ -17832,6 +17871,8 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of security rules"
@@ -18070,6 +18111,8 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of policies"
