@@ -117,6 +117,7 @@ static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS
     "/home/*/.local/lib/python*/*-packages",
     "/opt/homebrew/lib",
     "/Library/Python",
+    "/Library/Frameworks/Python.framework/Versions/*/lib/python*/*-packages",
 };
 
 static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
