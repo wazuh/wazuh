@@ -81,7 +81,6 @@ cJSON *getRemoteConfig(void) {
     unsigned int i,j;
     char port[255] = {0};
     char queue_size[255] = {0};
-    char connection_overtake_time[255] = {0};
 
     if(logr.conn) {
         for(i=0;logr.conn[i];i++){
