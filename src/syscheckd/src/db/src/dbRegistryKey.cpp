@@ -16,8 +16,6 @@ void RegistryKey::createFimEntry()
 {
     fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
     fim_registry_key* key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
-    auto uid_size = std::to_string(m_uid).size();
-    auto gid_size = std::to_string(m_gid).size();
 
     if (fim)
     {
@@ -27,20 +25,8 @@ void RegistryKey::createFimEntry()
         {
             key->arch = m_arch;
             std::snprintf(key->checksum, sizeof(key->checksum), "%s", m_checksum.c_str());
-            key->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
-
-            if (key->gid)
-            {
-                std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
-            }
-            // LCOV_EXCL_START
-            else
-            {
-                throw std::runtime_error("The memory for gid parameter could not be allocated.");
-            }
-
-            // LCOV_EXCL_STOP
-
+            key->gid = const_cast<char*>(m_gid.c_str());
+            key->uid = const_cast<char*>(m_uid.c_str());
             key->group_name = const_cast<char*>(m_groupname.c_str());
             key->last_event = m_lastEvent;
             key->mtime = m_time;
@@ -48,21 +34,8 @@ void RegistryKey::createFimEntry()
             key->hash_full_path = const_cast<char*>(m_hashpath.c_str());
             key->perm = const_cast<char*>(m_perm.c_str());
             key->scanned =  m_scanned;
-            key->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
-
-            if (key->uid)
-            {
-                std::strncpy(key->uid, std::to_string(m_uid).c_str(), uid_size);
-            }
-            // LCOV_EXCL_START
-            else
-            {
-                throw std::runtime_error("The memory for uid parameter could not be allocated.");
-            }
-
-            // LCOV_EXCL_STOP
-
             key->user_name = const_cast<char*>(m_username.c_str());
+
             fim->registry_entry.key = key;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
         }

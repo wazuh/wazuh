@@ -40,9 +40,9 @@ package "item" <<Folder>> {
         - unsigned int m_size
         - string m_perm
         - string m_attributes
-        - int m_uid
+        - string m_uid
         - string m_username
-        - int m_gid
+        - string m_gid
         - string m_groupname
         - time_t m_time
         - unsigned long long int m_inode
@@ -84,9 +84,9 @@ package "item" <<Folder>> {
     }
     class "RegistryKey" {
         - string m_perm
-        - int m_uid
+        - string m_uid
         - string m_username
-        - int m_gid
+        - string m_gid
         - string m_groupname
         - time_t m_time
         - int m_arch

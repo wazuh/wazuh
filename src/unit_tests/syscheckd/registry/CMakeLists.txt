@@ -3,10 +3,15 @@ include_directories(${SRC_FOLDER}/syscheckd/include)
 
 link_directories(${SRC_FOLDER}/unit_tests/wrappers/syscheckd/registry)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
+
 # registry.c tests
 add_executable(test_registry test_registry.c)
 
 target_compile_options(test_registry PRIVATE "-Wall")
+target_compile_options(test_registry PRIVATE "-g")
 
 target_link_libraries(test_registry SYSCHECK_O ${TEST_DEPS} fim_shared)
 target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
@@ -22,6 +27,10 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
+if(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_registry fimdb)
+endif(${TARGET} STREQUAL "winagent")
+
 add_test(NAME test_registry COMMAND test_registry)
 
 # events.c tests
@@ -36,5 +45,9 @@ target_link_libraries(test_events "${DEBUG_OP_WRAPPERS} \
                                    -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                    -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_remove_path \
                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+
+if(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_events fimdb)
+endif(${TARGET} STREQUAL "winagent")
 
 add_test(NAME test_events COMMAND test_events)

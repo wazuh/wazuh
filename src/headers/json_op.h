@@ -12,7 +12,7 @@
 #ifndef JSON_OP_H
 #define JSON_OP_H
 
-#define JSON_MAX_FSIZE 536870912
+#define JSON_MAX_FSIZE 2147483648
 
 #include <cJSON.h>
 

@@ -118,7 +118,7 @@ async def get_agent_version(agent_id: str) -> str:
         "limit": 1
     }
     result = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
-    return result['version']
+    return result.affected_items[0]['version']
 
 
 def create_command() -> dict:

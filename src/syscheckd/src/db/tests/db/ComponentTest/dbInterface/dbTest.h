@@ -90,7 +90,9 @@ class DBTestFixture : public testing::Test {
                         100000,
                         true,
                         1,
-                        0);
+                        0,
+                        nullptr,
+                        nullptr);
 
             evt_data = {};
             evt_data.report_event = true;

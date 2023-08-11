@@ -85,7 +85,7 @@ async def delete_rootcheck(request, pretty: bool = False, wait_for_complete: boo
 
 async def get_rootcheck_agent(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
                               offset: int = 0, limit: int = None, sort: str = None, search: str = None,
-                              select: str = None, q: str = '', distinct: bool = None, status: str = 'all',
+                              select: str = None, q: str = '', distinct: bool = False, status: str = 'all',
                               pci_dss: str = None, cis: str = None) -> web.Response:
     """Return a list of events from the rootcheck database.
 

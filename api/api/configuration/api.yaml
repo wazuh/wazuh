@@ -69,3 +69,6 @@
 #   limits:
 #     eps:
 #       allow: yes
+#   agents:
+#     allow_higher_versions:
+#       allow: yes

@@ -69,7 +69,7 @@ char* getPrimaryIP(){
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
                         if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring," ")) {
-                            
+
                             const char * primaryIpType = NULL;
                             const char * secondaryIpType = NULL;
 

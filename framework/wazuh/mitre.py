@@ -32,7 +32,7 @@ def mitre_metadata() -> AffectedItemsWazuhResult:
 def mitre_mitigations(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                       sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                       complementary_search: bool = False, search_in_fields: list = None,
-                      q: str = '') -> AffectedItemsWazuhResult:
+                      q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's mitigations and its relations.
 
     Parameters
@@ -57,6 +57,8 @@ def mitre_mitigations(filters: dict = None, offset: int = 0, limit: int = common
         Fields to search in.
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -122,7 +124,7 @@ def mitre_references(filters: dict = None, offset: int = 0, limit: int = common.
 def mitre_techniques(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                      sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                      complementary_search: bool = False, search_in_fields: list = None,
-                     q: str = '') -> AffectedItemsWazuhResult:
+                     q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's techniques and its relations.
 
     Parameters
@@ -147,6 +149,8 @@ def mitre_techniques(filters: dict = None, offset: int = 0, limit: int = common.
         Fields to search in.
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -167,7 +171,7 @@ def mitre_techniques(filters: dict = None, offset: int = 0, limit: int = common.
 def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                   sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                   complementary_search: bool = False, search_in_fields: list = None,
-                  q: str = '') -> AffectedItemsWazuhResult:
+                  q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's tactics and its relations.
 
     Parameters
@@ -192,6 +196,8 @@ def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.DAT
         Fields to search in.
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -212,7 +218,7 @@ def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.DAT
 def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                  sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                  complementary_search: bool = False, search_in_fields: list = None,
-                 q: str = '') -> AffectedItemsWazuhResult:
+                 q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's groups and its relations.
 
     Parameters
@@ -237,6 +243,8 @@ def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.DATA
         Fields to search in.
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -257,7 +265,7 @@ def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.DATA
 def mitre_software(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                    sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                    complementary_search: bool = False, search_in_fields: list = None,
-                   q: str = '') -> AffectedItemsWazuhResult:
+                   q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's software and its relations.
 
     Parameters
@@ -282,6 +290,8 @@ def mitre_software(filters: dict = None, offset: int = 0, limit: int = common.DA
         Fields to search in.
     q : str
         Query for filtering a list of results.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------

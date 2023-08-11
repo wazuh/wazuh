@@ -13,7 +13,7 @@
 
 /* vulnerability-detector messages*/
 #define VU_STARTING_UPDATE    "(5400): Starting '%s' database update."
-#define VU_UPDATING_NVD_YEAR  "(5401): Synchronizing the year '%d' of the vulnerability database."
+#define VU_UPDATING_NVD_YEAR  "(5401): Synchronizing the National Vulnerability Database."
 #define VU_UPDATING_RH_YEAR   "(5402): Synchronizing the page '%d' from the vulnerability database."
 #define VU_LOCAL_FETCH        "(5403): Fetching feed from '%s'"
 #define VU_DOWNLOAD_START     "(5404): Trying to download '%s'"
