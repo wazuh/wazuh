@@ -9,6 +9,19 @@
 
 #include "shared.h"
 
+static void json_sleep() {
+
+    struct timeval fp_timeout;
+
+    fp_timeout.tv_sec = JQ_TIMEOUT;
+    fp_timeout.tv_usec = 0;
+
+    /* Wait for the select timeout */
+    select(0, NULL, NULL, NULL, &fp_timeout);
+
+    return;
+}
+
 // Initializes queue. Equivalent to initialize every field to 0.
 void jqueue_init(file_queue * queue) {
     memset(queue, 0, sizeof(file_queue));
@@ -48,6 +61,29 @@ int jqueue_open(file_queue * queue, int tail) {
     }
 
     return 0;
+}
+
+
+/*
+ * Identical to jqueue_next but retries up to timeout times
+ * and waits JQ_TIMEOUT seconds in between tries.
+ */
+cJSON * jqueue_next_timeout(file_queue * queue, unsigned int timeout) {
+    cJSON * alert = NULL;
+    unsigned int i = 0;
+
+    /* Try up to max_tries times to get an event */
+    while (i < timeout) {
+        alert = jqueue_next(queue);
+        if (alert) {
+            return (alert);
+        }
+
+        i++;
+        json_sleep();
+    }
+
+    return (NULL);
 }
 
 /*

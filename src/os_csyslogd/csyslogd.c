@@ -107,8 +107,9 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         }
 
         if (sources.alert_json) {
-            mdebug2("jqueue_next()");
-            json_data = jqueue_next(&jfileq);
+            /* Get message if available (timeout of 5 seconds) */
+            mdebug2("jqueue_next_timeout()");
+            json_data = jqueue_next_timeout(&jfileq, 1);
         }
 
         /* Send via syslog */

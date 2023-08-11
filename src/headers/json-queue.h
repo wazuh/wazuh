@@ -13,6 +13,8 @@
 #include <cJSON.h>
 #include "file-queue.h"
 
+#define JQ_TIMEOUT 5
+
 // Initializes queue. Equivalent to initialize every field to 0.
 void jqueue_init(file_queue * queue);
 
@@ -21,6 +23,12 @@ void jqueue_init(file_queue * queue);
  * Returns 0 on success or -1 on error.
  */
 int jqueue_open(file_queue * queue, int tail);
+
+/*
+ * Identical to jqueue_next but retries up to timeout times
+ * and waits JQ_TIMEOUT seconds in between tries.
+ */
+cJSON * jqueue_next_timeout(file_queue * queue, unsigned int timeout);
 
 /*
  * Return next JSON object from the queue, or NULL if it is not available.
