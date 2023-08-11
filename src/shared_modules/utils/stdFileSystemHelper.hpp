@@ -12,19 +12,18 @@
 #ifndef _STD_FILESYSTEM_HELPER_HPP
 #define _STD_FILESYSTEM_HELPER_HPP
 
-#include "stringHelper.h"
+#include "globHelper.h"
 #include <array>
+#include <deque>
 #include <filesystem>
 #include <string>
-#include <vector>
-
 
 namespace Utils
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-    static void expandAbsolutePath(const std::string& path, std::vector<std::string>& output)
+    static void expandAbsolutePath(const std::string& path, std::deque<std::string>& output)
     {
         // Find the first * or ? from path.
         std::array<char, 2> wildcards { '*', '?' };

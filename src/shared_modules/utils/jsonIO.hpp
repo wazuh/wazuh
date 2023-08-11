@@ -57,6 +57,11 @@ class JsonIO
             }
 
             file << json;
+
+            if (!file.good())
+            {
+                throw std::runtime_error("Could not write file");
+            }
         }
 };
 

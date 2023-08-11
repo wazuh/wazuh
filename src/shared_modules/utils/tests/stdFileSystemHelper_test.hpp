@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <thread>
+#include <unordered_map>
 
 constexpr auto FS_MS_WAIT_TIME
 {
@@ -63,6 +64,11 @@ constexpr auto ROOT_PATH_DUMMY { "C:\\tmp\\wazuh_test\\dummy" };
 constexpr auto DUMMY_FILE { "C:\\tmp\\wazuh_test\\dummy.txt" };
 #endif
 
+constexpr auto ITERATION_LIMIT
+{
+    10u
+};
+
 class StdFileSystemHelperTest : public ::testing::Test
 {
     protected:
@@ -73,26 +79,62 @@ class StdFileSystemHelperTest : public ::testing::Test
         void SetUp() override;
         void TearDown() override;
 
+        static void TearDownTestSuite()
+        {
+            std::filesystem::remove_all(ROOT_PATH);
+            auto iteration { 0u };
+
+            while (std::filesystem::exists(ROOT_PATH))
+            {
+                if (iteration++ > ITERATION_LIMIT)
+                {
+                    FAIL() << "Unable to remove " << ROOT_PATH;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
+            }
+        }
+
         static void SetUpTestSuite()
         {
+            auto iteration { 0u };
             std::filesystem::remove_all(ROOT_PATH);
 
             while (std::filesystem::exists(ROOT_PATH))
             {
+                if (iteration++ > ITERATION_LIMIT)
+                {
+                    FAIL() << "Unable to remove " << ROOT_PATH;
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
 
             std::filesystem::create_directory(TMP_PATH);
 
+            iteration = 0u;
+
             while (!std::filesystem::exists(TMP_PATH))
             {
+                if (iteration++ > ITERATION_LIMIT)
+                {
+                    FAIL() << "Unable to create " << TMP_PATH;
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
 
             std::filesystem::create_directory(ROOT_PATH);
 
+            iteration = 0u;
+
             while (!std::filesystem::exists(ROOT_PATH))
             {
+                if (iteration++ > ITERATION_LIMIT)
+                {
+                    FAIL() << "Unable to create " << ROOT_PATH;
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
 
@@ -100,10 +142,17 @@ class StdFileSystemHelperTest : public ::testing::Test
             std::filesystem::create_directory(ROOT_PATH_2);
             std::filesystem::create_directory(ROOT_PATH_DUMMY);
 
+            iteration = 0u;
+
             while (!std::filesystem::exists(ROOT_PATH_1) ||
                     !std::filesystem::exists(ROOT_PATH_2) ||
                     !std::filesystem::exists(ROOT_PATH_DUMMY))
             {
+                if (iteration++ > ITERATION_LIMIT)
+                {
+                    FAIL() << "Unable to create " << ROOT_PATH_1 << " or " << ROOT_PATH_2 << " or " << ROOT_PATH_DUMMY;
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
 
@@ -117,11 +166,18 @@ class StdFileSystemHelperTest : public ::testing::Test
             std::filesystem::create_directory(EXPAND_PATH_3);
             std::filesystem::create_directory(EXPAND_PATH_4);
 
+            iteration = 0u;
+
             while (!std::filesystem::exists(EXPAND_PATH_1) ||
                     !std::filesystem::exists(EXPAND_PATH_2) ||
                     !std::filesystem::exists(EXPAND_PATH_3) ||
                     !std::filesystem::exists(EXPAND_PATH_4))
             {
+                if (iteration++ > ITERATION_LIMIT)
+                {
+                    FAIL() << "Unable to create " << EXPAND_PATH_1 << " or " << EXPAND_PATH_2 << " or " << EXPAND_PATH_3 << " or " << EXPAND_PATH_4;
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(FS_MS_WAIT_TIME));
             }
         }

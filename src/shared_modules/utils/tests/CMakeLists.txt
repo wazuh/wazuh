@@ -54,6 +54,7 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "threadSafeQueue_test.cpp"
     "timeHelper_test.cpp"
     "loggerHelper_test.cpp"
+    "globHelper_test.cpp"
     "main.cpp"
 )
 
