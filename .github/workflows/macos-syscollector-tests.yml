@@ -9,6 +9,9 @@ on:
         - "src/wazuh_modules/syscollector/**"
         - "src/Makefile"
 
+
+
+
 jobs:
   build:
     runs-on: macos-11
