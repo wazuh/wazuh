@@ -6,6 +6,9 @@ inputs:
     required: true
     description: "Path to validate"
     default: src/
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
 
 runs:
   using: "composite"
@@ -35,16 +38,20 @@ runs:
 
           # Check if there are errors
           if [ -s "${ERRORS_FILE}" ]; then
-            echo "Clang-format errors found"
+            echo "---------------------------------"
+            echo "FAILED: Clang-format check failed"
+            echo "---------------------------------"
             exit 1
           else
-            echo "Clang-format check passed successfully"
+            echo "---------------------------------"
+            echo "PASSED: Clang-format check passed"
+            echo "---------------------------------"
           fi
 
       # Upload errors as an artifact, when failed
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: Clang-format errors
+          name: Clang-format errors - ${{ inputs.id }}
           path: ${{ inputs.path }}/clang_format_errors.txt
           retention-days: 1

@@ -10,6 +10,9 @@ inputs:
     required: true
     description: "Path to the doxygen configuration file"
     default: src/Doxyfile
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
 
 runs:
   using: "composite"
@@ -40,17 +43,21 @@ runs:
 
           # Check if there are errors
           if [ -s "${ERRORS_FILE}" ]; then
-            echo "Documentation errors found"
+            echo "-----------------------------------------------"
+            echo "FAILED: Doxygen documentation generation failed"
+            echo "-----------------------------------------------"
             exit 1
           else
-            echo "Documentation generated successfully"
+            echo "---------------------------------------------------"
+            echo "PASSED: Doxygen documentation generated successfull"
+            echo "---------------------------------------------------"
           fi
 
       # Upload errors as an artifact, when failed
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: Doxygen errors
+          name: Doxygen errors - ${{ inputs.id }}
           path: ${{ inputs.path }}/doxygen_errors.txt
           retention-days: 1
 
