@@ -3262,7 +3262,7 @@ char * abspath(const char * path, char * buffer, size_t size) {
 }
 
 /* Return the content of a file from a given path */
-char * w_get_file_content(const char * path, int max_size) {
+char * w_get_file_content(const char * path, long max_size) {
     FILE * fp = NULL;
     char * buffer = NULL;
     long size;
@@ -3288,7 +3288,7 @@ char * w_get_file_content(const char * path, int max_size) {
 
     // Check file size limit
     if (size > max_size) {
-        mdebug1("Cannot load file '%s': it exceeds %i MiB", path, (max_size / (1024 * 1024)));
+        mdebug1("Cannot load file '%s': it exceeds %ld MiB", path, (max_size / (1024 * 1024)));
         goto end;
     }
 
@@ -3310,6 +3310,25 @@ end:
     }
 
     return buffer;
+}
+
+/* Return the pointer to a file from a given path */
+FILE * w_get_file_pointer(const char * path) {
+    FILE * fp = NULL;
+
+    // Check if path is NULL
+    if (path == NULL) {
+        mdebug1("Cannot open NULL path");
+        return NULL;
+    }
+
+    // Load file
+    if (fp = fopen(path, "r"), !fp) {
+        mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+        return NULL;
+    }
+
+    return fp;
 }
 
 /* Check if a file is gzip compressed. */

@@ -4,6 +4,79 @@ All notable changes to this project will be documented in this file.
 ## [v4.6.0]
 
 
+## [v4.5.2]
+
+
+## [v4.5.1]
+
+### Manager
+
+#### Changed
+
+- Vulnerability Detector now fetches the RHEL 5 feed URL from feed.wazuh.com by default. ([#18142](https://github.com/wazuh/wazuh/pull/18142))
+- The Vulnerability Detector CPE helper has been updated. ([#16846](https://github.com/wazuh/wazuh/pull/16846))
+
+#### Fixed
+
+- Fixed a race condition in some RBAC unit tests by clearing the SQLAlchemy mappers. ([#17866](https://github.com/wazuh/wazuh/pull/17866))
+- Fixed a bug in wazuh-analysisd that could exceed the maximum number of fields when loading a rule. ([#17490](https://github.com/wazuh/wazuh/pull/17490))
+- Fixed a race condition in wazuh-analysisd FTS list. ([#17126](https://github.com/wazuh/wazuh/pull/17126))
+- Fixed a crash in Analysisd when parsing an invalid decoder. ([#17143](https://github.com/wazuh/wazuh/pull/17143))
+- Fixed a segmentation fault in wazuh-modulesd due to duplicate Vulnerability Detector configuration. ([#17701](https://github.com/wazuh/wazuh/pull/17701))
+- Fixed Vulnerability Detector configuration for unsupported SUSE systems. ([#16978](https://github.com/wazuh/wazuh/pull/16978))
+
+### Agent
+
+#### Added
+
+- Added the `discard_regex` functionality to Inspector and CloudWatchLogs AWS integrations. ([#17748](https://github.com/wazuh/wazuh/pull/17748))
+- Added new validations for the AWS integration arguments. ([#17673](https://github.com/wazuh/wazuh/pull/17673))
+- Added native agent support for Apple silicon. ([#2224](https://github.com/wazuh/wazuh-packages/pull/2224))
+
+#### Changed
+
+- The agent for Windows now loads its shared libraries after running the verification. ([#16607](https://github.com/wazuh/wazuh/pull/16607))
+
+#### Fixed
+
+- Fixed `InvalidRange` error in Azure Storage integration when trying to get data from an empty blob. ([#17524](https://github.com/wazuh/wazuh/pull/17524))
+- Fixed a memory corruption hazard in the FIM Windows Registry scan. ([#17586](https://github.com/wazuh/wazuh/pull/17586))
+- Fixed an error in Syscollector reading the CPU frequency on Apple M1. ([#17179](https://github.com/wazuh/wazuh/pull/17179))
+- Fixed agent WPK upgrade for Windows that might leave the previous version in the Registry. ([#16659](https://github.com/wazuh/wazuh/pull/16659))
+- Fixed agent WPK upgrade for Windows to get the correct path of the Windows folder. ([#17176](https://github.com/wazuh/wazuh/pull/17176))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed `PUT /agents/upgrade_custom` endpoint to validate that the file extension is `.wpk`. ([#17632](https://github.com/wazuh/wazuh/pull/17632))
+- Fixed errors in API endpoints to get `labels` and `reports` active configuration from managers. ([#17660](https://github.com/wazuh/wazuh/pull/17660))
+
+### Ruleset
+
+#### Changed
+
+- The SCA SCA policy for Ubuntu Linux 20.04 (CIS v2.0.0) has been remade. ([#17794](https://github.com/wazuh/wazuh/pull/17794))
+
+#### Fixed
+
+- Fixed CredSSP encryption enforcement at Windows Benchmarks for SCA. ([#17941](https://github.com/wazuh/wazuh/pull/17941))
+- Fixed an inverse logic in MS Windows Server 2022 Benchmark for SCA. ([#17940](https://github.com/wazuh/wazuh/pull/17940))
+- Fixed a false positive in Windows Eventchannel rule due to substring false positive. ([#17779](https://github.com/wazuh/wazuh/pull/17779))
+- Fixed missing whitespaces in SCA policies for Windows. ([#17813](https://github.com/wazuh/wazuh/pull/17813))
+- Fixed the description of a Fortigate rule. ([#17798](https://github.com/wazuh/wazuh/pull/17798))
+
+#### Removed
+
+- Removed check 1.1.5 from Windows 10 SCA policy. ([#17812](https://github.com/wazuh/wazuh/pull/17812))
+
+### Other
+
+#### Changed
+
+- The CURL library has been updated to v7.88.1. ([#16990](https://github.com/wazuh/wazuh/pull/16990))
+
+
 ## [v4.5.0]
 
 ### Manager
@@ -53,6 +126,25 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
+#### Changed
+
+- Vulnerability Detector now fetches the NVD feed from https://feed.wazuh.com, based on the NVD API 2.0. ([#17954](https://github.com/wazuh/wazuh/pull/17954))
+  - The option `<update_from_year>` has been deprecated.
+
+#### Fixed
+
+- Fixed an error in the installation commands of the API and Framework modules when performing upgrades from sources. ([#17656](https://github.com/wazuh/wazuh/pull/17656))
+- Fixed embedded Python interpreter to remove old Wazuh packages from it. ([#18123](https://github.com/wazuh/wazuh/issues/18123))
+
+### RESTful API
+
+#### Changed
+
+- Changed API integration tests to include Nginx LB logs when tests failed. ([#17703](https://github.com/wazuh/wazuh/pull/17703))
+
+#### Fixed
+
+- Fixed error in the Nginx LB entrypoint of the API integration tests. ([#17703](https://github.com/wazuh/wazuh/pull/17703))
 
 
 ## [v4.4.5] - 2023-07-10
