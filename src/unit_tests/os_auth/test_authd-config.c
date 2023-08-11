@@ -86,7 +86,7 @@ static void test_w_authd_parse_agents_invalid_value(void **state) {
     node[1] = NULL;
 
     expect_string(__wrap__mwarn, formatted_msg,
-                 "Ignored invalid value 'invalid_value' for auth agent's 'allow_higher_versions'.");
+                 "(9001): Ignored invalid value 'invalid_value' for 'allow_higher_versions'.");
     w_authd_parse_agents(node, &config);
     assert_true(config.allow_higher_versions);
 
@@ -108,7 +108,7 @@ static void test_w_authd_parse_agents_invalid_element(void **state) {
     node[1] = NULL;
 
     expect_string(__wrap__mwarn, formatted_msg,
-                  "Invalid element in the auth agent's configuration: 'invalid_element'.");
+                  "(1230): Invalid element in the configuration: 'invalid_element'.");
     w_authd_parse_agents(node, &config);
     assert_true(config.allow_higher_versions);
 
