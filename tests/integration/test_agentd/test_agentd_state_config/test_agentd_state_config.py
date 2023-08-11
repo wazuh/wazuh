@@ -80,8 +80,6 @@ if sys.platform == WINDOWS:
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 
-print(test_metadata)
-
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_state_config(test_configuration, test_metadata, remove_state_file, set_wazuh_configuration, configure_local_internal_options,
                              truncate_monitored_files):
@@ -95,12 +93,24 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
     tier: 0
 
     parameters:
-        - configure_environment:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - remove_state_file:
+            type: fixture
+            brief: Removes wazuh-agentd.state file.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - test_case:
-            type: list
-            brief: List of tests to be performed.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
 
     assertions:
         - Verify that the 'wazuh-agentd.state' statistics file has been created.
@@ -111,10 +121,9 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
                        that includes the parameters and their expected responses.
 
     expected_output:
-        - r'interval_not_found'
-        - r'interval_not_valid'
-        - r'file_enabled'
-        - r'file_not_enabled'
+        - '.*Invalid definition for agent.state_interval.*'
+        - '.*State file is disabled.*'
+        - '.*State file updating thread started.*'
     '''
 
     control_service('stop', 'wazuh-agentd')
