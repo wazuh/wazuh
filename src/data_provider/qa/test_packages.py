@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import sys
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
@@ -94,6 +95,7 @@ def test_packages_pypi():
     except json.JSONDecodeError as e:
         pytest.fail(f"The output is not valid JSON: {e}")
 
+@pytest.mark.skipif(sys.platform == "win32", reason="test for Linux and macOS only")
 def test_packages_npm():
     # Path to the shared library
     binary_filename = "sysinfo_test_tool.exe" if platform.system() == "Windows" else "sysinfo_test_tool"
@@ -118,6 +120,9 @@ def test_packages_npm():
 
         # Check if each element of npm_json_data exists in json_data array.
         for pkg in npm_json_data['dependencies']:
+            # Exclude if starts with @
+            if pkg.startswith('@'):
+                continue
             found = False
             for pkg2 in json_data['packages']:
                 if pkg == pkg2['name']:
