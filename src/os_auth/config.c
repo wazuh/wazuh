@@ -82,6 +82,11 @@ cJSON *getAuthdConfig(void) {
     cJSON_AddItemToObject(force, "disconnected_time", disconnected_time);
     if (config.force_options.after_registration_time) cJSON_AddNumberToObject(force, "after_registration_time", config.force_options.after_registration_time);
     cJSON_AddItemToObject(auth, "force", force);
+
+    cJSON * agents = cJSON_CreateObject();
+    cJSON_AddStringToObject(agents, "allow_higher_versions", config.allow_higher_versions ? "yes" : "no");
+    cJSON_AddItemToObject(auth, "agents", agents);
+
     cJSON_AddItemToObject(root,"auth",auth);
 
     return root;
