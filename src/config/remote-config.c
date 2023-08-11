@@ -135,8 +135,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
-    logr->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
-
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);

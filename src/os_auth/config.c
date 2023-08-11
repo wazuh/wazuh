@@ -19,6 +19,7 @@ int authd_read_config(const char *path) {
     config.key_request.compatibility_flag = 0;
     config.key_request.exec_path = NULL;
     config.key_request.socket = NULL;
+    config.allow_higher_versions = AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
 
     mdebug2("Reading configuration '%s'", path);
 

@@ -89,7 +89,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->force_options.disconnected_time_enabled = true;
     config->force_options.disconnected_time = 3600;
     config->force_options.after_registration_time = 3600;
-    config->allow_higher_versions = AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
 
     short legacy_force_insert = -1;
     int legacy_force_time = -1;
