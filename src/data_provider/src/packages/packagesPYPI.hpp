@@ -67,7 +67,7 @@ class PYPI final : public TFileSystem, public TFileIO
 
                     if (!packageInfo.contains(value))
                     {
-                        packageInfo[value] = line.substr(key.length());
+                        packageInfo[value] = Utils::trim(line.substr(key.length()), "\r");
                     }
                 }
                 return true;

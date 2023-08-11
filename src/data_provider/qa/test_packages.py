@@ -95,7 +95,6 @@ def test_packages_pypi():
     except json.JSONDecodeError as e:
         pytest.fail(f"The output is not valid JSON: {e}")
 
-@pytest.mark.skipif(sys.platform == "win32", reason="test for Linux and macOS only")
 def test_packages_npm():
     # Path to the shared library
     binary_filename = "sysinfo_test_tool.exe" if platform.system() == "Windows" else "sysinfo_test_tool"
@@ -109,8 +108,13 @@ def test_packages_npm():
     output = call_binary(binary_path, "--packages")
 
     # Call npm and get the list of installed packages
-    result = subprocess.run(
-        ["npm", "list", "-g", "--json"], capture_output=True, check=False, text=True)
+    if platform.system() == "Windows":
+        result = subprocess.run(
+            ["npm", "list", "--json"], capture_output=True, check=False, text=True, shell=True)
+    else:
+        result = subprocess.run(
+            ["npm", "list", "-g","--json"], capture_output=True, check=False, text=True)
+
     npm_output = result.stdout.strip()
 
     # Compare the list of installed packages with the list from the binary
