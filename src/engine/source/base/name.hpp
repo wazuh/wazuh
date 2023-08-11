@@ -75,6 +75,19 @@ public:
     /**
      * @brief Construct a new Name object
      *
+     * @tparam Parts Parameter pack of string types
+     * @param parts Parts of the name
+     */
+    Name(std::vector<std::string>&& parts)
+    {
+        assertSize(parts.size());
+        m_parts = std::move(parts);
+    }
+
+
+    /**
+     * @brief Construct a new Name object
+     *
      * @param fullName Name string in the form <part>SEPARATOR<part>...
      * @throw std::runtime_error if the string does not have the correct format
      */
