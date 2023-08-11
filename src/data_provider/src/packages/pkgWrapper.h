@@ -189,13 +189,16 @@ class PKGWrapper final : public IPackageWrapper
                         }
                     }
 
-                    if (!bundleShortVersionString.empty() && Utils::startsWith(bundleVersion, bundleShortVersionString))
+                    if (!bundleShortVersionString.empty())
                     {
-                        m_version = bundleVersion;
-                    }
-                    else
-                    {
-                        m_version = bundleShortVersionString;
+                        if (Utils::startsWith(bundleVersion, bundleShortVersionString))
+                        {
+                            m_version = bundleVersion;
+                        }
+                        else
+                        {
+                            m_version = bundleShortVersionString;
+                        }
                     }
 
                     m_architecture = UNKNOWN_VALUE;

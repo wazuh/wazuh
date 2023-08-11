@@ -123,7 +123,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
-    EXPECT_EQ(wrapper->version(), "");
+    EXPECT_EQ(wrapper->version(), " ");
     EXPECT_EQ(wrapper->groups(), "public.app-category.productivity");
     EXPECT_EQ(wrapper->description(), "com.operasoftware.Opera");
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
