@@ -95,6 +95,7 @@ def test_packages_pypi():
     except json.JSONDecodeError as e:
         pytest.fail(f"The output is not valid JSON: {e}")
 
+@pytest.mark.skipif(sys.platform == "win32", reason="test for Linux and macOS only")
 def test_packages_npm():
     # Path to the shared library
     binary_filename = "sysinfo_test_tool.exe" if platform.system() == "Windows" else "sysinfo_test_tool"
