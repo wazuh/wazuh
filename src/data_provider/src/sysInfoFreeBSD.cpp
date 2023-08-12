@@ -241,6 +241,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             package["version"] = data[2];
             package["architecture"] = data[3];
             package["description"] = data[4];
+            package["location"] = UNKNOWN_VALUE;
             package["format"] = "pkg";
             callback(package);
         }

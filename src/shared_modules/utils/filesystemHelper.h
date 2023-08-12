@@ -22,6 +22,9 @@
 #include <sys/stat.h>
 #include <vector>
 #include <dirent.h>
+#include <algorithm>
+#include <array>
+#include "stringHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

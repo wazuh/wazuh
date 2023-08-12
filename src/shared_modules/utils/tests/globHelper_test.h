@@ -1,7 +1,7 @@
 /*
  * Wazuh shared modules utils
  * Copyright (C) 2015, Wazuh Inc.
- * October 23, 2020.
+ * Agoust 11, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,20 +9,18 @@
  * Foundation.
  */
 
-#ifndef FILESYSTEM_HELPER_TESTS_H
-#define FILESYSTEM_HELPER_TESTS_H
+#ifndef _GLOB_HELPER_TEST_H
+#define _GLOB_HELPER_TEST_H
 #include "gtest/gtest.h"
-#include "filesystemHelper.h"
-#include <thread>
 
-class FilesystemUtilsTest : public ::testing::Test
+class GlobHelperTest : public ::testing::Test
 {
     protected:
 
-        FilesystemUtilsTest() = default;
-        virtual ~FilesystemUtilsTest() = default;
+        GlobHelperTest() = default;
+        virtual ~GlobHelperTest() = default;
 
         void SetUp() override;
         void TearDown() override;
 };
-#endif //FILESYSTEM_HELPER_TESTS_H
+#endif // _GLOB_HELPER_TEST_H

@@ -14,7 +14,38 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
+include(CheckCXXSourceCompiles)
+set(CMAKE_CXX_STANDARD 17)
+#Check if std::optional is available, therefore C++17 is available
+check_cxx_source_compiles("
+    #include <optional>
+    int main() {
+        std::optional<int> o;
+        return 0;
+    }
+" HAS_OPTIONAL)
+
+if(NOT HAS_OPTIONAL AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+#Check if filesystem is available
+check_cxx_source_compiles("
+    #include <filesystem>
+    int main() {
+        std::filesystem::path p;
+        return 0;
+    }
+" HAS_FILESYSTEM)
+
+if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DHAS_STDFILESYSTEM=true)
+else()
+  add_definitions(-DHAS_STDFILESYSTEM=false)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

@@ -14,6 +14,7 @@
 
 #include "json.hpp"
 #include "rpmPackageManager.h"
+#include "sharedDefs.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -47,6 +48,7 @@ namespace PackageLinuxHelper
             ret["format"]       = "rpm";
             ret["vendor"]       = package.vendor;
             ret["description"]  = package.description;
+            ret["location"]     = UNKNOWN_VALUE;
         }
 
         return ret;
