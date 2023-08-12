@@ -292,8 +292,11 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->external_id) cJSON_AddStringToObject(subscriber,"external_id",iter->external_id);
             if (iter->iam_role_arn) cJSON_AddStringToObject(subscriber,"iam_role_arn",iter->iam_role_arn);
             if (iter->iam_role_duration) cJSON_AddStringToObject(subscriber, "iam_role_duration",iter->iam_role_duration);
+            if (iter->aws_profile) cJSON_AddStringToObject(subscriber,"aws_profile",iter->aws_profile);
             if (iter->sts_endpoint) cJSON_AddStringToObject(subscriber,"sts_endpoint",iter->sts_endpoint);
             if (iter->service_endpoint) cJSON_AddStringToObject(subscriber,"service_endpoint",iter->service_endpoint);
+            if (iter->discard_field) cJSON_AddStringToObject(subscriber,"discard_field",iter->discard_field);
+            if (iter->discard_regex) cJSON_AddStringToObject(subscriber,"discard_regex",iter->discard_regex);
             cJSON_AddItemToArray(arr_subscribers,subscriber);
         }
         if (cJSON_GetArraySize(arr_subscribers) > 0) {
@@ -752,6 +755,10 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
         wm_strcat(&command, "--iam_role_duration", ' ');
         wm_strcat(&command, exec_subscriber->iam_role_duration, ' ');
     }
+    if (exec_subscriber->aws_profile) {
+        wm_strcat(&command, "--aws_profile", ' ');
+        wm_strcat(&command, exec_subscriber->aws_profile, ' ');
+    }
     if (exec_subscriber->sts_endpoint){
         wm_strcat(&command, "--sts_endpoint", ' ');
         wm_strcat(&command, exec_subscriber->sts_endpoint, ' ');
@@ -759,6 +766,15 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     if (exec_subscriber->service_endpoint){
         wm_strcat(&command, "--service_endpoint", ' ');
         wm_strcat(&command, exec_subscriber->service_endpoint, ' ');
+    }
+
+    if (exec_subscriber->discard_field) {
+        wm_strcat(&command, "--discard-field", ' ');
+        wm_strcat(&command, exec_subscriber->discard_field, ' ');
+    }
+    if (exec_subscriber->discard_regex) {
+        wm_strcat(&command, "--discard-regex", ' ');
+        wm_strcat(&command, exec_subscriber->discard_regex, ' ');
     }
 
     if (isDebug()) {
@@ -787,7 +803,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
 
     wm_strcat(&subscriber_title, " - ", ' ');
 
-    mtdebug1(WM_AWS_LOGTAG, "Launching Security Lake Subscriber Command: %s", command);
+    mtdebug1(WM_AWS_LOGTAG, "Launching S3 Subscriber Command: %s", command);
 
     const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
 

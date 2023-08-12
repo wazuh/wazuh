@@ -294,7 +294,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             return super().process_request(command, data)
 
-    async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> Dict:
+    async def execute(self, command: bytes, data: bytes, wait_for_complete: bool = False) -> Dict:
         """Send DAPI request and wait for response.
 
         Send a distributed API request and wait for a response in command dapi_res. Methods here are the same
