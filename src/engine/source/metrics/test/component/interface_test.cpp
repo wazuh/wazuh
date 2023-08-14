@@ -3,7 +3,7 @@
 
 #include <metrics/metricsManager.hpp>
 #include <json/json.hpp>
-#include "mocks/metricsAuxiliarFunctions.hpp"
+#include "../unit/mocks/metricsAuxiliarFunctions.hpp"
 
 using namespace metricsManager;
 
