@@ -5,7 +5,7 @@
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software Foundation
-# 
+#
 #
 # Based on:
 # Center for Internet Security Red Hat Enterprise Linux 8 Benchmark v2.0.0 - 02-23-2022
@@ -116,7 +116,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/tmp\s'
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s'
+      - "c:systemctl is-enabled tmp.mount -> r:enabled|static|generated"
 
   # 1.1.2.2 Ensure nodev option set on /tmp partition. (Automated)
   - id: 31189
@@ -605,6 +606,7 @@ checks:
     condition: none
     rules:
       - 'c:mount -> r:\s/home\s && !r:usrquota'
+      - 'c:quotaon -p /home -> !r:\s/home\s && !r:quota'
 
   # 1.1.7.5 Ensure grpquota option set on /home partition. (Automated)
   - id: 31212
@@ -704,9 +706,10 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition: none
+    condition: any
     rules:
-      - "p:autofs"
+      - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
+      - "c:systemctl is-enabled autofs -> r:disabled"
 
   # 1.1.10 Disable USB Storage. (Automated)
   - id: 31217
@@ -750,7 +753,7 @@ checks:
       - soc_2: ["CC7.1"]
     condition: all
     rules:
-      - "f:/etc/yum.conf -> r:gpgcheck=1"
+      - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
       - "not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck=0"
 
   # 1.2.4 Ensure package manager repositories are configured. (Manual) - Not Implemented
@@ -1270,9 +1273,10 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:[org/gnome/login-screen]"
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-enable=true"
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-text="
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user && r:system-db:gdm && r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:[org/gnome/login-screen]"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-enable=true"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-text="
 
   # 1.8.3 Ensure last logged in user display is disabled. (Automated)
   - id: 31246
@@ -1292,8 +1296,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:[org/gnome/login-screen]"
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:disable-user-list=true"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user && r:system-db:gdm && r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:[org/gnome/login-screen]"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:disable-user-list=true"
 
   # 1.8.4 Ensure XDMCP is not enabled. (Automated)
   - id: 31247
@@ -1403,6 +1408,7 @@ checks:
     rules:
       - 'f:/etc/chrony.conf -> r:^server\s*\t*\.+|^pool\s*\t*\.+'
       - 'not c:ps -ef -> r:\.+/chronyd\s*\t*$ && !r:^\s*\t*chrony\s*\t*'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
   # 2.2.1 Ensure xinetd is not installed. (Automated)
   - id: 31253
@@ -1458,9 +1464,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:avahi-daemon"
+      - "c:rpm -q avahi -> r:^package avahi is not installed"
 
   # 2.2.4 Ensure CUPS is not installed. (Automated)
   - id: 31256
@@ -1518,9 +1524,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:named"
+      - "c:rpm -q bind -> r:^package bind is not installed"
 
   # 2.2.7 Ensure FTP Server is not installed. (Automated)
   - id: 31259
@@ -1537,9 +1543,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:vsftpd"
+      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
   # 2.2.8 Ensure VSFTP Server is not installed. (Automated)
   - id: 31260
@@ -1594,9 +1600,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:httpd"
+      - "c:rpm -q nginx -> r:^package nginx is not installed"
+      - "c:rpm -q httpd -> r:^package httpd is not installed"
 
   # 2.2.11 Ensure IMAP and POP3 server is not installed. (Automated)
   - id: 31263
@@ -1613,9 +1620,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:dovecot"
+      - "c:rpm -q dovecot -> r:^package dovecot is not installed"
+      - "c:rpm -q cyrus-imapd -> r:^package cyrus-imapd is not installed"
 
   # 2.2.12 Ensure Samba is not installed. (Automated)
   - id: 31264
@@ -1632,9 +1640,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:smb"
+      - "c:rpm -q samba -> r:^package samba is not installed"
 
   # 2.2.13 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 31265
@@ -1651,9 +1659,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:squid"
+      - "c:rpm -q squid -> r:^package squid is not installed"
 
   # 2.2.14 Ensure net-snmp is not installed. (Automated)
   - id: 31266
@@ -1670,9 +1678,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:net-snmpd"
+      - "c:rpm -q net-snmp -> r:^package net-snmp is not installed"
 
   # 2.2.15 Ensure NIS server is not installed. (Automated)
   - id: 31267
@@ -1689,9 +1697,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:ypserv"
+      - "c:rpm -q ypserv -> r:^package ypserv is not installed"
 
   # 2.2.16 Ensure telnet-server is not installed. (Automated)
   - id: 31268
@@ -1708,9 +1716,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
-      - "p:telnet-server"
+      - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
 
   # 2.2.17 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 31269
@@ -2292,9 +2300,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl status iptables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
-      - 'c:systemctl status iptables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
-      - "not p:iptables"
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
 
   # 3.4.1.3 Ensure nftables either not installed or masked with firewalld. (Automated)
   - id: 31297
@@ -2404,9 +2410,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl status iptables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
-      - 'c:systemctl status iptables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
-      - "not p:iptables"
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
 
   # 3.4.2.4 Ensure iptables are flushed with nftables. (Manual)
   - id: 31305
@@ -2473,7 +2477,28 @@ checks:
       - "c:nft list ruleset -> r:hook forward"
       - "c:nft list ruleset -> r:hook output"
 
-  # 3.4.2.7 Ensure nftables loopback traffic is configured. (Automated) - Not Implemented
+  # 3.4.2.7 Ensure nftables loopback traffic is configured. (Automated)
+  - id: 31308
+    title: "Ensure nftables loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop. IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop."
+    compliance:
+      - cis: ["3.4.2.6"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - nist_sp_800-53: ["SC-7(5)"]
+      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr 127.0.0.0/8'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip6 saddr ::1'
+
   # 3.4.2.8 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
   # 3.4.2.9 Ensure nftables default deny firewall policy. (Automated)
@@ -2568,7 +2593,7 @@ checks:
     rules:
       - 'c:systemctl status nftables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
       - 'c:systemctl status nftables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
-      - "not p:nftables"
+      - "c:rpm -q nftables -> r:^package nftables is not installed"
 
   # 3.4.3.1.3 Ensure firewalld is either not installed or masked with iptables. (Automated)
   - id: 31315
@@ -2639,7 +2664,25 @@ checks:
       - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)'
 
   # 3.4.3.2.5 Ensure iptables rules are saved. (Automated) - Not Implemented
-  # 3.4.3.2.6 Ensure iptables is enabled and active. (Automated) - Not Implemented
+  # 3.4.3.2.6 Ensure iptables is enabled and active. (Automated)
+  - id: 31321
+    title: "Ensure iptables is enabled and active."
+    description: "iptables.service is a utility for configuring and maintaining iptables."
+    rationale: "iptables.service will load the iptables rules saved in the file /etc/sysconfig/iptables at boot, otherwise the iptables rules will be cleared during a re-boot of the system."
+    remediation: "Run the following command to enable and start iptables: systemctl --now enable iptables."
+    compliance:
+      - cis: ["3.4.3.2.4"]
+      - cis_csc_v8: ["4.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - nist_sp_800-53: ["SC-7(5)"]
+      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
+      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
+      - soc_2: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled iptables -> r:^enabled"
 
   ###############################################
   # 3.4.3.3 Configure IPv6 ip6tables
@@ -2924,6 +2967,9 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b64 -S adjtimex -S settimeofday -S stime -k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b64 -S clock_settime -k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/localtime -p wa -k time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected. (Automated)
   - id: 31339
@@ -2944,6 +2990,13 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/hosts -p wa -k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network -p wa -k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network-scripts/ -p wa -k system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/sysconfig/network-scripts && r:-p wa && r:-k system-locale|key=system-locale"
 
   # 4.1.3.6 Ensure use of privileged commands are collected. (Automated) - Not Implemented
 
@@ -2963,6 +3016,10 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
 
   # 4.1.3.8 Ensure events that modify user/group information are collected. (Automated)
   - id: 31342
@@ -2981,6 +3038,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/gshadow -p wa -k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/shadow -p wa -k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/security/opasswd -p wa -k identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected. (Automated) - Not Implemented
 
@@ -2998,6 +3060,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
   # 4.1.3.11 Ensure session initiation information is collected. (Automated)
   - id: 31345
@@ -3020,6 +3084,9 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/run/utmp -p wa -k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/wtmp -p wa -k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/btmp -p wa -k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
 
   # 4.1.3.12 Ensure login and logout events are collected. (Automated)
   - id: 31346
@@ -3041,6 +3108,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/lastlog -p wa -k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/run/faillock/ -p wa -k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
+      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
 
   # 4.1.3.13 Ensure file deletion events by users are collected. (Automated)
   - id: 31347
@@ -3055,6 +3124,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
   # 4.1.3.14 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 31348
@@ -3076,6 +3147,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/selinux/ -p wa -k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /usr/share/selinux/ -p wa -k MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded. (Automated)
   - id: 31349
@@ -3187,7 +3260,7 @@ checks:
   # 4.1.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 31354
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag -e 2 forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: "Set system audit so that audit rules cannot be modified with auditctl. Setting the flag -e 2 forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings."
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the following line at the end of the file: -e 2."
     compliance:
@@ -3333,7 +3406,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:*.* @@\.+'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* @@\.+'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* action && r:target="'
+      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* @@\.+'
+      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
 
   # 4.2.1.7 Ensure rsyslog is not configured to recieve logs from a remote client. (Automated)
   - id: 31362
@@ -3429,6 +3505,25 @@ checks:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^masked"
 
   # 4.2.2.2 Ensure journald service is enabled. (Automated) - Not Implemented
+  - id: 31367
+    title: "Ensure journald service is enabled."
+    description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
+    rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
+    remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why."
+    compliance:
+      - cis: ["4.2.2.3"]
+      - cis_csc_v8: ["8.2", "8.3"]
+      - cis_csc_v7: ["6.2", "6.3", "6.4"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-7"]
+      - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
+      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - soc_2: ["A1.1"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled systemd-journald.service -> r:^static"
 
   # 4.2.2.3 Ensure journald is configured to compress large log files. (Automated)
   - id: 31368
@@ -3829,6 +3924,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
+      - "f:/etc/ssh/sshd_config -> r:loglevel"
 
   # 5.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 31389
@@ -3850,6 +3946,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled. (Automated)
   - id: 31390
@@ -3869,6 +3966,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> !r:^# && r:PermitRootLogin\s*\t*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled. (Automated)
   - id: 31391
@@ -3888,6 +3986,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> !r:^# && r:HostbasedAuthentication\s*\t*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
   - id: 31392
@@ -3907,6 +4006,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled. (Automated)
   - id: 31393
@@ -3927,6 +4027,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*\t*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled. (Automated)
   - id: 31394
@@ -3947,6 +4048,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> !r:^# && r:ignorerhosts\s*\t*yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 31395
@@ -3966,6 +4068,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*\t*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled. (Automated)
   - id: 31396
@@ -3989,6 +4092,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden. (Automated)
   - id: 31397
@@ -4048,6 +4152,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.17 Ensure SSH MaxStartups is configured. (Automated)
   - id: 31400
@@ -4093,6 +4198,7 @@ checks:
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 31402
@@ -4112,7 +4218,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
+      - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
 
   # 5.2.20 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 31403
@@ -4135,8 +4242,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare <= 3'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0 && n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare == 0'
 
   ###############################################
   # 5.3 Configure sudo
