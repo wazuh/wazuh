@@ -1,5 +1,7 @@
 - name: cloudwatch_discard_regex_json
-  description: CloudWatch discard regex configuration for JSON logs
+  description: >
+    CloudWatch configuration for an event being discarded when the regex matches
+    the content in the specified field inside the incoming JSON log
   configuration_parameters:
     SERVICE_TYPE: cloudwatchlogs
     LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
