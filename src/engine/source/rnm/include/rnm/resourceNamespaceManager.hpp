@@ -10,6 +10,18 @@
 namespace rnm
 {
 
+/**
+ * @brief Operations that can be performed on a resource of a Virtual Space.
+ */
+enum class VSOperation
+{
+    USE,   ///< Use a resources in the Virtual Space.
+    READ,  ///< Read a resources in the Virtual Space.
+    WRITE, ///< Write a resources in the Virtual Space.
+    LIST,  ///< List the resources in the Virtual Space.
+};
+
+
 using AuthFn = std::function<bool(const VSName&, const RoleName&, VSOperation)>;
 
 class ResourceNamespaceManager : public IResourceNamespaceManager
