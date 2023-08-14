@@ -1241,7 +1241,22 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     # compile regular expression only one time when function is called
     # get elements in a clause
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./: @]+)')
+    operators = ['=', '!=', '<', '>', '~']
+    re_get_elements = re.compile(
+        r"\(?" +
+        # Field name: name of the field to look on DB.
+        r"([\w]+)" +
+        # New capturing group for text after the first dot.
+        r"\.?([\w.]*)?" +
+        # Operator: looks for '=', '!=', '<', '>' or '~'.
+        rf"([{''.join(operators)}]{{1,2}})" +
+        # Value: A string.
+        r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*"
+        r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]+)"
+        r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*)+)" +
+        r"\)?"
+    )
+
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
