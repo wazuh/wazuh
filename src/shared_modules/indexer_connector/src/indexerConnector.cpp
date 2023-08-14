@@ -75,4 +75,3 @@ void IndexerConnector::publish(const std::string& message)
 {
     QUEUE_MAP[this]->push(message);
 }
-

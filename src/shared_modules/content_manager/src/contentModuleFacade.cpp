@@ -10,7 +10,7 @@
  */
 
 #include "contentModuleFacade.hpp"
-//#include "factoryDecoder.hpp"
+// #include "factoryDecoder.hpp"
 
 void ContentModuleFacade::start()
 {
@@ -85,4 +85,3 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
         std::cerr << "changeSchedulingTime: " << e.what() << std::endl;
     }
 }
-
