@@ -554,7 +554,7 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (NULL == name || NULL == version || NULL == architecture) {
+    if (NULL == name || NULL == version || NULL == architecture || NULL == format || NULL == location) {
         if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
             wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PACKAGES, item_id);
         }
