@@ -37,3 +37,17 @@ PRIVATE base)
 target_include_directories(metrics PUBLIC
 ${ENGINE_METRICS_INCLUDE_DIR}
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/unit)
+
+add_executable(metrics_test
+  ${TEST_SRC_DIR}/interface_test.cpp
+  ${TEST_SRC_DIR}/mocks/metricsAuxiliarFunctions.hpp
+)
+
+# TODO: Replace test_mocks with the metrics executable when you have the test folder available.
+target_link_libraries(metrics_test gtest_main base test_mocks)
+gtest_discover_tests(metrics_test)
+endif(ENGINE_BUILD_TEST)
