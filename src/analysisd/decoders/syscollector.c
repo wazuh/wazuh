@@ -23,12 +23,18 @@
 #include "wazuhdb_op.h"
 #include "wazuh_db/wdb.h"
 
-static int error_package = 0;
-static int prev_package_id = 0;
-static int error_port = 0;
-static int prev_port_id = 0;
-static int error_process = 0;
-static int prev_process_id = 0;
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC int error_package = 0;
+STATIC int prev_package_id = 0;
+STATIC int error_port = 0;
+STATIC int prev_port_id = 0;
+STATIC int error_process = 0;
+STATIC int prev_process_id = 0;
 
 static int decode_netinfo( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_osinfo( Eventinfo *lf, cJSON * logJSON, int *socket);
@@ -840,8 +846,8 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
         msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
 
         if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            goto end;
+            merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
+            goto end;                                   // LCOV_EXCL_LINE
         } else if (strcmp(msg_type, "network_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
@@ -856,8 +862,8 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                 goto end;
             }
         } else {
-            merror("at decode_netinfo(): unknown type found.");
-            goto end;
+            merror("at decode_netinfo(): unknown type found."); // LCOV_EXCL_LINE
+            goto end;                                           // LCOV_EXCL_LINE
         }
     }
 
@@ -1192,8 +1198,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
 
         if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            goto end;
+            merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
+            goto end;                                   // LCOV_EXCL_LINE
         } else if (strcmp(msg_type, "port_end") == 0) {
             if (error_port) {
                 if (scan_id->valueint == prev_port_id) {
@@ -1514,8 +1520,8 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
 
         if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            goto end;
+            merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
+            goto end;                                   // LCOV_EXCL_LINE
         } else if (strcmp(msg_type, "program_end") == 0) {
             if (error_package) {
                 if (scan_id->valueint == prev_package_id) {
@@ -1584,9 +1590,9 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
         msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
 
         if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
+            merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
+            free(msg);                                  // LCOV_EXCL_LINE
+            return -1;                                  // LCOV_EXCL_LINE                 
         } else if (strcmp(msg_type, "hotfix_end") == 0) {
             snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
 
@@ -1926,8 +1932,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
 
         if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            goto end;
+            merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
+            goto end;                                   // LCOV_EXCL_LINE
         } else if (strcmp(msg_type, "process_end") == 0) {
 
             if (error_process) {
