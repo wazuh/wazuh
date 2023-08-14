@@ -8,6 +8,9 @@
 
 BEGIN;
 
+/* db_version value must be the same of CVE_DB_VERSION constant, it must be updated on every schema change */
+INSERT OR IGNORE INTO VU_METADATA (KEY, VALUE) VALUES ('db_version', '1');
+
 CREATE TABLE IF NOT EXISTS AGENTS (
     AGENT_ID INT NOT NULL,
     TARGET_MAJOR TEXT,

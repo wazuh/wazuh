@@ -102,6 +102,7 @@
 #define VU_DEP_FLAG           "(5493): Dependency '%s' is installed on agent '%.3d': Version (%s) '%s' '%s'"
 #define VU_DEP_PRESCAN_START  "(5494): Starting SUSE dependency analysis for agent '%.3d'"
 #define VU_DEP_PRESCAN_FINISH "(5495): Finished SUSE dependency analysis for agent '%.3d'"
+#define VU_DB_CHANGE_SCHEMA   "(5496): DB %s was removed due schema version was changed to %s"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

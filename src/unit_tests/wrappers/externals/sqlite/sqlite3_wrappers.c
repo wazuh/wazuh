@@ -133,7 +133,12 @@ int __wrap_sqlite3_exec(__attribute__((unused)) sqlite3* db,                    
                         __attribute__((unused)) void *arg,                                  /* 1st argument to callback */
                         char **errmsg) {                                                    /* Error msg written here */
     check_expected(sql);
-    *errmsg = mock_ptr_type(char *);
+    if (errmsg) {
+        *errmsg = mock_ptr_type(char *);
+    }
+    else {
+        check_expected(errmsg);
+    }
     return mock();
 }
 

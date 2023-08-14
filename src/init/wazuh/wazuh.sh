@@ -127,7 +127,6 @@ WazuhUpgrade()
     # Remove existing SQLite databases for vulnerability-detector
 
     rm -f $PREINSTALLEDDIR/wodles/cve.db
-    rm -f $PREINSTALLEDDIR/queue/vulnerabilities/cve.db
 
     # Migrate .agent_info and .wait files before removing deprecated socket folder
 
