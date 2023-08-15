@@ -1376,7 +1376,7 @@ class WazuhDBQuery(object):
             if close_level:
                 level -= 1
 
-            if not self._pass_filter(value):
+            if not self._pass_filter(field, value):
                 op_index = len(list(filter(lambda x: field in x['field'], self.query_filters)))
                 self.query_filters.append({'value': None if value == "null" else value,
                                            'operator': self.query_operators[operator],
@@ -1406,7 +1406,7 @@ class WazuhDBQuery(object):
                                 'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
                                 'level': 0 if i == len(value) - 1 else 1}
                                for name, value in legacy_filters_as_list.items()
-                               for i, subvalue in enumerate(value) if not self._pass_filter(subvalue)]
+                               for i, subvalue in enumerate(value) if not self._pass_filter(name, subvalue)]
 
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
@@ -1588,8 +1588,9 @@ class WazuhDBQuery(object):
         return "SELECT COUNT(*) FROM ({0})"
 
     @staticmethod
-    def _pass_filter(db_filter):
-        return db_filter == "all"
+    def _pass_filter(field, value):
+        # field is used by child classes containing a field that may have a value equal to 'all'
+        return value == "all"
 
 
 class WazuhDBQueryDistinct(WazuhDBQuery):
