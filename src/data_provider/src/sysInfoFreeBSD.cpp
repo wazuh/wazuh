@@ -239,8 +239,15 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             package["name"] = data[0];
             package["vendor"] = data[1];
             package["version"] = data[2];
+            package["install_time"] = UNKNOWN_VALUE;
+            package["location"] = UNKNOWN_VALUE;
             package["architecture"] = data[3];
+            package["groups"] = UNKNOWN_VALUE;
             package["description"] = data[4];
+            package["size"] = 0;
+            package["priority"] = UNKNOWN_VALUE;
+            package["multiarch"] = UNKNOWN_VALUE;
+            package["source"] = UNKNOWN_VALUE;
             package["format"] = "pkg";
             callback(package);
         }

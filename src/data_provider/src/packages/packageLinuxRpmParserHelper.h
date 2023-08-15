@@ -41,9 +41,13 @@ namespace PackageLinuxHelper
             ret["name"]         = package.name;
             ret["size"]         = package.size;
             ret["install_time"] = package.installTime;
+            ret["location"]     = UNKNOWN_VALUE;
             ret["groups"]       = package.group;
             ret["version"]      = version;
+            ret["priority"]     = UNKNOWN_VALUE;
             ret["architecture"] = package.architecture;
+            ret["multiarch"] = UNKNOWN_VALUE;
+            ret["source"]       = UNKNOWN_VALUE;
             ret["format"]       = "rpm";
             ret["vendor"]       = package.vendor;
             ret["description"]  = package.description;

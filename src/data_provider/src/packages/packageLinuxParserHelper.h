@@ -127,6 +127,7 @@ namespace PackageLinuxHelper
             ret["source"]       = source;
             ret["version"]      = version;
             ret["format"]       = "deb";
+            ret["location"]     = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
             ret["install_time"] = UNKNOWN_VALUE;
             ret["description"]  = description;
