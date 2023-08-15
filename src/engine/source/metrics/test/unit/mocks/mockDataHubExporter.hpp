@@ -7,6 +7,7 @@
 
 class MockDataHubExporter : public metricsManager::IDataHub
 {
+public:
     MOCK_METHOD(void, setResource, (const std::string&, const json::Json&), (override));
 };
 

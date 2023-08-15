@@ -7,6 +7,7 @@
 
 class MockMetricsScope : public metricsManager::IMetricsScope
 {
+public:
     MOCK_METHOD(std::shared_ptr<metricsManager::iCounter<double>>, getCounterDouble, (const std::string&), (override));
     MOCK_METHOD(std::shared_ptr<metricsManager::iCounter<uint64_t>>, getCounterUInteger, (const std::string&), (override));
     MOCK_METHOD(std::shared_ptr<metricsManager::iCounter<double>>, getUpDownCounterDouble, (const std::string&), (override));
