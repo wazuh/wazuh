@@ -138,9 +138,9 @@ def test_debug():
     with patch('pagerduty.debug_enabled', return_value=True), \
             patch("pagerduty.open", mock_open()) as open_mock, \
             patch('pagerduty.LOG_FILE', return_value='integrations.log') as log_file:
-        pagerduty.debug(msg_template)
+        pagerduty.debug(str(msg_template))
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(msg_template)
+        open_mock().write.assert_called_with(str(msg_template) + '\n')
 
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""

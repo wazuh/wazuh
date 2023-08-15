@@ -135,7 +135,7 @@ def test_debug():
             patch('slack.LOG_FILE', return_value='integrations.log') as log_file:
         slack.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{msg_template}")
+        open_mock().write.assert_called_with(f"{msg_template}\n")
 
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""

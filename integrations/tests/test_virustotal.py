@@ -187,9 +187,9 @@ def test_debug():
     with patch('virustotal.debug_enabled', return_value=True), \
             patch("virustotal.open", mock_open()) as open_mock, \
             patch('virustotal.LOG_FILE', return_value='integrations.log') as log_file:
-        virustotal.debug(msg_template)
+        virustotal.debug(str(msg_template))
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(msg_template)
+        open_mock().write.assert_called_with(str(msg_template) + '\n')
 
 
 def test_send_msg_raise_exception():

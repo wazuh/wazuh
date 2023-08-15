@@ -62,6 +62,8 @@ cJSON *getIntegratorConfig(void) {
             }
             cJSON_AddItemToObject(cfg,"location",ids);
         }
+        cJSON_AddNumberToObject(cfg,"timeout",integrator_config[i]->timeout);
+        cJSON_AddNumberToObject(cfg,"retries",integrator_config[i]->retries);
         cJSON_AddItemToArray(integrator,cfg);
     }
 
