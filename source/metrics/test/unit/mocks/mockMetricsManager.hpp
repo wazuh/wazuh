@@ -7,6 +7,7 @@
 
 class MockMetricsManager : public metricsManager::IMetricsManager
 {
+public:
     MOCK_METHOD(void, start, (), (override));
     MOCK_METHOD(bool, isRunning, (), (override));
     MOCK_METHOD(std::shared_ptr<metricsManager::IMetricsScope>, getMetricsScope, (const std::string&, bool, int, int), (override));

@@ -7,6 +7,7 @@
 
 class MockMetricsManagerAPI : public metricsManager::IMetricsManagerAPI
 {
+public:
     MOCK_METHOD((std::variant<std::string, base::Error>), dumpCmd, (), (override));
     MOCK_METHOD(std::optional<base::Error>, enableCmd, (const std::string&, const std::string&, bool), (override));
     MOCK_METHOD((std::variant<std::string, base::Error>), getCmd, (const std::string&, const std::string&), (override));
