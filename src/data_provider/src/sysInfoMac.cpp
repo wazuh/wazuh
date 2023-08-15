@@ -12,6 +12,7 @@
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+#include "filesystemHelperMac.h"
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
@@ -24,6 +25,7 @@
 #include "ports/portImpl.h"
 #include "packages/packageFamilyDataAFactory.h"
 #include "packages/packageMac.h"
+#include "packages/pkgWrapper.h"
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
@@ -111,11 +113,11 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 pkgAnalizeDirectory =
                     [&](const std::string & directory)
                 {
-                    const auto subDirectories { Utils::enumerateDir(directory) };
+                    const auto subDirectories { Utils::enumerateDirTypeDir(directory) };
 
                     for (const auto& subDirectory : subDirectories)
                     {
-                        if ((subDirectory == ".") || (subDirectory == "..") || !Utils::existsDir(subDirectory))
+                        if ((subDirectory == ".") || (subDirectory == ".."))
                         {
                             continue;
                         }
@@ -124,7 +126,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         {
                             std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
 
-                            if (Utils::existsRegular(pathInfoPlist))
+                            try
                             {
                                 nlohmann::json jsPackage;
                                 FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
@@ -134,6 +136,10 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                                     // Only return valid content packages
                                     callback(jsPackage);
                                 }
+                            }
+                            catch (const std::exception& e)
+                            {
+                                std::cerr << e.what() << std::endl;
                             }
                         }
 
@@ -172,29 +178,32 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     }
                 };
 
-                const auto files { Utils::enumerateDir(pkgDirectory) };
+                const auto files { Utils::enumerateDirTypeRegular(pkgDirectory) };
 
                 for (const auto& file : files)
                 {
-                    if (Utils::existsRegular(file) && Utils::endsWith(file, ".plist"))
+                    if (Utils::endsWith(file, ".plist"))
                     {
                         std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
 
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
-
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
-                                !jsPackage.at("location").get_ref<const std::string&>().empty() &&
-                                !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
-                           )
+                        try
                         {
-                            // Only return valid content packages
-                            callback(jsPackage);
+                            nlohmann::json jsPackage;
+                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
+
+                            if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                                    !jsPackage.at("location").get_ref<const std::string&>().empty() &&
+                                    !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
+                               )
+                            {
+                                // Only return valid content packages
+                                callback(jsPackage);
+                            }
                         }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        std::cerr << e.what() << std::endl;
+                        catch (const std::exception& e)
+                        {
+                            std::cerr << e.what() << std::endl;
+                        }
                     }
                 }
 
@@ -271,7 +280,6 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         std::cerr << e.what() << std::endl;
                     }
                 }
-
 
                 break;
             }
