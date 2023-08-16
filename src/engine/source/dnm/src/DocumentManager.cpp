@@ -273,6 +273,8 @@ DocumentManager::DocumentManager(std::weak_ptr<IDocumentStorage> store, const st
     }
 }
 
+DocumentManager::~DocumentManager() = default;
+
 base::Name DocumentManager::virtualToRealName(const base::Name& virtualName, const NamespaceID& namespaceid) const
 {
     return m_prefix + base::Name(namespaceid) + virtualName;
@@ -427,6 +429,8 @@ std::optional<KeyType> DocumentManager::getType(const base::Name& key) const {
     {
         return KeyType::COLLECTION;
     }
+
+    return std::nullopt;
 }
 
 
