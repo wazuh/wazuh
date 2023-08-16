@@ -217,4 +217,24 @@ public:
 
 } // namespace base
 
+/* lazy std::hash specialization for base::Name */
+namespace std
+{
+template<>
+struct hash<base::Name>
+{
+    size_t operator()(const base::Name& name) const
+    {
+        std::hash<std::string> hasher;
+        size_t hashValue = 0;
+        for (const auto& part : name.parts())
+        {
+            hashValue ^= hasher(part);
+        }
+        return hashValue;
+    }
+};
+} // namespace std
+
+
 #endif // _BASE_NAME_HPP

@@ -1,170 +1,235 @@
 #include <store/store.hpp>
 
 #include <list>
+#include <set>
 
-/* lazy std::hash specialization for base::Name */
-namespace std
+namespace
 {
-template<>
-struct hash<base::Name>
+
+std::vector<base::Name>
+cutAfterName(const std::vector<base::Name>& names, const std::size_t size, const std::size_t depth = 1)
 {
-    size_t operator()(const base::Name& name) const
+    // Filter the documents that are under the name and delete duplicates
+    auto comparator = [](const base::Name& lhs, const base::Name& rhs)
     {
-        std::hash<std::string> hasher;
-        size_t hashValue = 0;
-        for (const auto& part : name.parts())
+        return lhs.parts() < rhs.parts();
+    };
+
+    std::set<base::Name, decltype(comparator)> set(comparator);
+
+    for (const auto& name : names)
+    {
+        if (name.parts().size() > size + depth)
         {
-            hashValue ^= hasher(part);
+            auto itBegin = name.parts().begin();
+            std::advance(itBegin, size);
+
+            auto itEnd = itBegin + depth;
+
+            std::vector<std::string> parts(itBegin, itEnd);
+
+            set.insert(base::Name(parts));
         }
-        return hashValue;
     }
-};
-} // namespace std
 
-constexpr std::size_t PARTS_NAMESPACE = 1;        ///< Number of parts in the namespace
-constexpr std::size_t PARTS_VIRTUAL_DOCUMENT = 3; ///< Number of parts in the virtual document
-
-namespace dnm
-{
-
-/*************************************************************************
-                       Helper functions
- *************************************************************************/
-
-// Names are valid if they are a single part.
-inline bool isNamespaceIDValid(const NamespaceID& namespaceid)
-{
-    base::Name name;
-    try
+    // Convert the set to a vector
+    std::vector<base::Name> res {};
+    res.reserve(set.size());
+    for (const auto& name : set)
     {
-        name = base::Name(namespaceid);
+        res.push_back(name);
     }
-    catch (const std::runtime_error& e)
-    {
-        return false;
-    }
-    return name.parts().size() == PARTS_NAMESPACE;
+
+    return res;
 }
 
-/*************************************************************************
- *                    Document Namespaces Manager
- ************************************************************************/
+}; // namespace
+namespace store
+{
+
 /**
- * @brief DocumentManager::DBDocNames
+ * @brief Store::DBDocNames
  *
- * This class is used to store the document names and their associated NamespaceID.
- * It is used to cache the document names and their associated NamespaceID.
+ * This class is used to store the document names and their associated NamespaceId.
+ * It is used to cache the document names and their associated NamespaceId.
  * It is NOT thread safe.
  */
-class DocumentManager::DBDocNames
+class Store::DBDocNames
 {
 private:
-    std::unordered_map<base::Name, NamespaceID> m_keyToNS;      ///< Map from document name to NamespaceID
-    std::unordered_multimap<NamespaceID, base::Name> m_nsToKey; ///< Map from NamespaceID to document names
+    std::unordered_map<base::Name, NamespaceId> m_nameToNS;       ///< Map from document name to NamespaceId
+    std::unordered_multimap<NamespaceId, base::Name> m_nsToNames; ///< Map from NamespaceId to document names
 
 public:
     DBDocNames() = default;
 
     /**
-     * @brief Retrieve the NamespaceID associated with a given document.
+     * @brief Retrieve the NamespaceId associated with a given document.
      *
-     * @param documentKey Name of the document.
-     * @return The NamespaceID if found; otherwise, std::nullopt.
+     * @param name Name of the document.
+     * @return The NamespaceId if found; otherwise, std::nullopt.
      */
-    std::optional<NamespaceID> getNamespaceID(const base::Name& documentKey) const
+    std::optional<NamespaceId> getNamespaceId(const base::Name& name) const
     {
-        auto it = m_keyToNS.find(documentKey);
-        if (it == m_keyToNS.end())
+        auto it = m_nameToNS.find(name);
+        if (it == m_nameToNS.end())
             return std::nullopt;
 
         return it->second;
     }
 
     /**
-     * @brief Retrieve the all the document keys associated with a given NamespaceID.
+     * @brief Retrieve the all the document keys associated with a given NamespaceId.
      *
-     * @param namespaceid NamespaceID to search for.
-     * @return A vector with all the document names associated with the NamespaceID.
+     * @param namespaceId NamespaceId to search for.
+     * @return A vector with all the document names associated with the NamespaceId.
      */
-    std::vector<base::Name> getDocumentKeys(const NamespaceID& namespaceid) const
+    std::vector<base::Name> getDocumentKeys(const NamespaceId& namespaceId) const
     {
-        auto range = m_nsToKey.equal_range(namespaceid);
-        std::vector<base::Name> documentKeys;
+        auto range = m_nsToNames.equal_range(namespaceId);
+        std::vector<base::Name> names;
 
-        documentKeys.reserve(std::distance(range.first, range.second));
+        names.reserve(std::distance(range.first, range.second));
         for (auto it = range.first; it != range.second; ++it)
         {
-            documentKeys.push_back(it->second);
+            names.push_back(it->second);
         }
-        return documentKeys;
+        return names;
     }
 
     /**
-     * @brief Retrieve the all NamespaceIDs.
+     * @brief Retrieve the all the document keys
      *
-     * @return A vector with all the NamespaceIDs.
      */
-    std::vector<NamespaceID> getNamespaceIDs() const
+    std::vector<base::Name> getDocumentKeys() const
     {
-        std::vector<NamespaceID> namespaceids;
-        namespaceids.reserve(m_keyToNS.size());
+        std::vector<base::Name> names;
+        names.reserve(m_nameToNS.size());
 
-        for (const auto& [name, namespaceid] : m_keyToNS)
+        for (const auto& [name, namespaceId] : m_nameToNS)
         {
-            namespaceids.push_back(namespaceid);
+            names.push_back(name);
         }
-        return namespaceids;
+        return names;
+    }
+
+    bool existsName(const base::Name& name) const { return m_nameToNS.find(name) != m_nameToNS.end(); }
+
+    bool existsPrefixName(const base::Name& prefix, bool subname = true) const
+    {
+        for (const auto& [key, value] : m_nameToNS)
+        {
+            // If is a subname, then the prefix must be smaller than the key
+            if (subname && prefix.parts().size() >= key.parts().size())
+            {
+                continue;
+            }
+            // All elements of the prefix must be equal
+            if (std::equal(prefix.parts().begin(), prefix.parts().end(), key.parts().begin()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    std::vector<base::Name> filterByPrefix(const base::Name& prefix)
+    {
+        std::vector<base::Name> names;
+
+        for (const auto& [key, value] : m_nameToNS)
+        {
+            // All elements of the prefix must be equal
+            if (std::equal(prefix.parts().begin(), prefix.parts().end(), key.parts().begin()))
+            {
+                names.push_back(key);
+            }
+        }
+        return names;
+    }
+
+    std::vector<base::Name> filterByPrefix(const base::Name& prefix, const NamespaceId& namespaceId)
+    {
+        std::vector<base::Name> names;
+
+        for (const auto& [key, value] : m_nameToNS)
+        {
+            // All elements of the prefix must be equal
+            if (value == namespaceId && std::equal(prefix.parts().begin(), prefix.parts().end(), key.parts().begin()))
+            {
+                names.push_back(key);
+            }
+        }
+        return names;
     }
 
     /**
-     * @brief Change the NamespaceID associated with a given document key.
+     * @brief Retrieve the all NamespaceIds.
      *
-     * @param documentKey Name of the document.
-     * @param namespaceid New NamespaceID to associate.
+     * @return A vector with all the NamespaceIds.
+     */
+    std::vector<NamespaceId> getNamespaceIds() const
+    {
+        std::vector<NamespaceId> namespaceIds;
+        namespaceIds.reserve(m_nameToNS.size());
+
+        for (const auto& [name, namespaceId] : m_nameToNS)
+        {
+            namespaceIds.push_back(namespaceId);
+        }
+        return namespaceIds;
+    }
+
+    /**
+     * @brief Change the NamespaceId associated with a given document key.
+     *
+     * @param name Name of the document.
+     * @param namespaceId New NamespaceId to associate.
      * @return true if successfully changed; false otherwise.
      */
-    bool changeNamespaceID(const base::Name& documentKey, const NamespaceID& namespaceid)
+    bool changeNamespaceId(const base::Name& name, const NamespaceId& namespaceId)
     {
-        auto itKeyToNS = m_keyToNS.find(documentKey);
-        if (itKeyToNS == m_keyToNS.end())
+        auto itKeyToNS = m_nameToNS.find(name);
+        if (itKeyToNS == m_nameToNS.end())
         {
             return false;
         }
-        auto oldNamespaceID = itKeyToNS->second;
-        itKeyToNS->second = namespaceid;
+        auto oldNamespaceId = itKeyToNS->second;
+        itKeyToNS->second = namespaceId;
 
-        // Remove previous association from m_nsToKey
-        auto range = m_nsToKey.equal_range(oldNamespaceID);
+        // Remove previous association from m_nsToNames
+        auto range = m_nsToNames.equal_range(oldNamespaceId);
         for (auto it = range.first; it != range.second; ++it)
         {
-            if (it->second == documentKey)
+            if (it->second == name)
             {
-                m_nsToKey.erase(it);
+                m_nsToNames.erase(it);
                 break;
             }
         }
 
-        // Add new association to m_nsToKey
-        m_nsToKey.insert({namespaceid, documentKey});
+        // Add new association to m_nsToNames
+        m_nsToNames.insert({namespaceId, name});
 
         return true;
     }
 
     /**
-     * @brief Add a new document to the namespace with an associated NamespaceID.
+     * @brief Add a new document to the namespace with an associated NamespaceId.
      *
-     * @param documentKey Name of the document.
-     * @param namespaceid NamespaceID to associate.
+     * @param name Name of the document.
+     * @param namespaceId NamespaceId to associate.
      * @return true if successfully added; false if document name already exists.
      */
-    bool add(const base::Name& documentKey, const NamespaceID& namespaceid)
+    bool add(const base::Name& name, const NamespaceId& namespaceId)
     {
-        if (m_keyToNS.find(documentKey) != m_keyToNS.end())
+        if (m_nameToNS.find(name) != m_nameToNS.end())
         {
             return false;
         }
-        m_keyToNS.insert({documentKey, namespaceid});
-        m_nsToKey.insert({namespaceid, documentKey});
+        m_nameToNS.insert({name, namespaceId});
+        m_nsToNames.insert({namespaceId, name});
 
         return true;
     }
@@ -172,419 +237,400 @@ public:
     /**
      * @brief Remove a document from the namespace.
      *
-     * @param documentKey Name of the document.
+     * @param name Name of the document.
      * @return true if successfully removed; false otherwise.
      */
-    bool del(const base::Name& documentKey)
+    bool del(const base::Name& name)
     {
-        auto itKeyToNS = m_keyToNS.find(documentKey);
-        if (itKeyToNS == m_keyToNS.end())
+        auto itKeyToNS = m_nameToNS.find(name);
+        if (itKeyToNS == m_nameToNS.end())
         {
             return false;
         }
-        auto namespaceid = itKeyToNS->second;
-        m_keyToNS.erase(itKeyToNS);
+        auto namespaceId = itKeyToNS->second;
+        m_nameToNS.erase(itKeyToNS);
 
-        // Remove association from m_nsToKey
-        auto range = m_nsToKey.equal_range(namespaceid);
+        // Remove association from m_nsToNames
+        auto range = m_nsToNames.equal_range(namespaceId);
         for (auto it = range.first; it != range.second; ++it)
         {
-            if (it->second == documentKey)
+            if (it->second == name)
             {
-                m_nsToKey.erase(it);
+                m_nsToNames.erase(it);
                 break;
             }
         }
         return true;
     }
 
-    bool existsNamespaceID(const NamespaceID& namespaceid) const
+    bool existsNamespaceId(const NamespaceId& namespaceId) const
     {
-        return m_nsToKey.find(namespaceid) != m_nsToKey.end();
+        return m_nsToNames.find(namespaceId) != m_nsToNames.end();
     }
 };
 
-DocumentManager::DocumentManager(std::weak_ptr<IDocumentStorage> store, const std::string& prefix)
-    : m_store(std::move(store))
+Store::Store(std::shared_ptr<IDriver> driver)
+    : m_driver(std::move(driver))
     , m_cache(std::make_unique<DBDocNames>())
     , m_mutex()
-    , m_prefix(prefix)
 {
 
     // Load the cache
-    auto storePtr = m_store.lock();
-    if (!storePtr)
-    {
-        throw std::runtime_error("Store is not available");
-    }
 
-    // TODO Remove 'this' of copy lambda
-    auto visitor = [&storePtr, this](const base::Name& name, const NamespaceID& nsid, auto& visitorRef) -> void
+    // TODO Remove 'this' of copy lambda (m_driver and m_store)
+    auto visitor = [this](const base::Name& name, const NamespaceId& nsid, auto& visitorRef) -> void
     {
-        const auto resultStore = storePtr->list(name);
-        if (const auto err = std::get_if<base::Error>(&resultStore))
+        // Is a document of nsid
+        if (m_driver->existsDoc(name))
         {
-            throw std::runtime_error(fmt::format("Error loading namespaces: {}", err->message));
+            // Remove the namespace from the name
+            const auto virtualNameR = realToVirtualName(name);
+            const auto& virtualName = std::get_if<base::Name>(&virtualNameR);
+            if (!virtualName)
+            {
+                throw std::runtime_error(fmt::format("Invalid document name '{}'", name.fullName()));
+            }
+
+            if (!m_cache->add(*virtualName, nsid))
+            {
+                LOG_WARNING("Document '{}' already exists in some namespace, "
+                            "namespace is not consistent, will be fixed",
+                            name.fullName());
+                // TODO update namespace in cache
+            }
+            return;
         }
 
-        const auto& list = std::get<std::list<std::pair<base::Name, KeyType>>>(resultStore);
-
-        for (const auto& [name, keyType] : list)
+        const auto result = m_driver->readCol(name);
+        if (const auto err = std::get_if<base::Error>(&result))
         {
-            switch (keyType)
-            {
-                case KeyType::DOCUMENT:
-                {
-                    if (!m_cache->add(name, nsid))
-                    {
-                        LOG_WARNING("Document '{}' already exists in some namespace, "
-                                    "namespace is not consistent, will be fixed",
-                                    name.fullName());
-                        // TODO update namespace in cache
-                    }
-                    break;
-                }
-                case KeyType::COLLECTION: visitorRef(name, nsid, visitorRef); break;
-                default: throw std::runtime_error("Invalid key type");
-            }
+            throw std::runtime_error(fmt::format("Error loading collection '{}': {}", name.fullName(), err->message));
+        }
+
+        const auto& list = std::get<Col>(result);
+        for (const auto& subname : list)
+        {
+            visitorRef(subname, nsid, visitorRef);
         }
     };
 
     // Get all namespaces and load the cache
-    const auto namespaces = storePtr->list(m_prefix);
+    const auto namespaces = m_driver->readRoot();
 
     if (const auto err = std::get_if<base::Error>(&namespaces))
     {
         throw std::runtime_error(fmt::format("Error loading namespaces: {}", err->message));
     }
 
-    const auto& list = std::get<std::list<std::pair<base::Name, KeyType>>>(namespaces);
-    for (const auto& [name, keyType] : list)
+    const auto& list = std::get<Col>(namespaces);
+    for (const auto& name : list)
     {
-        if (keyType == KeyType::COLLECTION)
+        if (name.parts().size() == NamespaceId::PARTS_NAMESPACE_SIZE && m_driver->existsCol(name))
         {
-            visitor(name, NamespaceID(name.parts().back()), visitor);
+            visitor(name, NamespaceId(name.parts().back()), visitor);
             LOG_DEBUG("Loaded namespace '{}'", name.fullName());
         }
         else
         {
-            throw std::runtime_error("Inconsist collection");
+            throw std::runtime_error(fmt::format("Invalid namespace '{}', part size: {}, is collection: {}",
+                                                 name.fullName(),
+                                                 name.parts().size(),
+                                                 m_driver->existsCol(name)));
         }
     }
 }
 
-DocumentManager::~DocumentManager() = default;
+Store::~Store() = default;
 
-base::Name DocumentManager::virtualToRealName(const base::Name& virtualName, const NamespaceID& namespaceid) const
+base::Name Store::virtualToRealName(const base::Name& virtualName, const NamespaceId& namespaceId) const
 {
-    return m_prefix + base::Name(namespaceid) + virtualName;
+    return namespaceId.name() + virtualName;
 }
 
-std::optional<base::Name> DocumentManager::realToVirtualName(const base::Name& realKey) const
+base::RespOrError<base::Name> Store::realToVirtualName(const base::Name& realName) const
 {
     // Remove de prefix
-    const auto& partsRN = realKey.parts();
-    const auto& partsPrefix = m_prefix.parts();
+    const auto& partsRN = realName.parts();
 
     // The realname must have more parts than the prefix + namespace
-    if (partsPrefix.size() + PARTS_NAMESPACE < partsRN.size() && std::equal(partsPrefix.begin(), partsPrefix.end(), partsRN.begin()))
+    if (partsRN.size() < NamespaceId::PARTS_NAMESPACE_SIZE)
     {
-        auto it = partsRN.begin() + partsPrefix.size();
-        if (it != partsRN.end())
-        {
-            auto nsnameStr = *it;
-            // Check if the VSName is valid
-            if (!isNamespaceIDValid(nsnameStr))
-            {
-                return std::nullopt;
-            }
-            // Remove the VSName from the real name
-            it++;
-            return base::Name (std::vector<std::string>(it, partsRN.end()));
-        }
+        return base::Error {"Invalid real name, too short"};
     }
 
-    return std::nullopt;
+    // Delete the namespace
+    auto it = partsRN.begin();
+    std::advance(it, NamespaceId::PARTS_NAMESPACE_SIZE);
+
+    return base::Name(std::vector<std::string>(it, partsRN.end()));
 }
 
 //----------------------------------------------------------------------------------------
 //                                Read interface definition
 //----------------------------------------------------------------------------------------
 
-std::optional<NamespaceID> DocumentManager::getNamespace(const base::Name& documentKey) const
+std::optional<NamespaceId> Store::getNamespace(const base::Name& name) const
 {
-    // If the document is a collection, then it does not have a NamespaceID
+    // If the document is a collection, then it does not have a NamespaceId
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-    return m_cache->getNamespaceID(documentKey);
+    return m_cache->getNamespaceId(name);
 }
 
-std::variant<json::Json, base::Error> DocumentManager::getDocument(const base::Name& documentKey) const
+base::RespOrError<Doc> Store::readDoc(const base::Name& name) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
     // Check if the document exists
-    const auto& namespaceid = m_cache->getNamespaceID(documentKey);
-    if (!namespaceid)
+    const auto& namespaceId = m_cache->getNamespaceId(name);
+    if (!namespaceId)
     {
         return base::Error {"Document does not exist"};
     }
 
-    // Get the document from the store
-    auto store = m_store.lock();
-    if (!store)
-    {
-        return base::Error {"Store is not available"};
-    }
-
     // Transform the virtual name to the real name
-    const auto name = virtualToRealName(documentKey, *namespaceid);
+    const auto rname = virtualToRealName(name, *namespaceId);
 
-    return store->read(name);
+    return m_driver->readDoc(rname);
 }
 
-
- std::vector<NamespaceID> DocumentManager::listNamespaces() const {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-    return m_cache->getNamespaceIDs();
-}
-
-std::optional<std::vector<base::Name>> DocumentManager::listDocuments(const NamespaceID& namespaceid) const
+std::vector<NamespaceId> Store::listNamespaces() const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-    auto res = m_cache->getDocumentKeys(namespaceid);
-    return res.empty() ? std::nullopt : std::make_optional(std::move(res));
+    return m_cache->getNamespaceIds();
 }
 
-
-std::optional<std::vector<std::pair<base::Name, KeyType>>> DocumentManager::list(const base::Name& key, const NamespaceID& namespaceID) const
+base::RespOrError<Col> Store::readCol(const base::Name& name, const NamespaceId& namespaceId) const
 {
-    // Get all namespaces
+    // Get all documents in the namespace
     std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto res = m_cache->filterByPrefix(name, namespaceId);
 
-    // Check if the namespace exists
-    if (!m_cache->existsNamespaceID(namespaceID))
+    if (res.empty())
     {
-        return std::nullopt;
+        return m_cache->existsNamespaceId(namespaceId) ? base::Error {"Namespace does not exist"}
+                                                       : base::Error {"Collection does not exist in namespace"};
     }
 
-    // Transform the virtual name to the real name
-    const auto name = virtualToRealName(key, namespaceID);
-
-    // List the keys
-    auto store = m_store.lock();
-    if (!store)
-    {
-        return std::nullopt;
-    }
-
-    auto result = store->list(name);
-    if (const auto err = std::get_if<base::Error>(&result))
-    {
-        return std::nullopt;
-    }
-
-    // Delete the prefix from the keys
-    const auto& list = std::get<std::list<std::pair<base::Name, KeyType>>>(result);
-    auto res = std::vector<std::pair<base::Name, KeyType>>{};
-    for (auto& [name, keyType] : list)
-    {
-        res.emplace_back(realToVirtualName(name).value(), keyType);
-    }
-
-    return res.size() == 0 ? std::nullopt : std::make_optional(std::move(res));
+    // Remove subnamespaces
+    return cutAfterName(res, name.parts().size());
 }
 
-std::optional<std::vector<std::pair<base::Name, KeyType>>> DocumentManager::list(const base::Name& key) const
+base::RespOrError<Col> Store::readCol(const base::Name& name) const
 {
-    // Get all namespaces
-    auto namespaces = listNamespaces();
+    // Get all documents
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto res = m_cache->filterByPrefix(name);
 
-    // List all keys
-    auto res = std::vector<std::pair<base::Name, KeyType>>{};
-
-    for (const auto& namespaceid : namespaces)
+    if (res.empty())
     {
-        auto listRes = list(key, namespaceid);
-        if (listRes)
-        {
-            res.insert(res.end(), listRes->begin(), listRes->end());
-        }
+        return base::Error {"Collection does not exist"};
     }
 
-    return res.size() == 0 ? std::nullopt : std::make_optional(std::move(res));
+    // Remove subnamespaces
+    return cutAfterName(res, name.parts().size());
 }
 
-std::optional<KeyType> DocumentManager::getType(const base::Name& key) const {
-
-    // Check if the key is document (if it has a namespace)
-    auto namespaceid = getNamespace(key);
-    if (namespaceid)
-    {
-        return KeyType::DOCUMENT;
-    }
-
-    // Check if the key is a collection
-    auto listRes = list(key);
-    if (listRes)
-    {
-        return KeyType::COLLECTION;
-    }
-
-    return std::nullopt;
+bool Store::exists(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    return m_cache->existsPrefixName(name, false);
 }
 
+bool Store::existsDoc(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    return m_cache->existsName(name);
+}
+
+bool Store::existsCol(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    return m_cache->existsPrefixName(name);
+}
 
 //----------------------------------------------------------------------------------------
 //                                Write interface definition
 //----------------------------------------------------------------------------------------
 
-std::optional<base::Error>
-DocumentManager::add(const base::Name& key, const json::Json& document, const NamespaceID& namespaceID)
+base::OptError Store::createDoc(const base::Name& name, const NamespaceId& namespaceId, const Doc& content)
 {
 
     // Check if the document already exists
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    if (m_cache->getNamespaceID(key))
+    if (m_cache->existsName(name))
     {
         return base::Error {"Document already exists"};
     }
 
-    // Check if the namespace is valid
-    if (!isNamespaceIDValid(namespaceID))
-    {
-        return base::Error {"Invalid namespace name"};
-    }
+    auto rName = virtualToRealName(name, namespaceId);
 
-    // Add the document to the store
-    auto store = m_store.lock();
-    if (!store)
-    {
-        return base::Error {"Store is not available"};
-    }
-    auto name = virtualToRealName(key, namespaceID);
-    auto error = store->write(name, document);
-
-    // Check if error
+    auto error = m_driver->createDoc(rName, content);
     if (error)
     {
         return error;
     }
 
-    // Add the document to the cache
-    if (!m_cache->add(key, namespaceID))
-    {
-        LOG_WARNING("Document '{}' already exists in some namespace, "
-                    "namespace is not consistent, will be fixed",
-                    key.fullName());
-        return base::Error {"Document already exists"};
-    }
-
+    m_cache->add(name, namespaceId);
     return std::nullopt;
 }
 
-std::optional<base::Error>
-DocumentManager::update(const base::Name& key, const json::Json& document)
+base::OptError Store::updateDoc(const base::Name& name, const Doc& content)
 {
     // Shared lock because we only read the cache here
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-
-    // Check if the document exists
-    const auto& namespaceid = m_cache->getNamespaceID(key);
-    if (!namespaceid)
+    auto namespaceId = m_cache->getNamespaceId(name);
+    if (!namespaceId)
     {
         return base::Error {"Document does not exist"};
     }
 
-    // Update the document in the store
-    auto store = m_store.lock();
-    if (!store)
-    {
-        return base::Error {"Store is not available"};
-    }
-
-    auto name = virtualToRealName(key, *namespaceid);
-    return store->update(name, document);
+    // update the document
+    auto rName = virtualToRealName(name, *namespaceId);
+    return m_driver->updateDoc(rName, content);
 }
 
-std::optional<base::Error>
-DocumentManager::upsert(const base::Name& key, const json::Json& document, const NamespaceID& namespaceID)
+base::OptError Store::upsertDoc(const base::Name& name, const NamespaceId& namespaceId, const Doc& content)
 {
 
-    // Check if the namespace is valid
-    if (!isNamespaceIDValid(namespaceID))
-    {
-        return base::Error {"Invalid namespace name"};
-    }
-
-    // Get the store
-    auto store = m_store.lock();
-    if (!store)
-    {
-        return base::Error {"Store is not available"};
-    }
-
-    // Resolve the realName
-    auto name = virtualToRealName(key, namespaceID);
-
-    // Check if the document already exists
     std::unique_lock<std::shared_mutex> lock(m_mutex);
+    auto namespaceIdCache = m_cache->getNamespaceId(name);
 
-    // Update
-    if (auto namespaceName = m_cache->getNamespaceID(key))
+    if (namespaceIdCache && namespaceIdCache != namespaceId)
     {
-        // Check if the namespace is the same
-        if (*namespaceName != namespaceID)
-        {
-            return base::Error {"Document already exists in another namespace"};
-        }
-
-        // Update the document
-        return store->update(name, document);
+        return base::Error {"Document already exists in another namespace"};
     }
 
-    auto error = store->write(name, document);
-
-    // Check if error
-    if (error )
+    auto rName = virtualToRealName(name, namespaceId);
+    auto error = m_driver->upsertDoc(rName, content);
+    if (error)
     {
         return error;
     }
 
-    // Add the document to the cache
-    if (!m_cache->add(key, namespaceID))
+    if (!namespaceIdCache)
     {
-        LOG_WARNING("Document '{}' already exists in some namespace, "
-                    "namespace is not consistent, will be fixed",
-                    key.fullName());
-        return base::Error {"Document already exists"};
+        m_cache->add(name, namespaceId);
     }
 
     return std::nullopt;
 }
 
-std::optional<base::Error> DocumentManager::remove(const base::Name& key)
+base::OptError Store::deleteDoc(const base::Name& name)
 {
 
     std::unique_lock<std::shared_mutex> lock(m_mutex);
 
     // Check if the document exists
-    const auto& namespaceid = m_cache->getNamespaceID(key);
-    if (!namespaceid)
+    const auto& namespaceId = m_cache->getNamespaceId(name);
+    if (!namespaceId)
     {
         return base::Error {"Document does not exist"};
     }
 
-    // Delete the document from the store
-    auto store = m_store.lock();
-    if (!store)
+    auto rName = virtualToRealName(name, *namespaceId);
+
+    auto error = m_driver->deleteDoc(rName);
+    if (error)
     {
-        return base::Error {"Store is not available"};
+        return error;
     }
 
-    auto name = virtualToRealName(key, *namespaceid);
+    m_cache->del(name);
 
-    return store->remove(name);
+    return std::nullopt;
 }
 
+base::OptError Store::deleteCol(const base::Name& name, const NamespaceId& namespaceId)
+{
 
-} // namespace dnm
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    // Check if the namespace exists
+    if (!m_cache->existsNamespaceId(namespaceId))
+    {
+        return base::Error {"Namespace does not exist"};
+    }
+
+    // Check if the collection exists
+    auto filteredDocs = m_cache->filterByPrefix(name, namespaceId);
+    if (filteredDocs.empty())
+    {
+        return base::Error {"Collection does not exist"};
+    }
+
+    // Delete all documents in the collection
+    // Acumuulate the errors
+    std::vector<base::Error> errors;
+    for (const auto& vName : filteredDocs)
+    {
+        auto rName = virtualToRealName(vName, namespaceId);
+        auto error = m_driver->deleteDoc(rName);
+        if (error)
+        {
+            errors.push_back(error.value());
+        }
+        else
+        {
+            m_cache->del(vName);
+        }
+    }
+
+    // If there are errors, concatenate them
+    if (!errors.empty())
+    {
+        std::string message;
+        for (const auto& error : errors)
+        {
+            message += error.message + "\n";
+        }
+        return base::Error {message};
+    }
+
+    return std::nullopt;
+}
+
+base::OptError Store::deleteCol(const base::Name& name)
+{
+
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    // Check if the collection exists
+    auto filteredDocs = m_cache->filterByPrefix(name);
+    if (filteredDocs.empty())
+    {
+        return base::Error {"Collection does not exist"};
+    }
+
+    // Delete all documents in the collection
+    // Acumuulate the errors
+    std::vector<base::Error> errors;
+    for (const auto& vName : filteredDocs)
+    {
+        auto namespaceId = m_cache->getNamespaceId(vName);
+        auto rName = virtualToRealName(vName, namespaceId.value());
+        auto error = m_driver->deleteDoc(rName);
+        if (error)
+        {
+            errors.push_back(error.value());
+        }
+        else
+        {
+            m_cache->del(vName);
+        }
+    }
+
+    // If there are errors, concatenate them
+    if (!errors.empty())
+    {
+        std::string message;
+        for (const auto& error : errors)
+        {
+            message += error.message + "\n";
+        }
+        return base::Error {message};
+    }
+
+    return std::nullopt;
+}
+
+} // namespace store
