@@ -33,6 +33,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_INVALID_ACTION_FOR_MANAGER] = "Action not available for Manager (agent 000)",
     [WM_UPGRADE_AGENT_IS_NOT_ACTIVE] = "Agent is not active",
     [WM_UPGRADE_SYSTEM_NOT_SUPPORTED] = "The WPK for this platform is not available",
+    [WM_UPGRADE_ARCH_NOT_SUPPORTED] = "The WPK for this architecture is not available",
     [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
     [WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED] = "Remote upgrade is not available for this agent version",
     [WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT] = "Current agent version is greater or equal",

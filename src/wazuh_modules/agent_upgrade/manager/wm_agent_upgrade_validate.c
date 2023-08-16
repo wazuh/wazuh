@@ -82,6 +82,11 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
             }
         }
 
+        // Show an error message when upgrade a macOS (arm64) agent using an intel64 WPK package
+        if (!strcmp(platform, "darwin") && !strcmp(arch, "arm64")) {
+            return_code = WM_UPGRADE_ARCH_NOT_SUPPORTED;
+        }
+
         // Whitelist for OS platforms with 'rolling' version
         rolling_platforms_len = array_size(rolling_platforms);
         for(platforms_it = 0; platforms_it < rolling_platforms_len; ++platforms_it) {
