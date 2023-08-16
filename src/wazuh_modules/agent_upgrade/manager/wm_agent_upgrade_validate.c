@@ -83,8 +83,10 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
         }
 
         // Show an error message when upgrade a macOS (arm64) agent using an intel64 WPK package
-        if (!strcmp(platform, "darwin") && !strcmp(arch, "arm64")) {
-            return_code = WM_UPGRADE_ARCH_NOT_SUPPORTED;
+        if (arch) {
+            if (!strcmp(platform, "darwin") && !strcmp(arch, "arm64")) {
+                return_code = WM_UPGRADE_ARCH_NOT_SUPPORTED;
+            }
         }
 
         // Whitelist for OS platforms with 'rolling' version
