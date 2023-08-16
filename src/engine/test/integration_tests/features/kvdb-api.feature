@@ -35,3 +35,8 @@ Feature: KVDB API functionality
     And I have already added a key-value pair to the database "TestDB" with the key "dummy" and value "dummyValue"
     When I send a DELETE request to remove from the database "TestDB" the key named "dummy"
     Then I should receive a success response indicating that the key-value pair with the key has been deleted
+
+  Scenario: Search prefix using API
+    When I add in the database "TestDB" 1 key-value pairs with the key called "genericKey"_id and another 2 key-value pairs with the key called "otherGenericKey"_id
+    AND I send a SEARCH request to search by the prefix "other" in database "TestDB"
+    Then I should receive a list of entries with the 2 key-value pairs whose keyname contains the prefix.
