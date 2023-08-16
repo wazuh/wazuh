@@ -2,6 +2,8 @@
 #include <dnm/DocumentManager.hpp>
 #include <dnm/docStorage/fileDriver.hpp>
 
+#include <random>
+
 #include <gtest/gtest.h>
 
 #include "common.hpp"
@@ -28,13 +30,15 @@ std::list<std::pair<base::Name, dnm::KeyType>> sort(const std::list<std::pair<ba
 class FileDocStorageTest : public ::testing::Test
 {
 protected:
-    const std::string testDir = "/tmp/fileDriverTest";
+    std::string testDir = "/tmp/fileDriverTest_";
     const base::Name testKey = "testKey";
     const json::Json testJson {R"({"foo": "bar"})"};
 
     void SetUp() override
     {
         initLogging();
+        // Random folder name
+        testDir += std::to_string(std::rand());
         std::filesystem::create_directories(testDir);
     }
 
