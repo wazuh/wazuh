@@ -74,6 +74,11 @@ public:
     base::RespOrError<Col> readCol(const base::Name& name) const override;
 
     /**
+     * @copydoc IDriver::readCol
+     */
+    base::RespOrError<Col> readRoot() const override;
+
+    /**
      * @copydoc IDriver::deleteCol
      */
     base::OptError deleteCol(const base::Name& name) override;
