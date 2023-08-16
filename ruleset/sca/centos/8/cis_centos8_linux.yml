@@ -727,22 +727,7 @@ checks:
       - "c:modprobe -n -v usb-storage -> r:install /bin/true"
       - "not c:lsmod -> r:usb-storage"
 
-  # 1.2.1 Ensure GPG keys are configured. (Manual)
-  - id: 31217
-    title: "Ensure GPG keys are configured."
-    description: "The RPM Package Manager implements GPG key signing to verify package integrity during and after installation."
-    rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system. To this end, verify that GPG keys are configured correctly for your system."
-    remediation: "Update your package manager GPG keys in accordance with site policy."
-    compliance:
-      - cis: ["1.2.1"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
+  # 1.2.1 Ensure GPG keys are configured. (Manual) - Not Implemented
 
   # 1.2.2 Ensure gpgcheck is globally activated. (Automated)
   - id: 31218
@@ -758,25 +743,12 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/dnf/dnf.conf -> r:^gpgcheck\s*\t*=\s*\t*1'
+      - 'not d:/etc/yum.repos.d/ -> r:\.+ -> r:gpgcheck=0'
 
-  # 1.2.3 Ensure package manager repositories are configured. (Manual)
-  - id: 31219
-    title: "Ensure package manager repositories are configured."
-    description: "Systems need to have the respective package manager repositories configured to ensure that the system is able to receive the latest patches and updates."
-    rationale: "If a system's package repositories are misconfigured, important patches may not be identified or a rogue repository could introduce compromised software."
-    remediation: "Configure your package manager repositories according to site policy."
-    compliance:
-      - cis: ["1.2.3"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
+  # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
 
   # 1.3.1 Ensure AIDE is installed. (Automated)
   - id: 31220
@@ -797,8 +769,9 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q aide -> r:aide-"
 
   # 1.3.2 Ensure filesystem integrity is regularly checked. (Automated)
   - id: 31221
@@ -820,8 +793,11 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - "c:systemctl status aidecheck.timer -> r:active"
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
   - id: 31222
@@ -841,8 +817,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password'
 
   # 1.4.2 Ensure permissions on bootloader config are configured. (Automated)
   - id: 31223
@@ -861,8 +839,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub2/grubenv -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.3 Ensure authentication is required when booting into rescue mode. (Automated)
   - id: 31224
@@ -878,10 +858,12 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/usr/lib/systemd/system/rescue.service -> r: systemd-sulogin-shell"
+      - 'd:/etc/systemd/system/rescue.service.d/ -> r:\.+ -> r: systemd-sulogin-shell'
 
-  # 1.5 Additional Process Hardening 1.5.1 Ensure core dump storage is disabled. (Automated)
+  # 1.5.1 Ensure core dump storage is disabled. (Automated)
   - id: 31225
     title: "Additional Process Hardening 1.5.1 Ensure core dump storage is disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
@@ -891,8 +873,9 @@ checks:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
       - cis: ["1.5"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
 
   # 1.5.2 Ensure core dump backtraces are disabled. (Automated)
   - id: 31226
@@ -904,8 +887,9 @@ checks:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
       - cis: ["1.5.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Automated)
   - id: 31227
@@ -920,8 +904,11 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'd:/etc/sysctl.d/ -> r:\.+ -> r:^\s*kernel.randomize_va_space\s*=\s*2'
 
   # 1.6.1.1 Ensure SELinux is installed. (Automated)
   - id: 31228
@@ -940,8 +927,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q libselinux -> r:libselinux-"
 
   # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration. (Automated)
   - id: 31229
@@ -961,8 +949,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
 
   # 1.6.1.3 Ensure SELinux policy is configured. (Automated)
   - id: 31230
@@ -981,8 +970,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
   # 1.6.1.4 Ensure the SELinux mode is not disabled. (Automated)
   - id: 31231
@@ -1003,8 +994,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:getenforce -> r:^Enforcing$|^Permissive$"
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permisive'
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
   - id: 31232
@@ -1025,8 +1018,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:getenforce -> r:^Enforcing$"
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
   # 1.6.1.6 Ensure no unconfined services exist. (Automated)
   - id: 31233
@@ -1045,8 +1040,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "not c:ps -eZ -> r:unconfined_service_t"
 
   # 1.6.1.7 Ensure SETroubleshoot is not installed. (Automated)
   - id: 31234
@@ -1063,8 +1059,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:rpm -qa setroubleshoot -> r:^setroubleshoot"
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
   - id: 31235
@@ -1081,8 +1078,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:rpm -qa mcstrans -> r:^mcstrans"
 
   # 1.7.1 Ensure message of the day is configured properly. (Automated)
   - id: 31236
@@ -1100,8 +1098,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.2 Ensure local login warning banner is configured properly. (Automated)
   - id: 31237
@@ -1119,8 +1118,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.3 Ensure remote login warning banner is configured properly. (Automated)
   - id: 31238
@@ -1138,8 +1138,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 31239
@@ -1158,8 +1159,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.5 Ensure permissions on /etc/issue are configured. (Automated)
   - id: 31240
@@ -1178,8 +1180,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured. (Automated)
   - id: 31241
@@ -1198,8 +1201,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.8.1 Ensure GNOME Display Manager is removed. (Manual)
   - id: 31242
@@ -1219,8 +1223,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "f:rpm -q gdm -> r:is not installed"
 
   # 1.8.2 Ensure GDM login banner is configured. (Automated)
   - id: 31243
@@ -1238,8 +1243,14 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
 
   # 1.8.3 Ensure last logged in user display is disabled. (Automated)
   - id: 31244
@@ -1257,8 +1268,13 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:disable-user-list=true'
 
   # 1.8.4 Ensure XDMCP is not enabled. (Automated)
   - id: 31245
@@ -1277,8 +1293,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.8.5 Ensure automatic mounting of removable media is disabled. (Automated)
   - id: 31246
@@ -1296,8 +1313,9 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: all
     rules:
+      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:^false"
 
   # 1.9 Ensure updates, patches, and additional security software are installed. (Manual)
   - id: 31247
@@ -1313,8 +1331,9 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
 
   # 1.10 Ensure system-wide crypto policy is not legacy. (Automated)
   - id: 31248
@@ -1335,8 +1354,9 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/crypto-policies/config -> r:^\s*LEGACY'
 
   # 2.1.1 Ensure time synchronization is in use. (Automated)
   - id: 31249
@@ -1354,8 +1374,9 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q chrony -> r:^chrony-"
 
   # 2.1.2 Ensure chrony is configured. (Automated)
   - id: 31250
@@ -1373,8 +1394,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/chrony.conf"
+      - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
   # 2.2.1 Ensure xinetd is not installed. (Automated)
   - id: 31251
