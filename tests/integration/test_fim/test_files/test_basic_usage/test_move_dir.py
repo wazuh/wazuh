@@ -52,3 +52,6 @@ def test_move_dir(test_configuration, test_metadata, set_wazuh_configuration, co
     wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+
+    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+    assert wazuh_log_monitor.callback_result
