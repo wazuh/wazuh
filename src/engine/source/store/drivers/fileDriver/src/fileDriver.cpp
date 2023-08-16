@@ -3,29 +3,30 @@
 #include <fmt/format.h>
 #include <logging/logging.hpp>
 
-namespace store
+namespace store::drivers
 {
 FileDriver::FileDriver(const std::filesystem::path& path, bool create)
 {
-    LOG_DEBUG("Engine file driver: '{}' method: create={}.", __func__, create ? "TRUE" : "FALSE");
-    if (create)
+    LOG_DEBUG("Engine file driver init with path '{}' and create '{}'.", path.string(), create);
+
+    // Check path validity
+    if (!std::filesystem::exists(path))
     {
-        if (!std::filesystem::create_directories(path))
+        if (create)
         {
-            throw std::runtime_error(fmt::format("Path '{}' cannot be created", path.string()));
+            if (!std::filesystem::create_directories(path))
+            {
+                throw std::runtime_error(fmt::format("Path '{}' cannot be created", path.string()));
+            }
         }
-    }
-    else
-    {
-        // Check path validity
-        if (!std::filesystem::exists(path))
+        else
         {
             throw std::runtime_error(fmt::format("Path '{}' does not exist", path.string()));
         }
-        if (!std::filesystem::is_directory(path))
-        {
-            throw std::runtime_error(fmt::format("Path '{}' is not a directory", path.string()));
-        }
+    }
+    if (!std::filesystem::is_directory(path))
+    {
+        throw std::runtime_error(fmt::format("Path '{}' is not a directory", path.string()));
     }
 
     m_path = path;
@@ -42,60 +43,19 @@ std::filesystem::path FileDriver::nameToPath(const base::Name& name) const
     return path;
 }
 
-std::optional<base::Error> FileDriver::del(const base::Name& name)
+base::OptError FileDriver::createDoc(const base::Name& name, const Doc& content)
 {
-    std::optional<base::Error> error = std::nullopt;
+    auto error = base::noError();
     auto path = nameToPath(name);
 
-    LOG_DEBUG("Engine file driver: '{}' method: File '{}'.", __func__, name.fullName());
-
-    if (!std::filesystem::exists(path))
-    {
-        error = base::Error {fmt::format("File '{}' does not exist", path.string())};
-    }
-    else
-    {
-
-        std::error_code ec;
-        if (!std::filesystem::remove_all(path, ec))
-        {
-            error = base::Error {
-                fmt::format("File '{}' could not be removed: ({}) {}", path.string(), ec.value(), ec.message())};
-        }
-
-        // Remove empty parent directories
-        bool next = true;
-        for (path = path.parent_path(); next && path != m_path && std::filesystem::is_empty(path);
-             path = path.parent_path())
-        {
-            if (!std::filesystem::remove(path, ec))
-            {
-                error = base::Error {fmt::format(
-                    "File '{}' was successfully removed but its parent directory '{}' could not be removed: ({}) {}",
-                    name.fullName(),
-                    path.string(),
-                    ec.value(),
-                    ec.message())};
-                next = false;
-            }
-        }
-    }
-    return error;
-}
-
-std::optional<base::Error> FileDriver::add(const base::Name& name, const json::Json& content)
-{
-    std::optional<base::Error> error = std::nullopt;
-    auto path = nameToPath(name);
-
-    LOG_DEBUG(
-        "Engine file driver: '{}' method: File '{}'. Content: '{}'.", __func__, name.fullName(), content.prettyStr());
+    LOG_DEBUG("FileDriver createDoc name: '{}'.", name.fullName());
+    LOG_TRACE("FileDriver createDoc content: '{}'.", content.prettyStr());
 
     auto duplicateError = content.checkDuplicateKeys();
     if (duplicateError)
     {
         error = base::Error {
-            fmt::format("File '{}' has duplicate keys: {}", name.fullName(), duplicateError.value().message)};
+            fmt::format("Content '{}' has duplicate keys: {}", name.fullName(), duplicateError.value().message)};
     }
     else if (std::filesystem::exists(path))
     {
@@ -125,42 +85,32 @@ std::optional<base::Error> FileDriver::add(const base::Name& name, const json::J
     return error;
 }
 
-std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) const
+base::RespOrError<Doc> FileDriver::readDoc(const base::Name& name) const
 {
-    std::variant<json::Json, base::Error> result;
+    base::RespOrError<Doc> result;
     auto path = nameToPath(name);
 
-    LOG_DEBUG("Engine file driver: '{}' method: File '{}'.", __func__, name.fullName());
+    LOG_DEBUG("FileDriver readDoc name: '{}'.", name.fullName());
 
     if (std::filesystem::exists(path))
     {
         if (std::filesystem::is_directory(path))
         {
-            json::Json list;
-            list.setArray();
-            for (const auto& entry : std::filesystem::directory_iterator(path))
-            {
-                list.appendString(
-                    fmt::format("{}{}{}", name.fullName(), base::Name::SEPARATOR_S, entry.path().filename().string()));
-            }
-
-            result = std::move(list);
+            return base::Error {fmt::format("File '{}' is a directory", path.string())};
         }
-        else
+
+        std::ifstream file(path);
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string content {buffer.str()};
+        file.close();
+        try
         {
-            std::ifstream file(path);
-            std::stringstream buffer;
-            buffer << file.rdbuf();
-            std::string content {buffer.str()};
-            file.close();
-            try
-            {
-                result = json::Json {content.c_str()};
-            }
-            catch (const std::exception& e)
-            {
-                result = base::Error {fmt::format("File '{}' could not be parsed: {}", path.string(), e.what())};
-            }
+            result = Doc {content.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            result = base::Error {fmt::format("File '{}' could not be parsed: {}", path.string(), e.what())};
         }
     }
     else
@@ -171,21 +121,28 @@ std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) co
     return result;
 }
 
-std::optional<base::Error> FileDriver::update(const base::Name& name, const json::Json& content)
+base::OptError FileDriver::updateDoc(const base::Name& name, const Doc& content)
 {
-    std::optional<base::Error> error = std::nullopt;
+    base::OptError error = base::noError();
     auto path = nameToPath(name);
+
+    LOG_DEBUG("FileDriver updateDoc name: '{}'.", name.fullName());
+    LOG_TRACE("FileDriver updateDoc content: '{}'.", content.prettyStr());
 
     auto duplicateError = content.checkDuplicateKeys();
     if (duplicateError)
     {
         error = base::Error {
-            fmt::format("File '{}' has duplicate keys: {}", name.fullName(), duplicateError.value().message)};
+            fmt::format("Content '{}' has duplicate keys: {}", name.fullName(), duplicateError.value().message)};
     }
     else if (!std::filesystem::exists(path))
     {
         error = base::Error {fmt::format("File '{}' does not exist", path.string())};
     }
+    else if (std::filesystem::is_directory(path))
+    {
+        error = base::Error {fmt::format("File '{}' is a directory", path.string())};
+    }
     else
     {
         std::ofstream file(path);
@@ -198,37 +155,158 @@ std::optional<base::Error> FileDriver::update(const base::Name& name, const json
             file << content.str();
         }
     }
+
     return error;
 }
 
-std::optional<base::Error> FileDriver::addUpdate(const base::Name& name, const json::Json& content)
+base::OptError FileDriver::upsertDoc(const base::Name& name, const Doc& content)
 {
-    std::optional<base::Error> error = std::nullopt;
+    LOG_DEBUG("FileDriver upsertDoc name: '{}'.", name.fullName());
+
+    if (existsDoc(name))
+    {
+        return updateDoc(name, content);
+    }
+    else
+    {
+        return createDoc(name, content);
+    }
+}
+
+base::OptError FileDriver::removeEmptyParentDirs(const std::filesystem::path& path, const base::Name& name)
+{
+    base::OptError error = base::noError();
+    std::error_code ec;
+    bool next = true;
+    auto current = path;
+    for (current = current.parent_path(); next && current != m_path && std::filesystem::is_empty(current);
+         current = current.parent_path())
+    {
+        if (!std::filesystem::remove(current, ec))
+        {
+            error = base::Error {fmt::format(
+                "File '{}' was successfully removed but its parent directory '{}' could not be removed: ({}) {}",
+                name.fullName(),
+                path.string(),
+                ec.value(),
+                ec.message())};
+            next = false;
+        }
+    }
+
+    return error;
+}
+
+base::OptError FileDriver::deleteDoc(const base::Name& name)
+{
+    base::OptError error = base::noError();
     auto path = nameToPath(name);
 
-    auto duplicateError = content.checkDuplicateKeys();
-    if (duplicateError)
+    LOG_DEBUG("FileDriver deleteDoc name: '{}'.", name.fullName());
+
+    if (!existsDoc(name))
     {
-        error = base::Error {
-            fmt::format("File '{}' has duplicate keys: {}", name.fullName(), duplicateError.value().message)};
-    }
-    else if (!std::filesystem::exists(path))
-    {
-        return add(name, content);
+        error = base::Error {fmt::format("File '{}' does not exist", path.string())};
     }
     else
     {
-        std::ofstream file(path);
-        if (!file.is_open())
+        std::error_code ec;
+        if (!std::filesystem::remove_all(path, ec))
         {
-            error = base::Error {fmt::format("File '{}' could not be opened on writing mode", path.string())};
+            error = base::Error {
+                fmt::format("File '{}' could not be removed: ({}) {}", path.string(), ec.value(), ec.message())};
         }
-        else
-        {
-            file << content.str();
-        }
+
+        // Remove empty parent directories
+        error = removeEmptyParentDirs(path, name);
     }
     return error;
 }
 
-} // namespace store
+base::RespOrError<Col> FileDriver::readCol(const base::Name& name) const
+{
+    base::RespOrError<Col> result;
+    auto path = nameToPath(name);
+
+    LOG_DEBUG("FileDriver readCol name: '{}'.", name.fullName());
+
+    if (std::filesystem::exists(path))
+    {
+        if (!std::filesystem::is_directory(path))
+        {
+            result = base::Error {fmt::format("File '{}' is not a directory", path.string())};
+        }
+        else
+        {
+
+            std::vector<base::Name> names;
+
+            for (const auto& entry : std::filesystem::directory_iterator(path))
+            {
+                names.emplace_back(base::Name(name) + entry.path().filename().string());
+            }
+
+            result = std::move(names);
+        }
+    }
+    else
+    {
+        result = base::Error {fmt::format("File '{}' does not exist", path.string())};
+    }
+
+    return result;
+}
+
+base::OptError FileDriver::deleteCol(const base::Name& name)
+{
+    base::OptError error = base::noError();
+    auto path = nameToPath(name);
+
+    LOG_DEBUG("FileDriver deleteCol name: '{}'.", name.fullName());
+
+    if (!std::filesystem::exists(path))
+    {
+        error = base::Error {fmt::format("File '{}' does not exist", path.string())};
+    }
+    else if (!std::filesystem::is_directory(path))
+    {
+        error = base::Error {fmt::format("File '{}' is not a directory", path.string())};
+    }
+    else
+    {
+        std::error_code ec;
+        if (!std::filesystem::remove_all(path, ec))
+        {
+            error = base::Error {
+                fmt::format("File '{}' could not be removed: ({}) {}", path.string(), ec.value(), ec.message())};
+        }
+
+        // Remove empty parent directories
+        error = removeEmptyParentDirs(path, name);
+    }
+
+    return error;
+}
+
+bool FileDriver::exists(const base::Name& name) const
+{
+    auto path = nameToPath(name);
+
+    return std::filesystem::exists(path);
+}
+
+bool FileDriver::existsDoc(const base::Name& name) const
+{
+    auto path = nameToPath(name);
+
+    return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
+}
+
+bool FileDriver::existsCol(const base::Name& name) const
+{
+    auto path = nameToPath(name);
+
+    return std::filesystem::exists(path) && std::filesystem::is_directory(path);
+}
+
+} // namespace store::drivers
