@@ -10,24 +10,22 @@ namespace store
 
 class NamespaceId
 {
+public:
+    static const std::size_t PARTS_NAMESPACE_SIZE = 1;
+
 private:
-    std::string m_id;
+    base::Name m_id;
 
     void assertValid()
     {
-        if (m_id.empty())
+        if (m_id.parts().size() != PARTS_NAMESPACE_SIZE)
         {
-            throw std::runtime_error("Namespace id cannot be empty");
-        }
-
-        if (m_id.find(base::Name::SEPARATOR_C) != std::string::npos)
-        {
-            throw std::runtime_error(
-                fmt::format("Namespace id cannot contain the separator '{}'", base::Name::SEPARATOR_C));
+            throw std::invalid_argument("NamespaceId must have only one part, cannot be empty and cannot contain '/'");
         }
     }
 
 public:
+
     NamespaceId() = default;
     ~NamespaceId() = default;
 
@@ -78,16 +76,36 @@ public:
      *
      * @return std::string
      */
-    explicit operator std::string() const { return m_id; }
+    explicit operator std::string() const { return m_id.parts()[0]; }
+
+    /**
+     * @brief Get the base::Name of the NamespaceId
+     *
+     * @return const base::Name&
+     */
+    const base::Name& name() const { return m_id; }
 
     /**
      * @brief Get the string representation of the NamespaceId
      *
      * @return const std::string&
      */
-    const std::string& str() const { return m_id; }
+    const std::string& str() const { return m_id.parts()[0]; }
 };
 
 } // namespace store
+
+// hash function for NamespaceId
+namespace std
+{
+template <>
+struct hash<store::NamespaceId>
+{
+    std::size_t operator()(const store::NamespaceId& k) const
+    {
+        return hash<base::Name>()(k.name());
+    }
+};
+} // namespace std
 
 #endif // _STORE_NAMESPACEID_HPP

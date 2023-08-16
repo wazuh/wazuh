@@ -257,6 +257,41 @@ base::RespOrError<Col> FileDriver::readCol(const base::Name& name) const
     return result;
 }
 
+
+base::RespOrError<Col> FileDriver::readRoot() const
+{
+    base::RespOrError<Col> result;
+    const auto& path = m_path;
+
+    LOG_DEBUG("FileDriver readRoot.");
+
+    if (std::filesystem::exists(path))
+    {
+        if (!std::filesystem::is_directory(path))
+        {
+            result = base::Error {fmt::format("File '{}' is not a directory", path.string())};
+        }
+        else
+        {
+
+            std::vector<base::Name> names;
+
+            for (const auto& entry : std::filesystem::directory_iterator(path))
+            {
+                names.emplace_back(entry.path().filename().string());
+            }
+
+            result = std::move(names);
+        }
+    }
+    else
+    {
+        result = base::Error {fmt::format("File '{}' does not exist", path.string())};
+    }
+
+    return result;
+}
+
 base::OptError FileDriver::deleteCol(const base::Name& name)
 {
     base::OptError error = base::noError();
