@@ -1,19 +1,16 @@
 #ifndef _FILE_DRIVER_H
 #define _FILE_DRIVER_H
 
-#include "name.hpp"
-#include "store/istore.hpp"
+#include <store/idriver.hpp>
 
 #include <filesystem>
 #include <fstream>
-
-#include <json/json.hpp>
 
 /**
  * @brief File driver for the store.
  *
  */
-namespace store
+namespace store::drivers
 {
 
 /**
@@ -24,12 +21,14 @@ namespace store
  * following basePath/base::Name::m_type/base::Name::m_name/base::Name::m_version.json
  *
  */
-class FileDriver : public IStore
+class FileDriver : public IDriver
 {
 private:
     std::filesystem::path m_path;
 
     std::filesystem::path nameToPath(const base::Name& name) const;
+
+    base::OptError removeEmptyParentDirs(const std::filesystem::path& path, const base::Name& name);
 
 public:
     /**
@@ -44,12 +43,56 @@ public:
     FileDriver(const FileDriver&) = delete;
     FileDriver& operator=(const FileDriver&) = delete;
 
-    std::optional<base::Error> del(const base::Name& name) override;
-    std::optional<base::Error> add(const base::Name& name, const json::Json& content) override;
-    std::variant<json::Json, base::Error> get(const base::Name& name) const override;
-    std::optional<base::Error> update(const base::Name& name, const json::Json& content) override;
-    std::optional<base::Error> addUpdate(const base::Name& name, const json::Json& content) override;
+    /**
+     * @copydoc IDriver::createDoc
+     */
+    base::OptError createDoc(const base::Name& name, const json::Json& content) override;
+
+    /**
+     * @copydoc IDriver::readDoc
+     */
+    base::RespOrError<Doc> readDoc(const base::Name& name) const override;
+
+    /**
+     * @copydoc IDriver::updateDoc
+     */
+    base::OptError updateDoc(const base::Name& name, const json::Json& content) override;
+
+    /**
+     * @copydoc IDriver::upsertDoc
+     */
+    base::OptError upsertDoc(const base::Name& name, const json::Json& content) override;
+
+    /**
+     * @copydoc IDriver::deleteDoc
+     */
+    base::OptError deleteDoc(const base::Name& name) override;
+
+    /**
+     * @copydoc IDriver::readCol
+     */
+    base::RespOrError<Col> readCol(const base::Name& name) const override;
+
+    /**
+     * @copydoc IDriver::deleteCol
+     */
+    base::OptError deleteCol(const base::Name& name) override;
+
+    /**
+     * @copydoc IDriver::exists
+     */
+    bool exists(const base::Name& name) const override;
+
+    /**
+     * @copydoc IDriver::existsDoc
+     */
+    bool existsDoc(const base::Name& name) const override;
+
+    /**
+     * @copydoc IDriver::existsCol
+     */
+    bool existsCol(const base::Name& name) const override;
 };
-} // namespace store
+} // namespace store::drivers
 
 #endif // _FILE_DRIVER_H
