@@ -44,6 +44,8 @@ public:
      */
     DocumentManager(std::weak_ptr<IDocumentStorage> store, const std::string& prefix = "dnm");
 
+    ~DocumentManager();
+
     //----------------------------------------------------------------------------------------
     //                                Reader interface
     //----------------------------------------------------------------------------------------
@@ -105,8 +107,6 @@ public:
      * @copydoc IDocumentManager::remove
      */
     std::optional<base::Error> remove(const base::Name& key) override;
-
-
 
 };
 
