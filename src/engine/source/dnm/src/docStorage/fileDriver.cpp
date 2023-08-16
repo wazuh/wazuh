@@ -91,6 +91,15 @@ std::optional<base::Error> FileDocStorage::write(const base::Name& key, const js
         return base::Error {fmt::format("File '{}' already exists", path.string())};
     }
 
+    // Create the directory if it does not exist
+    if (!std::filesystem::exists(path.parent_path()))
+    {
+        if (!std::filesystem::create_directories(path.parent_path()))
+        {
+            return base::Error {fmt::format("Directory '{}' cannot be created", path.parent_path().string())};
+        }
+    }
+
     // Create the file
     std::ofstream file {path};
     if (!file.is_open())
@@ -198,13 +207,16 @@ std::variant<std::list<std::pair<base::Name, KeyType>>, base::Error> FileDocStor
     for (const auto& entry : std::filesystem::directory_iterator(path))
     {
         const auto& entryPath = entry.path();
+        base::Name entryName = key + entryPath.filename().string();
+
         if (std::filesystem::is_regular_file(entryPath))
         {
-            res.emplace_back(entryPath, KeyType::DOCUMENT);
+            // remove the path prefix
+            res.emplace_back(entryName, KeyType::DOCUMENT);
         }
         else if (std::filesystem::is_directory(entryPath))
         {
-            res.emplace_back(entryPath, KeyType::COLLECTION);
+            res.emplace_back(entryName, KeyType::COLLECTION);
         }
         else
         {

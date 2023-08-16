@@ -30,8 +30,11 @@ target_link_libraries(dnm
 
 # Tests
 if(ENGINE_BUILD_TEST)
-  set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
   set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+  set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+  set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
+  set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
+
 
   add_library(dnm_mocks INTERFACE)
 
@@ -39,15 +42,16 @@ if(ENGINE_BUILD_TEST)
   target_link_libraries(dnm_mocks INTERFACE gmock dnm::idnm)
   add_library(dnm::mocks ALIAS dnm_mocks)
 
-  add_executable(dnm_test
-    ${TEST_SRC_DIR}/DocumentNamespaceManager_test.cpp
+  add_executable(dnm_component_test
+    ${TEST_SRC_COMPONENT_DIR}/DocumentNamespaceManager_test.cpp
+    ${TEST_SRC_COMPONENT_DIR}/docStorage/fileDriver_test.cpp
   )
 
-  target_include_directories(dnm_test
+  target_include_directories(dnm_component_test
     PRIVATE
-    ${TEST_SRC_DIR}
+    ${TEST_SRC_COMPONENT_DIR}
   )
 
-  target_link_libraries(dnm_test gtest_main base dnm store::mocks)
-  gtest_discover_tests(dnm_test)
+  target_link_libraries(dnm_component_test gtest_main base dnm)
+  gtest_discover_tests(dnm_component_test)
 endif(ENGINE_BUILD_TEST)

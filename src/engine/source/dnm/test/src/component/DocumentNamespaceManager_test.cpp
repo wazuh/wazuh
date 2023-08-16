@@ -3,6 +3,9 @@
 
 #include <gtest/gtest.h>
 
-TEST(DocumentManager, build) {
-    GTEST_SKIP();
+#include "common.hpp"
+
+TEST(DocumentManager, CreateDocument)
+{
+   GTEST_SKIP();
 }
