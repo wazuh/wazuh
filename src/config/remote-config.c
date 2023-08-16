@@ -26,10 +26,8 @@
  */
 STATIC int w_remoted_get_net_protocol(const char * content);
 
-void w_read_tcp_config(XML_NODE node, remoted *logr);
-
 /* Reads remote config */
-int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
@@ -54,7 +52,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_remote_lip = "local_ip";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
-    const char *xml_tcp = "tcp";
+    const char *xml_connection_overtake_time = "connection_overtake_time";
 
     logr = (remoted *)d1;
 
@@ -241,15 +239,16 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
             logr->rids_closing_time = (int) rids_closing_time;
 
-        } else if (strcmp(node[i]->element, xml_tcp) == 0) {
-            xml_node **chld_node = NULL;
-
-            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
-                merror(XML_INVELEM, node[i]->element);
+        } else if (strcmp(node[i]->element, xml_connection_overtake_time) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
             } else {
-                w_read_tcp_config(chld_node, logr);
-
-                OS_ClearNode(chld_node);
+                int connection_overtake_time = atoi(node[i]->content);
+                if (connection_overtake_time < 0 || connection_overtake_time > 3600) {
+                    mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
+                } else {
+                    logr->connection_overtake_time = connection_overtake_time;
+                }
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -328,23 +327,4 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     }
 
     return retval;
-}
-
-void w_read_tcp_config(XML_NODE node, remoted *logr) {
-    static const char *xml_connection_overtake_time = "connection_overtake_time";
-
-    for (int i = 0; node[i]; i++) {
-        if (!strcmp(node[i]->element, xml_connection_overtake_time)) {
-            if (OS_StrIsNum(node[i]->content)) {
-                int connection_overtake_time = atoi(node[i]->content);
-                if (connection_overtake_time >= 0 && connection_overtake_time <= 3600) {
-                    logr->tcp->connection_overtake_time = connection_overtake_time;
-                    return;
-                }
-            }
-            merror(XML_VALUEERR, node[i]->element, node[i]->content);
-            minfo("Setting '%s' to default value: '%d'.", node[i]->element, logr->tcp->connection_overtake_time);
-        }
-    }
-    return;
 }

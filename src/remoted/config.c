@@ -31,17 +31,13 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     modules |= CREMOTE;
 
-    if (!cfg->tcp) {
-        os_calloc(1, sizeof(tcp), cfg->tcp);
-    }
-
     cfg->port = NULL;
     cfg->conn = NULL;
     cfg->allowips = NULL;
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
     cfg->queue_size = 131072;
-    cfg->tcp->connection_overtake_time = 60;
+    cfg->connection_overtake_time = 60;
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
@@ -125,12 +121,9 @@ cJSON *getRemoteConfig(void) {
                 }
                 cJSON_AddItemToObject(conn,"denied-ips",list);
             }
-            if (logr.tcp && logr.tcp->connection_overtake_time) {
-                cJSON *tcp = cJSON_CreateObject();
 
-                cJSON_AddNumberToObject(tcp, "connection_overtake_time", logr.tcp->connection_overtake_time);
-                cJSON_AddItemToObject(conn, "tcp", tcp);
-            }
+            cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+
             cJSON_AddItemToArray(rem,conn);
         }
     }

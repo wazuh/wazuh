@@ -456,8 +456,7 @@ void test_HandleSecureMessage_different_sock(void **state)
     struct sockaddr_in peer_info;
     int wdb_sock;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -517,7 +516,6 @@ void test_HandleSecureMessage_different_sock(void **state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_different_sock_2(void **state)
@@ -527,8 +525,7 @@ void test_HandleSecureMessage_different_sock_2(void **state)
     struct sockaddr_in peer_info;
     int wdb_sock;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -587,7 +584,6 @@ void test_HandleSecureMessage_different_sock_2(void **state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock(void **state)
@@ -599,8 +595,7 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -677,7 +672,6 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock_2(void **state)
@@ -689,8 +683,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -767,7 +760,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock_disabled(void **state)
@@ -779,8 +771,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 0;
+    logr.connection_overtake_time = 0;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -840,7 +831,6 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void **state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock_disabled_2(void **state)
@@ -852,8 +842,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 0;
+    logr.connection_overtake_time = 0;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -914,7 +903,6 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void **state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock_recv_fail(void **state)
@@ -926,8 +914,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -1016,7 +1003,6 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void **state)
@@ -1028,8 +1014,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -1125,7 +1110,6 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void **state)
@@ -1137,8 +1121,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -1232,7 +1215,6 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_same_sock(void **state)
@@ -1244,8 +1226,7 @@ void test_HandleSecureMessage_close_same_sock(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -1300,7 +1281,6 @@ void test_HandleSecureMessage_close_same_sock(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_HandleSecureMessage_close_same_sock_2(void **state)
@@ -1312,8 +1292,7 @@ void test_HandleSecureMessage_close_same_sock_2(void **state)
 
     current_ts = 61;
 
-    os_calloc(1, sizeof(tcp), logr.tcp);
-    logr.tcp->connection_overtake_time = 60;
+    logr.connection_overtake_time = 60;
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -1369,7 +1348,6 @@ void test_HandleSecureMessage_close_same_sock_2(void **state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    os_free(logr.tcp);
 }
 
 void test_handle_new_tcp_connection_success(void **state)

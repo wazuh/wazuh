@@ -29,10 +29,6 @@
 #include "shared.h"
 #include "global-config.h"
 
-typedef struct _tcp {
-    int connection_overtake_time;
-} tcp;
-
 /* socklen_t header */
 typedef struct _remoted {
     int *proto;
@@ -53,7 +49,7 @@ typedef struct _remoted {
     long queue_size;
     bool worker_node;
     int rids_closing_time;
-    tcp *tcp;
+    int connection_overtake_time;
     _Config global;
 } remoted;
 
