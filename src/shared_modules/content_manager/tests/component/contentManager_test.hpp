@@ -13,7 +13,6 @@
 #define _CONTENT_MODULE_TEST_HPP
 
 #include "gtest/gtest.h"
-#include <external/nlohmann/json.hpp>
 
 /**
  * @brief Runs unit tests for ContentModule

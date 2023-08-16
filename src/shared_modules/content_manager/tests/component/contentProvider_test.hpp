@@ -14,6 +14,7 @@
 
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
+#include <string>
 
 /**
  * @brief Runs unit tests for ContentProvider

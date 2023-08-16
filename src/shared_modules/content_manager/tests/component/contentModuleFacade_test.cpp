@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 /*
  * @brief Tests singleton of the ContentModuleFacade class
@@ -143,7 +144,8 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartSchedulingMethodForCompress
  * @brief Tests singleton of the ContentModuleFacade class and startScheduling method for compressed data
  *  with deleteDownloadedContent enabled
  */
-TEST_F(ContentModuleFacadeTest, TestSingletonAndStartSchedulingMethodForCompressedDataWithDeleteDownloadedContentEnabled)
+TEST_F(ContentModuleFacadeTest,
+       TestSingletonAndStartSchedulingMethodForCompressedDataWithDeleteDownloadedContentEnabled)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
