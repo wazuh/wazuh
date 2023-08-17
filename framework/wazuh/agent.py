@@ -396,7 +396,8 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
     if group_list[0] not in system_groups:
         raise WazuhResourceNotFound(1710)
 
-    q = 'group=' + group_list[0] + (';' + q if q else '')
+    q_group = 'group=' + group_list[0]
+    q = q_group + ';' + (q if q.startswith('(') and q.endswith(')') else f'({q})') if q else q_group
 
     return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q,
      distinct=distinct)
