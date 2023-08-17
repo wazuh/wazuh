@@ -172,7 +172,31 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
-        if (!kvdbManager->existsDB(eRequest.name()))
+        if (eRequest.has_page() && eRequest.page() == 0)
+        {
+            return ::api::adapter::genericError<ResponseType>("Field /page must be greater than 0");
+        }
+
+        if (eRequest.has_records() && eRequest.records() == 0)
+        {
+            return ::api::adapter::genericError<ResponseType>("Field /records must be greater than 0");
+        }
+
+        uint32_t page = DEFAULT_HANDLER_PAGE, records = DEFAULT_HANDLER_RECORDS;
+
+        if (eRequest.has_page())
+        {
+            page = eRequest.page();
+        }
+
+        if (eRequest.has_records())
+        {
+            records = eRequest.records();
+        }
+
+        const auto resultExists = kvdbManager->existsDB(eRequest.name());
+
+        if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>(
                 fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
@@ -186,14 +210,13 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-        const auto dumpRes = handler->dump();
+        auto dumpRes = handler->dump(page, records);
 
         if (std::holds_alternative<base::Error>(dumpRes))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(dumpRes).message);
         }
-        const auto& dump = std::get<std::unordered_map<std::string, std::string>>(dumpRes);
+        const auto& dump = std::get<std::list<std::pair<std::string, std::string>>>(dumpRes);
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 

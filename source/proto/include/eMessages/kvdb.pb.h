@@ -2208,6 +2208,8 @@ class managerDump_Request final :
 
   enum : int {
     kNameFieldNumber = 1,
+    kPageFieldNumber = 2,
+    kRecordsFieldNumber = 3,
   };
   // optional string name = 1;
   bool has_name() const;
@@ -2227,6 +2229,32 @@ class managerDump_Request final :
   std::string* _internal_mutable_name();
   public:
 
+  // optional uint32 page = 2;
+  bool has_page() const;
+  private:
+  bool _internal_has_page() const;
+  public:
+  void clear_page();
+  uint32_t page() const;
+  void set_page(uint32_t value);
+  private:
+  uint32_t _internal_page() const;
+  void _internal_set_page(uint32_t value);
+  public:
+
+  // optional uint32 records = 3;
+  bool has_records() const;
+  private:
+  bool _internal_has_records() const;
+  public:
+  void clear_records();
+  uint32_t records() const;
+  void set_records(uint32_t value);
+  private:
+  uint32_t _internal_records() const;
+  void _internal_set_records(uint32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.kvdb.managerDump_Request)
  private:
   class _Internal;
@@ -2238,6 +2266,8 @@ class managerDump_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    uint32_t page_;
+    uint32_t records_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_kvdb_2eproto;
@@ -4031,6 +4061,62 @@ inline void managerDump_Request::set_allocated_name(std::string* name) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.kvdb.managerDump_Request.name)
+}
+
+// optional uint32 page = 2;
+inline bool managerDump_Request::_internal_has_page() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool managerDump_Request::has_page() const {
+  return _internal_has_page();
+}
+inline void managerDump_Request::clear_page() {
+  _impl_.page_ = 0u;
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline uint32_t managerDump_Request::_internal_page() const {
+  return _impl_.page_;
+}
+inline uint32_t managerDump_Request::page() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.managerDump_Request.page)
+  return _internal_page();
+}
+inline void managerDump_Request::_internal_set_page(uint32_t value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.page_ = value;
+}
+inline void managerDump_Request::set_page(uint32_t value) {
+  _internal_set_page(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.kvdb.managerDump_Request.page)
+}
+
+// optional uint32 records = 3;
+inline bool managerDump_Request::_internal_has_records() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool managerDump_Request::has_records() const {
+  return _internal_has_records();
+}
+inline void managerDump_Request::clear_records() {
+  _impl_.records_ = 0u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline uint32_t managerDump_Request::_internal_records() const {
+  return _impl_.records_;
+}
+inline uint32_t managerDump_Request::records() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.kvdb.managerDump_Request.records)
+  return _internal_records();
+}
+inline void managerDump_Request::_internal_set_records(uint32_t value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.records_ = value;
+}
+inline void managerDump_Request::set_records(uint32_t value) {
+  _internal_set_records(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.kvdb.managerDump_Request.records)
 }
 
 // -------------------------------------------------------------------
