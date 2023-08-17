@@ -92,6 +92,22 @@ api::wpRequest dbSearchWRequest(const std::string& kvdbName, const std::string& 
     return api::wpRequest::create(rCommand, rOrigin, data);
 }
 
+class DumpWithMultiplePages : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+{
+protected:
+    void SetUp() override { ::Setup(); }
+
+    void TearDown() override { ::TearDown(); };
+};
+
+class DumpParameters : public DumpWithMultiplePages
+{
+protected:
+    void SetUp() override { ::Setup(); }
+
+    void TearDown() override { ::TearDown(); };
+};
+
 class DbSearchTestParameters : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
 {
 protected:
@@ -110,10 +126,12 @@ protected:
 
 class KVDBApiTest : public ::testing::Test
 {
+
 protected:
     void SetUp() override
     {
         ::Setup();
+
         createJsonFileWithoutValueOK();
         createJsonFileNOK();
     };
@@ -487,17 +505,14 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
     ASSERT_EQ(response.data(), expectedData);
 }
 
-TEST_F(KVDBApiTest, managerDumpOk)
+TEST_P(DumpParameters, ValidateParameters)
 {
-    ASSERT_NO_THROW(managerDump(kvdbManager, "test"));
-}
-
-TEST_F(KVDBApiTest, managerDumpNameMissing)
-{
+    auto [params, expected] = GetParam();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
-    const auto response = cmd(commonWRequest());
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Missing /name"})"};
+    json::Json jsonParams(params.c_str());
+    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, jsonParams));
+    const auto expectedData = json::Json(expected.c_str());
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -505,32 +520,46 @@ TEST_F(KVDBApiTest, managerDumpNameMissing)
     ASSERT_EQ(response.data(), expectedData);
 }
 
-TEST_F(KVDBApiTest, managerDumpNameEmpty)
-{
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
-    const auto response = cmd(commonWRequest(""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Field /name cannot be empty"})"};
+INSTANTIATE_TEST_SUITE_P(
+    KVDB,
+    DumpParameters,
+    ::testing::Values(std::make_tuple(R"({"page": 0, "records": 0})",
+                                      R"({"status":"ERROR","entries":[],"error":"Missing /name"})"),
+                      std::make_tuple(R"({"name": "", "page": 0, "records": 0})",
+                                      R"({"status":"ERROR","entries":[],"error":"Field /name cannot be empty"})"),
+                      std::make_tuple(R"({"name": "test", "page": 1, "records": 0})",
+                                      R"({"status":"ERROR","entries":[],"error":"Field /records must be greater than 0"})"),
+                      std::make_tuple(R"({"name": "test", "page": 0, "records": 2})",
+                                      R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})")));
 
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData);
-}
-
-TEST_F(KVDBApiTest, managerDump)
+TEST_P(DumpWithMultiplePages, Functionality)
 {
+    auto [params, expected] = GetParam();
+
     api::Handler cmd;
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
     ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
-    const auto response = cmd(commonWRequest("test_db"));
-    const auto expectedData = json::Json {R"({"status":"OK","entries":[]})"};
+    json::Json jsonParams(params.c_str());
+    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, jsonParams));
+    const auto expectedData = json::Json(expected.c_str());
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    KVDB,
+    DumpWithMultiplePages,
+    ::testing::Values(std::make_tuple(R"({"name": "test_db", "page": 1, "records": 1})",
+                                      R"({"status":"OK","entries":[]})"),
+                      std::make_tuple(R"({"name": "test_db", "page": 0, "records": 0})",
+                                      R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})"),
+                      std::make_tuple(R"({"name": "test_db", "page": 1, "records": 10})",
+                                      R"({"status":"OK","entries":[]})"),
+                      std::make_tuple(R"({"name": "test_db", "page": 3, "records": 5})",
+                                      R"({"status":"OK","entries":[]})")));
 
 TEST_F(KVDBApiTest, dbGetOk)
 {
