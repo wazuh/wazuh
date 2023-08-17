@@ -271,6 +271,7 @@ class ResourcePost_Request final :
   enum : int {
     kContentFieldNumber = 3,
     kRoleFieldNumber = 4,
+    kNamespaceIdFieldNumber = 5,
     kTypeFieldNumber = 1,
     kFormatFieldNumber = 2,
   };
@@ -308,6 +309,24 @@ class ResourcePost_Request final :
   const std::string& _internal_role() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_role(const std::string& value);
   std::string* _internal_mutable_role();
+  public:
+
+  // optional string namespaceId = 5;
+  bool has_namespaceid() const;
+  private:
+  bool _internal_has_namespaceid() const;
+  public:
+  void clear_namespaceid();
+  const std::string& namespaceid() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_namespaceid(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_namespaceid();
+  PROTOBUF_NODISCARD std::string* release_namespaceid();
+  void set_allocated_namespaceid(std::string* namespaceid);
+  private:
+  const std::string& _internal_namespaceid() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_namespaceid(const std::string& value);
+  std::string* _internal_mutable_namespaceid();
   public:
 
   // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
@@ -348,6 +367,7 @@ class ResourcePost_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr role_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
     int type_;
     int format_;
   };
@@ -1353,7 +1373,7 @@ class ResourceValidate_Request final :
 
 // optional .com.wazuh.api.engine.catalog.ResourceType type = 1;
 inline bool ResourcePost_Request::_internal_has_type() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_type() const {
@@ -1361,7 +1381,7 @@ inline bool ResourcePost_Request::has_type() const {
 }
 inline void ResourcePost_Request::clear_type() {
   _impl_.type_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceType ResourcePost_Request::_internal_type() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceType >(_impl_.type_);
@@ -1371,7 +1391,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceType ResourcePost_Request::ty
   return _internal_type();
 }
 inline void ResourcePost_Request::_internal_set_type(::com::wazuh::api::engine::catalog::ResourceType value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.type_ = value;
 }
 inline void ResourcePost_Request::set_type(::com::wazuh::api::engine::catalog::ResourceType value) {
@@ -1381,7 +1401,7 @@ inline void ResourcePost_Request::set_type(::com::wazuh::api::engine::catalog::R
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourcePost_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
   return value;
 }
 inline bool ResourcePost_Request::has_format() const {
@@ -1389,7 +1409,7 @@ inline bool ResourcePost_Request::has_format() const {
 }
 inline void ResourcePost_Request::clear_format() {
   _impl_.format_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000010u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePost_Request::_internal_format() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
@@ -1399,7 +1419,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourcePost_Request::
   return _internal_format();
 }
 inline void ResourcePost_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
-  _impl_._has_bits_[0] |= 0x00000008u;
+  _impl_._has_bits_[0] |= 0x00000010u;
   _impl_.format_ = value;
 }
 inline void ResourcePost_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
@@ -1541,6 +1561,74 @@ inline void ResourcePost_Request::set_allocated_role(std::string* role) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.role)
+}
+
+// optional string namespaceId = 5;
+inline bool ResourcePost_Request::_internal_has_namespaceid() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool ResourcePost_Request::has_namespaceid() const {
+  return _internal_has_namespaceid();
+}
+inline void ResourcePost_Request::clear_namespaceid() {
+  _impl_.namespaceid_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline const std::string& ResourcePost_Request::namespaceid() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourcePost_Request.namespaceId)
+  return _internal_namespaceid();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void ResourcePost_Request::set_namespaceid(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_.namespaceid_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourcePost_Request.namespaceId)
+}
+inline std::string* ResourcePost_Request::mutable_namespaceid() {
+  std::string* _s = _internal_mutable_namespaceid();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourcePost_Request.namespaceId)
+  return _s;
+}
+inline const std::string& ResourcePost_Request::_internal_namespaceid() const {
+  return _impl_.namespaceid_.Get();
+}
+inline void ResourcePost_Request::_internal_set_namespaceid(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.namespaceid_.Set(value, GetArenaForAllocation());
+}
+inline std::string* ResourcePost_Request::_internal_mutable_namespaceid() {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  return _impl_.namespaceid_.Mutable(GetArenaForAllocation());
+}
+inline std::string* ResourcePost_Request::release_namespaceid() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourcePost_Request.namespaceId)
+  if (!_internal_has_namespaceid()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000004u;
+  auto* p = _impl_.namespaceid_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.namespaceid_.IsDefault()) {
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void ResourcePost_Request::set_allocated_namespaceid(std::string* namespaceid) {
+  if (namespaceid != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000004u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000004u;
+  }
+  _impl_.namespaceid_.SetAllocated(namespaceid, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.namespaceid_.IsDefault()) {
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourcePost_Request.namespaceId)
 }
 
 // -------------------------------------------------------------------

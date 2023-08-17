@@ -29,7 +29,7 @@ namespace utils
  * @param format The format of original.
  * @return A JSON object containing the wrapped content and original data.
  */
-static const json::Json
+inline const json::Json
 jsonGenerator(const json::Json& contentJson, const std::string& original, const std::string& format)
 {
     // Wraps the content in both json and yml
@@ -55,11 +55,11 @@ jsonGenerator(const json::Json& contentJson, const std::string& original, const 
  * @param original Flag to indicate whether to retrieve the original data.
  * @return A variant containing the retrieved JSON data or an error.
  */
-static std::variant<json::Json, base::Error>
-get(std::shared_ptr<const store::IStoreRead> storeRead, const base::Name& name, bool original = false)
+inline std::variant<json::Json, base::Error>
+get(std::shared_ptr<const store::IStoreReader> storeRead, const base::Name& name, bool original = false)
 {
     std::variant<json::Json, base::Error> result;
-    auto jsonObject = storeRead->get(name);
+    auto jsonObject = storeRead->readDoc(name);
     if (std::holds_alternative<base::Error>(jsonObject))
     {
         return base::Error {fmt::format("Engine utils: '{}' could not be obtained from the "
@@ -97,15 +97,16 @@ get(std::shared_ptr<const store::IStoreRead> storeRead, const base::Name& name, 
  * @param original The original data string to add.
  * @return An optional containing an error if the addition fails.
  */
-static std::optional<base::Error> add(std::shared_ptr<store::IStore> istore,
+inline std::optional<base::Error> add(std::shared_ptr<store::IStore> istore,
                                       const base::Name& name,
+                                      const store::NamespaceId& namespaceId,
                                       const std::string& format,
                                       const json::Json& contentJson,
                                       const std::string& original)
 {
     std::optional<base::Error> result = std::nullopt;
     const auto wrappedContent = jsonGenerator(contentJson, original, format);
-    result = istore->add(name, wrappedContent);
+    result = istore->createDoc(name, namespaceId, wrappedContent);
 
     return result;
 }
@@ -123,7 +124,7 @@ static std::optional<base::Error> add(std::shared_ptr<store::IStore> istore,
  * @param original The original data string for the update.
  * @return An optional containing an error if the update fails.
  */
-static std::optional<base::Error> update(std::shared_ptr<store::IStore> istore,
+inline std::optional<base::Error> update(std::shared_ptr<store::IStore> istore,
                                          const base::Name& name,
                                          const std::string& format,
                                          const json::Json& contentJson,
@@ -131,7 +132,7 @@ static std::optional<base::Error> update(std::shared_ptr<store::IStore> istore,
 {
     std::optional<base::Error> result = std::nullopt;
     const auto wrappedContent = jsonGenerator(contentJson, original, format);
-    istore->update(name, wrappedContent);
+    istore->updateDoc(name, wrappedContent);
 
     return result;
 }

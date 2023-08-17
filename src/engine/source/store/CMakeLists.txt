@@ -37,6 +37,8 @@ if(ENGINE_BUILD_TEST)
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 ## Mocks
 add_library(store_mocks INTERFACE)
@@ -45,18 +47,24 @@ target_link_libraries(store_mocks INTERFACE gmock store::istore)
 add_library(store::mocks ALIAS store_mocks)
 
 ## File driver tests
-add_executable(store_fileDriver_test
-    ${TEST_SRC_DIR}/drivers/fileDriver/fileDriver_test.cpp
+add_executable(store_fileDriver_unit_test
+    ${UNIT_SRC_DIR}/fileDriver_test.cpp
 )
-target_link_libraries(store_fileDriver_test gtest_main store::fileDriver)
-gtest_discover_tests(store_fileDriver_test)
+target_link_libraries(store_fileDriver_unit_test gtest_main store::fileDriver)
+gtest_discover_tests(store_fileDriver_unit_test)
 
 # TODO FIX THIS CMAKE (Separe unit tests from component tests)
 ## Store component test
 add_executable(store_test
-    ${TEST_SRC_DIR}/component/store_test.cpp # TODO Use macro for component test folder
+    ${COMPONENT_SRC_DIR}/store_test.cpp
 )
 target_link_libraries(store_test gtest_main store::fileDriver store)
-gtest_discover_tests(store_test )
+gtest_discover_tests(store_test)
+
+add_executable(store_unit_test
+    ${UNIT_SRC_DIR}/store_test.cpp 
+)
+target_link_libraries(store_unit_test gtest_main store::mocks store)
+gtest_discover_tests(store_unit_test)
 
 endif(ENGINE_BUILD_TEST)

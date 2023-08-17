@@ -125,7 +125,7 @@ Catalog::Catalog(const Config& config)
 
     // Asset schema
     {
-        const auto assetSchemaJson = m_store->get(assetSchemaName);
+        const auto assetSchemaJson = m_store->readInternalDoc(assetSchemaName);
         if (std::holds_alternative<base::Error>(assetSchemaJson))
         {
             throw std::runtime_error(fmt::format("Error while getting the asset schema: {}",
@@ -140,7 +140,7 @@ Catalog::Catalog(const Config& config)
 
     // Environment schema
     {
-        auto environmentSchemaJson = m_store->get(environmentSchemaName);
+        auto environmentSchemaJson = m_store->readInternalDoc(environmentSchemaName);
         if (std::holds_alternative<base::Error>(environmentSchemaJson))
         {
             throw std::runtime_error(fmt::format("Error while getting the environment schema: {}",
@@ -150,7 +150,8 @@ Catalog::Catalog(const Config& config)
     }
 }
 
-std::optional<base::Error> Catalog::postResource(const Resource& collection, const std::string& content)
+std::optional<base::Error>
+Catalog::postResource(const Resource& collection, const std::string& namespaceStr, const std::string& content)
 {
     LOG_DEBUG("Engine catalog: '{}' method: Collection name: '{}'. Content: '{}'.",
               __func__,
@@ -163,6 +164,26 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection, con
         return base::Error {fmt::format("Expected resource type is '{}', but got '{}'",
                                         Resource::typeToStr(collection.m_type),
                                         Resource::typeToStr(Resource::Type::collection))};
+    }
+
+    // Verify namespace
+    base::OptError namespaceError;
+    store::NamespaceId namespaceId = [&namespaceError, &namespaceStr]()
+    {
+        try
+        {
+            return store::NamespaceId {namespaceStr};
+        }
+        catch (const std::exception& e)
+        {
+            namespaceError = base::Error {fmt::format("Invalid namespace '{}': {}", namespaceStr, e.what())};
+            return store::NamespaceId {};
+        }
+    }();
+
+    if (namespaceError)
+    {
+        return namespaceError;
     }
 
     // content must be a valid resource for the specified collection
@@ -236,7 +257,7 @@ std::optional<base::Error> Catalog::postResource(const Resource& collection, con
 
     // All pre-conditions are met, post the content in the store
     const auto storeError = store::utils::add(
-        m_store, contentResource.m_name, Resource::formatToStr(collection.m_format), contentJson, content);
+        m_store, contentResource.m_name, namespaceId, Resource::formatToStr(collection.m_format), contentJson, content);
     if (storeError)
     {
         return base::Error {fmt::format(
@@ -387,7 +408,15 @@ std::variant<std::string, base::Error> Catalog::getResource(const Resource& reso
 
 std::optional<base::Error> Catalog::deleteResource(const Resource& resource)
 {
-    const auto storeError = m_store->del(resource.m_name);
+    base::OptError storeError;
+    if (m_store->existsDoc(resource.m_name))
+    {
+        storeError = m_store->deleteDoc(resource.m_name);
+    }
+    else
+    {
+        storeError = m_store->deleteCol(resource.m_name);
+    }
     if (storeError)
     {
         return base::Error {fmt::format("Content '{}' could not be deleted from store: {}",

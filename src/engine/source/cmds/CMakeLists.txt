@@ -19,7 +19,7 @@ target_link_libraries(cmds
     rxbk
     server
     router
-    store::fileDriver
+    store
     api
     uv_a
     conf::cliconf

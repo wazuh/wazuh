@@ -46,6 +46,7 @@ message ResourcePost_Request
     optional ResourceFormat format = 2; // Format of the resource
     optional string content = 3;        // Content of the resource
     optional string role = 4;           // Role of the user
+    optional string namespaceid = 5;    // Namespace where the resource will be created
 }
 
 // message ResourcePost_Response -> Return a GenericStatus_Response

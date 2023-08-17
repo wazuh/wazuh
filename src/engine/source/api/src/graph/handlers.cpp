@@ -72,7 +72,7 @@ api::Handler resourceGet(const Config& config)
         }
 
         base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-        auto hlpParsers = config.store->get(hlpConfigFileName);
+        auto hlpParsers = config.store->readInternalDoc(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
             const auto msg = fmt::format("Wazuh Logpar schema could not be loaded from the store: {}",
