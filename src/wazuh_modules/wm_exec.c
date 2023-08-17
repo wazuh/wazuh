@@ -712,7 +712,7 @@ void wm_kill_children() {
                     exit(EXIT_SUCCESS);
 
                 default: // Parent
-                    wm_children[i] = 0;
+
                 }
             } else {
                 // Kill immediately
