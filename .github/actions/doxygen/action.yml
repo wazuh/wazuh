@@ -19,10 +19,11 @@ runs:
   steps:    
       # Dependencies for testing:
       # - doxygen 
+      # - graphviz
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: doxygen
+          packages: doxygen graphviz
           version: 1.0
 
       - name: Generate documentation
@@ -38,6 +39,7 @@ runs:
           } > ${CONFIG_FILE}
 
           # Generate the documentation
+          sudo dot -c
           ERRORS_FILE=${{ inputs.path }}/doxygen_errors.txt
           doxygen -s ${CONFIG_FILE} 2> ${ERRORS_FILE}
 
@@ -48,9 +50,9 @@ runs:
             echo "-----------------------------------------------"
             exit 1
           else
-            echo "---------------------------------------------------"
-            echo "PASSED: Doxygen documentation generated successfull"
-            echo "---------------------------------------------------"
+            echo "----------------------------------------------------"
+            echo "PASSED: Doxygen documentation generated successfully"
+            echo "----------------------------------------------------"
           fi
 
       # Upload errors as an artifact, when failed
@@ -65,6 +67,6 @@ runs:
       - uses: actions/upload-artifact@v3
         if: success()
         with:
-          name: Doxygen documentation
+          name: Doxygen documentation - ${{ inputs.id }}
           path: ${{ inputs.path }}/doc
           retention-days: 1

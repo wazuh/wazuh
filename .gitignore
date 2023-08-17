@@ -146,8 +146,10 @@ src/active-response/firewall-drop.sh
 # Databases commits
 framework/wazuh/rbac/migrations/versions/*
 
-# Documentation folder
+# Documentation files
 documentation/
+doxygen_config.cfg
+doxygen_errors.txt
 
 # MSU for Vulnerability Detector
 src/wazuh_modules/vulnerability_detector/msu.json.gz
