@@ -78,7 +78,9 @@
       date=2019-03-28 time=11:10:55 logid="1701062003" type="utm" subtype="ssl" eventtype="ssl-exempt" level="notice" vd="vdom1" eventtime=1553796654 policyid=1 sessionid=12171 service="HTTPS" srcip=10.1.100.66 srcport=47390 dstip=50.18.221.132 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="exempt" msg="SSL connection exempted" reason="exempt-ftgd-cat"
       date=2019-05-15 time=16:28:17 logid="1800063000" type="utm" subtype="cifs" eventtype="cifs-filefilter" level="warning" vd="vdom1" eventtime=1557962895 msg="File was blocked by file filter." direction="incoming" action="blocked" service="CIFS" srcip=10.1.100.11 dstip=172.16.200.44 srcport=56348 dstport=445 srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" policyid=1 proto=16 profile="cifs" filesize="13824" filename="sample\\test.xls" filtername="1" filetype="msoffice"
       date=2017-11-15 time=11:44:16 logid="0000000013" type="traffic" subtype="forward" level="notice" vd="vdom1" eventtime=1510775056 srcip=10.1.100.155 srcname="pc1" srcport=40772 srcintf="port12" srcintfrole="undefined" dstip=35.197.51.42 dstname="fortiguard.com" dstport=443 dstintf="port11" dstintfrole="undefined" poluuid="707a0d88-c972-51e7-bbc7-4d421660557b" sessionid=8058 proto=6 action="close" policyid=1 policytype="policy" policymode="learn" service="HTTPS" dstcountry="United States" srccountry="Reserved" trandisp="snat" transip=172.16.200.2 transport=40772 appid=40568 app="HTTPS.BROWSER" appcat="Web.Client" apprisk="medium" duration=2 sentbyte=1850 rcvdbyte=39898 sentpkt=25 rcvdpkt=37 utmaction="allow" countapp=1 devtype="Linux PC" osname="Linux" mastersrcmac="a2:e9:00:ec:40:01" srcmac="a2:e9:00:ec:40:01" srcserver=0 utmref=0-220586
-
+    FortiOS 7.2  
+      date=2023-08-17 time=08:31:28 devname="fw1" devid="FW601234" eventtime=1692253888565116041 tz="+0200" logid="0100026001" type="event" subtype="system" level="information" vd="root" logdesc="DHCP Ack log" interface="dmz" dhcp_msg="Ack" mac="00:0C:29:AA:BB:CC" ip=192.168.2.200 lease=604800 hostname="win11" msg="DHCP server sends a DHCPACK"
+      date=2023-08-17 time=08:44:12 devname="fw1" devid="FW601234" eventtime=1692254651675154347 tz="+0200" logid="0104043573" type="event" subtype="wireless" level="notice" vd="root" logdesc="Wireless client authenticated" sn="FW601234" ap="FW60EJ-WIFI0" vap="dmz" ssid="ssid1" radioid=1 user="N/A" group="N/A" stamac="dc:e5:5b:11:22:33" authserver="N/A" srcip=0.0.0.0 channel=9 radioband="802.11n" signal=-45 snr=50 security="WPA2 Personal" encryption="AES" action="client-authentication" reason="Reserved 0" mpsk="N/A" msg="Client aa:bb:11:11:11:11 authenticated."
 -->
 
 <!-- 
@@ -1622,3 +1624,50 @@
   <regex>user="(\.*)"|user=(\.*)\s|user=(\.*)$</regex>
   <order>dstuser</order>
 </decoder>
+
+<!-- DHCP Events (different interface naming) -->
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>interface="(\.*)"|interface=(\.*)\s|interface=(\.*)$</regex>
+  <order>src_int</order>
+</decoder>
+
+
+<!-- Wireless Controller Logs -->
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>ap="(\.*)"|ap=(\.*)\s|ap=(\.*)$</regex>
+  <order>ap</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>ssid="(\.*)"|ssid=(\.*)\s|ssid=(\.*)$</regex>
+  <order>ssid</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>channel="(\.*)"|channel=(\.*)\s|channel=(\.*)$</regex>
+  <order>channel</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>radioband="(\.*)"|radioband=(\.*)\s|radioband=(\.*)$</regex>
+  <order>radioband</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>signal="(\.*)"|signal=(\.*)\s|signal=(\.*)$</regex>
+  <order>signal</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>snr="(\.*)"|snr=(\.*)\s|snr=(\.*)$</regex>
+  <order>snr</order>
+</decoder>
+
+
