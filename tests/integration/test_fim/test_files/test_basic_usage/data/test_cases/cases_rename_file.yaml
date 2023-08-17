@@ -10,6 +10,8 @@
     folder_to_monitor: !!python/object/apply:os.path.join [/, test_dir]
     file_to_monitor: !!python/object/apply:os.path.join [/, test_dir, file_to_monitor]
     file_renamed_path:  !!python/object/apply:os.path.join [/, test_dir, file_renamed]
+    folder_to_rename: !!python/object/apply:os.path.join [/, test_dir, folder_to_rename]
+    folder_renamed_path:  !!python/object/apply:os.path.join [/, test_dir, folder_renamed]
     fim_mode: realtime
 
 - name: Rename file - Scheduled
@@ -25,4 +27,6 @@
     folder_to_monitor: !!python/object/apply:os.path.join [/, test_dir]
     file_to_monitor: !!python/object/apply:os.path.join [/, test_dir, file_to_monitor]
     file_renamed_path:  !!python/object/apply:os.path.join [/, test_dir, file_renamed]
+    folder_to_rename: !!python/object/apply:os.path.join [/, test_dir, folder_to_rename]
+    folder_renamed_path:  !!python/object/apply:os.path.join [/, test_dir, folder_renamed]
     fim_mode: scheduled
