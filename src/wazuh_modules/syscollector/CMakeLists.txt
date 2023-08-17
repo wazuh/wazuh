@@ -10,7 +10,7 @@ endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 get_filename_component(FLATBUFFERS_FOLDER ${CMAKE_SOURCE_DIR}/schemas/ ABSOLUTE)
-get_filename_component(FLATBUFFERS_FOLDER ${CMAKE_SOURCE_DIR}/flatbuffers/ ABSOLUTE)
+get_filename_component(DELTA_FLATBUFFERS_FOLDER ${SRC_FOLDER}/shared_modules/utils/flatbuffers/schemas/ ABSOLUTE)
 get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
@@ -157,12 +157,16 @@ if (NOT ${TARGET} STREQUAL "")
     )
 
     foreach(schema IN LISTS Schemas)
-    set(FBS_FILE "${FLATBUFFERS_FOLDER}/${schema}.fbs")
-    add_custom_target(${schema}_target
-    COMMAND ${FLATC_PATH}/flatc -c -o ${CMAKE_SOURCE_DIR}/include/ ${FBS_FILE}
-    COMMENT "Executing flatc to generate ${schema} header file."
-    )
-    add_dependencies(${PROJECT_NAME} ${schema}_target)
+      if (${schema} STREQUAL "common_agentInfo")
+        set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/common/${schema}.fbs")
+      else()
+        set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
+      endif()
+      add_custom_target(${schema}_target
+        COMMAND ${FLATC_PATH}/flatc -c -o ${DELTA_FLATBUFFERS_FOLDER}/../include/ ${FBS_FILE}
+        COMMENT "Executing flatc to generate ${schema} header file."
+      )
+      add_dependencies(${PROJECT_NAME} ${schema}_target)
     endforeach()
   endif()
 endif()
