@@ -8,6 +8,7 @@
 #include "../../apiAuxiliarFunctions.hpp"
 #include "catalogTestShared.hpp"
 
+// TODO: Create catalog interface to mock and classify this test suite as unitary.
 class IntegrationTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, api::catalog::Resource>>
 {
 protected:
