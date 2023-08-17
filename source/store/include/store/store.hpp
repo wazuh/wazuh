@@ -13,6 +13,8 @@ namespace store
 class Store : public IStore
 {
 private:
+    NamespaceId m_internalNs;            ///< Internal namespace.
+
     std::shared_ptr<IDriver> m_driver;   ///< Store driver.
 
     class DBDocNames;                    ///< PImpl for Cache for the doc names and virtual space names.
@@ -115,6 +117,25 @@ public:
      */
     base::OptError deleteCol(const base::Name& name) override;
 
+    /**
+     * @copydoc IStoreInternal::createInternalDoc
+     */
+    base::OptError createInternalDoc(const base::Name& name, const Doc& content) override;
+
+    /**
+     * @copydoc IStoreInternal::readInternalDoc
+     */
+    base::RespOrError<Doc> readInternalDoc(const base::Name& name) const override;
+
+    /**
+     * @copydoc IStoreInternal::updateInternalDoc
+     */
+    base::OptError updateInternalDoc(const base::Name& name, const Doc& content) override;
+
+    /**
+     * @copydoc IStoreInternal::deleteInternalDoc
+     */
+    base::OptError deleteInternalDoc(const base::Name& name) override;
 };
 
 } // namespace store

@@ -2,7 +2,7 @@
 #define _API_GRAPH_HANDLERS_HPP
 
 #include <api/api.hpp>
-#include <store/drivers/fileDriver.hpp>
+#include <store/istore.hpp>
 #include <kvdb/kvdbManager.hpp>
 
 namespace api::graph::handlers

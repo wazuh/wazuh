@@ -10,7 +10,8 @@
 namespace api::catalog::handlers
 {
 
-namespace {
+namespace
+{
 
 template<typename r_type>
 auto checkResoursePermission(const base::Name& name,
@@ -26,7 +27,6 @@ auto checkResoursePermission(const base::Name& name,
         return std::nullopt;
     }
     return ::api::adapter::genericError<r_type>("Permission denied");
-
 }
 } // namespace
 
@@ -100,7 +100,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        const auto invalid = catalog->postResource(targetResource, eRequest.content());
+        const auto invalid = catalog->postResource(targetResource, eRequest.namespaceid(), eRequest.content());
         if (invalid)
         {
             return ::api::adapter::genericError<ResponseType>(invalid.value().message);

@@ -33,12 +33,13 @@
 #include <router/router.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <schemf/schema.hpp>
-#include <server/endpoints/unixDatagram.hpp>   // Event
-#include <server/endpoints/unixStream.hpp>     //API
+#include <server/endpoints/unixDatagram.hpp> // Event
+#include <server/endpoints/unixStream.hpp>   //API
 #include <server/engineServer.hpp>
 #include <server/protocolHandlers/wStream.hpp> //API
 #include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
+#include <store/store.hpp>
 #include <wdb/wdbManager.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
@@ -191,7 +192,7 @@ void runStart(ConfHandler confManager)
     // Init modules
     std::shared_ptr<api::Api> api;
     std::shared_ptr<engineserver::EngineServer> server;
-    std::shared_ptr<store::FileDriver> store;
+    std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Router> router;
@@ -210,7 +211,8 @@ void runStart(ConfHandler confManager)
 
         // Store
         {
-            store = std::make_shared<store::FileDriver>(fileStorage);
+            auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
+            store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized.");
         }
 
@@ -244,7 +246,7 @@ void runStart(ConfHandler confManager)
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions { kvdbPath, "kvdb" };
+            kvdbManager::KVDBManagerOptions kvdbOptions {kvdbPath, "kvdb"};
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
@@ -263,7 +265,7 @@ void runStart(ConfHandler confManager)
         // Schema
         {
             schema = std::make_shared<schemf::Schema>();
-            auto result = store->get("schema/engine-schema/0");
+            auto result = store->readInternalDoc("schema/engine-schema/0");
             if (std::holds_alternative<base::Error>(result))
             {
                 LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
@@ -280,7 +282,7 @@ void runStart(ConfHandler confManager)
         // HLP
         {
             base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-            auto hlpParsers = store->get(hlpConfigFileName);
+            auto hlpParsers = store->readInternalDoc(hlpConfigFileName);
             if (std::holds_alternative<base::Error>(hlpParsers))
             {
                 LOG_ERROR("Could not retreive configuration file [{}] needed by the "
@@ -381,7 +383,7 @@ void runStart(ConfHandler confManager)
             auto sessionManager = std::make_shared<api::sessionManager::SessionManager>();
 
             // Try to load the sessions from the store
-            const auto strJsonSessions = store->get(api::test::handlers::API_SESSIONS_TABLE_NAME);
+            const auto strJsonSessions = store->readInternalDoc(api::test::handlers::API_SESSIONS_TABLE_NAME);
             if (std::holds_alternative<base::Error>(strJsonSessions))
             {
                 LOG_WARNING("Could not retreive configuration file [{}] needed by the 'Test' module: {}",
@@ -390,7 +392,7 @@ void runStart(ConfHandler confManager)
 
                 // Create the sessions table
                 const auto storeSetSessionsTable =
-                    store->add(api::test::handlers::API_SESSIONS_TABLE_NAME, json::Json("[]"));
+                    store->createInternalDoc(api::test::handlers::API_SESSIONS_TABLE_NAME, json::Json("[]"));
                 if (storeSetSessionsTable.has_value())
                 {
                     LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);

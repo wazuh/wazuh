@@ -39,12 +39,12 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
 
     m_policyManager = std::make_shared<PolicyManager>(builder, threads);
 
-    auto result = m_store->get(ROUTES_TABLE_NAME);
+    auto result = m_store->readInternalDoc(ROUTES_TABLE_NAME);
     if (std::holds_alternative<base::Error>(result))
     {
         const auto error = std::get<base::Error>(result);
         LOG_DEBUG("Router: Routes table not found in store. Creating new table: {}.", error.message);
-        m_store->add(ROUTES_TABLE_NAME, json::Json {"[]"});
+        m_store->createInternalDoc(ROUTES_TABLE_NAME, json::Json {"[]"});
         return;
     }
     else
@@ -386,7 +386,7 @@ json::Json Router::tableToJson()
 
 void Router::dumpTableToStorage()
 {
-    const auto err = m_store->update(ROUTES_TABLE_NAME, tableToJson());
+    const auto err = m_store->updateInternalDoc(ROUTES_TABLE_NAME, tableToJson());
     if (err)
     {
         LOG_ERROR("Error updating routes table: {}.", err.value().message);

@@ -100,7 +100,54 @@ public:
 
 };
 
-class IStore : public IStoreReader
+/**
+ * @brief Internal Document manager interface. Stores documents that are not accessible from the outside.
+ * 
+ * @details The documents managed by this interface are stored under a special namespace, only accessible
+ * from the internal interface.
+ * 
+ */
+class IStoreInternal
+{
+public:
+    virtual ~IStoreInternal() = default;
+
+    /**
+     * @brief Create a Internal Document in the store.
+     * 
+     * @param name name of the document.
+     * @param content document content.
+     * @return base::OptError with the error or empty if no error.
+     */
+    virtual base::OptError createInternalDoc(const base::Name& name, const Doc& content) = 0;
+
+    /**
+     * @brief Read a Internal document from the store.
+     * 
+     * @param name name of the document.
+     * @return base::RespOrError<Doc> with the document or error.
+     */
+    virtual base::RespOrError<Doc> readInternalDoc(const base::Name& name) const = 0;
+
+    /**
+     * @brief Update a Internal document in the store.
+     * 
+     * @param name name of the document.
+     * @param content document content.
+     * @return base::OptError with the error or empty if no error.
+     */
+    virtual base::OptError updateInternalDoc(const base::Name& name, const Doc& content) = 0;
+
+    /**
+     * @brief Delete a Internal document from the store.
+     * 
+     * @param name name of the document.
+     * @return base::OptError with the error or empty if no error.
+     */
+    virtual base::OptError deleteInternalDoc(const base::Name& name) = 0;
+};
+
+class IStore : public IStoreReader, public IStoreInternal
 {
 public:
 
