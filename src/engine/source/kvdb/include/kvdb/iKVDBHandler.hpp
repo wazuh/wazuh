@@ -1,8 +1,10 @@
 #ifndef _I_KVDB_HANDLER_H
 #define _I_KVDB_HANDLER_H
 
+#include <list>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 
 #include <error.hpp>
@@ -23,9 +25,10 @@ public:
      *
      * @param key Provided key.
      * @param value Provided value. Must be a string.
-     * @return std::variant<base::Error> If base::Error not exists the value was stored successfully. Specific error otherwise.
+     * @return std::variant<base::Error> If base::Error not exists the value was stored successfully. Specific error
+     * otherwise.
      *
-    */
+     */
     virtual std::optional<base::Error> set(const std::string& key, const std::string& value) = 0;
 
     /**
@@ -33,7 +36,8 @@ public:
      *
      * @param key Provided key.
      * @param value Provided value. Must be a Json.
-     * @return std::optional<base::Error> If base::Error not exists the value was stored successfully. Specific error otherwise.
+     * @return std::optional<base::Error> If base::Error not exists the value was stored successfully. Specific error
+     * otherwise.
      *
      */
     virtual std::optional<base::Error> set(const std::string& key, const json::Json& value) = 0;
@@ -42,7 +46,8 @@ public:
      * @brief Stores a key. Treats the DB as a key set for further checking existence of the key.
      *
      * @param key Provided key.
-     * @return std::optional<base::Error> If base::Error not exists the key was stored successfully. Specific error otherwise.
+     * @return std::optional<base::Error> If base::Error not exists the key was stored successfully. Specific error
+     * otherwise.
      *
      */
     virtual std::optional<base::Error> add(const std::string& key) = 0;
@@ -51,7 +56,8 @@ public:
      * @brief Removes a key from the DB.
      *
      * @param key Provided key.
-     * @return std::variant<base::Error> If base::Error not exists the key was removed successfully. Specific error otherwise.
+     * @return std::variant<base::Error> If base::Error not exists the key was removed successfully. Specific error
+     * otherwise.
      *
      */
     virtual std::optional<base::Error> remove(const std::string& key) = 0;
@@ -76,17 +82,22 @@ public:
     /**
      * @brief Retrieves the entire content of the DB.
      *
-     * @return std::variant<std::unordered_map<std::string, std::string>, base::Error> Map of key-value pairs. Specific error otherwise.
+     * @param page Page number.
+     * @param records Quantity of records for page.
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
+     * Specific error otherwise.
      */
-    virtual std::variant<std::unordered_map<std::string, std::string>, base::Error> dump() = 0;
-
+    virtual std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const uint32_t page,
+                                                                                           const uint32_t records) = 0;
     /**
      * @brief Retrieves all filtered content.
      *
      * @param key Filter value.
-     * @return std::variant<std::unordered_map<std::string, std::string>, base::Error> Map of key-value pairs. Specific error otherwise.
+     * @return std::variant<std::unordered_map<std::string, std::string>, base::Error> Map of key-value pairs. Specific
+     * error otherwise.
      */
-    virtual std::variant<std::unordered_map<std::string, std::string>, base::Error> search(const std::string& prefix) = 0;
+    virtual std::variant<std::unordered_map<std::string, std::string>, base::Error>
+    search(const std::string& prefix) = 0;
 };
 
 } // namespace kvdbManager

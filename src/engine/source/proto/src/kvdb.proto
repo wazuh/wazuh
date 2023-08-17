@@ -129,6 +129,8 @@ message managerDump_Request
 {
     // Name of the manager to get the entries
     optional string name = 1;
+    optional uint32 page = 2;
+    optional uint32 records = 3;
 }
 
 message managerDump_Response

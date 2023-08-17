@@ -196,7 +196,9 @@ PROTOBUF_CONSTEXPR managerDump_Request::managerDump_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.page_)*/0u
+  , /*decltype(_impl_.records_)*/0u} {}
 struct managerDump_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR managerDump_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -353,7 +355,11 @@ const uint32_t TableStruct_kvdb_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::managerDump_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::managerDump_Request, _impl_.page_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::managerDump_Request, _impl_.records_),
   0,
+  1,
+  2,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::managerDump_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::kvdb::managerDump_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -379,8 +385,8 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 84, 93, -1, sizeof(::com::wazuh::api::engine::kvdb::managerGet_Response)},
   { 96, 104, -1, sizeof(::com::wazuh::api::engine::kvdb::managerPost_Request)},
   { 106, 113, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDelete_Request)},
-  { 114, 121, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Request)},
-  { 122, 131, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Response)},
+  { 114, 123, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Request)},
+  { 126, 135, -1, sizeof(::com::wazuh::api::engine::kvdb::managerDump_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -429,12 +435,13 @@ const char descriptor_table_protodef_kvdb_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "ost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\021\n\004path\030\002"
   " \001(\tH\001\210\001\001B\007\n\005_nameB\007\n\005_path\"3\n\025managerDe"
   "lete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name"
-  "\"1\n\023managerDump_Request\022\021\n\004name\030\001 \001(\tH\000\210"
-  "\001\001B\007\n\005_name\"\233\001\n\024managerDump_Response\0222\n\006"
-  "status\030\001 \001(\0162\".com.wazuh.api.engine.Retu"
-  "rnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0221\n\007entries\030"
-  "\003 \003(\0132 .com.wazuh.api.engine.kvdb.EntryB"
-  "\010\n\006_errorb\006proto3"
+  "\"o\n\023managerDump_Request\022\021\n\004name\030\001 \001(\tH\000\210"
+  "\001\001\022\021\n\004page\030\002 \001(\rH\001\210\001\001\022\024\n\007records\030\003 \001(\rH\002"
+  "\210\001\001B\007\n\005_nameB\007\n\005_pageB\n\n\010_records\"\233\001\n\024ma"
+  "nagerDump_Response\0222\n\006status\030\001 \001(\0162\".com"
+  ".wazuh.api.engine.ReturnStatus\022\022\n\005error\030"
+  "\002 \001(\tH\000\210\001\001\0221\n\007entries\030\003 \003(\0132 .com.wazuh."
+  "api.engine.kvdb.EntryB\010\n\006_errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_kvdb_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -442,7 +449,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_kvdb_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_kvdb_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_kvdb_2eproto = {
-    false, false, 1377, descriptor_table_protodef_kvdb_2eproto,
+    false, false, 1439, descriptor_table_protodef_kvdb_2eproto,
     "kvdb.proto",
     &descriptor_table_kvdb_2eproto_once, descriptor_table_kvdb_2eproto_deps, 2, 13,
     schemas, file_default_instances, TableStruct_kvdb_2eproto::offsets,
@@ -3462,6 +3469,12 @@ class managerDump_Request::_Internal {
   static void set_has_name(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
+  static void set_has_page(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+  static void set_has_records(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
 };
 
 managerDump_Request::managerDump_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
@@ -3476,7 +3489,9 @@ managerDump_Request::managerDump_Request(const managerDump_Request& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}};
+    , decltype(_impl_.name_){}
+    , decltype(_impl_.page_){}
+    , decltype(_impl_.records_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.name_.InitDefault();
@@ -3487,6 +3502,9 @@ managerDump_Request::managerDump_Request(const managerDump_Request& from)
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
+  ::memcpy(&_impl_.page_, &from._impl_.page_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.records_) -
+    reinterpret_cast<char*>(&_impl_.page_)) + sizeof(_impl_.records_));
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.kvdb.managerDump_Request)
 }
 
@@ -3498,6 +3516,8 @@ inline void managerDump_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
+    , decltype(_impl_.page_){0u}
+    , decltype(_impl_.records_){0u}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3533,6 +3553,11 @@ void managerDump_Request::Clear() {
   if (cached_has_bits & 0x00000001u) {
     _impl_.name_.ClearNonDefaultToEmpty();
   }
+  if (cached_has_bits & 0x00000006u) {
+    ::memset(&_impl_.page_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.records_) -
+        reinterpret_cast<char*>(&_impl_.page_)) + sizeof(_impl_.records_));
+  }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -3551,6 +3576,24 @@ const char* managerDump_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.kvdb.managerDump_Request.name"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint32 page = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _Internal::set_has_page(&has_bits);
+          _impl_.page_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint32 records = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _Internal::set_has_records(&has_bits);
+          _impl_.records_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -3594,6 +3637,18 @@ uint8_t* managerDump_Request::_InternalSerialize(
         1, this->_internal_name(), target);
   }
 
+  // optional uint32 page = 2;
+  if (_internal_has_page()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(2, this->_internal_page(), target);
+  }
+
+  // optional uint32 records = 3;
+  if (_internal_has_records()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_records(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -3610,14 +3665,26 @@ size_t managerDump_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // optional string name = 1;
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_name());
-  }
+  if (cached_has_bits & 0x00000007u) {
+    // optional string name = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_name());
+    }
 
+    // optional uint32 page = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_page());
+    }
+
+    // optional uint32 records = 3;
+    if (cached_has_bits & 0x00000004u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_records());
+    }
+
+  }
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -3636,8 +3703,18 @@ void managerDump_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from._internal_has_name()) {
-    _this->_internal_set_name(from._internal_name());
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000007u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_name(from._internal_name());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_impl_.page_ = from._impl_.page_;
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _this->_impl_.records_ = from._impl_.records_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -3663,6 +3740,12 @@ void managerDump_Request::InternalSwap(managerDump_Request* other) {
       &_impl_.name_, lhs_arena,
       &other->_impl_.name_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(managerDump_Request, _impl_.records_)
+      + sizeof(managerDump_Request::_impl_.records_)
+      - PROTOBUF_FIELD_OFFSET(managerDump_Request, _impl_.page_)>(
+          reinterpret_cast<char*>(&_impl_.page_),
+          reinterpret_cast<char*>(&other->_impl_.page_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata managerDump_Request::GetMetadata() const {
