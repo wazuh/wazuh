@@ -6,12 +6,25 @@
 #include <chrono>
 #include <iostream>
 
+/**
+ * @brief ReceptionPerformanceFixture
+ *
+ */
 class ReceptionPerformanceFixture : public benchmark::Fixture
 {
 protected:
+    /**
+     * @brief publisher
+     *
+     */
     std::unique_ptr<RouterProvider> publisher;
 
 public:
+    /**
+     * @brief
+     *
+     * @param state
+     */
     void SetUp(const ::benchmark::State& state) override
     {
         RouterModule::instance().start();
@@ -27,6 +40,11 @@ public:
         subscriptor->subscribe(countingLambda);
     }
 
+    /**
+     * @brief
+     *
+     * @param state
+     */
     void TearDown(const ::benchmark::State& state) override
     {
         RouterModule::instance().stop();

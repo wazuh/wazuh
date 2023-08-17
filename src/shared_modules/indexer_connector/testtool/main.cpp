@@ -28,6 +28,9 @@ int main()
         }
     })");
 
+    // \cond
     std::this_thread::sleep_for(std::chrono::seconds(5));
+    // \endcond
+
     return 0;
 }

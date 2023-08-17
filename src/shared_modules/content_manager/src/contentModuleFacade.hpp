@@ -18,6 +18,10 @@
 
 constexpr auto CONTENT_MODULE_ENDPOINT_NAME {"content"};
 
+/**
+ * @brief ContentModuleFacade
+ *
+ */
 class ContentModuleFacade final : public Singleton<ContentModuleFacade>
 {
 private:
@@ -25,11 +29,47 @@ private:
     std::shared_mutex m_mutex;
 
 public:
+    /**
+     * @brief start
+     *
+     */
     void start();
+
+    /**
+     * @brief stop
+     *
+     */
     void stop();
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param parameters
+     */
     void addProvider(const std::string& name, const nlohmann::json& parameters);
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param interval
+     */
     void startScheduling(const std::string& name, size_t interval);
+
+    /**
+     * @brief
+     *
+     * @param name
+     */
     void startOndemand(const std::string& name);
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param interval
+     */
     void changeSchedulerInterval(const std::string& name, size_t interval);
 };
 

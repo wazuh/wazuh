@@ -20,6 +20,10 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @brief Publisher
+ *
+ */
 class Publisher final : public Provider<const std::vector<char>&>
 {
 private:
@@ -28,6 +32,12 @@ private:
     std::unique_ptr<MsgDispatcher> m_msgDispatcher {};
 
 public:
+    /**
+     * @brief Construct a new Publisher object
+     *
+     * @param endpointName
+     * @param socketPath
+     */
     explicit Publisher(const std::string& endpointName, const std::string& socketPath)
         : m_socketServer(std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath + endpointName))
         , m_msgDispatcher(std::make_unique<MsgDispatcher>([this, endpointName](const std::vector<char>& data)
@@ -64,11 +74,20 @@ public:
             });
     }
 
+    /**
+     * @brief
+     *
+     * @param data
+     */
     void push(const std::vector<char>& data)
     {
         m_msgDispatcher->push(data);
     }
 
+    /**
+     * @brief Destroy the Publisher object
+     *
+     */
     ~Publisher() override
     {
         m_msgDispatcher->rundown();

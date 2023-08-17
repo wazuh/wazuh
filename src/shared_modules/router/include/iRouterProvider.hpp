@@ -14,6 +14,10 @@
 
 #include <vector>
 
+/**
+ * @brief IRouterProvider
+ *
+ */
 class IRouterProvider
 {
 public:

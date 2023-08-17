@@ -22,6 +22,10 @@
 #include <string>
 #include <utility>
 
+/**
+ * @brief ContentProvider
+ *
+ */
 class ContentProvider final
 {
 private:
@@ -29,6 +33,12 @@ private:
     std::shared_ptr<RouterProvider> m_routerProvider;
 
 public:
+    /**
+     * @brief Construct a new Content Provider object
+     *
+     * @param topicName
+     * @param parameters
+     */
     explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
         : m_routerProvider(std::make_shared<RouterProvider>(topicName))
     {
@@ -43,16 +53,30 @@ public:
         m_routerProvider.reset();
     }
 
+    /**
+     * @brief
+     *
+     * @param interval
+     */
     void startActionScheduler(const size_t interval)
     {
         m_action->startActionScheduler(interval);
     }
 
+    /**
+     * @brief startOnDemandAction
+     *
+     */
     void startOnDemandAction()
     {
         m_action->registerActionOnDemand();
     }
 
+    /**
+     * @brief
+     *
+     * @param interval
+     */
     void changeSchedulerInterval(const size_t interval)
     {
         m_action->changeSchedulerInterval(interval);

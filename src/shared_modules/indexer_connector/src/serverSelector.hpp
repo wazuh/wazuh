@@ -17,6 +17,10 @@
 #include <memory>
 #include <string>
 
+/**
+ * @brief ServerSelector
+ *
+ */
 class ServerSelector final : private RoundRobinSelector<std::string>
 {
 private:
@@ -24,12 +28,23 @@ private:
 
 public:
     ~ServerSelector() = default;
+
+    /**
+     * @brief Construct a new Server Selector object
+     *
+     * @param values
+     */
     explicit ServerSelector(const std::vector<std::string>& values)
         : RoundRobinSelector<std::string>(values)
     {
         monitoring = std::make_shared<Monitoring>(values);
     }
 
+    /**
+     * @brief Get the Next object
+     *
+     * @return std::string
+     */
     std::string getNext()
     {
         auto initialValue {RoundRobinSelector<std::string>::getNext()};

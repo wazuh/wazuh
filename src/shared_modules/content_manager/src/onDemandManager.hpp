@@ -18,6 +18,10 @@
 #include <map>
 #include <shared_mutex>
 
+/**
+ * @brief OnDemandManager
+ *
+ */
 class OnDemandManager final : public Singleton<OnDemandManager>
 {
 private:
@@ -29,8 +33,25 @@ private:
     void stopServer();
 
 public:
+    /**
+     * @brief Add an endpoint to the server and start it if it's not running
+     *
+     * @param endpoint Endpoint to add
+     * @param func Function to call when the endpoint is called
+     */
     void addEndpoint(const std::string& endpoint, std::function<void()> func);
+
+    /**
+     * @brief Remove an endpoint and stop the server if there are no more endpoints
+     *
+     * @param endpoint Endpoint to remove
+     */
     void removeEndpoint(const std::string& endpoint);
+
+    /**
+     * @brief clearEndpoints
+     *
+     */
     void clearEndpoints();
 };
 

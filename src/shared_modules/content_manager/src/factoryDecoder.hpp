@@ -24,9 +24,19 @@ enum MessageType
     RegisterProvider = 0x00000001,
 };
 
+/**
+ * @brief FactoryDecoder
+ *
+ */
 class FactoryDecoder final
 {
 public:
+    /**
+     * @brief
+     *
+     * @param data
+     * @return std::shared_ptr<DataDecoder>
+     */
     static std::shared_ptr<DataDecoder> create(const std::shared_ptr<std::vector<char>>& data)
     {
         // Decode data

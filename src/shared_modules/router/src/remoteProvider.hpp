@@ -20,6 +20,10 @@
 #include <external/nlohmann/json.hpp>
 #include <functional>
 
+/**
+ * @brief RemoteProvider
+ *
+ */
 class RemoteProvider final
 {
 private:
@@ -27,6 +31,12 @@ private:
     std::string m_endpointName {};
 
 public:
+    /**
+     * @brief Construct a new Remote Provider object
+     *
+     * @param endpoint
+     * @param socketPath
+     */
     explicit RemoteProvider(std::string endpoint, const std::string& socketPath)
         : m_endpointName {std::move(endpoint)}
     {
@@ -38,11 +48,20 @@ public:
         m_socketClient->connect([&](const char*, uint32_t, const char*, uint32_t) {});
     }
 
+    /**
+     * @brief
+     *
+     * @param message
+     */
     void push(const std::vector<char>& message)
     {
         m_socketClient->send(message.data(), message.size(), "P", 1);
     }
 
+    /**
+     * @brief Destroy the Remote Provider object
+     *
+     */
     ~RemoteProvider()
     {
         nlohmann::json jsonMsg {{"EndpointName", m_endpointName}, {"MessageType", "RemoveProvider"}};

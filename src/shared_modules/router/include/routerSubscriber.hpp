@@ -24,6 +24,10 @@
 #include <string>
 #include <vector>
 
+/**
+ * @brief RouterSubscriber
+ *
+ */
 class EXPORTED RouterSubscriber final
 {
 private:
@@ -34,6 +38,13 @@ private:
     void unsubscribe();
 
 public:
+    /**
+     * @brief Construct a new Router Subscriber object
+     *
+     * @param topicName
+     * @param subscriberId
+     * @param isLocal
+     */
     explicit RouterSubscriber(std::string topicName, std::string subscriberId, const bool isLocal = true)
         : m_topicName {std::move(topicName)}
         , m_subscriberId {std::move(subscriberId)}
@@ -52,6 +63,11 @@ public:
         }
     }
 
+    /**
+     * @brief
+     *
+     * @param callback
+     */
     void subscribe(const std::function<void(const std::vector<char>&)>& callback);
 };
 

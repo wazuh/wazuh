@@ -59,6 +59,10 @@ namespace HealthCheckColumns
     };
 };
 
+/**
+ * @brief Monitoring
+ *
+ */
 class Monitoring final
 {
     std::map<std::string, bool> m_values;
@@ -77,6 +81,12 @@ public:
             m_thread.join();
         }
     }
+
+    /**
+     * @brief Construct a new Monitoring object
+     *
+     * @param values
+     */
     explicit Monitoring(const std::vector<std::string>& values)
     {
         // Initialize the map with the values, all servers are available.
@@ -142,6 +152,13 @@ public:
             });
     }
 
+    /**
+     * @brief
+     *
+     * @param value
+     * @return true
+     * @return false
+     */
     bool isAvailable(const std::string& value)
     {
         // Check if the server is available.

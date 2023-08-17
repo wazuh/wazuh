@@ -25,6 +25,10 @@
 #include <string>
 #include <vector>
 
+/**
+ * @brief RouterProvider
+ *
+ */
 class EXPORTED RouterProvider final : public IRouterProvider
 {
 private:
@@ -32,6 +36,12 @@ private:
     const bool m_isLocal {false};
 
 public:
+    /**
+     * @brief Construct a new Router Provider object
+     *
+     * @param topicName
+     * @param isLocal
+     */
     explicit RouterProvider(std::string topicName, const bool isLocal = true)
         : m_topicName {std::move(topicName)}
         , m_isLocal {isLocal}

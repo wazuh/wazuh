@@ -14,13 +14,26 @@
 
 #include <gtest/gtest.h>
 
+/**
+ * @brief RouterModuleInterfaceTest
+ *
+ */
 class RouterModuleInterfaceTest : public ::testing::Test
 {
 protected:
     RouterModuleInterfaceTest() = default;
     ~RouterModuleInterfaceTest() override = default;
 
+    /**
+     * @brief SetUp
+     *
+     */
     void SetUp() override;
+
+    /**
+     * @brief TearDown
+     *
+     */
     void TearDown() override;
 };
 #endif //_INTERFACE_MODULE_TEST_HPP

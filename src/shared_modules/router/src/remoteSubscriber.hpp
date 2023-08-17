@@ -20,6 +20,10 @@
 #include <external/nlohmann/json.hpp>
 #include <functional>
 
+/**
+ * @brief RemoteSuscriber
+ *
+ */
 class RemoteSubscriber final
 {
 private:
@@ -29,6 +33,14 @@ private:
     bool m_isRegistered;
 
 public:
+    /**
+     * @brief Construct a new Remote Subscriber object
+     *
+     * @param endpoint
+     * @param subscriberId
+     * @param callback
+     * @param socketPath
+     */
     explicit RemoteSubscriber(std::string endpoint,
                               std::string subscriberId,
                               const std::function<void(const std::vector<char>&)>& callback,
@@ -91,6 +103,10 @@ public:
         }
     }
 
+    /**
+     * @brief Destroy the Remote Subscriber object
+     *
+     */
     ~RemoteSubscriber()
     {
         nlohmann::json jsonMsg {

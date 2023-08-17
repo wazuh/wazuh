@@ -24,12 +24,26 @@
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 
+/**
+ * @brief IndexerConnector
+ *
+ */
 class EXPORTED IndexerConnector final
 {
 public:
+    /**
+     * @brief Construct a new Indexer Connector object
+     *
+     * @param config
+     */
     explicit IndexerConnector(const nlohmann::json& config);
     ~IndexerConnector();
 
+    /**
+     * @brief
+     *
+     * @param message
+     */
     void publish(const std::string& message);
 };
 

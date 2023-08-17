@@ -15,6 +15,10 @@
 #include "iRouterProvider.hpp"
 #include <gmock/gmock.h>
 
+/**
+ * @brief MockRouterProvider
+ *
+ */
 class MockRouterProvider : public IRouterProvider
 {
 public:

@@ -23,30 +23,104 @@
 #include <shared_mutex>
 #include <string>
 
+/**
+ * @brief RouterFacade
+ *
+ */
 class RouterFacade final : public Singleton<RouterFacade>
 {
 public:
     // From subscriber.
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param subscriberId
+     * @param callback
+     */
     void addSubscriber(const std::string& name,
                        const std::string& subscriberId,
                        const std::function<void(const std::vector<char>&)>& callback);
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param subscriberId
+     * @param callback
+     */
     void addSubscriberRemote(const std::string& name,
                              const std::string& subscriberId,
                              const std::function<void(const std::vector<char>&)>& callback);
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param subscriberId
+     * @return * void
+     */
     void removeSubscriberLocal(const std::string& name, const std::string& subscriberId);
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param subscriberId
+     */
     void removeSubscriberRemote(const std::string& name, const std::string& subscriberId);
 
     // From providers.
+
+    /**
+     * @brief
+     *
+     * @param name
+     */
     void initProviderRemote(const std::string& name);
+
+    /**
+     * @brief
+     *
+     * @param name
+     */
     void removeProviderRemote(const std::string& name);
 
+    /**
+     * @brief
+     *
+     * @param name
+     */
     void initProviderLocal(const std::string& name);
+
+    /**
+     * @brief
+     *
+     * @param name
+     */
     void removeProviderLocal(const std::string& name);
 
+    /**
+     * @brief
+     *
+     * @param name
+     * @param data
+     */
     void push(const std::string& name, const std::vector<char>& data);
 
     // From modulesd-router
+
+    /**
+     * @brief initialize
+     *
+     */
     void initialize();
+
+    /**
+     * @brief destroy
+     *
+     */
     void destroy();
 
 private:

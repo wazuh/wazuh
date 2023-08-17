@@ -15,15 +15,32 @@
 #include "router.h"
 #include <gtest/gtest.h>
 
+/**
+ * @brief RouterCInterfaceTest
+ *
+ */
 class RouterCInterfaceTest : public ::testing::Test
 {
 protected:
     RouterCInterfaceTest() = default;
     ~RouterCInterfaceTest() override = default;
 
+    /**
+     * @brief SetUp
+     *
+     */
     void SetUp() override;
+
+    /**
+     * @brief TearDown
+     *
+     */
     void TearDown() override;
 
+    /**
+     * @brief m_routerProviderHandle
+     *
+     */
     ROUTER_PROVIDER_HANDLE m_routerProviderHandle {};
 };
 #endif //_ROUTER_C_INTERFACE_TESTS_HPP
