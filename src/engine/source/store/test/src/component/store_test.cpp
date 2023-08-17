@@ -60,17 +60,6 @@ protected:
      }
 };
 
-// Sort the vector of namespaces
-static void sortNamespaces(std::vector<NamespaceId>& namespaces)
-{
-  auto sortFunc = [](const NamespaceId& a, const NamespaceId& b) { return a.str() < b.str(); };
-  std::sort(namespaces.begin(), namespaces.end(), sortFunc);
-}
-
-static const auto comparatorName = [](const base::Name& lhs, const base::Name& rhs)
-{
-    return lhs.parts() < rhs.parts();
-};
 
 TEST_F(StoreTest, allSingleOpAndLoad)
 {
@@ -99,7 +88,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_TRUE(store->exists(DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
-        sortNamespaces(root);
+        std::sort(root.begin(), root.end());
         ASSERT_EQ(root[0], NAMESPACE_A);
         ASSERT_EQ(root[1], NAMESPACE_B);
 
@@ -111,7 +100,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
-            sortNamespaces(root);
+            std::sort(root.begin(), root.end());;
             ASSERT_EQ(root[0], NAMESPACE_A);
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
@@ -171,7 +160,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_TRUE(store->exists(DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
-        sortNamespaces(root);
+        std::sort(root.begin(), root.end());;
         ASSERT_EQ(root[0], NAMESPACE_A);
         ASSERT_EQ(root[1], NAMESPACE_B);
 
@@ -187,7 +176,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
-            sortNamespaces(root);
+            std::sort(root.begin(), root.end());;
             ASSERT_EQ(root[0], NAMESPACE_A);
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
@@ -253,7 +242,7 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
-        sortNamespaces(root);
+        std::sort(root.begin(), root.end());;
         ASSERT_EQ(root[0], NAMESPACE_A);
         ASSERT_EQ(root[1], NAMESPACE_B);
 
@@ -265,7 +254,7 @@ TEST_F(StoreTest, allColOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
-            sortNamespaces(root);
+            std::sort(root.begin(), root.end());;
             ASSERT_EQ(root[0], NAMESPACE_A);
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
@@ -296,7 +285,7 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_B);
             ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_C);
             auto listDoc = std::get<Col>(colABC);
-            std::sort(listDoc.begin(), listDoc.end(), comparatorName);
+            std::sort(listDoc.begin(), listDoc.end());
             ASSERT_EQ(listDoc[0], DOC_A);
             ASSERT_EQ(listDoc[1], DOC_B);
             ASSERT_EQ(listDoc[2], DOC_C);
@@ -342,14 +331,14 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
-        sortNamespaces(root);
+        std::sort(root.begin(), root.end());;
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_C, NAMESPACE_A, JSON_C));
         ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_C));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
-        sortNamespaces(root);
+        std::sort(root.begin(), root.end());;
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         // Check the 3 items
@@ -357,7 +346,7 @@ TEST_F(StoreTest, allColOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 1);
-            sortNamespaces(root);
+            std::sort(root.begin(), root.end());;
             ASSERT_EQ(root[0], NAMESPACE_A);
 
             auto rDocA = store->readDoc(COLLECTION_ABC + DOC_A);
@@ -396,7 +385,7 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_B);
             ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_C);
             auto listDoc = std::get<Col>(colABC);
-            std::sort(listDoc.begin(), listDoc.end(), comparatorName);
+            std::sort(listDoc.begin(), listDoc.end());
             ASSERT_EQ(listDoc[0], DOC_A);
             ASSERT_EQ(listDoc[1], DOC_B);
             ASSERT_EQ(listDoc[2], DOC_C);
