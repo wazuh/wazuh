@@ -16,6 +16,8 @@
 
 namespace
 {
+// TODO: Add private namespaces to store
+constexpr auto TEST_NAMESPACE = "__test__"; ///< Test namespace
 
 using namespace api::sessionManager;
 
@@ -358,7 +360,7 @@ std::optional<base::Error> saveSessionsToStore(const std::shared_ptr<SessionMana
                                                const std::shared_ptr<store::IStore>& store)
 {
     const auto sessionsJson = getSessionsAsJson(sessionManager);
-    return store->update(API_SESSIONS_TABLE_NAME, sessionsJson);
+    return store->updateInternalDoc(API_SESSIONS_TABLE_NAME, sessionsJson);
 }
 
 inline int32_t getMaximumAvailablePriority(const std::shared_ptr<Router>& router)
@@ -404,7 +406,7 @@ inline std::optional<base::Error> addAssetToCatalog(const std::shared_ptr<Catalo
     // If no error occurred, post the resource
     if (!addAssetError.has_value())
     {
-        const auto postResourceError = catalog->postResource(targetResource, assetContent);
+        const auto postResourceError = catalog->postResource(targetResource, TEST_NAMESPACE, assetContent);
         if (postResourceError)
         {
             addAssetError = std::optional<base::Error> {base::Error {postResourceError.value().message}};

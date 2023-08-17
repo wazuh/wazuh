@@ -87,10 +87,12 @@ public:
      * @param collection Resource identifying the collection, the name must be the same as
      * the type of the name content and the content must be a string in the same format as
      * the collection.m_format
+     * @param namespaceStr Namespace name where the item will be added
      * @param content String with the resource to add to the collection.
      * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> postResource(const Resource& collection, const std::string& content);
+    std::optional<base::Error>
+    postResource(const Resource& collection, const std::string& namespaceStr, const std::string& content);
 
     /**
      * @brief Update an item

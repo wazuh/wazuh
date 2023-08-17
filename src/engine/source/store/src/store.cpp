@@ -6,6 +6,8 @@
 namespace
 {
 
+const store::NamespaceId INTERNAL_NAMESPACE {"_internal"};
+
 const auto comparatorName = [](const base::Name& lhs, const base::Name& rhs)
     {
         return lhs.parts() < rhs.parts();
@@ -289,7 +291,12 @@ Store::Store(std::shared_ptr<IDriver> driver)
     : m_driver(std::move(driver))
     , m_cache(std::make_unique<DBDocNames>())
     , m_mutex()
+    , m_internalNs(INTERNAL_NAMESPACE)
 {
+    if (m_driver == nullptr)
+    {
+        throw std::runtime_error("Store driver cannot be null");
+    }
 
     // Load the cache
 
@@ -647,6 +654,30 @@ base::OptError Store::deleteCol(const base::Name& name)
     }
 
     return std::nullopt;
+}
+
+base::OptError Store::createInternalDoc(const base::Name& name, const Doc& content)
+{
+    // TODO Implement without adding the namespace
+    return createDoc(name, m_internalNs, content);
+}
+
+base::RespOrError<Doc> Store::readInternalDoc(const base::Name& name) const
+{
+    // TODO Implement without adding the namespace
+    return readDoc(name);
+}
+
+base::OptError Store::updateInternalDoc(const base::Name& name, const Doc& content)
+{
+    // TODO Implement without adding the namespace
+    return updateDoc(name, content);
+}
+
+base::OptError Store::deleteInternalDoc(const base::Name& name)
+{
+    // TODO Implement without adding the namespace
+    return deleteDoc(name);
 }
 
 } // namespace store

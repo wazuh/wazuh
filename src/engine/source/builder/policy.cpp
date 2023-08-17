@@ -74,7 +74,7 @@ void Policy::addFilters(const std::string& graphName)
 
 std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
 Policy::getManifestAssets(const json::Json& jsonDefinition,
-                          std::shared_ptr<const store::IStoreRead> storeRead,
+                          std::shared_ptr<const store::IStoreReader> storeRead,
                           std::shared_ptr<internals::Registry<internals::Builder>> registry)
 {
     if (!jsonDefinition.isObject())

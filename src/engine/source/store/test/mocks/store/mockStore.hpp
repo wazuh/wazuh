@@ -8,43 +8,94 @@
 namespace store::mocks
 {
 
-const static std::variant<json::Json, base::Error> getError = base::Error {"Mocked get error"};
-inline std::variant<json::Json, base::Error> getSuccess(json::Json& expected)
+/******************************************************************************/
+// Helper functions to mock method responses
+/******************************************************************************/
+inline base::OptError storeError()
 {
-    return expected;
+    return base::Error {"Mocked store error"};
 }
 
-inline std::variant<json::Json, base::Error> getSuccess(const json::Json& expected)
+template<typename T>
+inline base::RespOrError<T> storeReadError()
 {
-    return expected;
+    return base::Error {"Mocked store read error"};
 }
 
-const static std::optional<base::Error> addError = base::Error {"Mocked add error"};
-const static std::optional<base::Error> addSuccess = std::nullopt;
+template<typename... Names>
+inline base::RespOrError<Col> storeReadColResp(Names&&... names)
+{
+    return Col {std::forward<Names>(names)...};
+}
 
-const static std::optional<base::Error> delError = base::Error {"Mocked del error"};
-const static std::optional<base::Error> delSuccess = std::nullopt;
+inline base::RespOrError<Col> storeReadColResp(const Col& col)
+{
+    return col;
+}
 
-const static std::optional<base::Error> updateError = base::Error {"Mocked update error"};
-const static std::optional<base::Error> updateSuccess = std::nullopt;
+inline base::RespOrError<Doc> storeReadDocResp(const Doc& doc)
+{
+    return doc;
+}
 
-const static std::optional<base::Error> addUpdateError = base::Error {"Mocked addUpdate error"};
-const static std::optional<base::Error> addUpdateSuccess = std::nullopt;
+template<typename... Names>
+inline std::vector<NamespaceId> storeListNamespacesResp(Names&&... namespaces)
+{
+    return std::vector<NamespaceId> {std::forward<Names>(namespaces)...};
+}
 
-class MockStoreRead : public store::IStoreRead
+inline std::vector<NamespaceId> storeListNamespacesResp(const std::vector<NamespaceId>& namespaces)
+{
+    return namespaces;
+}
+
+inline std::optional<NamespaceId> storeGetNamespaceError()
+{
+    return std::nullopt;
+}
+
+inline std::optional<NamespaceId> storeGetNamespaceResp(const NamespaceId& namespaceId)
+{
+    return namespaceId;
+}
+
+/******************************************************************************/
+// Mock classes
+/******************************************************************************/
+class MockStoreRead : public store::IStoreReader
 {
 public:
-    MOCK_METHOD((std::variant<json::Json, base::Error>), get, (const base::Name&), (const, override));
+    MOCK_METHOD((base::RespOrError<Doc>), readDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&, const NamespaceId&), (const, override));
+    MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), exists, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsCol, (const base::Name&), (const, override));
+    MOCK_METHOD((std::vector<NamespaceId>), listNamespaces, (), (const, override));
+    MOCK_METHOD((std::optional<NamespaceId>), getNamespace, (const base::Name&), (const, override));
 };
 
-class MockStore : public store::IStore
+class MockStoreInternal : public store::IStoreInternal
 {
 public:
-    MOCK_METHOD((std::variant<json::Json, base::Error>), get, (const base::Name&), (const, override));
-    MOCK_METHOD((std::optional<base::Error>), add, (const base::Name&, const json::Json&), (override));
-    MOCK_METHOD((std::optional<base::Error>), del, (const base::Name&), (override));
-    MOCK_METHOD((std::optional<base::Error>), update, (const base::Name&, const json::Json&), (override));
-    MOCK_METHOD((std::optional<base::Error>), addUpdate, (const base::Name&, const json::Json&), (override));
+    MOCK_METHOD((base::OptError), createInternalDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::RespOrError<Doc>), readInternalDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
+};
+
+class MockStore
+    : public store::IStore
+    , public MockStoreRead
+    , public MockStoreInternal
+{
+public:
+    MOCK_METHOD((base::OptError), createDoc, (const base::Name&, const NamespaceId&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), updateDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), upsertDoc, (const base::Name&, const NamespaceId&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), deleteDoc, (const base::Name&), (override));
+    MOCK_METHOD((base::OptError), deleteCol, (const base::Name&), (override));
+    MOCK_METHOD((base::OptError), deleteCol, (const base::Name&, const NamespaceId&), (override));
 };
 
 } // namespace store::mocks
