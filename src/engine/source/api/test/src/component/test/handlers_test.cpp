@@ -32,6 +32,7 @@ constexpr auto JSON_INTEGRATION = "integration/wazuh-core/0";
 constexpr auto JSON_SCHEMA_ASSET = "schema/wazuh-asset/0";
 constexpr auto JSON_SCHEMA_POLICY = "schema/wazuh-policy/0";
 
+// TODO: Create catalog and router interfaces to mock and classify this test suite as unitary.
 class TestSessionDeleteCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:

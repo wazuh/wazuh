@@ -54,13 +54,13 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
 set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
 
-add_executable(api_component_test
+add_executable(api_ctest
   ${TEST_SRC_COMPONENT_DIR}/test/handlers_test.cpp
   ${TEST_SRC_COMPONENT_DIR}/integration/handlers_test.cpp
   ${TEST_SRC_COMPONENT_DIR}/integration/integration_test.cpp
 )
 
-add_executable(api_unit_test
+add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/catalog/catalog_test.cpp
   ${TEST_SRC_UNIT_DIR}/catalog/handlers_test.cpp
   ${TEST_SRC_UNIT_DIR}/catalog/resource_test.cpp
@@ -73,9 +73,9 @@ add_executable(api_unit_test
 )
 
 # TODO: Replace test_mocks with the metrics executable when you have the test folder available.
-target_link_libraries(api_component_test gtest_main base api schemf::mocks test_mocks store_mocks)
-gtest_discover_tests(api_component_test)
+target_link_libraries(api_ctest gtest_main base api schemf::mocks test_mocks store_mocks)
+gtest_discover_tests(api_ctest)
 
-target_link_libraries(api_unit_test gtest_main base api schemf::mocks test_mocks store_mocks)
-gtest_discover_tests(api_unit_test)
+target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store_mocks)
+gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)

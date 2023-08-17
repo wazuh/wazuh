@@ -10,6 +10,7 @@ const std::string rOrigin {"Dummy org module"};
 constexpr auto POLICY_NOT_FOUND {2};
 constexpr auto INTEGRATION_NOT_FOUND {3};
 
+// TODO: Create catalog interface to mock and classify this test suite as unitary.
 class IntegrationAddApiTest : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string>>
 {
 protected:
