@@ -26,6 +26,9 @@
 #include "json_data.h"
 
 size_t lccom_getstate(char ** output, bool getNextPage);
+uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage);
+void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t LenHeaderInterval, size_t LenHeaderData, size_t LenHeaderGlobal, size_t counter, bool getNextPage);
+bool isJsonUpdated(void);
 
 /* setup/teardown */
 
@@ -43,6 +46,10 @@ static int teardown_group(void ** state) {
 
 cJSON * __wrap_w_logcollector_state_get() {
     return mock_type(cJSON *);
+}
+
+double __wrap_difftime (time_t __time1, time_t __time0) {
+    return mock();
 }
 
 /* tests */
@@ -113,11 +120,12 @@ void test_lccom_getstate_null(void ** state) {
 }
 
 
-void _test_lccom_getstate_tmp (char *ExpectedBlock){
+void _test_lccom_getstate_tmp (char *fullJson, char *ExpectedBlock, bool getNextPage){
     char * output = NULL;
     char *json = NULL;
-    os_strdup(global_outjson, json);
+    os_strdup(fullJson, json);
     state_interval = true;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 2);
     will_return(__wrap_w_logcollector_state_get, (cJSON *) 3);
@@ -138,8 +146,15 @@ void _test_lccom_getstate_tmp (char *ExpectedBlock){
     will_return(__wrap_cJSON_PrintUnformatted, json);
     expect_function_call(__wrap_cJSON_Delete);
 
-    size_t retval = lccom_getstate(&output, true);
+    if (strstr(fullJson, outjson2) == NULL) {
+        expect_string(__wrap_stat, __file, "var/run/wazuh-logcollector.state");
+        will_return(__wrap_stat, &stat_buf);
+        will_return(__wrap_stat, 0);
+        will_return(__wrap_difftime, 10);
+        expect_string(__wrap__mdebug2, formatted_msg, " Wed Dec 31 19:00:00 1969 var/run/wazuh-logcollector.state");
+    }
 
+    size_t retval = lccom_getstate(&output, getNextPage);
     assert_int_equal(strlen(output), retval);
     assert_string_equal(ExpectedBlock, output);
     os_free(output);
@@ -147,19 +162,72 @@ void _test_lccom_getstate_tmp (char *ExpectedBlock){
 
 
 void test_lccom_getstate_first_json_block_greather_than_64k(void ** state) {
-    _test_lccom_getstate_tmp (outjson_block1);
+    _test_lccom_getstate_tmp (global_outjson, outjson_block1, false);
 }
 
 void test_lccom_getstate_second_json_block_greather_than_64k(void ** state) {
-    _test_lccom_getstate_tmp (outjson_block2);
+    _test_lccom_getstate_tmp (global_outjson, outjson_block2, true);
 }
 
 void test_lccom_getstate_third_json_block_greather_than_64k(void ** state) {
-    _test_lccom_getstate_tmp (outjson_block3);
+    _test_lccom_getstate_tmp (global_outjson, outjson_block3, true);
 }
 
 void test_lccom_getstate_end_json_block_lower_than_64k(void ** state) {
-   _test_lccom_getstate_tmp (outjson_block4);
+   _test_lccom_getstate_tmp (global_outjson, outjson_block4, true);
+}
+
+void test_lccom_getstate_first_json_block_greather_than_64k_case1(void ** state) {
+   _test_lccom_getstate_tmp (outjson1, outjson_block_case_1, false);
+}
+
+void test_lccom_getstate_first_json_block_lower_than_64k_case2(void ** state) {
+   _test_lccom_getstate_tmp (outjson2, outjson_block_case_2, false);
+}
+
+void test_lccom_getstate_first_json_block_lower_than_64k_case5(void ** state) {
+   _test_lccom_getstate_tmp (outjson5, outjson_block_case_5, false);
+}
+
+void test_lccom_getstate_first_json_block_lower_than_64k_case5_block1(void ** state) {
+   _test_lccom_getstate_tmp (outjson5, outjson_block_case_5_1, true);
+}
+
+void test_lccom_getstate_first_json_block_lower_than_64k_case6(void ** state) {
+   _test_lccom_getstate_tmp (outjson6, outjson_block_case_6, false);
+}
+
+void test_lccom_getstate_first_json_block_lower_than_64k_case6_block1(void ** state) {
+   _test_lccom_getstate_tmp (outjson6, outjson_block_case_6_1, true);
+}
+
+void test_lccom_getstate_first_json_block_no_global(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg, "'global' tag no found in logcollector JSON stats");
+    addStartandEndTagsToJsonStrBlock(outjson_no_global, "{\"global\":{\"start\":", "\"interval\":{\"start\":", "{\"error\":0,\"data\":{\"global\":{\"start\":", 0, 0, 0, 0, false);
+    assert_string_equal(outjson_no_global, outjson_no_global);
+}
+
+void test_lccom_getJsonStr64kBlockFromLatestIndex(void ** state) {
+    char * output = NULL;
+    char *json = NULL;
+    os_strdup(outjson2, json);
+
+    size_t retval = getJsonStr64kBlockFromLatestIndex(&json, false);
+    assert_int_equal(strlen(json), retval);
+    assert_string_equal(outjson2, json);
+    os_free(json);
+}
+
+
+void test_lccom_isJsonUpdated(void ** state) {
+    struct stat stat_buf = { .st_mode = 0040000 };
+    expect_string(__wrap_stat, __file, "var/run/wazuh-logcollector.state");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_difftime, 10);
+
+    expect_string(__wrap__mdebug2, formatted_msg, " Wed Dec 31 19:00:00 1969 var/run/wazuh-logcollector.state");
+    size_t retval = isJsonUpdated();
 }
 
 int main(void) {
@@ -171,7 +239,16 @@ int main(void) {
         cmocka_unit_test(test_lccom_getstate_first_json_block_greather_than_64k),
         cmocka_unit_test(test_lccom_getstate_second_json_block_greather_than_64k),
         cmocka_unit_test(test_lccom_getstate_third_json_block_greather_than_64k),
-        cmocka_unit_test(test_lccom_getstate_end_json_block_lower_than_64k)
+        cmocka_unit_test(test_lccom_getstate_end_json_block_lower_than_64k),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_greather_than_64k_case1),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_lower_than_64k_case2),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_lower_than_64k_case5),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_lower_than_64k_case5_block1),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_lower_than_64k_case6),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_lower_than_64k_case6_block1),
+        cmocka_unit_test(test_lccom_getstate_first_json_block_no_global),
+        cmocka_unit_test(test_lccom_getJsonStr64kBlockFromLatestIndex),
+        cmocka_unit_test(test_lccom_isJsonUpdated)
 
     };
 
