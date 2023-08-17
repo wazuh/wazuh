@@ -274,6 +274,7 @@ TEST_F(StoreTest, allColOpAndLoad)
             auto colA = store->readCol(COLLECTION_A);
             auto colAB = store->readCol(COLLECTION_AB);
             auto colABC = store->readCol(COLLECTION_ABC);
+
             ASSERT_FALSE(base::isError(colA));
             ASSERT_FALSE(base::isError(colAB));
             ASSERT_FALSE(base::isError(colABC));
@@ -282,13 +283,15 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_EQ(std::get<Col>(colAB).size(), 1);
             ASSERT_EQ(std::get<Col>(colABC).size(), 3);
 
-            ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_B);
-            ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_C);
+            ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_AB);
+            ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_ABC);
+
             auto listDoc = std::get<Col>(colABC);
             std::sort(listDoc.begin(), listDoc.end());
-            ASSERT_EQ(listDoc[0], DOC_A);
-            ASSERT_EQ(listDoc[1], DOC_B);
-            ASSERT_EQ(listDoc[2], DOC_C);
+            ASSERT_EQ(listDoc[0], COLLECTION_ABC + DOC_A);
+            ASSERT_EQ(listDoc[1], COLLECTION_ABC + DOC_B);
+            ASSERT_EQ(listDoc[2], COLLECTION_ABC + DOC_C);
+
         };
 
         checkItems();
@@ -382,13 +385,13 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_EQ(std::get<Col>(colAB).size(), 1);
             ASSERT_EQ(std::get<Col>(colABC).size(), 3);
 
-            ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_B);
-            ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_C);
+            ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_AB);
+            ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_ABC);
             auto listDoc = std::get<Col>(colABC);
             std::sort(listDoc.begin(), listDoc.end());
-            ASSERT_EQ(listDoc[0], DOC_A);
-            ASSERT_EQ(listDoc[1], DOC_B);
-            ASSERT_EQ(listDoc[2], DOC_C);
+            ASSERT_EQ(listDoc[0], COLLECTION_ABC + DOC_A);
+            ASSERT_EQ(listDoc[1], COLLECTION_ABC + DOC_B);
+            ASSERT_EQ(listDoc[2], COLLECTION_ABC + DOC_C);
         };
 
         checkItems();
