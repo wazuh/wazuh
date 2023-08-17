@@ -51,4 +51,12 @@ add_executable(store_fileDriver_test
 target_link_libraries(store_fileDriver_test gtest_main store::fileDriver)
 gtest_discover_tests(store_fileDriver_test)
 
+# TODO FIX THIS CMAKE (Separe unit tests from component tests)
+## Store component test
+add_executable(store_test
+    ${TEST_SRC_DIR}/component/store_test.cpp # TODO Use macro for component test folder
+)
+target_link_libraries(store_test gtest_main store::fileDriver store)
+gtest_discover_tests(store_test )
+
 endif(ENGINE_BUILD_TEST)
