@@ -51,6 +51,7 @@ protected:
     void SetUp() override
     {
         initLogging();
+        std::filesystem::remove_all(TEST_PATH);
         m_fDriver = std::make_shared<drivers::FileDriver>(TEST_PATH, true);
     }
 

@@ -13,7 +13,7 @@ namespace store
 class Store : public IStore
 {
 private:
-    NamespaceId m_internalNs;            ///< Internal namespace.
+    base::Name m_prefixNS;               ///< Prefix for the namespaces.
 
     std::shared_ptr<IDriver> m_driver;   ///< Store driver.
 
