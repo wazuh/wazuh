@@ -37,6 +37,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
     cfg->queue_size = 131072;
+    cfg->connection_overtake_time = 60;
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
@@ -120,6 +121,9 @@ cJSON *getRemoteConfig(void) {
                 }
                 cJSON_AddItemToObject(conn,"denied-ips",list);
             }
+
+            cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+
             cJSON_AddItemToArray(rem,conn);
         }
     }

@@ -75,30 +75,24 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
-    w_mutex_lock(&keys.keyentries[key_id]->mutex);
-
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
-        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }
 
-    w_mutex_unlock(&keys.keyentries[key_id]->mutex);
-
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
-    w_mutex_lock(&keys.keyentries[key_id]->mutex);
-
     if (msg_size <= 0) {
-        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         merror(SEC_ERROR);
         return (-1);
     }
 
     crypt_msg[msg_size] = '\0';
+
+    w_mutex_lock(&keys.keyentries[key_id]->mutex);
 
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {

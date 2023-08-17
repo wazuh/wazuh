@@ -85,11 +85,7 @@ void test_send_msg_tcp_ok(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -132,11 +128,7 @@ void test_send_msg_tcp_err(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);

@@ -49,6 +49,7 @@ typedef struct _remoted {
     long queue_size;
     bool worker_node;
     int rids_closing_time;
+    int connection_overtake_time;
     _Config global;
 } remoted;
 
