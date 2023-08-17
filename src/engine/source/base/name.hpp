@@ -195,6 +195,22 @@ public:
     }
 
     /**
+     * @brief Operator < to compare two names
+     *
+     * Compare the names lexicographically, i.e. the first different part is used to compare.
+     * If the first different part is a number, the comparison is done numerically.
+     * If the first different part is not a number, the comparison is done lexicographically.
+     * If the names are equal, the shorter name is considered smaller.
+     * @param other Name to compare
+     * @return true
+     * @return false
+     */
+    bool operator<(const Name& other) const
+    {
+        return std::lexicographical_compare(m_parts.begin(), m_parts.end(), other.m_parts.begin(), other.m_parts.end());
+    }
+
+    /**
      * @brief Get the full name string
      *
      * @return std::string Full name string in the form

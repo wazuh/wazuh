@@ -91,6 +91,15 @@ public:
      * @return const std::string&
      */
     const std::string& str() const { return m_id.parts()[0]; }
+
+    /**
+     * @brief Operator < to compare two NamespaceId
+     *
+     * @param other NamespaceId to compare
+     * @return true
+     * @return false
+     */
+    bool operator<(const NamespaceId& other) const { return m_id < other.m_id; }
 };
 
 } // namespace store

@@ -55,16 +55,16 @@ gtest_discover_tests(store_fileDriver_unit_test)
 
 # TODO FIX THIS CMAKE (Separe unit tests from component tests)
 ## Store component test
-add_executable(store_test
+add_executable(store_ctest
     ${COMPONENT_SRC_DIR}/store_test.cpp
 )
-target_link_libraries(store_test gtest_main store::fileDriver store)
-gtest_discover_tests(store_test)
+target_link_libraries(store_ctest gtest_main store::fileDriver store)
+gtest_discover_tests(store_ctest)
 
-add_executable(store_unit_test
-    ${UNIT_SRC_DIR}/store_test.cpp 
+add_executable(store_utest
+    ${UNIT_SRC_DIR}/store_test.cpp
 )
-target_link_libraries(store_unit_test gtest_main store::mocks store)
-gtest_discover_tests(store_unit_test)
+target_link_libraries(store_utest gtest_main store::mocks store)
+gtest_discover_tests(store_utest)
 
 endif(ENGINE_BUILD_TEST)
