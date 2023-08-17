@@ -4,7 +4,7 @@
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -33,8 +33,8 @@ def test_aws_inspector_initializes_properly(mock_aws_service, mock_sts_client):
     assert instance.sent_events == 0
 
 
-@patch('aws_service.AWSService.__init__')
-def test_aws_inspector_send_describe_findings(mock_aws_service):
+@patch('aws_service.AWSService.get_sts_client')
+def test_aws_inspector_send_describe_findings(mock_sts_client):
     """Test 'send_describe_findings' method sends the findings to Analysisd
     and updates the instance's sent_events attribute accordingly to the number of findings.
     """

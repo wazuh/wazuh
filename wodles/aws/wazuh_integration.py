@@ -15,6 +15,7 @@ except ImportError:
 import aws_tools
 import botocore
 import configparser
+import copy
 import gzip
 import io
 import json
@@ -33,27 +34,29 @@ import utils
 DEPRECATED_TABLES = {'log_progress', 'trail_progress'}
 DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
 SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatchlogs'}
-WAZUH_DEFAULT_RETRY_CONFIGURATION = {'max_attempts': 10, 'mode': 'standard'}
+WAZUH_DEFAULT_RETRY_CONFIGURATION = {aws_tools.RETRY_ATTEMPTS_KEY: 10, aws_tools.RETRY_MODE_BOTO_KEY: 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
 
 
 class WazuhIntegration:
     """
-    Class with common methods
-    :param access_key: AWS access key id
-    :param secret_key: AWS secret access key
-    :param profile: AWS profile
-    :param iam_role_arn: IAM Role
-    :param service_name: Name of the service (s3 for services which stores logs in buckets)
-    :param region: Region of service
+    Class with common methods.
+    :param access_key: AWS access key id.
+    :param secret_key: AWS secret access key.
+    :param profile: AWS profile.
+    :param iam_role_arn: IAM Role.
+    :param service_name: Name of the service (s3 for services which stores logs in buckets).
+    :param region: Region of service.
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
-    :param external_id: AWS external ID for IAM Role assumption
+    :param external_id: AWS external ID for IAM Role assumption.
+    :param skip_on_error: Whether to continue processing logs or stop when an error takes place.
     """
 
     def __init__(self, access_key, secret_key, profile, iam_role_arn, service_name=None, region=None,
                  discard_field=None, discard_regex=None, sts_endpoint=None,
-                 service_endpoint=None, iam_role_duration=None, external_id=None):
+                 service_endpoint=None, iam_role_duration=None, external_id=None, skip_on_error=False):
 
+        self.skip_on_error = skip_on_error
         self.wazuh_path = utils.find_wazuh_path()
         self.wazuh_version = utils.get_wazuh_version()
         self.wazuh_queue = path.join(self.wazuh_path, "queue", "sockets", "queue")
@@ -92,7 +95,7 @@ class WazuhIntegration:
         Parameters
         ----------
         profile : string
-                Aws profile configuration to use.
+                AWS profile configuration to use.
 
         Returns
         -------
@@ -145,10 +148,7 @@ class WazuhIntegration:
 
                 else:
                     # Set retry config
-                    retries = {
-                        aws_tools.RETRY_ATTEMPTS_KEY: 10,
-                        aws_tools.RETRY_MODE_BOTO_KEY: 'standard'
-                    }
+                    retries = copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION)
                     aws_tools.debug(
                         "No retries configuration found in profile config. Generating default configuration for "
                         f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
@@ -173,12 +173,7 @@ class WazuhIntegration:
 
         else:
             # Set retries parameters to avoid a throttling exception
-            args['config'] = botocore.config.Config(
-                retries={
-                    aws_tools.RETRY_ATTEMPTS_KEY: 10,
-                    aws_tools.RETRY_MODE_BOTO_KEY: 'standard'
-                }
-            )
+            args['config'] = botocore.config.Config(retries=copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION))
             aws_tools.debug(
                 f"Generating default configuration for retries: {aws_tools.RETRY_MODE_BOTO_KEY} "
                 f"{args['config'].retries[aws_tools.RETRY_MODE_BOTO_KEY]} - "
@@ -396,7 +391,7 @@ class WazuhAWSDatabase(WazuhIntegration):
     def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name,
                  service_name=None, region=None, discard_field=None,
                  discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
-                 external_id=None):
+                 external_id=None, skip_on_error=False):
         # SQL queries
         self.sql_find_table_names = """
                     SELECT
@@ -459,7 +454,8 @@ class WazuhAWSDatabase(WazuhIntegration):
                                   iam_role_arn=iam_role_arn, region=region,
                                   discard_field=discard_field, discard_regex=discard_regex,
                                   sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
-                                  iam_role_duration=iam_role_duration, external_id=external_id)
+                                  iam_role_duration=iam_role_duration, external_id=external_id,
+                                  skip_on_error=skip_on_error)
 
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, db_name)

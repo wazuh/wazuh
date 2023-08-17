@@ -52,7 +52,8 @@ def test_aws_service_initializes_properly(mock_wazuh_integration, mock_version, 
                                               discard_regex=kwargs["discard_regex"],
                                               sts_endpoint=kwargs["sts_endpoint"],
                                               service_endpoint=kwargs["service_endpoint"],
-                                              iam_role_duration=kwargs["iam_role_duration"], external_id=None)
+                                              iam_role_duration=kwargs["iam_role_duration"], external_id=None,
+                                              skip_on_error=False)
     assert instance.service_name == utils.TEST_SERVICE_NAME
     assert instance.reparse
     assert instance.region == utils.TEST_REGION

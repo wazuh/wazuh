@@ -76,7 +76,8 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                               discard_regex=kwargs["discard_regex"],
                                               sts_endpoint=kwargs["sts_endpoint"],
                                               service_endpoint=kwargs["service_endpoint"],
-                                              iam_role_duration=kwargs["iam_role_duration"], external_id=None)
+                                              iam_role_duration=kwargs["iam_role_duration"], external_id=None,
+                                              skip_on_error=kwargs["skip_on_error"])
 
     assert integration.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
     assert integration.reparse == kwargs["reparse"]
@@ -456,59 +457,6 @@ def test_aws_bucket_reformat_msg():
     assert not isinstance(formatted_event['aws']['additional_field'], list)
     assert formatted_event['aws']['source_ip_address'] == '255.255.255.255'
     assert formatted_event['aws']['tags'] == {'value': ['tag1', 'tag2']}
-
-
-@patch('io.BytesIO')
-def test_aws_bucket_decompress_file(mock_io):
-    """Test 'decompress_file' method calls the expected function for a determined file type."""
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.client = MagicMock()
-
-    with patch('gzip.open', return_value=MagicMock()) as mock_gzip_open:
-        gzip_mock = mock_gzip_open.return_value
-        bucket.decompress_file('test.gz')
-
-    bucket.client.get_object.assert_called_once()
-    mock_gzip_open.assert_called_once()
-    gzip_mock.read.assert_called_once()
-    gzip_mock.seek.assert_called_with(0)
-
-    with patch('zipfile.ZipFile', return_value=MagicMock()) as mock_zip, \
-            patch('io.TextIOWrapper') as mock_io_text:
-        zip_mock = mock_zip.return_value
-        zip_mock.namelist.return_value = ['name']
-        zip_mock.open.return_value = "file contents"
-        bucket.decompress_file('test.zip')
-    zip_mock.namelist.assert_called_once()
-    zip_mock.open.assert_called_with('name')
-    mock_io_text.assert_called_with("file contents")
-
-    with patch('io.TextIOWrapper') as mock_io_text:
-        bucket.decompress_file('test.tar')
-        mock_io_text.assert_called_once()
-
-
-@patch('io.BytesIO')
-def test_aws_bucket_decompress_file_handles_exceptions_when_decompress_fails(mock_io):
-    """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and
-    exits with the expected exit code.
-    """
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.client = MagicMock()
-
-    with patch('gzip.open', side_effect=[gzip.BadGzipFile, zlib.error, TypeError]), \
-            pytest.raises(SystemExit) as e:
-        bucket.decompress_file('test.gz')
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
-
-    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), \
-            pytest.raises(SystemExit) as e:
-        bucket.decompress_file('test.zip')
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
-
-    with pytest.raises(SystemExit) as e:
-        bucket.decompress_file('test.snappy')
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
 
 def test_aws_bucket_load_information_from_file():
@@ -961,7 +909,7 @@ def test_aws_logs_bucket_load_information_from_file(mock_wazuh_aws_database, moc
     mock_json_load.return_value = json_file_content
 
     assert result == instance.load_information_from_file(utils.TEST_LOG_KEY)
-    mock_decompress.assert_called_once_with(log_key=utils.TEST_LOG_KEY)
+    mock_decompress.assert_called_once_with(instance.bucket, log_key=utils.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('profile', [utils.TEST_AWS_PROFILE, None])

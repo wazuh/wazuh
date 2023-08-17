@@ -2,11 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import botocore
 import sys
 from os import path
-import botocore
 
-sys.path.append(path.dirname(path.realpath(__file__)))
+sys.path.append(path.join(path.dirname(path.realpath(__file__)), '..', 'subscribers'))
 import s3_log_handler
 import sqs_message_processor
 
@@ -43,12 +43,12 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
     def __init__(self, name: str, iam_role_arn: str, message_processor: sqs_message_processor.AWSQueueMessageProcessor,
                  bucket_handler: s3_log_handler.AWSS3LogHandler,
                  profile: str = None, iam_role_duration: int = None, external_id: str = None,
-                 sts_endpoint=None, service_endpoint=None, skip_on_error=None,
+                 sts_endpoint=None, service_endpoint=None, skip_on_error=False,
                  **kwargs):
         self.sqs_name = name
         wazuh_integration.WazuhIntegration.__init__(self, access_key=None, secret_key=None,
                                                     iam_role_arn=iam_role_arn,
-                                                    aws_profile=profile, external_id=external_id, service_name='sqs',
+                                                    profile=profile, external_id=external_id, service_name='sqs',
                                                     sts_endpoint=sts_endpoint, skip_on_error=skip_on_error,
                                                     iam_role_duration=iam_role_duration,
                                                     **kwargs)
@@ -141,7 +141,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
                 except KeyError:
                     message_without_handle = {k: v for k, v in message.items() if k != 'handle'}
                     aws_tools.debug(f"Processed message {message_without_handle} does not contain the expected format, "
-                          f"omitting message.", 2)
+                                    f"omitting message.", 2)
                     continue
                 self.delete_message(message)
             messages = self.get_messages()

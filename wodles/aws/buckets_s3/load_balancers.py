@@ -80,8 +80,8 @@ class AWSALBBucket(AWSLBBucket):
 class AWSCLBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'clb'
-        AWSLBBucket.__init__(self, db_table_name, **kwargs)
+        kwargs['db_table_name'] = 'clb'
+        AWSLBBucket.__init__(self, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a CLB access log file."""
@@ -98,8 +98,8 @@ class AWSCLBBucket(AWSLBBucket):
 class AWSNLBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'nlb'
-        AWSLBBucket.__init__(self, db_table_name, **kwargs)
+        kwargs['db_table_name'] = 'nlb'
+        AWSLBBucket.__init__(self, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a NLB access log file."""

@@ -57,7 +57,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
 
     Attributes
     ----------
-    aws_profile : str
+    profile : str
         AWS profile.
     iam_role_arn : str
         IAM Role.
@@ -65,7 +65,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
     def __init__(self, service_endpoint: str = None, sts_endpoint: str = None, profile: str = None, **kwargs):
         wazuh_integration.WazuhIntegration.__init__(self, access_key=None,
                                                     secret_key=None,
-                                                    aws_profile=profile,
+                                                    profile=profile,
                                                     service_name='s3',
                                                     service_endpoint=service_endpoint,
                                                     sts_endpoint=sts_endpoint,
@@ -238,7 +238,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         AWS access key id.
     secret_key : str
         AWS secret access key.
-    aws_profile : str
+    profile : str
         AWS profile.
     iam_role_arn : str
         IAM Role.
@@ -246,12 +246,12 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
 
     def __init__(self, service_endpoint: str = None, sts_endpoint: str = None, profile: str = None, **kwargs):
         wazuh_integration.WazuhIntegration.__init__(self, access_key=None,
-                                  secret_key=None,
-                                  aws_profile=profile,
-                                  service_name='s3',
-                                  service_endpoint=service_endpoint,
-                                  sts_endpoint=sts_endpoint,
-                                  **kwargs)
+                                                    secret_key=None,
+                                                    profile=profile,
+                                                    service_name='s3',
+                                                    service_endpoint=service_endpoint,
+                                                    sts_endpoint=sts_endpoint,
+                                                    **kwargs)
 
     def obtain_logs(self, bucket: str, log_path: str) -> list:
         """Fetch a parquet file from a bucket and obtain a list of the events it contains.

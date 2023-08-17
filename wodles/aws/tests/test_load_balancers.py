@@ -81,8 +81,8 @@ def test_aws_alb_bucket_initializes_properly(mock_lb_bucket):
     mock_lb_bucket.assert_called_once()
 
 
-@patch('load_balancers.AWSLBBucket.__init__')
-def test_aws_alb_bucket_load_information_from_file(mock_lb_bucket):
+@patch('load_balancers.AWSLBBucket.get_sts_client')
+def test_aws_alb_bucket_load_information_from_file(mock_sts_client):
     """Test 'load_information_from_file' method returns the expected information or logs
     the appropriate error message.
     """
@@ -143,8 +143,8 @@ def test_aws_clb_bucket_initializes_properly(mock_lb_bucket):
     mock_lb_bucket.assert_called_once()
 
 
-@patch('load_balancers.AWSLBBucket.__init__')
-def test_aws_clb_bucket_load_information_from_file(mock_lb_bucket):
+@patch('load_balancers.AWSLBBucket.get_sts_client')
+def test_aws_clb_bucket_load_information_from_file(mock_sts_client):
     """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSCLBBucket)
 
@@ -181,8 +181,8 @@ def test_aws_nlb_bucket_initializes_properly(mock_lb_bucket):
     mock_lb_bucket.assert_called_once()
 
 
-@patch('load_balancers.AWSLBBucket.__init__')
-def test_aws_nlb_bucket_load_information_from_file(mock_lb_bucket):
+@patch('load_balancers.AWSLBBucket.get_sts_client')
+def test_aws_nlb_bucket_load_information_from_file(mock_sts_client):
     """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=load_balancers.AWSNLBBucket)
 

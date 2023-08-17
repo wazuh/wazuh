@@ -207,8 +207,8 @@ def test_aws_server_access_check_bucket_handles_exceptions_on_client_error(mock_
     assert e.value.code == exit_code
 
 
-@patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_server_access_load_information_from_file(mock_custom_bucket):
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+def test_aws_server_access_load_information_from_file(mock_sts_client):
     """Test 'load_information_from_file' method returns the expected information."""
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
 

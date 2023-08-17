@@ -18,15 +18,15 @@ import aws_service
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'subscribers'))
 import sqs_queue
-import sl_subscriber_bucket
+import s3_log_handler
 
 TEST_TABLE_NAME = "cloudtrail"
 TEST_SERVICE_NAME = "s3"
 TEST_ACCESS_KEY = "test_access_key"
 TEST_SECRET_KEY = "test_secret_key"
 TEST_AWS_PROFILE = "test_aws_profile"
-TEST_IAM_ROLE_ARN = "test_iam_role_arn"
-TEST_IAM_ROLE_DURATION = '1d'
+TEST_IAM_ROLE_ARN = "arn:aws:iam::123455678912:role/Role"
+TEST_IAM_ROLE_DURATION = '3600'
 TEST_ACCOUNT_ID = "123456789123"
 TEST_ACCOUNT_ALIAS = "test_account_alias"
 TEST_ORGANIZATION_ID = "test_organization_id"
@@ -107,7 +107,8 @@ def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, prof
                                      access_key: str = None, secret_key: str = None,
                                      iam_role_arn: str = None, region: str = None, discard_field: str = None,
                                      discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
-                                     iam_role_duration: str = None, external_id: str = None):
+                                     iam_role_duration: str = None, external_id: str = None,
+                                     skip_on_error: bool = False):
     """Return a dict containing every parameter supported by WazuhIntegration. Used to simulate different ossec.conf
     configurations.
 
@@ -137,6 +138,8 @@ def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, prof
         The desired duration of the session that is going to be assumed.
     external_id: str
         AWS external ID for IAM Role assumption when using Security Lake.
+    skip_on_error : bool
+        Whether to continue processing logs or stop when an error takes place.
 
     Returns
     -------
@@ -147,7 +150,7 @@ def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, prof
             'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
             'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration,
-            'external_id': external_id}
+            'external_id': external_id, 'skip_on_error': skip_on_error}
 
 
 def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
@@ -352,8 +355,8 @@ def get_aws_sqs_queue_parameters(name: str = TEST_SQS_NAME, external_id: str = T
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
-def get_aws_sl_subscriber_bucket_parameters(iam_role_arn: str = None, iam_role_duration: str = None,
-                                            service_endpoint: str = None, sts_endpoint: str = None):
+def get_aws_s3_log_handler_parameters(iam_role_arn: str = None, iam_role_duration: str = None,
+                                      service_endpoint: str = None, sts_endpoint: str = None):
     """Return a dict containing every parameter supported by AWSSLSubscriberBucket.
     Used to simulate different ossec.conf configurations.
 
@@ -424,15 +427,18 @@ def get_mocked_service(class_=aws_service.AWSService, **kwargs):
 def get_mocked_aws_sqs_queue(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return sqs_queue.AWSSQSQueue(**get_aws_sqs_queue_parameters(**kwargs))
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION), \
+            patch('s3_log_handler.AWSS3LogHandler.__init__') as mocked_handler, \
+            patch('sqs_message_processor.AWSQueueMessageProcessor.__init__') as mocked_processor:
+        return sqs_queue.AWSSQSQueue(message_processor=mocked_processor, bucket_handler=mocked_handler,
+                                     **get_aws_sqs_queue_parameters(**kwargs))
 
 
 def get_mocked_aws_sl_subscriber_bucket(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return sl_subscriber_bucket.AWSSLSubscriberBucket(**get_aws_sl_subscriber_bucket_parameters(**kwargs))
+        return s3_log_handler.AWSSLSubscriberBucket(**get_aws_s3_log_handler_parameters(**kwargs))
 
 
 def database_execute_script(connector, sql_file):

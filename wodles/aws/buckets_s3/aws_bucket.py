@@ -197,11 +197,11 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                                                     discard_regex=discard_regex,
                                                     sts_endpoint=sts_endpoint,
                                                     service_endpoint=service_endpoint,
-                                                    iam_role_duration=iam_role_duration)
+                                                    iam_role_duration=iam_role_duration,
+                                                    skip_on_error=skip_on_error)
         self.retain_db_records = MAX_RECORD_RETENTION
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, DB_DATE_FORMAT) if only_logs_after else None
-        self.skip_on_error = skip_on_error
         self.account_alias = account_alias
         self.prefix = prefix
         self.suffix = suffix

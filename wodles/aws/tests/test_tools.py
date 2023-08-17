@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_tools
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))

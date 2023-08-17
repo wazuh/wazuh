@@ -65,9 +65,9 @@ def test_cisco_umbrella_initializes_properly(mock_custom_bucket):
        "categories": "Unauthorized IP Tunnel Access",
        'source': 'cisco_umbrella'}])
 ])
-@patch('aws_bucket.AWSCustomBucket.__init__')
-def test_cisco_umbrella_load_information_from_file(mock_custom_bucket,
-                                                  prefix: str, data: str, expected_result: list[dict]):
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+def test_cisco_umbrella_load_information_from_file(mock_sts_client, prefix: str,
+                                                   data: str, expected_result: list[dict]):
     """Test 'load_information_from_file' method returns the expected information.
 
     Parameters
@@ -86,8 +86,8 @@ def test_cisco_umbrella_load_information_from_file(mock_custom_bucket,
         assert instance.load_information_from_file(utils.TEST_LOG_KEY) == expected_result
 
 
-@patch('aws_bucket.AWSCustomBucket.__init__')
-def test_cisco_umbrella_load_information_from_file_handles_exceptions(mock_custom_bucket):
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+def test_cisco_umbrella_load_information_from_file_handles_exceptions(mock_sts_client):
     """Test 'load_information_from_file' method exits when the prefix is not dnslogs, proxylogs or iplogs
     with the expected error code
     """

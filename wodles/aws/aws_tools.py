@@ -284,7 +284,7 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
 
 
 def get_aws_config_params() -> configparser.RawConfigParser:
-    """Read and retrieve parameters from aws config file
+    """Read and retrieve parameters from aws config file.
 
     Returns
     -------
@@ -348,7 +348,7 @@ def get_script_arguments():
     parser.add_argument('-r', '--regions', dest='regions', help='Comma delimited list of AWS regions to parse logs',
                         default='', type=arg_valid_regions)
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
-                        help='If fail to parse a file, error out instead of skipping the file')
+                        help='If fail to parse a file, error out instead of skipping the file', default=False)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')

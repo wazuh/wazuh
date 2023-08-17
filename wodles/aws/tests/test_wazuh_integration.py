@@ -2,10 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import gzip
 import os
 import socket
 import sqlite3
 import sys
+import zipfile
+import zlib
 from datetime import datetime, timezone
 from json import dumps
 from unittest.mock import MagicMock, patch, call
@@ -17,6 +20,7 @@ import aws_utils as utils
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+import aws_tools
 
 TEST_METADATA_SCHEMA = "schema_metadata_test.sql"
 TEST_METADATA_DEPRECATED_TABLES_SCHEMA = "schema_metadata_deprecated_tables_test.sql"
@@ -48,8 +52,12 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
 
 
 @patch('wazuh_integration.botocore')
-@pytest.mark.parametrize('file_exists', [True, False])
-def test_default_config(mock_botocore, file_exists):
+@pytest.mark.parametrize('file_exists, options, retry_attempts, retry_mode',
+                         [(True, [aws_tools.RETRY_ATTEMPTS_KEY, aws_tools.RETRY_MODE_BOTO_KEY], 5, 'standard'),
+                          (True, ['other_option'], None, None),
+                          (False, None, None, None)]
+                         )
+def test_default_config(mock_botocore, file_exists, options, retry_attempts, retry_mode):
     """Test if `default_config` function returns the Wazuh default Retry configuration if there is no user-defined
     configuration.
 
@@ -57,16 +65,41 @@ def test_default_config(mock_botocore, file_exists):
     ----------
     file_exists : bool
         The value to be returned by the mocked config reader call.
+    options: list[str]
+        List of options that can be found in an AWS config file.
+    retry_attempts: int or None
+        Number of attempts to set in the retries' configuration. None for when the retry_attempt option is not declared
+        in the AWS config file.
+    retry_mode: str or None
+        Mode to set in the retries' configuration. None for when the retry_mode option is not declared in
+        the AWS config file.
     """
+    profile = utils.TEST_AWS_PROFILE
     with patch('wazuh_integration.path.exists', return_value=file_exists):
-        config = wazuh_integration.WazuhIntegration.default_config()
-    if not file_exists:
-        mock_botocore.config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
-        assert 'config' in config
-        assert config['config'] == mock_botocore.config.Config(
-            retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
-    else:
-        assert config == dict()
+        if file_exists:
+            with patch('aws_tools.get_aws_config_params') as mock_config, \
+                    patch('aws_tools.set_profile_dict_config'):
+                mock_config.options(profile).return_value = options
+                profile_config = {option: mock_config.get(profile, option) for option in mock_config.options(profile)}
+
+                config = wazuh_integration.WazuhIntegration.default_config(profile=utils.TEST_AWS_PROFILE)
+
+            if aws_tools.RETRY_ATTEMPTS_KEY in profile_config or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
+                retries = {
+                        aws_tools.RETRY_ATTEMPTS_KEY: retry_attempts,
+                        aws_tools.RETRY_MODE_BOTO_KEY: retry_mode
+                    }
+            else:
+                retries = wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION
+
+            assert config['config'].retries == retries
+        else:
+            config = wazuh_integration.WazuhIntegration.default_config(profile=utils.TEST_AWS_PROFILE)
+
+            mock_botocore.config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+            assert 'config' in config
+            assert config['config'] == mock_botocore.config.Config(
+                retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
 
 
 @pytest.mark.parametrize('access_key, secret_key, profile', [
@@ -288,6 +321,64 @@ def test_wazuh_integration_send_msg_socket_error(error_code, expected_exit_code)
             assert e.value.code == expected_exit_code
         else:
             instance.send_msg(utils.TEST_MESSAGE)
+
+
+@patch('io.BytesIO')
+def test_wazuh_integration_decompress_file(mock_io):
+    """Test 'decompress_file' method calls the expected function for a determined file type."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
+    integration.bucket = utils.TEST_BUCKET
+
+    with patch('gzip.open', return_value=MagicMock()) as mock_gzip_open:
+        gzip_mock = mock_gzip_open.return_value
+        integration.decompress_file(integration.bucket, 'test.gz')
+
+    integration.client.get_object.assert_called_once()
+    mock_gzip_open.assert_called_once()
+    gzip_mock.read.assert_called_once()
+    gzip_mock.seek.assert_called_with(0)
+
+    with patch('zipfile.ZipFile', return_value=MagicMock()) as mock_zip, \
+            patch('io.TextIOWrapper') as mock_io_text:
+        zip_mock = mock_zip.return_value
+        zip_mock.namelist.return_value = ['name']
+        zip_mock.open.return_value = "file contents"
+        integration.decompress_file(integration.bucket, 'test.zip')
+    zip_mock.namelist.assert_called_once()
+    zip_mock.open.assert_called_with('name')
+    mock_io_text.assert_called_with("file contents")
+
+    with patch('io.TextIOWrapper') as mock_io_text:
+        integration.decompress_file(integration.bucket, 'test.tar')
+        mock_io_text.assert_called_once()
+
+
+@patch('io.BytesIO')
+def test_aws_wazuh_integration_decompress_file_handles_exceptions_when_decompress_fails(mock_io):
+    """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and
+    exits with the expected exit code.
+    """
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+
+    # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
+    integration.bucket = utils.TEST_BUCKET
+
+    with patch('gzip.open', side_effect=[gzip.BadGzipFile, zlib.error, TypeError]), \
+            pytest.raises(SystemExit) as e:
+        integration.decompress_file(integration.bucket, 'test.gz')
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
+
+    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), \
+            pytest.raises(SystemExit) as e:
+        integration.decompress_file(integration.bucket, 'test.zip')
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
+
+    with pytest.raises(SystemExit) as e:
+        integration.decompress_file(integration.bucket, 'test.snappy')
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
 
 def test_wazuh_integration_send_msg_handles_exceptions():

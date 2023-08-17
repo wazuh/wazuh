@@ -27,11 +27,12 @@ SAMPLE_URL = "sqs-test-url.com"
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.get_client')
-@patch('sqs_queue.AWSSLSubscriberBucket.__init__', return_value=None)
+@patch('s3_log_handler.AWSS3LogHandler.__init__', return_value=None)
+@patch('sqs_message_processor.AWSQueueMessageProcessor.__init__')
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effet=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs_url,
-                                            mock_bucket_init, mock_client, mock_sts_client):
+def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs_url, mock_message_processor,
+                                            mock_bucket_log_handler_init, mock_client, mock_sts_client):
     """Test if the instances of AWSSQSQueue are created properly."""
     mock_sts_client.return_value = mock_client
     kwargs = utils.get_aws_sqs_queue_parameters(name=utils.TEST_SQS_NAME,
@@ -40,19 +41,24 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
                                                 sts_endpoint=utils.TEST_STS_ENDPOINT,
                                                 iam_role_arn=utils.TEST_IAM_ROLE_ARN,
                                                 iam_role_duration=utils.TEST_IAM_ROLE_DURATION)
-    integration = sqs_queue.AWSSQSQueue(**kwargs)
-    mock_wazuh_integration.assert_called_with(integration, service_name='sqs',
+    integration = sqs_queue.AWSSQSQueue(message_processor=mock_message_processor,
+                                        bucket_handler=mock_bucket_log_handler_init,
+                                        **kwargs)
+    mock_wazuh_integration.assert_called_with(integration,
                                               access_key=None, secret_key=None,
-                                              iam_role_arn=kwargs["iam_role_arn"], external_id=kwargs["external_id"],
+                                              iam_role_arn=kwargs["iam_role_arn"],
+                                              profile=None,
+                                              external_id=kwargs["external_id"],
+                                              service_name='sqs',
                                               sts_endpoint=kwargs["sts_endpoint"],
-                                              iam_role_duration=kwargs["iam_role_duration"],
-                                              profile=None)
+                                              skip_on_error=False,
+                                              iam_role_duration=kwargs["iam_role_duration"])
 
     assert integration.sqs_name == kwargs['name']
     assert integration.iam_role_arn == kwargs['iam_role_arn']
     mock_get_sqs_url.assert_called_once()
-    mock_bucket_init.assert_called_once()
-    mock_sts_client.assert_called_with(access_key=None, secret_key=None)
+    mock_bucket_log_handler_init.assert_called_once()
+    mock_sts_client.assert_called_with(None, None, None)
     mock_client.get_caller_identity.assert_called_once()
 
 
@@ -115,11 +121,9 @@ def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mo
 def test_aws_sqs_queue_get_messages(mock_wazuh_integration, mock_sts_client, mock_fetch):
     """Test 'get_messages' method returns parsed messages."""
     instance = utils.get_mocked_aws_sqs_queue()
-    messages = instance.get_messages()
-
-    assert messages == [{"parquet_path": SAMPLE_BODY["detail"]["object"]["key"],
-                         "bucket_path": SAMPLE_BODY["detail"]["bucket"]["name"],
-                         "handle": SAMPLE_MESSAGE["handle"]}]
+    mocked_processor_extract = instance.message_processor.extract_message_info
+    instance.get_messages()
+    mocked_processor_extract.assert_called_with(SAMPLE_RAW_MESSAGE['Messages'])
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -130,12 +134,13 @@ def test_aws_sqs_queue_sync_events(mock_wazuh_integration, mock_sts_client):
     instance = utils.get_mocked_aws_sqs_queue()
 
     with patch('sqs_queue.AWSSQSQueue.get_messages',
-               side_effect=[[{"parquet_path": SAMPLE_BODY["detail"]["object"]["key"],
-                              "bucket_path": SAMPLE_BODY["detail"]["bucket"]["name"],
+               side_effect=[[{"route": {"log_path": SAMPLE_BODY["detail"]["object"]["key"],
+                              "bucket_path": SAMPLE_BODY["detail"]["bucket"]["name"]},
                               "handle": SAMPLE_MESSAGE["handle"]}], []]),\
-            patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete, \
-            patch('sl_subscriber_bucket.AWSSLSubscriberBucket.process_file') as mock_process:
+            patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
+        mock_process = instance.bucket_handler.process_file
+
         instance.sync_events()
 
-        instance.asl_bucket_handler.process_file.assert_called()
+        mock_process.assert_called()
         mock_delete.assert_called()

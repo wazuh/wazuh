@@ -241,8 +241,8 @@ def test_aws_guardduty_bucket_reformat_msg(mock_custom_bucket, mock_type, mock_r
                            [{"source": "guardduty", "schemaVersion": "2.0"}])])
 @patch('aws_bucket.AWSBucket.decompress_file')
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
-@patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_guardduty_bucket_load_information_from_file(mock_custom_bucket, mock_type, mock_decompress,
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+def test_aws_guardduty_bucket_load_information_from_file(mock_sts_client, mock_type, mock_decompress,
                                                          log_key: str, json_file_content: list[dict] or str,
                                                          result: list[dict]):
     """Test 'load_information_from_file' method returns the expected information.

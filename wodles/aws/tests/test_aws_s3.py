@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import configparser
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 import aws_tools
 
@@ -31,7 +32,8 @@ import aws_utils as utils
     (['main', '--bucket', 'bucket-name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs'),
-    (['main', '--subscriber', 'security_lake'], 'subscribers.sqs_queue.AWSSQSQueue')
+    (['main', '--subscriber', 'security_lake', '--iam_role_arn', utils.TEST_IAM_ROLE_ARN,
+      '--external_id', utils.TEST_EXTERNAL_ID, '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):
