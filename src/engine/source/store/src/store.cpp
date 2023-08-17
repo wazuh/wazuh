@@ -6,7 +6,7 @@
 namespace
 {
 
-const store::NamespaceId INTERNAL_NAMESPACE {"_internal"};
+const std::string INTERNAL_NAMESPACE {"namespaces"};
 
 // Cut names after a given size and delete duplicates
 std::vector<base::Name>
@@ -276,7 +276,7 @@ Store::Store(std::shared_ptr<IDriver> driver)
     : m_driver(std::move(driver))
     , m_cache(std::make_unique<DBDocNames>())
     , m_mutex()
-    , m_internalNs(INTERNAL_NAMESPACE)
+    , m_prefixNS(INTERNAL_NAMESPACE)
 {
     if (m_driver == nullptr)
     {
@@ -322,8 +322,13 @@ Store::Store(std::shared_ptr<IDriver> driver)
         }
     };
 
+    // No namespaces to load
+    if (!m_driver->existsCol(m_prefixNS)) {
+        return;
+    }
+
     // Get all namespaces and load the cache
-    const auto namespaces = m_driver->readRoot();
+    const auto namespaces = m_driver->readCol(m_prefixNS);
 
     if (const auto err = std::get_if<base::Error>(&namespaces))
     {
@@ -333,7 +338,8 @@ Store::Store(std::shared_ptr<IDriver> driver)
     const auto& list = std::get<Col>(namespaces);
     for (const auto& name : list)
     {
-        if (name.parts().size() == NamespaceId::PARTS_NAMESPACE_SIZE && m_driver->existsCol(name))
+        if (name.parts().size() == m_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE
+            && m_driver->existsCol(name))
         {
             visitor(name, NamespaceId(name.parts().back()), visitor);
             LOG_DEBUG("Loaded namespace '{}'", name.fullName());
@@ -352,23 +358,24 @@ Store::~Store() = default;
 
 base::Name Store::virtualToRealName(const base::Name& virtualName, const NamespaceId& namespaceId) const
 {
-    return namespaceId.name() + virtualName;
+    return m_prefixNS + namespaceId.name() + virtualName;
 }
 
 base::RespOrError<base::Name> Store::realToVirtualName(const base::Name& realName) const
 {
     // Remove de prefix
     const auto& partsRN = realName.parts();
+    const auto prefixSize = m_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE;
 
     // The realname must have more parts than the prefix + namespace
-    if (partsRN.size() < NamespaceId::PARTS_NAMESPACE_SIZE)
+    if (partsRN.size() < prefixSize)
     {
         return base::Error {"Invalid real name, too short"};
     }
 
     // Delete the namespace
     auto it = partsRN.begin();
-    std::advance(it, NamespaceId::PARTS_NAMESPACE_SIZE);
+    std::advance(it, prefixSize);
 
     return base::Name(std::vector<std::string>(it, partsRN.end()));
 }
@@ -644,25 +651,29 @@ base::OptError Store::deleteCol(const base::Name& name)
 base::OptError Store::createInternalDoc(const base::Name& name, const Doc& content)
 {
     // TODO Implement without adding the namespace
-    return createDoc(name, m_internalNs, content);
+    //return createDoc(name, m_internalNs, content); Avoid user namespace internal
+    return base::Error {"Not implemented"};
 }
 
 base::RespOrError<Doc> Store::readInternalDoc(const base::Name& name) const
 {
     // TODO Implement without adding the namespace
-    return readDoc(name);
+    //return readDoc(name);
+    return base::Error {"Not implemented"};
 }
 
 base::OptError Store::updateInternalDoc(const base::Name& name, const Doc& content)
 {
     // TODO Implement without adding the namespace
-    return updateDoc(name, content);
+    //return updateDoc(name, content);
+    return base::Error {"Not implemented"};
 }
 
 base::OptError Store::deleteInternalDoc(const base::Name& name)
 {
-    // TODO Implement without adding the namespace
-    return deleteDoc(name);
+    // TODO Implement without adding the namespace //Avoid user namespace internal
+    //return deleteDoc(name);
+    return base::Error {"Not implemented"};
 }
 
 } // namespace store
