@@ -40,6 +40,22 @@ def test_rename_file(test_configuration, test_metadata, set_wazuh_configuration,
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
     file_renamed_path = test_metadata.get('file_renamed_path')
+    folder_to_rename = test_metadata.get('folder_to_rename')
+    folder_renamed_path = test_metadata.get('folder_renamed_path')
+
+    # Act
+    file.create_folder(folder_to_rename)
+    file.write_file(Path(folder_to_rename, 'newfile'), 'test')
+    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+
+    # Assert
+    file.rename(folder_to_rename, folder_renamed_path)
+    wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
+    assert wazuh_log_monitor.callback_result
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+
+    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+    assert wazuh_log_monitor.callback_result
 
     # Assert
     file.rename(file_to_monitor, file_renamed_path)
