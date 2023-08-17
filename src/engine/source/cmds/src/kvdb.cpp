@@ -13,6 +13,8 @@ struct Options
     std::string serverApiSock {};
     bool loaded {false};
     std::string kvdbName {};
+    std::uint32_t page {};
+    std::uint32_t records {};
     std::string kvdbInputFilePath {};
     std::string kvdbKey {};
     std::string kvdbValue {};
@@ -76,7 +78,10 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
     utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runDump(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName)
+void runDump(std::shared_ptr<apiclnt::Client> client,
+             const std::string& kvdbName,
+             const uint32_t page,
+             const uint32_t records)
 {
     using RequestType = eKVDB::managerDump_Request;
     using ResponseType = eKVDB::managerDump_Response;
@@ -84,7 +89,10 @@ void runDump(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbNam
 
     // Prepare the request
     RequestType eRequest;
+
     eRequest.set_name(kvdbName);
+    eRequest.set_page(page);
+    eRequest.set_records(records);
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -270,11 +278,13 @@ void configure(const CLI::App_p& app)
                                                    "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
+    dump_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")->default_val(DEFAULT_CLI_PAGE);
+    dump_subcommand->add_option("-r, --records", options->records, "Number of records per page.")->default_val(DEFAULT_CLI_RECORDS);
     dump_subcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runDump(client, options->kvdbName);
+            runDump(client, options->kvdbName, options->page, options->records);
         });
 
     // KVDB delete subcommand

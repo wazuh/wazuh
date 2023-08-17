@@ -16,50 +16,63 @@ namespace
 const std::string KVDB_PATH {"/tmp/kvdbTestSuitePath/"};
 const std::string KVDB_DB_FILENAME {"TEST_DB"};
 
+std::shared_ptr<kvdbManager::KVDBManager> m_spKVDBManager;
+std::string kvdbPath;
+
+void Setup()
+{
+    initLogging();
+
+    // cleaning directory in order to start without garbage.
+    kvdbPath = generateRandomStringWithPrefix(6, KVDB_PATH) + "/";
+
+    if (std::filesystem::exists(kvdbPath))
+    {
+        std::filesystem::remove_all(kvdbPath);
+    }
+
+    std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
+
+    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
+
+    m_spKVDBManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
+
+    m_spKVDBManager->initialize();
+}
+
+void TearDown()
+{
+    try
+    {
+        m_spKVDBManager->finalize();
+    }
+    catch (const std::exception& e)
+    {
+        FAIL() << "Exception: " << e.what();
+    }
+
+    if (std::filesystem::exists(kvdbPath))
+    {
+        std::filesystem::remove_all(kvdbPath);
+    }
+}
+
+class DumpWithMultiplePages
+    : public ::testing::TestWithParam<std::tuple<std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t>>
+{
+protected:
+    void SetUp() override { ::Setup(); }
+
+    void TearDown() override { ::TearDown(); };
+};
+
 class KVDBTest : public ::testing::Test
 {
 
 protected:
-    std::shared_ptr<kvdbManager::KVDBManager> m_spKVDBManager {};
-    std::string kvdbPath {};
+    void SetUp() override { ::Setup(); };
 
-    void SetUp() override
-    {
-        initLogging();
-
-        // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, KVDB_PATH) + "/";
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-
-        std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
-
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
-
-        m_spKVDBManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
-
-        m_spKVDBManager->initialize();
-    };
-
-    void TearDown() override
-    {
-        try
-        {
-            m_spKVDBManager->finalize();
-        }
-        catch (const std::exception& e)
-        {
-            FAIL() << "Exception: " << e.what();
-        }
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    };
+    void TearDown() override { ::TearDown(); };
 
     void dumpScopeInfo(std::map<std::string, kvdbManager::RefInfo>& scopeInfo)
     {
@@ -257,56 +270,90 @@ TEST_F(KVDBTest, ScopeInfoSingleOneHandler)
     ASSERT_EQ(scopeInfo.size(), 1);
 }
 
-TEST_F(KVDBTest, SearchWithResultsOk)
+TEST_F(KVDBTest, DumpOkValidateOrder)
 {
     ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
     auto resultHandler = m_spKVDBManager->getKVDBHandler("test_db", "scope1");
-
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-    auto result = handler->set("key1", "value");
-    result = handler->set("key11", "value");
-    result = handler->set("key12", "value");
-    result = handler->set("key13", "value");
-    result = handler->set("key14", "value");
-    result = handler->set("key15", "value");
-    result = handler->set("key21", "value");
-    result = handler->set("key22", "value");
-    result = handler->set("key23", "value");
-    result = handler->set("key31", "value");
-    result = handler->set("key32", "value");
-    result = handler->set("key33", "value");
 
-    auto result2 = handler->search("key2");
-    auto list = std::get<std::unordered_map<std::string, std::string>>(result2);
-    ASSERT_EQ(list.size(), 3);
+    for (auto i = 1; i <= 10; i++)
+    {
+        auto result = handler->set(fmt::format("key{0}", i), fmt::format("value{0}", i));
+        ASSERT_EQ(result, std::nullopt);
+    }
 
-    result2 = handler->search("key1");
-    list = std::get<std::unordered_map<std::string, std::string>>(result2);
-    ASSERT_EQ(list.size(), 6);
+    const auto resultDump = handler->dump(1, 10);
 
-    result2 = handler->search("key3");
-    list = std::get<std::unordered_map<std::string, std::string>>(result2);
-    ASSERT_EQ(list.size(), 3);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultDump));
+    const auto& result = std::get<std::list<std::pair<std::string, std::string>>>(resultDump);
 
-    result2 = handler->search("other");
-    list = std::get<std::unordered_map<std::string, std::string>>(result2);
-    ASSERT_EQ(list.size(), 0);
+    auto i = 1, key10 = 0;
+    for (auto& [key, value] : result)
+    {
+        std::cout << key << " : " << value << std::endl;
+        if (i == 2 && key10 == 0)
+        {
+            ASSERT_EQ(key, "key10");
+            ASSERT_EQ(value, "value10");
+            key10 = 1;
+        }
+        else
+        {
+            ASSERT_EQ(key, fmt::format("key{0}", i));
+            ASSERT_EQ(value, fmt::format("value{0}", i));
+            i++;
+        }
+    }
 }
 
-TEST_F(KVDBTest, SearchWithoutResultsOk)
+TEST_F(KVDBTest, DumpWihoutKeys)
 {
     ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
     auto resultHandler = m_spKVDBManager->getKVDBHandler("test_db", "scope1");
-
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
 
-    auto result2 = handler->search("key");
-    auto list = std::get<std::unordered_map<std::string, std::string>>(result2);
-    ASSERT_EQ(list.size(), 0);
+    const auto resultDump = handler->dump(1, 100);
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultDump));
+    const auto& result = std::get<std::list<std::pair<std::string, std::string>>>(resultDump);
+
+    ASSERT_EQ(result.size(), 0);
 }
+
+TEST_P(DumpWithMultiplePages, Functionality)
+{
+    auto [inserts, page, records, expected] = GetParam();
+
+    ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
+    auto resultHandler = m_spKVDBManager->getKVDBHandler("test_db", "scope1");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
+    for (auto i = 0; i < inserts; i++)
+    {
+        auto result = handler->set(fmt::format("{0}", i), fmt::format("value {0}", i));
+        ASSERT_EQ(result, std::nullopt);
+    }
+
+    const auto result = handler->dump(page, records);
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(result));
+    const auto& resultPage = std::get<std::list<std::pair<std::string, std::string>>>(result);
+    ASSERT_EQ(resultPage.size(), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(KVDB,
+                         DumpWithMultiplePages,
+                         ::testing::Values(std::make_tuple(50, 1, 5, 5),
+                                           std::make_tuple(50, 5, 5, 5),
+                                           std::make_tuple(30, 3, 5, 5),
+                                           std::make_tuple(30, 5, 7, 2),
+                                           std::make_tuple(10, 2, 9, 1),
+                                           std::make_tuple(50, 2, 50, 0),
+                                           std::make_tuple(50, 1, 50, 50),
+                                           std::make_tuple(3, 1, 2, 2),
+                                           std::make_tuple(3, 3, 50, 0)));
 
 } // namespace

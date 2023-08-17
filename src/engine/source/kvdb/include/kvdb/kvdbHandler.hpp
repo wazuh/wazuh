@@ -16,6 +16,9 @@ class ColumnFamilyHandle;
 namespace kvdbManager
 {
 
+const uint32_t DEFAULT_PAGE = 1;
+const uint32_t DEFAULT_RECORDS = 50;
+
 class IKVDBHandlerCollection;
 
 /**
@@ -92,7 +95,7 @@ public:
      * @copydoc IKVDBHandler::dump
      *
      */
-    std::variant<std::unordered_map<std::string, std::string>, base::Error> dump() override;
+    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const uint32_t page, const uint32_t records) override;
 
     /**
      * @copydoc IKVDBHandler::search
