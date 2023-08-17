@@ -21,6 +21,46 @@ void inline initLogging()
     }
 }
 
+// Internal root namespace
+const base::Name nsPrefix ("namespaces"); // Prefix in the store for the namespaces
+
+// Add prefix to the col names
+base::Name addPrefix(const base::Name& name)
+{
+    return nsPrefix + name;
+}
+Col addPrefix(const Col& col)
+{
+    Col newCol;
+    for (const auto& name : col)
+    {
+        newCol.push_back(addPrefix(name));
+    }
+    return newCol;
+}
+
+// Remove prefix from the col names
+base::Name removePrefix(const base::Name& name, std::size_t level = 1)
+{
+    if (name.parts().size() <= level)
+    {
+        throw std::runtime_error("Cannot remove prefix from name: " + name.fullName());
+    }
+    auto it = name.parts().begin();
+    std::advance(it, level);
+    return  base::Name(std::vector<std::string> {it, name.parts().end()});
+}
+
+Col removePrefix(const Col& col, std::size_t level = 1)
+{
+    Col newCol;
+    for (const auto& name : col)
+    {
+        newCol.push_back(removePrefix(name, level));
+    }
+    return newCol;
+}
+
 class StoreBuildTest : public ::testing::Test
 {
     protected:
@@ -36,6 +76,7 @@ class StoreTest : public ::testing::Test
 protected:
     std::shared_ptr<MockDriver> driver;
     std::shared_ptr<Store> store;
+    base::Name nsPrefix;
 
     void SetUp() override
     {
@@ -54,7 +95,7 @@ protected:
 TEST_F(StoreBuildTest, EmptyStore)
 {
     auto driver = std::make_shared<MockDriver>();
-    EXPECT_CALL(*driver, readRoot()).WillOnce(testing::Return(driverReadColResp({})));
+    EXPECT_CALL(*driver, existsCol(base::Name("namespaces"))).WillOnce(testing::Return(false));
     std::shared_ptr<Store> store;
     ASSERT_NO_THROW(store = std::make_shared<Store>(driver));
     ASSERT_EQ(store->listNamespaces().size(), 0);
@@ -68,31 +109,47 @@ TEST_F(StoreBuildTest, NullDriver)
 
 TEST_F(StoreBuildTest, WithNs)
 {
-    // TODO implement
-    GTEST_SKIP();
     auto driver = std::make_shared<MockDriver>();
-    auto expectedResp = driverReadColResp({"ns1", "ns2"});
-    base::Name expectedNs1("ns1");
-    base::Name expectedNs2("ns2");
-    Col Ns1Col {"ns1/doc"};
-    Col Ns2Col {"ns2/doc"};
-    auto expectedNs = base::getResponse<Col>(expectedResp);
-    EXPECT_CALL(*driver, readRoot()).WillOnce(testing::Return(expectedNs));
-    EXPECT_CALL(*driver, existsCol(expectedNs1)).WillOnce(testing::Return(true));
-    EXPECT_CALL(*driver, existsCol(expectedNs2)).WillOnce(testing::Return(true));
-    EXPECT_CALL(*driver, readCol(expectedNs1)).WillOnce(testing::Return(driverReadColResp(Ns1Col)));
-    EXPECT_CALL(*driver, readCol(expectedNs2)).WillOnce(testing::Return(driverReadColResp(Ns2Col)));
-    EXPECT_CALL(*driver, existsDoc(Ns1Col[0])).WillOnce(testing::Return(true));
-    EXPECT_CALL(*driver, existsDoc(Ns2Col[0])).WillOnce(testing::Return(true));
-    EXPECT_CALL(*driver, readDoc(Ns1Col[0])).WillOnce(testing::Return(driverReadDocResp({})));
-    EXPECT_CALL(*driver, readDoc(Ns2Col[0])).WillOnce(testing::Return(driverReadDocResp({})));
 
-    ON_CALL(*driver, existsCol(testing::_)).WillByDefault(testing::Return(false));
-    ON_CALL(*driver, existsDoc(testing::_)).WillByDefault(testing::Return(false));
+    base::Name ns1 ("ns1");
+    base::Name ns2 ("ns2");
+    base::Name fullNs1 = addPrefix(ns1);
+    base::Name fullNs2 = addPrefix(ns2);
+    auto expectedResp = driverReadColResp(fullNs1, fullNs2);
+
+    base::Name rNs1Doc = fullNs1 + base::Name("doc");
+    base::Name rNs2Doc = fullNs2 + base::Name("doc2");
+    Col Ns1Col {rNs1Doc};
+    Col Ns2Col {rNs2Doc};
+    auto expectedNs = base::getResponse<Col>(expectedResp);
+
+    EXPECT_CALL(*driver, existsCol(base::Name("namespaces"))).WillOnce(testing::Return(true));
+    // Return 2 namespaces
+    EXPECT_CALL(*driver, readCol(base::Name("namespaces"))).WillOnce(testing::Return(expectedResp));
+
+    // Check if ns1 is a namespace
+    EXPECT_CALL(*driver, existsCol(fullNs1)).WillOnce(testing::Return(true));
+
+    // - Visit ns1
+    EXPECT_CALL(*driver, existsDoc(fullNs1)).WillOnce(testing::Return(false));
+    // - - Get the doc in ns1
+    EXPECT_CALL(*driver, readCol(fullNs1)).WillOnce(testing::Return(driverReadColResp(Ns1Col)));
+    // - - visit and check if doc in ns1 is a collection or document
+    EXPECT_CALL(*driver, existsDoc(rNs1Doc)).WillOnce(testing::Return(true));
+
+    // Check if ns2 is a namespace
+    EXPECT_CALL(*driver, existsCol(fullNs2)).WillOnce(testing::Return(true));
+
+    // - Visit ns2
+    EXPECT_CALL(*driver, existsDoc(fullNs2)).WillOnce(testing::Return(false));
+    // - - Get the doc in ns2
+    EXPECT_CALL(*driver, readCol(fullNs2)).WillOnce(testing::Return(driverReadColResp(Ns2Col)));
+    // - - visit and check if doc in ns2 is a collection or document
+    EXPECT_CALL(*driver, existsDoc(rNs2Doc)).WillOnce(testing::Return(true));
 
     std::shared_ptr<Store> store;
     ASSERT_NO_THROW(store = std::make_shared<Store>(driver));
     ASSERT_EQ(store->listNamespaces().size(), 2);
-    ASSERT_TRUE(store->listNamespaces()[0].name() == expectedNs[0]);
-    ASSERT_TRUE(store->listNamespaces()[1].name() == expectedNs[1]);
+    ASSERT_TRUE(store->listNamespaces()[0].name() == ns1);
+    ASSERT_TRUE(store->listNamespaces()[1].name() == ns2);
 }
