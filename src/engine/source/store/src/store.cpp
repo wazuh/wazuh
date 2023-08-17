@@ -6,20 +6,30 @@
 namespace
 {
 
-std::vector<base::Name>
-cutAfterName(const std::vector<base::Name>& names, const std::size_t size, const std::size_t depth = 1)
-{
-    // Filter the documents that are under the name and delete duplicates
-    auto comparator = [](const base::Name& lhs, const base::Name& rhs)
+const auto comparatorName = [](const base::Name& lhs, const base::Name& rhs)
     {
         return lhs.parts() < rhs.parts();
     };
 
-    std::set<base::Name, decltype(comparator)> set(comparator);
+const auto comparatorNS = [](const store::NamespaceId& lhs, const store::NamespaceId& rhs)
+    {
+        return lhs.name().parts() < rhs.name().parts();
+    };
+
+std::vector<base::Name>
+cutAfterName(const std::vector<base::Name>& names, const std::size_t size, const std::size_t depth = 1)
+{
+    // Filter the documents that are under the name and delete duplicates
+    //auto comparator = [](const base::Name& lhs, const base::Name& rhs)
+    //{
+    //    return lhs.parts() < rhs.parts();
+    //};
+
+    std::set<base::Name, decltype(comparatorName)> set(comparatorName);
 
     for (const auto& name : names)
     {
-        if (name.parts().size() > size + depth)
+        if (name.parts().size() >= size + depth)
         {
             auto itBegin = name.parts().begin();
             std::advance(itBegin, size);
@@ -171,13 +181,19 @@ public:
      */
     std::vector<NamespaceId> getNamespaceIds() const
     {
-        std::vector<NamespaceId> namespaceIds;
-        namespaceIds.reserve(m_nameToNS.size());
 
-        for (const auto& [name, namespaceId] : m_nameToNS)
+        std::set<NamespaceId, decltype(comparatorNS)> set(comparatorNS);
+        for (const auto& [namespaceId, name] : m_nsToNames)
+        {
+            set.insert(namespaceId);
+        }
+
+        std::vector<NamespaceId> namespaceIds;
+        for (const auto& namespaceId : set)
         {
             namespaceIds.push_back(namespaceId);
         }
+
         return namespaceIds;
     }
 
