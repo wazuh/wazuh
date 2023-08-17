@@ -22,6 +22,7 @@ concurrency:
 env:
   BUILD_TYPE: Release
   ENGINE_DIR: ${{github.workspace}}/src/engine
+  BINARY_PATH: ${{github.workspace}}/src/engine/build/main
 
 jobs:
   build:
@@ -54,3 +55,6 @@ jobs:
       working-directory: ${{env.ENGINE_DIR}}/build
       run: ctest -C ${{env.BUILD_TYPE}} -T test --output-on-failure -j2
 
+    - name: Integration Test
+      # Run integration tests using behave
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{env.BINARY_PATH}}

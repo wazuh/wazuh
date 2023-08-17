@@ -1,25 +1,23 @@
-# -- FILE: /home/vagrant/workspace/wazuh/src/engine/test/integration_tests/features/steps/kvdb-steps.py
-from __future__ import print_function #TODO: neccesary? or removable?
-# import sys
-import shared.resource_handler as rs #TODO: check on a clean install!
+from api_communication import communication #TODO: check on a clean install!
 from behave import given, when, then, step
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
 
-resource_handler = rs.ResourceHandler()
+API_KVDB = communication.APIClient(DEFAULT_API_SOCK, "kvdb")
 
 # First Scenario
 @given('I have access to the KVDB API')
 def step_impl(context):
-    kvdbs_available_json = resource_handler.get_kvdb_list(DEFAULT_API_SOCK)
+    kvdbs_available_json = API_KVDB.send_command("manager", "get", {})
+    print(kvdbs_available_json)
     assert kvdbs_available_json['data']['status'] == "OK"
 
 
 @when('I send a {request_type} request to KVDB API with "{database_name}" as unique database name')
 def step_impl(context, request_type:str, database_name:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, request_type.lower(), {"name": database_name})
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "delete", {"name": database_name})
+        context.result = API_KVDB.send_command("manager", request_type.lower(), {"name": database_name})
+        context.result = API_KVDB.send_command("manager", "delete", {"name": database_name})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -36,7 +34,7 @@ def step_impl(context,success):
 @given('I have already created a database named "{database_name}" using the KVDB API')
 def step_impl(context, database_name:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "post", {"name": database_name})
+        context.result = API_KVDB.send_command("manager", "post", {"name": database_name})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -44,7 +42,7 @@ def step_impl(context, database_name:str):
 @when('I send a {request_type} request with the database name "{database_name}"')
 def step_impl(context, request_type:str, database_name:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, request_type.lower(), {"name": database_name})
+        context.result = API_KVDB.send_command("manager", request_type.lower(), {"name": database_name})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -62,7 +60,7 @@ def step_impl(context, request_result):
 @given('I have a database named "{database_name}" created using the KVDB API')
 def step_impl(context, database_name:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "post", {"name": database_name})
+        context.result = API_KVDB.send_command("manager", "post", {"name": database_name})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -70,7 +68,7 @@ def step_impl(context, database_name:str):
 @when('I send a {request_type} request to "{database_name}"')
 def step_impl(context, request_type:str, database_name:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, request_type.lower(), {"name": database_name})
+        context.result = API_KVDB.send_command("manager", request_type.lower(), {"name": database_name})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -87,7 +85,7 @@ def step_impl(context, request_result:str, database_name:str):
 @when('I send a {request_type} request to add a key-value pair to the database "{database_name}" with key "{key_name}" and value "{key_value}"')
 def step_impl(context, request_type:str, database_name:str, key_name:str, key_value:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, request_type.lower(), {"name": database_name, "entry":{"key": key_name, "value":key_value}}, "db")
+        context.result = API_KVDB.send_command("db", request_type.lower(), {"name": database_name, "entry":{"key": key_name, "value":key_value}})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -104,7 +102,7 @@ def step_impl(context, request_result:str):
 @given('I have already added a key-value pair to the database "{database_name}" with the key "{key_name}" and value "{key_value}"')
 def step_impl(context, database_name:str, key_name:str, key_value:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "put", {"name": database_name, "entry":{"key": key_name, "value":"key_value"}}, "db")
+        context.result = API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": key_name, "value":"key_value"}})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -112,7 +110,7 @@ def step_impl(context, database_name:str, key_name:str, key_value:str):
 @when('I send a {request_type} request to modify a key-value pair to the database "{database_name}" with the key "{key_name}" and value "{key_value}"')
 def step_impl(context, request_type:str, database_name:str, key_name:str, key_value:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "put", {"name": database_name, "entry":{"key": key_name, "value":"key_value"}}, "db")
+        context.result = API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": key_name, "value":"key_value"}})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -129,7 +127,7 @@ def step_impl(context, request_result:str):
 @when('I send a {request_type} request to remove from the database "{database_name}" the key named "{key_name}"')
 def step_impl(context, request_type:str, database_name:str, key_name:str):
     try:
-        context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, request_type.lower(), {"name": database_name, "key": key_name}, "db")
+        context.result = API_KVDB.send_command("db", request_type.lower(), {"name": database_name, "key": key_name})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -148,17 +146,17 @@ def step_impl(context, i:str, j:str, database_name:str, key_name:str, other_key_
     try:
         for first in range(int(i)):
             name = key_name + "_" + str(first)
-            resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "put", {"name": database_name, "entry":{"key": name, "value": "value"}}, "db")
+            API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": name, "value": "value"}})
         for second in range(int(j)):
             name = other_key_name + "_" + str(second)
-            resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, "put", {"name": database_name, "entry":{"key": name, "value": "value"}}, "db")
+            API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": name, "value": "value"}})
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
 
 @when('I send a {request_type} request to search by the prefix "{prefix}" in database "{database_name}"')
 def step_impl(context, request_type:str, prefix:str, database_name:str):
-    context.result = resource_handler._base_send_command_kvdb(DEFAULT_API_SOCK, request_type.lower(), {"name": database_name, "prefix": prefix}, "db")
+    context.result = API_KVDB.send_command("db", request_type.lower(), {"name": database_name, "prefix": prefix})
 
 
 @then('I should receive a list of entries with the {size} key-value pairs whose keyname contains the prefix.')
