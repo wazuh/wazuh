@@ -8,35 +8,20 @@ namespace
 
 const store::NamespaceId INTERNAL_NAMESPACE {"_internal"};
 
-const auto comparatorName = [](const base::Name& lhs, const base::Name& rhs)
-    {
-        return lhs.parts() < rhs.parts();
-    };
-
-const auto comparatorNS = [](const store::NamespaceId& lhs, const store::NamespaceId& rhs)
-    {
-        return lhs.name().parts() < rhs.name().parts();
-    };
-
+// Cut names after a given size and delete duplicates
 std::vector<base::Name>
-cutAfterName(const std::vector<base::Name>& names, const std::size_t size, const std::size_t depth = 1)
+cutName(const std::vector<base::Name>& names, const std::size_t size, const std::size_t depth = 1)
 {
-    // Filter the documents that are under the name and delete duplicates
-    //auto comparator = [](const base::Name& lhs, const base::Name& rhs)
-    //{
-    //    return lhs.parts() < rhs.parts();
-    //};
 
-    std::set<base::Name, decltype(comparatorName)> set(comparatorName);
+    std::set<base::Name> set {};
+    const auto nSize = size + depth;
 
     for (const auto& name : names)
     {
-        if (name.parts().size() >= size + depth)
+        if (name.parts().size() >= nSize)
         {
             auto itBegin = name.parts().begin();
-            std::advance(itBegin, size);
-
-            auto itEnd = itBegin + depth;
+            auto itEnd = itBegin + nSize;
 
             std::vector<std::string> parts(itBegin, itEnd);
 
@@ -184,7 +169,7 @@ public:
     std::vector<NamespaceId> getNamespaceIds() const
     {
 
-        std::set<NamespaceId, decltype(comparatorNS)> set(comparatorNS);
+        std::set<NamespaceId> set {};
         for (const auto& [namespaceId, name] : m_nsToNames)
         {
             set.insert(namespaceId);
@@ -435,7 +420,7 @@ base::RespOrError<Col> Store::readCol(const base::Name& name, const NamespaceId&
     }
 
     // Remove subnamespaces
-    return cutAfterName(res, name.parts().size());
+    return cutName(res, name.parts().size());
 }
 
 base::RespOrError<Col> Store::readCol(const base::Name& name) const
@@ -450,7 +435,7 @@ base::RespOrError<Col> Store::readCol(const base::Name& name) const
     }
 
     // Remove subnamespaces
-    return cutAfterName(res, name.parts().size());
+    return cutName(res, name.parts().size());
 }
 
 bool Store::exists(const base::Name& name) const
