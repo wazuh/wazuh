@@ -17,10 +17,6 @@
 #include <memory>
 #include <string>
 
-/**
- * @brief ServerSelector
- *
- */
 class ServerSelector final : private RoundRobinSelector<std::string>
 {
 private:
