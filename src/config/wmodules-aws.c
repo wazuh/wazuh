@@ -17,8 +17,6 @@ static const char *XML_SERVICE = "service";
 static const char *XML_SUBSCRIBER = "subscriber";
 static const char *XML_SUBSCRIBER_TYPE = "type";
 static const char *XML_SUBSCRIBER_QUEUE = "sqs_name";
-static const char *XML_ACCESS_KEY = "access_key";
-static const char *XML_SECRET_KEY = "secret_key";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
@@ -60,9 +58,6 @@ static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
 static const char *BUCKETS_SUBSCRIBER_TYPE = "buckets";
-
-static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
-static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
 
 // Parse XML
 
@@ -134,16 +129,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
                 return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_ACCESS_KEY)) {
-            if (strlen(nodes[i]->content) != 0) {
-                free(aws_config->access_key);
-                os_strdup(nodes[i]->content, aws_config->access_key);
-            }
-        } else if (!strcmp(nodes[i]->element, XML_SECRET_KEY)) {
-            if (strlen(nodes[i]->content) != 0) {
-                free(aws_config->secret_key);
-                os_strdup(nodes[i]->content, aws_config->secret_key);
             }
         } else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
             if (!nodes[i]->attributes) { // Legacy
@@ -244,22 +229,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
-                    } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
-                        if (strlen(children[j]->content) != 0) {
-                            mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                            free(cur_bucket->access_key);
-                            os_strdup(children[j]->content, cur_bucket->access_key);
-                        }
                     } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ALIAS)) {
                         if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->aws_account_alias);
                             os_strdup(children[j]->content, cur_bucket->aws_account_alias);
-                        }
-                    } else if (!strcmp(children[j]->element, XML_SECRET_KEY)) {
-                        if (strlen(children[j]->content) != 0) {
-                            mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                            free(cur_bucket->secret_key);
-                            os_strdup(children[j]->content, cur_bucket->secret_key);
                         }
                     } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
                         if (strlen(children[j]->content) != 0) {
@@ -406,22 +379,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     }
                     free(cur_service->aws_account_id);
                     os_strdup(children[j]->content, cur_service->aws_account_id);
-                } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
-                    if (strlen(children[j]->content) != 0) {
-                        mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                        free(cur_service->access_key);
-                        os_strdup(children[j]->content, cur_service->access_key);
-                    }
                 } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ALIAS)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_service->aws_account_alias);
                         os_strdup(children[j]->content, cur_service->aws_account_alias);
-                    }
-                } else if (!strcmp(children[j]->element, XML_SECRET_KEY)) {
-                    if (strlen(children[j]->content) != 0) {
-                        mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                        free(cur_service->secret_key);
-                        os_strdup(children[j]->content, cur_service->secret_key);
                     }
                 } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
                     if (strlen(children[j]->content) != 0) {
@@ -696,18 +657,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 os_strdup(aws_config->bucket, cur_bucket->bucket);
             }
         }
-        if (aws_config->secret_key) {
-            if (strlen(aws_config->secret_key) != 0) {
-                free(cur_bucket->secret_key);
-                os_strdup(aws_config->secret_key, cur_bucket->secret_key);
-            }
-        }
-        if (aws_config->access_key) {
-            if (strlen(aws_config->access_key) != 0) {
-                free(cur_bucket->access_key);
-                os_strdup(aws_config->access_key, cur_bucket->access_key);
-            }
-        } else if (aws_config->remove_from_bucket) {
+        else if (aws_config->remove_from_bucket) {
             cur_bucket->remove_from_bucket = aws_config->remove_from_bucket;
         }
 
