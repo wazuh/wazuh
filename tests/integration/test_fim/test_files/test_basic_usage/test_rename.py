@@ -22,7 +22,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_move_file.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_rename.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -34,15 +34,12 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_move_file(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                   truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
-    # Arrange
+def test_rename(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring, path_to_edit):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
-    file_moved_path = test_metadata.get('file_moved_path')
 
-    # Assert
-    file.move(file_to_monitor, file_moved_path)
+    file.rename(path_to_edit, Path(folder_to_monitor, 'test'))
     wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
