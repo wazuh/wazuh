@@ -459,7 +459,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         get_ipv6_string(((struct sockaddr_in6 *)&message->addr)->sin6_addr, srcip, IPSIZE);
         break;
     default:
-        merror("IP address family not supported.");
+        merror("IP address family '%d' not supported.", message->addr.ss_family);
         rem_inc_recv_unknown();
         return;
     }

@@ -382,7 +382,43 @@ void test_close_fp_main_close_fp_null(void **state)
     os_free(first_node_key);
 }
 
-void test_HandleSecureMessage_unvalid_message(void **state)
+void test_HandleSecureMessage_invalid_family_address(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "!1234!";
+    message_t message = { .buffer = buffer, .size = 6, .sock = 1};
+    struct sockaddr_in peer_info;
+    int wdb_sock;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_UNSPEC;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_string(__wrap__merror, formatted_msg, "IP address family '0' not supported.");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, &wdb_sock);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+}
+
+void test_HandleSecureMessage_invalid_message(void **state)
 {
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = { .buffer = buffer, .size = 6, .sock = 1};
@@ -1687,7 +1723,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2_close_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
         // Tests HandleSecureMessage
-        cmocka_unit_test(test_HandleSecureMessage_unvalid_message),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_message),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
