@@ -20,14 +20,10 @@ static const char *XML_LOG_ANALYTICS = "log_analytics";
 static const char *XML_GRAPH = "graph";
 static const char *XML_STORAGE = "storage";
 
-static const char *XML_APP_ID = "application_id";
-static const char *XML_APP_KEY = "application_key";
 static const char *XML_AUTH_PATH = "auth_path";
 static const char *XML_TENANTDOMAIN = "tenantdomain";
 static const char *XML_REQUEST = "request";
 
-static const char *XML_ACCOUNT_NAME = "account_name";
-static const char *XML_ACCOUNT_KEY = "account_key";
 static const char *XML_TAG = "tag";
 static const char *XML_CONTAINER = "container";
 static const char *XML_CONTAINER_NAME = "name";
@@ -48,9 +44,6 @@ static void wm_clean_api(wm_azure_api_t * api_config);
 static void wm_clean_request(wm_azure_request_t * request);
 static void wm_clean_storage(wm_azure_storage_t * storage);
 static void wm_clean_container(wm_azure_container_t * container);
-
-static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html";
-static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
 
 // Parse XML
 
@@ -223,8 +216,6 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
     wm_azure_request_t *request = NULL;
     wm_azure_request_t *request_prev = NULL;
 
-    api_config->application_id = NULL;
-    api_config->application_key = NULL;
     api_config->auth_path = NULL;
     api_config->tenantdomain = NULL;
 
@@ -239,16 +230,6 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
-        } else if (!strcmp(nodes[i]->element, XML_APP_ID)) {
-            if (*nodes[i]->content != '\0') {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, api_config->application_id);
-            }
-        } else if (!strcmp(nodes[i]->element, XML_APP_KEY)) {
-            if (*nodes[i]->content != '\0') {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, api_config->application_key);
-            }
         } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
             if (*nodes[i]->content != '\0')
                 os_strdup(nodes[i]->content, api_config->auth_path);
@@ -292,10 +273,8 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
 
     /* Validation process */
     if (!api_config->auth_path) {
-        if (!api_config->application_id || !api_config->application_key) {
-            merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
-            return OS_INVALID;
-        }
+        merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+        return OS_INVALID;
     }
 
     if (!api_config->tenantdomain) {
@@ -407,8 +386,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
     wm_azure_container_t *container = NULL;
     wm_azure_container_t *container_prev = NULL;
 
-    storage->account_name = NULL;
-    storage->account_key = NULL;
     storage->auth_path = NULL;
     storage->tag = NULL;
 
@@ -476,13 +453,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             }
 
         } else if (nodes[i]->content != NULL && *nodes[i]->content != '\0') {
-            if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, storage->account_name);
-            } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, storage->account_key);
-            } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
+            if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
                 os_strdup(nodes[i]->content, storage->auth_path);
             } else if (!strcmp(nodes[i]->element, XML_TAG)) {
                 os_strdup(nodes[i]->content, storage->tag);
@@ -499,10 +470,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
 
     /* Validation process */
     if (!storage->auth_path) {
-        if (!storage->account_name || !storage->account_key) {
-            merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
-            return OS_INVALID;
-        }
+        merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
     }
 
     if (!storage->tag) {
@@ -604,10 +572,6 @@ void wm_clean_api(wm_azure_api_t * api_config) {
     wm_azure_request_t *curr_request = NULL;
     wm_azure_request_t *next_request = NULL;
 
-    if (api_config->application_id)
-        free(api_config->application_id);
-    if (api_config->application_key)
-        free(api_config->application_key);
     if (api_config->auth_path)
         free(api_config->auth_path);
     if (api_config->tenantdomain)
@@ -642,10 +606,6 @@ void wm_clean_storage(wm_azure_storage_t * storage) {
     wm_azure_container_t *curr_container = NULL;
     wm_azure_container_t *next_container = NULL;
 
-    if (storage->account_name)
-        free(storage->account_name);
-    if (storage->account_key)
-        free(storage->account_key);
     if (storage->auth_path)
         free(storage->auth_path);
     if (storage->tag)
