@@ -32,7 +32,7 @@ private:
     std::unordered_map<std::string, Role> m_roles;
     // std::unordered_map<std::string, Subject> m_subjects;
 
-    std::weak_ptr<store::IStore> m_store;
+    std::weak_ptr<store::IStoreInternal> m_store;
 
     std::optional<base::Error> loadModel()
     {
@@ -42,7 +42,7 @@ private:
             throw std::runtime_error("Store expired when loading RBAC model");
         }
 
-        auto model = store->get(detail::MODEL_NAME);
+        auto model = store->readInternalDoc(detail::MODEL_NAME);
         if (std::holds_alternative<base::Error>(model))
         {
             return std::get<base::Error>(model);
@@ -112,7 +112,7 @@ private:
     }
 
 public:
-    RBAC(std::weak_ptr<store::IStore> store)
+    RBAC(std::weak_ptr<store::IStoreInternal> store)
         : m_store(store)
     {
         auto error = loadModel();

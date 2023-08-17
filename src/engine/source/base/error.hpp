@@ -77,6 +77,23 @@ inline T getResponse(RespOrError<T>&& response)
     return std::get<T>(std::move(response));
 }
 
+/**
+ * @brief Get the Response object
+ *
+ * @note This function should be used only if isError(respOrError) returns false
+ *
+ * @tparam T Type of the response
+ * @param response
+ * @return T
+ *
+ * @throws std::bad_variant_access if response is an error
+ */
+template<typename T>
+inline T getResponse(const RespOrError<T>& response)
+{
+    return std::get<T>(response);
+}
+
 } // namespace base
 
 #endif // _BASE_ERROR_HPP
