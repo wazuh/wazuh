@@ -43,16 +43,16 @@ if(ENGINE_BUILD_TEST)
 set(TEST_UNIT_DIR ${CMAKE_CURRENT_LIST_DIR}/test/unit)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/unit/mocks)
 
-add_executable(metrics_unit_test
+add_executable(metrics_utest
   ${TEST_UNIT_DIR}/metricsManager_test.cpp
   ${TEST_UNIT_DIR}/dataHub_test.cpp
   ${TEST_UNIT_DIR}/dataHubExporter_test.cpp
   ${TEST_UNIT_DIR}/metricsScope_test.cpp
 )
 
-target_include_directories(metrics_unit_test INTERFACE ${TEST_MOCK_DIR})
+target_include_directories(metrics_utest INTERFACE ${TEST_MOCK_DIR})
 
 # TODO: Replace test_mocks with the metrics executable when you have the test folder available.
-target_link_libraries(metrics_unit_test gtest_main gmock base metrics)
-gtest_discover_tests(metrics_unit_test)
+target_link_libraries(metrics_utest gtest_main gmock base metrics)
+gtest_discover_tests(metrics_utest)
 endif(ENGINE_BUILD_TEST)
