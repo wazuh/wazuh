@@ -1,3 +1,65 @@
+'''
+copyright: Copyright (C) 2015-2023, Wazuh Inc.
+
+           Created by Wazuh, Inc. <info@wazuh.com>.
+
+           This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+type: integration
+
+brief: File Integrity Monitoring (FIM) system watches selected files and triggering alerts when these
+       files are modified. In particular, these tests will check if FIM events are still generated when
+       a monitored directory is deleted and created again.
+       The FIM capability is managed by the 'wazuh-syscheckd' daemon, which checks configured files
+       for changes to the checksums, permissions, and ownership.
+
+components:
+    - fim
+
+suite: basic_usage
+
+targets:
+    - agent
+    - manager
+
+daemons:
+    - wazuh-syscheckd
+
+os_platform:
+    - linux
+
+os_version:
+    - Arch Linux
+    - Amazon Linux 2
+    - Amazon Linux 1
+    - CentOS 8
+    - CentOS 7
+    - Debian Buster
+    - Red Hat 8
+    - Ubuntu Focal
+    - Ubuntu Bionic
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
+
+references:
+    - https://man7.org/linux/man-pages/man8/auditd.8.html
+    - https://documentation.wazuh.com/current/user-manual/capabilities/auditing-whodata/who-linux.html
+    - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
+
+pytest_args:
+    - fim_mode:
+        realtime: Enable real-time monitoring on Linux (using the 'inotify' system calls) and Windows systems.
+        whodata: Implies real-time monitoring but adding the 'who-data' information.
+    - tier:
+        0: Only level 0 tests are performed, they check basic functionalities and are quick to perform.
+        1: Only level 1 tests are performed, they check functionalities of medium complexity.
+        2: Only level 2 tests are performed, they check advanced functionalities and are slow to perform.
+
+tags:
+    - fim
+'''
 import sys
 import pytest
 
@@ -6,12 +68,10 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import ADDED_EVENT, DELETED_EVENT, EMPTY_DIRECTORIES_TAG
-from wazuh_testing.modules.fim.utils import get_fim_event_data
+from wazuh_testing.modules.fim.patterns import EMPTY_DIRECTORIES_TAG
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -36,6 +96,51 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_empty_directories_tag(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                truncate_monitored_files, daemons_handler):
+    '''
+    description: Check if the 'wazuh-syscheckd' daemon shows a debug message when an empty 'directories' tag is found.
+                 For this purpose, the test uses a configuration without specifying the directory to monitor.
+                 It will then verify that the appropriate debug message is generated.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+
+    assertions:
+        - Verify that the 'wazuh-syscheckd' daemon generates a debug log when
+          the 'directories' configuration tag is empty.
+
+    input_description: The test cases are contained in external YAML file (cases_empty_directories_tag.yaml)
+                       which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
+                       directories to monitor. The configuration template is contained in another external YAML
+                       file (configuration_empty_directories_tag.yaml).
+
+    expected_output:
+        - r'.*Empty directories tag found in the configuration.*'
+
+    tags:
+        - scheduled
+        - realtime
+    '''
     # Arrange
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 

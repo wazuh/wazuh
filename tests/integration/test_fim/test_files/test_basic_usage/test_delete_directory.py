@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import INODE_ENTRIES_PATH_COUNT
+from wazuh_testing.modules.fim.patterns import DELETED_EVENT
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
@@ -84,7 +84,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_delete_hardlink_symlink.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_delete_directory.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -96,15 +96,14 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_delete_hardlink_symlink(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                 configure_local_internal_options, folder_to_monitor, create_links_to_file,
-                                 daemons_handler, start_monitoring):
+def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                    truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     '''
-    description: Check if FIM events contain the correct number of file paths when 'hard'
-                 and 'symbolic' links are used. For this purpose, the test will monitor
-                 a testing folder and create regular files, also 'symlink' and 'hard link'
-                 before the scan starts. Finally, it verifies in the generated FIM event
-                 that the correct inodes and file paths are detected.
+    description: Check if the 'wazuh-syscheckd' daemon detects 'deleted' events from the files contained
+                 in a folder that is being deleted.
+                 For this purpose, the test will monitor a folder, create the testing files inside it,
+                 then, remove the monitored folder, and finally, the test verifies that the 'deleted'
+                 events have been generated.
 
     wazuh_min_version: 4.2.0
 
@@ -129,9 +128,9 @@ def test_delete_hardlink_symlink(test_configuration, test_metadata, set_wazuh_co
         - folder_to_monitor:
             type: str
             brief: Folder created for monitoring.
-        - create_links_to_file:
+        - file_to_monitor:
             type: str
-            brief: Create the required hardlinks and symlinks.
+            brief: File created for monitoring.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
@@ -140,28 +139,25 @@ def test_delete_hardlink_symlink(test_configuration, test_metadata, set_wazuh_co
             brief: Wait FIM to start.
 
     assertions:
-        - Verify that when using hard and symbolic links, the FIM events contain
-          the number of inodes and paths to files consistent.
+        - Verify that when a monitored folder is deleted, the files inside it
+          generate FIM events of the type 'deleted'.
 
-    input_description: The test cases are contained in external YAML file (cases_delete_hardlink_symlink.yaml)
+    input_description: The test cases are contained in external YAML file (cases_delete_directory.yaml)
                        which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
                        directories to monitor. The configuration template is contained in another external YAML
                        file (configuration_basic.yaml).
 
     expected_output:
-        - r".*Fim inode entries: '(d+)', path count: '(d+)'"
+        - r'.*Sending FIM event: (.+)$'
 
     tags:
         - scheduled
         - realtime
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    hardlink_amount = test_metadata.get('hardlink_amount')
-    symlink_amount = test_metadata.get('symlink_amount')
+    fim_mode = test_metadata.get('fim_mode')
 
-    file.delete_files_in_folder(folder_to_monitor)
-    wazuh_log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
-    inode_entries, path_count = wazuh_log_monitor.callback_result
-
-    assert int(inode_entries) == 1 + hardlink_amount
-    assert int(path_count) == 1 + hardlink_amount + symlink_amount
+    file.remove_folder(folder_to_monitor)
+    wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
+    assert wazuh_log_monitor.callback_result
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
