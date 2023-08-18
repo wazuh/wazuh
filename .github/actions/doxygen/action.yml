@@ -67,6 +67,6 @@ runs:
       - uses: actions/upload-artifact@v3
         if: success()
         with:
-          name: Doxygen documentation - ${{ inputs.id }}
+          name: Doxygen Documentation - ${{ inputs.id }}
           path: ${{ inputs.path }}/doc
           retention-days: 1
