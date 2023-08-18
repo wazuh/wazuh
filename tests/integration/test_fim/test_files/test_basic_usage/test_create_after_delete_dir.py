@@ -90,7 +90,6 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Set configurations required by the fixtures.
-daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
@@ -167,3 +166,4 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
     file.write_file(file_to_monitor)
     wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
     assert wazuh_log_monitor.callback_result
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode

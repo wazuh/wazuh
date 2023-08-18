@@ -3,7 +3,7 @@
   configuration_parameters:
     FIM_MODE:
       realtime: 'yes'
-    TEST_ENV_VARS: $TESTING
+    TEST_ENV_VARS: $TESTING, $TEST
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     test_file: test_file.log
