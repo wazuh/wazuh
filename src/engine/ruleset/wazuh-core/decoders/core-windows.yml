@@ -26,3 +26,7 @@ normalize:
   - map:
       - wazuh.source: logcollector
       - wazuh.decoders: array_append(core-windows)
+      - event.module: windows
+      # Mapping for old agents
+      - _eventJson: parse_json($event.original)
+      - event.original: $_eventJson.Event
