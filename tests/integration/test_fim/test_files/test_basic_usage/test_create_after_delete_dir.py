@@ -125,25 +125,33 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - file_to_monitor:
+            type: str
+            brief: File created for monitoring.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
-        - uninstall_audit:
+        - start_monitoring:
             type: fixture
-            brief: Uninstall 'auditd' before the test and install it again after the test run.
+            brief: Wait FIM to start.
 
     assertions:
         - Verify that FIM events are still generated when a monitored directory is deleted and created again.
 
     input_description: The test cases are contained in external YAML file (cases_create_after_delete_dir.yaml)
-                       which includes configuration settings for the 'wazuh-syscheckd' daemon and testing
-                       directories to monitor.
+                       which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
+                       directories to monitor. The configuration template is contained in another external YAML
+                       file (configuration_basic.yaml).
 
     expected_output:
-        - r'.*Sending FIM event: (.+)$' (Initial scan when restarting Wazuh)
-        - Multiple FIM events logs of the monitored directories.
+        - r'.*"type":"deleted".*'.
+        - r'.*"type":"added".*'
 
     tags:
+        - scheduled
         - realtime
         - who_data
     '''
