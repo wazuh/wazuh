@@ -2,50 +2,41 @@ name: decoder/windows-event/0
 
 parents:
   - decoder/integrations/0
-  - decoder/windows-json/0
 
 metadata:
-  description: Parent decoder for Windows events
   module: Windows
-  compatibility: >
-    This decoder has been tested on Wazuh version 4.3
+  title: Base decoder for Windows events.
+  description: This Windows decoder normalizes common fields from Windows events.
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This decoder has been tested on Wazuh version 4.3.
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
-  title: This Windows decoders decodes basic field from Windows events
   references:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
-  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
-definitions:
-  _MAP_WindowsLevelToLogLevel:
-    "0": "Audit"
-    "1": "Critical"
-    "2": "Error"
-    "3": "Warning"
-    "4": "Information"
-    "5": "Verbose"
-
-check: $wazuh.origin=="EventChannel" OR exists($json.Event)
-
-parse:
-  logpar:
-    - event.original: <windows/xml/windows>
-    - json.Event: <windows/xml/windows>
+check:
+  - event.module: windows
 
 normalize:
- - map:
-   - wazuh.decoders: array_append(windows-event)
-   - event.module: windows
-   - event.dataset: general
-   - event.start: $windows.System.TimeCreated.@SystemTime
-   - event.code: $windows.System.EventID.#text
-   - event.id: $windows.System.EventID.#text
-   - event.kind: event
-   - event.provider: $windows.System.Provider.@Name
-   - host.name: $windows.System.Computer.#text
-   # Set event level
-   - log.level: get_value($_MAP_WindowsLevelToLogLevel,$windows.System.Level.#text)
+  - map:
+      - windows: parse_xml($event.original, windows)
+      - event.dataset: general
+      - event.start: $windows.System.TimeCreated.@SystemTime
+      - event.code: $windows.System.EventID.#text
+      - event.id: $windows.System.EventID.#text
+      - event.kind: event
+      - event.provider: $windows.System.Provider.@Name
 
-   # Cleanup
-   - json: delete()
+      - host.name: $windows.System.Computer.#text
+
+      - _MapWindowsLevelToLogLevel:
+          "0": "Audit"
+          "1": "Critical"
+          "2": "Error"
+          "3": "Warning"
+          "4": "Information"
+          "5": "Verbose"
+      - log.level: get_value($_MapWindowsLevelToLogLevel, $windows.System.Level.#text)
+
+      - wazuh.decoders: array_append(windows-event)
