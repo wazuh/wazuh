@@ -61,12 +61,12 @@ tags:
     - fim
 '''
 import sys
-from psutil import WINDOWS
 import pytest
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import ADDED_EVENT, DELETED_EVENT
 from wazuh_testing.modules.fim.utils import get_fim_event_data
