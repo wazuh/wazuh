@@ -540,11 +540,6 @@ class WazuhIntegration:
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-<<<<<<< HEAD
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg if dump_json else msg).encode())
-=======
-
             encoded_msg = "{header}{msg}".format(header=self.msg_header,
                                                  msg=json_msg if dump_json else msg).encode()
 
@@ -553,7 +548,6 @@ class WazuhIntegration:
                 debug(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.", 1)
 
             s.send(encoded_msg)
->>>>>>> 6831ecae28 (Added msg_level in aws_s3.py.)
             s.close()
         except socket.error as e:
             if e.errno == 111:
