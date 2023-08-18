@@ -1,12 +1,11 @@
 #include <store/store.hpp>
 
+#include <algorithm>
 #include <list>
 #include <set>
 
 namespace
 {
-
-const std::string INTERNAL_NAMESPACE {"namespaces"};
 
 // Cut names after a given size and delete duplicates
 std::vector<base::Name>
@@ -44,6 +43,8 @@ cutName(const std::vector<base::Name>& names, const std::size_t size, const std:
 namespace store
 {
 
+base::Name Store::sm_prefixNS {"namespaces"}; ///< Prefix for the namespaces.
+
 /**
  * @brief Store::DBDocNames
  *
@@ -70,7 +71,9 @@ public:
     {
         auto it = m_nameToNS.find(name);
         if (it == m_nameToNS.end())
+        {
             return std::nullopt;
+        }
 
         return it->second;
     }
@@ -112,52 +115,45 @@ public:
 
     bool existsName(const base::Name& name) const { return m_nameToNS.find(name) != m_nameToNS.end(); }
 
-    bool existsPrefixName(const base::Name& prefix, bool subname = true) const
+    bool isPrefix(const base::Name& prefix, const base::Name& name, bool strict = true) const
     {
-        for (const auto& [key, value] : m_nameToNS)
+        if (strict)
         {
-            // If is a subname, then the prefix must be smaller than the key
-            if (subname && prefix.parts().size() >= key.parts().size())
+            // If the prefix is bigger or equal than the name, then it cannot be a prefix
+            if (prefix.parts().size() >= name.parts().size())
             {
-                continue;
-            }
-            // All elements of the prefix must be equal
-            if (std::equal(prefix.parts().begin(), prefix.parts().end(), key.parts().begin()))
-            {
-                return true;
+                return false;
             }
         }
+        // If the prefix is bigger than the name, then it cannot be a prefix
+        else if (prefix.parts().size() > name.parts().size())
+        {
+            return false;
+        }
 
-        return false;
+        // All elements of the prefix must be equal
+        return std::equal(prefix.parts().cbegin(), prefix.parts().cend(), name.parts().cbegin());
     }
 
-    std::vector<base::Name> filterByPrefix(const base::Name& prefix)
+    bool existsPrefixName(const base::Name& prefix, bool strict = true) const
     {
-        std::vector<base::Name> names;
-
-        for (const auto& [key, value] : m_nameToNS)
-        {
-            // All elements of the prefix must be equal
-            if (std::equal(prefix.parts().begin(), prefix.parts().end(), key.parts().begin()))
-            {
-                names.push_back(key);
-            }
-        }
-        return names;
+        const auto found = std::find_if(m_nameToNS.cbegin(),
+                                        m_nameToNS.cend(),
+                                        [&](const auto& pair) { return isPrefix(prefix, pair.first, strict); });
+        return found != m_nameToNS.cend();
     }
 
-    std::vector<base::Name> filterByPrefix(const base::Name& prefix, const NamespaceId& namespaceId)
+    std::vector<base::Name> filterByPrefix(const base::Name& prefix, const NamespaceId& namespaceId, bool strict = true)
     {
         std::vector<base::Name> names;
-
-        for (const auto& [key, value] : m_nameToNS)
+        for (const auto& [ns, name] : m_nsToNames)
         {
-            // All elements of the prefix must be equal
-            if (value == namespaceId && std::equal(prefix.parts().begin(), prefix.parts().end(), key.parts().begin()))
+            if (ns == namespaceId && isPrefix(prefix, name, strict))
             {
-                names.push_back(key);
+                names.emplace_back(name);
             }
         }
+
         return names;
     }
 
@@ -168,20 +164,13 @@ public:
      */
     std::vector<NamespaceId> getNamespaceIds() const
     {
-
         std::set<NamespaceId> set {};
         for (const auto& [namespaceId, name] : m_nsToNames)
         {
             set.insert(namespaceId);
         }
 
-        std::vector<NamespaceId> namespaceIds;
-        for (const auto& namespaceId : set)
-        {
-            namespaceIds.push_back(namespaceId);
-        }
-
-        return namespaceIds;
+        return std::vector<NamespaceId>(set.cbegin(), set.cend());
     }
 
     /**
@@ -227,7 +216,7 @@ public:
      */
     bool add(const base::Name& name, const NamespaceId& namespaceId)
     {
-        if (m_nameToNS.find(name) != m_nameToNS.end())
+        if (m_nameToNS.find(name) != m_nameToNS.cend())
         {
             return false;
         }
@@ -243,32 +232,47 @@ public:
      * @param name Name of the document.
      * @return true if successfully removed; false otherwise.
      */
-    bool del(const base::Name& name)
+    void del(const base::Name& name)
     {
-        auto itKeyToNS = m_nameToNS.find(name);
-        if (itKeyToNS == m_nameToNS.end())
-        {
-            return false;
-        }
-        auto namespaceId = itKeyToNS->second;
-        m_nameToNS.erase(itKeyToNS);
-
-        // Remove association from m_nsToNames
-        auto range = m_nsToNames.equal_range(namespaceId);
-        for (auto it = range.first; it != range.second; ++it)
+        for (auto it = m_nsToNames.begin(); it != m_nsToNames.end();)
         {
             if (it->second == name)
             {
-                m_nsToNames.erase(it);
-                break;
+                it = m_nsToNames.erase(it);
+            }
+            else
+            {
+                ++it;
             }
         }
-        return true;
+
+        m_nameToNS.erase(name);
+    }
+
+    void delCol(const base::Name& name, const NamespaceId& namespaceId)
+    {
+        auto nsIt = m_nsToNames.find(namespaceId);
+        if (nsIt == m_nsToNames.end())
+        {
+            return;
+        }
+
+        for (auto it = nsIt; it != m_nsToNames.end();)
+        {
+            if (isPrefix(name, it->second))
+            {
+                it = m_nsToNames.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
     }
 
     bool existsNamespaceId(const NamespaceId& namespaceId) const
     {
-        return m_nsToNames.find(namespaceId) != m_nsToNames.end();
+        return m_nsToNames.find(namespaceId) != m_nsToNames.cend();
     }
 };
 
@@ -276,7 +280,6 @@ Store::Store(std::shared_ptr<IDriver> driver)
     : m_driver(std::move(driver))
     , m_cache(std::make_unique<DBDocNames>())
     , m_mutex()
-    , m_prefixNS(INTERNAL_NAMESPACE)
 {
     if (m_driver == nullptr)
     {
@@ -323,12 +326,13 @@ Store::Store(std::shared_ptr<IDriver> driver)
     };
 
     // No namespaces to load
-    if (!m_driver->existsCol(m_prefixNS)) {
+    if (!m_driver->existsCol(sm_prefixNS))
+    {
         return;
     }
 
     // Get all namespaces and load the cache
-    const auto namespaces = m_driver->readCol(m_prefixNS);
+    const auto namespaces = m_driver->readCol(sm_prefixNS);
 
     if (const auto err = std::get_if<base::Error>(&namespaces))
     {
@@ -338,7 +342,7 @@ Store::Store(std::shared_ptr<IDriver> driver)
     const auto& list = std::get<Col>(namespaces);
     for (const auto& name : list)
     {
-        if (name.parts().size() == m_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE
+        if (name.parts().size() == sm_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE
             && m_driver->existsCol(name))
         {
             visitor(name, NamespaceId(name.parts().back()), visitor);
@@ -355,30 +359,6 @@ Store::Store(std::shared_ptr<IDriver> driver)
 }
 
 Store::~Store() = default;
-
-base::Name Store::virtualToRealName(const base::Name& virtualName, const NamespaceId& namespaceId) const
-{
-    return m_prefixNS + namespaceId.name() + virtualName;
-}
-
-base::RespOrError<base::Name> Store::realToVirtualName(const base::Name& realName) const
-{
-    // Remove de prefix
-    const auto& partsRN = realName.parts();
-    const auto prefixSize = m_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE;
-
-    // The realname must have more parts than the prefix + namespace
-    if (partsRN.size() < prefixSize)
-    {
-        return base::Error {"Invalid real name, too short"};
-    }
-
-    // Delete the namespace
-    auto it = partsRN.begin();
-    std::advance(it, prefixSize);
-
-    return base::Name(std::vector<std::string>(it, partsRN.end()));
-}
 
 //----------------------------------------------------------------------------------------
 //                                Read interface definition
@@ -416,39 +396,16 @@ std::vector<NamespaceId> Store::listNamespaces() const
 
 base::RespOrError<Col> Store::readCol(const base::Name& name, const NamespaceId& namespaceId) const
 {
-    // Get all documents in the namespace
+    // Retrieve real collection from cache
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-    auto res = m_cache->filterByPrefix(name, namespaceId);
-
-    if (res.empty())
+    auto vcol = m_cache->filterByPrefix(name, namespaceId);
+    if (vcol.empty())
     {
-        return m_cache->existsNamespaceId(namespaceId) ? base::Error {"Namespace does not exist"}
-                                                       : base::Error {"Collection does not exist in namespace"};
+        return base::Error {fmt::format(
+            "Collection '{}' does not exist on namespace '{}'", name.fullName(), namespaceId.name().fullName())};
     }
 
-    // Remove subnamespaces
-    return cutName(res, name.parts().size());
-}
-
-base::RespOrError<Col> Store::readCol(const base::Name& name) const
-{
-    // Get all documents
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-    auto res = m_cache->filterByPrefix(name);
-
-    if (res.empty())
-    {
-        return base::Error {"Collection does not exist"};
-    }
-
-    // Remove subnamespaces
-    return cutName(res, name.parts().size());
-}
-
-bool Store::exists(const base::Name& name) const
-{
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-    return m_cache->existsPrefixName(name, false);
+    return vcol;
 }
 
 bool Store::existsDoc(const base::Name& name) const
@@ -457,10 +414,11 @@ bool Store::existsDoc(const base::Name& name) const
     return m_cache->existsName(name);
 }
 
-bool Store::existsCol(const base::Name& name) const
+bool Store::existsCol(const base::Name& name, const NamespaceId& namespaceId) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-    return m_cache->existsPrefixName(name);
+    auto col = m_cache->filterByPrefix(name, namespaceId);
+    return !col.empty();
 }
 
 //----------------------------------------------------------------------------------------
@@ -557,93 +515,23 @@ base::OptError Store::deleteDoc(const base::Name& name)
 
 base::OptError Store::deleteCol(const base::Name& name, const NamespaceId& namespaceId)
 {
-
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
-    // Check if the namespace exists
-    if (!m_cache->existsNamespaceId(namespaceId))
-    {
-        return base::Error {"Namespace does not exist"};
-    }
-
-    // Check if the collection exists
-    auto filteredDocs = m_cache->filterByPrefix(name, namespaceId);
-    if (filteredDocs.empty())
+    // TODO: lock mutex here, dont use existsCol or do other thing
+    // Check if the namespace exists and the collection exists
+    if (!existsCol(name, namespaceId))
     {
         return base::Error {"Collection does not exist"};
     }
-
-    // Delete all documents in the collection
-    // Acumuulate the errors
-    std::vector<base::Error> errors;
-    for (const auto& vName : filteredDocs)
-    {
-        auto rName = virtualToRealName(vName, namespaceId);
-        auto error = m_driver->deleteDoc(rName);
-        if (error)
-        {
-            errors.push_back(error.value());
-        }
-        else
-        {
-            m_cache->del(vName);
-        }
-    }
-
-    // If there are errors, concatenate them
-    if (!errors.empty())
-    {
-        std::string message;
-        for (const auto& error : errors)
-        {
-            message += error.message + "\n";
-        }
-        return base::Error {message};
-    }
-
-    return std::nullopt;
-}
-
-base::OptError Store::deleteCol(const base::Name& name)
-{
-
     std::unique_lock<std::shared_mutex> lock(m_mutex);
 
-    // Check if the collection exists
-    auto filteredDocs = m_cache->filterByPrefix(name);
-    if (filteredDocs.empty())
+    // Delete the collection
+    auto error = m_driver->deleteCol(virtualToRealName(name, namespaceId));
+    if (error)
     {
-        return base::Error {"Collection does not exist"};
+        return error;
     }
 
-    // Delete all documents in the collection
-    // Acumuulate the errors
-    std::vector<base::Error> errors;
-    for (const auto& vName : filteredDocs)
-    {
-        auto namespaceId = m_cache->getNamespaceId(vName);
-        auto rName = virtualToRealName(vName, namespaceId.value());
-        auto error = m_driver->deleteDoc(rName);
-        if (error)
-        {
-            errors.push_back(error.value());
-        }
-        else
-        {
-            m_cache->del(vName);
-        }
-    }
-
-    // If there are errors, concatenate them
-    if (!errors.empty())
-    {
-        std::string message;
-        for (const auto& error : errors)
-        {
-            message += error.message + "\n";
-        }
-        return base::Error {message};
-    }
+    // Update the cache
+    m_cache->delCol(name, namespaceId);
 
     return std::nullopt;
 }
@@ -653,11 +541,11 @@ base::OptError Store::createInternalDoc(const base::Name& name, const Doc& conte
     // The internal document not have a namespace, and not store in the cache
 
     // Check if the name have a same prefix as the internal namespace, and avoid it
-    if (name.parts()[0] == m_prefixNS.parts()[0])
+    if (name.parts()[0] == sm_prefixNS.parts()[0])
     {
         return base::Error {fmt::format("Invalid write internal document name '{}', cannot start with '{}'",
                                         name.fullName(),
-                                        m_prefixNS.parts()[0])};
+                                        sm_prefixNS.parts()[0])};
     }
 
     return m_driver->createDoc(name, content);
@@ -672,11 +560,11 @@ base::RespOrError<Doc> Store::readInternalDoc(const base::Name& name) const
 base::OptError Store::updateInternalDoc(const base::Name& name, const Doc& content)
 {
     // Check if the name have a same prefix as the internal namespace, and avoid it
-    if (name.parts()[0] == m_prefixNS.parts()[0])
+    if (name.parts()[0] == sm_prefixNS.parts()[0])
     {
         return base::Error {fmt::format("Invalid update internal document name '{}', cannot start with '{}'",
                                         name.fullName(),
-                                        m_prefixNS.parts()[0])};
+                                        sm_prefixNS.parts()[0])};
     }
     return m_driver->updateDoc(name, content);
 }
@@ -684,11 +572,11 @@ base::OptError Store::updateInternalDoc(const base::Name& name, const Doc& conte
 base::OptError Store::deleteInternalDoc(const base::Name& name)
 {
     // Check if the name have a same prefix as the internal namespace, and avoid it
-    if (name.parts()[0] == m_prefixNS.parts()[0])
+    if (name.parts()[0] == sm_prefixNS.parts()[0])
     {
         return base::Error {fmt::format("Invalid delete internal document name '{}', cannot start with '{}'",
                                         name.fullName(),
-                                        m_prefixNS.parts()[0])};
+                                        sm_prefixNS.parts()[0])};
     }
     return m_driver->deleteDoc(name);
 }

@@ -39,6 +39,26 @@ public:
     {
         assertValid();
     }
+    explicit NamespaceId(const base::Name& id)
+        : m_id(id)
+    {
+        assertValid();
+    }
+
+    static base::RespOrError<NamespaceId> fromName(const base::Name& name)
+    {
+        NamespaceId namespaceId;
+        try
+        {
+            namespaceId = NamespaceId(name);
+        }
+        catch (const std::invalid_argument& e)
+        {
+            return base::Error {e.what()};
+        }
+
+        return namespaceId;
+    }
 
     NamespaceId(const NamespaceId& other)
         : m_id(other.m_id)
