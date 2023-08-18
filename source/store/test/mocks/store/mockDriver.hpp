@@ -16,6 +16,11 @@ inline base::OptError driverError()
     return base::Error {"Mocked driver error"};
 }
 
+inline base::OptError driverOk()
+{
+    return base::OptError {};
+}
+
 template<typename T>
 inline base::RespOrError<T> driverReadError()
 {
