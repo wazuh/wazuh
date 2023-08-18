@@ -134,8 +134,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
 
         if (!kvdbManager->existsDB(eRequest.name()))
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         const auto resultDelete = kvdbManager->deleteDB(eRequest.name());
@@ -164,42 +163,27 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         }
 
         const auto& eRequest = std::get<RequestType>(res);
+        uint32_t page = eRequest.has_page() ? eRequest.page() : DEFAULT_HANDLER_PAGE;
+        uint32_t records = eRequest.has_records() ? eRequest.records() : DEFAULT_HANDLER_RECORDS;
+
         auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
                         : eRequest.name().empty() ? std::make_optional("Field /name cannot be empty")
-                                                  : std::nullopt;
+                        : eRequest.has_page() && eRequest.page() == 0
+                            ? std::make_optional("Field /page must be greater than 0")
+                        : eRequest.has_records() && eRequest.records() == 0
+                            ? std::make_optional("Field /records must be greater than 0")
+                            : std::nullopt;
+
         if (errorMsg.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
-        }
-
-        if (eRequest.has_page() && eRequest.page() == 0)
-        {
-            return ::api::adapter::genericError<ResponseType>("Field /page must be greater than 0");
-        }
-
-        if (eRequest.has_records() && eRequest.records() == 0)
-        {
-            return ::api::adapter::genericError<ResponseType>("Field /records must be greater than 0");
-        }
-
-        uint32_t page = DEFAULT_HANDLER_PAGE, records = DEFAULT_HANDLER_RECORDS;
-
-        if (eRequest.has_page())
-        {
-            page = eRequest.page();
-        }
-
-        if (eRequest.has_records())
-        {
-            records = eRequest.records();
         }
 
         const auto resultExists = kvdbManager->existsDB(eRequest.name());
 
         if (!resultExists)
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -272,8 +256,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
 
         if (!kvdbManager->existsDB(eRequest.name()))
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -337,8 +320,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
 
         if (!kvdbManager->existsDB(eRequest.name()))
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -406,8 +388,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
 
         if (!kvdbManager->existsDB(eRequest.name()))
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
@@ -458,8 +439,7 @@ api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
 
         if (!kvdbManager->existsDB(eRequest.name()))
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
+            return ::api::adapter::genericError<ResponseType>(fmt::format(MESSAGE_DB_NOT_EXISTS, eRequest.name()));
         }
 
         auto resultHandler = kvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
