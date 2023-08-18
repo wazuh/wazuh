@@ -570,3 +570,83 @@ TEST_F(StoreTest, deleteCol_ok) {
 
     GTEST_SKIP();
 }
+
+/*******************************************************************************
+                        Store::createInternalDoc
+*******************************************************************************/
+TEST_F(StoreTest, createInternalDoc_fail) {
+
+    // Fail driver
+    EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(driverError()));
+    ASSERT_TRUE(base::isError(store->createInternalDoc("x", jdoc_1A)));
+
+    // Write to namespace collection
+    ASSERT_TRUE(base::isError(store->createInternalDoc("namespaces", jdoc_1A)));
+    ASSERT_TRUE(base::isError(store->createInternalDoc("namespaces/a", jdoc_1A)));
+}
+
+TEST_F(StoreTest, createInternalDoc_ok) {
+
+    EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
+    ASSERT_FALSE(base::isError(store->createInternalDoc("x", jdoc_1A)));
+}
+
+
+/*******************************************************************************
+                        Store::updateInternalDoc
+*******************************************************************************/
+TEST_F(StoreTest, updateInternalDoc_fail) {
+
+    // Fail driver
+    EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(driverError()));
+    ASSERT_TRUE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
+
+    // Write to namespace collection
+    ASSERT_TRUE(base::isError(store->updateInternalDoc("namespaces", jdoc_1A)));
+    ASSERT_TRUE(base::isError(store->updateInternalDoc("namespaces/a", jdoc_1A)));
+}
+
+TEST_F(StoreTest, updateInternalDoc_ok) {
+
+    EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
+    ASSERT_FALSE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
+}
+
+/*******************************************************************************
+                        Store::readInternalDoc
+*******************************************************************************/
+TEST_F(StoreTest, readInternalDoc_fail) {
+
+    // Fail driver
+    EXPECT_CALL(*driver, readDoc(base::Name("x"))).WillOnce(testing::Return(driverReadError<Doc>()));
+    ASSERT_TRUE(base::isError(store->readInternalDoc("x")));
+}
+
+TEST_F(StoreTest, readInternalDoc_ok) {
+
+    EXPECT_CALL(*driver, readDoc(base::Name("x"))).WillOnce(testing::Return(driverReadDocResp(Doc(jdoc_1A))));
+    auto res = store->readInternalDoc("x");
+
+    ASSERT_FALSE(base::isError(res));
+    ASSERT_EQ(std::get<Doc>(res), jdoc_1A);
+}
+
+/*******************************************************************************
+                        Store::deleteInternalDoc
+*******************************************************************************/
+TEST_F(StoreTest, deleteInternalDoc_fail) {
+
+    // Fail driver
+    EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(driverError()));
+    ASSERT_TRUE(base::isError(store->deleteInternalDoc("x")));
+
+    // Write to namespace collection
+    ASSERT_TRUE(base::isError(store->deleteInternalDoc("namespaces")));
+    ASSERT_TRUE(base::isError(store->deleteInternalDoc("namespaces/a")));
+}
+
+TEST_F(StoreTest, deleteInternalDoc_ok) {
+
+    EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(std::nullopt));
+    ASSERT_FALSE(base::isError(store->deleteInternalDoc("x")));
+}
