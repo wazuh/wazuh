@@ -36,13 +36,67 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_rename(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                 truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring, path_to_edit):
+    '''
+    description: Check if the 'wazuh-syscheckd' daemon detects 'added' and 'deleted' events when renaming a
+                 subdirectory or a file. For this purpose, the test will rename a testing subfolder or file
+                 then, it verifies that the expected FIM events have been generated.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - path_to_edit:
+            type: str
+            brief: Create the required directory or file to edit.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - start_monitoring:
+            type: fixture
+            brief: Wait FIM to start.
+
+    assertions:
+        - Verify that FIM events of type 'added' and 'deleted' are generated
+          when subfolders or files are renamed.
+
+    input_description: The test cases are contained in external YAML file (cases_rename.yaml) which includes
+                       configuration parameters for the 'wazuh-syscheckd' daemon and testing directories
+                       to monitor. The configuration template is contained in another external YAML file
+                       (configuration_basic.yaml).
+
+    expected_output:
+        - r'.*"type":"deleted".*'.
+        - r'.*"type":"added".*'
+
+    tags:
+        - scheduled
+        - realtime
+    '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
 
     file.rename(path_to_edit, Path(folder_to_monitor, 'test'))
+    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+    assert wazuh_log_monitor.callback_result
     wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
-
-    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
-    assert wazuh_log_monitor.callback_result
