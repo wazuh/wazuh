@@ -296,6 +296,8 @@ class DistributedAPI:
                     raise exception.WazuhInternalError(2008)
                 except process.BrokenProcessPool:
                     raise exception.WazuhInternalError(901)
+                except exception.WazuhInternalError as e:
+                    raise exception.WazuhError(1000, extra_message=str(e))
             except json.decoder.JSONDecodeError:
                 raise exception.WazuhInternalError(3036)
             except process.BrokenProcessPool:
