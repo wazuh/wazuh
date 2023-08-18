@@ -25,7 +25,7 @@ try:
     from wazuh.core import common
     from wazuh.core.agent import Agent
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
-    from wazuh.core.exception import WazuhError
+    from wazuh.core.exception import WazuhException
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
@@ -228,7 +228,7 @@ def main():
         check_status(affected_agents=result.affected_items, result_dict=agents_versions,
                      failed_agents=failed_agents, silent=args.silent)
 
-    except WazuhError as e:
+    except WazuhException as e:
         print(f"Error {e.code}: {e.message}")
         if args.debug:
             raise
