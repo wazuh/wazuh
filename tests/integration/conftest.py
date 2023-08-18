@@ -220,25 +220,23 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
     ignore_errors = False
     all_daemons = False
 
-    try:
-        daemons_handler_configuration = getattr(request.module, 'daemons_handler_configuration')
-        if 'daemons' in daemons_handler_configuration and not all_daemons:
-            daemons = daemons_handler_configuration['daemons']
-            if not daemons or (type(daemons) == list and len(daemons) == 0) or type(daemons) != list:
-                logger.error('Daemons list is not set')
+    if config := getattr(request.module, 'daemons_handler_configuration', None):
+        if 'daemons' in config:
+            daemons = config['daemons']
+            if not daemons or len(daemons) == 0 or type(daemons) not in [list, tuple]:
+                logger.error('Daemons list/tuple is not set')
                 raise ValueError
 
-        if 'all_daemons' in daemons_handler_configuration:
-            logger.debug(f"Wazuh control set to {daemons_handler_configuration['all_daemons']}")
-            all_daemons = daemons_handler_configuration['all_daemons']
+        if 'all_daemons' in config:
+            logger.debug(f"Wazuh control set to {config['all_daemons']}")
+            all_daemons = config['all_daemons']
 
-        if 'ignore_errors' in daemons_handler_configuration:
-            logger.debug(f"Ignore error set to {daemons_handler_configuration['ignore_errors']}")
-            ignore_errors = daemons_handler_configuration['ignore_errors']
-
-    except AttributeError as daemon_configuration_not_set:
-        logger.error('daemons_handler_configuration is not set')
-        raise daemon_configuration_not_set
+        if 'ignore_errors' in config:
+            logger.debug(f"Ignore error set to {config['ignore_errors']}")
+            ignore_errors = config['ignore_errors']
+    else:
+        logger.debug("Wazuh control set to 'all_daemons'")
+        all_daemons = True
 
     try:
         if all_daemons:

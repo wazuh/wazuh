@@ -30,8 +30,8 @@ local_internal_options = {SYSCHECK_DEBUG: 2,AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_cud_events(test_configuration, test_metadata, folder_to_monitor, set_environment_variables, set_wazuh_configuration,
-                    configure_local_internal_options, truncate_monitored_files , daemons_handler, start_monitoring):
+def test_cud_events(test_configuration, test_metadata, folder_to_monitor, set_environment_variables,
+                    truncate_monitored_files , daemons_handler, start_monitoring):
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     test_file = Path(folder_to_monitor, test_metadata['test_file'])
