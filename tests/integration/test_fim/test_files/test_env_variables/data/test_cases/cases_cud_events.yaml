@@ -1,9 +1,9 @@
 - name: FIM cud events from environment variables - Single dir
   description: test
   configuration_parameters:
-    WHODATA: 'yes'
-    REALTIME: 'yes'
-    TEST_ENV_VARS: "$TESTING"
+    FIM_MODE:
+      realtime: 'yes'
+    TEST_ENV_VARS: $TESTING
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     test_file: test_file.log
