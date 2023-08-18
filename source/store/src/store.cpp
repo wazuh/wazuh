@@ -234,34 +234,35 @@ public:
      */
     void del(const base::Name& name)
     {
-        for (auto it = m_nsToNames.begin(); it != m_nsToNames.end();)
-        {
-            if (it->second == name)
-            {
-                it = m_nsToNames.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        m_nameToNS.erase(name);
-    }
-
-    void delCol(const base::Name& name, const NamespaceId& namespaceId)
-    {
-        auto nsIt = m_nsToNames.find(namespaceId);
-        if (nsIt == m_nsToNames.end())
+        auto itKeyToNS = m_nameToNS.find(name);
+        if (itKeyToNS == m_nameToNS.end())
         {
             return;
         }
 
-        for (auto it = nsIt; it != m_nsToNames.end();)
+        auto range = m_nsToNames.equal_range(itKeyToNS->second);
+        for (auto it = range.first; it != range.second; ++it)
         {
+            if (it->second == name)
+            {
+                m_nameToNS.erase(itKeyToNS);
+                m_nsToNames.erase(it);
+                return;
+            }
+        }
+    }
+
+    void delCol(const base::Name& name, const NamespaceId& namespaceId)
+    {
+        // Fast filter by namespace
+        auto range = m_nsToNames.equal_range(namespaceId);
+        for (auto it = range.first; it != range.second;)
+        {
+            // Filter by prefix
             if (isPrefix(name, it->second))
             {
-                it = m_nsToNames.erase(it);
+                m_nameToNS.erase(it->second); // Remove in name -> namespaceId
+                it = m_nsToNames.erase(it);   // Remove in namespaceId -> name
             }
             else
             {
@@ -305,9 +306,8 @@ Store::Store(std::shared_ptr<IDriver> driver)
             if (!m_cache->add(*virtualName, nsid))
             {
                 LOG_WARNING("Document '{}' already exists in some namespace, "
-                            "namespace is not consistent, will be fixed",
+                            "namespace is not consistent, will be ignored",
                             name.fullName());
-                // TODO update namespace in cache
             }
             return;
         }
@@ -405,7 +405,7 @@ base::RespOrError<Col> Store::readCol(const base::Name& name, const NamespaceId&
             "Collection '{}' does not exist on namespace '{}'", name.fullName(), namespaceId.name().fullName())};
     }
 
-    return vcol;
+    return cutName(vcol, name.parts().size());
 }
 
 bool Store::existsDoc(const base::Name& name) const
@@ -515,13 +515,12 @@ base::OptError Store::deleteDoc(const base::Name& name)
 
 base::OptError Store::deleteCol(const base::Name& name, const NamespaceId& namespaceId)
 {
-    // TODO: lock mutex here, dont use existsCol or do other thing
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
     // Check if the namespace exists and the collection exists
-    if (!existsCol(name, namespaceId))
+    if (m_cache->filterByPrefix(name, namespaceId).empty())
     {
         return base::Error {"Collection does not exist"};
     }
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
 
     // Delete the collection
     auto error = m_driver->deleteCol(virtualToRealName(name, namespaceId));

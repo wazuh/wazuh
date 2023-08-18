@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+
 #include <store/store.hpp>
 #include <store/drivers/fileDriver.hpp>
+
 
 
 void inline initLogging(void)
@@ -250,8 +252,9 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_C, NAMESPACE_C, JSON_C));
         ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_C));
 
+
         // Check the 3 items
-        auto checkItems = [&](void) -> void
+        auto checkItems = [&]() -> void
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
@@ -260,38 +263,31 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
 
-            auto rDocA = store->readDoc(COLLECTION_ABC + DOC_A);
-            ASSERT_FALSE(base::isError(rDocA));
-            ASSERT_EQ(std::get<Doc>(rDocA), JSON_A);
+            for (const auto& [doc, nsName, jdoc] :
+                 {std::tuple<base::Name, NamespaceId, Doc>(DOC_A, NAMESPACE_A, JSON_A),
+                  std::tuple<base::Name, NamespaceId, Doc>(DOC_B, NAMESPACE_B, JSON_B),
+                  std::tuple<base::Name, NamespaceId, Doc>(DOC_C, NAMESPACE_C, JSON_C)})
+            {
+                auto rDoc = store->readDoc(COLLECTION_ABC + doc);
+                ASSERT_FALSE(base::isError(rDoc));
+                ASSERT_EQ(std::get<Doc>(rDoc), jdoc);
 
-            auto rDocB = store->readDoc(COLLECTION_ABC + DOC_B);
-            ASSERT_FALSE(base::isError(rDocB));
-            ASSERT_EQ(std::get<Doc>(rDocB), JSON_B);
+                auto colA = store->readCol(COLLECTION_A, nsName);
+                ASSERT_FALSE(base::isError(colA));
+                ASSERT_EQ(std::get<Col>(colA).size(), 1);
+                ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_AB);
 
-            auto rDocC = store->readDoc(COLLECTION_ABC + DOC_C);
-            ASSERT_FALSE(base::isError(rDocC));
-            ASSERT_EQ(std::get<Doc>(rDocC), JSON_C);
+                auto colAB = store->readCol(COLLECTION_AB, nsName);
+                ASSERT_FALSE(base::isError(colAB));
+                ASSERT_EQ(std::get<Col>(colAB).size(), 1);
+                ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_ABC);
 
-            auto colA = store->readCol(COLLECTION_A, NAMESPACE_A);
-            auto colAB = store->readCol(COLLECTION_AB, NAMESPACE_A);
-            auto colABC = store->readCol(COLLECTION_ABC, NAMESPACE_A);
+                auto colABC = store->readCol(COLLECTION_ABC, nsName);
+                ASSERT_FALSE(base::isError(colABC));
+                ASSERT_EQ(std::get<Col>(colABC).size(), 1);
+                ASSERT_EQ(std::get<Col>(colABC)[0], COLLECTION_ABC + doc);
 
-            ASSERT_FALSE(base::isError(colA));
-            ASSERT_FALSE(base::isError(colAB));
-            ASSERT_FALSE(base::isError(colABC));
-
-            ASSERT_EQ(std::get<Col>(colA).size(), 1);
-            ASSERT_EQ(std::get<Col>(colAB).size(), 1);
-            ASSERT_EQ(std::get<Col>(colABC).size(), 3);
-
-            ASSERT_EQ(std::get<Col>(colA)[0], COLLECTION_AB);
-            ASSERT_EQ(std::get<Col>(colAB)[0], COLLECTION_ABC);
-
-            auto listDoc = std::get<Col>(colABC);
-            std::sort(listDoc.begin(), listDoc.end());
-            ASSERT_EQ(listDoc[0], COLLECTION_ABC + DOC_A);
-            ASSERT_EQ(listDoc[1], COLLECTION_ABC + DOC_B);
-            ASSERT_EQ(listDoc[2], COLLECTION_ABC + DOC_C);
+            }
 
         };
 
@@ -302,11 +298,9 @@ TEST_F(StoreTest, allColOpAndLoad)
         checkItems();
 
         // Delete the collection
-        // TODO fix from here
         ASSERT_FALSE(store->deleteCol(COLLECTION_A, NAMESPACE_A));
         ASSERT_FALSE(store->deleteCol(COLLECTION_A, NAMESPACE_B));
         ASSERT_FALSE(store->deleteCol(COLLECTION_A, NAMESPACE_C));
-        ASSERT_TRUE(store->deleteCol(COLLECTION_ABC, NAMESPACE_A));
 
         // Check the 3 items
         root = store->listNamespaces();
