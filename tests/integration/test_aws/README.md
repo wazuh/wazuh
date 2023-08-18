@@ -105,7 +105,7 @@ _We are using **Ubuntu 22.04** for this example:_
     ```shell script
     # Install pip
     apt install python3-pip git -y
-  
+
     # Clone `wazuh` repository within your testing environment
     git clone https://github.com/wazuh/wazuh.git
 
