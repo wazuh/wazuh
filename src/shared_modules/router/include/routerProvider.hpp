@@ -26,7 +26,7 @@
 #include <vector>
 
 /**
- * @brief RouterProvider
+ * @brief RouterProvider class.
  *
  */
 class EXPORTED RouterProvider final : public IRouterProvider
@@ -37,10 +37,10 @@ private:
 
 public:
     /**
-     * @brief Construct a new Router Provider object
+     * @brief Class constructor.
      *
-     * @param topicName
-     * @param isLocal
+     * @param topicName Topic name.
+     * @param isLocal True for a local provider, false otherwise.
      */
     explicit RouterProvider(std::string topicName, const bool isLocal = true)
         : m_topicName {std::move(topicName)}

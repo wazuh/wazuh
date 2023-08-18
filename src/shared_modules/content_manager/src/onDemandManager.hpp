@@ -19,7 +19,7 @@
 #include <shared_mutex>
 
 /**
- * @brief OnDemandManager
+ * @brief OnDemandManager class.
  *
  */
 class OnDemandManager final : public Singleton<OnDemandManager>
@@ -49,7 +49,7 @@ public:
     void removeEndpoint(const std::string& endpoint);
 
     /**
-     * @brief clearEndpoints
+     * @brief Clear endpoint and stop server.
      *
      */
     void clearEndpoints();

@@ -16,7 +16,7 @@
 #include "dataDecoder.hpp"
 
 /**
- * @brief RegisterProviderDecoder
+ * @brief RegisterProviderDecoder class.
  *
  */
 class RegisterProviderDecoder final : public DataDecoder
@@ -26,7 +26,7 @@ private:
 
 public:
     /**
-     * @brief Construct a new Register Provider Decoder object
+     * @brief Class constructor.
      *
      * @param data
      */
@@ -36,7 +36,7 @@ public:
     }
 
     /**
-     * @brief decode
+     * @brief Decode data.
      *
      */
     void decode() override

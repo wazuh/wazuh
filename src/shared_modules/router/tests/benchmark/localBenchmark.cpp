@@ -7,23 +7,19 @@
 #include <iostream>
 
 /**
- * @brief ReceptionPerformanceFixture
+ * @brief ReceptionPerformanceFixture class.
  *
  */
 class ReceptionPerformanceFixture : public benchmark::Fixture
 {
 protected:
-    /**
-     * @brief publisher
-     *
-     */
-    std::unique_ptr<RouterProvider> publisher;
+    std::unique_ptr<RouterProvider> publisher; ///< Publisher used on benchmark.
 
 public:
     /**
-     * @brief
+     * @brief Benchmark setup routine.
      *
-     * @param state
+     * @param state Benchmark state.
      */
     void SetUp(const ::benchmark::State& state) override
     {
@@ -41,9 +37,9 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Benchmark teardown routine.
      *
-     * @param state
+     * @param state Benchmark state.
      */
     void TearDown(const ::benchmark::State& state) override
     {

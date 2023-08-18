@@ -28,20 +28,20 @@
 #endif
 
 /**
- * @brief ContentModule
+ * @brief ContentModule class.
  *
  */
 class EXPORTED ContentModule final : public Singleton<ContentModule>
 {
 public:
     /**
-     * @brief start
+     * @brief Start module facade.
      *
      */
     void start(const std::function<void(const modules_log_level_t, const std::string&)>& /*logFunction*/);
 
     /**
-     * @brief stop
+     * @brief Stop module facade.
      *
      */
     void stop();

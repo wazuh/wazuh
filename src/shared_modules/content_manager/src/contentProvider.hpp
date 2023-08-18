@@ -23,7 +23,7 @@
 #include <utility>
 
 /**
- * @brief ContentProvider
+ * @brief ContentProvider class.
  *
  */
 class ContentProvider final
@@ -34,10 +34,10 @@ private:
 
 public:
     /**
-     * @brief Construct a new Content Provider object
+     * @brief Class constructor.
      *
-     * @param topicName
-     * @param parameters
+     * @param topicName Topic name.
+     * @param parameters Action orchestrator parameters.
      */
     explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
         : m_routerProvider(std::make_shared<RouterProvider>(topicName))
@@ -54,9 +54,9 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Starts action scheduler.
      *
-     * @param interval
+     * @param interval Scheduler interval.
      */
     void startActionScheduler(const size_t interval)
     {
@@ -64,7 +64,7 @@ public:
     }
 
     /**
-     * @brief startOnDemandAction
+     * @brief Starts ondeman action.
      *
      */
     void startOnDemandAction()
@@ -73,9 +73,9 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Changes scheduler interval.
      *
-     * @param interval
+     * @param interval New scheduler interval.
      */
     void changeSchedulerInterval(const size_t interval)
     {

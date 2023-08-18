@@ -26,27 +26,27 @@
 #include <vector>
 
 /**
- * @brief RouterModule
+ * @brief RouterModule class.
  *
  */
 class EXPORTED RouterModule final : public Singleton<RouterModule>
 {
 public:
     /**
-     * @brief
+     * @brief Initializes the object by setting the log function.
      *
-     * @param logFunction
+     * @param logFunction Log function to be used.
      */
     static void initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction);
 
     /**
-     * @brief start
+     * @brief Router socket init.
      *
      */
     void start();
 
     /**
-     * @brief stop
+     * @brief Clean suscribers and delete socket.
      *
      */
     void stop();

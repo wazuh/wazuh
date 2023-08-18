@@ -25,17 +25,17 @@ enum MessageType
 };
 
 /**
- * @brief FactoryDecoder
+ * @brief FactoryDecoder class.
  *
  */
 class FactoryDecoder final
 {
 public:
     /**
-     * @brief
+     * @brief Creates and return a decoder.
      *
-     * @param data
-     * @return std::shared_ptr<DataDecoder>
+     * @param data Data to be decoded.
+     * @return std::shared_ptr<DataDecoder> Decoder.
      */
     static std::shared_ptr<DataDecoder> create(const std::shared_ptr<std::vector<char>>& data)
     {

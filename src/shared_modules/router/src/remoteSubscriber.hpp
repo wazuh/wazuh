@@ -21,7 +21,7 @@
 #include <functional>
 
 /**
- * @brief RemoteSuscriber
+ * @brief RemoteSuscriber class.
  *
  */
 class RemoteSubscriber final
@@ -34,7 +34,7 @@ private:
 
 public:
     /**
-     * @brief Construct a new Remote Subscriber object
+     * @brief Class constructor.
      *
      * @param endpoint
      * @param subscriberId
@@ -103,10 +103,6 @@ public:
         }
     }
 
-    /**
-     * @brief Destroy the Remote Subscriber object
-     *
-     */
     ~RemoteSubscriber()
     {
         nlohmann::json jsonMsg {

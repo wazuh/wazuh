@@ -26,7 +26,7 @@
 #endif
 
 /**
- * @brief ContentRegister
+ * @brief ContentRegister class.
  *
  */
 class EXPORTED ContentRegister final
@@ -36,18 +36,18 @@ private:
 
 public:
     /**
-     * @brief Construct a new Content Register object
+     * @brief Class constructor.
      *
-     * @param topicName
-     * @param parameters
+     * @param topicName Topic name.
+     * @param parameters Object parameters, including interval and ondemand.
      */
     explicit ContentRegister(std::string topicName, const nlohmann::json parameters);
     ~ContentRegister() = default;
 
     /**
-     * @brief
+     * @brief Changes schedular interval to a new value.
      *
-     * @param newInterval
+     * @param newInterval New value to set.
      */
     void changeSchedulerInterval(size_t newInterval);
 };

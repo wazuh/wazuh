@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 /**
- * @brief RouterCInterfaceTest
+ * @brief RouterCInterfaceTest class.
  *
  */
 class RouterCInterfaceTest : public ::testing::Test
@@ -26,19 +26,19 @@ protected:
     ~RouterCInterfaceTest() override = default;
 
     /**
-     * @brief SetUp
+     * @brief Test setup routine.
      *
      */
     void SetUp() override;
 
     /**
-     * @brief TearDown
+     * @brief Test teardown routine.
      *
      */
     void TearDown() override;
 
     /**
-     * @brief m_routerProviderHandle
+     * @brief Router provider handle.
      *
      */
     ROUTER_PROVIDER_HANDLE m_routerProviderHandle {};

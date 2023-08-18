@@ -30,18 +30,18 @@ enum ActionID
 };
 
 /**
- * @brief Action
+ * @brief Action class.
  *
  */
 class Action final
 {
 public:
     /**
-     * @brief Construct a new Action object
+     * @brief Class constructor.
      *
-     * @param channel
-     * @param topicName
-     * @param parameters
+     * @param channel Router provider.
+     * @param topicName Topic name.
+     * @param parameters ActionOrchestrator parameters.
      */
     explicit Action(const std::shared_ptr<RouterProvider> channel, std::string topicName, nlohmann::json parameters)
         : m_channel {channel}
@@ -55,9 +55,9 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Action scheduler start.
      *
-     * @param interval
+     * @param interval Scheduler interval.
      */
     void startActionScheduler(const size_t interval)
     {
@@ -91,7 +91,7 @@ public:
     }
 
     /**
-     * @brief stopActionScheduler
+     * @brief Stops action scheduler.
      *
      */
     void stopActionScheduler()
@@ -107,7 +107,7 @@ public:
     }
 
     /**
-     * @brief registerActionOnDemand
+     * @brief Registers new ondemand action.
      *
      */
     void registerActionOnDemand()
@@ -116,7 +116,7 @@ public:
     }
 
     /**
-     * @brief unregisterActionOnDemand
+     * @brief Unregisters ondemand action.
      *
      */
     void unregisterActionOnDemand()
@@ -125,7 +125,7 @@ public:
     }
 
     /**
-     * @brief runActionOnDemand
+     * @brief Runs ondemand action.
      *
      */
     void runActionOnDemand()
@@ -143,9 +143,9 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Changes scheduler interval.
      *
-     * @param interval
+     * @param interval New interval value.
      */
     void changeSchedulerInterval(size_t interval)
     {

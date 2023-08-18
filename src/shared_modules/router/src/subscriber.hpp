@@ -16,9 +16,9 @@
 #include <functional>
 
 /**
- * @brief Suscriber
+ * @brief Suscriber class.
  *
- * @tparam T
+ * @tparam T Suscriber data type.
  */
 template<typename T>
 class Subscriber final : public Observer<T>
@@ -28,10 +28,10 @@ private:
 
 public:
     /**
-     * @brief Construct a new Subscriber object
+     * @brief Class constructor.
      *
-     * @param callback
-     * @param observerId
+     * @param callback Update callback.
+     * @param observerId Observer ID.
      */
     explicit Subscriber(const std::function<void(T)>& callback, std::string observerId)
         : m_callback {callback}
@@ -42,9 +42,9 @@ public:
     ~Subscriber() = default;
 
     /**
-     * @brief
+     * @brief Executes update callback.
      *
-     * @param data
+     * @param data Data to be used on the callback routine.
      */
     void update(T data)
     {

@@ -18,7 +18,7 @@
 #include <string>
 
 /**
- * @brief ServerSelector
+ * @brief ServerSelector class.
  *
  */
 class ServerSelector final : private RoundRobinSelector<std::string>
@@ -30,9 +30,9 @@ public:
     ~ServerSelector() = default;
 
     /**
-     * @brief Construct a new Server Selector object
+     * @brief Class constructor. Initializes Round Robin selector and monitoring.
      *
-     * @param values
+     * @param values Servers to be selected.
      */
     explicit ServerSelector(const std::vector<std::string>& values)
         : RoundRobinSelector<std::string>(values)
@@ -41,9 +41,9 @@ public:
     }
 
     /**
-     * @brief Get the Next object
+     * @brief Get next selected server.
      *
-     * @return std::string
+     * @return std::string Server address.
      */
     std::string getNext()
     {

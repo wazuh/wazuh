@@ -60,7 +60,7 @@ namespace HealthCheckColumns
 };
 
 /**
- * @brief Monitoring
+ * @brief Monitoring class.
  *
  */
 class Monitoring final
@@ -83,9 +83,9 @@ public:
     }
 
     /**
-     * @brief Construct a new Monitoring object
+     * @brief Class constructor. Initializes values map and check servers' health.
      *
-     * @param values
+     * @param values Servers to be monitored.
      */
     explicit Monitoring(const std::vector<std::string>& values)
     {
@@ -153,11 +153,11 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Checks whether a server is available or not.
      *
-     * @param value
-     * @return true
-     * @return false
+     * @param value Server's address.
+     * @return true if available.
+     * @return false if not available.
      */
     bool isAvailable(const std::string& value)
     {

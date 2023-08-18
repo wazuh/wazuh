@@ -21,7 +21,7 @@
 #include <functional>
 
 /**
- * @brief RemoteProvider
+ * @brief RemoteProvider class.
  *
  */
 class RemoteProvider final
@@ -32,10 +32,10 @@ private:
 
 public:
     /**
-     * @brief Construct a new Remote Provider object
+     * @brief Class constructor.
      *
-     * @param endpoint
-     * @param socketPath
+     * @param endpoint Endpoint name.
+     * @param socketPath Client socket path.
      */
     explicit RemoteProvider(std::string endpoint, const std::string& socketPath)
         : m_endpointName {std::move(endpoint)}
@@ -49,19 +49,15 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Sends a message into the client socket.
      *
-     * @param message
+     * @param message Message to be sent.
      */
     void push(const std::vector<char>& message)
     {
         m_socketClient->send(message.data(), message.size(), "P", 1);
     }
 
-    /**
-     * @brief Destroy the Remote Provider object
-     *
-     */
     ~RemoteProvider()
     {
         nlohmann::json jsonMsg {{"EndpointName", m_endpointName}, {"MessageType", "RemoveProvider"}};

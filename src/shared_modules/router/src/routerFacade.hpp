@@ -24,7 +24,7 @@
 #include <string>
 
 /**
- * @brief RouterFacade
+ * @brief RouterFacade class.
  *
  */
 class RouterFacade final : public Singleton<RouterFacade>
@@ -33,92 +33,91 @@ public:
     // From subscriber.
 
     /**
-     * @brief
+     * @brief Adds a suscriber to a given provider.
      *
-     * @param name
-     * @param subscriberId
-     * @param callback
+     * @param name Provider name.
+     * @param subscriberId Suscriber ID.
+     * @param callback Suscriber update callback.
      */
     void addSubscriber(const std::string& name,
                        const std::string& subscriberId,
                        const std::function<void(const std::vector<char>&)>& callback);
 
     /**
-     * @brief
+     * @brief Adds a suscriber to a given remote provider.
      *
-     * @param name
-     * @param subscriberId
-     * @param callback
+     * @param name Provider name.
+     * @param subscriberId Suscriber ID.
+     * @param callback Suscriber update callback.
      */
     void addSubscriberRemote(const std::string& name,
                              const std::string& subscriberId,
                              const std::function<void(const std::vector<char>&)>& callback);
 
     /**
-     * @brief
+     * @brief Removes a local suscriber.
      *
-     * @param name
-     * @param subscriberId
-     * @return * void
+     * @param name Provider name.
+     * @param subscriberId Suscriber ID.
      */
     void removeSubscriberLocal(const std::string& name, const std::string& subscriberId);
 
     /**
-     * @brief
+     * @brief Removes a remote suscriber.
      *
-     * @param name
-     * @param subscriberId
+     * @param name Suscriber name.
+     * @param subscriberId Suscriber ID.
      */
     void removeSubscriberRemote(const std::string& name, const std::string& subscriberId);
 
     // From providers.
 
     /**
-     * @brief
+     * @brief Initializes remote provider.
      *
-     * @param name
+     * @param name Provider name.
      */
     void initProviderRemote(const std::string& name);
 
     /**
-     * @brief
+     * @brief Removes remote provider.
      *
-     * @param name
+     * @param name Provider name.
      */
     void removeProviderRemote(const std::string& name);
 
     /**
-     * @brief
+     * @brief Initializes local provider.
      *
-     * @param name
+     * @param name Provider name.
      */
     void initProviderLocal(const std::string& name);
 
     /**
-     * @brief
+     * @brief Removes local provider.
      *
-     * @param name
+     * @param name Provider name.
      */
     void removeProviderLocal(const std::string& name);
 
     /**
-     * @brief
+     * @brief Push data into a provider.
      *
-     * @param name
-     * @param data
+     * @param name Provider name.
+     * @param data Data to be pushed.
      */
     void push(const std::string& name, const std::vector<char>& data);
 
     // From modulesd-router
 
     /**
-     * @brief initialize
+     * @brief Initializes a server that listen to new providers.
      *
      */
     void initialize();
 
     /**
-     * @brief destroy
+     * @brief Stop server and clean providers/suscribers info.
      *
      */
     void destroy();

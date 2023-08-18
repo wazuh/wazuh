@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 /**
- * @brief RouterModuleInterfaceTest
+ * @brief RouterModuleInterfaceTest class.
  *
  */
 class RouterModuleInterfaceTest : public ::testing::Test
@@ -25,13 +25,13 @@ protected:
     ~RouterModuleInterfaceTest() override = default;
 
     /**
-     * @brief SetUp
+     * @brief Test setup routine.
      *
      */
     void SetUp() override;
 
     /**
-     * @brief TearDown
+     * @brief Test teardown routine.
      *
      */
     void TearDown() override;

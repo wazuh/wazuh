@@ -21,7 +21,7 @@
 constexpr auto REMOTE_SUBSCRIPTION_ENDPOINT {"queue/router/subscription.sock"};
 
 /**
- * @brief RemoteStateHelper
+ * @brief RemoteStateHelper class.
  *
  */
 class RemoteStateHelper final
@@ -32,9 +32,9 @@ private:
 
 public:
     /**
-     * @brief
+     * @brief Registration message process.
      *
-     * @param jsonMsg
+     * @param jsonMsg Message to be sent.
      */
     static void sendRegistrationMessage(const nlohmann::json& jsonMsg)
     {
