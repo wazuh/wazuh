@@ -1,3 +1,65 @@
+'''
+copyright: Copyright (C) 2015-2023, Wazuh Inc.
+
+           Created by Wazuh, Inc. <info@wazuh.com>.
+
+           This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+type: integration
+
+brief: File Integrity Monitoring (FIM) system watches selected files and triggering alerts when these
+       files are modified. In particular, these tests will check if FIM events are still generated when
+       a monitored directory is deleted and created again.
+       The FIM capability is managed by the 'wazuh-syscheckd' daemon, which checks configured files
+       for changes to the checksums, permissions, and ownership.
+
+components:
+    - fim
+
+suite: basic_usage
+
+targets:
+    - agent
+    - manager
+
+daemons:
+    - wazuh-syscheckd
+
+os_platform:
+    - linux
+
+os_version:
+    - Arch Linux
+    - Amazon Linux 2
+    - Amazon Linux 1
+    - CentOS 8
+    - CentOS 7
+    - Debian Buster
+    - Red Hat 8
+    - Ubuntu Focal
+    - Ubuntu Bionic
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
+
+references:
+    - https://man7.org/linux/man-pages/man8/auditd.8.html
+    - https://documentation.wazuh.com/current/user-manual/capabilities/auditing-whodata/who-linux.html
+    - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
+
+pytest_args:
+    - fim_mode:
+        realtime: Enable real-time monitoring on Linux (using the 'inotify' system calls) and Windows systems.
+        whodata: Implies real-time monitoring but adding the 'who-data' information.
+    - tier:
+        0: Only level 0 tests are performed, they check basic functionalities and are quick to perform.
+        1: Only level 1 tests are performed, they check functionalities of medium complexity.
+        2: Only level 2 tests are performed, they check advanced functionalities and are slow to perform.
+
+tags:
+    - fim
+'''
 import sys
 from psutil import WINDOWS
 import pytest
@@ -36,6 +98,55 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_create_after_delete(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                              truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
+    '''
+    description: Check if a monitored directory keeps reporting FIM events after deleting and creating it again.
+                 Under Windows systems, it verifies that the directory watcher is refreshed (checks the SACLs)
+                 after directory re-creation one second after. For this purpose, the test creates the testing
+                 directory to be monitored, checks that FIM events are generated, and then deletes it.
+                 Finally, it creates the directory again and verifies that the events are still generated correctly.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - uninstall_audit:
+            type: fixture
+            brief: Uninstall 'auditd' before the test and install it again after the test run.
+
+    assertions:
+        - Verify that FIM events are still generated when a monitored directory is deleted and created again.
+
+    input_description: The test cases are contained in external YAML file (cases_create_after_delete_dir.yaml)
+                       which includes configuration settings for the 'wazuh-syscheckd' daemon and testing
+                       directories to monitor.
+
+    expected_output:
+        - r'.*Sending FIM event: (.+)$' (Initial scan when restarting Wazuh)
+        - Multiple FIM events logs of the monitored directories.
+
+    tags:
+        - realtime
+        - who_data
+    '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
 
@@ -48,4 +159,3 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
     file.write_file(file_to_monitor)
     wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
     assert wazuh_log_monitor.callback_result
-    # assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
