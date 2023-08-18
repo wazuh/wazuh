@@ -650,30 +650,47 @@ base::OptError Store::deleteCol(const base::Name& name)
 
 base::OptError Store::createInternalDoc(const base::Name& name, const Doc& content)
 {
-    // TODO Implement without adding the namespace
-    //return createDoc(name, m_internalNs, content); Avoid user namespace internal
-    return base::Error {"Not implemented"};
+    // The internal document not have a namespace, and not store in the cache
+
+    // Check if the name have a same prefix as the internal namespace, and avoid it
+    if (name.parts()[0] == m_prefixNS.parts()[0])
+    {
+        return base::Error {fmt::format("Invalid write internal document name '{}', cannot start with '{}'",
+                                        name.fullName(),
+                                        m_prefixNS.parts()[0])};
+    }
+
+    return m_driver->createDoc(name, content);
 }
 
 base::RespOrError<Doc> Store::readInternalDoc(const base::Name& name) const
 {
-    // TODO Implement without adding the namespace
-    //return readDoc(name);
-    return base::Error {"Not implemented"};
+    // No check if the document starts with the internal namespace, allow to read any document
+    return m_driver->readDoc(name);
 }
 
 base::OptError Store::updateInternalDoc(const base::Name& name, const Doc& content)
 {
-    // TODO Implement without adding the namespace
-    //return updateDoc(name, content);
-    return base::Error {"Not implemented"};
+    // Check if the name have a same prefix as the internal namespace, and avoid it
+    if (name.parts()[0] == m_prefixNS.parts()[0])
+    {
+        return base::Error {fmt::format("Invalid update internal document name '{}', cannot start with '{}'",
+                                        name.fullName(),
+                                        m_prefixNS.parts()[0])};
+    }
+    return m_driver->updateDoc(name, content);
 }
 
 base::OptError Store::deleteInternalDoc(const base::Name& name)
 {
-    // TODO Implement without adding the namespace //Avoid user namespace internal
-    //return deleteDoc(name);
-    return base::Error {"Not implemented"};
+    // Check if the name have a same prefix as the internal namespace, and avoid it
+    if (name.parts()[0] == m_prefixNS.parts()[0])
+    {
+        return base::Error {fmt::format("Invalid delete internal document name '{}', cannot start with '{}'",
+                                        name.fullName(),
+                                        m_prefixNS.parts()[0])};
+    }
+    return m_driver->deleteDoc(name);
 }
 
 } // namespace store
