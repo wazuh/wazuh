@@ -72,21 +72,21 @@ TEST_F(StoreTest, allSingleOpAndLoad)
     {
         auto root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(DOC_A));
-        ASSERT_FALSE(store->exists(DOC_B));
-        ASSERT_FALSE(store->exists(DOC_C));
+        ASSERT_FALSE(store->existsDoc(DOC_A));
+        ASSERT_FALSE(store->existsDoc(DOC_B));
+        ASSERT_FALSE(store->existsDoc(DOC_C));
     }
 
     // insert and delete 3 items with 3 different namespaces
     {
         ASSERT_FALSE(store->createDoc(DOC_A, NAMESPACE_A, JSON_A));
-        ASSERT_TRUE(store->exists(DOC_A));
+        ASSERT_TRUE(store->existsDoc(DOC_A));
         auto root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->createDoc(DOC_B, NAMESPACE_B, JSON_B));
-        ASSERT_TRUE(store->exists(DOC_B));
+        ASSERT_TRUE(store->existsDoc(DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
         std::sort(root.begin(), root.end());
@@ -94,7 +94,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_EQ(root[1], NAMESPACE_B);
 
         ASSERT_FALSE(store->createDoc(DOC_C, NAMESPACE_C, JSON_C));
-        ASSERT_TRUE(store->exists(DOC_C));
+        ASSERT_TRUE(store->existsDoc(DOC_C));
 
         // Check the 3 items
         auto checkItems = [&](void) -> void
@@ -133,9 +133,9 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         // Check the 3 items
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(DOC_A));
-        ASSERT_FALSE(store->exists(DOC_B));
-        ASSERT_FALSE(store->exists(DOC_C));
+        ASSERT_FALSE(store->existsDoc(DOC_A));
+        ASSERT_FALSE(store->existsDoc(DOC_B));
+        ASSERT_FALSE(store->existsDoc(DOC_C));
 
         // Reset store and check load
         store.reset();
@@ -143,22 +143,22 @@ TEST_F(StoreTest, allSingleOpAndLoad)
 
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(DOC_A));
-        ASSERT_FALSE(store->exists(DOC_B));
-        ASSERT_FALSE(store->exists(DOC_C));
+        ASSERT_FALSE(store->existsDoc(DOC_A));
+        ASSERT_FALSE(store->existsDoc(DOC_B));
+        ASSERT_FALSE(store->existsDoc(DOC_C));
     }
 
 
     // upsertDoc
     {
         ASSERT_FALSE(store->upsertDoc(DOC_A, NAMESPACE_A, JSON_A));
-        ASSERT_TRUE(store->exists(DOC_A));
+        ASSERT_TRUE(store->existsDoc(DOC_A));
         auto root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->upsertDoc(DOC_B, NAMESPACE_B, JSON_B));
-        ASSERT_TRUE(store->exists(DOC_B));
+        ASSERT_TRUE(store->existsDoc(DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
         std::sort(root.begin(), root.end());;
@@ -166,7 +166,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_EQ(root[1], NAMESPACE_B);
 
         ASSERT_FALSE(store->upsertDoc(DOC_C, NAMESPACE_C, JSON_C));
-        ASSERT_TRUE(store->exists(DOC_C));
+        ASSERT_TRUE(store->existsDoc(DOC_C));
 
 
         ASSERT_FALSE(store->upsertDoc(DOC_A, NAMESPACE_A, JSON_A));
@@ -209,9 +209,9 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         // Check the 3 items
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(DOC_A));
-        ASSERT_FALSE(store->exists(DOC_B));
-        ASSERT_FALSE(store->exists(DOC_C));
+        ASSERT_FALSE(store->existsDoc(DOC_A));
+        ASSERT_FALSE(store->existsDoc(DOC_B));
+        ASSERT_FALSE(store->existsDoc(DOC_C));
     }
 
 }
@@ -226,21 +226,21 @@ TEST_F(StoreTest, allColOpAndLoad)
     {
         auto root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_A));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_B));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_A));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_B));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_C));
     }
 
     // insert and delete 3 items with 3 different namespaces
     {
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_A, NAMESPACE_A, JSON_A));
-        ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_A));
+        ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_A));
         auto root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_B, NAMESPACE_B, JSON_B));
-        ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_B));
+        ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
         std::sort(root.begin(), root.end());;
@@ -248,7 +248,7 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_EQ(root[1], NAMESPACE_B);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_C, NAMESPACE_C, JSON_C));
-        ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_C));
 
         // Check the 3 items
         auto checkItems = [&](void) -> void
@@ -272,9 +272,9 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_FALSE(base::isError(rDocC));
             ASSERT_EQ(std::get<Doc>(rDocC), JSON_C);
 
-            auto colA = store->readCol(COLLECTION_A);
-            auto colAB = store->readCol(COLLECTION_AB);
-            auto colABC = store->readCol(COLLECTION_ABC);
+            auto colA = store->readCol(COLLECTION_A, NAMESPACE_A);
+            auto colAB = store->readCol(COLLECTION_AB, NAMESPACE_A);
+            auto colABC = store->readCol(COLLECTION_ABC, NAMESPACE_A);
 
             ASSERT_FALSE(base::isError(colA));
             ASSERT_FALSE(base::isError(colAB));
@@ -302,15 +302,18 @@ TEST_F(StoreTest, allColOpAndLoad)
         checkItems();
 
         // Delete the collection
-        ASSERT_FALSE(store->deleteCol(COLLECTION_AB));
-        ASSERT_TRUE(store->deleteCol(COLLECTION_ABC));
+        // TODO fix from here
+        ASSERT_FALSE(store->deleteCol(COLLECTION_A, NAMESPACE_A));
+        ASSERT_FALSE(store->deleteCol(COLLECTION_A, NAMESPACE_B));
+        ASSERT_FALSE(store->deleteCol(COLLECTION_A, NAMESPACE_C));
+        ASSERT_TRUE(store->deleteCol(COLLECTION_ABC, NAMESPACE_A));
 
         // Check the 3 items
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_A));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_B));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_A));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_B));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_C));
 
         // Reset store and check load
         store.reset();
@@ -318,28 +321,28 @@ TEST_F(StoreTest, allColOpAndLoad)
 
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_A));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_B));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_A));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_B));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_C));
     }
 
     // Same namespace
      {
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_A, NAMESPACE_A, JSON_A));
-        ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_A));
+        ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_A));
         auto root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_B, NAMESPACE_A, JSON_B));
-        ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_B));
+        ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
         std::sort(root.begin(), root.end());;
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_C, NAMESPACE_A, JSON_C));
-        ASSERT_TRUE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_C));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
         std::sort(root.begin(), root.end());;
@@ -374,7 +377,7 @@ TEST_F(StoreTest, allColOpAndLoad)
             ASSERT_TRUE(base::isError(store->readCol(COLLECTION_AB, NAMESPACE_B)));
             ASSERT_TRUE(base::isError(store->readCol(COLLECTION_AB, NAMESPACE_C)));
 
-            auto colABC = store->readCol(COLLECTION_ABC);
+            auto colABC = store->readCol(COLLECTION_ABC, NAMESPACE_A);
             ASSERT_TRUE(base::isError(store->readCol(COLLECTION_ABC, NAMESPACE_B)));
             ASSERT_TRUE(base::isError(store->readCol(COLLECTION_ABC, NAMESPACE_C)));
 
@@ -402,15 +405,15 @@ TEST_F(StoreTest, allColOpAndLoad)
         checkItems();
 
         // Delete the collection
-        ASSERT_FALSE(store->deleteCol(COLLECTION_AB));
-        ASSERT_TRUE(store->deleteCol(COLLECTION_ABC));
+        ASSERT_FALSE(store->deleteCol(COLLECTION_AB, NAMESPACE_A));
+        ASSERT_TRUE(store->deleteCol(COLLECTION_ABC, NAMESPACE_A));
 
         // Check the 3 items
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_A));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_B));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_A));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_B));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_C));
 
         // Reset store and check load
         store.reset();
@@ -418,9 +421,9 @@ TEST_F(StoreTest, allColOpAndLoad)
 
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 0);
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_A));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_B));
-        ASSERT_FALSE(store->exists(COLLECTION_ABC + DOC_C));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_A));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_B));
+        ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_C));
     }
 
 }
