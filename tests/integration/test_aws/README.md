@@ -49,15 +49,12 @@ wazuh/tests/integration/test_aws
 
 ## Requirements
 
-- [Proper testing environment](#Setting up a test environment)
+- [Proper testing environment](setting-up-a-test-environment)
 
 - [Wazuh](https://github.com/wazuh/qa-integration-framework) repository.
+- Install the [qa-integration-framework](https://github.com/wazuh/qa-integration-framework)
+- The module will assume there are already buckets, log groups and an inspector assessment with test data in AWS.
 
-- [Testing framework](https://github.com/wazuh/qa-integration-framework) installed.
-
-- Configured buckets, log groups and an inspector assessment with test data in AWS.
-
-For a step-by-step example guide using linux go to the [test setup section](#linux)
 
 ## Configuration settings
 
@@ -96,17 +93,20 @@ _We are using **Ubuntu 22.04** for this example:_
 
 - Install Python tests dependencies:
 
-```shell script
-# Install pip
-apt install python3-pip git -y
+    ```shell script
+    # Install pip
+    apt install python3-pip git -y
+  
+    # Clone your `wazuh` repository within your testing environment
+    git clone https://github.com/wazuh/wazuh.git
 
-# Clone the `qa-integration-framework` repository withing your testing environment
-git clone https://github.com/wazuh/qa-integration-framework.git
-
-# Install tests dependencies
-python3 -m pip install qa-integration-framework/
-```
-
+    # Clone the `qa-integration-framework`
+    git clone https://github.com/wazuh/qa-integration-framework.git
+  
+    # Install test dependecies
+    python3 -m pip install qa-integration-framework/
+    ```
+  
 
 ## Integration tests
 
