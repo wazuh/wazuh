@@ -1027,7 +1027,7 @@ checks:
   - id: 31233
     title: "Ensure no unconfined services exist."
     description: "Unconfined processes run in unconfined domains."
-    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them."
+    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules it does not replace them."
     remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
     compliance:
       - cis: ["1.6.1.6"]
@@ -1960,196 +1960,16 @@ checks:
   # 3.1.4 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
 
   # 3.2.1 Ensure IP forwarding is disabled. (Automated) - Not Implemented
-
-  # 3.2.2 Ensure packet redirect sending is disabled. (Automated)
-  - id: 31283
-    title: "Ensure packet redirect sending is disabled."
-    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
-    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # ( sysctl -w net.ipv4.conf.all.send_redirects=0 sysctl -w net.ipv4.conf.default.send_redirects=0 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.2.2"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.1 Ensure source routed packets are not accepted. (Automated)
-  - id: 31284
-    title: "Ensure source routed packets are not accepted."
-    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
-    rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv4.conf.all.accept_source_route=0 sysctl -w net.ipv4.conf.default.accept_source_route=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv6.conf.all.accept_source_route=0 sysctl -w net.ipv6.conf.default.accept_source_route=0 sysctl -w net.ipv6.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.1"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.2 Ensure ICMP redirects are not accepted. (Automated)
-  - id: 31285
-    title: "Ensure ICMP redirects are not accepted."
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects and net.ipv6.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
-    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv4.conf.all.accept_redirects=0 sysctl -w net.ipv4.conf.default.accept_redirects=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv6.conf.all.accept_redirects=0 sysctl -w net.ipv6.conf.default.accept_redirects=0 sysctl -w net.ipv6.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.2"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.3 Ensure secure ICMP redirects are not accepted. (Automated)
-  - id: 31286
-    title: "Ensure secure ICMP redirects are not accepted."
-    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
-    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects and net.ipv4.conf.default.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following commands to set the active kernel parameters: # { sysctl -w net.ipv4.conf.all.secure_redirects=0 sysctl -w net.ipv4.conf.default.secure_redirects=0 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.3"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.4 Ensure suspicious packets are logged. (Automated)
-  - id: 31287
-    title: "Ensure suspicious packets are logged."
-    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
-    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv4.conf.all.log_martians=1 sysctl -w net.ipv4.conf.default.log_martians=1 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.4"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
-
-  # 3.3.5 Ensure broadcast ICMP requests are ignored. (Automated)
-  - id: 31288
-    title: "Ensure broadcast ICMP requests are ignored."
-    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
-    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.icmp_echo_ignore_broadcasts = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.5"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated)
-  - id: 31289
-    title: "Ensure bogus ICMP responses are ignored."
-    description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
-    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.icmp_ignore_bogus_error_responses = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.6"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated)
-  - id: 31290
-    title: "Ensure Reverse Path Filtering is enabled."
-    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
-    rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following commands to set the active kernel parameters: # { sysctl -w net.ipv4.conf.all.rp_filter=1 sysctl -w net.ipv4.conf.default.rp_filter=1 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.7"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.8 Ensure TCP SYN Cookies is enabled. (Automated)
-  - id: 31291
-    title: "Ensure TCP SYN Cookies is enabled."
-    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
-    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
-    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.tcp_syncookies = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv4.tcp_syncookies=1 sysctl -w net.ipv4.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.8"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated)
-  - id: 31292
-    title: "Ensure IPv6 router advertisements are not accepted."
-    description: "This setting disables the system's ability to accept IPv6 router advertisements."
-    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
-    remediation: 'IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: # { sysctl -w net.ipv6.conf.all.accept_ra=0 sysctl -w net.ipv6.conf.default.accept_ra=0 sysctl -w net.ipv6.route.flush=1 }.'
-    compliance:
-      - cis: ["3.3.9"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
+  # 3.2.2 Ensure packet redirect sending is disabled. (Automated) - Not Implemented
+  # 3.3.1 Ensure source routed packets are not accepted. (Automated) - Not Implemented
+  # 3.3.2 Ensure ICMP redirects are not accepted. (Automated) - Not Implemented
+  # 3.3.3 Ensure secure ICMP redirects are not accepted. (Automated) - Not Implemented
+  # 3.3.4 Ensure suspicious packets are logged. (Automated) - Not Implemented
+  # 3.3.5 Ensure broadcast ICMP requests are ignored. (Automated) - Not Implemented
+  # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated) - Not Implemented
+  # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated) - Not Implemented
+  # 3.3.8 Ensure TCP SYN Cookies is enabled. (Automated) - Not Implemented
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated) - Not Implemented
 
   # 3.4.1.1 Ensure firewalld is installed. (Automated)
   - id: 31293
@@ -2168,8 +1988,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q firewalld -> r:^firewalld-"
+      - "c:rpm -q iptables -> r:^iptables-"
 
   # 3.4.1.2 Ensure iptables-services not installed with firewalld. (Automated)
   - id: 31294
@@ -2188,8 +2010,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
 
   # 3.4.1.3 Ensure nftables either not installed or masked with firewalld. (Automated)
   - id: 31295
@@ -2207,8 +2030,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q nftables -> r:^package nftables is not installed"
+      - "c:systemctl is-active nftables -> r:^inactive"
+      - "c:systemctl is-enabled nftables -> r:^masked"
 
   # 3.4.1.4 Ensure firewalld service enabled and running. (Automated)
   - id: 31296
@@ -2227,73 +2053,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled firewalld -> r:^enabled"
+      - "c:firewall-cmd --state -> r:^running"
 
-  # 3.4.1.5 Ensure firewalld default zone is set. (Automated)
-  - id: 31297
-    title: "Ensure firewalld default zone is set."
-    description: "A firewall zone defines the trust level for a connection, interface or source address binding. This is a one to many relation, which means that a connection, interface or source can only be part of one zone, but a zone can be used for many network connections, interfaces and sources. - The default zone is the zone that is used for everything that is not explicitly - bound/assigned to another zone. If no zone assigned to a connection, interface or source, only the default zone is used. - The default zone is not always listed as being used for an interface or source as it will be used for it either way. This depends on the manager of the interfaces. Connections handled by NetworkManager are listed as NetworkManager requests to add the zone binding for the interface used by the connection. Also interfaces under control of the network service are listed also because the service requests it. Note: - A firewalld zone configuration file contains the information for a zone. o These are the zone description, services, ports, protocols, icmp-blocks, masquerade, forward-ports and rich language rules in an XML file format. o The file name has to be zone_name.xml where length of zone_name is currently limited to 17 chars. - NetworkManager binds interfaces to zones automatically."
-    rationale: "Because the default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone, it is important for the default zone to set."
-    remediation: "Run the following command to set the default zone: # firewall-cmd --set-default-zone=<NAME_OF_ZONE> Example: # firewall-cmd --set-default-zone=public."
-    references:
-      - "https://firewalld.org/documentation"
-      - "https://firewalld.org/documentation/man-pages/firewalld.zone"
-    compliance:
-      - cis: ["3.4.1.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.1.5 Ensure firewalld default zone is set. (Automated) - Not Implemented
+  # 3.4.1.6 Ensure network interfaces are assigned to appropriate zone. (Manual) - Not Implemented
 
-  # 3.4.1.6 Ensure network interfaces are assigned to appropriate zone. (Manual)
-  - id: 31298
-    title: "Ensure network interfaces are assigned to appropriate zone."
-    description: "firewall zones define the trust level of network connections or interfaces."
-    rationale: "A network interface not assigned to the appropriate zone can allow unexpected or undesired network traffic to be accepted on the interface."
-    impact: "Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following command to assign an interface to the approprate zone. # firewall-cmd --zone=<Zone NAME> --change-interface=<INTERFACE NAME> Example: # firewall-cmd --zone=customezone --change-interface=eth0."
-    references:
-      - "https://firewalld.org/documentation/zone/connections-interfaces-and-"
-    compliance:
-      - cis: ["3.4.1.6"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.4.1.7 Ensure firewalld drops unnecessary services and ports. (Manual)
-  - id: 31299
-    title: "Ensure firewalld drops unnecessary services and ports."
-    description: "Services and ports can be accepted or explicitly rejected or dropped by a zone. For every zone, you can set a default behavior that handles incoming traffic that is not further specified. Such behavior is defined by setting the target of the zone. There are three options - default, ACCEPT, REJECT, and DROP. - ACCEPT - you accept all incoming packets except those disabled by a specific rule. - REJECT - you disable all incoming packets except those that you have allowed in specific rules and the source machine is informed about the rejection. - DROP - you disable all incoming packets except those that you have allowed in specific rules and no information sent to the source machine."
-    rationale: "To reduce the attack surface of a system, all services and ports should be blocked unless required."
-    remediation: "Run the following command to remove an unnecessary service: # firewall-cmd --remove-service=<service> Example: # firewall-cmd --remove-service=cockpit Run the following command to remove an unnecessary port: # firewall-cmd --remove-port=<port-number>/<port-type> Example: # firewall-cmd --remove-port=25/tcp Run the following command to make new settings persistent: # firewall-cmd --runtime-to-permanent."
-    references:
-      - "https://access.redhat.com/documentation/en-"
-    compliance:
-      - cis: ["3.4.1.7"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.1.7 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
 
   # 3.4.2.1 Ensure nftables is installed. (Automated)
   - id: 31300
@@ -2312,13 +2080,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q nftables -> r:^nftables-"
 
   # 3.4.2.2 Ensure firewalld is either not installed or masked with nftables. (Automated)
   - id: 31301
     title: "Ensure firewalld is either not installed or masked with nftables."
-    description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
+    description: 'firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall "zones" to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options.'
     rationale: "Running both nftables.service and firewalld.service may lead to conflict and unexpected results."
     remediation: "Run the following command to remove firewalld # dnf remove firewalld OR Run the following command to stop and mask firewalld # systemctl --now mask firewalld."
     compliance:
@@ -2331,8 +2100,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
+      - "not c:firewall-cmd --state -> r:^running"
+      - "c:systemctl is-enabled firewalld -> r:^masked"
 
   # 3.4.2.3 Ensure iptables-services not installed with nftables. (Automated)
   - id: 31302
@@ -2350,27 +2122,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
 
-  # 3.4.2.4 Ensure iptables are flushed with nftables. (Manual)
-  - id: 31303
-    title: "Ensure iptables are flushed with nftables."
-    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
-    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
-    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F."
-    compliance:
-      - cis: ["3.4.2.4"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.2.4 Ensure iptables are flushed with nftables. (Manual) - Not Implemented
 
   # 3.4.2.5 Ensure an nftables table exists. (Automated)
   - id: 31304
@@ -2389,8 +2145,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:nft list tables -> r:\w+'
 
   # 3.4.2.6 Ensure nftables base chains exist. (Automated)
   - id: 31305
@@ -2409,8 +2166,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:nft list ruleset -> r:hook input"
+      - "c:nft list ruleset -> r:hook forward"
+      - "c:nft list ruleset -> r:hook output"
 
   # 3.4.2.7 Ensure nftables loopback traffic is configured. (Automated)
   - id: 31306
@@ -2428,27 +2188,12 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr|ip6 saddr'
 
-  # 3.4.2.8 Ensure nftables outbound and established connections are configured. (Manual)
-  - id: 31307
-    title: "Ensure nftables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound and established connections."
-    rationale: "If rules are not in place for new outbound and established connections, all packets will be dropped by the default policy preventing network usage."
-    remediation: "Configure nftables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # nft add rule inet filter input ip protocol tcp ct state established accept # nft add rule inet filter input ip protocol udp ct state established accept # nft add rule inet filter input ip protocol icmp ct state established accept # nft add rule inet filter output ip protocol tcp ct state new,related,established accept # nft add rule inet filter output ip protocol udp ct state new,related,established accept # nft add rule inet filter output ip protocol icmp ct state new,related,established accept."
-    compliance:
-      - cis: ["3.4.2.8"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.2.8 Ensure nftables outbound and established connections are configured. (Manual) -Not Implemented
 
   # 3.4.2.9 Ensure nftables default deny firewall policy. (Automated)
   - id: 31308
@@ -2467,8 +2212,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:nft list ruleset -> r:hook input && r:policy drop"
+      - "c:nft list ruleset -> r:hook forward && r:policy drop"
+      - "c:nft list ruleset -> r:hook output && r:policy drop"
 
   # 3.4.2.10 Ensure nftables service is enabled. (Automated)
   - id: 31309
@@ -2486,8 +2234,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled nftables -> r:^enabled"
 
   # 3.4.2.11 Ensure nftables rules are permanent. (Automated)
   - id: 31310
@@ -2505,8 +2254,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/nftables.conf -> r:include *"
 
   # 3.4.3.1.1 Ensure iptables packages are installed. (Automated)
   - id: 31311
@@ -2524,8 +2274,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables -> r:^iptables-"
+      - "c:rpm -q iptables-services -> r:^iptables-services-"
 
   # 3.4.3.1.2 Ensure nftables is not installed with iptables. (Automated)
   - id: 31312
@@ -2543,13 +2295,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q nftables -> r:package nftables is not installed"
 
   # 3.4.3.1.3 Ensure firewalld is either not installed or masked with iptables. (Automated)
   - id: 31313
     title: "Ensure firewalld is either not installed or masked with iptables."
-    description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
+    description: 'firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall "zones" to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options.'
     rationale: "Running iptables.service and\\or ip6tables.service with firewalld.service may lead to conflict and unexpected results."
     remediation: "Run the following command to remove firewalld # yum remove firewalld OR Run the following command to stop and mask firewalld # systemctl --now mask firewalld."
     compliance:
@@ -2562,8 +2315,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
+      - "not c:systemctl status firewalld -> r:active && r:running"
+      - "c:systemctl is-enabled firewalld -> r:^masked"
 
   # 3.4.3.2.1 Ensure iptables loopback traffic is configured. (Automated)
   - id: 31314
@@ -2581,46 +2337,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-  # 3.4.3.2.2 Ensure iptables outbound and established connections are configured. (Manual)
-  - id: 31315
-    title: "Ensure iptables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.2.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.4.3.2.3 Ensure iptables rules exist for all open ports. (Automated)
-  - id: 31316
-    title: "Ensure iptables rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.2.3"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.2", "9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1", "A.13.1.3"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.2.2 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
+  # 3.4.3.2.3 Ensure iptables rules exist for all open ports. (Automated) - Not Implemented
 
   # 3.4.3.2.4 Ensure iptables default deny firewall policy. (Automated)
   - id: 31317
@@ -2638,27 +2362,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:iptables -L -> r:^Chain INPUT && r:policy DROP"
+      - "c:iptables -L -> r:^Chain FORWARD && r:policy DROP"
+      - "c:iptables -L -> r:^Chain OUTPUT && r:policy DROP"
 
-  # 3.4.3.2.5 Ensure iptables rules are saved. (Automated)
-  - id: 31318
-    title: "Ensure iptables rules are saved."
-    description: "The iptables-services package includes the /etc/sysconfig/iptables file. The iptables rules in this file will be loaded by the iptables.service during boot, or when it is started or re-loaded."
-    rationale: "If the iptables rules are not saved and a system re-boot occurs, the iptables rules will be lost."
-    remediation: "Run the following commands to create or update the /etc/sysconfig/iptables file: Run the following command to review the current running iptables configuration: # iptables -L Output should include: Chain INPUT (policy DROP) target prot opt source destination ACCEPT all -- anywhere anywhere DROP all -- loopback/8 anywhere ACCEPT tcp -- anywhere anywhere state ESTABLISHED ACCEPT udp -- anywhere anywhere state ESTABLISHED ACCEPT icmp -- anywhere anywhere state ESTABLISHED ACCEPT tcp -- anywhere anywhere tcp dpt:ssh state NEW Chain FORWARD (policy DROP) target prot opt source destination Chain OUTPUT (policy DROP) target prot opt source destination ACCEPT all -- anywhere anywhere ACCEPT tcp -- anywhere anywhere state NEW,ESTABLISHED ACCEPT udp -- anywhere anywhere state NEW,ESTABLISHED ACCEPT icmp -- anywhere anywhere state NEW,ESTABLISHED Run the following command to save the verified running configuration to the file /etc/sysconfig/iptables: # service iptables save iptables: Saving firewall rules to /etc/sysconfig/iptables:[ OK ]."
-    compliance:
-      - cis: ["3.4.3.2.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.2.5 Ensure iptables rules are saved. (Automated) - Not Implemented
 
   # 3.4.3.2.6 Ensure iptables is enabled and active. (Automated)
   - id: 31319
@@ -2676,8 +2386,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled iptables -> r:^enabled"
+      - "c:systemctl is-active iptables -> r:^active"
 
   # 3.4.3.3.1 Ensure ip6tables loopback traffic is configured. (Automated)
   - id: 31320
@@ -2695,46 +2407,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT\s*\t*all\s*\t*lo && r:\s*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:DROP\s*\t*all\s*\t*lo && r:\s*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:ACCEPT\s*\t*all\s*\t*lo && r:\s*::/0'
 
-  # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual)
-  - id: 31321
-    title: "Ensure ip6tables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established IPv6 connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # ip6tables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.3.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated)
-  - id: 31322
-    title: "Ensure ip6tables firewall rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.3.3"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
+  # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
 
   # 3.4.3.3.4 Ensure ip6tables default deny firewall policy. (Automated)
   - id: 31323
@@ -2752,27 +2432,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain FORWARD && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain OUTPUT && r:policy DROP"
 
-  # 3.4.3.3.5 Ensure ip6tables rules are saved. (Automated)
-  - id: 31324
-    title: "Ensure ip6tables rules are saved."
-    description: "The iptables-services package includes the /etc/sysconfig/ip6tables file. The ip6tables rules in this file will be loaded by the ip6tables.service during boot, or when it is started or re-loaded."
-    rationale: "If the ip6tables rules are not saved and a system re-boot occurs, the ip6tables rules will be lost."
-    remediation: "Run the following commands to create or update the /etc/sysconfig/ip6tables file: Run the following command to review the current running iptables configuration: # ip6tables -L Output should include: Chain INPUT (policy DROP) target prot opt source destination ACCEPT all anywhere anywhere DROP all localhost anywhere ACCEPT tcp anywhere anywhere state ESTABLISHED ACCEPT udp anywhere anywhere state ESTABLISHED ACCEPT icmp anywhere anywhere state ESTABLISHED ACCEPT tcp anywhere anywhere tcp dpt:ssh state NEW Chain FORWARD (policy DROP) target prot opt source destination Chain OUTPUT (policy DROP) target prot opt source destination ACCEPT all anywhere anywhere ACCEPT tcp anywhere anywhere state NEW,ESTABLISHED ACCEPT udp anywhere anywhere state NEW,ESTABLISHED ACCEPT icmp anywhere anywhere state NEW,ESTABLISHED Run the following command to save the verified running configuration to the file /etc/sysconfig/ip6tables: # service ip6tables save ip6tables: Saving firewall rules to /etc/sysconfig/ip6table[ OK ]."
-    compliance:
-      - cis: ["3.4.3.3.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.3.5 Ensure ip6tables rules are saved. (Automated) - Not Implemented
 
   # 3.4.3.3.6 Ensure ip6tables is enabled and active. (Automated)
   - id: 31325
@@ -2790,8 +2456,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled ip6tables -> r:^enabled"
+      - "c:systemctl is-active ip6tables -> r:^active"
 
   # 4.1.1.1 Ensure auditd is installed. (Automated)
   - id: 31326
@@ -2810,8 +2478,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q audit -> r:^audit-"
 
   # 4.1.1.2 Ensure auditd service is enabled. (Automated)
   - id: 31327
@@ -2829,8 +2498,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled auditd -> r:^enabled"
 
   # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 31328
@@ -2848,8 +2518,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "not f:/boot/grub2/grubenv -> r:kernelopts= && !r:audit=1"
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 31329
@@ -2867,8 +2538,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub2/grubenv -> r:kernelopts= && n:audit_backlog_limit=(\d+) compare >= 8192'
 
   # 4.1.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 31330
@@ -2883,8 +2555,10 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/audit/auditd.conf"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
   # 4.1.2.2 Ensure audit logs are not automatically deleted. (Automated)
   - id: 31331
