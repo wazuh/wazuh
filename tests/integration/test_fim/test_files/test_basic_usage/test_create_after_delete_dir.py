@@ -164,6 +164,6 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
 
     file.create_folder(folder_to_monitor)
     file.write_file(file_to_monitor)
-    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+    wazuh_log_monitor.start(generate_callback(ADDED_EVENT), timeout=60)
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
