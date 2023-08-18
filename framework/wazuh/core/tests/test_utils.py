@@ -27,7 +27,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_files_path = os.path.join(test_data_path, 'utils')
-wazuh_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 
 # input data for testing q filter
 input_array = [
@@ -1825,15 +1824,6 @@ def test_expand_decoders():
     decoders = utils.expand_decoders()
     assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
                                                                         f'*{utils.common.DECODERS_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
-def test_expand_lists():
-    lists = utils.expand_lists()
-    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
-        test_files_path, f'*{utils.common.LISTS_EXTENSION}')))))
-
 
 def test_full_copy():
     """Test `full_copy` function.

@@ -19,7 +19,6 @@ relationships:
         - cluster_all
         - ciscat_read
         - decoders_all
-        - lists_all
         - rootcheck_all
         - rules_all
         - mitre_read

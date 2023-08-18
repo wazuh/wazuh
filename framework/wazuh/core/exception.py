@@ -314,26 +314,6 @@ class WazuhException(Exception):
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
-        # CDB List: 1800 - 1899
-        1800: {'message': 'Bad format in CDB list {path}'},
-        1801: {'message': 'Wrong \'path\' parameter',
-               'remediation': 'Please, provide a correct path'},
-        1802: {'message': 'Lists file not found',
-               'remediation': 'Please, use `GET /lists/files` to find all available lists'},
-        1803: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1804: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you provide a correct filepath'
-               },
-        1805: {'message': 'File with the same name already exists in a subdirectory.',
-               'remediation': 'Please, make sure to use a name which is not repeated. '
-               },
-        1806: {'message': 'Error trying to create CDB list file.'
-               },
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                          'The error message will be the output of upgrade module'},
-
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
                },

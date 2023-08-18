@@ -312,30 +312,6 @@ x-rbac-catalog:
         actions: ['decoders:delete']
         resources: ['decoder:file:local_decoder.xml']
         effect: "allow"
-    'lists:read':
-      description: "Read cdb lists files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
-      example:
-        actions: ['lists:read']
-        resources: ['list:file:audit-keys']
-        effect: "deny"
-    'lists:update':
-      description: "Update or upload cdb lists files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['lists:update']
-        resources: ['*:*:*']
-        effect: "allow"
-    'lists:delete':
-      description: "Delete cdb lists files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
-      example:
-        actions: ['lists:delete']
-        resources: ['list:file:audit-keys']
-        effect: "deny"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
       resources:
@@ -999,32 +975,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/DecoderFile'
-
-    AllItemsResponseLists:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBList'
-
-    AllItemsResponseListsFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBListFile'
 
     AllItemsResponseRoles:
       allOf:
@@ -5006,33 +4956,6 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
-    # Lists models
-    CDBList:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - type: object
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/CDBListPair'
-
-    CDBListPair:
-      type: object
-      required:
-        - key
-        - value
-      properties:
-        key:
-          type: string
-          description: "Value of the CDB list item key"
-        value:
-          type: string
-          description: "Value of the CDB list item value"
-
-    CDBListFile:
-      $ref: '#/components/schemas/RulesetFile'
-
     # Overview models
     OverviewAgents:
       type: object
@@ -5583,14 +5506,6 @@ components:
         default: 500
         minimum: 1
         maximum: 500
-    list_filename_path:
-      in: path
-      name: filename
-      description: "Filename (CDB list) to get/edit/delete."
-      required: true
-      schema:
-        type: string
-        format: cdb_filename_path
     agents_list:
       in: query
       name: agents_list
@@ -7009,8 +6924,6 @@ tags:
     description: "Not ready for production endpoints. Use with caution"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: Lists
-    description: "CDB lists management"
   - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
@@ -10337,10 +10250,6 @@ paths:
                           - etc/rules
                         rule_exclude:
                           - 0215-policy_rules.xml
-                        list:
-                          - etc/lists/audit-keys
-                          - etc/lists/amazon/aws-eventnames
-                          - etc/lists/security-eventchannel
                       auth:
                         disabled: no
                         port: "1515"
@@ -11292,281 +11201,6 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "Active configuration was successfully read in specified node"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /lists:
-    get:
-      tags:
-      - Lists
-      summary: "Get CDB lists info"
-      description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
-      See available parameters for more details"
-      operationId: api.controllers.cdb_list_controller.get_lists
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
-      responses:
-        '200':
-          description: "Successfully got all CDB lists and the files where they are defined"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
-              example:
-                data:
-                  affected_items:
-                    - items:
-                        - key: audit-wazuh-w
-                          value: write
-                        - key: audit-wazuh-r
-                          value: read
-                        - key: audit-wazuh-a
-                          value: attribute
-                        - key: audit-wazuh-x
-                          value: execute
-                        - key: audit-wazuh-c
-                          value: command
-                      relative_dirname: etc/lists
-                      filename: audit-keys
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All specified lists were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /lists/files/{filename}:
-    get:
-      tags:
-        - Lists
-      summary: "Get CDB list file content"
-      description: "Return the content of a CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found"
-      operationId: api.controllers.cdb_list_controller.get_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
-      parameters:
-        - $ref: '#/components/parameters/list_filename_path'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw'
-      responses:
-        '200':
-          description: "Successfully got CDB list"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
-              example:
-                data:
-                  affected_items:
-                    - audit-wazuh-w: write
-                      audit-wazuh-r: read
-                      audit-wazuh-a: attribute
-                      audit-wazuh-x: execute
-                      audit-wazuh-c: command
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list was returned"
-                error: 0
-            'text/plain':
-              schema:
-                type: string
-              example: |
-                audit-wazuh-w:write
-                audit-wazuh-r:read
-                audit-wazuh-a:attribute
-                audit-wazuh-x:execute
-                audit-wazuh-c:command
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    put:
-      tags:
-        - Lists
-      summary: "Update CDB list file"
-      description: "Replace or upload a CDB list file with the data contained in the API request"
-      operationId: api.controllers.cdb_list_controller.put_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:update'
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
-      parameters:
-        - $ref: '#/components/parameters/list_filename_path'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/overwrite'
-      requestBody:
-        description: "Content of the file to be uploaded"
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                data:
-                  affected_items:
-                    - etc/lists/audit-keys
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list file uploaded successfully"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    delete:
-      tags:
-        - Lists
-      summary: "Delete CDB list file"
-      description: "Delete a specified CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found"
-      operationId: api.controllers.cdb_list_controller.delete_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
-      parameters:
-        - $ref: '#/components/parameters/list_filename_path'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                data:
-                  affected_items:
-                    - etc/lists/test
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list file was successfully deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /lists/files:
-    get:
-      tags:
-      - Lists
-      summary: "Get CDB lists files"
-      description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
-      the filesystem relative to Wazuh installation folder"
-      operationId: api.controllers.cdb_list_controller.get_lists_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
-      responses:
-        '200':
-          description: "Successfully got CDB lists"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
-              example:
-                data:
-                  affected_items:
-                    - relative_dirname: etc/lists/amazon
-                      filename: aws-eventnames
-                    - relative_dirname: etc/lists/amazon
-                      filename: aws-sources
-                    - relative_dirname: etc/lists
-                      filename: audit-keys
-                    - relative_dirname: etc/lists
-                      filename: security-eventchannel
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: 'All specified paths were returned'
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
