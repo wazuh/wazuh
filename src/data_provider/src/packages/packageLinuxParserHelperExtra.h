@@ -58,7 +58,6 @@ namespace PackageLinuxHelper
         const std::string version          = alpmWrapper(alpm_pkg_get_version(pArchPkg));
         packageInfo["version"]      = version.empty() ? UNKNOWN_VALUE : version;
         packageInfo["location"]     = UNKNOWN_VALUE;
-        packageInfo["multiarch"]    = UNKNOWN_VALUE;
         const std::string architecture = alpmWrapper(alpm_pkg_get_arch(pArchPkg));
         packageInfo["architecture"] = architecture.empty() ? UNKNOWN_VALUE : architecture;
         packageInfo["priority"]         = UNKNOWN_VALUE;
@@ -67,6 +66,8 @@ namespace PackageLinuxHelper
         packageInfo["source"]       = UNKNOWN_VALUE;
         const std::string description = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
         packageInfo["description"]  = description.empty() ? UNKNOWN_VALUE : description;
+        // The multiarch field won't have a default value
+
         return packageInfo;
     }
 

@@ -246,9 +246,10 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             package["description"] = data[4];
             package["size"] = 0;
             package["priority"] = UNKNOWN_VALUE;
-            package["multiarch"] = UNKNOWN_VALUE;
             package["source"] = UNKNOWN_VALUE;
             package["format"] = "pkg";
+            // The multiarch field won't have a default value
+
             callback(package);
         }
     }

@@ -64,11 +64,11 @@ namespace PackageLinuxHelper
                 ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
                 ret["priority"]     = UNKNOWN_VALUE;
                 ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : architecture;
-                ret["multiarch"]    = UNKNOWN_VALUE;
                 ret["source"]       = UNKNOWN_VALUE;
                 ret["format"]       = "rpm";
                 ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : vendor;
                 ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : description;
+                // The multiarch field won't have a default value
             }
         }
 

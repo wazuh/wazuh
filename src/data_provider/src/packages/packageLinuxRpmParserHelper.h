@@ -46,11 +46,11 @@ namespace PackageLinuxHelper
             ret["version"]      = version;
             ret["priority"]     = UNKNOWN_VALUE;
             ret["architecture"] = package.architecture;
-            ret["multiarch"] = UNKNOWN_VALUE;
             ret["source"]       = UNKNOWN_VALUE;
             ret["format"]       = "rpm";
             ret["vendor"]       = package.vendor;
             ret["description"]  = package.description;
+            // The multiarch field won't have a default value
         }
 
         return ret;
