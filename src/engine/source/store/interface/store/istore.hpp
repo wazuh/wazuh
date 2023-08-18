@@ -42,24 +42,6 @@ public:
      */
     virtual base::RespOrError<Col> readCol(const base::Name& name, const NamespaceId& namespaceId) const = 0;
 
-
-     /**
-     * @brief List documents and collections names under a other name.
-     *
-     * The depth is limited to 1 and the name returned are absolute.
-     * @param name The name to list.
-     * @return The list of documents and collections or nullopt if the name does not exist.
-     */
-    virtual base::RespOrError<Col> readCol(const base::Name& name) const = 0;
-
-    /**
-     * @brief Check if a name exists in the store.
-     *
-     * @param name The name to check.
-     * @return true if the name exists, false otherwise.
-     */
-    virtual bool exists(const base::Name& name) const = 0;
-
     /**
      * @brief Check if a document exists in the store.
      *
@@ -72,9 +54,10 @@ public:
      * @brief Check if a collection exists in the store.
      *
      * @param name The collection name.
+     * @param namespaceId The namespace identifier.
      * @return true if the collection exists, false otherwise.
      */
-    virtual bool existsCol(const base::Name& name) const = 0;
+    virtual bool existsCol(const base::Name& name, const NamespaceId& namespaceId) const = 0;
 
     /**
      * @brief Get a list all non-empty namespaces.
@@ -193,14 +176,6 @@ public:
      * @return base::OptError The error if the document does not exist or cannot be deleted.
      */
     virtual base::OptError deleteDoc(const base::Name& name) = 0;
-
-    /**
-     * @brief Delete a collection from the store.
-     *
-     * @param name The collection name.
-     * @return base::OptError The error if the collection does not exist or cannot be deleted.
-     */
-    virtual base::OptError deleteCol(const base::Name& name) = 0;
 
     /**
      * @brief Delete a collection in a namespace from the store.

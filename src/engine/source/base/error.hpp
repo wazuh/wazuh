@@ -94,6 +94,12 @@ inline T getResponse(const RespOrError<T>& response)
     return std::get<T>(response);
 }
 
+template<typename T>
+inline Error getError(const T& error)
+{
+    return std::get<Error>(error);
+}
+
 } // namespace base
 
 #endif // _BASE_ERROR_HPP
