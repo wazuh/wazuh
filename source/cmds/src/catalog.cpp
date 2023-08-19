@@ -40,6 +40,7 @@ struct Options
     bool abortOnError;
     std::string policy;
     std::string integration;
+    std::string namespaceId;
     std::string role;
     int clientTimeout;
 };
@@ -177,6 +178,7 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& resourceTypeStr,
                const std::string& content,
+               const std::string& namespaceId,
                const std::string& role)
 {
     using RequestType = eCatalog::ResourcePost_Request;
@@ -188,6 +190,7 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_type(toResourceType(resourceTypeStr));
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
+    eRequest.set_namespaceid(namespaceId);
     addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
@@ -430,6 +433,8 @@ void configure(CLI::App_p app)
     auto item = "item";
     std::string itemDesc = "Content of the item, can be passed as argument or redirected "
                            "from a file using the \"|\" operator or the \"<\" operator.";
+    auto namespaceId = "namespace";
+    auto nsDesc = "Namespace where the item will be added.";
 
     // Catalog subcommands
     // get
@@ -463,12 +468,13 @@ void configure(CLI::App_p app)
     create_subcommand->add_option(name, options->name, nameDesc + "collection to add an item to: item-type")
         ->required();
     create_subcommand->add_option(item, options->content, itemDesc)->default_val("");
+    create_subcommand->add_option(namespaceId, options->namespaceId, nsDesc)->default_val("user");
     create_subcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
-            runCreate(client, options->format, options->name, options->content, options->role);
+            runCreate(client, options->format, options->name, options->content,  options->namespaceId, options->role);
         });
 
     // delete

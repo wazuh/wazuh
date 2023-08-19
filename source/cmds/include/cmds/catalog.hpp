@@ -37,6 +37,7 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& resourceTypeStr,
                const std::string& content,
+               const std::string& namespacesId,
                const std::string& role);
 
 void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, const std::string& role);

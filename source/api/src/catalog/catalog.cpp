@@ -413,10 +413,11 @@ std::optional<base::Error> Catalog::deleteResource(const Resource& resource)
     {
         storeError = m_store->deleteDoc(resource.m_name);
     }
-    else
-    {
-        storeError = m_store->deleteCol(resource.m_name);
-    }
+    // TODO Implement delete resource in ns
+    // else
+    // {
+    //     storeError = m_store->deleteCol(resource.m_name);
+    // }
     if (storeError)
     {
         return base::Error {fmt::format("Content '{}' could not be deleted from store: {}",

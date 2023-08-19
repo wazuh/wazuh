@@ -62,6 +62,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::
         const auto error = !eRequest.has_type()      ? std::make_optional("Missing /type parameter or is invalid")
                            : !eRequest.has_format()  ? std::make_optional("Missing /format parameter or is invalid")
                            : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
+                           : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespace parameter")
                            : !eRequest.has_role()    ? std::make_optional("Missing /role parameter")
                                                      : std::nullopt;
         if (error)
