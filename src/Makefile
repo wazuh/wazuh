@@ -30,6 +30,7 @@ libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null 
 LIBSTDCPP_NAME := libstdc++.so.6
 LIBGCC_S_NAME := libgcc_s.so.1
 STRIP_TOOL := strip
+FLATCC_BIN = $(EXTERNAL_FLATCC)bin/flatcc
 endif
 
 ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
@@ -62,6 +63,7 @@ EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_ROCKSDB=external/rocksdb/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
+EXTERNAL_FLATCC=external/flatcc/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
@@ -369,8 +371,8 @@ else
 endif
 
 ifeq (${TARGET},server)
-	WAZUH_LIBS+=-lrouter
-	WAZUH_LDFLAGS+=-Lbuild/shared_modules/router
+	WAZUH_LIBS+=-lrouter -lflatccrt
+	WAZUH_LDFLAGS+=-Lbuild/shared_modules/router -L${EXTERNAL_FLATCC}lib
 endif
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
@@ -391,7 +393,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I./generated_headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I${EXTERNAL_FLATCC}include/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -780,7 +782,7 @@ ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: external ${CPPLIBDEPS}
+server: external ${CPPLIBDEPS} flatbuffers_schemas
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	${MAKE} ${BUILD_SERVER}
 
@@ -885,6 +887,7 @@ RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
+FLATCCRT_LIB = $(EXTERNAL_FLATCC)lib/libflatccrt.so
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
@@ -900,7 +903,7 @@ endif
 
 # Adding rocksdb only for server
 ifeq (${TARGET},server)
-	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
+	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB) $(FLATCCRT_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB)
 endif
 
@@ -937,7 +940,7 @@ external: build_gtest
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB)
+external: $(ROCKSDB_LIB) $(FLATCCRT_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1001,6 +1004,10 @@ ${ROCKSDB_LIB}:
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
 	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### flatcc ###
+${FLATCCRT_LIB}:
+	cd $(EXTERNAL_FLATCC) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DFLATCC_TEST=OFF && ${MAKE}
 
 ### lzma ###
 ${LZMA_LIB}:
@@ -1326,7 +1333,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatcc
 endif
 endif
 
@@ -1367,6 +1374,15 @@ external/$(CPYTHON).tar.gz:
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 endif
+
+FLATCC_REPO_BRANCH := master
+FLATCC_REPO_URL := https://github.com/dvidelabs/flatcc/tarball/$(FLATCC_REPO_BRANCH)
+
+external/flatcc.tar.gz:
+	$(CURL) $@ -L $(FLATCC_REPO_URL)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@) --strip-components=1 --one-top-level
+	rm $(patsubst %.gz,%,$@)
 
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
@@ -1652,6 +1668,12 @@ config/%.o: config/%.c
 build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+
+#### Flatbuffers schemas ####
+
+.PHONY: flatbuffers_schemas
+flatbuffers_schemas: ${FLATCCRT_LIB}
+	${FLATCC_BIN} --json -a -g -o generated_headers/ wazuh_modules/syscollector/schemas/*.fbs
 
 #### Sysinfo ##
 build_sysinfo: $(WAZUHEXT_LIB)
@@ -2546,6 +2568,9 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
+	rm -rf $(EXTERNAL_FLATCC)build
+	rm -rf $(EXTERNAL_FLATCC)lib
+	rm -rf $(EXTERNAL_FLATCC)bin
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
@@ -2576,7 +2601,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR) $(EXTERNAL_ROCKSDB)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR) $(EXTERNAL_ROCKSDB) $(EXTERNAL_FLATCC)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
