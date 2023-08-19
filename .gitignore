@@ -19,6 +19,8 @@ src/selinux/*.mod
 src/selinux/*.pp
 framework/wazuh/core/wazuh.json
 src/**/build/*
+src/generated_headers/*.h
+src/generated_headers/*.hpp
 
 # Compiled programs
 src/agent-auth
