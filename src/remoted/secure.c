@@ -16,6 +16,11 @@
 #include "router.h"
 #include "sym_load.h"
 
+#include "syscollector_synchronization_builder.h"
+#include "syscollector_synchronization_json_parser.h"
+#include "syscollector_deltas_builder.h"
+#include "syscollector_deltas_json_parser.h"
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -51,9 +56,12 @@ static pthread_mutex_t router_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
 #define DBSYNC_SYSCOLLECTOR_HEADER "5:syscollector:"
-#define RSYNC_SYSCOLLECTOR_HEADER "d:syscollector:"
+#define SYSCOLLECTOR_HEADER "d:syscollector:"
 #define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
-#define RSYNC_SYSCOLLECTOR_HEADER_SIZE 15
+#define SYSCOLLECTOR_HEADER_SIZE 15
+
+// Router message forwarder
+void router_message_forward(char* msg, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -784,73 +792,108 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         rem_inc_recv_evt(agentid_str);
     }
 
+    router_message_forward(tmp_msg, keys.keyentries[agentid]->id);
+
+    os_free(agentid_str);
+}
+
+void router_message_forward(char* msg, const char* agent_id) {
     // Both syscollector delta and sync messages are sent to the router
     ROUTER_PROVIDER_HANDLE router_handle = NULL;
     int message_header_size = 0;
+    flatcc_json_parser_table_f *parser = NULL;
 
-    if(strncmp(tmp_msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+    if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_syscollector_mutex);
         if (!router_syscollector_handle) {
             if (router_syscollector_handle = router_provider_create("syscollector"), !router_syscollector_handle) {
                 mdebug2("Failed to create router handle for 'syscollector'.");
                 w_mutex_unlock(&router_syscollector_mutex);
-                os_free(agentid_str);
                 return;
             }
         }
         router_handle = router_syscollector_handle;
-        message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        message_header_size = SYSCOLLECTOR_HEADER_SIZE;
+        parser = Syscollector_Syscollector_delta_parse_json_table;
         w_mutex_unlock(&router_syscollector_mutex);
-    } else if(strncmp(tmp_msg, RSYNC_SYSCOLLECTOR_HEADER, RSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+    } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_rsync_mutex);
         if (!router_rsync_handle) {
             if (router_rsync_handle = router_provider_create("rsync"), !router_rsync_handle) {
                 mdebug2("Failed to create router handle for 'rsync'.");
                 w_mutex_unlock(&router_rsync_mutex);
-                os_free(agentid_str);
                 return;
             }
         }
         router_handle = router_rsync_handle;
-        message_header_size = RSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        parser = Syscollector_SyncMsg_parse_json_table;
         w_mutex_unlock(&router_rsync_mutex);
     }
 
-    if (router_handle != NULL) {
-        // We only send the JSON part of the message
-        char* msg_start = tmp_msg + message_header_size;
-        size_t msg_size = strnlen(msg_start, OS_MAXSTR);
-        if ((msg_size + message_header_size) < OS_MAXSTR) {
-            msg_start[msg_size] = '\0';
-
-            cJSON* agent_info = cJSON_CreateObject();
-            cJSON_AddStringToObject(agent_info, "agent_id", keys.keyentries[agentid]->id);
-            cJSON_AddStringToObject(agent_info, "node_name", node_name);
-
-            cJSON* object= cJSON_CreateObject();
-            cJSON_AddItemToObject(object, "agent_info", agent_info);
-
-            char* str_agent_info = cJSON_PrintUnformatted(object);
-            if(str_agent_info) {
-                size_t agent_info_size = strlen(str_agent_info);
-
-                if((msg_size + message_header_size + agent_info_size ) < OS_MAXSTR) {
-                    /* We need to replace the last '}' with a ',', that's why we begin in 'msg_start + msg_size - 1'.
-                        The first '{' of the agen info JSON is ommited, so we use 'str_agent_info + 1'.
-                    */
-                    snprintf(msg_start + msg_size - 1, agent_info_size + 1 , ",%s", str_agent_info + 1);
-                    msg_size += agent_info_size + 1;
-                    msg_start[msg_size] = '\0';
-                }
-            }
-            router_provider_send(router_handle, msg_start, msg_size + 1);
-
-            cJSON_Delete(object);
-            os_free(str_agent_info);
-        }
+    if (!router_handle) {
+        return;
     }
 
-    os_free(agentid_str);
+    flatcc_builder_t builder;
+    if(flatcc_builder_init(&builder)) {
+        mdebug1("Failed to initialize flatcc structure.");
+        return;
+    }
+
+    cJSON* j_msg_to_send = NULL;
+    cJSON* j_agent_info = NULL;
+    cJSON* j_msg = NULL;
+    char* msg_to_send = NULL;
+
+    char* msg_start = msg + message_header_size;
+    size_t msg_size = strnlen(msg_start, OS_MAXSTR);
+    if ((msg_size + message_header_size) < OS_MAXSTR) {
+        msg_start[msg_size] = '\0';
+        j_msg = cJSON_Parse(msg_start);
+        if(!j_msg) {
+            goto clean_and_exit;
+        }
+
+        j_msg_to_send = cJSON_CreateObject();
+
+        j_agent_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
+        cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
+
+        if (parser == Syscollector_Syscollector_delta_parse_json_table) {
+            cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_DetachItemFromObject(j_msg, "operation"));
+        } else if (parser == Syscollector_SyncMsg_parse_json_table) {
+            cJSON_AddItemToObject(cJSON_GetObjectItem(j_msg_to_send, "data"), "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
+        }
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+        if(!msg_to_send) {
+            goto clean_and_exit;
+        }
+
+        size_t msg_to_send_len = strlen(msg_to_send);
+
+        size_t flatbuffer_size;
+        flatcc_json_parser_flags_t parse_flags = flatcc_json_parser_f_skip_unknown;
+        flatcc_json_parser_t parser_ctx;
+        flatcc_json_parser_table_as_root(&builder, &parser_ctx, msg_to_send, msg_to_send_len, parse_flags, NULL, parser);
+        void* flatbuffer = flatcc_builder_finalize_aligned_buffer(&builder, &flatbuffer_size);
+
+        router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+
+        flatcc_builder_aligned_free(flatbuffer);
+    }
+
+clean_and_exit:
+    flatcc_builder_clear(&builder);
+    cJSON_Delete(j_msg_to_send);
+    cJSON_Delete(j_msg);
+    cJSON_free(msg_to_send);
 }
 
 // Close and remove socket from keystore
