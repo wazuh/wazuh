@@ -43,6 +43,15 @@ jobs:
       with:
         key: ${{ github.workflow }}-${{ runner.os }}
 
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Install dependencies
+      # Install behave
+      run: pip install behave
+
     - name: Configure CMake
       # Configure the CMake build system with the specified build type
       run: cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -S ${{env.ENGINE_DIR}} -B ${{env.ENGINE_DIR}}/build
