@@ -50,7 +50,9 @@ jobs:
 
     - name: Install dependencies
       # Install behave
-      run: pip install behave
+      run: |
+        pip install ${{env.ENGINE_DIR}}/test/integration_tests/engine-integration-test/
+        pip install behave
 
     - name: Configure CMake
       # Configure the CMake build system with the specified build type
