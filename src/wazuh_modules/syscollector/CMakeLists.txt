@@ -9,6 +9,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+get_filename_component(FLATBUFFERS_FOLDER ${CMAKE_SOURCE_DIR}/schemas/ ABSOLUTE)
+get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
@@ -65,6 +67,45 @@ link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
+link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
+
+# add_custom_command does not create a new target. You have to define targets explicitly
+# by add_executable, add_library or add_custom_target in order to make them visible to make
+# For this reason, add_custom_target adds a target with the given name that executes the given commands.
+# The target has no output file and is always considered out of date even if the commands try to create a
+# file with the name of the target.
+
+if (NOT ${TARGET} STREQUAL "")
+  if(${TARGET} STREQUAL "server")
+    list(APPEND Schemas
+              common_agentInfo
+              hotfix_synchronization
+              hwinfo_synchronization
+              networkAddress_synchronization
+              networkIface_synchronization
+              osinfo_synchronization
+              package_synchronization
+              ports_synchronization
+              processes_synchronization
+              syscollector_synchronization
+    )
+    message("Compile schemas")
+    message("${SRC_FOLDER}/external/flatbuffers/build/flatc")
+    add_custom_target(compile_schemas)
+    foreach(schema IN LISTS Schemas)
+      set(FILE "${FLATBUFFERS_FOLDER}/${schema}.fbs")
+      message("Analizing file ${FILE}")
+      add_custom_command(
+          TARGET compile_schemas
+          COMMAND ${SRC_FOLDER}/external/flatbuffers/build/flatc
+          ARGS --cpp
+          ARGS -o "${CMAKE_CURRENT_SOURCE_DIR}/include" "${FILE}"
+          COMMENT "Building C++ header for ${schema} schema."
+          DEPENDS ${FILE}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endforeach()
+  endif()
+endif()
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -77,9 +118,12 @@ file(GLOB SYSCOLLECTOR_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     )
 
-add_library(syscollector SHARED
-    ${SYSCOLLECTOR_SRC}
-    )
+add_library(syscollector SHARED ${SYSCOLLECTOR_SRC})
+if (NOT ${TARGET} STREQUAL "")
+  if(${TARGET} STREQUAL "server")
+    add_dependencies(${PROJECT_NAME} compile_schemas) #Add a dependency between top-level targets.
+  endif()
+endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(syscollector PROPERTIES

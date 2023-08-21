@@ -1,0 +1,12 @@
+table syscollector_network_address
+{
+    address: string;
+    broadcast: string;
+    checksum: string;
+    iface: string;
+    item_id: string;
+    netmask: string;
+    proto: int;
+    scan_time: string;
+}
+

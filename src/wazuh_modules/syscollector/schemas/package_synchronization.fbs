@@ -1,0 +1,19 @@
+table syscollector_packages
+{
+  architecture:string;
+  checksum:string;
+  description:string;
+  format:string;
+  install_time: string;
+  groups:string;
+  item_id:string;
+  multiarch:string;
+  name:string;
+  location: string;
+  priority:string;
+  scan_time:string;
+  size:int;
+  source:string;
+  vendor:string;
+  version:string;
+}
