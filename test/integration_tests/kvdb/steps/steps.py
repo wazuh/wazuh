@@ -1,7 +1,7 @@
 from api_communication import communication #TODO: check on a clean install!
 from behave import given, when, then, step
 
-DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
+DEFAULT_API_SOCK = '/home/runner/work/wazuh/wazuh/environment/queue/sockets/engine-api'
 
 API_KVDB = communication.APIClient(DEFAULT_API_SOCK, "kvdb")
 
