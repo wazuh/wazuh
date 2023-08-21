@@ -1,4 +1,4 @@
-name: Engine Unit Test
+name: Engine KVDB Integration Test
 
 # Controls when the action will run.
 on:
@@ -22,10 +22,12 @@ concurrency:
 env:
   BUILD_TYPE: Release
   ENGINE_DIR: ${{github.workspace}}/src/engine
+  DEFAULT_SETTING: ${{github.workspace}}/src/engine/source/cmds/src/defaultSettings.hpp
+  BINARY_PATH: ${{github.workspace}}/src/engine/build/main
 
 jobs:
   build:
-    name: Engine Unit Test
+    name: Engine KVDB Integration Test
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
@@ -45,12 +47,14 @@ jobs:
       # Configure the CMake build system with the specified build type
       run: cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -S ${{env.ENGINE_DIR}} -B ${{env.ENGINE_DIR}}/build
 
+    - name: Set Server Configuration
+      # Set Server Configuration
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{env.DEFAULT_SETTING}} ${{github.workspace}}
+
     - name: Build
       # Build the specified target using CMake
       run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target all -j2
 
-    - name: Unit Test
-      # Run unit tests using CTest
-      working-directory: ${{env.ENGINE_DIR}}/build
-      run: ctest -C ${{env.BUILD_TYPE}} -T test --output-on-failure -j2
-
+    - name: Integration Test
+      # Run integration tests using behave
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{env.BINARY_PATH}}
