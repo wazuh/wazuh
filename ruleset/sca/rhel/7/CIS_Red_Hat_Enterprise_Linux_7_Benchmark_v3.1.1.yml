@@ -712,8 +712,14 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/usr/lib/systemd/system/rescue.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue"
+      - "f:/usr/lib/systemd/system/emergency.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency"
+
+  ###############################################
+  # 1.5 Additional Process Hardening
+  ###############################################
 
   # 1.5.1 Ensure core dumps are restricted. (Automated)
   - id: 31194
@@ -731,8 +737,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
 
   # 1.5.2 Ensure XD/NX support is enabled. (Automated)
   - id: 31195
@@ -763,8 +770,10 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
 
   # 1.5.4 Ensure prelink is not installed. (Automated)
   - id: 31197
@@ -789,8 +798,13 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa prelink -> r:prelink"
+
+  ###############################################
+  # 1.6 Configure SELinux
+  ###############################################
 
   # 1.6.1.1 Ensure SELinux is installed. (Automated)
   - id: 31198
@@ -809,8 +823,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q libselinux -> r:libselinux-"
 
   # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration. (Automated)
   - id: 31199
@@ -829,8 +844,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
 
   # 1.6.1.3 Ensure SELinux policy is configured. (Automated)
   - id: 31200
@@ -849,8 +865,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
   # 1.6.1.4 Ensure the SELinux mode is enforcing or permissive. (Automated)
   - id: 31201
@@ -859,7 +877,7 @@ checks:
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
     remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive."
     references:
-      - "https://access.redhat.com/documentation/en-"
+      - "https://access.redhat.com/documentation/en-us/SELinux-mode"
     compliance:
       - cis: ["1.6.1.4"]
       - cis_csc_v8: ["3.3"]
@@ -871,8 +889,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sestatus -> r:^SELinux status:\s+enabled$'
+      - 'c:sestatus -> r:^Current mode:\s+enforcing$'
+      - 'c:sestatus -> r:^Mode from config file:\s+enforcing$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
   - id: 31202
@@ -893,8 +915,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
   # 1.6.1.6 Ensure no unconfined services exist. (Automated)
   - id: 31203
@@ -913,8 +936,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "c:ps -eZ -> r:unconfined_service_t"
 
   # 1.6.1.7 Ensure SETroubleshoot is not installed. (Automated)
   - id: 31204
@@ -931,8 +955,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa setroubleshoot -> r:setroubleshoot"
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
   - id: 31205
@@ -949,8 +974,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa mcstrans -> r:mcstrans"
+
+  ###############################################
+  # 1.7  Warning Banners
+  ###############################################
 
   # 1.7.1 Ensure message of the day is configured properly. (Automated)
   - id: 31206
@@ -968,8 +998,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.2 Ensure local login warning banner is configured properly. (Automated)
   - id: 31207
@@ -987,8 +1018,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.3 Ensure remote login warning banner is configured properly. (Automated)
   - id: 31208
@@ -1006,8 +1038,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 31209
@@ -1026,8 +1059,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.5 Ensure permissions on /etc/issue are configured. (Automated)
   - id: 31210
@@ -1046,8 +1080,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured. (Automated)
   - id: 31211
@@ -1066,8 +1101,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.8.1 Ensure GNOME Display Manager is removed. (Manual)
   - id: 31212
@@ -1087,8 +1123,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q gdm -> r:is not installed"
 
   # 1.8.2 Ensure GDM login banner is configured. (Automated)
   - id: 31213
@@ -1106,8 +1143,12 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user && r:system-db:gdm && r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:[org/gnome/login-screen]"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-enable=true"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-text="
 
   # 1.8.3 Ensure last logged in user display is disabled. (Automated)
   - id: 31214
@@ -1125,8 +1166,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user && r:system-db:gdm && r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:[org/gnome/login-screen]"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:disable-user-list=true"
 
   # 1.8.4 Ensure XDCMP is not enabled. (Automated)
   - id: 31215
@@ -1145,25 +1189,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "f:/etc/gdm/custom.conf -> r:Enable=true"
 
-  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual)
-  - id: 31216
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality. Note: Site policy may mandate a testing period before install onto production systems for available updates."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available packages # yum update."
-    compliance:
-      - cis: ["1.9"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
+  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
+
+  ###############################################
+  # 2.1 Remove Legacy Services
+  ###############################################
 
   # 2.1.1 Ensure xinetd is not installed. (Automated)
   - id: 31217
@@ -1180,8 +1214,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa xinetd -> r:xinetd"
 
   # 2.2.1.1 Ensure time synchronization is in use. (Manual)
   - id: 31218
@@ -1199,8 +1234,9 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q chrony -> r:^chrony-"
 
   # 2.2.1.2 Ensure chrony is configured. (Automated)
   - id: 31219
@@ -1218,8 +1254,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/chrony.conf -> r:^server\s*\t*\.+|^pool\s*\t*\.+'
+      - 'not c:ps -ef -> r:\.+/chronyd\s*\t*$ && !r:^\s*\t*chrony\s*\t*'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
   # 2.2.1.3 Ensure ntp is configured. (Automated)
   - id: 31220
@@ -1237,8 +1276,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/ntp.conf"
+      - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
+      - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
 
   # 2.2.2 Ensure X11 Server components are not installed. (Automated)
   - id: 31221
@@ -1256,8 +1298,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa xorg-x11-server* -> r:xorg-x11-server*"
 
   # 2.2.3 Ensure Avahi Server is not installed. (Automated)
   - id: 31222
@@ -1274,8 +1317,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q avahi -> r:^package avahi is not installed"
 
   # 2.2.4 Ensure CUPS is not installed. (Automated)
   - id: 31223
@@ -1295,8 +1339,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q cups -> r:^package cups is not installed"
 
   # 2.2.5 Ensure DHCP Server is not installed. (Automated)
   - id: 31224
@@ -1313,8 +1358,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q dhcp-server -> r:^package dhcp-server is not installed"
 
   # 2.2.6 Ensure LDAP server is not installed. (Automated)
   - id: 31225
@@ -1333,8 +1379,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q openldap-servers -> r:^package openldap-servers is not installed"
 
   # 2.2.7 Ensure DNS Server is not installed. (Automated)
   - id: 31226
@@ -1351,8 +1398,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q bind -> r:^package bind is not installed"
 
   # 2.2.8 Ensure FTP Server is not installed. (Automated)
   - id: 31227
@@ -1369,8 +1417,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
   # 2.2.9 Ensure HTTP server is not installed. (Automated)
   - id: 31228
@@ -1387,8 +1436,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q nginx -> r:^package nginx is not installed"
+      - "c:rpm -q httpd -> r:^package httpd is not installed"
 
   # 2.2.10 Ensure IMAP and POP3 server is not installed. (Automated)
   - id: 31229
@@ -1405,8 +1456,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q dovecot -> r:^package dovecot is not installed"
+      - "c:rpm -q cyrus-imapd -> r:^package cyrus-imapd is not installed"
 
   # 2.2.11 Ensure Samba is not installed. (Automated)
   - id: 31230
@@ -1423,8 +1476,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q samba -> r:^package samba is not installed"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 31231
@@ -1441,8 +1495,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q squid -> r:^package squid is not installed"
 
   # 2.2.13 Ensure net-snmp is not installed. (Automated)
   - id: 31232
@@ -1459,8 +1514,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q net-snmp -> r:^package net-snmp is not installed"
 
   # 2.2.14 Ensure NIS server is not installed. (Automated)
   - id: 31233
@@ -1477,8 +1533,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q ypserv -> r:^package ypserv is not installed"
 
   # 2.2.15 Ensure telnet-server is not installed. (Automated)
   - id: 31234
@@ -1495,8 +1552,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
 
   # 2.2.16 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 31235
@@ -1513,8 +1571,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
 
   # 2.2.17 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 31236
@@ -1531,8 +1590,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q nfs-utils -> r:^package nfs-utils is not installed"
+      - "c:systemctl is-enabled nfs-server -> r:masked|No such file or directory"
 
   # 2.2.18 Ensure rpcbind is not installed or the rpcbind services are masked. (Automated)
   - id: 31237
@@ -1549,8 +1610,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q rpcbind -> r:^package rpcbind is not installed"
+      - "not c:systemctl status rpcbind rpcbind.socket -> r:Loaded: && !r: masked"
 
   # 2.2.19 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
   - id: 31238
@@ -1568,8 +1631,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q rsync -> r:^package rsync is not installed"
+      - "c:systemctl is-enabled rsyncd -> r:masked|No such file or directory"
+
+  ###############################################
+  # 2.3 Service Clients
+  ###############################################
 
   # 2.3.1 Ensure NIS Client is not installed. (Automated)
   - id: 31239
@@ -1587,14 +1656,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa ypbind -> r:ypbind"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 31240
     title: "Ensure rsh client is not installed."
     description: "The rsh package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Run the following command to remove the rsh package: # yum remove rsh."
     compliance:
@@ -1606,8 +1676,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa rsh -> r:rsh"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 31241
@@ -1625,8 +1696,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:rpm -qa talk -> r:talk"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 31242
@@ -1644,8 +1716,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q telnet -> r:^package telnet is not installed"
 
   # 2.3.5 Ensure LDAP client is not installed. (Automated)
   - id: 31243
@@ -1663,26 +1736,18 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
 
-  # 2.4 Ensure nonessential services are removed or masked. (Manual)
-  - id: 31244
-    title: "Ensure nonessential services are removed or masked."
-    description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP. A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations."
-    rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
-    remediation: "Run the following command to remove the package containing the service: # yum remove <package_name> OR If required packages have a dependency: Run the following command to stop and mask the service: # systemctl --now mask <service_name>."
-    compliance:
-      - cis: ["2.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 2.4 Ensure nonessential services are removed or masked. (Manual) - Not Implemented
+
+  ###############################################
+  # 3 Network Configuration
+  ###############################################
+  ###############################################
+  # 3.1 Uncommon Network Protocols
+  ###############################################
 
   # 3.1.1 Disable IPv6. (Manual)
   - id: 31245
@@ -1690,7 +1755,7 @@ checks:
     description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
     rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
     impact: "If IPv6 is disabled through sysctl config, SSH X11forwarding may no longer function as expected. We recommend that SSH X11fowarding be disabled, but if required, the following will allow for SSH X11forwarding with IPv6 disabled through sysctl config: Add the following line the /etc/ssh/sshd_config file: AddressFamily inet Run the following command to re-start the openSSH server: # systemctl restart sshd."
-    remediation: 'Use one of the two following methods to disable IPv6 on the system: To disable IPv6 through the GRUB2 config: Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Ru the following command to update the grub2 configuration: # grub2-mkconfig –o /boot/grub2/grub.cfg OR To disable IPv6 through sysctl settings: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.disable_ipv6=1 # sysctl -w net.ipv6.conf.default.disable_ipv6=1 # sysctl -w net.ipv6.route.flush=1.'
+    remediation: 'Use one of the two following methods to disable IPv6 on the system: To disable IPv6 through the GRUB2 config: Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Ru the following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg OR To disable IPv6 through sysctl settings: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.disable_ipv6=1 # sysctl -w net.ipv6.conf.default.disable_ipv6=1 # sysctl -w net.ipv6.route.flush=1.'
     compliance:
       - cis: ["3.1.1"]
       - cis_csc_v8: ["4.8"]
@@ -1700,27 +1765,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
 
-  # 3.1.2 Ensure wireless interfaces are disabled. (Automated)
-  - id: 31246
-    title: "Ensure wireless interfaces are disabled."
-    description: "Wireless networking is used when wired networks are unavailable."
-    rationale: "If wireless is not to be used, wireless devices should be disabled to reduce the potential attack surface."
-    impact: "Many if not all laptop workstations and some desktop workstations will connect via wireless requiring these interfaces be enabled."
-    remediation: 'Run the following script to disable any wireless interfaces: #!/bin/bash if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi.'
-    compliance:
-      - cis: ["3.1.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["15.4", "15.5"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 3.1.2 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
 
   # 3.2.1 Ensure IP forwarding is disabled. (Automated)
   - id: 31247
@@ -1738,8 +1787,12 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: none
     rules:
+      - 'c:grep -Rh -E -s ^\s*net.ipv4.ip_forward /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
+      - 'c:grep -Rh -E -s ^\s*net.ipv6.conf.all.forwarding /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
+      - 'c:sysctl net.ipv4.ip_forward -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
 
   # 3.2.2 Ensure packet redirect sending is disabled. (Automated)
   - id: 31248
@@ -1757,8 +1810,16 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:grep -Rh net.ipv4.conf.all.send_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.default.send_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
+
+  ###############################################
+  # 3.3 Network Parameters (Host and Router)
+  ###############################################
 
   # 3.3.1 Ensure source routed packets are not accepted. (Automated)
   - id: 31249
@@ -1776,8 +1837,16 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.all.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.default.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0|No such file or directory'
+      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0|No such file or directory'
+      - 'c:grep -Rh net.ipv6.conf.all.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0'
+      - 'c:grep -Rh net.ipv6.conf.default.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0'
 
   # 3.3.2 Ensure ICMP redirects are not accepted. (Automated)
   - id: 31250
@@ -1795,8 +1864,16 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.all.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.default.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^\s*net.ipv6.conf.all.accept_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv6.conf.all.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.all.accept_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv6.conf.default.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
 
   # 3.3.3 Ensure secure ICMP redirects are not accepted. (Automated)
   - id: 31251
@@ -1814,8 +1891,12 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.all.secure_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
+      - 'c:grep -Rh net.ipv4.conf.default.secure_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
 
   # 3.3.4 Ensure suspicious packets are logged. (Automated)
   - id: 31252
@@ -1833,8 +1914,12 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
+      - 'c:grep -Rh net.ipv4.conf.all.log_martians /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'c:grep -Rh net.ipv4.conf.default.log_martians /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
 
   # 3.3.5 Ensure broadcast ICMP requests are ignored. (Automated)
   - id: 31253
@@ -1852,8 +1937,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
+      - 'not c:grep -E -s -Rh ^\s*net.ipv4.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*0'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated)
   - id: 31254
@@ -1871,8 +1958,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
+      - 'not c:grep -E -s -Rh ^\s*net.ipv4.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*0'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated)
   - id: 31255
@@ -1890,8 +1979,12 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
+      - 'not c:grep -E -s -Rh ^\s*net.ipv4.conf.all.rp_filter /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*0'
+      - 'c:grep -E -s -Rh ^\s*net.ipv4.conf.default.rp_filter /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
 
   # 3.3.8 Ensure TCP SYN Cookies is enabled. (Automated)
   - id: 31256
@@ -1909,8 +2002,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*1'
+      - 'not c:grep -E -r -Rh ^\s*net.ipv4.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*[02]'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated)
   - id: 31257
@@ -1928,8 +2023,12 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
+      - 'c:grep -Rh net.ipv6.conf.all.accept_ra /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
+      - 'c:grep -Rh net.ipv6.conf.default.accept_ra /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
 
   # 3.4.1 Ensure DCCP is disabled. (Automated)
   - id: 31258
@@ -1967,6 +2066,13 @@ checks:
     condition:
     rules:
 
+  ###############################################
+  # 3.5 Firewall Configuration
+  ###############################################
+  ###############################################
+  # 3.5.1 Ensure Firewall software is installed
+  ###############################################
+
   # 3.5.1.1 Ensure firewalld is installed. (Automated)
   - id: 31260
     title: "Ensure firewalld is installed."
@@ -1984,8 +2090,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q firewalld -> r:^firewalld-"
+      - "c:rpm -q iptables -> r:^iptables-"
 
   # 3.5.1.2 Ensure iptables-services not installed with firewalld. (Automated)
   - id: 31261
@@ -2004,8 +2112,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
 
   # 3.5.1.3 Ensure nftables either not installed or masked with firewalld. (Automated)
   - id: 31262
@@ -2023,8 +2132,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:systemctl status nftables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
+      - 'c:systemctl status nftables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
+      - "not p:nftables"
 
   # 3.5.1.4 Ensure firewalld service enabled and running. (Automated)
   - id: 31263
@@ -2043,73 +2155,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "p:firewalld"
+      - "c:firewall-cmd --state -> r:running"
 
-  # 3.5.1.5 Ensure firewalld default zone is set. (Automated)
-  - id: 31264
-    title: "Ensure firewalld default zone is set."
-    description: "A firewall zone defines the trust level for a connection, interface or source address binding. This is a one to many relation, which means that a connection, interface or source can only be part of one zone, but a zone can be used for many network connections, interfaces and sources. - The default zone is the zone that is used for everything that is not explicitly - bound/assigned to another zone. If no zone assigned to a connection, interface or source, only the default zone is used. - The default zone is not always listed as being used for an interface or source as it will be used for it either way. This depends on the manager of the interfaces. Connections handled by NetworkManager are listed as NetworkManager requests to add the zone binding for the interface used by the connection. Also interfaces under control of the network service are listed also because the service requests it. Note: - A firewalld zone configuration file contains the information for a zone. o These are the zone description, services, ports, protocols, icmp-blocks, masquerade, forward-ports and rich language rules in an XML file format. o The file name has to be zone_name.xml where length of zone_name is currently limited to 17 chars. - NetworkManager binds interfaces to zones automatically."
-    rationale: "Because the default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone, it is important for the default zone to set."
-    remediation: "Run the following command to set the default zone: # firewall-cmd --set-default-zone=<NAME_OF_ZONE> Example: # firewall-cmd --set-default-zone=public."
-    references:
-      - "https://firewalld.org/documentation"
-      - "https://firewalld.org/documentation/man-pages/firewalld.zone"
-    compliance:
-      - cis: ["3.5.1.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.5.1.6 Ensure network interfaces are assigned to appropriate zone. (Manual)
-  - id: 31265
-    title: "Ensure network interfaces are assigned to appropriate zone."
-    description: "firewall zones define the trust level of network connections or interfaces."
-    rationale: "A network interface not assigned to the appropriate zone can allow unexpected or undesired network traffic to be accepted on the interface."
-    impact: "Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following command to assign an interface to the approprate zone. # firewall-cmd --zone=<Zone NAME> --change-interface=<INTERFACE NAME> Example: # firewall-cmd --zone=customezone --change-interface=eth0."
-    references:
-      - "https://firewalld.org/documentation/zone/connections-interfaces-and-"
-    compliance:
-      - cis: ["3.5.1.6"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.5.1.7 Ensure firewalld drops unnecessary services and ports. (Manual)
-  - id: 31266
-    title: "Ensure firewalld drops unnecessary services and ports."
-    description: "Services and ports can be accepted or explicitly rejected or dropped by a zone. For every zone, you can set a default behavior that handles incoming traffic that is not further specified. Such behavior is defined by setting the target of the zone. There are three options - default, ACCEPT, REJECT, and DROP. - ACCEPT - you accept all incoming packets except those disabled by a specific rule. - REJECT - you disable all incoming packets except those that you have allowed in specific rules and the source machine is informed about the rejection. - DROP - you disable all incoming packets except those that you have allowed in specific rules and no information sent to the source machine."
-    rationale: "To reduce the attack surface of a system, all services and ports should be blocked unless required."
-    remediation: "Run the following command to remove an unnecessary service: # firewall-cmd --remove-service=<service> Example: # firewall-cmd --remove-service=cockpit Run the following command to remove an unnecessary port: # firewall-cmd --remove-port=<port-number>/<port-type> Example: # firewall-cmd --remove-port=25/tcp Run the following command to make new settings persistent: # firewall-cmd --runtime-to-permanent."
-    references:
-      - "https://access.redhat.com/documentation/en-"
-    compliance:
-      - cis: ["3.5.1.7"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.1.5 Ensure firewalld default zone is set. (Automated) - Not Implemented
+  # 3.5.1.6 Ensure network interfaces are assigned to appropriate zone. (Manual) - Not Implemented
+  # 3.5.1.7 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
 
   # 3.5.2.1 Ensure nftables is installed. (Automated)
   - id: 31267
@@ -2128,13 +2181,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q nftables -> r:^nftables-"
 
   # 3.5.2.2 Ensure firewalld is either not installed or masked with nftables. (Automated)
   - id: 31268
     title: "Ensure firewalld is either not installed or masked with nftables."
-    description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
+    description: 'firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall "zones" to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options.'
     rationale: "Running both nftables.service and firewalld.service may lead to conflict and unexpected results."
     remediation: "Run the following command to remove firewalld # yum remove firewalld OR Run the following command to stop and mask firewalld # systemctl --now mask firewalld."
     compliance:
@@ -2147,8 +2201,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "p:firewalld"
+      - "c:firewall-cmd --state -> r:running"
 
   # 3.5.2.3 Ensure iptables-services not installed with nftables. (Automated)
   - id: 31269
@@ -2166,8 +2222,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables-services -> r:^package iptables-services is not installed"
 
   # 3.5.2.4 Ensure iptables are flushed with nftables. (Manual)
   - id: 31270
@@ -2185,8 +2242,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: none
     rules:
+      - 'c:iptables -L -> !r:^\s*Chain|^\s*target && r:\s*\S+'
+      - 'c:ip6tables -L -> !r:^\s*Chain|^\s*target && r:\s*\S+'
 
   # 3.5.2.5 Ensure an nftables table exists. (Automated)
   - id: 31271
@@ -2205,8 +2264,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:nft list tables -> r:\w+'
 
   # 3.5.2.6 Ensure nftables base chains exist. (Automated)
   - id: 31272
@@ -2225,8 +2285,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:nft list ruleset -> r:hook input"
+      - "c:nft list ruleset -> r:hook forward"
+      - "c:nft list ruleset -> r:hook output"
 
   # 3.5.2.7 Ensure nftables loopback traffic is configured. (Automated)
   - id: 31273
@@ -2244,27 +2307,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr 127.0.0.0/8'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip6 saddr ::1'
 
-  # 3.5.2.8 Ensure nftables outbound and established connections are configured. (Manual)
-  - id: 31274
-    title: "Ensure nftables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound and established connections."
-    rationale: "If rules are not in place for new outbound and established connections, all packets will be dropped by the default policy preventing network usage."
-    remediation: "Configure nftables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # nft add rule inet filter input ip protocol tcp ct state established accept # nft add rule inet filter input ip protocol udp ct state established accept # nft add rule inet filter input ip protocol icmp ct state established accept # nft add rule inet filter output ip protocol tcp ct state new,related,established accept # nft add rule inet filter output ip protocol udp ct state new,related,established accept # nft add rule inet filter output ip protocol icmp ct state new,related,established accept."
-    compliance:
-      - cis: ["3.5.2.8"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.2.8 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
   # 3.5.2.9 Ensure nftables default deny firewall policy. (Automated)
   - id: 31275
@@ -2283,8 +2332,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:nft list ruleset -> r:hook input && r:policy drop"
+      - "c:nft list ruleset -> r:hook forward && r:policy drop"
+      - "c:nft list ruleset -> r:hook output && r:policy drop"
 
   # 3.5.2.10 Ensure nftables service is enabled. (Automated)
   - id: 31276
@@ -2302,27 +2354,18 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled nftables -> r:enabled"
 
-  # 3.5.2.11 Ensure nftables rules are permanent. (Automated)
-  - id: 31277
-    title: "Ensure nftables rules are permanent."
-    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/sysconfig/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
-    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot."
-    remediation: 'Edit the /etc/sysconfig/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot: Example: include "/etc/nftables/nftables.rules".'
-    compliance:
-      - cis: ["3.5.2.11"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.2.11 Ensure nftables rules are permanent. (Automated) - Not Implemented
+
+  ###############################################
+  # 3.5.3 Configure iptables
+  ###############################################
+  ###############################################
+  # 3.5.3.1 Configure IPv4 iptables
+  ###############################################
 
   # 3.5.3.1.1 Ensure iptables packages are installed. (Automated)
   - id: 31278
@@ -2340,8 +2383,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables -> r:^iptables-"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables. (Automated)
   - id: 31279
@@ -2359,13 +2403,16 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:systemctl status nftables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
+      - 'c:systemctl status nftables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
+      - "c:rpm -q nftables -> r:^package nftables is not installed"
 
   # 3.5.3.1.3 Ensure firewalld is either not installed or masked with iptables. (Automated)
   - id: 31280
     title: "Ensure firewalld is either not installed or masked with iptables."
-    description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
+    description: 'firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall "zones" to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options.'
     rationale: "Running iptables.service and\\or ip6tables.service with firewalld.service may lead to conflict and unexpected results."
     remediation: "Run the following command to remove firewalld # yum remove firewalld OR Run the following command to stop and mask firewalld # systemctl --now mask firewalld."
     compliance:
@@ -2378,8 +2425,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "p:firewalld"
+      - "c:firewall-cmd --state -> r:running"
 
   # 3.5.3.2.1 Ensure iptables loopback traffic is configured. (Automated)
   - id: 31281
@@ -2397,46 +2446,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-  # 3.5.3.2.2 Ensure iptables outbound and established connections are configured. (Manual)
-  - id: 31282
-    title: "Ensure iptables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["3.5.3.2.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.5.3.2.3 Ensure iptables rules exist for all open ports. (Automated)
-  - id: 31283
-    title: "Ensure iptables rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["3.5.3.2.3"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.2", "9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1", "A.13.1.3"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.3.2.2 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
+  # 3.5.3.2.3 Ensure iptables rules exist for all open ports. (Automated) - Not Implemented
 
   # 3.5.3.2.4 Ensure iptables default deny firewall policy. (Automated)
   - id: 31284
@@ -2454,27 +2471,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)'
+      - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)'
+      - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)'
 
-  # 3.5.3.2.5 Ensure iptables rules are saved. (Automated)
-  - id: 31285
-    title: "Ensure iptables rules are saved."
-    description: "The iptables-services package includes the /etc/sysconfig/iptables file. The iptables rules in this file will be loaded by the iptables.service during boot, or when it is started or re-loaded."
-    rationale: "If the iptables rules are not saved and a system re-boot occurs, the iptables rules will be lost."
-    remediation: "Run the following commands to create or update the /etc/sysconfig/iptables file: Run the following command to review the current running iptables configuration: # iptables -L Output should include: Chain INPUT (policy DROP) target prot opt source destination ACCEPT all -- anywhere anywhere DROP all -- loopback/8 anywhere ACCEPT tcp -- anywhere anywhere state ESTABLISHED ACCEPT udp -- anywhere anywhere state ESTABLISHED ACCEPT icmp -- anywhere anywhere state ESTABLISHED ACCEPT tcp -- anywhere anywhere tcp dpt:ssh state NEW Chain FORWARD (policy DROP) target prot opt source destination Chain OUTPUT (policy DROP) target prot opt source destination ACCEPT all -- anywhere anywhere ACCEPT tcp -- anywhere anywhere state NEW,ESTABLISHED ACCEPT udp -- anywhere anywhere state NEW,ESTABLISHED ACCEPT icmp -- anywhere anywhere state NEW,ESTABLISHED Run the following command to save the verified running configuration to the file /etc/sysconfig/iptables: # service iptables save iptables: Saving firewall rules to /etc/sysconfig/iptables:[ OK ]."
-    compliance:
-      - cis: ["3.5.3.2.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.3.2.5 Ensure iptables rules are saved. (Automated) - Not Implemented
 
   # 3.5.3.2.6 Ensure iptables is enabled and running. (Automated)
   - id: 31286
@@ -2492,8 +2495,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled iptables -> r:^enabled"
+
+  ###############################################
+  # 3.4.3.3 Configure IPv6 ip6tables
+  ###############################################
 
   # 3.5.3.3.1 Ensure ip6tables loopback traffic is configured. (Automated)
   - id: 31287
@@ -2511,46 +2519,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
 
-  # 3.5.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual)
-  - id: 31288
-    title: "Ensure ip6tables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established IPv6 connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # ip6tables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["3.5.3.3.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.5.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated)
-  - id: 31289
-    title: "Ensure ip6tables firewall rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["3.5.3.3.3"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
+  # 3.5.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
 
   # 3.5.3.3.4 Ensure ip6tables default deny firewall policy. (Automated)
   - id: 31290
@@ -2568,27 +2544,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ip6tables -L -> r:Chain INPUT \(policy DROP\)'
+      - 'c:ip6tables -L -> r:Chain FORWARD \(policy DROP\)'
+      - 'c:ip6tables -L -> r:Chain OUTPUT \(policy DROP\)'
 
-  # 3.5.3.3.5 Ensure ip6tables rules are saved. (Automated)
-  - id: 31291
-    title: "Ensure ip6tables rules are saved."
-    description: "The iptables-services package includes the /etc/sysconfig/ip6tables file. The ip6tables rules in this file will be loaded by the ip6tables.service during boot, or when it is started or re-loaded."
-    rationale: "If the ip6tables rules are not saved and a system re-boot occurs, the ip6tables rules will be lost."
-    remediation: "Run the following commands to create or update the /etc/sysconfig/ip6tables file: Run the following command to review the current running iptables configuration: # ip6tables -L Output should include: Chain INPUT (policy DROP) target prot opt source destination ACCEPT all anywhere anywhere DROP all localhost anywhere ACCEPT tcp anywhere anywhere state ESTABLISHED ACCEPT udp anywhere anywhere state ESTABLISHED ACCEPT icmp anywhere anywhere state ESTABLISHED ACCEPT tcp anywhere anywhere tcp dpt:ssh state NEW Chain FORWARD (policy DROP) target prot opt source destination Chain OUTPUT (policy DROP) target prot opt source destination ACCEPT all anywhere anywhere ACCEPT tcp anywhere anywhere state NEW,ESTABLISHED ACCEPT udp anywhere anywhere state NEW,ESTABLISHED ACCEPT icmp anywhere anywhere state NEW,ESTABLISHED Run the following command to save the verified running configuration to the file /etc/sysconfig/ip6tables: # service ip6tables save ip6tables: Saving firewall rules to /etc/sysconfig/ip6table[ OK ]."
-    compliance:
-      - cis: ["3.5.3.3.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.5.3.3.5 Ensure ip6tables rules are saved. (Automated) - Not Implemented
 
   # 3.5.3.3.6 Ensure ip6tables is enabled and running. (Automated)
   - id: 31292
@@ -2606,8 +2568,16 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: none
     rules:
+      - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
+
+  ###############################################
+  # 4 Logging and Auditing
+  ###############################################
+  ###############################################
+  # 4.1.1 Configure System Accounting (auditd)
+  ###############################################
 
   # 4.1.1.1 Ensure auditd is installed. (Automated)
   - id: 31293
@@ -2625,8 +2595,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q audit audit-libs -> r:^audit-"
 
   # 4.1.1.2 Ensure auditd service is enabled and running. (Automated)
   - id: 31294
@@ -2644,8 +2615,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled auditd -> r:enabled"
 
   # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 31295
@@ -2663,8 +2635,13 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: none
     rules:
+      - "f:/boot/grub2/grubenv -> r:kernelopts= && !r:audit=1"
+
+  ###############################################
+  # 4.1.2 Configure Data Retention
+  ###############################################
 
   # 4.1.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 31296
@@ -2679,8 +2656,9 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
 
   # 4.1.2.2 Ensure audit logs are not automatically deleted. (Automated)
   - id: 31297
@@ -2695,8 +2673,9 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^max_log_file_action\s*=\s*keep_logs'
 
   # 4.1.2.3 Ensure system is disabled when audit logs are full. (Automated)
   - id: 31298
@@ -2715,8 +2694,11 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:^space_left_action\s*=\s*email'
+      - 'f:/etc/audit/auditd.conf -> r:^action_mail_acct\s*=\s*root'
+      - 'f:/etc/audit/auditd.conf -> r:^admin_space_left_action\s*=\s*halt'
 
   # 4.1.2.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 31299
@@ -2735,15 +2717,16 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:grubby --info=ALL -> n:^args=\.*\saudit_backlog_limit=(\d+) compare >= 8192'
 
   # 4.1.3 Ensure events that modify date and time information are collected. (Automated)
   - id: 31300
     title: "Ensure events that modify date and time information are collected."
     description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change" Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time_change.rules Add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-time_change.rules Add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change."
+    remediation: 'For 32 bit systems Edit or Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. 64 Bit systems Example: # printf \" -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change -w /etc/localtime -p wa -k time-change \" >> /etc/audit/rules.d/50-time-change.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64. In addition, add stime to the system call audit. Example: -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change.'
     compliance:
       - cis: ["4.1.3"]
       - cis_csc_v8: ["8.5"]
@@ -2754,8 +2737,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 4.1.4 Ensure events that modify user/group information are collected. (Automated)
   - id: 31301
@@ -2773,8 +2762,18 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/group -p wa -k identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/passwd -p wa -k identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/gshadow -p wa -k identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/shadow -p wa -k identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -w /etc/security/opasswd -p wa -k identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
 
   # 4.1.5 Ensure events that modify the system's network environment are collected. (Automated)
   - id: 31302
@@ -2792,8 +2791,22 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/issue -p wa -k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/issue.net -p wa -k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/hosts -p wa -k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network -p wa -k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/sysconfig/network-scripts/ -p wa -k system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/sysconfig/network-scripts && r:-p wa && r:-k system-locale|key=system-locale"
 
   # 4.1.6 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 31303
@@ -2811,8 +2824,12 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/selinux/ -p wa -k MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /usr/share/selinux/ -p wa -k MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
   # 4.1.7 Ensure login and logout events are collected. (Automated)
   - id: 31304
@@ -2830,13 +2847,17 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/lastlog -p wa -k logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/run/faillock/ -p wa -k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
+      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
 
   # 4.1.8 Ensure session initiation information is collected. (Automated)
   - id: 31305
     title: "Ensure session initiation information is collected."
-    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins." Notes: - The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
+    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. - /var/run/utmp - tracks all currently logged in users. - /var/log/wtmp - file tracks logins, logouts, shutdown, and reboot events. - /var/log/btmp - keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp. All audit records will be tagged with the identifier "session.". - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-session.rules Add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins."
     compliance:
@@ -2849,27 +2870,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/run/utmp -p wa -k session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/wtmp -p wa -k logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /var/log/btmp -p wa -k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
 
-  # 4.1.9 Ensure discretionary access control permission modification events are collected. (Automated)
-  - id: 31306
-    title: "Ensure discretionary access control permission modification events are collected."
-    description: "Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >=1000) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier \"perm_mod.\" Note: Systems may have been customized to change the default UID_MIN. To confirm the UID_MIN for your system, run the following command: # awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs If your systems' UID_MIN is not 1000, replace audit>=1000 with audit>=<UID_MIN for your system> in the Audit and Remediation procedures. Reloading the auditd config to set active settings may require a system reboot."
-    rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
-    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-perm_mod.rules Add the following lines: -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-perm_mod.rules Add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod."
-    compliance:
-      - cis: ["4.1.9"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["5.5"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.1.2"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 4.1.9 Ensure discretionary access control permission modification events are collected. (Automated) - Not Implemented
 
   # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected. (Automated)
   - id: 31307
@@ -2887,27 +2897,18 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
 
-  # 4.1.11 Ensure use of privileged commands is collected. (Automated)
-  - id: 31308
-    title: "Ensure use of privileged commands is collected."
-    description: "Monitor privileged programs (those that have the setuid and/or setgid bit set on execution) to determine if unprivileged users are running these commands. Note: Systems may have been customized to change the default UID_MIN. To confirm the UID_MIN for your system, run the following command: # awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs If your systems' UID_MIN is not 1000, replace audit>=1000 with audit>=<UID_MIN for your system> in the Audit and Remediation procedures. Reloading the auditd config to set active settings may require a system reboot."
-    rationale: "Execution of privileged commands by non-privileged users could be an indication of someone trying to gain unauthorized access to the system."
-    remediation: "To remediate this issue, the system administrator will have to execute a find command to locate all the privileged programs and then add an audit line for each one of them. The audit parameters associated with this are as follows: - -F path=\" $1 \" - will populate each file name found through the find command and processed by awk. - -F perm=x - will write an audit record if the file is executed. - -F audit>=1000 - will write a record if the user executing the command is not a privileged user. - -F auid!= 4294967295 - will ignore Daemon events All audit records should be tagged with the identifier \"privileged\". Run the following command replacing with a list of partitions where programs can be executed from on your system: # find <partition> -xdev \\( -perm -4000 -o -perm -2000 \\) -type f | awk '{print \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>='\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' -F auid!=4294967295 -k privileged\" }' Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add all resulting lines to the file. Example: # find / -xdev \\( -perm -4000 -o -perm -2000 \\) -type f | awk '{print \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>='\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' -F auid!=4294967295 -k privileged\" }' >> /etc/audit/rules.d/50-privileged.rules."
-    compliance:
-      - cis: ["4.1.11"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 4.1.11 Ensure use of privileged commands is collected. (Automated) - Not Implemented
 
   # 4.1.12 Ensure successful file system mounts are collected. (Automated)
   - id: 31309
@@ -2925,8 +2926,12 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
   # 4.1.13 Ensure file deletion events by users are collected. (Automated)
   - id: 31310
@@ -2944,8 +2949,12 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 31311
@@ -2963,8 +2972,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d -> .rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope"
+      - "d:/etc/audit/rules.d -> .rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope"
 
   # 4.1.15 Ensure system administrator command executions (sudo) are collected. (Automated)
   - id: 31312
@@ -2982,8 +2993,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/sudo && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k sudo|-F key=sudo'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/sudo && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k sudo|-F key=sudo'
 
   # 4.1.16 Ensure kernel module loading and unloading is collected. (Automated)
   - id: 31313
@@ -3001,8 +3014,18 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modinfo -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modprobe -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/depmod -> r:/bin/kmod"
 
   # 4.1.17 Ensure the audit configuration is immutable. (Automated)
   - id: 31314
@@ -3021,8 +3044,15 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
+
+  ###############################################
+  # 4.2 Configure Logging
+  ###############################################
+  # 4.2.1 Configure rsyslog
+  ###############################################
 
   # 4.2.1.1 Ensure rsyslog is installed. (Automated)
   - id: 31315
@@ -3040,8 +3070,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q rsyslog -> r:^rsyslog-"
 
   # 4.2.1.2 Ensure rsyslog Service is enabled and running. (Automated)
   - id: 31316
@@ -3059,8 +3090,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
 
   # 4.2.1.3 Ensure rsyslog default file permissions configured. (Automated)
   - id: 31317
@@ -3079,27 +3111,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
 
-  # 4.2.1.4 Ensure logging is configured. (Manual)
-  - id: 31318
-    title: "Ensure logging is configured."
-    description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
-    rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-    remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment: *.emerg :omusrmsg:* auth,authpriv.* /var/log/secure mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err news.crit -/var/log/news/news.crit news.err -/var/log/news/news.err news.notice -/var/log/news/news.notice *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
-    compliance:
-      - cis: ["4.2.1.4"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
+  # 4.2.1.4 Ensure logging is configured. (Manual) - Not Implemented
 
   # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Automated)
   - id: 31319
@@ -3115,15 +3132,19 @@ checks:
       - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.3.3"]
       - soc_2: ["PL1.4"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* @@\.+'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* action && r:target="'
+      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* @@\.+'
+      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
 
   # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual)
   - id: 31320
     title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
     description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port. Note: The $ModLoad imtcp line can have the .so extension added to the end of the module, or use the full path to the module."
     rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
-    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un- comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
+    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
     compliance:
       - cis: ["4.2.1.6"]
       - cis_csc_v8: ["3.3"]
@@ -3135,8 +3156,14 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|\s*\t*^\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
+      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
+
+  ###############################################
+  # 4.2.2.1 Configure systemd journal remote
+  ###############################################
 
   # 4.2.2.1 Ensure journald is configured to send logs to rsyslog. (Automated)
   - id: 31321
@@ -3154,8 +3181,9 @@ checks:
       - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.3.3"]
       - soc_2: ["PL1.4"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.2 Ensure journald is configured to compress large log files. (Automated)
   - id: 31322
@@ -3172,8 +3200,9 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*=\s*yes'
 
   # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk. (Automated)
   - id: 31323
@@ -3193,8 +3222,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*=\s*persistent'
 
   # 4.2.3 Ensure permissions on all logfiles are configured. (Manual)
   - id: 31324
@@ -3213,24 +3243,18 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
 
-  # 4.2.4 Ensure logrotate is configured. (Manual)
-  - id: 31325
-    title: "Ensure logrotate is configured."
-    description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/logrotate.d/syslog is the configuration file used to rotate log files created by syslog or rsyslog. Note: If no maxage setting is set for logrotate a situation can occur where logrotate is interrupted and fails to delete rotated logfiles. It is recommended to set this to a value greater than the longest any log file should exist on your system to ensure that any such logfile is removed but standard rotation settings are not overridden."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Edit /etc/logrotate.conf and /etc/logrotate.d/* to ensure logs are rotated according to site policy."
-    compliance:
-      - cis: ["4.2.4"]
-      - cis_csc_v8: ["8.3"]
-      - cis_csc_v7: ["6.4"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - pci_dss_v3.2.1: ["10.7"]
-      - soc_2: ["A1.1"]
-    condition:
-    rules:
+  # 4.2.4 Ensure logrotate is configured. (Manual) - Not Implemented
+
+  ###############################################
+  # 5 Access, Authentication and Authorization
+  ###############################################
+  ###############################################
+  # 5.1 Configure cron
+  ###############################################
 
   # 5.1.1 Ensure cron daemon is enabled and running. (Automated)
   - id: 31326
@@ -3248,8 +3272,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled cron -> r:enabled"
+      - 'c:systemctl status cron -> r:Active: active \(running\)'
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 31327
@@ -3268,8 +3294,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 31328
@@ -3288,8 +3315,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 31329
@@ -3308,8 +3336,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 31330
@@ -3328,8 +3357,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 31331
@@ -3348,8 +3378,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 31332
@@ -3368,8 +3399,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
   - id: 31333
@@ -3387,8 +3419,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
+      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 31334
@@ -3406,8 +3440,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:stat -L /etc/at.deny -> r:No such file or directory$"
+      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.2.1 Ensure sudo is installed. (Automated)
   - id: 31335
