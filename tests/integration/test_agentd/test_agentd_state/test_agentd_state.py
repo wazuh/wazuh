@@ -53,17 +53,20 @@ import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data
 from wazuh_testing.utils.configuration import load_configuration_template
-from wazuh_testing.utils import callbacks
+from wazuh_testing.utils import file
 from wazuh_testing.utils.services import check_if_process_is_running, control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
+
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0), pytest.mark.agent]
+pytestmark = pytest.mark.tier(level=0)
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -76,20 +79,9 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 
 # Test configurations.
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
-
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
-if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
-else:
-    local_internal_options = {AGENTD_DEBUG: '2'}
-
-# Fixtures
-@pytest.fixture(scope="module", params=configurations, ids=[""])
-def get_configuration(request):
-    """Get configurations from the module"""
-    return request.param
-
+print(test_configuration)
 
 # Functions
 def extra_configuration_before_yield():
@@ -103,20 +95,21 @@ def extra_configuration_after_yield():
     # Set default values
     change_internal_options('agent.debug', '0')
     set_state_interval(5, internal_options)
-    truncate_file(CLIENT_KEYS_PATH)
+    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
 
+def start_remoted_server(test_metadata) -> None:
+    if 'remoted' in test_metadata['input'] and test_metadata['input']['remoted']:
+        remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=WAZUH_CLIENT_KEYS_PATH)
+        return remoted_server
 
 def add_custom_key():
     """Set test client.keys file"""
-    with open(CLIENT_KEYS_PATH, 'w+') as client_keys:
+    with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
         client_keys.write("100 ubuntu-agent any TopSecret")
 
 
-# Tests
-@pytest.mark.parametrize('test_case',
-                         [test_case['test_case'] for test_case in test_cases],
-                         ids=[test_case['name'] for test_case in test_cases])
-def test_agentd_state(configure_environment, test_case):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_agentd_state(test_configuration, test_metadata, remove_state_file, truncate_monitored_files):
     '''
     description: Check that the statistics file 'wazuh-agentd.state' is created automatically
                  and verify that the content of its fields is correct.
@@ -146,7 +139,7 @@ def test_agentd_state(configure_environment, test_case):
         - r'pending'
         - r'connected'
     '''
-    global remoted_server
+    remoted_server = start_remoted_server(test_metadata) 
     if remoted_server is not None:
         remoted_server.stop()
     # Stop service
@@ -156,12 +149,6 @@ def test_agentd_state(configure_environment, test_case):
         set_state_interval(test_case['input']['interval'], internal_options)
     else:
         set_state_interval(1, internal_options)
-
-    # Truncate ossec.log in order to watch it correctly
-    truncate_file(LOG_FILE_PATH)
-
-    # Remove state file to check if agent behavior is as expected
-    os.remove(state_file_path) if os.path.exists(state_file_path) else None
 
     # Add dummy key in order to communicate with RemotedSimulator
     add_custom_key()

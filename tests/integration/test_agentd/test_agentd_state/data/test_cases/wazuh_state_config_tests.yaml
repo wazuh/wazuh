@@ -1,5 +1,7 @@
 - name: "No connection with remoted"
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input:
       remoted: false
     output:
@@ -11,7 +13,9 @@
         msg_count: ""
 
 - name: "Successful connection with remoted"
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input:
       remoted: true
     output:
@@ -29,7 +33,9 @@
         msg_count: true
 
 - name: "Only remote request available"
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input:
       remoted: true
       interval: '0'
