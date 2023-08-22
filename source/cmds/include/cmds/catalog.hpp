@@ -25,6 +25,7 @@ void runGet(std::shared_ptr<apiclnt::Client> client,
             const std::string& format,
             const std::string& nameStr,
             const bool original,
+            const std::string& namespaceId,
             const std::string& role);
 
 void runUpdate(std::shared_ptr<apiclnt::Client> client,
@@ -37,10 +38,12 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& resourceTypeStr,
                const std::string& content,
-               const std::string& namespacesId,
+               const std::string& namespaceId,
                const std::string& role);
 
-void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, const std::string& role);
+void runDelete(std::shared_ptr<apiclnt::Client> client,
+               const std::string& nameStr,
+               const std::string& role);
 
 void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,
@@ -53,6 +56,7 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
              const std::string& nameStr,
              const std::string& path,
              bool recursive,
+             const std::string& namespaceId,
              const std::string& role);
 
 void configure(CLI::App_p app);

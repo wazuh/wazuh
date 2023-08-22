@@ -90,6 +90,7 @@ std::optional<base::Error> Integration::removeFrom(const api::catalog::Resource&
                                         policy.m_name.fullName())};
     }
 
+    // TODO implement namespaces
     auto respose = m_catalog->getResource(policy);
     if (std::holds_alternative<base::Error>(respose))
     {
