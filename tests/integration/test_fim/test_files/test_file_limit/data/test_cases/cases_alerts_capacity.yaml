@@ -1,0 +1,45 @@
+- name: Create after delete - Real-time
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 'yes'
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 4
+    fim_mode: realtime
+
+- name: Create after delete - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 'yes'
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 4
+    fim_mode: whodata
+
+- name: Create after delete - Scheduled
+  description: When a scheduled monitored directory es deleted
+               or added FIM raises a log in the next scan, in
+               this case the scan are made every 3 secconds. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 'yes'
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 4
+    fim_mode: scheduled
