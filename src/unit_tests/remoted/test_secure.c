@@ -35,6 +35,9 @@
 extern keystore keys;
 extern remoted logr;
 extern wnotify_t * notify;
+extern char *str_family_address[AF_MAX + 2];
+
+void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
 /* Forward declarations */
 void * close_fp_main(void * args);
@@ -382,7 +385,7 @@ void test_close_fp_main_close_fp_null(void **state)
     os_free(first_node_key);
 }
 
-void test_HandleSecureMessage_invalid_family_address(void **state)
+void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family)
 {
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = { .buffer = buffer, .size = 6, .sock = 1};
@@ -404,10 +407,17 @@ void test_HandleSecureMessage_invalid_family_address(void **state)
 
     global_counter = 0;
 
-    peer_info.sin_family = AF_UNSPEC;
+    peer_info.sin_family = sin_family;
     memcpy(&message.addr, &peer_info, sizeof(peer_info));
+    char auxBuff[OS_MAXSTR + 1] = {0};
 
-    expect_string(__wrap__merror, formatted_msg, "IP address family '0' not supported.");
+    if (peer_info.sin_family < sizeof(str_family_address)/sizeof(str_family_address[0])) {
+        sprintf(auxBuff, "IP address family '%d':'%s' not supported.", peer_info.sin_family, str_family_address[peer_info.sin_family]);
+        expect_string(__wrap__merror, formatted_msg, auxBuff);
+    } else {
+        sprintf(auxBuff, "IP address family '%d' not found.", peer_info.sin_family);
+        expect_string(__wrap__merror, formatted_msg, auxBuff);
+    }
 
     expect_function_call(__wrap_rem_inc_recv_unknown);
 
@@ -416,6 +426,31 @@ void test_HandleSecureMessage_invalid_family_address(void **state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
+}
+
+void test_HandleSecureMessage_invalid_family_address_af_unspec(void **state)
+{
+   tmp_HandleSecureMessage_invalid_family_address(AF_UNSPEC);
+}
+
+void test_HandleSecureMessage_invalid_family_address_af_netlink(void **state)
+{
+   tmp_HandleSecureMessage_invalid_family_address(AF_NETLINK);
+}
+
+void test_HandleSecureMessage_invalid_family_address_af_unix(void **state)
+{
+   tmp_HandleSecureMessage_invalid_family_address(AF_UNIX);
+}
+
+void test_HandleSecureMessage_invalid_family_address_af_x25(void **state)
+{
+   tmp_HandleSecureMessage_invalid_family_address(AF_X25);
+}
+
+void test_HandleSecureMessage_invalid_family_address_not_found(void **state)
+{
+   tmp_HandleSecureMessage_invalid_family_address(50);
 }
 
 void test_HandleSecureMessage_invalid_message(void **state)
@@ -1723,7 +1758,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2_close_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
         // Tests HandleSecureMessage
-        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_unspec),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_netlink),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_unix),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_x25),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_not_found),
         cmocka_unit_test(test_HandleSecureMessage_invalid_message),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
