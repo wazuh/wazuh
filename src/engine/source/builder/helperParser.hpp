@@ -229,7 +229,8 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         }
 
         // Unescape \$ at the beginning of the parameter
-        if (next + 1 < sv.size() && sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE && sv[next + 1] == syntax::REFERENCE_ANCHOR)
+        if (next + 1 < sv.size() && sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE
+            && sv[next + 1] == syntax::REFERENCE_ANCHOR)
         {
             arg += '\\';
             ++next;
@@ -361,8 +362,7 @@ inline parsec::Parser<ExpressionToken> getExpressionParser()
 
         auto next = pos + 1;
 
-        while (next < sv.size()
-               && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos))
+        while (next < sv.size() && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos))
         {
             ++next;
         }
@@ -387,7 +387,9 @@ inline parsec::Parser<ExpressionToken> getExpressionParser()
     parsec::Parser<json::Json> wordParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
     {
         auto next = pos;
-        while (next < sv.size() && !std::isspace(sv[next]))
+        // The word ends with a space, parenthesis or end of string
+        while (next < sv.size() && !std::isspace(sv[next]) && sv[next] != syntax::PARENTHESIS_CLOSE
+               && sv[next] != syntax::PARENTHESIS_OPEN)
         {
             ++next;
         }
