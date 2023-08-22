@@ -1,0 +1,344 @@
+- name: Fill file limit capacity to 50% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 50
+    fill_percentage: 50
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 79% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 79
+    fill_percentage: 79
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 80% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 80
+    fill_percentage: 80
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 85% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 85
+    fill_percentage: 80
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 90% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 90
+    fill_percentage: 90
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 99% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 99
+    fill_percentage: 90
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 100% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 100
+    fill_percentage: 100
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 120% - Real-time
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 120
+    fill_percentage: 100
+    fim_mode: realtime
+
+- name: Fill file limit capacity to 50% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 50
+    fill_percentage: 50
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 79% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 79
+    fill_percentage: 79
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 80% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 80
+    fill_percentage: 80
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 85% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 85
+    fill_percentage: 80
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 90% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 90
+    fill_percentage: 90
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 99% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 99
+    fill_percentage: 90
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 100% - Who-data
+  description: '' 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 100
+    fill_percentage: 100
+    fim_mode: whodata
+
+- name: Fill file limit capacity to 50% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 50
+    fill_percentage: 50
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 79% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 79
+    fill_percentage: 79
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 80% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 80
+    fill_percentage: 80
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 85% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 85
+    fill_percentage: 80
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 90% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 90
+    fill_percentage: 90
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 99% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 99
+    fill_percentage: 90
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 100% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 100
+    fill_percentage: 100
+    fim_mode: scheduled
+
+- name: Fill file limit capacity to 120% - Scheduled
+  description: ''
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FILE_LIMIT_ENABLED: 'yes'
+    FILE_LIMIT_ENTRIES: 100
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    files_amount: 120
+    fill_percentage: 100
+    fim_mode: scheduled
