@@ -4,10 +4,12 @@ from pathlib import Path
 from .generate_manifest import run as gen_manifest
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
+DEFAULT_NAMESPACE = 'user'
 
 
 def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
+    namespace = args['namespace']
 
     working_path = resource_handler.cwd()
     if args['integration-path']:
@@ -90,12 +92,12 @@ def run(args, resource_handler: rs.ResourceHandler):
                         # Create task to add asset
                         if name in manifest[type_name]:
                             task = resource_handler.get_add_catalog_task(
-                                api_socket, name.split('/')[0], name, original)
+                                api_socket, name.split('/')[0], name, original, namespace)
                             executor.add(task)
 
     # Create task to add integration
     integration_task = resource_handler.get_add_catalog_task(
-        api_socket, 'integration', integration_full_name, manifest_str)
+        api_socket, 'integration', integration_full_name, manifest_str, namespace)
     executor.add(integration_task)
 
     # Inform the user and execute the tasks
@@ -116,10 +118,13 @@ def configure(subparsers):
     parser_add.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
                             help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
 
-    parser_add.add_argument('-p', '--integration-path', type=str, dest='integration-path',
+    parser_add.add_argument('integration-path', type=str,
                             help=f'[default=current directory] Integration directory path')
 
     parser_add.add_argument('--dry-run', dest='dry-run', action='store_true',
                             help=f'When set it will print all the steps to apply but wont affect the store')
+    
+    parser_add.add_argument('-n', '--namespace', type=str, dest='namespace', default=DEFAULT_NAMESPACE,
+                            help=f'[default={DEFAULT_NAMESPACE}]    Namespace to add the integration to')
 
     parser_add.set_defaults(func=run)

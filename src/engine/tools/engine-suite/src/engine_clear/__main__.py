@@ -6,6 +6,7 @@ import shared.resource_handler as rs
 
 DEF_RESOURCES = ['kvdbs', 'decoder', 'rule',
                  'output', 'filter', 'integration', 'policy']
+DEF_NAMESPACES = ['user', 'wazuh', 'system']
 
 
 def parse_args():
@@ -17,6 +18,8 @@ def parse_args():
                         help='Path to the engine-api socket')
     parser.add_argument('-f, --force', action='store_true',
                         default=False, dest='force', help='Force the execution of the command')
+    parser.add_argument('-n, --namespaces', nargs='*',
+                        dest='namespaces', help=f'Namespace to delete the resources from. Default:{DEF_NAMESPACES}')
     parser.add_argument('resources', nargs='*',
                         help=f'Resources to clear. Default:{DEF_RESOURCES}')
 
@@ -24,10 +27,9 @@ def parse_args():
 
 
 def prompt_confirmation():
-    print('\nAre you sure you want to continue? [y/N]')
+    print('\nAre you sure you want to delete them? [y/N]')
     answer = input()
     if answer.lower() != 'y':
-        print('Aborting')
         return False
     return True
 
@@ -36,6 +38,9 @@ def main():
     args = parse_args()
     resource_handler = rs.ResourceHandler()
     force = args.force
+    namespaces = args.namespaces
+    if not namespaces or len(namespaces) == 0:
+        namespaces = DEF_NAMESPACES
     resources = args.resources if len(args.resources) > 0 else DEF_RESOURCES
 
     if 'kvdbs' in resources:
@@ -62,38 +67,41 @@ def main():
         resources.remove('kvdbs')
 
     for asset in resources:
-        asset_partial = []
-        try:
-            asset_partial = resource_handler.list_catalog(args.api_sock, asset)
-        except:
-            pass
-        else:
-            assets = []
-            for partial in asset_partial:
-                versions = resource_handler.list_catalog(
-                    args.api_sock, partial)
-                assets.extend(versions)
-
-            if not force and len(assets) > 0:
-                print('The following assets will be deleted:')
-                print('\n'.join(assets))
-                if not prompt_confirmation():
-                    return 0
-
-            for asset_del in assets:
-                try:
-                    resource_handler.delete_catalog_file(
-                        args.api_sock, asset, asset_del)
-                except Exception as e:
-                    print(f'Error deleting {asset_del}: {e}')
+        for namespace in namespaces:
+            asset_partial = []
             try:
-                remaining = resource_handler.list_catalog(args.api_sock, asset)
+                asset_partial += resource_handler.list_catalog(
+                    args.api_sock, asset, namespace)
             except:
                 pass
             else:
-                if len(remaining) > 0:
-                    print('\nThe following assets could not be deleted:')
-                    print('\n'.join(remaining))
+                assets = []
+                for partial in asset_partial:
+                    versions = resource_handler.list_catalog(
+                        args.api_sock, partial, namespace)
+                    assets.extend(versions)
+
+                if not force and len(assets) > 0:
+                    print(f'[{namespace}] The following assets will be deleted:')
+                    print('\n'.join(assets))
+                    if not prompt_confirmation():
+                        continue
+
+                for asset_del in assets:
+                    try:
+                        resource_handler.delete_catalog_file(
+                            args.api_sock, asset, asset_del, namespace)
+                    except Exception as e:
+                        print(f'Error deleting {asset_del}: {e}')
+                try:
+                    remaining = resource_handler.list_catalog(
+                        args.api_sock, asset, namespace)
+                except:
+                    pass
+                else:
+                    if len(remaining) > 0:
+                        print('\nThe following assets could not be deleted:')
+                        print('\n'.join(remaining))
 
     return 0
 
