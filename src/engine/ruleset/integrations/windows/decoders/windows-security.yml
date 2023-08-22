@@ -1,358 +1,374 @@
 name: decoder/windows-security/0
 
+parents:
+  - decoder/windows-event/0
+
 metadata:
-  description: Decoder for Windows Security events
   module: Windows Security
-  title: Decoder for Windows Security and Windows Eventlog auditing
-  compatibility: >
-    This decoder has been tested on Wazuh version 4.3
+  title: Decoder for Windows security events.
+  description: This Windows decoder normalizes Windows security events.
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This decoder has been tested on Wazuh version 4.3.
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
   references:
+    - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
     - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/security-auditing-overview
-  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
-parents:
-  - decoder/windows-event/0
-
-check: $windows.System.Channel.#text==Security AND ( $event.provider==Microsoft-Windows-Security-Auditing OR $event.provider==Microsoft-Windows-Eventlog )
+check: >-
+  $windows.System.Channel.#text == Security AND
+  ($event.provider == Microsoft-Windows-Security-Auditing OR $event.provider == Microsoft-Windows-Eventlog)
 
 normalize:
+  # Generic fields
+  - map:
+      - wazuh.decoders: array_append(windows-security)
+      - event.dataset: security
+      - event.code: $event.id
+      - event: kvdb_get_merge(windows_security_categories, $event.id)
+      - windows.logon.id: $windows.EventData.SubjectLogonId
 
- # Generic fields
- - map:
-    - wazuh.decoders: array_append(windows-security)
-    - event.dataset: security
-    - event.code: $event.id
-    - event: kvdb_get_merge(windows-security-categories,$event.id)
-    - winlog.logon.id: $windows.EventData.SubjectLogonId # possible ECS: user.id, user.effective.id or client.user.id
+  # Set Logon Type
+  - check: exists($windows.EventData.LogonType)
+    map:
+      - windows.logon.type: kvdb_get(windows_logon_type, $windows.EventData.LogonType)
 
-    # Set Logon Type
-    - winlog.LogonType: kvdb_get(windows-logon-type,$windows.EventData.LogonType)
+  # TODO - Set User Account Control (lines 833 to 893)
 
-    # User Account Control (lines 833 to 893)
-    - winlog.NewUserAccountControl: $windows.EventData.NewUacValue
-    #TODO: te above line should be replaced by -> matchBitsHelper
-    # 1 - transform all this type of KVDBs in KV ({"name" : {"maks":"value"}}) being name the map name itself
-    # 2 - Get corresponding map (MAP)
-    # target (array or create one): +match_bit_values/MAP/NumberWhereToMatchMaskedBits
-    # - winlog.NewUACList: +match_bits/windows-logon-type/$windows.EventData.NewUacValue
-    - windows.EventData.UserAccountControl: replace(%%,%)
-    - winlog.UserAccountControl: split($windows.EventData.UserAccountControl,%)
+  # TODO - Set Kerberos Ticket Options (lines 894 to 943)
 
-    # Set Kerberos Ticket Options Description Another Bitwise Operation
-    - winlog.TicketOptionsDescription: $windows.EventData.TicketOptions
-    #TODO: te above line should be replaced by -> matchBitsHelper
+  # Set Kerberos Encryption Types - windows.EventData.TicketEncryptionTypeDescription
+  - check: exists($windows.EventData.TicketEncryptionType)
+    map:
+      - kerberos_encryption: kvdb_get(windows_kerberos_encryption, $windows.EventData.TicketEncryptionType)
+      - windows.EventData.TicketEncryptionTypeDescription: downcase($kerberos_encryption)
 
-    # Set Kerberos Encryption Types
-    - _TicketEncryptionTypeLC: downcase($windows.EventData.TicketEncryptionType) # This convertion doesn't make sense: 0x12 to lower?!
-    - winlog.TicketEncryptionTypeDescription: kvdb_get(windows-kerberos-encryption,$_TicketEncryptionTypeLC)
+  # Group: Kerberos Status - Set Kerberos Ticket Status Codes
+  - map:
+      - _ev_kerberos_status: kvdb_get(windows_events_arrays, kerberos_status)
 
-    # Set Kerberos Ticket Status Codes
-    - winlog.KerberosTicketStatusDescription: kvdb_get(windows-kerberos-status,$windows.EventData.Status)
+  - check: array_contains($_ev_kerberos_status, $event.id) AND exists($windows.EventData.Status)
+    map:
+      - windows.EventData.StatusDescription: kvdb_get(windows_kerberos_status, $windows.EventData.Status)
 
-    # Service Type and Name
-    - service.name: $windows.EventData.ServiceName
-    - service.type: kvdb_get(windows-service-type,$windows.EventData.ServiceType)
+  # Set Service Name - service.name
+  - map:
+      - service.name: $windows.EventData.ServiceName
 
-    # Set Audit Information -> "SubcategoryGuid": "{0cce9243-69ae-11d9-bed3-505054503030}"
-    - windows.EventData.SubcategoryGuid: replace({,\ )
-    - windows.EventData.SubcategoryGuid: replace(},\ )
-    - windows.EventData.SubcategoryGuid: upcase($windows.EventData.SubcategoryGuid)
-    - _AuditAsset: kvdb_get(windows-audit-information,$windows.EventData.SubcategoryGuid)
-    - winlog.AuditCategory: $_AuditAsset/1
-    - winlog.AuditSubCategory: $_AuditAsset/0
+  # Set Service Type - service.type
+  - check: exists($windows.EventData.ServiceType)
+    map:
+      - service.type: kvdb_get(windows_service_type, $windows.EventData.ServiceType)
 
-  # Decode message
+  # Set Audit Information
+  - check: exists($windows.EventData.SubcategoryGuid)
+    map:
+      - subcategory_guid: $windows.EventData.SubcategoryGuid
+      - subcategory_guid: replace({, )
+      - subcategory_guid: replace(}, )
+      - subcategory_guid: upcase($subcategory_guid)
+      - audit_information_array: kvdb_get(windows_audit_information, $subcategory_guid)
+      - windows.EventData.Category: $audit_information_array[1]
+      - windows.EventData.Subcategory: $audit_information_array[0]
 
-  # Failure reason for logon
- - check: exists($windows.EventData.FailureReason)
-   map:
-    - windows.EventData.FailureReason: replace(%%,\ )
-    - event.action: logon failed
-    - event.reason: kvdb_get(windows-messages,$windows.EventData.FailureReason # Possible ECS -> failure code)
+  # Set Logon Failure Reason
+  - check: exists($windows.EventData.FailureReason)
+    map:
+      - failure_code: $windows.EventData.FailureReason
+      - failure_code: replace(%%, )
+      - windows.logon.failure.reason: kvdb_get(windows_messages, $failure_code)
 
   # Set Audit Policy Changes Descriptions
- - check: exists($windows.EventData.AuditPolicyChanges)
-   map:
-     - winlog.AuditPolicyChanges: replace(%%,\ )
-     - winlog.AuditPolicyChanges: replace(\, ,\,)
-     - winlog.policy_changes: split($winlog.AuditPolicyChanges,\,)
+  - check: exists($windows.EventData.AuditPolicyChanges)
+    map:
+      - policy_changes: $windows.EventData.AuditPolicyChanges
+      - policy_changes: replace(%%, )
+      - policy_changes: split($policy_changes, \,)
 
- - check: exists($winlog.policy_changes) AND is_not_array($winlog.policy_changes)
-   map:
-     - winlog.AuditPolicyChangesDescription: kvdb_get(windows-messages,$winlog.policy_changes)
+  - check: exists($policy_changes) AND is_not_array($policy_changes)
+    map:
+      - windows.EventData.AuditPolicyChangesDescription: kvdb_get(windows_messages, $policy_changes)
 
-#  - check: exists(winlog.policy_changes) AND is_array(winlog.policy_changes)
-#    map:
-     # TODO: kvdb_get_array() is a function helper that takes an array of keys, queries the database for each key, and
-     # returns an array of corresponding values.
-     #  - winlog.AuditPolicyChangesDescription: kvdb_get_array(windows-messages/$winlog.policy_changes)
+  #- check: exists($policy_changes) AND is_array($policy_changes)
+  #  map:
+  #   - windows.EventData.AuditPolicyChangesDescription: kvdb_get_array(windows_messages, $policy_changes)
+  #
+  # TODO: kvdb_get_array() is a function helper that takes an array of keys, queries the database for each key, and
+  # returns an array of corresponding values.
+  #
+  # The implementation of the HF implies the following restrictions:
+  # - Displacement: it may be that one or several keys are not obtained (it is not possible to match by position).
+  #   You can't fill the values ​​of the key not found with null because it could be a valid value.
+  # - Values ​​might not be of the same type (heterogeneous array): filebeat/opensearch constraint
 
   # Set Access List Descripitions
- - check: exists($windows.EventData.AccessList)
-   map:
-     - windows.EventData.AccessList: replace(%%,\ )
-     - winlog.AccessList: split($windows.EventData.AccessList,\ )
+  - check: exists($windows.EventData.AccessList)
+    map:
+      - access_list: $windows.EventData.AccessList
+      - access_list: replace(%%, )
+      - access_list: split($access_list, \,)
 
- - check: exists($winlog.AccessList) AND is_not_array($winlog.AccessList)
-   map:
-     - winlog.AccessListDescription: kvdb_get(windows-messages, _access_list)
+  - check: exists($access_list) AND is_not_array($access_list)
+    map:
+      - windows.EventData.AccessListDescription: kvdb_get(windows_messages, $access_list)
 
-#  - check: exists(winlog.AccessList) AND is_array(winlog.AccessList)
-#    map:
-     # TODO: kvdb_get_array() is a function helper that takes an array of keys, queries the database for each key, and
-     # returns an array of corresponding values.
-     #  - winlog.AccessListDescription: kvdb_get_array('windows-messages', _access_list)
+  # - check: exists($access_list) AND is_array($access_list)
+  #   map:
+  #     - windows.EventData.AccessListDescription: kvdb_get_array(windows_messages, $access_list)
+  #
+  # TODO: kvdb_get_array() is a function helper that takes an array of keys, queries the database for each key, and
+  # returns an array of corresponding values.
+  #
+  # The implementation of the HF implies the following restrictions:
+  # - Displacement: it may be that one or several keys are not obtained (it is not possible to match by position).
+  #   You can't fill the values ​​of the key not found with null because it could be a valid value.
+  # - Values ​​might not be of the same type (heterogeneous array): filebeat/opensearch constraint
 
-  # AccessMask
-  # TODO: We cant apply to each element in an array, so try it for first 3
- - map:
-    - _split_AccesMasks: replace(%%,%)
-    - _split_AccesMasks: split($windows.EventData.AccesMask,%)
-    - winlog.AccessMaskDescription: $_split_AccesMasks
-  # Set Access Mask Descriptions
-  # - winlog.AccessMaskDescription/0 - /1 - /2
-  #TODO: For each of the above mapping apply matchBitsHelper
 
-  # Conditional Logon
- - check: $event.code=="4625" OR $event.code=="4776"
-   map:
-    # windows.logon.failure.status
-    # windows.logon.failure.sub_status
-    - event.action: logon failed
-    - event.reason: kvdb_get(windows-failure-status,$windows.EventData.Status)
+  # TODO - Set Access Mask Descriptions (lines 2203 to 2234)
 
- - map:
-    # Set trust type
-    - winlog.TrustType: kvdb_get(windows-trust-types,$windows.EventData.TdoType)
-    # Set Trust Direction
-    - winlog.TrustDirection: kvdb_get(windows-trust-directions,$windows.EventData.TdoDirection)
-    # Set Trust Attributes
-    - winlog.TrustAttribute: kvdb_get(windows-trust-attributes,$windows.EventData.TdoAttributes)
+  # Set Failure Status and SubStatus for events 4625 and 4776
+  - check: $event.id == "4625" OR $event.id == "4776"
+    map:
+      - windows.logon.failure.status: $windows.EventData.Status
+      - windows.logon.failure.sub_status: $windows.EventData.SubStatus
 
-    # Add Session Events -> #TODO Find example event
- - check: $event.code=="4778" OR $event.code=="4779"
-   map:
-    - user.name: $windows.EventData.AccountName
-    - related.user: array_append($windows.EventData.AccountName)
-    - user.domain: $windows.EventData.AccountDomain
-    - source.ip: $windows.EventData.ClientAddress
-    - related.ip: array_append($windows.EventData.ClientAddress)
-    - source.domain: $windows.EventData.ClientName
-    - winlog.logon.id: $windows.EventData.LogonID #Possible ECS -> user.id
+  # Set Trust Type
+  - check: exists($windows.EventData.TdoType)
+    map:
+      - windows.trustType: kvdb_get(windows_trust_types, $windows.EventData.TdoType)
 
- # Group: Target User
- - map:
-    - _IdTargetUserArray: kvdb_get(windows-events-arrays,target_user)
- - check: not_exists($user.id) AND array_contains($_IdTargetUserArray,$event.code)
-   map:
-    - user.id: $windows.EventData.TargetUserSid
-    - user.id: $windows.EventData.TargetSid
+  # Set Trust Direction
+  - check: exists($windows.EventData.TdoDirection)
+    map:
+      - windows.trustDirection: kvdb_get(windows_trust_directions, $windows.EventData.TdoDirection)
 
- - check: exists($user.id) AND array_contains($_IdTargetUserArray,$event.code)
-   map:
-    - user.target.id: $windows.EventData.TargetUserSid
-    - user.target.id: $windows.EventData.TargetSid
+  # Set Trust Attributes
+  - check: exists($windows.EventData.TdoAttributes)
+    map:
+      - windows.trustAttribute: kvdb_get(windows_trust_attributes, $windows.EventData.TdoAttributes)
 
- # TargetUserName to related.user and user.name or user.target.name
- # string_not_equal unnecesary ??
- - check: not_exists($user.name) AND array_contains($_IdTargetUserArray,$event.code) AND string_not_equal($windows.EventData.TargetUserName,-)
-   map:
-    - user.name: $windows.EventData.TargetUserName
+  # Add Session Events
+  - check: $event.id == "4778" OR $event.id == "4779"
+    map:
+      - user.name: $windows.EventData.AccountName
+      - related.user: array_append($windows.EventData.AccountName)
+      - user.domain: $windows.EventData.AccountDomain
+      - source.ip: $windows.EventData.ClientAddress
+      - related.ip: array_append($windows.EventData.ClientAddress)
+      - source.domain: $windows.EventData.ClientName
+      - logon.id: $windows.EventData.LogonID
 
- - check: exists($user.name) AND array_contains($_IdTargetUserArray,$event.code) AND string_not_equal($windows.EventData.TargetUserName,-)
-   map:
-    - user.target.name: $windows.EventData.TargetUserName
+  # Group: Target User 1 - Set Event IDs array for Target User 1
+  - map:
+      - _ev_target_user_1: kvdb_get(windows_events_arrays, target_user_1)
 
- - check: string_not_equal($windows.EventData.TargetUserName,-) AND array_contains($_IdTargetUserArray,$event.code) AND string_not_equal($windows.EventData.TargetUserName,-)
-   map:
-    - related.user: array_append($windows.EventData.TargetUserName)
+  # Group: Target User 1 - Set Target User Id and Target Sid
+  - check: array_contains($_ev_target_user_1, $event.id) AND not_exists($user.id)
+    map:
+      - user.id: $windows.EventData.TargetUserSid
+      - user.id: $windows.EventData.TargetSid
 
- - check: not_exists($user.domain) AND array_contains($_IdTargetUserArray,$event.code) AND string_not_equal($windows.EventData.TargetDomainName,-)
-   map:
-    - user.domain: $windows.EventData.TargetDomainName
+  - check: array_contains($_ev_target_user_1, $event.id) AND exists($user.id)
+    map:
+      - user.target.id: $windows.EventData.TargetUserSid
+      - user.target.id: $windows.EventData.TargetSid
 
- - check: exists($user.domain) AND array_contains($_IdTargetUserArray,$event.code) AND string_not_equal($windows.EventData.TargetDomainName,-)
-   map:
-    - user.target.domain: $windows.EventData.TargetDomainName
+  # Group: Target User 1 - Set Target User Name
+  - check: >
+      array_contains($_ev_target_user_1, $event.id) AND not_exists($user.name) AND
+      string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - user.name: $windows.EventData.TargetUserName
 
- # Group: Member Name
- - map:
-    - _IdMemberName: kvdb_get(windows-events-arrays,member_name)
- - check:
-    - _IdMemberName: array_contains($event.code)
-   map:
-    - _split_memberName: split($windows.EventData.MemberName,\,)
-    - _split_memberName.0: replace(CN=, )
-    - _split_memberName.0: replace(cn=, )
-    - _split_memberName.3: replace(DC=, )
-    - _split_memberName.3: replace(dc=, )
-    - user.target.name: $_split_memberName.0
-    - user.target.domain: $_split_memberName.3
-    - related.user: array_append($_split_memberName.0)
+  - check: >
+      array_contains($_ev_target_user_1, $event.id) AND exists($user.name) AND
+      string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - user.target.name: $windows.EventData.TargetUserName
 
- - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.id)
-   map:
-    - user.target.id: $windows.EventData.TargetSid
-    - group.id: $windows.EventData.TargetUserSid
+  - check: array_contains($_ev_target_user_1, $event.id) AND string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - related.user: array_append($windows.EventData.TargetUserName)
 
- - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.name)
-   map:
-    - windows.EventData.TargetDomainName: replace(DC=,\ )
-    - windows.EventData.TargetDomainName: replace(dc=,\ )
-    - group.name: $windows.EventData.TargetUserName
+  # Group: Target User 1 - Set Target User Domain
+  - check: array_contains($_ev_target_user_1, event.id) AND not_exists($user.domain)
+    map:
+      - user.domain: $windows.EventData.TargetDomainName
 
- - check: array_contains($_IdMemberName,$event.code) AND not_exists($group.domain)
-   map:
-    - windows.EventData.TargetDomainName: replace(DC=,\ )
-    - windows.EventData.TargetDomainName: replace(dc=,\ )
-    - group.domain: $windows.EventData.TargetDomainName
+  - check: array_contains($_ev_target_user_1, $event.id) AND exists($user.domain)
+    map:
+      - user.target.domain: $windows.EventData.TargetDomainName
 
- - check: exists($user.target)
-   map:
-    - user.target.group.id: $group.id
-    - user.target.group.name: $group.name
-    - user.target.group.domain: $group.domain
+  # Group: Member Name - Set Event IDs array for Member Name
+  - map:
+      - _ev_member_name: kvdb_get(windows_events_arrays, member_name)
 
-# Computer Object # TODO -> Pending example events
- - check: $event.code=="4741" OR $event.code=="4742" OR $event.code=="4743"
-   map:
-    #possible ECS user.target.id
-    - winlog.computerObject.id: $windows.EventData.TargetSid
-    #possible ECS user.target.name
-    - winlog.computerObject.name: $windows.EventData.TargetUserName
-    #possible ECS user.target.domain
-    - winlog.computerObject.domain: $windows.EventData.TargetDomainName
+  # Group: Member Name - Set Member Name
+  - check: array_contains($_ev_member_name, event.id) AND exists($windows.EventData.MemberName)
+    map:
+      - member_name_parts: split($windows.EventData.MemberName, \,)
+      - member_name_parts[0]: replace(CN=, )
+      - user.target.name: $member_name_parts[0]
+      - related.user: array_append($member_name_parts[0])
+      - member_name_parts[3]: replace(DC=, )
+      - user.target.domain: $member_name_parts[3]
 
-# Logon ID
- - check: $event.code=="4634" OR $event.code=="4647" OR $event.code=="4964"
-   map:
-    - winlog.logon.id: $windows.EventData.TargetLogonId # Possible ECS -> user.id
+  # Group: Member Name - Set Target User Sid, Target Sid, Target User Name, and Target Domain Name
+  - check: array_contains($_ev_member_name, $event.id) AND not_exists($group.id)
+    map:
+      - group.id: $windows.EventData.TargetUserSid
+      - group.id: $windows.EventData.TargetSid
 
- # Copy Subject User
- - map:
-    - _win_id_copy_subject_user: kvdb_get(windows-events-arrays,subject_user)
- - check: array_contains($_win_id_copy_subject_user,$event.code)
-   map:
-    - user.id: $windows.EventData.SubjectUserSid
-    - user.name: $windows.EventData.SubjectUserName
-    - user.domain: $windows.EventData.SubjectDomainName
-    - related.user: array_append($windows.EventData.SubjectUserName)
+  - check: array_contains($_ev_member_name, $event.id) AND not_exists($group.name)
+    map:
+      - group.name: $windows.EventData.TargetUserName
 
- # Copy Target User
- - map:
-    - _IdCopyTargetUserArray: kvdb_get(windows-events-arrays,copy_target_user)
- - check: match_key($_IdCopyTargetUserArray,$event.code)
-   map:
-    - user.target.id: $windows.EventData.TargetSid
+  - check: array_contains($_ev_member_name, $event.id) AND not_exists($group.domain)
+    map:
+      - group_domain: $windows.EventData.TargetDomainName
+      - group_domain: replace(DC=, )
+      - group.domain: $group_domain
 
- - check: match_key($_IdCopyTargetUserArray,$event.code) AND exists($windows.EventData.TargetUserName) AND string_not_equal($windows.EventData.TargetUserName,-)
-   map:
-    - user.target.name: $windows.EventData.TargetUserName
-    - _name_part: split($windows.EventData.TargetUserName,@)
-    - user.target.name: $_name_part.0
-    - related.user: array_append($windows.EventData.TargetUserName)
-    - user.target.domain: $windows.EventData.TargetDomainName
+  - check: array_contains($_ev_member_name, $event.id) AND exists($user.target)
+    map:
+      - user.target.group.id: $group.id
+      - user.target.group.name: $group.name
+      - user.target.group.domain: $group.domain
 
-# Copy Target User to Effective
- # Set Target User for events 4648 and 4688
- - check: $event.code=="4648" OR $event.code=="4688"
-   map:
-    - user.effective.id: $windows.EventData.TargetUserSid
+  # Set Computer Object for events 4741, 4742, and 4743
+  - check: $event.id == "4741" OR $event.id == "4742" OR $event.id == "4743"
+    map:
+      - windows.computerObject.id: $windows.EventData.TargetSid
+      - windows.computerObject.name: $windows.EventData.TargetUserName
+      - windows.computerObject.domain: $windows.EventData.TargetDomainName
 
- - check: ( $event.code=="4648" OR $event.code=="4688" ) AND string_not_equal($windows.EventData.TargetUserName,-)
-   map:
-    - _name_part: split($windows.EventData.TargetUserName,@)
-    - user.effective.name: $_name_part.0
+  # Set Logon Id for events 4634, 4647, and 4964
+  - check: $event.id == "4634" OR $event.id == "4647" OR $event.id == "4964"
+    map:
+      - windows.logon.id: $windows.EventData.TargetLogonId
 
- - check: ( $event.code=="4648" OR $event.code=="4688" ) AND string_not_equal($windows.EventData.TargetDomainName,-)
-   map:
-    - user.effective.domain: $windows.EventData.TargetDomainName
+  # Group: Subject User
+  - map:
+      - _ev_subject_user: kvdb_get(windows_events_arrays, subject_user)
 
- # Set Subject User for event 1102
- - check: $event.code=="1102"
-   map:
-    - user.id: $windows.UserData.LogFileCleared.SubjectUserSid.#text
-    - user.name: $windows.UserData.LogFileCleared.SubjectUserName.#text
-    - related.user: array_append($windows.UserData.LogFileCleared.SubjectUserName.#text)
-    - user.domain: $windows.UserData.LogFileCleared.SubjectDomainName.#text
-    - winlog.logon.id: $windows.UserData.LogFileCleared.SubjectLogonId.#text
-    - event.action: Log clear
+  - check: array_contains($_ev_subject_user, $event.id)
+    map:
+      - user.id: $windows.EventData.SubjectUserSid
+      - user.name: $windows.EventData.SubjectUserName
+      - user.domain: $windows.EventData.SubjectDomainName
+      - related.user: array_append($windows.EventData.SubjectUserName)
 
- # Group: Auth Fields
- - map:
-    - _IdRenameCommonAuthFields: kvdb_get(windows-events-arrays,auth_fields)
- - check: array_contains($_IdRenameCommonAuthFields,$event.code)
-   map:
-    - process.pid: hex_to_number($windows.EventData.ProcessId)
-    - process.executable: $windows.EventData.ProcessName
-    - _file_data: parse_file($windows.EventData.ProcessName)
-    - process.name: $_file_data.name
+  # Group: Target User 2
+  - map:
+      - _ev_target_user_2: kvdb_get(windows_events_arrays, target_user_2)
 
- - check: array_contains($_IdRenameCommonAuthFields,$event.code) AND string_not_equal($windows.EventData.IpAddress,-)
-   map:
-    - source.ip: $windows.EventData.IpAddress
-    - source.port: $windows.EventData.IpPort
-    - source.domain: $windows.EventData.WorkstationName
-    - related.ip: array_append($windows.EventData.ClientAddress)
+  - check: array_contains($_ev_target_user_2, $event.id)
+    map:
+      - user.target.id: $windows.EventData.TargetSid
 
- # Normalize event 4688
- - check: $event.code=="4688"
-   map:
-    - process.args: split($windows.EventData.CommandLine, \ )
-    - process.pid: hex_to_number($windows.EventData.NewProcessId)
-    - process.executable: $windows.EventData.NewProcessName
-    - _file_data: parse_file($windows.EventData.NewProcessName)
-    - process.name: $_file_data.name
-    - process.parent.pid: hex_to_number($windows.EventData.ProcessId)
-    - process.parent.executable:  $windows.EventData.ParentProcessName
-    - _file_data: parse_file($windows.EventData.ParentProcessName)
-    - process.parent.name: $_file_data.name
-    - process.command_line: $windows.EventData.CommandLine
- - check: $event.code=="4688" AND string_not_equal($windows.EventData.TargetUserName,-)
-   map:
-    - related.user: array_append($windows.EventData.TargetUserName)
+  - check: array_contains($_ev_target_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - user.target.name: $windows.EventData.TargetUserName
+      - related.user: array_append($windows.EventData.TargetUserName)
 
- #Related Users
- - map:
-    - _id_related_user: kvdb_get(windows-events-arrays,related_user_2)
- - check: array_contains($_id_related_user,$event.code)
-   map:
-    - related.user: array_append($windows.EventData.SubjectUserName)
- - map:
-    - _id_related_user: kvdb_get(windows-events-arrays,related_user_1)
- - check: array_contains($_id_related_user,$event.code)
-   map:
-    - related.user: array_append($windows.EventData.TargetUserName)
+  - check: array_contains($_ev_target_user_2, $event.id) AND string_not_equal($windows.EventData.TargetDomainName, -)
+    map:
+      - user.target.domain: $windows.EventData.TargetDomainName
 
- - check: string_not_equal($windows.EventData.OldTargetUserName,-)
-   map:
-    - user.target.name: $windows.EventData.OldTargetUserName
-    - related.user: array_append($windows.EventData.OldTargetUserName)
+  # Set Target User for events 4648 and 4688
+  - check: $event.id == "4648" OR $event.id == "4688"
+    map:
+      - user.effective.id: $windows.EventData.TargetUserSid
 
- - check: string_not_equal($windows.EventData.NewTargetUserName,-)
-   map:
-    - user.changes.name: $windows.EventData.NewTargetUserName
-    - related.user: array_append($windows.EventData.NewTargetUserName)
+  - check: ($event.id == "4648" OR $event.id == "4688") AND string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - user.effective.name: $windows.EventData.TargetUserName
+      - related.user: array_append($windows.EventData.TargetUserName)
+
+  - check: ($event.id == "4648" OR $event.id == "4688") AND string_not_equal($windows.EventData.TargetDomainName, -)
+    map:
+      - user.effective.domain: $windows.EventData.TargetDomainName
+
+  # Set Subject User for event 1102
+  - check: $event.id == "1102"
+    map:
+      - user.id: $windows.UserData.LogFileCleared.SubjectUserSid.#text
+      - user.name: $windows.UserData.LogFileCleared.SubjectUserName.#text
+      - related.user: array_append($windows.UserData.LogFileCleared.SubjectUserName.#text)
+      - user.domain: $windows.UserData.LogFileCleared.SubjectDomainName.#text
+      - windows.logon.id: $windows.UserData.LogFileCleared.SubjectLogonId.#text
+
+  # Group: Auth Fields
+  - map:
+      - _ev_auth_fields: kvdb_get(windows_events_arrays, auth_fields)
+
+  - check: array_contains($_ev_auth_fields, $event.id)
+    map:
+      - process.pid: hex_to_number($windows.EventData.ProcessId)
+      - process.executable: $windows.EventData.ProcessName
+      - source.ip: $windows.EventData.IpAddress
+      - source.port: $windows.EventData.IpPort
+      - source.domain: $windows.EventData.WorkstationName
+      - related.ip: array_append($windows.EventData.ClientAddress)
+      - process_parts: parse_file($windows.EventData.ProcessName)
+      - process.name: $process_parts.name
+
+  # Normalize event 4688
+  - check: $event.id == "4688"
+    map:
+      - process.pid: hex_to_number($windows.EventData.NewProcessId)
+      - process.parent.pid: hex_to_number($windows.EventData.ProcessId)
+      - process.executable: $windows.EventData.NewProcessName
+      - process.parent.executable: $windows.EventData.ParentProcessName
+      - process_parts: parse_file($windows.EventData.NewProcessName)
+      - process.name: $process_parts.name
+      - parent_process_parts: parse_file($windows.EventData.ParentProcessName)
+      - process.parent.name: $parent_process_parts.name
+      - process.command_line: $windows.EventData.CommandLine
+      - process.args: split($windows.EventData.CommandLine, \ )
+
+  - check: $event.id == "4688" AND string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - related.user: array_append($windows.EventData.TargetUserName)
+
+  # Group: Related User 1
+  - map:
+      - _ev_related_user_1: kvdb_get(windows_events_arrays, related_user_1)
+
+  - check: array_contains($_ev_related_user_1, $event.id) AND string_not_equal($windows.EventData.SubjectUserName, -)
+    map:
+      - related.user: array_append($windows.EventData.SubjectUserName)
+
+  # Group: Related User 2
+  - map:
+      - _ev_related_user_2: kvdb_get(windows_events_arrays, related_user_2)
+
+  - check: array_contains($_ev_related_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - related.user: array_append($windows.EventData.TargetUserName)
+
+  # Set Old Target User Name
+  - check: string_not_equal($windows.EventData.OldTargetUserName, -)
+    map:
+      - user.target.name: $windows.EventData.OldTargetUserName
+      - related.user: array_append($windows.EventData.OldTargetUserName)
+
+  # Set New Target User Name
+  - check: string_not_equal($windows.EventData.NewTargetUserName, -)
+    map:
+      - user.changes.name: $windows.EventData.NewTargetUserName
+      - related.user: array_append($windows.EventData.NewTargetUserName)
 
   # TODO - Object Policy Change and SidListDesc (lines 3093 to 3459)
- - check: $event.code=="4670" OR $event.code=="4817" OR $event.code=="4907" OR $event.code=="4808"
-   map:
-    - winlog.NewSecurityDescriptor: $windows.EventData.NewSd
-    - winlog.OldSecurityDescriptor: $windows.EventData.OldSd
-    - winlog.ObjectType: $windows.EventData.ObjectType
-    - winlog.ObjectServer: $windows.EventData.ObjectServer
-    - winlog.ObjectName: $windows.EventData.ObjectName
 
- - map:
-    - _privilege_list: kvdb_get(windows-events-arrays,privilege_list)
- - check: array_contains($_privilege_list,$event.code)
-   map:
-   - windows.EventData.PrivilegeList: replace(\     , \ )
-   - winlog.User_PrivilegeList: split($windows.EventData.PrivilegeList, \ )
-
-  #cleanup
- - map:
-   - windows: delete()
+  # Set File fields for events 5140 and 5145
+  - check: $event.id == "5140" OR $event.id == "5145"
+    map:
+      - file.name: $windows.EventData.RelativeTargetName
+      - file.directory: $windows.EventData.ShareLocalPath
+      - file.path: concat($file.directory, \\, $file.name)
+      - file.target_path: concat($windows.EventData.ShareName, \\, $file.name)
+      - $file_parts: parse_file($file.name)
+      - file.extension: $file_parts.ext
