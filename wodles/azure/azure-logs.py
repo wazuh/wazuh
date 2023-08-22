@@ -35,7 +35,7 @@ from requests import get, post, HTTPError, RequestException
 import orm
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from utils import ANALYSISD
+from utils import ANALYSISD, MAX_EVENT_SIZE
 
 
 # URLs
@@ -828,9 +828,16 @@ def send_message(message: str):
         The message body to send to analysisd.
     """
     s = socket(AF_UNIX, SOCK_DGRAM)
+
+    encoded_msg = f'{SOCKET_HEADER}{message}'.encode(errors='replace')
+
+    # Logs warning if event is bigger than max size
+    if len(encoded_msg) > MAX_EVENT_SIZE:
+        logging.warning(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+
     try:
         s.connect(ANALYSISD)
-        s.send(f'{SOCKET_HEADER}{message}'.encode(errors='replace'))
+        s.send(encoded_msg)
     except socket_error as e:
         if e.errno == 111:
             logging.error("ERROR: Wazuh must be running.")
