@@ -69,7 +69,7 @@ class ResourceHandler:
             raise Exception(f'Failed to read {full_name}')
 
         return readed
-    
+
     def delete_file(self, path: str):
         Path(path).unlink()
 
@@ -88,7 +88,7 @@ class ResourceHandler:
 
         if format == Format.TEXT:
             return content
-        
+
         read = {}
         try:
             read = self._read(content, format)
@@ -99,7 +99,7 @@ class ResourceHandler:
     def load_file(self, path_str: str, format: Format = Format.YML):
         path = Path(path_str)
         return self._load_file(path, format)
-    
+
     def load_original_asset(self, path_str: str, format: Format = Format.YML) -> Tuple[str, str]:
         as_dict = self.load_file(path_str, format)
         name = as_dict['name']
@@ -125,7 +125,7 @@ class ResourceHandler:
 
         self._write_file(pure_path, content, format)
 
-    def _base_catalog_command(self, path: str, type: str, name: str, content: str, format: Format, command: str):
+    def _base_catalog_command(self, path: str, type: str, name: str, content: str, namespace: str, format: Format, command: str):
         format_str = ''
         if format is Format.JSON:
             format_str = 'json'
@@ -135,7 +135,7 @@ class ResourceHandler:
             raise Exception(f'Format not supported for catalog {name}')
 
         request = {'version': 1, 'command': 'catalog.resource/' + command, 'origin': {
-            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': content, 'format': format_str}}
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': content, 'namespaceid': namespace, 'format': format_str}}
         request_raw = json.dumps(request)
         request_bytes = len(request_raw).to_bytes(4, 'little')
         request_bytes += request_raw.encode('utf-8')
@@ -147,14 +147,17 @@ class ResourceHandler:
                 s.sendall(request_bytes)
                 data = s.recv(65507)
             except:
-                raise Exception(f'Could not connect and send information throug [{path}]')
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
 
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
         # Change post for update and put for add
-        if command == 'post': command = 'add'
-        elif command == 'put': command = 'update'
+        if command == 'post':
+            command = 'add'
+        elif command == 'put':
+            command = 'update'
 
         if not len(resp_message):
             raise Exception(
@@ -170,61 +173,67 @@ class ResourceHandler:
             raise Exception(
                 f'{response["data"]["error"]}')
 
-    def update_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
-        self._base_catalog_command(path, type, name, content, format, 'put')
+    def update_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
+        self._base_catalog_command(
+            path, type, name, content, namespace, format, 'put')
 
-    def add_catalog_file(self, path: str, type: str, name: str, content: str, format: Format):
-        self._base_catalog_command(path, type, name, content, format, 'post')
+    def add_catalog_file(self, path: str, type: str, name: str, content: str, namespace: str, format: Format):
+        self._base_catalog_command(
+            path, type, name, content, namespace, format, 'post')
 
-    def get_add_catalog_task(self, path: str, type: str, name: str, content: str, format: Format = Format.YML) -> exec.RecoverableTask:
+    def get_add_catalog_task(self, path: str, type: str, name: str, content: str, namespace: str, format: Format = Format.YML) -> exec.RecoverableTask:
         def do_task():
-            self.add_catalog_file(path, type, name, content, format)
-            return None
-        
-        def undo_task():
-            self.delete_catalog_file(path, type, name)
+            self.add_catalog_file(path, type, name, content, namespace, format)
             return None
 
-        info = f'Add {name} to catalog'
+        def undo_task():
+            self.delete_catalog_file(path, type, name, namespace)
+            return None
+
+        info = f'[{namespace}] Add {name} to catalog'
 
         return exec.RecoverableTask(do_task, undo_task, info)
 
-    def get_update_catalog_task(self, path: str, type: str, name: str, content: str, format: Format = Format.YML) -> exec.RecoverableTask:
+    def get_update_catalog_task(self, path: str, type: str, name: str, content: str, namespace: str, format: Format = Format.YML) -> exec.RecoverableTask:
         backup = self.get_catalog_file(path, type, name)['data']['content']
         if backup == content:
             return None
 
         def do_task():
-            self.update_catalog_file(path, type, name, content, format)
-            return None
-        
-        def undo_task():
-            self.update_catalog_file(path, type, name, backup, format)
+            self.update_catalog_file(
+                path, type, name, content, namespace, format)
             return None
 
-        info = f'Update {name} to catalog'
+        def undo_task():
+            self.update_catalog_file(
+                path, type, name, backup, namespace, format)
+            return None
+
+        info = f'[{namespace}] Update {name} to catalog'
 
         return exec.RecoverableTask(do_task, undo_task, info)
 
-    def delete_catalog_file(self, path: str, type: str, name: str):
-        self._base_catalog_command(path, type, name, [], format, 'delete')
+    def delete_catalog_file(self, path: str, type: str, name: str, namespace: str, format: Format = Format.YML):
+        self._base_catalog_command(
+            path, type, name, [], namespace, format, 'delete')
 
-    def get_delete_catalog_file_task(self, path:str, type: str, name: str) -> exec.RecoverableTask:
-        backup = self.get_catalog_file(path, type, name, Format.JSON)['data']['content']
+    def get_delete_catalog_file_task(self, path: str, type: str, name: str, namespace: str) -> exec.RecoverableTask:
+        backup = self.get_catalog_file(path, type, name, namespace, Format.JSON)[
+            'data']['content']
 
         def do_task():
             self.delete_catalog_file(path, type, name)
             return None
-        
+
         def undo_task():
             self.add_catalog_file(path, type, name, backup, Format.JSON)
             return None
 
-        info = f'Delete {name} from catalog'
+        info = f'[{namespace}] Delete {name} from catalog'
 
         return exec.RecoverableTask(do_task, undo_task, info)
-    
-    def _base_catalog_get_command(self, path: str, type: str, name: str, format: Format) -> dict:
+
+    def _base_catalog_get_command(self, path: str, type: str, name: str, namespace: str, format: Format) -> dict:
         format_str = ''
         # if command == 'get':
         #     format_str = 'yaml'
@@ -236,7 +245,7 @@ class ResourceHandler:
             raise Exception(f'Format not supported for catalog {name}')
 
         request = {'version': 1, 'command': 'catalog.resource/get', 'origin': {
-            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': '', 'format': format_str}}
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': '', 'namespaceid': namespace, 'format': format_str}}
         request_raw = json.dumps(request)
         request_bytes = len(request_raw).to_bytes(4, 'little')
         request_bytes += request_raw.encode('utf-8')
@@ -248,7 +257,8 @@ class ResourceHandler:
                 s.sendall(request_bytes)
                 data = s.recv(65507)
             except:
-                raise Exception(f'Could not connect and send information throug [{path}]')
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
 
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
@@ -272,11 +282,12 @@ class ResourceHandler:
         else:
             return yaml.load(resp_message, Loader=Loader)
 
-    def get_catalog_file(self, path: str, type: str, name: str, format: Format = Format.YML):
-        return self._base_catalog_get_command(path, type, name, format)
+    def get_catalog_file(self, path: str, type: str, name: str, namespace: str, format: Format = Format.YML):
+        return self._base_catalog_get_command(path, type, name, namespace, format)
 
-    def list_catalog(self, path: str, name: str) -> list:
-        response = self._base_catalog_get_command(path, '', name, Format.JSON)
+    def list_catalog(self, path: str, name: str, namespace: str) -> list:
+        response = self._base_catalog_get_command(
+            path, '', name, namespace, Format.JSON)
         assets = json.loads(response['data']['content'])
 
         return assets
@@ -346,7 +357,7 @@ class ResourceHandler:
         except:
             raise Exception(
                 f'Could not parse response message "{resp_message}".')
-        
+
         if resp_message['data']['status'] != 'OK':
             raise Exception(
                 f'{resp_message["data"]["error"]}')
@@ -358,16 +369,16 @@ class ResourceHandler:
 
     def delete_kvdb(self, api_socket: str, name: str):
         self._base_command_kvdb(api_socket, name, '', 'delete')
-    
+
     def get_create_kvdb_task(self, api_socket: str, name: str, path: str) -> exec.RecoverableTask:
         def do_task():
             self.create_kvdb(api_socket, name, path)
             return None
-        
+
         def undo_task():
             self.delete_kvdb(api_socket, name)
             return None
-        
+
         info = f'Add KVDB {name}'
 
         return exec.RecoverableTask(do_task, undo_task, info)
@@ -406,7 +417,7 @@ class ResourceHandler:
         self._base_recursive_command_on_kvdbs(
             api_socket, path_str, 'delete', print_name)
 
-    def _recursive_command_to_catalog(self, api_socket: str, path_str: str, type: str, command: str, print_name: bool = False):
+    def _recursive_command_to_catalog(self, api_socket: str, path_str: str, type: str, command: str, namespace: str, print_name: bool = False):
         path = Path(path_str) / type
         if path.exists():
             for entry in path.rglob('*'):
@@ -419,16 +430,15 @@ class ResourceHandler:
                         print(
                             f'Applying {command} command to {name} {type[:-1]}')
                     self._base_catalog_command(
-                        api_socket, type[:-1], name, component, Format.YML, command)
+                        api_socket, type[:-1], name, component, namespace, Format.YML, command)
 
-    def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
+    def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, namespace: str, print_name: bool = False):
         self._recursive_command_to_catalog(
-            api_socket, path_str, type, 'post', print_name)
+            api_socket, path_str, type, 'post', namespace, print_name)
 
-    def recursive_delete_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
+    def recursive_delete_catalog(self, api_socket: str, path_str: str, type: str, namespace: str, print_name: bool = False):
         self._recursive_command_to_catalog(
-            api_socket, path_str, type, 'delete', print_name)
+            api_socket, path_str, type, 'delete', namespace, print_name)
 
-    def get_store_integration(self, path: str,name: str):
-        return self.get_catalog_file(path, 'integration', f'integration/{name}/0', Format.JSON)
-    
+    def get_store_integration(self, path: str, name: str, namespace: str):
+        return self.get_catalog_file(path, 'integration', f'integration/{name}/0', namespace, Format.JSON)
