@@ -289,7 +289,11 @@ class WazuhIntegration:
             aws_tools.debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            s.send(f"{MESSAGE_HEADER}{json_msg if dump_json else msg}".encode())
+            encoded_msg = f"{MESSAGE_HEADER}{json_msg if dump_json else msg}".encode()
+            # Logs warning if event is bigger than max size
+            if len(encoded_msg) > utils.MAX_EVENT_SIZE:
+                aws_tools.debug(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.", 1)
+            s.send(encoded_msg)
             s.close()
         except socket.error as e:
             if e.errno == 111:
