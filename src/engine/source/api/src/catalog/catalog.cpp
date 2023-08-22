@@ -345,7 +345,33 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
     return std::nullopt;
 }
 
-std::variant<std::string, base::Error> Catalog::getResource(const Resource& resource) const
+std::variant<store::Doc, base::Error> Catalog::getDoc(const Resource& resource) const
+{
+    const auto storeResult = store::utils::get(m_store, resource.m_name, true);
+    if (std::holds_alternative<base::Error>(storeResult))
+    {
+        return base::Error {std::get<base::Error>(storeResult).message};
+    }
+
+    const auto& content = std::get<json::Json>(storeResult);
+
+    return content;
+}
+
+std::variant<store::Col, base::Error> Catalog::getCol(const Resource& resource, const std::string& namespaceId) const
+{
+    auto result = m_store->readCol(resource.m_name, store::NamespaceId {namespaceId});
+    if (base::isError(result))
+    {
+        return base::getError(result);
+    }
+
+    auto col = base::getResponse<store::Col>(result);
+    return col;
+}
+
+std::variant<std::string, base::Error> Catalog::getResource(const Resource& resource,
+                                                            const std::vector<std::string>& namespaceIds) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
     using Format = ::com::wazuh::api::engine::catalog::ResourceFormat;
@@ -371,61 +397,100 @@ std::variant<std::string, base::Error> Catalog::getResource(const Resource& reso
         return std::get<std::string>(formatResult);
     };
 
-    const auto storeResult = store::utils::get(m_store, resource.m_name, true);
-    if (std::holds_alternative<base::Error>(storeResult))
+    // Call appropriate method depending on the resource type
+    // Collection
+    if (Resource::Type::collection == resource.m_type)
     {
-        return base::Error {std::get<base::Error>(storeResult).message};
-    }
-
-    const auto& content = std::get<json::Json>(storeResult);
-
-    if (resource.m_format == Format::json || resource.m_type == Type::collection || resource.m_type == Type::policy)
-    {
-        if (content.exists("/original"))
+        // Assert namespaceIds is not empty
+        if (namespaceIds.empty())
         {
-            auto original = content.getJson("/json");
-            if (original)
+            return base::Error {"Namespace ids cannot be empty"};
+        }
+
+        // Concatenate all the collections
+        store::Col mergedCol;
+        for (const auto& nsId : namespaceIds)
+        {
+            auto colResult = getCol(resource, nsId);
+            if (base::isError(colResult))
             {
-                return formatContent(std::move(original.value()));
+                return base::getError(colResult);
             }
-            else
-            {
-                return base::Error {"Could not get the original content from the store"};
-            }
+            auto col = base::getResponse<store::Col>(std::move(colResult));
+            mergedCol.insert(mergedCol.end(), std::make_move_iterator(col.begin()), std::make_move_iterator(col.end()));
+        }
+
+        json::Json content;
+        content.setArray();
+        for (const auto& item : mergedCol)
+        {
+            content.appendString(item.fullName());
         }
 
         return formatContent(content);
     }
 
-    if (Resource::formatToStr(Format::json) == content.getString("/format").value()
-        && Resource::formatToStr(Format::yaml) == Resource::formatToStr(resource.m_format))
+    // Document
+    auto docResult = getDoc(resource);
+    if (base::isError(docResult))
     {
-        return formatContent(content.getJson("/json").value());
+        return base::getError(docResult);
     }
 
-    return content.getString("/original").value();
+    auto doc = base::getResponse<store::Doc>(docResult);
+    if (doc.exists("/original"))
+    {
+        auto original = doc.getJson("/json");
+        if (original)
+        {
+            return formatContent(std::move(original.value()));
+        }
+    }
+    return base::Error {"Could not get the original content from the store"};
 }
 
-std::optional<base::Error> Catalog::deleteResource(const Resource& resource)
+base::OptError Catalog::delDoc(const Resource& resource)
 {
-    base::OptError storeError;
-    if (m_store->existsDoc(resource.m_name))
-    {
-        storeError = m_store->deleteDoc(resource.m_name);
-    }
-    // TODO Implement delete resource in ns
-    // else
-    // {
-    //     storeError = m_store->deleteCol(resource.m_name);
-    // }
-    if (storeError)
-    {
-        return base::Error {fmt::format("Content '{}' could not be deleted from store: {}",
-                                        resource.m_name.fullName(),
-                                        storeError.value().message)};
-    }
+    return m_store->deleteDoc(resource.m_name);
+}
 
-    return std::nullopt;
+base::OptError Catalog::delCol(const Resource& resource, const std::string& namespaceId)
+{
+    return m_store->deleteCol(resource.m_name, store::NamespaceId {namespaceId});
+}
+
+std::optional<base::Error> Catalog::deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds)
+{
+    if (Resource::Type::collection == resource.m_type)
+    {
+        // Assert namespaceIds is not empty
+        if (namespaceIds.empty())
+        {
+            return base::Error {"Namespace ids cannot be empty"};
+        }
+
+        // Agregate all errors
+        base::Error error;
+        for (const auto& nsId : namespaceIds)
+        {
+            const auto delColError = delCol(resource, nsId);
+            if (delColError)
+            {
+                error.message += fmt::format("Could not delete collection '{}': {}\n",
+                                             resource.m_name.fullName(),
+                                             delColError.value().message);
+            }
+        }
+
+        if (!error.message.empty())
+        {
+            return error;
+        }
+        return base::noError();
+    }
+    
+    // Delete doc
+    return delDoc(resource);
 }
 
 std::optional<base::Error> Catalog::validate(const Resource& item, const json::Json& content) const
