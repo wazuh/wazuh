@@ -134,12 +134,12 @@ Vagrant.configure("2") do |config|
 
         echo "--- Loading ruleset & enabling wazuh environment  ---"
         cd $ENGINE_SRC_DIR/ruleset
-        engine-integration add -p wazuh-core/
-        engine-integration add -p integrations/syslog/
-        engine-integration add -p integrations/system/
-        engine-integration add -p integrations/windows/
-        engine-integration add -p integrations/apache-http/
-        engine-integration add -p integrations/suricata/
+        engine-integration add -n system wazuh-core/
+        engine-integration add -n wazuh integrations/syslog/
+        engine-integration add -n wazuh integrations/system/
+        engine-integration add -n wazuh integrations/windows/
+        engine-integration add -n wazuh integrations/apache-http/
+        engine-integration add -n wazuh integrations/suricata/
         cd $HOME
         echo "Creating default policy..."
         $ENGINE_DIR/wazuh-engine catalog create policy < $ENGINE_SRC_DIR/ruleset/default-policy.yml
