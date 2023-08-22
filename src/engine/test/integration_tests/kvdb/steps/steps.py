@@ -1,4 +1,6 @@
 from api_communication import communication #TODO: check on a clean install!
+from api_communication import kvdb_pb2
+from google.protobuf.json_format import MessageToDict
 from behave import given, when, then, step
 
 DEFAULT_API_SOCK = '/home/runner/work/wazuh/wazuh/environment/queue/sockets/engine-api'
@@ -16,8 +18,12 @@ def step_impl(context):
 @when('I send a {request_type} request to KVDB API with "{database_name}" as unique database name')
 def step_impl(context, request_type:str, database_name:str):
     try:
-        context.result = API_KVDB.send_command("manager", request_type.lower(), {"name": database_name})
-        context.result = API_KVDB.send_command("manager", "delete", {"name": database_name})
+        post = kvdb_pb2.managerPost_Request()
+        post.name = database_name
+        context.result = API_KVDB.send_command("manager", request_type.lower(), MessageToDict(post))
+        delete = kvdb_pb2.managerDelete_Request()
+        delete.name = database_name
+        context.result = API_KVDB.send_command("manager", "delete", MessageToDict(delete))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -34,7 +40,9 @@ def step_impl(context,success):
 @given('I have already created a database named "{database_name}" using the KVDB API')
 def step_impl(context, database_name:str):
     try:
-        context.result = API_KVDB.send_command("manager", "post", {"name": database_name})
+        post = kvdb_pb2.managerPost_Request()
+        post.name = database_name
+        context.result = API_KVDB.send_command("manager", "post", MessageToDict(post))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -42,7 +50,9 @@ def step_impl(context, database_name:str):
 @when('I send a {request_type} request with the database name "{database_name}"')
 def step_impl(context, request_type:str, database_name:str):
     try:
-        context.result = API_KVDB.send_command("manager", request_type.lower(), {"name": database_name})
+        post = kvdb_pb2.managerPost_Request()
+        post.name = database_name
+        context.result = API_KVDB.send_command("manager", request_type.lower(), MessageToDict(post))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -60,7 +70,9 @@ def step_impl(context, request_result):
 @given('I have a database named "{database_name}" created using the KVDB API')
 def step_impl(context, database_name:str):
     try:
-        context.result = API_KVDB.send_command("manager", "post", {"name": database_name})
+        post = kvdb_pb2.managerPost_Request()
+        post.name = database_name
+        context.result = API_KVDB.send_command("manager", "post", MessageToDict(post))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -68,7 +80,9 @@ def step_impl(context, database_name:str):
 @when('I send a {request_type} request to "{database_name}"')
 def step_impl(context, request_type:str, database_name:str):
     try:
-        context.result = API_KVDB.send_command("manager", request_type.lower(), {"name": database_name})
+        delete = kvdb_pb2.managerDelete_Request()
+        delete.name = database_name
+        context.result = API_KVDB.send_command("manager", request_type.lower(), MessageToDict(delete))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -85,7 +99,11 @@ def step_impl(context, request_result:str, database_name:str):
 @when('I send a {request_type} request to add a key-value pair to the database "{database_name}" with key "{key_name}" and value "{key_value}"')
 def step_impl(context, request_type:str, database_name:str, key_name:str, key_value:str):
     try:
-        context.result = API_KVDB.send_command("db", request_type.lower(), {"name": database_name, "entry":{"key": key_name, "value":key_value}})
+        put = kvdb_pb2.dbPut_Request()
+        put.name = database_name
+        put.entry.key = key_name
+        put.entry.value.string_value = key_value
+        context.result = API_KVDB.send_command("db", request_type.lower(), MessageToDict(put))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -102,7 +120,11 @@ def step_impl(context, request_result:str):
 @given('I have already added a key-value pair to the database "{database_name}" with the key "{key_name}" and value "{key_value}"')
 def step_impl(context, database_name:str, key_name:str, key_value:str):
     try:
-        context.result = API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": key_name, "value":"key_value"}})
+        put = kvdb_pb2.dbPut_Request()
+        put.name = database_name
+        put.entry.key = key_name
+        put.entry.value.string_value = key_value
+        context.result = API_KVDB.send_command("db", "put", MessageToDict(put))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -110,7 +132,11 @@ def step_impl(context, database_name:str, key_name:str, key_value:str):
 @when('I send a {request_type} request to modify a key-value pair to the database "{database_name}" with the key "{key_name}" and value "{key_value}"')
 def step_impl(context, request_type:str, database_name:str, key_name:str, key_value:str):
     try:
-        context.result = API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": key_name, "value":"key_value"}})
+        put = kvdb_pb2.dbPut_Request()
+        put.name = database_name
+        put.entry.key = key_name
+        put.entry.value.string_value = key_value
+        context.result = API_KVDB.send_command("db", "put", MessageToDict(put))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -127,7 +153,10 @@ def step_impl(context, request_result:str):
 @when('I send a {request_type} request to remove from the database "{database_name}" the key named "{key_name}"')
 def step_impl(context, request_type:str, database_name:str, key_name:str):
     try:
-        context.result = API_KVDB.send_command("db", request_type.lower(), {"name": database_name, "key": key_name})
+        delete = kvdb_pb2.dbDelete_Request()
+        delete.name = database_name
+        delete.key = key_name
+        context.result = API_KVDB.send_command("db", request_type.lower(), MessageToDict(delete))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
@@ -146,17 +175,28 @@ def step_impl(context, i:str, j:str, database_name:str, key_name:str, other_key_
     try:
         for first in range(int(i)):
             name = key_name + "_" + str(first)
-            API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": name, "value": "value"}})
+            put = kvdb_pb2.dbPut_Request()
+            put.name = database_name
+            put.entry.key = name
+            put.entry.value.string_value = "value"
+            API_KVDB.send_command("db", "put", MessageToDict(put))
         for second in range(int(j)):
             name = other_key_name + "_" + str(second)
-            API_KVDB.send_command("db", "put", {"name": database_name, "entry":{"key": name, "value": "value"}})
+            put = kvdb_pb2.dbPut_Request()
+            put.name = database_name
+            put.entry.key = name
+            put.entry.value.string_value = "value"
+            API_KVDB.send_command("db", "put", MessageToDict(put))
     except:
         raise Exception('STEP: Couldn''t send request to API')
 
 
 @when('I send a {request_type} request to search by the prefix "{prefix}" in database "{database_name}"')
 def step_impl(context, request_type:str, prefix:str, database_name:str):
-    context.result = API_KVDB.send_command("db", request_type.lower(), {"name": database_name, "prefix": prefix})
+    search = kvdb_pb2.dbSearch_Request()
+    search.name = database_name
+    search.prefix = prefix
+    context.result = API_KVDB.send_command("db", request_type.lower(), MessageToDict(search))
 
 
 @then('I should receive a list of entries with the {size} key-value pairs whose keyname contains the prefix.')
