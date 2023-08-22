@@ -57,6 +57,7 @@ public:
             {
                 if (!m_isRegistered)
                 {
+                    // LCOV_EXCL_START
                     if (bodySize == 0)
                     {
                         promise.set_exception(std::make_exception_ptr(std::runtime_error("Connection refused")));
@@ -82,6 +83,7 @@ public:
                             promise.set_exception(std::make_exception_ptr(std::runtime_error(e.what())));
                         }
                     }
+                    // LCOV_EXCL_STOP
                 }
                 else
                 {
@@ -99,7 +101,7 @@ public:
 
         if (future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
         {
-            throw std::runtime_error("Connection refused");
+            throw std::runtime_error("Connection refused"); // LCOV_EXCL_LINE
         }
     }
 

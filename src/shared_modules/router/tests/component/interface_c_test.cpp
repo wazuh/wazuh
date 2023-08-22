@@ -77,3 +77,38 @@ TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 
     // TO DO - Add C interface for subscribers.
 }
+
+TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
+{
+    auto handle = router_provider_create("test");
+
+    EXPECT_NE(handle, nullptr);
+
+    EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
+
+    EXPECT_NO_THROW(router_provider_destroy(handle));
+
+    // TO DO - Add C interface for subscribers.
+}
+
+TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
+{
+    auto handle = router_provider_create("");
+
+    EXPECT_EQ(handle, nullptr);
+
+    // TO DO - Add C interface for subscribers.
+}
+
+TEST_F(RouterCInterfaceTest, TestTwoProvidersWithTheSameTopicName)
+{
+    auto handle1 = router_provider_create("test-provider");
+
+    EXPECT_NE(handle1, nullptr);
+
+    auto handle2 = router_provider_create("test-provider");
+
+    EXPECT_EQ(handle2, nullptr);
+
+    // TO DO - Add C interface for subscribers.
+}

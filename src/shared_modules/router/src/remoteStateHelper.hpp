@@ -45,6 +45,7 @@ public:
         socketClient->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
+                // LCOV_EXCL_START
                 try
                 {
                     auto result = nlohmann::json::parse(body, body + bodySize);
@@ -58,6 +59,7 @@ public:
                     std::cerr << "RemoteProvider: Invalid result: " << e.what() << std::endl;
                 }
                 promiseObj.set_value();
+                // LCOV_EXCL_STOP
             });
 
         const auto msg = jsonMsg.dump();
