@@ -444,6 +444,7 @@ inline std::optional<base::Error> addTestPolicyToCatalog(const std::shared_ptr<C
     if (!addTestPolicyToCatalogError.has_value())
     {
         // Get the original policy's content
+        // TODO implement namespaces
         const auto getResourceResult = catalog->getResource(targetResource);
         if (std::holds_alternative<base::Error>(getResourceResult))
         {

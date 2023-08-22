@@ -64,6 +64,9 @@ constexpr auto ENGINE_QUEUE_FLOOD_SLEEP_ENV = "WZE_QUEUE_FLOOD_SLEEP";
 // RBAC Module
 constexpr auto ENGINE_RBAC_ROLE = "user-developer";
 
+// Namespace
+constexpr auto ENGINE_NAMESPACE = "user";
+
 /******************************************************************************
  *  Test
  ******************************************************************************/
