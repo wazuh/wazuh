@@ -151,6 +151,8 @@ void _test_lccom_getstate_tmp (char *fullJson, char *ExpectedBlock, bool getNext
         will_return(__wrap_stat, &stat_buf);
         will_return(__wrap_stat, 0);
         will_return(__wrap_difftime, 10);
+        will_return(__wrap_strftime,"Wed Dec 31 19:00:00 1969");
+        will_return(__wrap_strftime, 20);
         expect_string(__wrap__mdebug2, formatted_msg, " Wed Dec 31 19:00:00 1969 var/run/wazuh-logcollector.state");
     }
 
@@ -225,6 +227,8 @@ void test_lccom_isJsonUpdated(void ** state) {
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
     will_return(__wrap_difftime, 10);
+    will_return(__wrap_strftime,"Wed Dec 31 19:00:00 1969");
+    will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mdebug2, formatted_msg, " Wed Dec 31 19:00:00 1969 var/run/wazuh-logcollector.state");
     size_t retval = isJsonUpdated();
