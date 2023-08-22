@@ -1,9 +1,12 @@
 name: Framework unit tests
 
 on:
+  workflow_dispatch:
   pull_request:
-    paths: 
-    - 'framework/**'
+    paths:
+      - '.github/workflows/framework-unit-tests.yml'
+      - 'framework/**'
+      - 'src/Makefile'
 
 jobs:
   build: 

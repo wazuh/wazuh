@@ -1,9 +1,12 @@
 name: API unit tests
 
 on:
+  workflow_dispatch:
   pull_request:
-    paths: 
-    - 'api/**'
+    paths:
+      - '.github/workflows/api-unit-tests.yml'
+      - 'api/**'
+      - 'src/Makefile'
 
 jobs:
   build: 
