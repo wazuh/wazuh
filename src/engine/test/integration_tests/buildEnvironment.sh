@@ -1,42 +1,26 @@
 #!/bin/bash
 
-if [ $# -ne 2 ]; then
-    echo "Usage: $0 <root_dir> <new_path>"
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <github_working_directory>"
     exit 1
 fi
 
-root_dir="$1"
-new_path="$2"
+GITHUB_WORKING_DIRECTORY="$1"
+CONF_FILE="${2:-general.conf}"
 
-#/home/runner/work/wazuh/wazuh
-ENGINE_SRC_DIR=$new_path/src/engine
-ENVIRONMENT_DIR=$new_path/environment
+ENGINE_SRC_DIR=$GITHUB_WORKING_DIRECTORY/src/engine
+ENVIRONMENT_DIR=$GITHUB_WORKING_DIRECTORY/environment
 ENGINE_DIR=$ENVIRONMENT_DIR/engine
-
-if [ ! -f "$root_dir" ]; then
-    echo "File not found: $root_dir"
-    exit 1
-fi
-
-# Reemplazar ocurrencias de /var/ossec con la nueva ruta
-sed -i "s,/var/ossec,$ENVIRONMENT_DIR,g" "$root_dir"
 
 echo "--- Folder creation ---"
 mkdir -p $ENVIRONMENT_DIR
 mkdir -p $ENGINE_DIR
-
 mkdir -p $ENVIRONMENT_DIR/queue/sockets
-nc -klU $ENVIRONMENT_DIR/queue/sockets/engine-api &
-nc -klU $ENVIRONMENT_DIR/queue/sockets/queue &
-
 mkdir $ENVIRONMENT_DIR/logs
 touch $ENVIRONMENT_DIR/logs/engine-flood.log
 
 
-
 echo "--- Setting up the engine ---"
-echo $ENGINE_SRC_DIR
-
 mkdir -p $ENGINE_DIR/store/schema
 mkdir -p $ENVIRONMENT_DIR/etc/kvdb/
 mkdir -p $ENVIRONMENT_DIR/etc/kvdb_test/
@@ -49,4 +33,3 @@ mkdir -p $ENGINE_DIR/store/schema/wazuh-policy
 cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-policy.json $ENGINE_DIR/store/schema/wazuh-policy/0
 mkdir -p $ENGINE_DIR/store/schema/engine-schema
 cp $ENGINE_SRC_DIR/ruleset/schemas/engine-schema.json $ENGINE_DIR/store/schema/engine-schema/0
-
