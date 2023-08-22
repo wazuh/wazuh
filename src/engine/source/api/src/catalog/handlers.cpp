@@ -59,12 +59,11 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        const auto error = !eRequest.has_type()      ? std::make_optional("Missing /type parameter or is invalid")
-                           : !eRequest.has_format()  ? std::make_optional("Missing /format parameter or is invalid")
-                           : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
+        const auto error = !eRequest.has_type()          ? std::make_optional("Missing /type parameter or is invalid")
+                           : !eRequest.has_format()      ? std::make_optional("Missing /format parameter or is invalid")
+                           : !eRequest.has_content()     ? std::make_optional("Missing /content parameter")
                            : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespace parameter")
-                           : !eRequest.has_role()    ? std::make_optional("Missing /role parameter")
-                                                     : std::nullopt;
+                                                         : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -82,13 +81,14 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::
         }
 
         // Validate the role
-        {
-            auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn, authSystemFn);
-            if (permissionDenied)
-            {
-                return std::move(permissionDenied.value());
-            }
-        }
+        // {
+        //     auto permissionDenied =
+        //         checkResoursePermission<ResponseType>(name, eRequest.namespaceid(), authFn, authSystemFn);
+        //     if (permissionDenied)
+        //     {
+        //         return std::move(permissionDenied.value());
+        //     }
+        // }
 
         // Build target resource
         catalog::Resource targetResource;
@@ -138,10 +138,10 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        const auto error = !eRequest.has_name()     ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format() ? std::make_optional("Missing or invalid /format parameter")
-                           : !eRequest.has_role()   ? std::make_optional("Missing /role parameter")
-                                                    : std::nullopt;
+        const auto error = !eRequest.has_name()          ? std::make_optional("Missing /name parameter")
+                           : !eRequest.has_format()      ? std::make_optional("Missing or invalid /format parameter")
+                           : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespaceid parameter")
+                                                         : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -159,13 +159,13 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
         }
 
         // Check permissions
-        {
-            auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn, authSystemFn);
-            if (permissionDenied)
-            {
-                return std::move(permissionDenied.value());
-            }
-        }
+        // {
+        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn,
+        //     authSystemFn); if (permissionDenied)
+        //     {
+        //         return std::move(permissionDenied.value());
+        //     }
+        // }
 
         // Build target resource
         catalog::Resource targetResource;
@@ -178,12 +178,14 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        auto query = catalog->getResource(targetResource);
-        if (std::holds_alternative<base::Error>(query))
+        // Call catalog
+        auto queryRes = catalog->getResource(targetResource, {eRequest.namespaceid()});
+
+        if (base::isError(queryRes))
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(query).message);
+            return ::api::adapter::genericError<ResponseType>(base::getError(queryRes).message);
         }
-        const auto& content = std::get<std::string>(query);
+        const auto& content = base::getResponse<std::string>(queryRes);
         ResponseType eResponse;
         eResponse.set_content(content);
         eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -218,9 +220,9 @@ api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the name
-        const auto error = !eRequest.has_name()   ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_role() ? std::make_optional("Missing /role parameter")
-                                                  : std::nullopt;
+        const auto error = !eRequest.has_name()          ? std::make_optional("Missing /name parameter")
+                           : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespaceid parameter")
+                                                         : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -238,13 +240,14 @@ api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac
         }
 
         // Validate the role
-        {
-            auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn, authSystemFn);
-            if (permissionDenied)
-            {
-                return std::move(permissionDenied.value());
-            }
-        }
+        // {
+        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
+        //     authSystemFn); if (permissionDenied)
+        //     {
+        //         return std::move(permissionDenied.value());
+        //     }
+        // }
+
         // Build target resource
         catalog::Resource targetResource;
         try
@@ -256,7 +259,7 @@ api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        auto errorDelete = catalog->deleteResource(targetResource);
+        auto errorDelete = catalog->deleteResource(targetResource, {eRequest.namespaceid()});
         if (errorDelete)
         {
             return ::api::adapter::genericError<ResponseType>(errorDelete.value().message);
@@ -292,11 +295,11 @@ api::Handler resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        const auto error = !eRequest.has_name()      ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
-                           : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
-                           : !eRequest.has_role()    ? std::make_optional("Missing /role parameter")
-                                                     : std::nullopt;
+        const auto error = !eRequest.has_name()          ? std::make_optional("Missing /name parameter")
+                           : !eRequest.has_format()      ? std::make_optional("Missing or invalid /format parameter")
+                           : !eRequest.has_content()     ? std::make_optional("Missing /content parameter")
+                           : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespaceid parameter")
+                                                         : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -314,13 +317,13 @@ api::Handler resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
         }
 
         // Validate the role
-        {
-            auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn, authSystemFn);
-            if (permissionDenied)
-            {
-                return std::move(permissionDenied.value());
-            }
-        }
+        // {
+        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn,
+        //     authSystemFn); if (permissionDenied)
+        //     {
+        //         return std::move(permissionDenied.value());
+        //     }
+        // }
 
         // Build target resource
         catalog::Resource targetResource;
@@ -370,11 +373,11 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rb
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        const auto error = !eRequest.has_name()      ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
-                           : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
-                           : !eRequest.has_role()    ? std::make_optional("Missing /role parameter")
-                                                     : std::nullopt;
+        const auto error = !eRequest.has_name()          ? std::make_optional("Missing /name parameter")
+                           : !eRequest.has_format()      ? std::make_optional("Missing or invalid /format parameter")
+                           : !eRequest.has_content()     ? std::make_optional("Missing /content parameter")
+                           : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespaceid parameter")
+                                                         : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -392,13 +395,13 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rb
         }
 
         // Validate the role
-        {
-            auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn, authSystemFn);
-            if (permissionDenied)
-            {
-                return std::move(permissionDenied.value());
-            }
-        }
+        // {
+        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
+        //     authSystemFn); if (permissionDenied)
+        //     {
+        //         return std::move(permissionDenied.value());
+        //     }
+        // }
 
         // Build target resource
         catalog::Resource targetResource;

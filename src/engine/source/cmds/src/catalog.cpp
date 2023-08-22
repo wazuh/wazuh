@@ -117,20 +117,12 @@ void readCinIfEmpty(std::string& content)
     }
 }
 
-template<typename RequestType>
-void addRole(const std::string& role, RequestType& request)
-{
-    if (!role.empty())
-    {
-        request.set_role(role);
-    }
-}
-
 } // namespace
 
 void runGet(std::shared_ptr<apiclnt::Client> client,
             const std::string& format,
             const std::string& nameStr,
+            const std::string& namespaceId,
             const std::string& role)
 {
     using RequestType = eCatalog::ResourceGet_Request;
@@ -141,7 +133,7 @@ void runGet(std::shared_ptr<apiclnt::Client> client,
     RequestType eRequest;
     eRequest.set_name(nameStr);
     eRequest.set_format(toResourceFormat(format));
-    addRole(role, eRequest);
+    eRequest.set_namespaceid(namespaceId);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -166,7 +158,7 @@ void runUpdate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_name(nameStr);
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
-    addRole(role, eRequest);
+    eRequest.set_namespaceid(role);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -191,7 +183,6 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
     eRequest.set_namespaceid(namespaceId);
-    addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -202,6 +193,7 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
 void runDelete(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& nameStr,
+               const std::string& namespaceId,
                const std::string& role)
 {
     using RequestType = eCatalog::ResourceDelete_Request;
@@ -209,9 +201,10 @@ void runDelete(std::shared_ptr<apiclnt::Client> client,
     const std::string command = "catalog.resource/delete";
 
     // Prepare the request
+
     RequestType eRequest;
     eRequest.set_name(nameStr);
-    addRole(role, eRequest);
+    eRequest.set_namespaceid(namespaceId);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -234,7 +227,7 @@ void runValidate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_name(resourceType);
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
-    addRole(role, eRequest);
+    eRequest.set_namespaceid(role);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -248,6 +241,7 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
              const std::string& path,
              bool recursive,
              bool abortOnError,
+             const std::string& namespaceId,
              const std::string& role)
 {
 
@@ -340,7 +334,7 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
             eRequest.set_type(type);
             eRequest.set_format(format);
             eRequest.set_content(content);
-            addRole(role, eRequest);
+            eRequest.set_namespaceid(namespaceId);
 
             try
             {
@@ -425,7 +419,12 @@ void configure(CLI::App_p app)
         ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}));
 
     // RBAC role
-    catalogApp->add_option("-r, --role", options->role, "Sets the RBAC role.")->default_val(ENGINE_RBAC_ROLE);
+    // catalogApp->add_option("-r, --role", options->role, "Sets the RBAC role.")->default_val(ENGINE_RBAC_ROLE);
+
+    // Namespaces
+    catalogApp
+        ->add_option("-n, --namespaces", options->namespaceId, "Specifies the namespace where the item is located.")
+        ->default_val(ENGINE_NAMESPACE);
 
     // Shared option definitions among subcommands
     auto name = "name";
@@ -445,7 +444,7 @@ void configure(CLI::App_p app)
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runGet(client, options->format, options->name, options->role);
+            runGet(client, options->format, options->name, {options->namespaceId}, options->namespaceId);
         });
 
     // update
@@ -459,7 +458,7 @@ void configure(CLI::App_p app)
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
-            runUpdate(client, options->format, options->name, options->content, options->role);
+            runUpdate(client, options->format, options->name, options->content, options->namespaceId);
         });
 
     // create
@@ -468,13 +467,13 @@ void configure(CLI::App_p app)
     create_subcommand->add_option(name, options->name, nameDesc + "collection to add an item to: item-type")
         ->required();
     create_subcommand->add_option(item, options->content, itemDesc)->default_val("");
-    create_subcommand->add_option(namespaceId, options->namespaceId, nsDesc)->default_val("user");
     create_subcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
-            runCreate(client, options->format, options->name, options->content,  options->namespaceId, options->role);
+            runCreate(
+                client, options->format, options->name, options->content, {options->namespaceId}, options->namespaceId);
         });
 
     // delete
@@ -487,7 +486,7 @@ void configure(CLI::App_p app)
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runDelete(client, options->format, options->name, options->role);
+            runDelete(client, options->format, options->name, options->namespaceId, options->namespaceId);
         });
 
     // validate
@@ -501,7 +500,7 @@ void configure(CLI::App_p app)
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
-            runValidate(client, options->format, options->name, options->content, options->role);
+            runValidate(client, options->format, options->name, options->content, options->namespaceId);
         });
 
     // load
@@ -531,7 +530,8 @@ void configure(CLI::App_p app)
                     options->path,
                     options->recursive,
                     options->abortOnError,
-                    options->role);
+                    {options->namespaceId},
+                    options->namespaceId);
         });
 }
 } // namespace cmd::catalog

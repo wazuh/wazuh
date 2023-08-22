@@ -68,6 +68,13 @@ private:
 
     std::optional<base::Error> validate(const Resource& item, const json::Json& content) const;
 
+    base::RespOrError<store::Doc> getDoc(const Resource& resource) const;
+    base::RespOrError<store::Col> getCol(const Resource& resource, const std::string& namespaceId) const;
+
+    base::OptError delDoc(const Resource& resource);
+    base::OptError delCol(const Resource& resource, const std::string& namespaceId);
+
+
 public:
     /**
      * @brief Construct a new Catalog object
@@ -115,18 +122,20 @@ public:
      * resource.m_format
      *
      * @param resource Resource identifying the item or collection to get
+     * @param namespaceIds Namespace names where the items are located, only needed if resource is a collection
      * @return std::variant<std::string, base::Error> Error if the operation failed or the
      * content of the resource
      */
-    std::variant<std::string, base::Error> getResource(const Resource& resource) const;
+    std::variant<std::string, base::Error> getResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {}) const;
 
     /**
      * @brief Delete a resource
      *
      * @param resource Resource identifying the item or collection to delete
+     * @param namespaceIds Namespace names where the items are located, only needed if resource is a collection
      * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> deleteResource(const Resource& resource);
+    std::optional<base::Error> deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {});
 
     /**
      * @brief Validate an Asset or Environment.
