@@ -233,7 +233,7 @@ def main():
         if args.debug:
             raise
     except ProblemException as e:
-        print(f"Error {e.status}: {str(e.detail)}")
+        print(f"Error {getattr(e, 'ext', {}).get('code', e.status)}: {str(e.detail)}")
         if args.debug:
             raise
     except Exception as e:
