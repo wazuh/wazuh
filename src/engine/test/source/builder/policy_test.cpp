@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include <schemf/emptySchema.hpp>
+#include <store/mockStore.hpp>
 
 #include "builder/builder.hpp"
 #include "builder/policy.hpp"
@@ -14,11 +15,47 @@
 using namespace builder;
 using namespace builder::internals;
 using namespace base;
+using namespace store::mocks;
 
 class PolicyTest : public ::testing::Test
 {
+protected:
+    std::shared_ptr<MockStoreRead> storeRead;
+
     void SetUp() override
     {
+        storeRead = std::make_shared<MockStoreRead>();
+
+        EXPECT_CALL(*storeRead, readDoc(testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [&](const base::Name& name) -> base::RespOrError<store::Doc>
+                {
+                    if (name.parts()[0] == "decoder")
+                    {
+                        return json::Json {decoders[name.fullName()]};
+                    }
+                    else if (name.parts()[0] == "rule")
+                    {
+                        return json::Json {rules[name.fullName()]};
+                    }
+                    else if (name.parts()[0] == "filter")
+                    {
+                        return json::Json {filters[name.fullName()]};
+                    }
+                    else if (name.parts()[0] == "output")
+                    {
+                        return json::Json {outputs[name.fullName()]};
+                    }
+                    else if (name.parts()[0] == "policy")
+                    {
+                        return json::Json {policys[name.parts()[1]]};
+                    }
+                    else
+                    {
+                        throw std::runtime_error("Unknown asset name.parts()[0]: " + name.parts()[0]);
+                    }
+                }));
+
         if (std::filesystem::exists(outputPath))
         {
             std::filesystem::remove(outputPath);
@@ -69,8 +106,8 @@ TEST_F(PolicyTest, OneDecoderPolicy)
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name("policy/oneDecEnv/version")));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name("policy/oneDecEnv/version")));
     ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
     auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/oneDecEnv/version");
@@ -98,8 +135,8 @@ TEST_F(PolicyTest, OneRulePolicy)
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneRuleEnv/version"}));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneRuleEnv/version"}));
     ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
     auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/oneRuleEnv/version");
@@ -127,8 +164,8 @@ TEST_F(PolicyTest, OneOutputPolicy)
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneOutEnv/version"}));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneOutEnv/version"}));
     ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
     auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/oneOutEnv/version");
@@ -156,8 +193,8 @@ TEST_F(PolicyTest, OneFilterPolicy)
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneFilEnv/version"}));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneFilEnv/version"}));
     ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
 }
 
@@ -170,8 +207,8 @@ TEST_F(PolicyTest, OrphanAsset)
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanAssetEnv/version"}));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanAssetEnv/version"}));
     ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
 }
 
@@ -180,8 +217,8 @@ TEST_F(PolicyTest, OrphanFilter)
     GTEST_SKIP();
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanFilterEnv/version"}));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanFilterEnv/version"}));
     ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
 }
 
@@ -194,8 +231,8 @@ TEST_F(PolicyTest, CompletePolicy)
     deps.helperRegistry = helperRegistry;
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
-    auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/completeEnv/version"}));
+
+    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/completeEnv/version"}));
     ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
     auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/completeEnv/version");

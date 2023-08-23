@@ -16,6 +16,11 @@ inline base::OptError storeError()
     return base::Error {"Mocked store error"};
 }
 
+inline base::OptError storeOk()
+{
+    return std::nullopt;
+}
+
 template<typename T>
 inline base::RespOrError<T> storeReadError()
 {
@@ -79,15 +84,26 @@ public:
     MOCK_METHOD((base::OptError), createInternalDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::RespOrError<Doc>), readInternalDoc, (const base::Name&), (const, override));
     MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), upsertInternalDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
 };
 
-class MockStore
-    : public store::IStore
-    , public MockStoreRead
-    , public MockStoreInternal
+class MockStore : public store::IStore
 {
 public:
+    MOCK_METHOD((base::RespOrError<Doc>), readDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::RespOrError<Col>), readCol, (const base::Name&, const NamespaceId&), (const, override));
+    MOCK_METHOD((bool), existsDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsCol, (const base::Name&, const NamespaceId& namespaceId), (const, override));
+    MOCK_METHOD((std::vector<NamespaceId>), listNamespaces, (), (const, override));
+    MOCK_METHOD((std::optional<NamespaceId>), getNamespace, (const base::Name&), (const, override));
+
+    MOCK_METHOD((base::OptError), createInternalDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::RespOrError<Doc>), readInternalDoc, (const base::Name&), (const, override));
+    MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), upsertInternalDoc, (const base::Name&, const Doc&), (override));
+    MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
+
     MOCK_METHOD((base::OptError), createDoc, (const base::Name&, const NamespaceId&, const Doc&), (override));
     MOCK_METHOD((base::OptError), updateDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), upsertDoc, (const base::Name&, const NamespaceId&, const Doc&), (override));
