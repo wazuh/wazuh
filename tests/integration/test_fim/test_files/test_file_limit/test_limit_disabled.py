@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT, FILE_LIMIT_AMOUNT
+from wazuh_testing.modules.fim.patterns import FILE_LIMIT_DISABLED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -82,7 +82,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_fill_capacity.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_limit_disabled.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -93,23 +93,9 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                       configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
-                       daemons_handler, start_monitoring):
-    log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    files_amount = test_metadata.get('files_amount')
-    fill_percentage = test_metadata.get('fill_percentage')
-    max_entries = test_metadata.get('max_files_entries')
+def test_limit_disabled(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                        configure_local_internal_options, folder_to_monitor, daemons_handler, start_monitoring):
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(generate_callback(FILE_LIMIT_AMOUNT))
-    assert int(log_monitor.callback_result[0]) == max_entries
-
-    files_amount = files_amount if files_amount <= max_entries else max_entries
-    log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
-    assert int(log_monitor.callback_result[0]) == files_amount
-
-    log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE))
-    if fill_percentage >= 80:
-        assert int(log_monitor.callback_result[0]) == fill_percentage
-    else:
-        assert not log_monitor.callback_result
+    wazuh_log_monitor.start(generate_callback(FILE_LIMIT_DISABLED))
+    assert wazuh_log_monitor.callback_result
