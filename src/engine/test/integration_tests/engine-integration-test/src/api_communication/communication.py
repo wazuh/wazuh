@@ -30,7 +30,7 @@ class APIClient:
                 'origin': {'name': 'engine-integration-test', 'module': 'engine-integration-test'},
                 'parameters': params
             }
-            print(request)
+
             request_raw = json.dumps(request)
             payload = bytes(request_raw , 'utf-8')
 
@@ -64,10 +64,15 @@ class APIClient:
             raise Exception(f'Could not parse response message "{response_json}".')
 
 class CLIClient:
+    def __init__(self, binary_path: str, api_socket: str):
+        self.binary_path = binary_path
+        self.api_socket = api_socket
+
     def execute_command(self, command):
         try:
-            # Execute the command and capture the output
-            result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
+            words = command.split()
+            arguments = [words[0], "--api_socket", self.api_socket] + words[1:]
+            result = subprocess.run([self.binary_path] + arguments, text=True, capture_output=True, check=True)
             return result.stdout
         except subprocess.CalledProcessError as e:
-            return f"Error executing the command: {e}"
+            print(f"Error executing the command: {e}")
