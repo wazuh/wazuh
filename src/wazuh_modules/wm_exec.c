@@ -22,8 +22,6 @@
 #include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
 #endif
 
-static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
-
 // Data structure to share with the reader thread
 
 typedef struct ThreadInfo {
@@ -38,10 +36,12 @@ typedef struct ThreadInfo {
 #endif
 } ThreadInfo;
 
+OSList* wm_children_list = NULL;    // Child process list
+
 // Initialize children pool
 
 void wm_children_pool_init() {
-    w_mutex_init(&wm_children_mutex, NULL);
+    wm_children_list = OSList_Create();
 }
 
 #ifdef WIN32
@@ -286,8 +286,6 @@ extern char ** environ;
 #endif
 
 static void* reader(void *args);   // Reading thread's start point
-
-static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
 
 // Execute command with timeout of secs
 
@@ -616,41 +614,33 @@ void* reader(void *args) {
 // Add process group to pool
 
 void wm_append_sid(pid_t sid) {
-    int i;
+    
+    pid_t *p_sid;
 
-    w_mutex_lock(&wm_children_mutex);
+    os_calloc(1, sizeof(pid_t), p_sid);
+    *p_sid = sid;
 
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (!wm_children[i]) {
-            wm_children[i] = sid;
-            break;
-        }
+    if(!OSList_AddData(wm_children_list, (void *)p_sid)) {
+        merror("Child process sid %d could not be registered.", (int)sid);
+        os_free(p_sid);
     }
-
-    w_mutex_unlock(&wm_children_mutex);
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process pool is full. Couldn't register sid %d.", (int)sid);
 }
 
 // Remove process group from pool
 
 void wm_remove_sid(pid_t sid) {
-    int i;
 
-    w_mutex_lock(&wm_children_mutex);
+    OSListNode *node_it;
+    pid_t * p_sid;
 
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (wm_children[i] == sid) {
-            wm_children[i] = 0;
-            break;
+    OSList_foreach(node_it, wm_children_list) {
+        p_sid = (pid_t *)node_it->data;
+        if(p_sid && *p_sid == sid) {
+            OSList_DeleteThisNode(wm_children_list, node_it);
+            return;
         }
     }
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process %d not found.", (int)sid);
-
-    w_mutex_unlock(&wm_children_mutex);
+    merror("Child process %d not found.", (int)sid);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -658,16 +648,15 @@ void wm_remove_sid(pid_t sid) {
 void wm_kill_children() {
     // This function may be called from a signal handler
 
-    int i;
     int timeout;
     pid_t sid;
+    pid_t *p_sid;
+    OSListNode *node_it;
 
-    w_mutex_lock(&wm_children_mutex);
-
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        sid = wm_children[i];
-
-        if (sid) {
+    OSList_foreach(node_it, wm_children_list) {
+        p_sid = (pid_t *)node_it->data;
+        if (p_sid) {
+            sid = *p_sid;
             if (wm_kill_timeout) {
                 timeout = wm_kill_timeout;
 
@@ -680,7 +669,6 @@ void wm_kill_children() {
 
                 case 0: // Child
 
-                    w_mutex_unlock(&wm_children_mutex);
                     kill(-sid, SIGTERM);
 
                     do {
@@ -720,8 +708,6 @@ void wm_kill_children() {
             }
         }
     }
-
-    w_mutex_unlock(&wm_children_mutex);
 }
 
 #endif // WIN32
