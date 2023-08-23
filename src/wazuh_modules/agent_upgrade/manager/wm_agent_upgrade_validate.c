@@ -61,7 +61,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     if (platform) {
-        if (!strcmp(platform, "windows") || (os_major && arch && (strcmp(platform, "ubuntu") || os_minor))) {
+        if (!strcmp(platform, "windows") || !strcmp(platform, "darwin") || (os_major && arch && (strcmp(platform, "ubuntu") || os_minor))) {
             return_code = WM_UPGRADE_SUCCESS;
 
             // Blacklist for invalid OS platforms
