@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import DELETED_EVENT, FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT
+from wazuh_testing.modules.fim.patterns import DELETED_EVENT, FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT, MAXIMUM_FILES_TO_MONITOR
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
@@ -102,8 +102,10 @@ def test_alerts_capacity(test_configuration, test_metadata, set_wazuh_configurat
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
     files_amount = test_metadata.get('files_amount')
     fill_percentage = test_metadata.get('fill_percentage')
+    max_entries = test_metadata.get('max_files_entries')
 
-    files_amount = files_amount if files_amount <= 100 else 100
+    log_monitor.start(generate_callback(MAXIMUM_FILES_TO_MONITOR))
+    assert int(log_monitor.callback_result[0]) == max_entries
 
     log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE))
     if fill_percentage >= 80:
@@ -111,5 +113,6 @@ def test_alerts_capacity(test_configuration, test_metadata, set_wazuh_configurat
     else:
         assert not log_monitor.callback_result
 
+    files_amount = files_amount if files_amount <= max_entries else max_entries
     log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
     assert int(log_monitor.callback_result[0]) == files_amount
