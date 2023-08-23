@@ -568,6 +568,24 @@ base::OptError Store::updateInternalDoc(const base::Name& name, const Doc& conte
     return m_driver->updateDoc(name, content);
 }
 
+base::OptError Store::upsertInternalDoc(const base::Name& name, const Doc& content)
+{
+    // Check if the name have a same prefix as the internal namespace, and avoid it
+    if (name.parts()[0] == sm_prefixNS.parts()[0])
+    {
+        return base::Error {fmt::format("Invalid update internal document name '{}', cannot start with '{}'",
+                                        name.fullName(),
+                                        sm_prefixNS.parts()[0])};
+    }
+
+    if (!m_driver->existsDoc(name))
+    {
+        return m_driver->createDoc(name, content);
+    }
+
+    return m_driver->updateDoc(name, content);
+}
+
 base::OptError Store::deleteInternalDoc(const base::Name& name)
 {
     // Check if the name have a same prefix as the internal namespace, and avoid it

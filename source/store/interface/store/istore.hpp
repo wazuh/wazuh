@@ -122,6 +122,15 @@ public:
     virtual base::OptError updateInternalDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
+     * @brief Upsert a Internal document in the store.
+     * 
+     * @param name name of the document.
+     * @param content document content. 
+     * @return base::OptError with the error or empty if no error. 
+     */
+    virtual base::OptError upsertInternalDoc(const base::Name& name, const Doc& content) = 0;
+
+    /**
      * @brief Delete a Internal document from the store.
      * 
      * @param name name of the document.

@@ -286,35 +286,4 @@ R"({
 })"}
 };
 
-struct FakeStoreRead : public store::IStoreRead
-{
-    std::variant<json::Json, base::Error> get(const base::Name& name) const override
-    {
-        if (name.parts()[0] == "decoder")
-        {
-            return json::Json {decoders[name.fullName()]};
-        }
-        else if (name.parts()[0] == "rule")
-        {
-            return json::Json {rules[name.fullName()]};
-        }
-        else if (name.parts()[0] == "filter")
-        {
-            return json::Json {filters[name.fullName()]};
-        }
-        else if (name.parts()[0] == "output")
-        {
-            return json::Json {outputs[name.fullName()]};
-        }
-        else if (name.parts()[0] == "policy")
-        {
-            return json::Json {policys[name.parts()[1]]};
-        }
-        else
-        {
-            throw std::runtime_error("Unknown asset name.parts()[0]: " + name.parts()[0]);
-        }
-    }
-};
-
 #endif // _ENVIRONMENT_TEST_HPP

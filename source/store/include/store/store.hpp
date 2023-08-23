@@ -61,9 +61,9 @@ private:
         }
 
         // Check namespaceId
-        auto namespaceName = base::Name(std::vector<std::string>(partsRN.begin() + sm_prefixNS.parts().size(),
-                                                                  partsRN.begin() + sm_prefixNS.parts().size() +
-                                                                      NamespaceId::PARTS_NAMESPACE_SIZE));
+        auto namespaceName = base::Name(
+            std::vector<std::string>(partsRN.begin() + sm_prefixNS.parts().size(),
+                                     partsRN.begin() + sm_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE));
         auto resp = NamespaceId::fromName(namespaceName);
         if (base::isError(resp))
         {
@@ -71,9 +71,8 @@ private:
         }
 
         // Return the virtual name
-        return base::Name(std::vector<std::string>(partsRN.begin() + sm_prefixNS.parts().size() +
-                                                       NamespaceId::PARTS_NAMESPACE_SIZE,
-                                                   partsRN.end()));
+        return base::Name(std::vector<std::string>(
+            partsRN.begin() + sm_prefixNS.parts().size() + NamespaceId::PARTS_NAMESPACE_SIZE, partsRN.end()));
     }
 
     /**
@@ -192,6 +191,11 @@ public:
      * @copydoc IStoreInternal::updateInternalDoc
      */
     base::OptError updateInternalDoc(const base::Name& name, const Doc& content) override;
+
+    /**
+     * @copydoc IStoreInternal::upsertInternalDoc
+     */
+    base::OptError upsertInternalDoc(const base::Name& name, const Doc& content) override;
 
     /**
      * @copydoc IStoreInternal::deleteInternalDoc

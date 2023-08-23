@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <store/store.hpp>
 #include <store/mockDriver.hpp>
+#include <store/store.hpp>
 
 using namespace store;
 using namespace store::mocks;
@@ -22,7 +22,7 @@ void inline initLogging()
 }
 
 // Internal root namespace
-const base::Name nsPrefix ("namespaces"); // Prefix in the store for the namespaces
+const base::Name nsPrefix("namespaces"); // Prefix in the store for the namespaces
 
 const json::Json jdoc_1A {R"({"name": "doc_1A"})"};
 const json::Json jdoc_1B {R"({"name": "doc_1B"})"};
@@ -52,7 +52,7 @@ base::Name removePrefix(const base::Name& name, std::size_t level = 1)
     }
     auto it = name.parts().begin();
     std::advance(it, level);
-    return  base::Name(std::vector<std::string> {it, name.parts().end()});
+    return base::Name(std::vector<std::string> {it, name.parts().end()});
 }
 
 Col removePrefix(const Col& col, std::size_t level = 1)
@@ -67,12 +67,8 @@ Col removePrefix(const Col& col, std::size_t level = 1)
 
 class StoreBuildTest : public ::testing::Test
 {
-    protected:
-
-    void SetUp() override
-    {
-        initLogging();
-    }
+protected:
+    void SetUp() override { initLogging(); }
 };
 
 class StoreTest : public ::testing::Test
@@ -100,14 +96,14 @@ protected:
     void fillDB()
     {
         /* *********************************************************************
-        * ns1:
-        *   - colA/doc_1A
-        *   - colB/doc_1B
-        *
-        * ns2:
-        *   - colA/doc_2A
-        *
-        * *********************************************************************/
+         * ns1:
+         *   - colA/doc_1A
+         *   - colB/doc_1B
+         *
+         * ns2:
+         *   - colA/doc_2A
+         *
+         * *********************************************************************/
         base::Name ns1("ns1");
         base::Name ns2("ns2");
         base::Name colA("colA");
@@ -156,10 +152,7 @@ protected:
         EXPECT_CALL(*driver, existsDoc(rDoc_2A)).WillOnce(testing::Return(true));
     }
 
-    void TearDown() override
-    {
-    }
-
+    void TearDown() override {}
 };
 
 TEST_F(StoreBuildTest, EmptyStore)
@@ -181,8 +174,8 @@ TEST_F(StoreBuildTest, WithNs)
 {
     auto driver = std::make_shared<MockDriver>();
 
-    base::Name ns1 ("ns1");
-    base::Name ns2 ("ns2");
+    base::Name ns1("ns1");
+    base::Name ns2("ns2");
     base::Name fullNs1 = addPrefix(ns1);
     base::Name fullNs2 = addPrefix(ns2);
     auto expectedResp = driverReadColResp(fullNs1, fullNs2);
@@ -240,12 +233,14 @@ TEST_F(StoreBuildTest, WithNs)
 /*******************************************************************************
                         Store::readDoc
 *******************************************************************************/
-TEST_F(StoreTest, ReadDoc_nonExist) {
+TEST_F(StoreTest, ReadDoc_nonExist)
+{
     base::Name name("none/doc");
     ASSERT_TRUE(base::isError(store->readDoc(name)));
 }
 
-TEST_F(StoreTest, ReadDoc_ok) {
+TEST_F(StoreTest, ReadDoc_ok)
+{
     EXPECT_CALL(*driver, readDoc(rDoc_1A)).WillOnce(testing::Return(driverReadDocResp(Doc(jdoc_1A))));
     auto res = store->readDoc(doc_1A);
 
@@ -256,14 +251,16 @@ TEST_F(StoreTest, ReadDoc_ok) {
 /*******************************************************************************
                         Store::readCol
 *******************************************************************************/
-TEST_F(StoreTest, ReadCol_nonExist) {
+TEST_F(StoreTest, ReadCol_nonExist)
+{
     base::Name name("nonCollection");
     ASSERT_TRUE(base::isError(store->readCol(name, NamespaceId("ns1"))));
 
     ASSERT_TRUE(base::isError(store->readCol("colA", NamespaceId("nonExisting"))));
 }
 
-TEST_F(StoreTest, ReadCol_ok) {
+TEST_F(StoreTest, ReadCol_ok)
+{
     // Namespace 1
     auto result = store->readCol("colA", NamespaceId("ns1"));
     ASSERT_FALSE(base::isError(result)) << base::getError(result).message;
@@ -288,13 +285,14 @@ TEST_F(StoreTest, ReadCol_ok) {
 /*******************************************************************************
                         Store::existsDoc
 *******************************************************************************/
-TEST_F(StoreTest, existsDoc_fail) {
+TEST_F(StoreTest, existsDoc_fail)
+{
     ASSERT_FALSE(store->existsDoc("nonExisting"));
     ASSERT_FALSE(store->existsDoc("nonExisting/doc"));
 
     base::Name nonExist = "nonExisting";
     ASSERT_FALSE(store->existsDoc(doc_1A + nonExist));
-    ASSERT_FALSE(store->existsDoc(nonExist + doc_1B ));
+    ASSERT_FALSE(store->existsDoc(nonExist + doc_1B));
     ASSERT_FALSE(store->existsDoc(nonExist + doc_2A + nonExist));
 
     // Check if the collection is not a document
@@ -302,7 +300,8 @@ TEST_F(StoreTest, existsDoc_fail) {
     ASSERT_FALSE(store->existsDoc("colB"));
 }
 
-TEST_F(StoreTest, existsDoc_ok) {
+TEST_F(StoreTest, existsDoc_ok)
+{
     ASSERT_TRUE(store->existsDoc(doc_1A));
     ASSERT_TRUE(store->existsDoc(doc_1B));
     ASSERT_TRUE(store->existsDoc(doc_2A));
@@ -311,7 +310,8 @@ TEST_F(StoreTest, existsDoc_ok) {
 /*******************************************************************************
                         Store::existsCol
 *******************************************************************************/
-TEST_F(StoreTest, existsCol_fail) {
+TEST_F(StoreTest, existsCol_fail)
+{
     ASSERT_FALSE(store->existsCol("nonExisting", NamespaceId("ns1")));
     ASSERT_FALSE(store->existsCol("nonExisting/doc", NamespaceId("ns1")));
 
@@ -327,7 +327,8 @@ TEST_F(StoreTest, existsCol_fail) {
     ASSERT_FALSE(store->existsCol("doc_2A", NamespaceId("ns2")));
 }
 
-TEST_F(StoreTest, existsCol_ok) {
+TEST_F(StoreTest, existsCol_ok)
+{
     ASSERT_TRUE(store->existsCol("colA", NamespaceId("ns1")));
     ASSERT_TRUE(store->existsCol("colB", NamespaceId("ns1")));
 }
@@ -335,7 +336,8 @@ TEST_F(StoreTest, existsCol_ok) {
 /*******************************************************************************
                         Store::listNamespaces
 *******************************************************************************/
-TEST_F(StoreTest, listNamespaces) {
+TEST_F(StoreTest, listNamespaces)
+{
 
     auto namespaces = store->listNamespaces();
     ASSERT_EQ(namespaces.size(), 2);
@@ -346,37 +348,39 @@ TEST_F(StoreTest, listNamespaces) {
 /*******************************************************************************
                         Store::getNamespace
 *******************************************************************************/
-TEST_F(StoreTest, getNamespace_fail) {
+TEST_F(StoreTest, getNamespace_fail)
+{
 
     ASSERT_FALSE(store->getNamespace("nonExisting"));
     ASSERT_FALSE(store->getNamespace("nonExisting/doc"));
 
     base::Name nonExist = "nonExisting";
     ASSERT_FALSE(store->getNamespace(doc_1A + nonExist));
-    ASSERT_FALSE(store->getNamespace(nonExist + doc_1B ));
+    ASSERT_FALSE(store->getNamespace(nonExist + doc_1B));
     ASSERT_FALSE(store->getNamespace(nonExist + doc_2A + nonExist));
 
     // Check if the collection is not a document
     ASSERT_FALSE(store->getNamespace("colA"));
     ASSERT_FALSE(store->getNamespace("colB"));
-
 }
 
-TEST_F(StoreTest, getNamespace_ok) {
+TEST_F(StoreTest, getNamespace_ok)
+{
 
-        ASSERT_TRUE(store->getNamespace(doc_1A));
-        ASSERT_TRUE(store->getNamespace(doc_1B));
-        ASSERT_TRUE(store->getNamespace(doc_2A));
+    ASSERT_TRUE(store->getNamespace(doc_1A));
+    ASSERT_TRUE(store->getNamespace(doc_1B));
+    ASSERT_TRUE(store->getNamespace(doc_2A));
 
-        ASSERT_EQ(store->getNamespace(doc_1A).value().name(), base::Name("ns1"));
-        ASSERT_EQ(store->getNamespace(doc_1B).value().name(), base::Name("ns1"));
-        ASSERT_EQ(store->getNamespace(doc_2A).value().name(), base::Name("ns2"));
+    ASSERT_EQ(store->getNamespace(doc_1A).value().name(), base::Name("ns1"));
+    ASSERT_EQ(store->getNamespace(doc_1B).value().name(), base::Name("ns1"));
+    ASSERT_EQ(store->getNamespace(doc_2A).value().name(), base::Name("ns2"));
 }
 
 /*******************************************************************************
                         Store::createDoc
 *******************************************************************************/
-TEST_F(StoreTest, create_fail) {
+TEST_F(StoreTest, create_fail)
+{
 
     // Already exists
     auto res = store->createDoc(doc_1A, NamespaceId("ns3"), jdoc_1A);
@@ -389,7 +393,8 @@ TEST_F(StoreTest, create_fail) {
     ASSERT_TRUE(base::isError(res));
 }
 
-TEST_F(StoreTest, create_ok) {
+TEST_F(StoreTest, create_ok)
+{
 
     ASSERT_FALSE(store->existsDoc("x"));
     EXPECT_CALL(*driver, createDoc(nsPrefix + "ns3" + "x", jdoc_1A)).WillOnce(testing::Return(std::nullopt));
@@ -397,14 +402,13 @@ TEST_F(StoreTest, create_ok) {
 
     ASSERT_FALSE(base::isError(res));
     ASSERT_TRUE(store->existsDoc("x"));
-
-
 }
 
 /*******************************************************************************
                         Store::updateDoc
 *******************************************************************************/
-TEST_F(StoreTest, update_fail) {
+TEST_F(StoreTest, update_fail)
+{
 
     // Not exists
     ASSERT_FALSE(store->existsDoc(doc_1A + "noDoc"));
@@ -419,7 +423,8 @@ TEST_F(StoreTest, update_fail) {
     ASSERT_TRUE(base::isError(res));
 }
 
-TEST_F(StoreTest, update_ok) {
+TEST_F(StoreTest, update_ok)
+{
 
     ASSERT_TRUE(store->existsDoc(doc_1A));
     EXPECT_CALL(*driver, updateDoc(rDoc_1A, jdoc_1A)).WillOnce(testing::Return(std::nullopt));
@@ -432,7 +437,8 @@ TEST_F(StoreTest, update_ok) {
 /*******************************************************************************
                         Store::upsertDoc
 *******************************************************************************/
-TEST_F(StoreTest, upsert_fail) {
+TEST_F(StoreTest, upsert_fail)
+{
 
     // Already exists in other namespace
     auto res = store->upsertDoc(doc_1A, NamespaceId("ns3"), jdoc_1A);
@@ -440,12 +446,13 @@ TEST_F(StoreTest, upsert_fail) {
 
     // Fail driver
     EXPECT_CALL(*driver, upsertDoc(rDoc_1A, jdoc_1A)).WillOnce(testing::Return(driverError()));
-    res = store->upsertDoc(doc_1A, NamespaceId("ns1"),jdoc_1A);
+    res = store->upsertDoc(doc_1A, NamespaceId("ns1"), jdoc_1A);
 
     ASSERT_TRUE(base::isError(res));
 }
 
-TEST_F(StoreTest, upsert_ok) {
+TEST_F(StoreTest, upsert_ok)
+{
 
     // Already exists
     ASSERT_TRUE(store->existsDoc(doc_1A));
@@ -467,7 +474,8 @@ TEST_F(StoreTest, upsert_ok) {
 /*******************************************************************************
                         Store::deleteDoc
 *******************************************************************************/
-TEST_F(StoreTest, deleteDoc_fail) {
+TEST_F(StoreTest, deleteDoc_fail)
+{
     // Not exists
     ASSERT_FALSE(store->existsDoc(doc_1A + "noDoc"));
     auto res = store->deleteDoc(doc_1A + "noDoc");
@@ -482,7 +490,8 @@ TEST_F(StoreTest, deleteDoc_fail) {
     ASSERT_TRUE(store->existsDoc(doc_1A));
 }
 
-TEST_F(StoreTest, deleteDoc_ok) {
+TEST_F(StoreTest, deleteDoc_ok)
+{
 
     ASSERT_TRUE(store->existsDoc(doc_1A));
     EXPECT_CALL(*driver, deleteDoc(rDoc_1A)).WillOnce(testing::Return(std::nullopt));
@@ -495,7 +504,8 @@ TEST_F(StoreTest, deleteDoc_ok) {
 /*******************************************************************************
                         Store::deleteCol
 *******************************************************************************/
-TEST_F(StoreTest, deleteCol_fail) {
+TEST_F(StoreTest, deleteCol_fail)
+{
     // Collection not exists
     auto res = store->deleteCol("nonExisting", NamespaceId("ns1"));
     ASSERT_TRUE(base::isError(res));
@@ -513,7 +523,8 @@ TEST_F(StoreTest, deleteCol_fail) {
     ASSERT_TRUE(store->existsCol("colA", NamespaceId("ns1")));
 }
 
-TEST_F(StoreTest, deleteCol_ok) {
+TEST_F(StoreTest, deleteCol_ok)
+{
     ASSERT_TRUE(store->existsCol("colA", NamespaceId("ns1")));
     EXPECT_CALL(*driver, deleteCol(addPrefix("ns1/colA"))).WillOnce(testing::Return(driverOk()));
     auto res = store->deleteCol("colA", NamespaceId("ns1"));
@@ -524,7 +535,8 @@ TEST_F(StoreTest, deleteCol_ok) {
 /*******************************************************************************
                         Store::createInternalDoc
 *******************************************************************************/
-TEST_F(StoreTest, createInternalDoc_fail) {
+TEST_F(StoreTest, createInternalDoc_fail)
+{
     // Fail driver
     EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(driverError()));
     ASSERT_TRUE(base::isError(store->createInternalDoc("x", jdoc_1A)));
@@ -534,7 +546,8 @@ TEST_F(StoreTest, createInternalDoc_fail) {
     ASSERT_TRUE(base::isError(store->createInternalDoc("namespaces/a", jdoc_1A)));
 }
 
-TEST_F(StoreTest, createInternalDoc_ok) {
+TEST_F(StoreTest, createInternalDoc_ok)
+{
     EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
     ASSERT_FALSE(base::isError(store->createInternalDoc("x", jdoc_1A)));
 }
@@ -542,13 +555,15 @@ TEST_F(StoreTest, createInternalDoc_ok) {
 /*******************************************************************************
                         Store::readInternalDoc
 *******************************************************************************/
-TEST_F(StoreTest, readInternalDoc_fail) {
+TEST_F(StoreTest, readInternalDoc_fail)
+{
     // Fail driver
     EXPECT_CALL(*driver, readDoc(base::Name("x"))).WillOnce(testing::Return(driverReadError<Doc>()));
     ASSERT_TRUE(base::isError(store->readInternalDoc("x")));
 }
 
-TEST_F(StoreTest, readInternalDoc_ok) {
+TEST_F(StoreTest, readInternalDoc_ok)
+{
     EXPECT_CALL(*driver, readDoc(base::Name("x"))).WillOnce(testing::Return(driverReadDocResp(Doc(jdoc_1A))));
     auto res = store->readInternalDoc("x");
 
@@ -559,7 +574,8 @@ TEST_F(StoreTest, readInternalDoc_ok) {
 /*******************************************************************************
                         Store::updateInternalDoc
 *******************************************************************************/
-TEST_F(StoreTest, updateInternalDoc_fail) {
+TEST_F(StoreTest, updateInternalDoc_fail)
+{
     // Fail driver
     EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(driverError()));
     ASSERT_TRUE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
@@ -569,15 +585,39 @@ TEST_F(StoreTest, updateInternalDoc_fail) {
     ASSERT_TRUE(base::isError(store->updateInternalDoc("namespaces/a", jdoc_1A)));
 }
 
-TEST_F(StoreTest, updateInternalDoc_ok) {
+TEST_F(StoreTest, updateInternalDoc_ok)
+{
     EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
     ASSERT_FALSE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
 }
 
 /*******************************************************************************
+                        Store::upsertInternalDoc
+*******************************************************************************/
+TEST_F(StoreTest, upsertInternalDoc_fail)
+{
+    // Write to namespace collection
+    ASSERT_TRUE(base::isError(store->upsertInternalDoc("namespaces", jdoc_1A)));
+    ASSERT_TRUE(base::isError(store->upsertInternalDoc("namespaces/a", jdoc_1A)));
+}
+
+TEST_F(StoreTest, upsertInternalDoc_update_ok)
+{
+    EXPECT_CALL(*driver, updateDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
+    ASSERT_FALSE(base::isError(store->updateInternalDoc("x", jdoc_1A)));
+}
+
+TEST_F(StoreTest, upsertInternalDoc_create_ok)
+{
+    EXPECT_CALL(*driver, createDoc(base::Name("x"), jdoc_1A)).WillOnce(testing::Return(std::nullopt));
+    ASSERT_FALSE(base::isError(store->createInternalDoc("x", jdoc_1A)));
+}
+
+/*******************************************************************************
                         Store::deleteInternalDoc
 *******************************************************************************/
-TEST_F(StoreTest, deleteInternalDoc_fail) {
+TEST_F(StoreTest, deleteInternalDoc_fail)
+{
     // Fail driver
     EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(driverError()));
     ASSERT_TRUE(base::isError(store->deleteInternalDoc("x")));
@@ -587,7 +627,8 @@ TEST_F(StoreTest, deleteInternalDoc_fail) {
     ASSERT_TRUE(base::isError(store->deleteInternalDoc("namespaces/a")));
 }
 
-TEST_F(StoreTest, deleteInternalDoc_ok) {
+TEST_F(StoreTest, deleteInternalDoc_ok)
+{
     EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(std::nullopt));
     ASSERT_FALSE(base::isError(store->deleteInternalDoc("x")));
 }
