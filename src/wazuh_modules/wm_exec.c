@@ -49,7 +49,6 @@ void wm_children_pool_init() {
 // Windows version -------------------------------------------------------------
 
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
-static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process pool
 
 // Execute command with timeout of secs
 
@@ -222,41 +221,32 @@ DWORD WINAPI Reader(LPVOID args) {
 // Add process to pool
 
 void wm_append_handle(HANDLE hProcess) {
-    int i;
+    HANDLE *p_hProcess;
 
-    w_mutex_lock(&wm_children_mutex);
+    os_calloc(1, sizeof(HANDLE), p_hProcess);
+    *p_hProcess = hProcess;
 
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (!wm_children[i]) {
-            wm_children[i] = hProcess;
-            break;
-        }
+    if(!OSList_AddData(wm_children_list, (void *)p_hProcess)) {
+        merror("Child process handle %p could not be registered.", hProcess);
+        os_free(p_hProcess);
     }
-
-    w_mutex_unlock(&wm_children_mutex);
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process pool is full. Couldn't register handle %p.", hProcess);
 }
 
 // Remove process from pool
 
 void wm_remove_handle(HANDLE hProcess) {
-    int i;
+    OSListNode *node_it;
+    HANDLE *p_hProcess;
 
-    w_mutex_lock(&wm_children_mutex);
-
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (wm_children[i] == hProcess) {
-            wm_children[i] = 0;
-            break;
+    OSList_foreach(node_it, wm_children_list) {
+        p_hProcess = (HANDLE *) node_it->data;
+        if (p_hProcess && *p_hProcess == hProcess) {
+            OSList_DeleteThisNode(wm_children_list, node_it);
+            return;
         }
     }
 
-    if (i == WM_POOL_SIZE)
-        merror("Child process %p not found.", hProcess);
-
-    w_mutex_unlock(&wm_children_mutex);
+    merror("Child process %p not found.", hProcess);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -264,15 +254,12 @@ void wm_remove_handle(HANDLE hProcess) {
 void wm_kill_children() {
     // This function may be called from a signal handler
 
-    int i;
-
-    w_mutex_lock(&wm_children_mutex);
-
-    for (i = 0; i < WM_POOL_SIZE && wm_children[i]; i++)  {
-        TerminateProcess(wm_children[i], 127);
+    HANDLE *p_hProcess;
+    OSListNode *node_it;
+    OSList_foreach(node_it, wm_children_list) {
+        p_hProcess = (HANDLE *)node_it->data;
+        TerminateProcess(*p_hProcess, 127);
     }
-
-    w_mutex_unlock(&wm_children_mutex);
 }
 
 #else
@@ -700,6 +687,7 @@ void wm_kill_children() {
                     exit(EXIT_SUCCESS);
 
                 default: // Parent
+                    break;
 
                 }
             } else {
