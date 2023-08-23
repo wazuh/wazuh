@@ -35,7 +35,7 @@
 extern keystore keys;
 extern remoted logr;
 extern wnotify_t * notify;
-extern char *str_family_address[AF_MAX + 2];
+extern char *str_family_address[FAMILY_ADDRESS_SIZE];
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
