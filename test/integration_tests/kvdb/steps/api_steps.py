@@ -26,7 +26,6 @@ API_KVDB = communication.APIClient(socket_path(), "kvdb")
 # First Scenario
 @given('I have access to the KVDB API')
 def step_impl(context):
-    print(engine_binary)
     kvdbs_available_json = API_KVDB.send_command("manager", "get", {})
     assert kvdbs_available_json['data']['status'] == "OK"
 
