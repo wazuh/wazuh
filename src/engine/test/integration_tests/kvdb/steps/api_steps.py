@@ -2,16 +2,32 @@ from api_communication import communication #TODO: check on a clean install!
 from api_communication import kvdb_pb2
 from google.protobuf.json_format import MessageToDict
 from behave import given, when, then, step
+import os
 
-DEFAULT_API_SOCK = '/home/runner/work/wazuh/wazuh/environment/queue/sockets/engine-api'
+def find_engine_directory(start_dir):
+    current_dir = os.path.abspath(start_dir)
 
-API_KVDB = communication.APIClient(DEFAULT_API_SOCK, "kvdb")
+    while current_dir != "/":  # Detenerse en la raíz del sistema de archivos
+        if os.path.basename(current_dir) == "engine":
+            return current_dir
+        current_dir = os.path.dirname(current_dir)
+
+    return None
+
+def socket_path():
+    engine_directory = find_engine_directory(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(os.path.dirname(os.path.dirname(engine_directory)))
+    environment_directory = os.path.join(os.getcwd(), "environment")
+    os.chdir(environment_directory)
+    return os.path.join(os.getcwd(), "queue/sockets/engine-api")
+
+API_KVDB = communication.APIClient(socket_path(), "kvdb")
 
 # First Scenario
 @given('I have access to the KVDB API')
 def step_impl(context):
+    print(engine_binary)
     kvdbs_available_json = API_KVDB.send_command("manager", "get", {})
-    print(kvdbs_available_json)
     assert kvdbs_available_json['data']['status'] == "OK"
 
 
