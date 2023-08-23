@@ -1,5 +1,5 @@
-name: "Codding style check"
-description: "Validates the codding style of a given module"
+name: "Coding style check"
+description: "Validates the Coding style of a given module"
 
 inputs:
   path:
@@ -29,7 +29,7 @@ runs:
           packages: clang-format 
           version: 1.0
 
-      - name: Check codding style
+      - name: Check Coding style
         shell: bash
         run: |
 
