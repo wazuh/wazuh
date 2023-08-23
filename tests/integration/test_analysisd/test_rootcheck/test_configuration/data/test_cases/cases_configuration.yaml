@@ -1,0 +1,47 @@
+- name: "One agent - Check update false - Check delete false"
+  description: "Test case with 1 agent, no update check, and no deletion check."
+  configuration_parameters:
+  metadata:
+    agents_number: 1
+    check_updates: false
+    check_delete: false
+
+- name: "Three agents - Check update false - Check delete false"
+  description: "Test case with 3 agents, no update check, and no deletion check."
+  configuration_parameters:
+  metadata:
+    agents_number: 3
+    check_updates: false
+    check_delete: false
+
+- name: "One agent - Check update true - Check delete false"
+  description: "Test case with 1 agent, update check enabled, and no deletion check."
+  configuration_parameters:
+  metadata:
+    agents_number: 1
+    check_updates: true
+    check_delete: false
+
+- name: "Three agents - Check update true - Check delete false"
+  description: "Test case with 3 agents, update check enabled, and no deletion check."
+  configuration_parameters:
+  metadata:
+    agents_number: 3
+    check_updates: true
+    check_delete: false
+
+- name: "One agent - Check update false - Check delete true"
+  description: "Test case with 1 agent, no update check, and deletion check enabled."
+  configuration_parameters:
+  metadata:
+    agents_number: 1
+    check_updates: false
+    check_delete: true
+
+- name: "Three agents - Check update false - Check delete true"
+  description: "Test case with 3 agents, no update check, and deletion check enabled."
+  configuration_parameters:
+  metadata:
+    agents_number: 3
+    check_updates: false
+    check_delete: true
