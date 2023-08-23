@@ -172,7 +172,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,syscom_dispa
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int")
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_connection,--wrap,send,--wrap,recv,--wrap,close \
+                                -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 
 list(APPEND shared_tests_names "test_custom_output_search_replace")
