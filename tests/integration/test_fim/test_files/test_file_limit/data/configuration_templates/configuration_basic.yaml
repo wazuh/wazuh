@@ -9,12 +9,7 @@
             value: TEST_DIR
             attributes:
               - FIM_MODE
-        - file_limit:
-            elements:
-              - enabled:
-                  value: FILE_LIMIT_ENABLED
-              - entries:
-                  value: FILE_LIMIT_ENTRIES
+        - file_limit: FILE_LIMIT
     - section: sca
       elements:
         - enabled:
