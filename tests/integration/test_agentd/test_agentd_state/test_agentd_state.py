@@ -53,13 +53,12 @@ import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils.configuration import get_test_cases_data
-from wazuh_testing.utils.configuration import load_configuration_template
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
 from wazuh_testing.utils import file
 from wazuh_testing.utils.services import check_if_process_is_running, control_service
 
@@ -82,20 +81,6 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 print(test_configuration)
-
-# Functions
-def extra_configuration_before_yield():
-    change_internal_options('agent.debug', '2')
-
-
-def extra_configuration_after_yield():
-    if remoted_server is not None:
-        remoted_server.stop()
-
-    # Set default values
-    change_internal_options('agent.debug', '0')
-    set_state_interval(5, internal_options)
-    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
 
 def start_remoted_server(test_metadata) -> None:
     if 'remoted' in test_metadata['input'] and test_metadata['input']['remoted']:
@@ -145,7 +130,8 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, trun
     # Stop service
     control_service('stop')
 
-    if 'interval' in test_case['input']:
+    if 'interval' in test_metadata['input']:
+        change_internal_options()
         set_state_interval(test_case['input']['interval'], internal_options)
     else:
         set_state_interval(1, internal_options)
@@ -157,11 +143,11 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, trun
     control_service('start')
 
     # Start RemotedSimulator if test case need it
-    if 'remoted' in test_case['input'] and test_case['input']['remoted']:
-        remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=CLIENT_KEYS_PATH)
+    if 'remoted' in test_metadata['input'] and test_metadata['input']['remoted']:
+        remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=WAZUH_CLIENT_KEYS_PATH)
 
     # Check fields for every expected output type
-    for expected_output in test_case['output']:
+    for expected_output in test_metadata['output']:
         check_fields(expected_output)
 
 
@@ -174,7 +160,7 @@ def parse_state_file():
     # Wait until state file is dumped
     wait_state_update()
     state = {}
-    with open(state_file_path) as state_file:
+    with open(AGENTD_STATE) as state_file:
         for line in state_file:
             line = line.rstrip('\n')
             # Remove empty lines or comments
@@ -187,7 +173,7 @@ def parse_state_file():
     return state
 
 
-def remoted_get_state():
+def remoted_get_state(remoted_server):
     """Get state via remoted
 
     Send getstate request to agent (via RemotedSimulator) and return state info as dict.
@@ -249,7 +235,7 @@ def check_last_ack(expected_value=None, get_state_callback=None):
 
     received_msg = "Received message: '#!-agent ack '"
 
-    with open(LOG_FILE_PATH) as log:
+    with open(WAZUH_LOG_PATH) as log:
         for line in log:
             if current_value.replace('-', '/') in line and received_msg in line:
                 return True
@@ -276,7 +262,7 @@ def check_last_keepalive(expected_value=None, get_state_callback=None):
     keep_alive_msg = 'Sending keep alive'
     agent_notification_msg = 'Sending agent notification'
 
-    with open(LOG_FILE_PATH, 'r') as log:
+    with open(WAZUH_LOG_PATH, 'r') as log:
         for line in log:
             if current_value.replace('-', '/') in line and (keep_alive_msg in line or agent_notification_msg in line):
                 return True
@@ -302,7 +288,7 @@ def check_msg_count(expected_value=None, get_state_callback=None):
 
     sent_messages = 0
 
-    with open(LOG_FILE_PATH, 'r') as log:
+    with open(WAZUH_LOG_PATH, 'r') as log:
         for line in log:
             if 'Sending keep alive' in line:
                 sent_messages += 1
