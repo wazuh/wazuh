@@ -68,12 +68,10 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import DELETED_EVENT, FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT, MAXIMUM_FILES_TO_MONITOR
-from wazuh_testing.modules.fim.utils import get_fim_event_data
+from wazuh_testing.modules.fim.patterns import FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT, MAXIMUM_FILES_TO_MONITOR
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -84,21 +82,20 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_file_capacity.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_fill_capacity.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Set configurations required by the fixtures.
 local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
-if sys.platform == WINDOWS:
-    local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
+if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_alerts_capacity(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                         configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
-                         daemons_handler, start_monitoring):
+def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                       configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
+                       daemons_handler, start_monitoring):
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
     files_amount = test_metadata.get('files_amount')
     fill_percentage = test_metadata.get('fill_percentage')
