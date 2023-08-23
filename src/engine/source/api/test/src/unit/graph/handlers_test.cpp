@@ -15,6 +15,7 @@
 
 using namespace api::graph::handlers;
 using namespace graph::assets;
+using namespace store::mocks;
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
@@ -31,7 +32,7 @@ class GraphGetCommand : public ::testing::TestWithParam<std::tuple<int, std::str
 protected:
     api::graph::handlers::Config graphConfig;
     api::Handler cmdAPI;
-    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
+    std::shared_ptr<MockStore> m_spMockStore;
 
     void SetUp() override
     {
@@ -53,15 +54,14 @@ TEST_P(GraphGetCommand, ParameterEvaluation)
 {
     auto [execution, input, output] = GetParam();
 
-    EXPECT_CALL(*m_spMockStore, get(testing::_))
+    EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::Eq(base::Name{JSON_SCHEMA}))
+    ).WillRepeatedly(::testing::Return(storeReadDocResp(store::Doc{WAZUH_LOGPAR_TYPES})));
+
+    EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
         .WillRepeatedly(testing::Invoke(
             [&](const base::Name& name)
             {
-                if (name == JSON_SCHEMA)
-                {
-                    return json::Json {WAZUH_LOGPAR_TYPES};
-                }
-                else if (name == JSON_POLICY)
+                if (name == JSON_POLICY)
                 {
                     return json::Json {POLICY};
                 }

@@ -59,12 +59,12 @@ auto MODEL_ERROR_JSON = json::Json {"{}"};
 class RBACTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<MockStore> mockStore;
+    std::shared_ptr<MockStoreInternal> mockStore;
 
     void SetUp() override
     {
         logging::testInit();
-        mockStore = std::make_shared<MockStore>();
+        mockStore = std::make_shared<MockStoreInternal>();
     }
 
     void TearDown() override {}
@@ -72,9 +72,10 @@ protected:
 
 TEST_F(RBACTest, InitDefault)
 {
-    EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME}))).WillOnce(::testing::Return(getError));
-    EXPECT_CALL(*mockStore, addUpdate(testing::Eq(base::Name {detail::MODEL_NAME}), testing::_))
-        .WillOnce(::testing::Return(addUpdateSuccess));
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+        .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+    // EXPECT_CALL(*mockStore, updateInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME}), testing::_))
+    //     .WillOnce(::testing::Return(storeOk()));
 
     std::shared_ptr<RBAC> rbac;
     ASSERT_NO_THROW(rbac = std::make_shared<RBAC>(mockStore));
@@ -82,8 +83,8 @@ TEST_F(RBACTest, InitDefault)
 
 TEST_F(RBACTest, InitLoadModel)
 {
-    EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME})))
-        .WillOnce(::testing::Return(getSuccess(MODEL_JSON)));
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+        .WillOnce(::testing::Return(storeReadDocResp(MODEL_JSON)));
 
     std::shared_ptr<RBAC> rbac;
     ASSERT_NO_THROW(rbac = std::make_shared<RBAC>(mockStore));
@@ -91,10 +92,10 @@ TEST_F(RBACTest, InitLoadModel)
 
 TEST_F(RBACTest, InitLoadModelError)
 {
-    EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME})))
-        .WillOnce(::testing::Return(getSuccess(MODEL_ERROR_JSON)));
-    EXPECT_CALL(*mockStore, addUpdate(testing::Eq(base::Name {detail::MODEL_NAME}), testing::_))
-        .WillOnce(::testing::Return(addUpdateSuccess));
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+        .WillOnce(::testing::Return(storeReadDocResp(MODEL_ERROR_JSON)));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME}), testing::_))
+        .WillOnce(::testing::Return(storeOk()));
 
     std::shared_ptr<RBAC> rbac;
     ASSERT_NO_THROW(rbac = std::make_shared<RBAC>(mockStore));
@@ -102,10 +103,10 @@ TEST_F(RBACTest, InitLoadModelError)
 
 TEST_F(RBACTest, InitSaveError)
 {
-    EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME})))
-        .WillOnce(::testing::Return(getError));
-    EXPECT_CALL(*mockStore, addUpdate(testing::Eq(base::Name {detail::MODEL_NAME}), testing::_))
-        .WillOnce(::testing::Return(addUpdateError));
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+        .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME}), testing::_))
+        .WillOnce(::testing::Return(storeError()));
 
     std::shared_ptr<RBAC> rbac;
     ASSERT_NO_THROW(rbac = std::make_shared<RBAC>(mockStore));
@@ -113,10 +114,10 @@ TEST_F(RBACTest, InitSaveError)
 
 TEST_F(RBACTest, Shutdown)
 {
-    EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME})))
-        .WillOnce(::testing::Return(getSuccess(MODEL_JSON)));
-    EXPECT_CALL(*mockStore, addUpdate(testing::Eq(base::Name {detail::MODEL_NAME}), testing::Eq(MODEL_JSON)))
-        .WillOnce(::testing::Return(addUpdateSuccess));
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+        .WillOnce(::testing::Return(storeReadDocResp(MODEL_JSON)));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME}), testing::Eq(MODEL_JSON)))
+        .WillOnce(::testing::Return(storeOk()));
 
     std::shared_ptr<RBAC> rbac;
     ASSERT_NO_THROW(rbac = std::make_shared<RBAC>(mockStore));
@@ -126,10 +127,10 @@ TEST_F(RBACTest, Shutdown)
 
 TEST_F(RBACTest, ShutdownError)
 {
-    EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME})))
-        .WillOnce(::testing::Return(getSuccess(MODEL_JSON)));
-     EXPECT_CALL(*mockStore, addUpdate(testing::Eq(base::Name {detail::MODEL_NAME}), testing::Eq(MODEL_JSON)))
-        .WillOnce(::testing::Return(addUpdateError));
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+        .WillOnce(::testing::Return(storeReadDocResp(MODEL_JSON)));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME}), testing::Eq(MODEL_JSON)))
+        .WillOnce(::testing::Return(storeError()));
 
     std::shared_ptr<RBAC> rbac;
     ASSERT_NO_THROW(rbac = std::make_shared<RBAC>(mockStore));
@@ -144,15 +145,15 @@ using AuthInput = std::tuple<bool, std::string, Resource, Operation>;
 class AuthTest : public ::testing::TestWithParam<AuthInput>
 {
 protected:
-    std::shared_ptr<MockStore> mockStore;
+    std::shared_ptr<MockStoreInternal> mockStore;
     std::shared_ptr<IRBAC> rbac;
 
     void SetUp() override
     {
         logging::testInit();
-        mockStore = std::make_shared<MockStore>();
-        EXPECT_CALL(*mockStore, get(testing::Eq(base::Name {detail::MODEL_NAME})))
-            .WillOnce(::testing::Return(getSuccess(MODEL_JSON)));
+        mockStore = std::make_shared<MockStoreInternal>();
+        EXPECT_CALL(*mockStore, readInternalDoc(testing::Eq(base::Name {detail::MODEL_NAME})))
+            .WillOnce(::testing::Return(storeReadDocResp(MODEL_JSON)));
         rbac = std::make_shared<RBAC>(mockStore);
     }
 

@@ -26,7 +26,7 @@ include_directories(
 )
 
 # TODO do this better
-link_libraries(gtest_main gtest base builders metrics defs::mocks schemf::mocks date::date)
+link_libraries(gtest_main gtest base builders metrics defs::mocks schemf::mocks date::date store::mocks)
 
 # ###################################################################################################
 # Builder targets

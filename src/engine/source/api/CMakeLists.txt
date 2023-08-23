@@ -74,9 +74,9 @@ add_executable(api_utest
 )
 
 # TODO: Replace test_mocks with the metrics executable when you have the test folder available.
-target_link_libraries(api_ctest gtest_main base api schemf::mocks test_mocks store_mocks)
+target_link_libraries(api_ctest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks)
 gtest_discover_tests(api_ctest)
 
-target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store_mocks)
+target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks)
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)
