@@ -50,7 +50,7 @@ protected:
         m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -80,7 +80,7 @@ protected:
             SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -112,7 +112,7 @@ TEST_P(TestSessionDeleteCommand, Functionality)
     const auto expectedData = json::Json {outputSessionDelete.c_str()};
     if (executionNumber == numTest)
     {
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -147,8 +147,9 @@ TEST_P(TestSessionDeleteCommand, Functionality)
                     }
                 }));
 
-        EXPECT_CALL(*m_spMockStore, add(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, createDoc(testing::_, testing::_, testing::_))
+            .WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         ASSERT_NO_THROW(m_cmdAPI = sessionPost(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
         json::Json sessionPostCommandparams {R"({"name":"dummy"})"};
@@ -160,8 +161,8 @@ TEST_P(TestSessionDeleteCommand, Functionality)
         EXPECT_FALSE(response.message().has_value());
     }
 
-    EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, deleteDoc(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
     json::Json sessionDeleteCommandparams {sessionDeleteParams.c_str()};
@@ -209,17 +210,28 @@ protected:
         m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [&](const base::Name& name)
+                {
+                    if (name == JSON_FILTER)
+                    {
+                        return json::Json {FILTER_ALLOW};
+                    }
+                    else
+                    {
+                        // Handle other cases or return a default value
+                        return json::Json {};
+                    }
+                }));
+
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
                     if (name == ROUTER_TABLE)
                     {
                         return json::Json {INTERNAL_ROUTE_TABLE};
-                    }
-                    else if (name == JSON_FILTER)
-                    {
-                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -239,7 +251,7 @@ protected:
             SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -268,7 +280,7 @@ TEST_P(TestSessionListCommand, Functionality)
 
     json::Json tmp;
 
-    EXPECT_CALL(*m_spMockStore, get(testing::_))
+    EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
         .WillRepeatedly(testing::Invoke(
             [&](const base::Name& name)
             {
@@ -303,8 +315,9 @@ TEST_P(TestSessionListCommand, Functionality)
                 }
             }));
 
-    EXPECT_CALL(*m_spMockStore, add(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, createDoc(testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     ASSERT_NO_THROW(m_cmdAPI = sessionPost(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
     json::Json sessionPostCommandparams {R"({"name":"dummy"})"};
@@ -348,8 +361,8 @@ TEST_P(TestSessionListCommand, Functionality)
                                      << "Expected: " << expectedData.prettyStr() << std::endl;
     }
 
-    EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, deleteDoc(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
     json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};
@@ -404,17 +417,27 @@ protected:
         m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [&](const base::Name& name)
+                {
+                    if (name == JSON_FILTER)
+                    {
+                        return json::Json {FILTER_ALLOW};
+                    }
+                    else
+                    {
+                        // Handle other cases or return a default value
+                        return json::Json {};
+                    }
+                }));
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
                     if (name == ROUTER_TABLE)
                     {
                         return json::Json {INTERNAL_ROUTE_TABLE};
-                    }
-                    else if (name == JSON_FILTER)
-                    {
-                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -434,7 +457,7 @@ protected:
             SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -465,7 +488,7 @@ TEST_P(TestSessionPostCommand, Functionality)
 
     if (executionNumber > 1)
     {
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -500,8 +523,9 @@ TEST_P(TestSessionPostCommand, Functionality)
                     }
                 }));
 
-        EXPECT_CALL(*m_spMockStore, add(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, createDoc(testing::_, testing::_, testing::_))
+            .WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     }
 
     ASSERT_NO_THROW(m_cmdAPI = sessionPost(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
@@ -532,8 +556,8 @@ TEST_P(TestSessionPostCommand, Functionality)
         EXPECT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
                                                  << "Expected: " << expectedData.prettyStr() << std::endl;
 
-        EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, deleteDoc(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
         json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};
@@ -631,17 +655,27 @@ protected:
         m_spMockStore = std::make_shared<store::mocks::MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [&](const base::Name& name)
+                {
+                    if (name == JSON_FILTER)
+                    {
+                        return json::Json {FILTER_ALLOW};
+                    }
+                    else
+                    {
+                        // Handle other cases or return a default value
+                        return json::Json {};
+                    }
+                }));
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
                     if (name == ROUTER_TABLE)
                     {
                         return json::Json {INTERNAL_ROUTE_TABLE};
-                    }
-                    else if (name == JSON_FILTER)
-                    {
-                        return json::Json {FILTER_ALLOW};
                     }
                     else
                     {
@@ -661,7 +695,7 @@ protected:
             SIZE_QUEUE, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         m_spRouter->run(eventQueue);
 
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -690,7 +724,7 @@ TEST_P(TestRunCommandIntegration, Functionality)
 
     if (executionNumber > 1)
     {
-        EXPECT_CALL(*m_spMockStore, get(testing::_))
+        EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
                 [&](const base::Name& name)
                 {
@@ -725,8 +759,9 @@ TEST_P(TestRunCommandIntegration, Functionality)
                     }
                 }));
 
-        EXPECT_CALL(*m_spMockStore, add(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, createDoc(testing::_, testing::_, testing::_))
+            .WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         ASSERT_NO_THROW(m_cmdAPI = sessionPost(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
         json::Json sessionPostCommandparams {sessionPostParams.c_str()};
@@ -754,8 +789,8 @@ TEST_P(TestRunCommandIntegration, Functionality)
     EXPECT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
                                              << "Expected: " << expectedData.prettyStr() << std::endl;
 
-    EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, deleteDoc(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_spMockStore, updateDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     ASSERT_NO_THROW(m_cmdAPI = sessionsDelete(m_sessionManager, m_spCatalog, m_spRouter, m_spMockStore));
     json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};

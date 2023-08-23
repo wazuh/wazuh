@@ -29,7 +29,8 @@ TEST_P(CatalogGetApiTest, ResourseGet)
 {
     auto [input, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(m_spCatalog));
+    auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(m_spCatalog, mockRbac));
     json::Json params {input.c_str()};
 
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
@@ -79,7 +80,8 @@ TEST_P(CatalogPostApiTest, ResoursePost)
 {
     auto [execution, type, format, content, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(m_spCatalog));
+    auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(m_spCatalog, mockRbac));
     json::Json params;
 
     if (execution == NAME_OR_TYPE_NOT_FOUND)
@@ -152,7 +154,8 @@ TEST_P(CatalogPutApiTest, ResoursePost)
 {
     auto [execution, name, format, content, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(m_spCatalog));
+    auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(m_spCatalog, mockRbac));
     json::Json params;
 
     if (execution == NAME_OR_TYPE_NOT_FOUND)
@@ -223,7 +226,8 @@ TEST_P(CatalogDeleteApiTest, ResourseDelete)
 {
     auto [execution, name, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(m_spCatalog));
+    auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(m_spCatalog, mockRbac));
     json::Json params;
     params.setObject();
 

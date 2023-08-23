@@ -35,7 +35,7 @@ TEST_P(CatalogGetTest, CatalogCommand)
 INSTANTIATE_TEST_SUITE_P(CatalogCommand,
                          CatalogGetTest,
                          ::testing::Values(std::make_tuple(1, successResourceAssetJson, successJson.str()),
-                                           std::make_tuple(2, successCollectionAssetJson, successCollectionJson.str()),
+                                           std::make_tuple(2, successCollectionAssetJson, successCollectionJson),
                                            std::make_tuple(3, failResourceAsset, ""),
                                            std::make_tuple(5, successCollectionAssetYml, successCollectionYml)));
 
@@ -55,7 +55,7 @@ TEST_P(CatalogPostTest, CatalogCommand)
     auto [execution, input, content] = GetParam();
 
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = m_spCatalog->postResource(input, content));
+    ASSERT_NO_THROW(error = m_spCatalog->postResource(input, "nsId", content));
     if (execution >= COMMAND_FAILED_CASE)
     {
         ASSERT_TRUE(error);
