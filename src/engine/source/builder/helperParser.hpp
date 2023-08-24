@@ -263,7 +263,7 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         if (next + 1 < sv.size() && sv[next] == syntax::FUNCTION_HELPER_DEFAULT_ESCAPE
             && sv[next + 1] == syntax::REFERENCE_ANCHOR)
         {
-            arg += '\\';
+            arg += syntax::FUNCTION_HELPER_DEFAULT_ESCAPE;
             ++next;
         }
 
@@ -310,12 +310,16 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
     {
         using namespace base::utils::string;
         auto next = pos;
+
         // Check if start with single quote
         if (next + 1 >= sv.size() || sv[next] != syntax::SINGLE_QUOTE)
         {
             return parsec::makeError<std::string>("Single quote expected", pos);
         }
         next++;
+
+        // Escape \$ at the beginning of the parameter
+        bool escapedFirstReference = sv[next] == syntax::REFERENCE_ANCHOR;
 
         // Find end of string (unescaped single quote)
         bool valid = false;
@@ -333,18 +337,25 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
             return parsec::makeError<std::string>("Invalid single quote string", pos);
         }
 
-        std::string result {};
         // TODO: Add test for both cases
+        std::string arg {};
         if (eraseScapeChars)
         {
+            if (escapedFirstReference){
+                arg += syntax::FUNCTION_HELPER_DEFAULT_ESCAPE;
+            }
             // Discart start and end single quote
             auto quoted = sv.substr(pos + 1, next - pos - 1);
             // Unescape string
-            result = unescapeString(quoted, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE, syntax::SINGLE_QUOTE, false);
+            arg += unescapeString(quoted, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE, syntax::SINGLE_QUOTE, false);
         }
         else
         {
-            result = sv.substr(pos, next - pos + 1);
+            arg = sv.substr(pos, next - pos + 1);
+            if (escapedFirstReference)
+            {
+                arg.insert(1, 1, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE);
+            }
         }
         // "string_equal($processname,   '')"
         next++;
@@ -352,7 +363,7 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         {
             ++next;
         }
-        return parsec::makeSuccess(std::move(result), next);
+        return parsec::makeSuccess(std::move(arg), next);
     };
 
     parsec::Parser<std::string> endArgParser = [](auto sv, auto pos) -> parsec::Result<std::string>
