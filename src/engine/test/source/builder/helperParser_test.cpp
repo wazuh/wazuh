@@ -33,8 +33,16 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         HelperParserT(false, "anything", {}),
         HelperParserT(true, "name()", {.name = "name"}),
+        HelperParserT(true, "test('')", {.name = "test", .args = {""}}),
+        HelperParserT(true, "test( '')", {.name = "test", .args = {""}}),
+        HelperParserT(true, "test( ''  )", {.name = "test", .args = {""}}),
         HelperParserT(true, "test(arg1)", {.name = "test", .args = {"arg1"}}),
+        HelperParserT(true, "test(arg1, '')", {.name = "test", .args = {"arg1", ""}}),
+        HelperParserT(true, "test(arg1, )", {.name = "test", .args = {"arg1", ""}}),
         HelperParserT(true, "test(arg1,arg2)", {.name = "test", .args = {"arg1", "arg2"}}),
+        HelperParserT(true, "test(arg1,  \"\")", {.name = "test", .args = {"arg1", "\"\""}}),
+        HelperParserT(true, "test(arg1, '', arg3)", {.name = "test", .args = {"arg1", "","arg3"}}),
+        HelperParserT(true, "test(arg1, '' , arg3)", {.name = "test", .args = {"arg1", "","arg3"}}),
         HelperParserT(true, "test(arg1, arg2, arg3)", {.name = "test", .args = {"arg1", "arg2", "arg3"}}),
         HelperParserT(true,
                       "test(arg1, arg2\\,arg3)",
@@ -50,13 +58,15 @@ INSTANTIATE_TEST_SUITE_P(
         HelperParserT(true, "test(arg1,)", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(true, "test(arg1, )", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(true, "test(arg1,\\ )", {.name = "test", .args {"arg1", " "}}),
+        HelperParserT(true, "test(arg1,' ')", {.name = "test", .args {"arg1", " "}}),
         HelperParserT(true, "test(arg1,  )", {.name = "test", .args {"arg1", ""}}),
         HelperParserT(false, "test(arg1, ())", {}),
         HelperParserT(true, "test(arg1, (\\))", {.name = "test", .args {"arg1", "()"}}),
         HelperParserT(true, "test(arg1, ( arg2)", {.name = "test", .args = {"arg1", "( arg2"}}),
         HelperParserT(true, "test(arg1, \\) arg2)", {.name = "test", .args = {"arg1", ") arg2"}}),
         HelperParserT(true, "test(arg1, \\)\\ arg2\\)\\)\\))", {.name = "test", .args = {"arg1", ") arg2)))"}}),
-        HelperParserT(false, "test(arg1)leftover", {})
+        HelperParserT(false, "test(arg1)leftover", {}),
+        HelperParserT(true, "test(arg1, ' , ( ) ' )", {.name = "test", .args {"arg1", " , ( ) "}})
             ));
 
 using TermParserT = std::tuple<bool, std::string, builder::internals::BuildToken>;

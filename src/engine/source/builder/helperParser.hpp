@@ -53,7 +53,12 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& hel
                                                           const std::string& targetField)
 {
     json::Json value {};
-    auto valueStr = fmt::format("{}({})", helperToken.name, base::utils::string::join(helperToken.args, ","));
+
+    std::string strArgs = helperToken.args.size() == 1 && helperToken.args[0].empty()
+                              ? "''"
+                              : base::utils::string::join(helperToken.args, ",");
+
+    auto valueStr = fmt::format("{}({})", helperToken.name, strArgs);
     value.setString(valueStr);
 
     return std::make_tuple(targetField, std::move(value));
@@ -208,6 +213,22 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_OPEN), next);
     };
 
+    parsec::Parser<std::string> parenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (sv[pos] != syntax::PARENTHESIS_CLOSE)
+        {
+            return parsec::makeError<std::string>("Parenthesis close expected", pos);
+        }
+        // Skip whitespace
+        auto next = pos + 1;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_CLOSE), next);
+    };
+
     parsec::Parser<std::string> behindParenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
         if (pos == 0 || sv[pos - 1] != syntax::PARENTHESIS_CLOSE)
@@ -218,7 +239,17 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_CLOSE), pos);
     };
 
-    parsec::Parser<std::string> argParser = [eraseScapeChars](auto sv, auto pos) -> parsec::Result<std::string>
+    parsec::Parser<std::string> behindParenthOpenParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (pos == 0 || sv[pos - 1] != syntax::PARENTHESIS_OPEN)
+        {
+            return parsec::makeError<std::string>("Parenthesis open expected", pos);
+        }
+
+        return parsec::makeSuccess(std::string(1, syntax::PARENTHESIS_OPEN), pos);
+    };
+
+    parsec::Parser<std::string> simpleArgParser = [eraseScapeChars](auto sv, auto pos) -> parsec::Result<std::string>
     {
         auto next = pos;
         auto arg = std::string();
@@ -275,6 +306,55 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         return parsec::makeSuccess(std::move(arg), next);
     };
 
+    parsec::Parser<std::string> quotedArgParser = [eraseScapeChars](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        using namespace base::utils::string;
+        auto next = pos;
+        // Check if start with single quote
+        if (next + 1 >= sv.size() || sv[next] != syntax::SINGLE_QUOTE)
+        {
+            return parsec::makeError<std::string>("Single quote expected", pos);
+        }
+        next++;
+
+        // Find end of string (unescaped single quote)
+        bool valid = false;
+        for (; next < sv.size(); ++next)
+        {
+            if (sv[next] == syntax::SINGLE_QUOTE && sv[next - 1] != syntax::FUNCTION_HELPER_DEFAULT_ESCAPE)
+            {
+                valid = true;
+                break;
+            }
+        }
+
+        if (!valid)
+        {
+            return parsec::makeError<std::string>("Invalid single quote string", pos);
+        }
+
+        std::string result {};
+        // TODO: Add test for both cases
+        if (eraseScapeChars)
+        {
+            // Discart start and end single quote
+            auto quoted = sv.substr(pos + 1, next - pos - 1);
+            // Unescape string
+            result = unescapeString(quoted, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE, syntax::SINGLE_QUOTE, false);
+        }
+        else
+        {
+            result = sv.substr(pos, next - pos + 1);
+        }
+        // "string_equal($processname,   '')"
+        next++;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+        return parsec::makeSuccess(std::move(result), next);
+    };
+
     parsec::Parser<std::string> endArgParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
         parsec::Result<std::string> res;
@@ -302,7 +382,20 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         return res;
     };
 
-    auto helperArgsParser = parsec::many1(parsec::negativeLook(behindParenthCloseParser) >> argParser << endArgParser);
+    // Empty arguments parser, parenthesis that closes, and behind a parenthesis that opens
+    auto helperNoArgsParserRaw = parsec::positiveLook(behindParenthOpenParser) >> parenthCloseParser;
+    // returns a empty list of arguments
+    auto helperNoArgsParser = parsec::fmap<parsec::Values<std::string>, std::string>(
+        [](auto&& tuple) -> parsec::Values<std::string> { return {}; }, helperNoArgsParserRaw);
+
+    // Some arguments parser, can be a quoted string or scaped string
+    auto argParser = quotedArgParser | simpleArgParser;
+    auto helperSomeArgsParser =
+        parsec::many1(parsec::negativeLook(behindParenthCloseParser) >> argParser << endArgParser);
+
+    // A helper function can have no arguments or some arguments
+    auto helperArgsParser = helperNoArgsParser | helperSomeArgsParser;
+
     auto helperParserRaw =
         (helperNameParser << parenthOpenParser) & (helperArgsParser << parsec::positiveLook(behindParenthCloseParser));
     auto helperParser = parsec::fmap<HelperToken, std::tuple<std::string, parsec::Values<std::string>>>(
@@ -311,11 +404,6 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
             HelperToken helperToken;
             helperToken.name = std::get<0>(tuple);
             helperToken.args = std::vector<std::string>(std::get<1>(tuple).begin(), std::get<1>(tuple).end());
-            // When empty args parser returns one empty string
-            if (helperToken.args.size() == 1 && helperToken.args[0].empty())
-            {
-                helperToken.args.clear();
-            }
 
             return helperToken;
         },
@@ -404,7 +492,43 @@ inline parsec::Parser<ExpressionToken> getExpressionParser()
         return parsec::makeSuccess(std::move(word), next);
     };
 
-    auto valueParser = valueRefParser | jsonParser | wordParser;
+    parsec::Parser<json::Json> singleQuotesParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
+    {
+        using namespace base::utils::string;
+        auto next = pos;
+        // Check if start with single quote
+        if (next + 1 >= sv.size() || sv[next] != syntax::SINGLE_QUOTE)
+        {
+            return parsec::makeError<json::Json>("Single quote expected", pos);
+        }
+        next++;
+
+        // Find end of string (unescaped single quote)
+        bool valid = false;
+        for (; next < sv.size(); ++next)
+        {
+            if (sv[next] == syntax::SINGLE_QUOTE && sv[next - 1] != syntax::FUNCTION_HELPER_DEFAULT_ESCAPE)
+            {
+                valid = true;
+                break;
+            }
+        }
+
+        if (!valid)
+        {
+            return parsec::makeError<json::Json>("Invalid single quote string", pos);
+        }
+
+        const auto quoted = sv.substr(pos + 1, next - pos - 1);
+        const auto str = unescapeString(quoted, syntax::FUNCTION_HELPER_DEFAULT_ESCAPE, syntax::SINGLE_QUOTE, false);
+
+        json::Json value;
+        value.setString(str);
+
+        return parsec::makeSuccess(std::move(value), next + 1);
+    };
+
+    auto valueParser = valueRefParser | jsonParser | singleQuotesParser | wordParser;
 
     parsec::Parser<ExpressionOperator> operatorParser = [](auto sv, auto pos) -> parsec::Result<ExpressionOperator>
     {
