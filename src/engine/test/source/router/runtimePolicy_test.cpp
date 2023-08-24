@@ -43,7 +43,8 @@ TEST_F(RuntimePolicyTest, build_ok)
 TEST_F(RuntimePolicyTest, build_fail_policy)
 {
     auto policy = std::make_shared<router::RuntimePolicy>(INVALID_POLICY);
-    EXPECT_CALL(*m_store, get(base::Name(INVALID_POLICY))).WillOnce(::testing::Return(getError));
+    EXPECT_CALL(*m_store, readDoc(base::Name(INVALID_POLICY)))
+        .WillOnce(::testing::Return(storeReadError<store::Doc>()));
     auto error = policy->build(m_builder);
     ASSERT_TRUE(error.has_value());
 }
