@@ -1,8 +1,5 @@
 name: decoder/suricata/0
 
-parents:
-  - decoder/integrations/0
-
 metadata:
   module: suricata
   compatibility: v6.0.0 and higher
