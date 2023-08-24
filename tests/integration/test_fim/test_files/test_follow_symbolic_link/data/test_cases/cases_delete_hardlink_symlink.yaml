@@ -1,0 +1,44 @@
+- name: Audit rule is deleted when symlink is moved - Real-time
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    fim_mode: realtime
+    symlink_amount: 1
+
+- name: Audit rule is deleted when symlink is moved - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    fim_mode: realtime
+    symlink_amount: 1
+
+- name: Audit rule is deleted when symlink is moved - Schedule
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 3
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    fim_mode: realtime
+    symlink_amount: 1
