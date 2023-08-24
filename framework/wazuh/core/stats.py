@@ -219,6 +219,95 @@ def get_daemons_stats_(filename: str) -> list:
     return [items]
 
 
+def is_agent_a_manager(agent_id: Union[str, int]) -> bool:
+    """
+    Check if the given agent ID corresponds to a manager agent.
+
+    Parameters
+    ----------
+    agent_id: str
+        The ID of the agent to check.
+
+    Returns
+    -------
+    bool
+        True if the agent is a manager (ID is '000'), False otherwise.
+    """
+    return str(agent_id).zfill(3) == '000'
+
+
+def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
+    """
+    Get the socket path for retrieving statistics based on agent type.
+
+    Parameters
+    ----------
+    agent_id: str
+        The ID of the agent.
+    daemon: str
+        The name of the daemon.
+
+    Returns
+    -------
+    str
+        The path to the socket for communication.
+    """
+    if is_agent_a_manager(agent_id):
+        return os.path.join(common.WAZUH_PATH, "queue", "sockets", daemon)
+    else:
+        return common.REMOTED_SOCKET
+
+
+def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool = False) -> str:
+    """
+    Create a command to retrieve statistics based on agent type.
+
+    Parameters
+    ----------
+    agent_id: str
+        The ID of the agent.
+    daemon: str
+        The name of the daemon.
+    next_page: bool
+        If the next page of the response is requested.
+
+    Returns
+    -------
+    str
+        The command to retrieve statistics.
+    """
+    command = None
+    if is_agent_a_manager(agent_id):
+        command = "getstate"
+    else:
+        command = f"{str(agent_id).zfill(3)} {daemon} getstate"
+
+    if next_page:
+        command += " next"
+
+    return command
+
+
+def check_if_daemon_exists_in_agent(agent_id: Union[str, int], daemon: str) -> bool:
+    """
+    Check if a daemon exists for a given agent.
+
+    Parameters
+    ----------
+    agent_id: str
+        The ID of the agent.
+    daemon: str
+        The name of the daemon.
+
+    Returns
+    -------
+    bool
+        True if the daemon exists for the agent, False otherwise.
+    """
+    # Some daemons do not exist in agent 000
+    return not (is_agent_a_manager(agent_id) and daemon in {'agent'})
+
+
 def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     """Get a daemon stats from an agent or manager.
 
@@ -237,17 +326,11 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     if not agent_id or not daemon:
         raise WazuhError(1307)
 
-    sockets_path = os.path.join(common.WAZUH_PATH, "queue", "sockets")
+    if not check_if_daemon_exists_in_agent(agent_id=agent_id, daemon=daemon):
+        raise WazuhError(1310)
 
-    if str(agent_id).zfill(3) == '000':
-        # Some daemons do not exist in agent 000
-        if daemon in {'agent'}:
-            raise WazuhError(1310)
-        dest_socket = os.path.join(sockets_path, daemon)
-        command = "getstate"
-    else:
-        dest_socket = common.REMOTED_SOCKET
-        command = f"{str(agent_id).zfill(3)} {daemon} getstate"
+    dest_socket = get_stats_socket_path(agent_id=agent_id, daemon=daemon)
+    command = create_stats_command(agent_id=agent_id, daemon=daemon)
 
     # Socket connection
     try:

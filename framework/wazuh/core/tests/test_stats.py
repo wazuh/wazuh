@@ -95,6 +95,51 @@ def test_hourly_data():
     assert result[0]['interactions'] == 0
 
 
+@pytest.mark.parametrize('agent, expected_value', [
+    (1, False),
+    (0, True),
+    ('1', False),
+    ('0', True),
+    ('001', False),
+    ('000', True)
+])
+def test_is_agent_a_manager(agent, expected_value):
+    """Verify is_agent_a_manager function works as expected"""
+    assert stats.is_agent_a_manager(agent) == expected_value
+
+
+@pytest.mark.parametrize('agent, daemon, expected_value', [
+    (0, 'logcollector', os.path.join(common.WAZUH_PATH, "queue", "sockets", 'logcollector')),
+    (1, 'logcollector', common.REMOTED_SOCKET),
+    (1, 'agent', common.REMOTED_SOCKET)
+])
+def test_get_stats_socket_path(agent, daemon, expected_value):
+    """Verify get_stats_socket_path function works as expected"""
+    assert stats.get_stats_socket_path(agent, daemon) == expected_value
+
+
+@pytest.mark.parametrize('agent, daemon, next_page, expected_value', [
+    (0, 'logcollector', False, 'getstate'),
+    (0, 'logcollector', True, 'getstate next'),
+    (1, 'agent', False, '001 agent getstate'),
+    (1, 'agent', True, '001 agent getstate next'),
+])
+def test_create_stats_command(agent, daemon, next_page, expected_value):
+    """Verify create_stats_command function works as expected"""
+    assert stats.create_stats_command(agent_id=agent, daemon=daemon, next_page=next_page) == expected_value
+
+
+@pytest.mark.parametrize('agent, daemon, expected_value', [
+    (0, 'logcollector', True),
+    (0, 'agent', False),
+    (1, 'logcollector', True),
+    (1, 'agent', True)
+])
+def test_check_if_daemon_exists_in_agent(agent, daemon, expected_value):
+    """Verify check_if_daemon_exists_in_agent function works as expected"""
+    assert stats.check_if_daemon_exists_in_agent(agent, daemon) == expected_value
+
+
 @pytest.mark.parametrize('agents_list, expected_socket_response, expected_result', [
     (None,
      {'timestamp': 1658400850,
