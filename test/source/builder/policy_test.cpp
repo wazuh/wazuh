@@ -55,6 +55,10 @@ protected:
                         throw std::runtime_error("Unknown asset name.parts()[0]: " + name.parts()[0]);
                     }
                 }));
+        
+        // This is done so any asset does not default to parent integrations
+        EXPECT_CALL(*storeRead, getNamespace(testing::_))
+            .WillRepeatedly(testing::Return(storeGetNamespaceError()));
 
         if (std::filesystem::exists(outputPath))
         {
