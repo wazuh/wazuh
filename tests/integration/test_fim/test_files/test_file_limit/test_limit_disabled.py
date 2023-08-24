@@ -70,7 +70,7 @@ from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import FILE_LIMIT_DISABLED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
-from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
+from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -97,5 +97,6 @@ def test_limit_disabled(test_configuration, test_metadata, set_wazuh_configurati
                         configure_local_internal_options, folder_to_monitor, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
+    
     wazuh_log_monitor.start(generate_callback(FILE_LIMIT_DISABLED))
     assert wazuh_log_monitor.callback_result

@@ -68,10 +68,10 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import ADDED_EVENT, DELETED_EVENT
+from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
-from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
+from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
@@ -104,7 +104,7 @@ def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazu
 
     # Create and delete at full capacity.
     file.write_file(Path(folder_to_monitor, f'test66.log'))
-    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert not wazuh_log_monitor.callback_result
 
     file.remove_file(Path(folder_to_monitor, f'test66.log'))
@@ -112,10 +112,10 @@ def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazu
 
     # Create after free some capacity
     file.delete_files_in_folder(folder_to_monitor)
-    wazuh_log_monitor.start(generate_callback(DELETED_EVENT))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
 
     file.write_file(Path(folder_to_monitor, f'test66.log'))
-    wazuh_log_monitor.start(generate_callback(ADDED_EVENT))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
