@@ -78,16 +78,16 @@ static int key_request_connect();
 static int key_request_reconnect();
 
 /* Family address reference */
-#define FAMILY_ADDRESS_SIZE 47
+#define FAMILY_ADDRESS_SIZE 46
 char *str_family_address[FAMILY_ADDRESS_SIZE] = {
     "AF_UNSPEC", "AF_LOCAL/AF_UNIX/AF_FILE", "AF_INET", "AF_AX25", "AF_IPX",
     "AF_APPLETALK","AF_NETROM", "AF_BRIDGE", "AF_ATMPVC", "AF_X25", "AF_INET6",
-    "AF_ROSE", "AF_DECnet", "AF_NETBEUI", "AF_SECURITY", "AF_KEY", "AF_NETLINK",
-    "AF_ROUTE", "AF_PACKET", "AF_ASH", "AF_ECONET", "AF_ATMSVC", "AF_RDS", "AF_SNA",
-    "AF_IRDA", "AF_PPPOX", "AF_WANPIPE", "AF_LLC", "AF_IB", "AF_MPLS", "AF_CAN",
-    "AF_TIPC", "AF_BLUETOOTH", "AF_IUCV", "AF_RXRPC", "AF_ISDN", "AF_PHONET",
-    "AF_IEEE802154", "AF_CAIF", "AF_ALG", "AF_NFC", "AF_VSOCK", "AF_KCM",
-    "AF_QIPCRTR", "AF_SMC", "AF_XDP", "AF_MCTP"
+    "AF_ROSE", "AF_DECnet", "AF_NETBEUI", "AF_SECURITY", "AF_KEY",
+    "AF_NETLINK/AF_ROUTE", "AF_PACKET", "AF_ASH", "AF_ECONET", "AF_ATMSVC",
+    "AF_RDS", "AF_SNA", "AF_IRDA", "AF_PPPOX", "AF_WANPIPE", "AF_LLC", "AF_IB",
+    "AF_MPLS", "AF_CAN", "AF_TIPC", "AF_BLUETOOTH", "AF_IUCV", "AF_RXRPC",
+    "AF_ISDN", "AF_PHONET", "AF_IEEE802154", "AF_CAIF", "AF_ALG", "AF_NFC",
+    "AF_VSOCK", "AF_KCM", "AF_QIPCRTR", "AF_SMC", "AF_XDP", "AF_MCTP"
 };
 
 /* Handle secure connections */
