@@ -2470,3 +2470,59 @@ INSTANTIATE_TEST_SUITE_P(
         ErasePrefixT(true, R"({"a":1, "_a":1, "b":1, "_b":1, "c":1})", R"({"a":1, "b":1, "c":1})", '_', ""),
         ErasePrefixT(
             true, R"({"a": {"a":1, "_a":1, "b":1, "_b":1, "c":1}})", R"({"a": {"a":1, "b":1, "c":1}})", '_', "/a")));
+
+
+
+
+// Test parameter for check if path if empty [should pass, input json str, path]
+using isEmptyT = std::tuple<bool, std::string, std::string>;
+class isEmptyTest : public ::testing::TestWithParam<isEmptyT>
+{
+};
+
+TEST_P(isEmptyTest, Erase)
+{
+    auto [shouldPass, inputJsonStr, path] = GetParam();
+    Json inputJson {inputJsonStr.c_str()};
+
+
+    if (shouldPass)
+    {
+        ASSERT_TRUE(inputJson.isEmpty(path)) << inputJson.str(path).value_or("Not found the path");
+    }
+    else
+    {
+        ASSERT_FALSE(inputJson.isEmpty(path)) << inputJson.str(path).value_or("Not found the pat");
+    }
+}
+
+
+INSTANTIATE_TEST_SUITE_P(
+    Json,
+    isEmptyTest,
+    ::testing::Values(
+        isEmptyT(true, R"({})", ""),
+        isEmptyT(true, R"([])", ""),
+        isEmptyT(true, R"("")", ""),
+        isEmptyT(true, R"(0)", ""),
+        isEmptyT(true, R"(false)", ""),
+        isEmptyT(true, R"(null)", ""),
+        isEmptyT(false, R"({})", "/a"),
+        isEmptyT(false, R"([])", "/0"),
+        isEmptyT(false, R"("")", "/0"),
+        isEmptyT(false, R"(0)", "/0"),
+        isEmptyT(false, R"(false)", "/0"),
+        isEmptyT(false, R"(null)", "/0"),
+        isEmptyT(true, R"({"a":{}})", "/a"),
+        isEmptyT(true, R"({"a":[]})", "/a"),
+        isEmptyT(true, R"({"a":""})", "/a"),
+        isEmptyT(true, R"({"a":0})", "/a"),
+        isEmptyT(true, R"({"a":false})", "/a"),
+        isEmptyT(true, R"({"a":null})", "/a"),
+        isEmptyT(false, R"({"a":{}})", "/a/b"),
+        isEmptyT(false, R"({"a":[]})", "/a/0"),
+        isEmptyT(false, R"({"a":""})", "/a/0"),
+        isEmptyT(false, R"({"a":0})", "/a/0"),
+        isEmptyT(false, R"({"a":false})", "/a/0"),
+        isEmptyT(false, R"({"a":null})", "/a/0")
+));

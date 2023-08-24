@@ -575,6 +575,21 @@ public:
     bool isObject(std::string_view path = "") const;
 
     /**
+     * @brief Check if the Json described by the path is empty.
+     *
+     * Ensure that the path exists before calling this function.
+     * If the Json is an array or object, check if it is empty.
+     * If the Json is a string, check if it is empty.
+     * If the Json is a number, check if it is 0.
+     * If the Json is a boolean, check if it is false.
+     * If the Json is null, return true.
+     * @param path
+     * @return true
+     * @return false
+     */
+    bool isEmpty(std::string_view path = "") const;
+
+    /**
      * @brief Get the type name of the Json.
      *
      * @return std::string The type name of the Json.

@@ -671,6 +671,47 @@ bool Json::isObject(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
+bool Json::isEmpty(std::string_view path) const
+{
+    const auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value)
+        {
+            if (value->IsArray())
+            {
+                return value->Empty();
+            }
+            else if (value->IsObject())
+            {
+                return value->ObjectEmpty();
+            }
+            else if (value->IsString())
+            {
+                return value->GetStringLength() == 0;
+            }
+            else if (value->IsNumber())
+            {
+                return value->GetDouble() == 0;
+            }
+            else if (value->IsBool())
+            {
+                return !value->GetBool();
+            }
+            else if (value->IsNull())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
 std::string Json::typeName(std::string_view path) const
 {
     const auto pp = rapidjson::Pointer(path.data());
