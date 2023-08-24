@@ -1,8 +1,5 @@
 name: decoder/apache-access/0
 
-parents:
-  - decoder/integrations/0
-
 metadata:
   module: apache-http
   title: Apache HTTP Server access logs decoder

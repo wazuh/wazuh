@@ -15,9 +15,6 @@ metadata:
     - https://www.ietf.org/rfc/rfc3164.txt
     - https://www.ietf.org/rfc/rfc5424.txt
 
-parents:
-  - decoder/integrations/0
-
 parse:
   logpar:
     # BSD Syslog RFC 3164 standard
