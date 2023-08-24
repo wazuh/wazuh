@@ -743,7 +743,7 @@ int wdb_parse(char * input, char * output, int peer) {
         if (result == OS_INVALID) {
             snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
             if (!w_is_file(path)) {
-                mdebug2("DB(%s) not found.", path);
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
                 w_mutex_lock(&pool_mutex);
                 wdb_close(wdb, FALSE);
                 w_mutex_unlock(&pool_mutex);
@@ -1360,7 +1360,7 @@ int wdb_parse(char * input, char * output, int peer) {
         if (result == OS_INVALID) {
             snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             if (!w_is_file(path)) {
-                mdebug2("DB(%s) not found.", path);
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
                 w_mutex_lock(&pool_mutex);
                 wdb_close(wdb, FALSE);
                 w_mutex_unlock(&pool_mutex);

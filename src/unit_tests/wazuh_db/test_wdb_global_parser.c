@@ -4398,7 +4398,7 @@ void test_wdb_parse_delete_db_file (void **state) {
     //DB file deleted manually
     will_return(__wrap_w_is_file, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "DB(queue/db/global.db) not found.");
+    expect_string(__wrap__mwarn, formatted_msg, "DB(queue/db/global.db) not found. This behavior is unexpected, the database will be recreated.");
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_wdb_close, OS_SUCCESS);
     expect_function_call(__wrap_pthread_mutex_unlock);
