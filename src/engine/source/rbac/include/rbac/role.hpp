@@ -2,7 +2,7 @@
 #define _RBAC_ROLE_HPP
 
 #include <string>
-#include <unordered_set>
+#include <set>
 #include <variant>
 
 #include <rbac/permission.hpp>
@@ -14,18 +14,18 @@ class Role
 {
 private:
     std::string m_name;
-    std::unordered_set<Permission> m_permissions;
+    std::set<Permission> m_permissions;
 
 public:
     Role() = default;
 
-    Role(const std::string& name, const std::unordered_set<Permission>& permissions)
+    Role(const std::string& name, const std::set<Permission>& permissions)
         : m_name(name)
         , m_permissions(permissions)
     {
     }
 
-    Role(const std::string& name, std::unordered_set<Permission>&& permissions)
+    Role(const std::string& name, std::set<Permission>&& permissions)
         : m_name(name)
         , m_permissions(std::move(permissions))
     {
@@ -33,7 +33,7 @@ public:
 
     const std::string& getName() const { return m_name; }
 
-    const std::unordered_set<Permission>& getPermissions() const { return m_permissions; }
+    const std::set<Permission>& getPermissions() const { return m_permissions; }
 
     friend inline bool operator==(const Role& lhs, const Role& rhs)
     {
@@ -41,6 +41,8 @@ public:
     }
 
     friend inline bool operator!=(const Role& lhs, const Role& rhs) { return !(lhs == rhs); }
+
+    friend inline bool operator<(const Role& lhs, const Role& rhs) { return lhs.m_name < rhs.m_name; }
 
     json::Json toJson() const
     {
@@ -58,7 +60,7 @@ public:
 
     static std::variant<Role, base::Error> fromJson(const std::string& key, const json::Json& permissions)
     {
-        std::unordered_set<Permission> perms;
+        std::set<Permission> perms;
         auto permsArray = permissions.getArray();
         if (!permsArray)
         {

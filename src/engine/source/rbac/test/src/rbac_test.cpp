@@ -34,19 +34,19 @@ auto MODEL_JSON = json::Json {R"({
     ],
     "role3": [
         {
-            "resource": "asset",
+            "resource": "system_asset",
             "operation": "read"
         },
         {
-            "resource": "asset",
+            "resource": "system_asset",
             "operation": "write"
         },
         {
-            "resource": "system_asset",
+            "resource": "asset",
             "operation": "read"
         },
         {
-            "resource": "system_asset",
+            "resource": "asset",
             "operation": "write"
         }
     ]
