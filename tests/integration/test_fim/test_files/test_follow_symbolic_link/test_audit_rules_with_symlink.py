@@ -84,7 +84,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_delete_hardlink_symlink.yaml')
+cases_pat0h = Path(TEST_CASES_PATH, 'cases_delete_hardlink_symlink.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -96,15 +96,21 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                  configure_local_internal_options, folder_to_monitor, file_to_monitor, file_symlink,
+                                  configure_local_internal_options, folder_to_monitor, file_symlink,
                                   daemons_handler, start_monitoring):
+    symlink_base_target = test_metadata.get('symlink_target')
+    symlink_updated_target = test_metadata.get('symlink_new_target')
+    event_type = test_metadata.get('event_type')
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     # Act
-    file.modify_symlink_target(folder_to_monitor, file_symlink)
+    file.modify_symlink_target(symlink_updated_target, file_symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     wazuh_log_monitor.start(generate_callback(AUDIT_RULES_RELOADED))
     # Assert
     rules_paths = commands.get_rules_path()
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
-    assert wazuh_log_monitor.callback_result
-    assert file_to_monitor not in rules_paths
+    wazuh_log_monitor.start(generate_callback(SENDING_FIM_EVENT))
+
+    fim_event = get_fim_event_data(wazuh_log_monitor.callback_result)
+
+    assert fim_event.get('type') == event_type
+    assert symlink_base_target not in rules_paths

@@ -8,8 +8,10 @@
       realtime: 'yes'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
-    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
-    file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    symlink_target:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    symlink_new_target:  !!python/object/apply:os.path.join [/testie.log]
+    event_type: modified
     fim_mode: realtime
 
 - name: Audit rule is deleted when symlink is moved - Who-data
@@ -22,8 +24,10 @@
       whodata: 'yes'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
-    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
-    file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    symlink_target:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    symlink_new_target:  !!python/object/apply:os.path.join [/testie.log]
+    event_type: modified
     fim_mode: whodata
 
 - name: Audit rule is deleted when symlink is moved - Schedule
@@ -36,6 +40,8 @@
       realtime: 'no'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
-    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
-    file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
+    symlink_target:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    symlink_new_target:  !!python/object/apply:os.path.join [/testie.log]
+    event_type: modified
     fim_mode: scheduled
