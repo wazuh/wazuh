@@ -68,8 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, AUDIT_RULES_RELOADED, EVENT_TYPE_MODIFIED, FIM_EVENT_JSON, LINKS_SCAN_FINALIZED, SENDING_FIM_EVENT
-from wazuh_testing.modules.fim.utils import get_fim_event_data
+from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -84,7 +83,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_pat0h = Path(TEST_CASES_PATH, 'cases_delete_hardlink_symlink.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_delete_hardlink_symlink.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -98,19 +97,19 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                                   configure_local_internal_options, folder_to_monitor, file_symlink,
                                   daemons_handler, start_monitoring):
-    symlink_base_target = test_metadata.get('symlink_target')
-    symlink_updated_target = test_metadata.get('symlink_new_target')
-    event_type = test_metadata.get('event_type')
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    # Act
+    symlink_updated_target = Path(test_metadata.get('symlink_new_target'))
+
     file.modify_symlink_target(symlink_updated_target, file_symlink)
+    file.write_file(symlink_updated_target.joinpath('testie.log'))
+
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
+    assert wazuh_log_monitor.callback_result
+
     wazuh_log_monitor.start(generate_callback(AUDIT_RULES_RELOADED))
-    # Assert
+    assert wazuh_log_monitor.callback_result
+
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     rules_paths = commands.get_rules_path()
-    wazuh_log_monitor.start(generate_callback(SENDING_FIM_EVENT))
-
-    fim_event = get_fim_event_data(wazuh_log_monitor.callback_result)
-
-    assert fim_event.get('type') == event_type
-    assert symlink_base_target not in rules_paths
+    assert wazuh_log_monitor.callback_result
+    assert 'testie.log' not in rules_paths
