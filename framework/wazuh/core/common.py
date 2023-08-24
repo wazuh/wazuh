@@ -165,7 +165,6 @@ DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 # ============================================ Wazuh constants - Extensions ============================================
-RULES_EXTENSION = '.xml'
 DECODERS_EXTENSION = '.xml'
 LISTS_EXTENSION = ''
 COMPILED_LISTS_EXTENSION = '.cdb'
@@ -249,9 +248,7 @@ WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 
 # ================================================ Wazuh path - Ruleset ================================================
 RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
-RULES_PATH = os.path.join(RULESET_PATH, 'rules')
 DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
 LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
 USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
-USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
 USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')

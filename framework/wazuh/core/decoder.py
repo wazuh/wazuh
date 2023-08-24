@@ -141,7 +141,7 @@ def item_format(data, all_items, exclude_filenames):
         data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
 
 
-def _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
+def _create_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
     items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
     for item_dir in items:
         all_rules = f"{common.WAZUH_PATH}/{item_dir}/*.xml"
@@ -155,7 +155,7 @@ def _create_dict(ruleset_conf, tag, exclude_filenames, data):
     for item in items:
         item_name = os.path.basename(item)
         full_dir = os.path.dirname(item)
-        item_dir = os.path.relpath(full_dir if full_dir else common.RULES_PATH, start=common.WAZUH_PATH)
+        item_dir = os.path.relpath(full_dir if full_dir else common.DECODERS_PATH, start=common.WAZUH_PATH)
         exclude_filenames.append(item_name) if tag == 'decoder_exclude' else \
             data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
 
@@ -165,7 +165,7 @@ def format_decoder_file(ruleset_conf, parameters, tags):
     for tag in tags:
         if tag in ruleset_conf:
             if tag == 'decoder_dir':
-                _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
+                _create_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
             else:
                 _create_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
 

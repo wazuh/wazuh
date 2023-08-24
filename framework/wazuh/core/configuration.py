@@ -590,7 +590,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     Parameters
     ----------
     section : str
-        Filters by section (i.e. rules).
+        Filters by section (i.e. sca).
     field : str
         Filters by field in section (i.e. included).
     conf_file : str
