@@ -73,9 +73,9 @@ protected:
             FAIL() << "Asset " << name << " not found";
         }
 
-        EXPECT_CALL(*m_store, get(base::Name(name)))
+        EXPECT_CALL(*m_store, readDoc(base::Name(name)))
             .Times(times)
-            .WillRepeatedly(::testing::Return(getSuccess(json::Json(aux::assets[name]))));
+            .WillRepeatedly(::testing::Return(storeReadDocResp(json::Json(aux::assets[name]))));
     }
 
     void expectBuildPolicy(const std::string& name, int times = 1)
@@ -93,10 +93,13 @@ protected:
 
     void expectBuildTable(const std::string& name)
     {
+
         if (aux::tables.find(name) == aux::tables.end())
         {
             FAIL() << "Table " << name << " not found";
         }
+        EXPECT_CALL(*m_store, readInternalDoc(base::Name(name)))
+            .WillOnce(::testing::Return(storeReadDocResp(json::Json {aux::INTERNAL_ROUTE_TABLE})));
         const auto& [filters, policies] = aux::tables[name];
         for (const auto& filter : filters)
         {

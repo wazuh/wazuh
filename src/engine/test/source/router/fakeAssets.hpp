@@ -247,7 +247,7 @@ static std::map<std::string, std::vector<std::string>> policies = {
 
 static std::map<std::string, std::pair<std::vector<std::string>, std::vector<std::string>>> tables = {
     {"internal/router_table/0",
-     {{"internal/router_table/0", "filter/allow_all_C3/0", "filter/allow_all_A1/0", "filter/allow_all_B2/0"},
+     {{"filter/allow_all_C3/0", "filter/allow_all_A1/0", "filter/allow_all_B2/0"},
       {"policy/pol_C3/0", "policy/pol_A1/0", "policy/pol_B2/0"}}}};
 
 } // namespace aux
