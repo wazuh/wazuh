@@ -1,0 +1,41 @@
+{
+    "steps": [
+        {
+            "description": "Coding style",
+            "parameters": [
+                "--test format",
+                "--ignore build",
+                "--ignore shared",
+                "--ignore external"
+            ]
+        },
+        {
+            "description": "Cppcheck",
+            "parameters": [
+                "--test cppcheck",
+                "--ignore build",
+                "--ignore shared",
+                "--ignore external"
+            ]
+        },
+        {
+            "description": "Build",
+            "parameters": [
+                "--test build"
+            ]
+        },
+        {
+            "description": "Unit tests",
+            "parameters": [
+                "--test ut"
+            ]
+        },
+        {
+            "description": "Doxygen",
+            "parameters": [
+                "--test docs"
+            ]
+        }
+
+    ]
+}
