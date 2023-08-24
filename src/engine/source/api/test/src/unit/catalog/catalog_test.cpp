@@ -20,14 +20,14 @@ TEST_P(CatalogGetTest, CatalogCommand)
 {
     auto [execution, input, output] = GetParam();
     std::variant<std::string, base::Error> result;
-    ASSERT_NO_THROW(result = m_spCatalog->getResource(input));
+    ASSERT_NO_THROW(result = m_spCatalog->getResource(input, {"ignored"}));
     if (execution == COMMAND_FAILED_CASE)
     {
         ASSERT_TRUE(std::holds_alternative<base::Error>(result));
     }
     else
     {
-        ASSERT_TRUE(std::holds_alternative<std::string>(result));
+        ASSERT_TRUE(std::holds_alternative<std::string>(result)) << base::getError(result).message;
         ASSERT_EQ(std::get<std::string>(result), output);
     }
 }
@@ -89,7 +89,7 @@ TEST_P(CatalogDeleteTest, CatalogCommand)
     auto [execution, input] = GetParam();
 
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = m_spCatalog->deleteResource(input));
+    ASSERT_NO_THROW(error = m_spCatalog->deleteResource(input, {"ignored"}));
     if (execution == COMMAND_FAILED_CASE)
     {
         ASSERT_TRUE(error);
