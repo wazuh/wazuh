@@ -77,8 +77,6 @@ x-rbac-catalog:
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
     'list:file':
       description: "Reference list files via its filename (i.e. list:file:audit-keys)"
-    'rule:file':
-      description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
       description: "Reference security policies via its id (i.e. policy:id:1)"
     'role:id':
@@ -370,30 +368,6 @@ x-rbac-catalog:
       example:
         actions: [ 'rootcheck:run' ]
         resources: [ 'agent:id:*' ]
-        effect: "allow"
-    'rules:read':
-      description: "Read rules files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/rule:file'
-      example:
-        actions: ['rules:read']
-        resources: ['rule:file:0610-win-ms_logs_rules.xml']
-        effect: "allow"
-    'rules:update':
-      description: "Update or upload custom rule files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['rules:update']
-        resources: ['*:*:*']
-        effect: "allow"
-    'rules:delete':
-      description: "Delete custom rule files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/rule:file'
-      example:
-        actions: ['rules:delete']
-        resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
     'sca:read':
       description: "Access agents security configuration assessment"
@@ -3727,7 +3701,7 @@ components:
                 sigid:
                   type: integer
                   format: int32
-                  description: "Rule ID that matched the event"
+                  description: "ID referencing the event"
                 level:
                   type: integer
                   format: int32
@@ -3827,7 +3801,7 @@ components:
         events_dropped:
           type: number
           format: float
-          description: "Discarded events because they didn't match any rule in the ruleset"
+          description: "Discarded events"
         events_processed:
           type: number
           format: float
@@ -5296,7 +5270,6 @@ components:
         - active_response
         - alerts
         - command
-        - rules
         - decoders
         - auth
         - logging
@@ -5898,16 +5871,6 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
-    rule_ids:
-      in: query
-      name: rule_ids
-      description: "List of rule IDs"
-      schema:
-        type: array
-        items:
-          type: integer
-          format: int32
-          minimum: 1
     score:
       in: query
       name: score
@@ -6239,20 +6202,6 @@ components:
       schema:
         type: boolean
         default: false
-    group:
-      in: query
-      name: group
-      description: "Filter by rule group"
-      schema:
-        type: string
-        format: alphanumeric
-    level:
-      in: query
-      name: level
-      description: "Filter by rule level. Can be a single level (4) or an interval (2-4)"
-      schema:
-        type: string
-        format: range
     pci_dss:
       in: query
       name: pci_dss
@@ -6879,7 +6828,7 @@ components:
     xml_filename:
       in: query
       name: filename
-      description: "Filter by filename of one or more rule or decoder files."
+      description: "Filter by filename of one or more decoder files."
       schema:
         type: array
         items:
@@ -6888,7 +6837,7 @@ components:
     xml_filename_path:
       in: path
       name: filename
-      description: "Filename (rule or decoder) to download/upload/edit file."
+      description: "Decoder filename to download/upload/edit file."
       required: true
       schema:
         type: string
@@ -6932,8 +6881,6 @@ tags:
     description: "Overview of Wazuh"
   - name: Rootcheck
     description: "Rootcheck management"
-  - name: Rules
-    description: "Rules management"
   - name: SCA
     description: "Policy monitoring"
   - name: Security
@@ -11519,17 +11466,6 @@ paths:
                   token: 8cd2d6d1
                   output:
                     timestamp: 2021-05-27T12:46:03.391000Z
-                    rule:
-                      level: 2
-                      description: "Unknown problem somewhere in the system."
-                      id: 1002
-                      firedtimes: 1
-                      mail: false
-                      groups:
-                        - "syslog"
-                        - "errors"
-                      gpg13:
-                        - 4.3
                     agent:
                       id: "000"
                       name: "wazuh-master"
