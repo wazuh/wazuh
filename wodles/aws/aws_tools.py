@@ -16,9 +16,6 @@ import sys
 import re
 
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
-CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
-DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
-                     'Please use another authentication method instead. Check {url} for more information.'
 SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/current/cloud-security/amazon/services/' \
                                         'supported-services/security-lake.html#configuring-an-iam-role'
 
@@ -341,12 +338,6 @@ def get_script_arguments():
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
-    parser.add_argument('-a', '--access_key', dest='access_key', default=None,
-                        help='S3 Access key credential. '
-                             f'{DEPRECATED_MESSAGE.format(name="access_key", release="4.4", url=CREDENTIALS_URL)}')
-    parser.add_argument('-k', '--secret_key', dest='secret_key', default=None,
-                        help='S3 Access key credential. '
-                             f'{DEPRECATED_MESSAGE.format(name="secret_key", release="4.4", url=CREDENTIALS_URL)}')
     # Beware, once you delete history it's gone.
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)

@@ -51,10 +51,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     ----------
     reparse : bool
         Whether to parse already parsed logs or not.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
@@ -87,7 +83,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     """
     empty_bucket_message_template = "+++ No logs to process in bucket: {aws_account_id}/{aws_region}"
 
-    def __init__(self, db_table_name, bucket, reparse, access_key, secret_key, profile, iam_role_arn,
+    def __init__(self, db_table_name, bucket, reparse, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
                  region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         # common SQL queries
@@ -190,8 +186,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         wazuh_integration.WazuhAWSDatabase.__init__(self,
                                                     db_name=self.db_name,
                                                     service_name='s3',
-                                                    access_key=access_key,
-                                                    secret_key=secret_key,
                                                     profile=profile,
                                                     iam_role_arn=iam_role_arn,
                                                     region=region,
@@ -739,10 +733,8 @@ class AWSCustomBucket(AWSBucket):
         AWSBucket.__init__(self, db_table_name=db_table_name if db_table_name else 'custom', **kwargs)
         self.retain_db_records = MAX_RECORD_RETENTION
         # get STS client
-        access_key = kwargs.get('access_key', None)
-        secret_key = kwargs.get('secret_key', None)
         profile = kwargs.get('profile', None)
-        self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
+        self.sts_client = self.get_sts_client(profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
         self.macie_location_pattern = re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
