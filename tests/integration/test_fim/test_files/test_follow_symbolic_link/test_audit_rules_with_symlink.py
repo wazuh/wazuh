@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, AUDIT_RULES_RELOADED, FIM_EVENT_JSON, LINKS_SCAN_FINALIZED, SENDING_FIM_EVENT
+from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, AUDIT_RULES_RELOADED, EVENT_TYPE_MODIFIED, FIM_EVENT_JSON, LINKS_SCAN_FINALIZED, SENDING_FIM_EVENT
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
@@ -99,12 +99,12 @@ def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_c
                                   configure_local_internal_options, folder_to_monitor, file_to_monitor, file_symlink,
                                   daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    # Arrange
+    # Act
     file.modify_symlink_target(folder_to_monitor, file_symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     wazuh_log_monitor.start(generate_callback(AUDIT_RULES_RELOADED))
-    # Act
+    # Assert
     rules_paths = commands.get_rules_path()
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     assert wazuh_log_monitor.callback_result
     assert file_to_monitor not in rules_paths
