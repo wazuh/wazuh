@@ -49,19 +49,21 @@ INSTANTIATE_TEST_SUITE_P(
     ResourseGet,
     CatalogGetApiTest,
     ::testing::Values(
-        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
+        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
                         R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})"),
-        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
+        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
                         R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})"),
         std::make_tuple(R"({"name": "decoder/name/ok"})",
                         R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
+        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
+                        R"({"status":"ERROR","error":"Missing /namespaceid parameter"})"),
         std::make_tuple(
-            R"({"name": "decoder/name/fail", "format": "json"})",
+            R"({"name": "decoder/name/fail", "format": "json", "namespaceid": "ignored"})",
             R"({"status":"ERROR","error":"Engine utils: 'decoder/name/fail' could not be obtained from the store: error."})"),
         std::make_tuple(R"({"name": "decoder/name/fail", "format": "invalid"})",
                         R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
         std::make_tuple(R"({"format": "json"})", R"({"status":"ERROR","error":"Missing /name parameter"})"),
-        std::make_tuple(R"({"name": "invalid", "format": "json"})",
+        std::make_tuple(R"({"name": "invalid", "format": "json", "namespaceid": "ignored"})",
                         R"({"status":"ERROR","error":"Invalid collection type \"invalid\""})")));
 
 class CatalogPostApiTest
@@ -105,6 +107,8 @@ TEST_P(CatalogPostApiTest, ResoursePost)
         params.setString(type, "/type");
         params.setString(content, "/content");
     }
+
+    params.setString("ignored", "/namespaceid");
 
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
@@ -180,6 +184,8 @@ TEST_P(CatalogPutApiTest, ResoursePost)
         params.setString(content, "/content");
     }
 
+    params.setString("ignored", "/namespaceid");
+
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(output.c_str());
@@ -235,6 +241,8 @@ TEST_P(CatalogDeleteApiTest, ResourseDelete)
     {
         params.setString(name, "/name");
     }
+
+    params.setString("ignored", "/namespaceid");
 
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
