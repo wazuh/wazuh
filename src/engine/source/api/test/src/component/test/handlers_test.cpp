@@ -69,6 +69,21 @@ protected:
                     }
                 }));
 
+        EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [&](const base::Name& name)
+                {
+                    if (name == ROUTER_TABLE)
+                    {
+                        return json::Json {INTERNAL_ROUTE_TABLE};
+                    }
+                    else
+                    {
+                        // Handle other cases or return a default value
+                        return json::Json {};
+                    }
+                }));
+
         m_spRouter = std::make_shared<::router::Router>(m_spMockeBuilder, m_spMockStore);
         api::catalog::Config catalogConfig {
             m_spMockStore,
