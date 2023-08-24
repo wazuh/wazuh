@@ -69,7 +69,6 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import INODE_ENTRIES_PATH_COUNT
-from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
