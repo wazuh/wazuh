@@ -1,9 +1,8 @@
-- name: "No connection with remoted"
+- name: "No_connection_with_remoted"
   description:
   configuration_parameters:
   metadata:
-    input:
-      remoted: false
+    remoted: false
     output:
     - type: "file"
       fields:
@@ -12,12 +11,11 @@
         last_ack: ""
         msg_count: ""
 
-- name: "Successful connection with remoted"
+- name: "Successful_connection_with_remoted"
   description:
   configuration_parameters:
   metadata:
-    input:
-      remoted: true
+    remoted: true
     output:
     - type: "file"
       fields:
@@ -32,13 +30,13 @@
         last_ack: true
         msg_count: true
 
-- name: "Only remote request available"
+- name: "Only_remote_request_available"
   description:
   configuration_parameters:
   metadata:
-    input:
-      remoted: true
-      interval: '0'
+    local_internal_options:
+      agent.state_interval: -1
+    remoted: true
     output:
     - type: "remote"
       fields:

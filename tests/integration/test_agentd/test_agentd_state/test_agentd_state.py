@@ -45,11 +45,11 @@ references:
 tags:
     - stats_file
 '''
-import os
+
 import pytest
 from pathlib import Path
 import sys
-import time
+from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
@@ -80,10 +80,16 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
+if sys.platform == WINDOWS:
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+else:
+    local_internal_options = {AGENTD_DEBUG: '2'}
+
 print(test_configuration)
 
 def start_remoted_server(test_metadata) -> None:
-    if 'remoted' in test_metadata['input'] and test_metadata['input']['remoted']:
+    """"Start RemotedSimulator if test case need it"""
+    if 'remoted' in test_metadata and test_metadata['remoted']:
         remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=WAZUH_CLIENT_KEYS_PATH)
         return remoted_server
 
@@ -92,9 +98,8 @@ def add_custom_key():
     with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
         client_keys.write("100 ubuntu-agent any TopSecret")
 
-
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state(test_configuration, test_metadata, remove_state_file, truncate_monitored_files):
+def test_agentd_state(test_configuration, test_metadata, remove_state_file, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check that the statistics file 'wazuh-agentd.state' is created automatically
                  and verify that the content of its fields is correct.
@@ -124,17 +129,11 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, trun
         - r'pending'
         - r'connected'
     '''
+    # Start RemotedSimulator if test case need it
     remoted_server = start_remoted_server(test_metadata) 
-    if remoted_server is not None:
-        remoted_server.stop()
+
     # Stop service
     control_service('stop')
-
-    if 'interval' in test_metadata['input']:
-        change_internal_options()
-        set_state_interval(test_case['input']['interval'], internal_options)
-    else:
-        set_state_interval(1, internal_options)
 
     # Add dummy key in order to communicate with RemotedSimulator
     add_custom_key()
@@ -142,9 +141,7 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, trun
     # Start service
     control_service('start')
 
-    # Start RemotedSimulator if test case need it
-    if 'remoted' in test_metadata['input'] and test_metadata['input']['remoted']:
-        remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=WAZUH_CLIENT_KEYS_PATH)
+    import pdb; pdb.set_trace()
 
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
@@ -362,7 +359,8 @@ def wait_state_update(update_position=True):
         update_position (bool, optional): update position after reading.
                                           Defaults to True.
     """
-    wazuh_log_monitor.start(timeout=240,
-                            callback=callback_state_file_updated,
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(callback=callback_state_file_updated,
                             update_position=update_position,
                             error_message='State file update not found')
