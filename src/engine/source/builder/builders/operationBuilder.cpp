@@ -137,6 +137,50 @@ enum class OperationType
     FILTER
 };
 
+/**
+ * @brief Set the Object if it does not exist
+ *
+ * @param targetField
+ * @return base::Expression
+ */
+auto setObjectTerm(const std::string& field) -> base::Expression
+{
+    auto name {fmt::format("map.value[{}={}]", field, "{}")};
+    auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    auto fn = [field, successTrace](const auto& e)
+    {
+        if (!e->isObject(field))
+        {
+            e->setObject(field);
+        }
+        return base::result::makeSuccess(std::move(e), successTrace);
+
+    };
+    return base::Term<base::EngineOp>::create("setObjectOp", fn);
+}
+
+/**
+ * @brief Delete the Object if it is empty
+ *
+ * @param targetField
+ * @return base::Expression
+ */
+auto deleteEmptyObjectTerm(const std::string& field) -> base::Expression
+{
+    auto name {fmt::format("unmap.ifEmpty.value[{}]", field)};
+    auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    auto fn = [field, successTrace](const auto& e)
+    {
+        if (e->isObject(field) && e->isEmpty(field))
+        {
+            e->erase(field);}
+        return base::result::makeSuccess(std::move(e), successTrace);
+    };
+    return base::Term<base::EngineOp>::create("deleteEmptyObject", fn);
+}
+
 Expression operationBuilder(const std::any& definition,
                             std::shared_ptr<defs::IDefinitions> definitions,
                             OperationType type,
@@ -293,15 +337,28 @@ Expression operationBuilder(const std::any& definition,
     {
         auto object = value.getObject().value();
         std::vector<base::Expression> expressions;
+        expressions.reserve(object.size() + 2);
+
+        if (type == OperationType::MAP)
+        {
+            expressions.emplace_back(setObjectTerm(targetFieldPath));
+        }
+
         for (auto& [key, value] : object)
         {
             std::string path{};
             path += targetField;
             path += syntax::JSON_PATH_SEPARATOR;
             path += key;
-            expressions.push_back(operationBuilder(
+            expressions.emplace_back(operationBuilder(
                 std::make_tuple(path, value), definitions, type, helperRegistry, schema, forceFieldNaming));
         }
+
+        if (type == OperationType::MAP)
+        {
+            expressions.emplace_back(deleteEmptyObjectTerm(targetFieldPath));
+        }
+
 
         switch (type)
         {

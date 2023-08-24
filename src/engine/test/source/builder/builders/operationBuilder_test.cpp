@@ -810,6 +810,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     std::string targetField = "object";
     json::Json operationJson(R"({
+        "0": "arrayPathTest",
         "string": "value",
         "int": 1,
         "double": 1.2,
@@ -829,6 +830,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
 
     auto expected = std::make_shared<Json>(R"({
         "object": {
+            "0": "arrayPathTest",
             "string": "value",
             "int": 1,
             "double": 1.2,
@@ -850,9 +852,10 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
     auto expression = getOperationMapBuilder(helperRegistry, schemf::mocks::EmptySchema::create())(
         definition, std::make_shared<defs::mocks::FailDef>());
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
-    auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
+    // 6 is the number of mapping in the root level and 1 is the created object if not exists
+    auto expressionsNestedLevel = expressionsRootLevel[7+1]->getPtr<base::Operation>()->getOperands();
 
-    for (auto i = 0; i < 6; i++)
+    for (auto i = 0; i < 7+1; i++)
     {
         auto result = expressionsRootLevel[i]->getPtr<base::Term<EngineOp>>()->getFn()(event);
         if (!result)
