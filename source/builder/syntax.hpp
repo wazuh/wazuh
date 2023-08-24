@@ -20,6 +20,7 @@ constexpr auto FIELD_EXTENDED = "_@#";
 constexpr auto HELPER_NAME_EXTENDED = "_";
 constexpr auto PARENTHESIS_OPEN = '(';
 constexpr auto PARENTHESIS_CLOSE = ')';
+constexpr auto SINGLE_QUOTE = '\'';
 
 } // namespace builder::internals::syntax
 

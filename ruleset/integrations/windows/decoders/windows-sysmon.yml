@@ -29,7 +29,7 @@ normalize:
     # Add categorization fields
     - rule.name: $windows.EventData.RuleName
     - event.hash: $windows.EventData.Hash
-    - temp.hashes: parse_key_value($windows.EventData.Hashes, =, \,, ', ')
+    - temp.hashes: parse_key_value($windows.EventData.Hashes, =, ',', '\'', '\'')
     - related.hash: $temp.hashes
 
 

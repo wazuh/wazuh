@@ -103,6 +103,28 @@ inline bool startsWith(std::string_view str, std::string_view prefix)
     return str.substr(0, prefix.size()) == prefix;
 }
 
+
+/**
+ * @brief Unescapes a string by removing escape characters and replacing escaped characters with their original values.
+ *
+ * If the escapeChar is not escaped is added to the result.
+ * If the escapeChar is followed by a character that is not escapedChars is added to the result.
+ * If the escapeChar is followed by escapeChar only one escapeChar is added to the result.
+ * @param str The string to unescape.
+ * @param escapeChar The character used to escape other characters.
+ * @param escapedChars A string containing all characters that can be escaped.
+ * @param strictMode If true an exception is thrown if an invalid escape sequence is found.
+ * @return The unescaped string.
+ * @todo: Add support for strict mode where an exception is thrown if an invalid escape sequence is found.
+ */
+std::string
+unescapeString(std::string_view str, char escapeChar, const std::string& escapedChars, const bool strictMode = false);
+
+inline std::string
+unescapeString(std::string_view str, char escapeChar, const char escapedChar, const bool strictMode = false) {
+    return unescapeString(str, escapeChar, std::string(1, escapedChar), strictMode);
+}
+
 } // namespace base::utils::string
 
 #endif // _STRING_UTILS_H

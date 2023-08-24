@@ -74,4 +74,36 @@ std::vector<std::string> splitEscaped(std::string_view input, const char& splitC
     return splitted;
 }
 
+std::string
+unescapeString(std::string_view str, char escapeChar, const std::string& escapedChars, const bool strictMode)
+{
+    std::string result;
+    result.reserve(str.size());  // Reserve memory upfront to avoid reallocations
+
+    auto it = str.begin();
+    while (it != str.end())
+    {
+        if (*it == escapeChar && std::next(it) != str.end())
+        {
+            char nextChar = *(std::next(it));
+            if (nextChar == escapeChar || escapedChars.find(nextChar) != std::string::npos)
+            {
+                result += nextChar;
+                ++it;  // Skip the next character since it's already handled
+            }
+            else
+            {
+                result += *it;
+            }
+        }
+        else
+        {
+            result += *it;
+        }
+        ++it;
+    }
+
+    return result;
+}
+
 } // namespace base::utils::string
