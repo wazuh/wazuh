@@ -131,7 +131,18 @@ Policy::getManifestAssets(const json::Json& jsonDefinition,
                                    throw std::runtime_error(std::get<base::Error>(assetDef).message);
                                }
 
-                               return std::make_shared<Asset>(std::get<json::Json>(assetDef), assetType, registry);
+                               auto asset =
+                                   std::make_shared<Asset>(std::get<json::Json>(assetDef), assetType, registry);
+
+                               // TODO: hardcoded default parent based on namespace
+                               auto nsId = storeRead->getNamespace(name.value());
+                               if (asset->m_type == Asset::Type::DECODER && asset->m_parents.empty() && nsId
+                                   && nsId.value().name().fullName() != "system")
+                               {
+                                   asset->m_parents.emplace("decoder/integrations/0");
+                               }
+
+                               return asset;
                            });
 
             assets[key] = assetList;
