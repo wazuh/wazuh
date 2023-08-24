@@ -11,7 +11,6 @@
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
     fim_mode: realtime
-    symlink_amount: 1
 
 - name: Audit rule is deleted when symlink is moved - Who-data
   description: When a real-time monitored directory es deleted
@@ -25,8 +24,7 @@
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
-    fim_mode: realtime
-    symlink_amount: 1
+    fim_mode: whodata
 
 - name: Audit rule is deleted when symlink is moved - Schedule
   description: When a real-time monitored directory es deleted
@@ -40,5 +38,4 @@
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     file_symlink:  !!python/object/apply:os.path.join [/test_dir, symlink.log]
-    fim_mode: realtime
-    symlink_amount: 1
+    fim_mode: scheduled
