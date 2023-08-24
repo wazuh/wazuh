@@ -11,7 +11,7 @@ from typing import Union
 
 from wazuh.core import common, utils
 from wazuh.core import wazuh_socket
-from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -332,29 +332,43 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     dest_socket = get_stats_socket_path(agent_id=agent_id, daemon=daemon)
     command = create_stats_command(agent_id=agent_id, daemon=daemon)
 
-    # Socket connection
     try:
         s = wazuh_socket.WazuhSocket(dest_socket)
-    except Exception:
+    except WazuhException:
+        # Error connecting to socket
         raise WazuhInternalError(1121)
 
-    # Send message
-    s.send(command.encode())
-
-    # Receive response
     try:
-        rec_msg = s.receive().decode()
-    except ValueError:
-        raise WazuhInternalError(1118, extra_message="Data could not be received")
+        s.send(command.encode())
+        try:
+            rec_msg = s.receive().decode()
+        except ValueError:
+            raise WazuhInternalError(1118, extra_message="Data could not be received")
 
-    s.close()
+        socket_response = json.loads(rec_msg)
 
-    # Format response
-    try:
-        data = json.loads(rec_msg)['data']
+        # Handle error
+        if socket_response.get('error', 0) != 0:
+            rec_msg = socket_response.get('message', "")
+            raise WazuhError(1117, extra_message=rec_msg)
+
+        data = socket_response['data']
         data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
                     for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
-        return data
-    except Exception:
-        rec_msg = rec_msg.split(" ", 1)[1]
-        raise WazuhError(1117, extra_message=rec_msg)
+
+        while socket_response.get('remaining', False):
+            command = create_stats_command(agent_id=agent_id, daemon=daemon, next_page=True)
+            s.send(command.encode())
+            rec_msg = s.receive().decode()
+
+            socket_response = json.loads(rec_msg)
+            page_data = socket_response['data']
+
+            # Extends existing items
+            for key, item in page_data.items():
+                if key in data and isinstance(item, list):
+                    data[key].extend(item)
+    finally:
+        s.close()
+
+    return data
