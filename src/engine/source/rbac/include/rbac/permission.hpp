@@ -29,6 +29,11 @@ public:
     {
     }
 
+    friend inline bool operator<(const Permission& lhs, const Permission& rhs)
+    {
+        return lhs.m_resource < rhs.m_resource || (lhs.m_resource == rhs.m_resource && lhs.m_operation < rhs.m_operation);
+    }
+
     const Resource& getResource() const { return m_resource; }
 
     const Operation& getOperation() const { return m_operation; }

@@ -1,9 +1,9 @@
 #ifndef _RBAC_RBAC_HPP
 #define _RBAC_RBAC_HPP
 
+#include <map>
 #include <optional>
 #include <stdexcept>
-#include <unordered_map>
 
 #include <fmt/format.h>
 
@@ -22,14 +22,14 @@ constexpr auto MODEL_NAME = "internal/rbac/model/0";
 namespace defaultModel
 {
 constexpr auto ROLE_SYSTEM = "system";
-constexpr auto ROLE_USER = "user-consumer";
-constexpr auto ROLE_DEVEL = "user-developer";
+constexpr auto ROLE_USER = "user";
+constexpr auto ROLE_WAZUH = "wazuh";
 } // namespace defaultModel
 
 class RBAC : public IRBAC
 {
 private:
-    std::unordered_map<std::string, Role> m_roles;
+    std::map<std::string, Role> m_roles;
     // std::unordered_map<std::string, Subject> m_subjects;
 
     std::weak_ptr<store::IStoreInternal> m_store;
@@ -71,40 +71,40 @@ private:
 
     std::optional<base::Error> saveModel() const
     {
-        // json::Json modelJson;
-        // modelJson.setObject();
+        json::Json modelJson;
+        modelJson.setObject();
 
-        // for (const auto& [roleName, role] : m_roles)
-        // {
-        //     auto roleJson = role.toJson();
-        //     modelJson.merge(false, roleJson);
-        // }
+        for (const auto& [roleName, role] : m_roles)
+        {
+            auto roleJson = role.toJson();
+            modelJson.merge(false, roleJson);
+        }
 
-        // const auto store = m_store.lock();
-        // if (!store)
-        // {
-        //     throw std::runtime_error("Error saving model: Store is expired");
-        // }
+        const auto store = m_store.lock();
+        if (!store)
+        {
+            throw std::runtime_error("Error saving model: Store is expired");
+        }
 
-        // // Update model if it exists, otherwise create it
-        // auto error = store->addUpdate(detail::MODEL_NAME, modelJson);
-        // if (error)
-        // {
-        //     return error;
-        // }
+        // Update model if it exists, otherwise create it
+        auto error = store->upsertInternalDoc(detail::MODEL_NAME, modelJson);
+        if (error)
+        {
+            return error;
+        }
 
         return std::nullopt;
     }
 
     void defaultModel()
     {
-        auto permissions = std::unordered_set<Permission>();
+        auto permissions = std::set<Permission>();
 
         permissions.insert(Permission(Resource::ASSET, Operation::READ));
         m_roles[defaultModel::ROLE_USER] = Role(defaultModel::ROLE_USER, permissions);
 
         permissions.insert(Permission(Resource::ASSET, Operation::WRITE));
-        m_roles[defaultModel::ROLE_DEVEL] = Role(defaultModel::ROLE_DEVEL, permissions);
+        m_roles[defaultModel::ROLE_WAZUH] = Role(defaultModel::ROLE_WAZUH, permissions);
 
         permissions.insert(Permission(Resource::SYSTEM_ASSET, Operation::READ));
         permissions.insert(Permission(Resource::SYSTEM_ASSET, Operation::WRITE));
