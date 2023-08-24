@@ -54,10 +54,6 @@ LOG_LEVELS = {0: logging.WARNING,
               1: logging.INFO,
               2: logging.DEBUG}
 
-CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
-DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
-                     'Please use another authentication method instead. Check {url} for more information.'
-
 
 def set_logger():
     """Set the logger configuration."""
@@ -78,12 +74,6 @@ def get_script_arguments():
     group.add_argument("--storage", action="store_true", required=False, help="Activates Storage API call.")
 
     # Log Analytics arguments #
-    parser.add_argument("--la_id", metavar='ID', type=str, required=False,
-                        help="Application ID for Log Analytics authentication. "
-                             f"{DEPRECATED_MESSAGE.format(name='la_id', release='4.4', url=CREDENTIALS_URL)}")
-    parser.add_argument("--la_key", metavar="KEY", type=str, required=False,
-                        help="Application Key for Log Analytics authentication. "
-                             f"{DEPRECATED_MESSAGE.format(name='la_key', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--la_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials for authentication.")
     parser.add_argument("--la_tenant_domain", metavar="domain", type=str, required=False,
@@ -98,12 +88,6 @@ def get_script_arguments():
                         help="Time range for the request.")
 
     # Graph arguments #
-    parser.add_argument("--graph_id", metavar='ID', type=str, required=False,
-                        help="Application ID for Graph authentication. "
-                             f"{DEPRECATED_MESSAGE.format(name='graph_id', release='4.4', url=CREDENTIALS_URL)}")
-    parser.add_argument("--graph_key", metavar="KEY", type=str, required=False,
-                        help="Application KEY for Graph authentication. "
-                             f"{DEPRECATED_MESSAGE.format(name='graph_key', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--graph_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials authentication.")
     parser.add_argument("--graph_tenant_domain", metavar="domain", type=str, required=False,
@@ -116,12 +100,6 @@ def get_script_arguments():
                         help="Time range for the request.")
 
     # Storage arguments #
-    parser.add_argument("--account_name", metavar='account', type=str, required=False,
-                        help="Storage account name for authentication. "
-                             f"{DEPRECATED_MESSAGE.format(name='account_name', release='4.4', url=CREDENTIALS_URL)}")
-    parser.add_argument("--account_key", metavar='KEY', type=str, required=False,
-                        help="Storage account key for authentication. "
-                             f"{DEPRECATED_MESSAGE.format(name='account_key', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--storage_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials authentication.")
     parser.add_argument("--container", metavar="container", required=False, type=arg_valid_container_name,
@@ -293,10 +271,6 @@ def start_log_analytics():
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
         client, secret = read_auth_file(auth_path=args.la_auth_path, fields=("application_id", "application_key"))
-    elif args.la_id and args.la_key and args.la_tenant_domain:
-        logging.warning(DEPRECATED_MESSAGE.format(name="la_id and la_key", release="4.4", url=CREDENTIALS_URL))
-        client = args.la_id
-        secret = args.la_key
     else:
         logging.error("Log Analytics: No parameters have been provided for authentication.")
         sys.exit(1)
@@ -470,10 +444,6 @@ def start_graph():
     # Read credentials
     if args.graph_auth_path and args.graph_tenant_domain:
         client, secret = read_auth_file(auth_path=args.graph_auth_path, fields=("application_id", "application_key"))
-    elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-        logging.warning(DEPRECATED_MESSAGE.format(name="graph_id and graph_key", release="4.4", url=CREDENTIALS_URL))
-        client = args.graph_id
-        secret = args.graph_key
     else:
         logging.error("Graph: No parameters have been provided for authentication.")
         sys.exit(1)
@@ -604,10 +574,6 @@ def start_storage():
     logging.info("Storage: Authenticating.")
     if args.storage_auth_path:
         name, key = read_auth_file(auth_path=args.storage_auth_path, fields=("account_name", "account_key"))
-    elif args.account_name and args.account_key:
-        logging.warning(DEPRECATED_MESSAGE.format(name="account_name and account_key", release="4.4", url=CREDENTIALS_URL))
-        name = args.account_name
-        key = args.account_key
     else:
         logging.error("Storage: No parameters have been provided for authentication.")
         sys.exit(1)
