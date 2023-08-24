@@ -4,8 +4,9 @@
 
 import os
 import sys
+import json
 from datetime import date, datetime, timezone
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch, call
 
 import pytest
 
@@ -188,7 +189,6 @@ def test_get_daemons_stats_socket(mock__init__, mock_send, mock_close, agents_li
         mock_close.assert_called_once()
         assert result == expected_result
 
-
 @pytest.mark.parametrize('agents_list', [
     None, [1, 2, 3]
 ])
@@ -238,6 +238,37 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 
+@pytest.mark.parametrize("agent_id, daemon, responses ,expected, expected_socket_calls, expected_arg_calls", [
+    ('000', 'logcollector', [
+        '{"error":0, "remaining": true, "data":{"test":[1, 2]}}'.encode(),
+        '{"error":0, "remaining": false, "data":{"test":[3, 4]}}'.encode()],
+     {"test": [1, 2, 3, 4]},
+     2,
+     [call('getstate'.encode()), call('getstate next'.encode())]),
+    ('001', 'agent', [
+        '{"error":0, "remaining": true, "data":{"test":[1, 2]}}'.encode(),
+        '{"error":0, "remaining": true, "data":{"test":[3, 4]}}'.encode(),
+        '{"error":0, "remaining": false, "data":{"test":[5, 6]}}'.encode()],
+     {"test": [1, 2, 3, 4, 5, 6]},
+     3,
+     [
+         call('001 agent getstate'.encode()),
+         call('001 agent getstate next'.encode()),
+        call('001 agent getstate next'.encode())]),
+])
+def test_get_daemons_stats_from_socket(agent_id, daemon, responses, expected, expected_socket_calls, expected_arg_calls):
+    """Check that get_daemons_stats_from_socket() function uses the pagination logic"""
+    with patch('wazuh.core.wazuh_socket.WazuhSocket.__init__', return_value=None) as mock_socket:
+        with patch('wazuh.core.wazuh_socket.WazuhSocket.send', side_effect=None) as mock_send:
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', side_effect=responses):
+                with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
+                    result = stats.get_daemons_stats_from_socket(agent_id, daemon)
+
+    assert result == expected
+    assert mock_send.call_count == expected_socket_calls
+    mock_send.assert_has_calls(expected_arg_calls)
+
+
 def test_get_daemons_stats_from_socket_ko():
     """Check if get_daemons_stats_from_socket() raises expected exceptions."""
     with pytest.raises(WazuhError, match=r'\b1307\b'):
@@ -250,12 +281,12 @@ def test_get_daemons_stats_from_socket_ko():
         stats.get_daemons_stats_from_socket('000', 'logcollector')
 
     with patch('wazuh.core.wazuh_socket.WazuhSocket.__init__', return_value=None):
-        with patch('wazuh.core.wazuh_socket.WazuhSocket.send', side_effect=None):
-            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', side_effect=ValueError):
-                with pytest.raises(WazuhInternalError, match=r'\b1118\b'):
-                    stats.get_daemons_stats_from_socket('000', 'logcollector')
+        with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.send', side_effect=None):
+                with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', side_effect=ValueError):
+                    with pytest.raises(WazuhInternalError, match=r'\b1118\b'):
+                        stats.get_daemons_stats_from_socket('000', 'logcollector')
 
-            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value="err Error message test".encode()):
-                with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
+                with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value=json.dumps({'error': 1}).encode()):
                     with pytest.raises(WazuhError, match=r'\b1117\b'):
                         stats.get_daemons_stats_from_socket('000', 'logcollector')
