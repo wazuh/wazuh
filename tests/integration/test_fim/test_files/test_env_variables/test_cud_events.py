@@ -4,9 +4,9 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG
-from wazuh_testing.modules.fim.patterns import SENDING_FIM_EVENT, ADDED_EVENT, DELETED_EVENT, WHODATA_NOT_STARTED
+from wazuh_testing.modules.fim.patterns import SENDING_FIM_EVENT, EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, WHODATA_NOT_STARTED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
-from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
+from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file, services
 from wazuh_testing.utils.callbacks import generate_callback
@@ -42,7 +42,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2,AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG
 
 #     file.write_file(test_file)
 #     file.write_file(test_file,'asdasd')
-#     wazuh_log_monitor.start(callback=generate_callback(ADDED_EVENT))
+#     wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_ADDED))
 #     assert wazuh_log_monitor.callback_result
     
 #     file.remove_file(test_file)

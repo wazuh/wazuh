@@ -65,10 +65,10 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import ADDED_EVENT, DELETED_EVENT
+from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
-from wazuh_testing.modules.syscheck.configuration import SYSCHECK_DEBUG
+from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
@@ -166,7 +166,7 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
 
     # Write the file
     file.write_file(file_to_monitor)
-    wazuh_log_monitor.start(callback=generate_callback(ADDED_EVENT))
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_ADDED))
 
     callback_result = wazuh_log_monitor.callback_result 
     assert callback_result
@@ -176,7 +176,7 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
 
     # Remove the file
     file.remove_file(file_to_monitor)
-    wazuh_log_monitor.start(callback=generate_callback(DELETED_EVENT))
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_DELETED))
 
     callback_result = wazuh_log_monitor.callback_result 
     assert callback_result
