@@ -432,8 +432,6 @@ void configure(CLI::App_p app)
     auto item = "item";
     std::string itemDesc = "Content of the item, can be passed as argument or redirected "
                            "from a file using the \"|\" operator or the \"<\" operator.";
-    auto namespaceId = "namespace";
-    auto nsDesc = "Namespace where the item will be added.";
 
     // Catalog subcommands
     // get
@@ -530,8 +528,8 @@ void configure(CLI::App_p app)
                     options->path,
                     options->recursive,
                     options->abortOnError,
-                    {options->namespaceId},
-                    options->namespaceId);
+                    options->namespaceId,
+                    options->role);
         });
 }
 } // namespace cmd::catalog
