@@ -357,17 +357,27 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
                     for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
 
         while socket_response.get('remaining', False):
-            command = create_stats_command(agent_id=agent_id, daemon=daemon, next_page=True)
-            s.send(command.encode())
-            rec_msg = s.receive().decode()
+            if socket_response.get('json_updated', False):
+                command = create_stats_command(agent_id=agent_id, daemon=daemon, next_page=False)
+                s.send(command.encode())
+                rec_msg = s.receive().decode()
 
-            socket_response = json.loads(rec_msg)
-            page_data = socket_response['data']
+                socket_response = json.loads(rec_msg)
+                data = socket_response['data']
+                data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
+                            for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
+            else:
+                command = create_stats_command(agent_id=agent_id, daemon=daemon, next_page=True)
+                s.send(command.encode())
+                rec_msg = s.receive().decode()
 
-            # Extends existing items
-            for key, item in page_data.items():
-                if key in data and isinstance(item, list):
-                    data[key].extend(item)
+                socket_response = json.loads(rec_msg)
+                page_data = socket_response['data']
+
+                # Extends existing items
+                for key, item in page_data.items():
+                    if key in data and isinstance(item, list):
+                        data[key].extend(item)
     finally:
         s.close()
 

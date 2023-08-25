@@ -254,7 +254,28 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
      [
          call('001 agent getstate'.encode()),
          call('001 agent getstate next'.encode()),
-        call('001 agent getstate next'.encode())]),
+         call('001 agent getstate next'.encode())]),
+    ('001', 'agent', [
+        '{"error":0, "json_updated": false, "remaining": true, "data":{"test":[1, 2]}}'.encode(),
+        '{"error":0, "json_updated": true, "remaining": true, "data":{"test":[3, 4]}}'.encode(),
+        '{"error":0, "json_updated": false, "remaining": false, "data":{"test":[5, 6]}}'.encode()],
+     {"test": [5, 6]},
+     3,
+     [
+         call('001 agent getstate'.encode()),
+         call('001 agent getstate next'.encode()),
+         call('001 agent getstate'.encode())]),
+    ('001', 'agent', [
+        '{"error":0, "json_updated": true, "remaining": true, "data":{"test":[1, 2]}}'.encode(),
+        '{"error":0, "json_updated": false, "remaining": true, "data":{"test":[3, 4]}}'.encode(),
+        '{"error":0, "json_updated": false, "remaining": false, "data":{"test":[5, 6]}}'.encode()],
+     {"test": [3, 4, 5, 6]},
+     3,
+     [
+         call('001 agent getstate'.encode()),
+         call('001 agent getstate'.encode()),
+         call('001 agent getstate next'.encode())]),
+
 ])
 def test_get_daemons_stats_from_socket(agent_id, daemon, responses, expected, expected_socket_calls, expected_arg_calls):
     """Check that get_daemons_stats_from_socket() function uses the pagination logic"""
