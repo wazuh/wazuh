@@ -2,7 +2,22 @@
 All notable changes to this project will be documented in this file.
 
 ## [v4.5.2]
-## [v4.5.1]
+
+### Manager
+
+#### Changed
+
+- wazuh-remoted now allows connection overtaking if the older agent did not respond for a while. ([#18085](https://github.com/wazuh/wazuh/pull/18085))
+- The manager stops restricting the possible package formats in the inventory, to increase compatibility. ([#18437](https://github.com/wazuh/wazuh/pull/18437))
+- wazuh-remoted now prints the connection family when an unknown client gets connected. ([#18468](https://github.com/wazuh/wazuh/pull/18468))
+- The manager stops blocking updates by WPK to macOS agents on ARM64, allowing custom updates. ([#18545](https://github.com/wazuh/wazuh/pull/18545))
+
+### Fixed
+
+- Fixed a bug in wazuh-csyslogd that causes it to consume 100% of CPU while expecting new alerts. ([#18472](https://github.com/wazuh/wazuh/pull/18472))
+
+
+## [v4.5.1] - 2023-08-24
 
 ### Manager
 
@@ -72,7 +87,7 @@ All notable changes to this project will be documented in this file.
 - The CURL library has been updated to v7.88.1. ([#16990](https://github.com/wazuh/wazuh/pull/16990))
 
 
-## [v4.5.0]
+## [v4.5.0] - 2023-08-10
 
 ### Manager
 
