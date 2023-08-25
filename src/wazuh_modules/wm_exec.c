@@ -36,7 +36,7 @@ typedef struct ThreadInfo {
 #endif
 } ThreadInfo;
 
-OSList* wm_children_list = NULL;    // Child process list
+static OSList * wm_children_list = NULL;    // Child process list
 
 // Initialize children pool
 
@@ -221,7 +221,7 @@ DWORD WINAPI Reader(LPVOID args) {
 // Add process to pool
 
 void wm_append_handle(HANDLE hProcess) {
-    HANDLE *p_hProcess;
+    HANDLE * p_hProcess = NULL;
 
     os_calloc(1, sizeof(HANDLE), p_hProcess);
     *p_hProcess = hProcess;
@@ -235,11 +235,11 @@ void wm_append_handle(HANDLE hProcess) {
 // Remove process from pool
 
 void wm_remove_handle(HANDLE hProcess) {
-    OSListNode *node_it;
-    HANDLE *p_hProcess;
+    OSListNode * node_it = NULL;
+    HANDLE * p_hProcess = NULL;
 
     OSList_foreach(node_it, wm_children_list) {
-        p_hProcess = (HANDLE *) node_it->data;
+        p_hProcess = (HANDLE *)node_it->data;
         if (p_hProcess && *p_hProcess == hProcess) {
             OSList_DeleteThisNode(wm_children_list, node_it);
             return;
@@ -254,8 +254,9 @@ void wm_remove_handle(HANDLE hProcess) {
 void wm_kill_children() {
     // This function may be called from a signal handler
 
-    HANDLE *p_hProcess;
-    OSListNode *node_it;
+    HANDLE * p_hProcess = NULL;
+    OSListNode * node_it = NULL;
+
     OSList_foreach(node_it, wm_children_list) {
         p_hProcess = (HANDLE *)node_it->data;
         TerminateProcess(*p_hProcess, 127);
@@ -601,8 +602,8 @@ void* reader(void *args) {
 // Add process group to pool
 
 void wm_append_sid(pid_t sid) {
-    
-    pid_t *p_sid;
+
+    pid_t * p_sid = NULL;
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
@@ -617,13 +618,14 @@ void wm_append_sid(pid_t sid) {
 
 void wm_remove_sid(pid_t sid) {
 
-    OSListNode *node_it;
-    pid_t * p_sid;
+    OSListNode * node_it = NULL;
+    pid_t * p_sid = NULL;
 
     OSList_foreach(node_it, wm_children_list) {
         p_sid = (pid_t *)node_it->data;
         if(p_sid && *p_sid == sid) {
             OSList_DeleteThisNode(wm_children_list, node_it);
+            os_free(p_sid);
             return;
         }
     }
@@ -637,8 +639,8 @@ void wm_kill_children() {
 
     int timeout;
     pid_t sid;
-    pid_t *p_sid;
-    OSListNode *node_it;
+    pid_t * p_sid = NULL;
+    OSListNode * node_it = NULL;
 
     OSList_foreach(node_it, wm_children_list) {
         p_sid = (pid_t *)node_it->data;
