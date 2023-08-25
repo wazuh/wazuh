@@ -61,6 +61,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_remote_agents = "agents";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
+    const char *xml_connection_overtake_time = "connection_overtake_time";
 
     logr = (remoted *)d1;
 
@@ -247,6 +248,17 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
             logr->rids_closing_time = (int) rids_closing_time;
 
+        } else if (strcmp(node[i]->element, xml_connection_overtake_time) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
+            } else {
+                int connection_overtake_time = atoi(node[i]->content);
+                if (connection_overtake_time < 0 || connection_overtake_time > 3600) {
+                    mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
+                } else {
+                    logr->connection_overtake_time = connection_overtake_time;
+                }
+            }
         } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children == NULL) {

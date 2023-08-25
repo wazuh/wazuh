@@ -11,6 +11,7 @@ from os.path import dirname
 from signal import signal, SIGINT
 from sys import exit, path, argv
 from time import sleep
+from connexion import ProblemException
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -223,6 +224,10 @@ async def main():
 
     except WazuhError as wazuh_err:
         print(f"Error {wazuh_err.code}: {wazuh_err.message}")
+        if args.debug:
+            raise
+    except ProblemException as e:
+        print(f"Error {getattr(e, 'ext', {}).get('code', e.status)}: {str(e.detail)}")
         if args.debug:
             raise
     except Exception as unexpected_err:

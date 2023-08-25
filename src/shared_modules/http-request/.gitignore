@@ -1,0 +1,23 @@
+# Build folder
+build
+external
+
+# Eclipse files
+.cproject
+.project
+.settings/
+
+# Visual Studio Code files
+.vscode
+
+# temporary vim files
+*.swp
+*.swo
+compile_commands.json
+
+# clangd
+.clangd
+
+# Doxygen files
+doc
+doxygen

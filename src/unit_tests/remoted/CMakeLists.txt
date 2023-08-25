@@ -60,14 +60,15 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close \
                             -Wl,--wrap,nb_open -Wl,--wrap,nb_recv -Wl,--wrap,nb_send -Wl,--wrap,OS_AddSocket \
                             -Wl,--wrap,OS_DeleteSocket -Wl,--wrap,OS_IsAllowedDynamicID -Wl,--wrap,OS_IsAllowedIP \
-                            -Wl,--wrap,ReadSecMSG -Wl,--wrap,recvfrom -Wl,--wrap,rem_add_recv -Wl,--wrap,rem_add_recv \
-                            -Wl,--wrap,rem_add_send -Wl,--wrap,rem_add_send -Wl,--wrap,rem_dec_tcp \
-                            -Wl,--wrap,rem_dec_tcp -Wl,--wrap,rem_getCounter -Wl,--wrap,rem_inc_recv_ctrl \
-                            -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,rem_inc_tcp -Wl,--wrap,rem_inc_tcp \
+                            -Wl,--wrap,ReadSecMSG -Wl,--wrap,recvfrom -Wl,--wrap,rem_add_recv \
+                            -Wl,--wrap,rem_add_send -Wl,--wrap,rem_dec_tcp \
+                            -Wl,--wrap,rem_getCounter -Wl,--wrap,rem_inc_recv_ctrl \
+                            -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,rem_inc_tcp \
                             -Wl,--wrap,rem_msgpush -Wl,--wrap,rem_setCounter -Wl,--wrap,remove \
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
-                            -Wl,--wrap,time -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock \
-                            -Wl,--wrap,wnotify_add ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock \
+                            -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
+                            -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
