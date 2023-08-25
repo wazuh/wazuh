@@ -54,6 +54,8 @@ list (APPEND os_auth_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write
                             -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
                             -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new")
+list(APPEND os_auth_names "test_authd-config")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")

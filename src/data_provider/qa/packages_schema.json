@@ -7,41 +7,7 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "architecture": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "description": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "format": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "groups": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "multiarch": {
-                        "type": "string"
-                    },
                     "name": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "priority": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "size": {
-                        "type": "integer"
-                    },
-                    "source": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "vendor": {
                         "type": "string",
                         "minLength": 1
                     },
@@ -49,23 +15,62 @@
                         "type": "string",
                         "minLength": 1
                     },
+                    "vendor": {
+                        "type": "string",
+                        "minLength": 1
+                    },
                     "install_time": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "location": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "architecture": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "groups": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "description": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "multiarch": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "format": {
                         "type": "string",
                         "minLength": 1
                     }
                 },
                 "required": [
-                    "architecture",
-                    "description",
-                    "format",
-                    "groups",
                     "name",
-                    "priority",
-                    "size",
-                    "source",
-                    "vendor",
                     "version",
-                    "install_time"
+                    "vendor",
+                    "install_time",
+                    "location",
+                    "architecture",
+                    "groups",
+                    "description",
+                    "size",
+                    "priority",
+                    "source",
+                    "format"
                 ]
             }
         }

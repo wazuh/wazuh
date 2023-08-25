@@ -62,6 +62,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
     int key_id;
     ssize_t msg_size;
+    ssize_t bytes_sent = 0;
     char crypt_msg[OS_MAXSTR + 1] = {0};
     int retval = OS_INVALID;
     int error = 0;
@@ -75,24 +76,16 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return OS_INVALID;
     }
 
-    w_mutex_lock(&keys.keyentries[key_id]->mutex);
-
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
-        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
         return OS_INVALID;
     }
 
-    w_mutex_unlock(&keys.keyentries[key_id]->mutex);
-
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
-    w_mutex_lock(&keys.keyentries[key_id]->mutex);
-
     if (msg_size <= 0) {
-        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         merror(SEC_ERROR);
         return OS_INVALID;
@@ -100,7 +93,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     crypt_msg[msg_size] = '\0';
 
-    ssize_t bytes_sent = 0;
+    w_mutex_lock(&keys.keyentries[key_id]->mutex);
+
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
         /* UDP mode, send the message */

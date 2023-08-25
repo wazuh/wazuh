@@ -137,7 +137,3 @@ def test_packages_npm():
 
     except json.JSONDecodeError as e:
         pytest.fail(f"The output is not valid JSON: {e}")
-
-
-
-
