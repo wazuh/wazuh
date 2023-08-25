@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 - Added support for Amazon Linux 2022 in Vulnerability Detector. [#13034](https://github.com/wazuh/wazuh/issue/13034)
 - wazuh-authd can now generate X509 certificates. [#13559](https://github.com/wazuh/wazuh/pull/13559)
+- Introduced a new CLI to manage features related to the Wazuh API RBAC resources. ([#13797](https://github.com/wazuh/wazuh/pull/13797))
 
 #### Changed
 
@@ -17,6 +18,9 @@ All notable changes to this project will be documented in this file.
 - Added a limit option for the Rsync thread pool. [#14026](https://github.com/wazuh/wazuh/pull/14026)
 - wazuh-authd now shows a warning when deprecated forcing options are present in the configuration. [#14549](https://github.com/wazuh/wazuh/pull/14549)
 - The agent now notifies the manager when Active Reponse fails to run `netsh`. [#14804](https://github.com/wazuh/wazuh/pull/14804)
+- Use new broadcast system to send agent groups information from the master node of a cluster. ([#13906](https://github.com/wazuh/wazuh/pull/13906))
+- Changed cluster `send_request` method so that timeouts are treated as exceptions and not as responses. ([#15220](https://github.com/wazuh/wazuh/pull/15220))
+- Refactored methods responsible for file synchronization within the cluster. ([#13065](https://github.com/wazuh/wazuh/pull/))
 
 #### Fixed
 
@@ -26,12 +30,37 @@ All notable changes to this project will be documented in this file.
 - Fixed permission error when producing FIM alerts. [#14019](https://github.com/wazuh/wazuh/pull/14019)
 - Fixed memory leaks wazuh-authd. [#15164](https://github.com/wazuh/wazuh/pull/15164)
 - Fixed Audit policy change detection in FIM for Windows. [#14763](https://github.com/wazuh/wazuh/pull/14763)
+- Fixed `origin_module` variable value when sending API or framework messages to core sockets. ([#14408](https://github.com/wazuh/wazuh/pull/14408))
+- Fixed an issue where an erroneous tag appeared in the cluster logs. ([#15715](https://github.com/wazuh/wazuh/pull/15715))
+- Fixed log error displayed when there's a duplicate worker node name within a cluster. ([#15250](https://github.com/wazuh/wazuh/issues/15250))
+- Resolved an issue in the `agent_upgrade` CLI when used from worker nodes. ([#15487](https://github.com/wazuh/wazuh/pull/15487))
+- Fixed error in the `agent_upgrade` CLI when displaying upgrade result. ([18047](https://github.com/wazuh/wazuh/issues/18047))
+- Fixed error in which the connection with the cluster was broken in local clients for not sending keepalives messages. ([#15277](https://github.com/wazuh/wazuh/pull/15277))
+- Fixed error in which exceptions were not correctly handled when `dapi_err` command could not be sent to peers. ([#15298](https://github.com/wazuh/wazuh/pull/15298))
+- Fixed error in worker's Integrity sync task when a group folder was deleted in master. ([#16257](https://github.com/wazuh/wazuh/pull/16257))
+- Fixed error when trying tu update an agent through the API or the CLI while pointing to a WPK file. ([#16506](https://github.com/wazuh/wazuh/pull/16506))
 
 ### Agent
+
+#### Added
+
+- Added GuardDuty Native support to the AWS integration. ([#15226](https://github.com/wazuh/wazuh/pull/15226))
+- Added `--prefix` parameter to Azure Storage integration. ([#14768](https://github.com/wazuh/wazuh/pull/14768))
+- Added validations for empty and invalid values in AWS integration. ([#16493](https://github.com/wazuh/wazuh/pull/16493))
+- Added new unit tests for GCloud integration and increased coverage to 99%. ([13573](https://github.com/wazuh/wazuh/pull/13573))
+- Added new unit tests for Azure Storage integration and increased coverage to 99%. ([14104](https://github.com/wazuh/wazuh/pull/14104))
+- Added new unit tests for Docker Listener integration. ([14177](https://github.com/wazuh/wazuh/pull/14177))
 
 #### Changed
 
 - FIM option fim_check_ignore now applies to files and directories. [#13264](https://github.com/wazuh/wazuh/pull/13264)
+- Changed AWS integration to take into account user config found in the `.aws/config` file. ([#16531](https://github.com/wazuh/wazuh/pull/16531))
+- Changed the calculation of timestamps in AWS and Azure modules by using UTC timezone. ([#14537](https://github.com/wazuh/wazuh/pull/14537))
+- Changed the AWS integration to only show the `Skipping file with another prefix` message in debug mode. ([#15009](https://github.com/wazuh/wazuh/pull/15009))
+- Changed debug level required to display CloudWatch Logs event messages. ([#14999](https://github.com/wazuh/wazuh/pull/14999))
+- Enhanced clarity of certain error messages in the AWS integration for better exception tracing. ([#14524](https://github.com/wazuh/wazuh/pull/14524))
+- Improved external integrations SQLite queries. ([13420](https://github.com/wazuh/wazuh/pull/13420))
+- Improved items iteration for `Config` and `VPCFlow` AWS integrations. ([#16325](https://github.com/wazuh/wazuh/pull/16325))
 - Unit tests have been added to the shared JSON handling library. [#14784](https://github.com/wazuh/wazuh/pull/14784)
 - Unit tests have been added to the shared SQLite handling library. [#14476](https://github.com/wazuh/wazuh/pull/14476)
 
@@ -39,10 +68,57 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the architecture of the dependency URL for macOS. [#13534](https://github.com/wazuh/wazuh/pull/13534)
 - Fixed a path length limitation that prevented FIM from reporting changes on Windows. [#13588](https://github.com/wazuh/wazuh/pull/13588)
+- Updated the AWS integration to use the regions specified in the AWS config file when no regions are provided in `ossec.conf`. ([#14993](https://github.com/wazuh/wazuh/pull/14993))
+- Corrected the error code `#2` for the SIGINT signal within the AWS integration. ([#14850](https://github.com/wazuh/wazuh/pull/14850))
+- Fixed the `discard_regex` functionality for the AWS GuardDuty integration. ([14740](https://github.com/wazuh/wazuh/pull/14740))
+- Fixed error messages in the AWS integration when there is a `ClientError`. ([#14500](https://github.com/wazuh/wazuh/pull/14500))
+- Fixed error that could lead to duplicate logs when using the same dates in the AWS integration. ([#14493](https://github.com/wazuh/wazuh/pull/14493))
+- Fixed `check_bucket` method in AWS integration to be able to find logs without a folder in root. ([#16116](https://github.com/wazuh/wazuh/pull/16116))
+- Added field validation for `last_date.json` in Azure Storage integration. ([#16360](https://github.com/wazuh/wazuh/pull/16360))
+- Improved handling of invalid regions given to the VPCFlow AWS integration, enhancing exception clarity. ([#15763](https://github.com/wazuh/wazuh/pull/15763))
+- Fixed error in the GCloud Subscriber unit tests. ([#16070](https://github.com/wazuh/wazuh/pull/16070))
+- Fixed the marker that AWS custom integrations uses. ([#16410](https://github.com/wazuh/wazuh/pull/16410))
+- Fixed error messages when there are no logs to process in the WAF and Server Access AWS integrations. ([#16365](https://github.com/wazuh/wazuh/pull/16365))
+- Added region validation before instantiating AWS service class in the AWS integration. ([#16463](https://github.com/wazuh/wazuh/pull/16463))
 
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. [#13878](https://github.com/wazuh/wazuh/pull/13878)
+- Removed unused migration functionality from the AWS integration. ([14684](https://github.com/wazuh/wazuh/pull/14684))
+- Deleted definitions of repeated classes in the AWS integration. ([#17655](https://github.com/wazuh/wazuh/pull/17655))
+- Removed duplicate methods in `AWSBucket` and reuse inherited ones from `WazuhIntegration`. ([15031](https://github.com/wazuh/wazuh/pull/15031))
+
+### RESTful API
+
+#### Added
+
+- Added `POST /events` API endpoint to ingest logs through the API. ([#17670](https://github.com/wazuh/wazuh/pull/17670))
+- Added `query`, `select` and `distinct` parameters to multiple endpoints. ([#17865](https://github.com/wazuh/wazuh/pull/17865))
+- Added a new upgrade and migration mechanism for the RBAC database. ([#13919](https://github.com/wazuh/wazuh/pull/13919))
+- Added new API configuration option to rotate log files based on a given size. ([#13654](https://github.com/wazuh/wazuh/pull/13654))
+- Added `relative_dirname` parameter to GET, PUT and DELETE methods of the `/decoder/files/{filename}` and `/rule/files/{filename}` endpoints. ([#15994](https://github.com/wazuh/wazuh/issues/15994))
+- Added new config option to disable uploading configurations containing the new `allow_higher_version` setting. ([#18212](https://github.com/wazuh/wazuh/pull/18212))
+- Added API integration tests documentation. ([#13615](https://github.com/wazuh/wazuh/pull/13615))
+
+#### Changed
+
+- Changed the API's response status code for Wazuh cluster errors from 400 to 500. ([13646](https://github.com/wazuh/wazuh/pull/13646))
+
+#### Fixed
+
+- Fixed an unexpected behavior when using the `q` and `select` parameters in some endpoints. ([13421](https://github.com/wazuh/wazuh/pull/13421))
+- Resolved an issue in the GET /manager/configuration API endpoint when retrieving the vulnerability detector configuration section. ([#15203](https://github.com/wazuh/wazuh/pull/15203))
+- Fixed `GET /agents/upgrade_result` endpoint internal error with code 1814 in large environments. ([#15152](https://github.com/wazuh/wazuh/pull/15152))
+- Enhanced the alphanumeric_symbols regex to better accommodate specific SCA remediation fields. ([#16756](https://github.com/wazuh/wazuh/pull/16756))
+- Fixed bug that would not allow retrieving the Wazuh logs if only the JSON format was configured. ([#15967](https://github.com/wazuh/wazuh/pull/15967))
+- Fixed error in `GET /rules` when variables are used inside `id` or `level` ruleset fields. ([#16310](https://github.com/wazuh/wazuh/pull/16310))
+- Fixed `PUT /syscheck` and `PUT /rootcheck` endpoints to exclude exception codes properly. ([#16248](https://github.com/wazuh/wazuh/pull/16248))
+- Adjusted test_agent_PUT_endpoints.tavern.yaml to resolve a race condition error. ([#16347](https://github.com/wazuh/wazuh/issues/16347))
+- Fixed some errors in API integration tests for RBAC white agents. [#16844](https://github.com/wazuh/wazuh/pull/16844)
+
+#### Removed
+
+- Removed legacy code related to agent databases in `/var/agents/db`. ([#15934](https://github.com/wazuh/wazuh/pull/15934))
 
 ### Ruleset
 
