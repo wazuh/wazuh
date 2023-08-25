@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg')),
+    format TEXT,
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    PRIMARY KEY (scan_id, name, version, architecture)
+    PRIMARY KEY (scan_id, name, version, architecture, format, location)
 );
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
@@ -397,7 +397,7 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '11');
+INSERT INTO metadata (key, value) VALUES ('db_version', '12');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
