@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _SYSCOLLECTOR_FLATBUFFERS_TEST_H
-#define _SYSCOLLECTOR_FLATBUFFERS_TEST_H
+#ifndef _SYSCOLLECTOR_DELTAS_TEST_H
+#define _SYSCOLLECTOR_DELTAS_TEST_H
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
@@ -19,12 +19,12 @@
 const std::string schemaRootPath {"syscollector_deltas.fbs"};
 std::string flatbufferSchemaStr;
 
-class SyscollectorFlatbuffersTest : public ::testing::Test
+class SyscollectorDeltasTest : public ::testing::Test
 {
     protected:
 
-        SyscollectorFlatbuffersTest() = default;
-        virtual ~SyscollectorFlatbuffersTest() = default;
+        SyscollectorDeltasTest() = default;
+        virtual ~SyscollectorDeltasTest() = default;
         /**
          * @brief Initialize string variable with flatbuffer schema.
          */
@@ -34,4 +34,4 @@ class SyscollectorFlatbuffersTest : public ::testing::Test
         }
 };
 
-#endif //_SYSCOLLECTOR_FLATBUFFERS_TEST_H
+#endif //_SYSCOLLECTOR_DELTAS_TEST_H

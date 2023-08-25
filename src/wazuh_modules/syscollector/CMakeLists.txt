@@ -142,7 +142,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if (NOT ${TARGET} STREQUAL "")
   if(${TARGET} STREQUAL "server")
-    list(APPEND Schemas
+    list(APPEND DeltaSchemas
                           netiface_data
                           netproto_data
                           netaddr_data
@@ -156,7 +156,7 @@ if (NOT ${TARGET} STREQUAL "")
                           common_agentInfo
     )
 
-    foreach(schema IN LISTS Schemas)
+    foreach(schema IN LISTS DeltaSchemas)
       if (${schema} STREQUAL "common_agentInfo")
         set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/common/${schema}.fbs")
       else()
