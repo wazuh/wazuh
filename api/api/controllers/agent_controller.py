@@ -12,7 +12,7 @@ from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
-from api.models.group_added_model import GroupAddedModel
+from api.models.agent_group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
 from api.validator import check_component_configuration_pair
 from wazuh import agent, stats

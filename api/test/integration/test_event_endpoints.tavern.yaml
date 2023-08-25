@@ -4,7 +4,7 @@ test_name: POST /events
 stages:
 
   - name: Send bulk with one element
-    request: &webhook_request
+    request: &event_request
       verify: false
       url: "{protocol:s}://{host:s}:{port:d}/events"
       method: POST
@@ -28,7 +28,7 @@ stages:
   - name: Send multiple events in one request
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         events:
           - foo event
@@ -56,7 +56,7 @@ stages:
   - name: Try to send an event with an invalid event type
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         events:
           - "foo": 1
@@ -69,7 +69,7 @@ stages:
   - name: Try to send events with an invalid body
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         - foo
         - bar
@@ -87,7 +87,7 @@ stages:
   - name: Try to send events with an invalid size
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         events: !force_format_include "{big_events_payload}"
     response:
@@ -103,7 +103,7 @@ stages:
   - name: Try to send a too big event (65536B)
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         events:
           - "{large_event}"
@@ -126,7 +126,7 @@ stages:
   - name: Send a too big event and one that fits
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         events:
           - "{max_size_event}"
@@ -156,7 +156,7 @@ stages:
     max_retries: 30
     request:
       verify: false
-      <<: *webhook_request
+      <<: *event_request
       json:
         events:
           - foo
