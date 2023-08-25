@@ -157,7 +157,6 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
     MacportsWrapper macportsMock(*mockStatement);
 
     EXPECT_EQ(macportsMock.name(), "neovim");
-    // Empty string fields are replaced with space.
     EXPECT_EQ(macportsMock.version(), "");
     EXPECT_FALSE(macportsMock.install_time().empty());
     EXPECT_EQ(macportsMock.location(), " ");

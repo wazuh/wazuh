@@ -48,7 +48,7 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }
 
 TEST_F(PKGWrapperTest, ShortVersion)
@@ -77,7 +77,7 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }
 
 TEST_F(PKGWrapperTest, NoName)
@@ -106,7 +106,7 @@ TEST_F(PKGWrapperTest, NoName)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }
 
 TEST_F(PKGWrapperTest, NoVersion)
@@ -135,7 +135,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }
 
 TEST_F(PKGWrapperTest, NoGroups)
@@ -164,7 +164,7 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }
 
 TEST_F(PKGWrapperTest, NoDescription)
@@ -193,7 +193,7 @@ TEST_F(PKGWrapperTest, NoDescription)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }
 
 TEST_F(PKGWrapperTest, NoVendor)
@@ -222,5 +222,5 @@ TEST_F(PKGWrapperTest, NoVendor)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
 }

@@ -31,7 +31,6 @@ class RCPWrapper final : public IPackageWrapper
             , m_format {"rcp"}
             , m_source {UNKNOWN_VALUE}
             , m_location {UNKNOWN_VALUE}
-            , m_multiarch {UNKNOWN_VALUE}
             , m_priority {UNKNOWN_VALUE}
             , m_size {0}
             , m_vendor {UNKNOWN_VALUE}
