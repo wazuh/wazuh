@@ -18,7 +18,7 @@
 #include <string>
 
 /**
- * @brief Runs unit tests for ActionOrchestrator
+ * @brief Runs component tests for ActionOrchestrator
  */
 class ActionOrchestratorTest : public ::testing::Test
 {

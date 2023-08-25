@@ -16,7 +16,7 @@
 #include <external/nlohmann/json.hpp>
 
 /**
- * @brief Runs unit tests for ContentRegister
+ * @brief Runs component tests for ContentRegister
  */
 class ContentRegisterTest : public ::testing::Test
 {

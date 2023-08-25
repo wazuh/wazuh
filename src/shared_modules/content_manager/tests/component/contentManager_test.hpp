@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 
 /**
- * @brief Runs unit tests for ContentModule
+ * @brief Runs component tests for ContentModule
  */
 class ContentModuleTest : public ::testing::Test
 {

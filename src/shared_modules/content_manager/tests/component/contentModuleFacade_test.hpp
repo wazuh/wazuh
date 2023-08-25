@@ -17,7 +17,7 @@
 #include <string>
 
 /**
- * @brief Runs unit tests for ContentModuleFacade
+ * @brief Runs component tests for ContentModuleFacade
  */
 class ContentModuleFacadeTest : public ::testing::Test
 {

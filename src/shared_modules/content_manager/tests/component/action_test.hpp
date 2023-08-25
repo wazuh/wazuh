@@ -18,7 +18,7 @@
 #include <string>
 
 /**
- * @brief Runs unit tests for Action
+ * @brief Runs component tests for Action
  */
 class ActionTest : public ::testing::Test
 {

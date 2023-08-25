@@ -17,7 +17,7 @@
 #include <string>
 
 /**
- * @brief Runs unit tests for ContentProvider
+ * @brief Runs component tests for ContentProvider
  */
 class ContentProviderTest : public ::testing::Test
 {
