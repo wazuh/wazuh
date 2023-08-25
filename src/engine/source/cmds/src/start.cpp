@@ -371,8 +371,7 @@ void runStart(ConfHandler confManager)
         {
             // Register the Graph command
             api::graph::handlers::Config graphConfig {
-                store,
-                kvdbManager,
+                builder
             };
             api::graph::handlers::registerHandlers(graphConfig, api);
             LOG_DEBUG("Graph API registered.");
