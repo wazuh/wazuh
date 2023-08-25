@@ -27,16 +27,16 @@ class PKGWrapper final : public IPackageWrapper
         static constexpr auto INFO_PLIST_PATH { "Contents/Info.plist" };
 
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_version{UNKNOWN_VALUE}
-            , m_groups{UNKNOWN_VALUE}
+            : m_groups {UNKNOWN_VALUE}
             , m_description {UNKNOWN_VALUE}
-            , m_architecture{UNKNOWN_VALUE}
-            , m_format{"pkg"}
+            , m_architecture {UNKNOWN_VALUE}
+            , m_format {"pkg"}
             , m_source {UNKNOWN_VALUE}
             , m_location {UNKNOWN_VALUE}
+            , m_multiarch {UNKNOWN_VALUE}
             , m_priority {UNKNOWN_VALUE}
             , m_size {0}
-            , m_vendor{UNKNOWN_VALUE}
+            , m_vendor {UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
             std::string pathInfoPlist = ctx.filePath + "/" + ctx.package + "/" + INFO_PLIST_PATH;
@@ -149,14 +149,7 @@ class PKGWrapper final : public IPackageWrapper
                     std::string bundleShortVersionString;
                     std::string bundleVersion;
 
-                    m_version = UNKNOWN_VALUE;
-                    m_installTime = UNKNOWN_VALUE;
                     m_location = filePath;
-                    m_groups = UNKNOWN_VALUE;
-                    m_description = UNKNOWN_VALUE;
-                    m_size = 0;
-                    m_priority = UNKNOWN_VALUE;
-                    m_multiarch = UNKNOWN_VALUE;
                     m_source = (filePath.find(UTILITIES_FOLDER) != std::string::npos) ? "utilities" : "applications";
 
                     while (std::getline(data, line))
@@ -168,8 +161,7 @@ class PKGWrapper final : public IPackageWrapper
                         {
                             m_name = getValueFnc(line);
                         }
-                        else if ((line == "<key>CFBundleShortVersionString</key>" ||
-                                  line == "<key>PackageVersion</key>") &&
+                        else if (line == "<key>CFBundleShortVersionString</key>" &&
                                  std::getline(data, line))
                         {
                             bundleShortVersionString = getValueFnc(line);
@@ -243,10 +235,6 @@ class PKGWrapper final : public IPackageWrapper
             std::string xmlContent;
             plist_t rootNode { nullptr };
             const auto binaryContent { Utils::getBinaryContent(filePath) };
-
-            // plist C++ APIs calls - to be used when Makefile and external are updated.
-            // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
-            // const auto xmlContent { dataFromBin->ToXml() };
 
             // Content binary file to plist representation
             plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);

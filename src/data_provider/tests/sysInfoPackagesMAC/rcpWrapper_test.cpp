@@ -39,13 +39,13 @@ TEST_F(RCPWrapperTest, Wazuh)
     EXPECT_EQ(wrapper->name(), "");
     EXPECT_EQ(wrapper->version(), "4.4.5-1");
     EXPECT_EQ(wrapper->groups(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->description(), "com.wazuh.pkg.wazuh-agent");
+    EXPECT_EQ(wrapper->description(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "rcp");
     EXPECT_EQ(wrapper->osPatch(), "");
     EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + ".plist");
-    EXPECT_EQ(wrapper->vendor(), "wazuh");
+    EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);

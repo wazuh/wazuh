@@ -25,18 +25,18 @@ class RCPWrapper final : public IPackageWrapper
         static constexpr auto INFO_PLIST_PATH { "Contents/Info.plist" };
 
         explicit RCPWrapper(const PackageContext& ctx)
-            : m_architecture{UNKNOWN_VALUE}
-            , m_format{"rcp"}
-            , m_vendor{UNKNOWN_VALUE}
+            : m_groups {UNKNOWN_VALUE}
+            , m_description {UNKNOWN_VALUE}
+            , m_architecture {UNKNOWN_VALUE}
+            , m_format {"rcp"}
+            , m_source {UNKNOWN_VALUE}
+            , m_location {UNKNOWN_VALUE}
+            , m_multiarch {UNKNOWN_VALUE}
+            , m_priority {UNKNOWN_VALUE}
+            , m_size {0}
+            , m_vendor {UNKNOWN_VALUE}
+            , m_installTime {UNKNOWN_VALUE}
         {
-            m_version = UNKNOWN_VALUE;
-            m_installTime = UNKNOWN_VALUE;
-            m_groups = UNKNOWN_VALUE;
-            m_description = UNKNOWN_VALUE;
-            m_size = 0;
-            m_priority = UNKNOWN_VALUE;
-            m_multiarch = UNKNOWN_VALUE;
-
             std::string pathInstallPlistFile { ctx.filePath + "/" + ctx.package + ".plist" };
             getPlistData(pathInstallPlistFile);
 
@@ -582,8 +582,7 @@ class RCPWrapper final : public IPackageWrapper
                         {
                             m_groups = getValueFnc(line);
                         }
-                        else if ((line == "<key>CFBundleIdentifier</key>" ||
-                                  line == "<key>PackageIdentifier</key>") &&
+                        else if (line == "<key>CFBundleIdentifier</key>" &&
                                  std::getline(data, line))
                         {
                             m_description = getValueFnc(line);
@@ -602,13 +601,16 @@ class RCPWrapper final : public IPackageWrapper
                         }
                     }
 
-                    if (!bundleShortVersionString.empty() && Utils::startsWith(bundleVersion, bundleShortVersionString))
+                    if (!bundleShortVersionString.empty())
                     {
-                        m_version = bundleVersion;
-                    }
-                    else
-                    {
-                        m_version = bundleShortVersionString;
+                        if (Utils::startsWith(bundleVersion, bundleShortVersionString))
+                        {
+                            m_version = bundleVersion;
+                        }
+                        else
+                        {
+                            m_version = bundleShortVersionString;
+                        }
                     }
                 }
             };
@@ -634,10 +636,6 @@ class RCPWrapper final : public IPackageWrapper
             std::string xmlContent;
             plist_t rootNode { nullptr };
             const auto binaryContent { Utils::getBinaryContent(filePath) };
-
-            // plist C++ APIs calls - to be used when Makefile and external are updated.
-            // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
-            // const auto xmlContent { dataFromBin->ToXml() };
 
             // Content binary file to plist representation
             plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);

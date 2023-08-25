@@ -31,8 +31,7 @@ class MacportsWrapper final : public IPackageWrapper
 {
     public:
         explicit MacportsWrapper(SQLite::IStatement& stmt)
-            : m_version{UNKNOWN_VALUE}
-            , m_groups {UNKNOWN_VALUE}
+            : m_groups {UNKNOWN_VALUE}
             , m_description {UNKNOWN_VALUE}
             , m_architecture{UNKNOWN_VALUE}
             , m_format{"macports"}
