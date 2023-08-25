@@ -14,7 +14,7 @@ namespace
 {
 
 template<typename r_type>
-auto checkResoursePermission(const base::Name& name,
+auto checkResourcePermission(const base::Name& name,
                              const std::string& role,
                              const rbac::IRBAC::AuthFn& authFn,
                              const rbac::IRBAC::AuthFn& authSystemFn)
@@ -83,7 +83,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::
         // Validate the role
         // {
         //     auto permissionDenied =
-        //         checkResoursePermission<ResponseType>(name, eRequest.namespaceid(), authFn, authSystemFn);
+        //         checkResourcePermission<ResponseType>(name, eRequest.namespaceid(), authFn, authSystemFn);
         //     if (permissionDenied)
         //     {
         //         return std::move(permissionDenied.value());
@@ -160,7 +160,7 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
 
         // Check permissions
         // {
-        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn,
+        //     auto permissionDenied = checkResourcePermission<ResponseType>(name, eRequest.role(), authFn,
         //     authSystemFn); if (permissionDenied)
         //     {
         //         return std::move(permissionDenied.value());
@@ -241,7 +241,7 @@ api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac
 
         // Validate the role
         // {
-        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
+        //     auto permissionDenied = checkResourcePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
         //     authSystemFn); if (permissionDenied)
         //     {
         //         return std::move(permissionDenied.value());
@@ -318,7 +318,7 @@ api::Handler resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
 
         // Validate the role
         // {
-        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.role(), authFn,
+        //     auto permissionDenied = checkResourcePermission<ResponseType>(name, eRequest.role(), authFn,
         //     authSystemFn); if (permissionDenied)
         //     {
         //         return std::move(permissionDenied.value());
@@ -396,7 +396,7 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rb
 
         // Validate the role
         // {
-        //     auto permissionDenied = checkResoursePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
+        //     auto permissionDenied = checkResourcePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
         //     authSystemFn); if (permissionDenied)
         //     {
         //         return std::move(permissionDenied.value());
