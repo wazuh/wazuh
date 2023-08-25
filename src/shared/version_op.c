@@ -760,9 +760,11 @@ os_info *get_unix_version()
                       goto free_os_info;
                   } else {
                       char *base;
-                      char *found;
+                      char *found = NULL;
                       char tag[] = "Oracle Solaris";
-                      if (found = strstr(buff, tag), found) {
+                      char alt_tag[] = "Solaris";
+                      found = strstr(buff,tag) ? strstr(buff,alt_tag) : found;
+                      if (found) {
                           for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
                           for (base = found; *found != '\0' && *found != ' '; found++);
                           *found = '\0';
