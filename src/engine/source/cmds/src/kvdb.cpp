@@ -278,8 +278,8 @@ void configure(const CLI::App_p& app)
                                                    "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
-    dump_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")->default_val(DEFAULT_CLI_PAGE);
-    dump_subcommand->add_option("-r, --records", options->records, "Number of records per page.")->default_val(DEFAULT_CLI_RECORDS);
+    dump_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")->default_val(ENGINE_KVDB_CLI_PAGE);
+    dump_subcommand->add_option("-r, --records", options->records, "Number of records per page.")->default_val(ENGINE_KVDB_CLI_RECORDS);
     dump_subcommand->callback(
         [options]()
         {

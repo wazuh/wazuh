@@ -144,8 +144,8 @@ std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
     return base::Error {"Cannot access RocksDB::DB"};
 }
 
-std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHandler::dump(const uint32_t page,
-                                                                                            const uint32_t records)
+std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHandler::dump(const unsigned int page,
+                                                                                            const unsigned int records)
 {
     auto pRocksDB = m_weakDB.lock();
     if (pRocksDB)
@@ -156,10 +156,6 @@ std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHa
             std::list<std::pair<std::string, std::string>> content;
             std::shared_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
             uint32_t actualPage = 1, counterRecords = 1;
-
-            // std::string aproxSizeProp {};
-            // pRocksDB->GetProperty("rocksdb.estimate-num-keys", &aproxSizeProp);
-            // std::cout<<"Total size: "<<aproxSizeProp<<std::endl;
 
             if (page == 0 && records == 0)
             {
@@ -174,8 +170,6 @@ std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHa
                 {
                     if (actualPage == page)
                     {
-                        std::cout << "Iter: " << iter->key().ToString() << " : " << iter->value().ToString()
-                                  << std::endl;
                         content.push_back(std::make_pair(iter->key().ToString(), iter->value().ToString()));
                     }
 
