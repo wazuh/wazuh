@@ -58,13 +58,17 @@ namespace PackageLinuxHelper
 
                 ret["name"]         = name;
                 ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoi(size);
-                ret["install_time"] = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? "" : install_time;
-                ret["groups"]       = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? "" : groups;
-                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? "" : version;
-                ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? "" : architecture;
+                ret["install_time"] = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : install_time;
+                ret["location"]     = UNKNOWN_VALUE;
+                ret["groups"]       = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : groups;
+                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
+                ret["priority"]     = UNKNOWN_VALUE;
+                ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : architecture;
+                ret["source"]       = UNKNOWN_VALUE;
                 ret["format"]       = "rpm";
-                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? "" : vendor;
-                ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? "" : description;
+                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : vendor;
+                ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : description;
+                // The multiarch field won't have a default value
             }
         }
 
