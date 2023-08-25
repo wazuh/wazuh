@@ -56,10 +56,11 @@ from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
+from wazuh_testing.modules.agentd.patterns import AGENTD_UPDATING_STATE_FILE, AGENTD_SENDING_KEEP_ALIVE, AGENTD_RECEIVED_ACK, AGENTD_RECEIVED_ACK 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils import file
+from wazuh_testing.utils import file, callbacks
 from wazuh_testing.utils.services import check_if_process_is_running, control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -90,7 +91,7 @@ print(test_configuration)
 def start_remoted_server(test_metadata) -> None:
     """"Start RemotedSimulator if test case need it"""
     if 'remoted' in test_metadata and test_metadata['remoted']:
-        remoted_server = RemotedSimulator(protocol='tcp', mode='DUMMY_ACK', client_keys=WAZUH_CLIENT_KEYS_PATH)
+        remoted_server = RemotedSimulator()
         return remoted_server
 
 def add_custom_key():
@@ -146,8 +147,7 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, conf
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
         check_fields(expected_output)
-
-
+    
 def parse_state_file():
     """Parse state file
 
@@ -306,61 +306,44 @@ def check_status(expected_value=None, get_state_callback=None):
         boolean: `True` if check was successfull. `False` otherwise
     """
     if expected_value != 'pending':
-        wait_keepalive(True)
+        wait_keepalive()
         if get_state_callback == parse_state_file:
-            wait_state_update(True)
+            wait_state_update()
     current_value = get_state_callback()['status']
     return expected_value == current_value
 
 
 def wait_connect(update_position=False):
-    """Watch ossec.conf until `callback_connected_to_server` is triggered
-
-    Args:
-        update_position (bool, optional): update position after reading.
-                                          Defaults to False.
     """
-    wazuh_log_monitor.start(timeout=240,
-                            callback=callback_connected_to_server,
-                            update_position=update_position,
-                            error_message='Agent connected not found')
-
-
-def wait_ack(update_position=False):
-    """Watch ossec.conf until `callback_ack` is triggered
-
-    Args:
-        update_position (bool, optional): update position after reading.
-                                          Defaults to False.
-    """
-    wazuh_log_monitor.start(timeout=240,
-                            callback=callback_ack,
-                            update_position=update_position,
-                            error_message='Ack not found')
-
-
-def wait_keepalive(update_position=False):
-    """Watch ossec.conf until `callback_keepalive` is triggered
-
-    Args:
-        update_position (bool, optional): update position after reading.
-                                          Defaults to False.
-    """
-    wazuh_log_monitor.start(timeout=240,
-                            callback=callback_keepalive,
-                            update_position=update_position,
-                            error_message='Keepalive not found')
-
-
-def wait_state_update(update_position=True):
-    """Watch ossec.conf until `callback_state_file_updated` is triggered
-
-    Args:
-        update_position (bool, optional): update position after reading.
-                                          Defaults to True.
+        Watch ossec.log until received "Connected to the server" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
+    assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
 
-    wazuh_log_monitor.start(callback=callback_state_file_updated,
-                            update_position=update_position,
-                            error_message='State file update not found')
+
+def wait_ack():
+    """
+        Watch ossec.log until received ack message is found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
+    assert (wazuh_log_monitor.callback_result != None), f'Received ack message not found'
+
+
+def wait_keepalive():
+    """
+        Watch ossec.log until "Sending keep alive" message is found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE))
+    assert (wazuh_log_monitor.callback_result != None), f'Sending keep alive not found'
+
+
+def wait_state_update():
+    """
+        Watch ossec.log until "Updating state file" message is found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UPDATING_STATE_FILE))
+    assert (wazuh_log_monitor.callback_result != None), f'State file update not found'
