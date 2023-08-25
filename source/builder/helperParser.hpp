@@ -54,9 +54,9 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const HelperToken& hel
 {
     json::Json value {};
 
-    std::string strArgs = helperToken.args.size() == 1 && helperToken.args[0].empty()
-                              ? "''"
-                              : base::utils::string::join(helperToken.args, ",");
+    auto strArgs = helperToken.args.size() == 1 && helperToken.args[0].empty()
+                       ? std::string("''")
+                       : base::utils::string::join(helperToken.args, ",");
 
     auto valueStr = fmt::format("{}({})", helperToken.name, strArgs);
     value.setString(valueStr);
@@ -341,7 +341,8 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         std::string arg {};
         if (eraseScapeChars)
         {
-            if (escapedFirstReference){
+            if (escapedFirstReference)
+            {
                 arg += syntax::FUNCTION_HELPER_DEFAULT_ESCAPE;
             }
             // Discart start and end single quote

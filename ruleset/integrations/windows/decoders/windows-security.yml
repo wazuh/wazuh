@@ -1,8 +1,5 @@
 name: decoder/windows-security/0
 
-parents:
-  - decoder/windows-event/0
-
 metadata:
   module: Windows Security
   title: Decoder for Windows security events.
@@ -15,6 +12,9 @@ metadata:
   references:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
     - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/security-auditing-overview
+
+parents:
+  - decoder/windows-event/0
 
 check: >-
   $windows.System.Channel.#text == 'Security' AND
