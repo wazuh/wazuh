@@ -12,7 +12,7 @@ on:
         - ".github/workflows/integration-tests-rootcheck-tier-0-1.yml"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_rootcheck/**"
+        - "tests/integration/test_analysisd/test_rootcheck/**"
 
 jobs:
   build:
