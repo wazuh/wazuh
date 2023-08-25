@@ -2,8 +2,7 @@
 #define _API_GRAPH_HANDLERS_HPP
 
 #include <api/api.hpp>
-#include <store/istore.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <builder/builder.hpp>
 
 namespace api::graph::handlers
 {
@@ -14,9 +13,7 @@ namespace api::graph::handlers
  */
 struct Config
 {
-    std::shared_ptr<store::IStore> store;
-
-    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::shared_ptr<builder::Builder> builder;
 };
 
 /** @brief Handler for the resource endpoint get command.

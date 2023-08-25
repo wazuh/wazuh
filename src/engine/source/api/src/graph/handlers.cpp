@@ -71,38 +71,6 @@ api::Handler resourceGet(const Config& config)
                 "Invalid /type parameter, must be either 'policy' or 'expressions'");
         }
 
-        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-        auto hlpParsers = config.store->readInternalDoc(hlpConfigFileName);
-        if (std::holds_alternative<base::Error>(hlpParsers))
-        {
-            const auto msg = fmt::format("Wazuh Logpar schema could not be loaded from the store: {}",
-                                         std::get<base::Error>(hlpParsers).message);
-            return ::api::adapter::genericError<ResponseType>(msg);
-        }
-        auto schema = std::make_shared<schemf::Schema>();
-        auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers), schema);
-        hlp::registerParsers(logpar);
-
-        auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-        try
-        {
-
-            builder::internals::dependencies deps;
-            deps.logparDebugLvl = 0;
-            deps.logpar = logpar;
-            deps.kvdbScopeName = "graph";
-            deps.kvdbManager = config.kvdbManager;
-            deps.schema = schema;
-            deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-            builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
-            builder::internals::registerBuilders(registry, deps);
-        }
-        catch (const std::exception& e)
-        {
-            const auto msg = fmt::format("An error occurred while registering the builders: {}", e.what());
-            return ::api::adapter::genericError<ResponseType>(msg);
-        }
-
         base::Name policyName;
         try
         {
@@ -113,11 +81,10 @@ api::Handler resourceGet(const Config& config)
             return ::api::adapter::genericError<ResponseType>(std::string {"Invalid /policy name: "} + e.what());
         }
 
-        builder::Builder policyBuilder(config.store, registry);
-        decltype(policyBuilder.buildPolicy({})) policy;
+        decltype(config.builder->buildPolicy({})) policy;
         try
         {
-            policy = policyBuilder.buildPolicy({policyName});
+            policy = config.builder->buildPolicy({policyName});
         }
         catch (const std::exception& e)
         {
