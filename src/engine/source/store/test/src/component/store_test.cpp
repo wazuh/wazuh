@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-
 #include <store/store.hpp>
 #include <store/drivers/fileDriver.hpp>
 
@@ -22,8 +21,16 @@ void inline initLogging(void)
 }
 
 using namespace store;
-
 static const std::filesystem::path TEST_PATH = "/tmp/store_test";
+
+std::filesystem::path uniquePath() {
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid; // Unique path per thread and process
+    return TEST_PATH / ss.str();
+}
+
 static const json::Json JSON_A {R"({"key": "value"})"};
 static const json::Json JSON_B {R"({"key": "value2"})"};
 static const json::Json JSON_C {R"({"key": "value3"})"};
@@ -49,17 +56,19 @@ class StoreTest : public ::testing::Test
 protected:
 
     std::shared_ptr<drivers::FileDriver> m_fDriver;
+    std::filesystem::path utest_path;
 
     void SetUp() override
     {
+        utest_path = uniquePath();
         initLogging();
-        std::filesystem::remove_all(TEST_PATH);
-        m_fDriver = std::make_shared<drivers::FileDriver>(TEST_PATH, true);
+        std::filesystem::remove_all(utest_path);
+        m_fDriver = std::make_shared<drivers::FileDriver>(utest_path, true);
     }
 
     void TearDown() override {
         m_fDriver.reset();
-        std::filesystem::remove_all(TEST_PATH);
+        std::filesystem::remove_all(utest_path);
      }
 };
 
