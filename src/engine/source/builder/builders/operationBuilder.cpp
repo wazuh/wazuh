@@ -155,7 +155,6 @@ auto setObjectTerm(const std::string& field) -> base::Expression
             e->setObject(field);
         }
         return base::result::makeSuccess(std::move(e), successTrace);
-
     };
     return base::Term<base::EngineOp>::create("setObjectOp", fn);
 }
@@ -175,7 +174,8 @@ auto deleteEmptyObjectTerm(const std::string& field) -> base::Expression
     {
         if (e->isObject(field) && e->isEmpty(field))
         {
-            e->erase(field);}
+            e->erase(field);
+        }
         return base::result::makeSuccess(std::move(e), successTrace);
     };
     return base::Term<base::EngineOp>::create("deleteEmptyObject", fn);
@@ -346,7 +346,7 @@ Expression operationBuilder(const std::any& definition,
 
         for (auto& [key, value] : object)
         {
-            std::string path{};
+            std::string path {};
             path += targetField;
             path += syntax::JSON_PATH_SEPARATOR;
             path += key;
@@ -358,7 +358,6 @@ Expression operationBuilder(const std::any& definition,
         {
             expressions.emplace_back(deleteEmptyObjectTerm(targetFieldPath));
         }
-
 
         switch (type)
         {
@@ -401,8 +400,8 @@ Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> he
                                      std::shared_ptr<schemf::ISchema> schema,
                                      bool forceFieldNaming)
 {
-    return
-        [helperRegistry, schema, forceFieldNaming](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return [helperRegistry, schema, forceFieldNaming](const std::any& definition,
+                                                      std::shared_ptr<defs::IDefinitions> definitions)
     {
         return operationBuilder(
             definition, definitions, OperationType::FILTER, helperRegistry, schema, forceFieldNaming);
@@ -413,8 +412,8 @@ Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRe
                                std::shared_ptr<schemf::ISchema> schema,
                                bool forceFieldNaming)
 {
-    return
-        [helperRegistry, schema, forceFieldNaming](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return [helperRegistry, schema, forceFieldNaming](const std::any& definition,
+                                                      std::shared_ptr<defs::IDefinitions> definitions)
     {
         return operationBuilder(definition, definitions, OperationType::MAP, helperRegistry, schema, forceFieldNaming);
     };

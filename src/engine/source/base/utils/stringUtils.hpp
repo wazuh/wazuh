@@ -121,7 +121,8 @@ std::string
 unescapeString(std::string_view str, char escapeChar, const std::string& escapedChars, const bool strictMode = false);
 
 inline std::string
-unescapeString(std::string_view str, char escapeChar, const char escapedChar, const bool strictMode = false) {
+unescapeString(std::string_view str, char escapeChar, const char escapedChar, const bool strictMode = false)
+{
     return unescapeString(str, escapeChar, std::string(1, escapedChar), strictMode);
 }
 
