@@ -31,18 +31,32 @@ void inline initLogging(void)
 
 using namespace store::drivers;
 
+
+std::filesystem::path uniquePath() {
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid; // Unique path per thread and process
+    return TEST_PATH / ss.str();
+}
+
+
 class FileDriverTest : public ::testing::Test
 {
 protected:
+    std::filesystem::path  m_path;
+    std::filesystem::path  m_filePath;
+
     void SetUp() override
     {
         initLogging();
-
-        std::filesystem::create_directories(TEST_PATH);
-        std::ofstream file(TEST_FILE_PATH);
+        m_path = uniquePath();
+        m_filePath = m_path / "__test_file__";
+        std::filesystem::create_directories(m_path);
+        std::ofstream file(m_filePath);
     }
 
-    void TearDown() override { std::filesystem::remove_all(TEST_PATH); }
+    void TearDown() override { std::filesystem::remove_all(m_path); }
 };
 
 using BuildsT = std::tuple<bool, std::string, bool>; // shouldPass, path, create
@@ -71,24 +85,24 @@ INSTANTIATE_TEST_SUITE_P(
     FileDriver,
     BuildsTest,
     ::testing::Values(
-        BuildsT(true, TEST_PATH.string(), false),
-        BuildsT(false, TEST_FILE_PATH.string(), false),
-        BuildsT(true, TEST_PATH.string(), true),
-        BuildsT(false, TEST_FILE_PATH.string(), true),
-        BuildsT(false, TEST_PATH.string() + "/notExisting", false),
-        BuildsT(true, TEST_PATH.string() + "/notExisting", true)
+        BuildsT(true, uniquePath().string(), false),
+        BuildsT(false, uniquePath().string() + TEST_FILE_PATH.string(), false),
+        BuildsT(true, uniquePath().string(), true),
+        BuildsT(true, uniquePath().string() + TEST_FILE_PATH.string(), true),
+        BuildsT(false, uniquePath().string() + "/notExisting", false),
+        BuildsT(true, uniquePath().string() + "/notExisting", true)
 ));
 
 TEST_F(FileDriverTest, Erase)
 {
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1];
     std::filesystem::create_directories(path);
     auto filePath = path / std::string {TEST_NAME.parts()[2]};
     {
         std::ofstream file(filePath);
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.deleteDoc(TEST_NAME));
     ASSERT_FALSE(error);
@@ -97,7 +111,7 @@ TEST_F(FileDriverTest, Erase)
 
 TEST_F(FileDriverTest, EraseCollection)
 {
-    auto path = TEST_PATH / TEST_NAME_COLLECTION.parts()[0] / TEST_NAME_COLLECTION.parts()[1];
+    auto path = m_path / TEST_NAME_COLLECTION.parts()[0] / TEST_NAME_COLLECTION.parts()[1];
     std::filesystem::create_directories(path);
     auto filePath1 = path / "0";
     {
@@ -108,7 +122,7 @@ TEST_F(FileDriverTest, EraseCollection)
         std::ofstream file(filePath2);
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.deleteCol(TEST_NAME_COLLECTION));
     ASSERT_FALSE(error);
@@ -117,7 +131,7 @@ TEST_F(FileDriverTest, EraseCollection)
 
 TEST_F(FileDriverTest, EraseFailNotExisting)
 {
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.deleteDoc(TEST_NAME));
     ASSERT_TRUE(error);
@@ -127,11 +141,11 @@ TEST_F(FileDriverTest, EraseFailNotExisting)
 
 TEST_F(FileDriverTest, Add)
 {
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.createDoc(TEST_NAME, TEST_JSON));
     ASSERT_FALSE(error);
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
     ASSERT_TRUE(std::filesystem::exists(path));
     ASSERT_TRUE(std::filesystem::is_regular_file(path));
     std::ifstream file(path);
@@ -143,7 +157,7 @@ TEST_F(FileDriverTest, Add)
 
 TEST_F(FileDriverTest, AddMultipleVersions)
 {
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
 
     base::Name name1({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "1.0.0"});
@@ -154,7 +168,7 @@ TEST_F(FileDriverTest, AddMultipleVersions)
     ASSERT_NO_THROW(error = fDriver.createDoc(name2, TEST_JSON));
     ASSERT_FALSE(error);
 
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1];
     ASSERT_TRUE(std::filesystem::exists(path));
     ASSERT_TRUE(std::filesystem::is_directory(path));
     ASSERT_EQ(std::distance(std::filesystem::directory_iterator(path), std::filesystem::directory_iterator()), 2);
@@ -171,13 +185,13 @@ TEST_F(FileDriverTest, AddMultipleVersions)
 
 TEST_F(FileDriverTest, AddFailAlreadyExisting)
 {
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
     std::filesystem::create_directories(path);
     {
         std::ofstream file(path);
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.createDoc(TEST_NAME, TEST_JSON));
     ASSERT_TRUE(error);
@@ -185,14 +199,14 @@ TEST_F(FileDriverTest, AddFailAlreadyExisting)
 
 TEST_F(FileDriverTest, Get)
 {
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
     std::filesystem::create_directories(path.parent_path());
     {
         std::ofstream file(path);
         file << TEST_JSON.str();
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     std::variant<json::Json, base::Error> result;
     ASSERT_NO_THROW(result = fDriver.readDoc(TEST_NAME));
     ASSERT_TRUE(std::holds_alternative<json::Json>(result));
@@ -201,7 +215,7 @@ TEST_F(FileDriverTest, Get)
 
 TEST_F(FileDriverTest, GetCollection)
 {
-    auto path = TEST_PATH / TEST_NAME_COLLECTION.parts()[0] / TEST_NAME_COLLECTION.parts()[1];
+    auto path = m_path / TEST_NAME_COLLECTION.parts()[0] / TEST_NAME_COLLECTION.parts()[1];
     auto path1 = path / "0";
     base::Name name1({TEST_NAME_COLLECTION.parts()[0], TEST_NAME_COLLECTION.parts()[1], "0"});
     auto path2 = path / "1";
@@ -213,7 +227,7 @@ TEST_F(FileDriverTest, GetCollection)
         std::ofstream file2(path2);
         file2 << TEST_JSON.str();
     }
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::RespOrError<store::Col> result;
     ASSERT_NO_THROW(result = fDriver.readCol(TEST_NAME_COLLECTION));
     ASSERT_TRUE(std::holds_alternative<store::Col>(result));
@@ -228,7 +242,7 @@ TEST_F(FileDriverTest, GetCollection)
 
 TEST_F(FileDriverTest, GetFailNotExisting)
 {
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::RespOrError<store::Doc> result;
     ASSERT_NO_THROW(result = fDriver.readDoc(TEST_NAME));
     ASSERT_TRUE(base::isError(result));
@@ -240,14 +254,14 @@ TEST_F(FileDriverTest, GetFailNotExisting)
 
 TEST_F(FileDriverTest, Update)
 {
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
     std::filesystem::create_directories(path.parent_path());
     {
         std::ofstream file(path);
         file << TEST_JSON.str();
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.updateDoc(TEST_NAME, TEST_JSON2));
     ASSERT_FALSE(error);
@@ -262,7 +276,7 @@ TEST_F(FileDriverTest, Update)
 
 TEST_F(FileDriverTest, UpdateFailNotExisting)
 {
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     ASSERT_NO_THROW(error = fDriver.updateDoc(TEST_NAME, TEST_JSON));
     ASSERT_TRUE(error);
@@ -270,14 +284,14 @@ TEST_F(FileDriverTest, UpdateFailNotExisting)
 
 TEST_F(FileDriverTest, AddFileChildOfFile)
 {
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
     std::filesystem::create_directories(path.parent_path());
     {
         std::ofstream file(path);
         file << TEST_JSON.str();
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     base::OptError error;
     base::Name name({TEST_NAME.parts()[0], TEST_NAME.parts()[1], TEST_NAME.parts()[2], "file"});
     ASSERT_NO_THROW(error = fDriver.createDoc(name, TEST_JSON));
@@ -286,14 +300,14 @@ TEST_F(FileDriverTest, AddFileChildOfFile)
 
 TEST_F(FileDriverTest, Exists)
 {
-    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
+    auto path = m_path / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2];
     std::filesystem::create_directories(path.parent_path());
     {
         std::ofstream file(path);
         file << TEST_JSON.str();
     }
 
-    FileDriver fDriver(TEST_PATH);
+    FileDriver fDriver(m_path);
     ASSERT_TRUE(fDriver.exists(TEST_NAME));
     ASSERT_TRUE(fDriver.existsDoc(TEST_NAME));
     ASSERT_FALSE(fDriver.existsCol(TEST_NAME));
@@ -301,4 +315,3 @@ TEST_F(FileDriverTest, Exists)
     ASSERT_FALSE(fDriver.existsDoc(TEST_NAME_COLLECTION));
     ASSERT_TRUE(fDriver.existsCol(TEST_NAME_COLLECTION));
 }
-
