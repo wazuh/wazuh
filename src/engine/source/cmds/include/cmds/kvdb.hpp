@@ -10,9 +10,6 @@
 namespace cmd::kvdb
 {
 
-const uint32_t DEFAULT_CLI_PAGE = 1;
-const uint32_t DEFAULT_CLI_RECORDS = 50;
-
 namespace details
 {
 constexpr auto ORIGIN_NAME = "engine_integrated_kvdb_api";

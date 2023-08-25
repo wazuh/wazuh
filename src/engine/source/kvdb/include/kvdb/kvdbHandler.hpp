@@ -95,7 +95,8 @@ public:
      * @copydoc IKVDBHandler::dump
      *
      */
-    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const uint32_t page, const uint32_t records) override;
+    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const unsigned int page,
+                                                                                   const unsigned int records) override;
 
     /**
      * @copydoc IKVDBHandler::search

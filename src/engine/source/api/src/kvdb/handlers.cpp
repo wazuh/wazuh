@@ -163,8 +163,8 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         }
 
         const auto& eRequest = std::get<RequestType>(res);
-        uint32_t page = eRequest.has_page() ? eRequest.page() : DEFAULT_HANDLER_PAGE;
-        uint32_t records = eRequest.has_records() ? eRequest.records() : DEFAULT_HANDLER_RECORDS;
+        unsigned int page = eRequest.has_page() ? eRequest.page() : DEFAULT_HANDLER_PAGE;
+        unsigned int records = eRequest.has_records() ? eRequest.records() : DEFAULT_HANDLER_RECORDS;
 
         auto errorMsg = !eRequest.has_name()      ? std::make_optional(MESSAGE_MISSING_NAME)
                         : eRequest.name().empty() ? std::make_optional("Field /name cannot be empty")
