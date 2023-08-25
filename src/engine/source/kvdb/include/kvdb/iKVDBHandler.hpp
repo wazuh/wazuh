@@ -80,15 +80,27 @@ public:
     virtual std::variant<std::string, base::Error> get(const std::string& key) = 0;
 
     /**
-     * @brief Retrieves the entire content of the DB.
+     * @brief Retrieves all paginated content from the database.
+     *
+     * To retrieve all the contents of the database, without paging, the parameter page and records must be
+     * sent in 0.
      *
      * @param page Page number.
      * @param records Quantity of records for page.
      * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
      * Specific error otherwise.
      */
-    virtual std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const uint32_t page,
-                                                                                           const uint32_t records) = 0;
+    virtual std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const unsigned int page,
+                                                                                           const unsigned int records) = 0;
+
+    /**
+     * @brief Retrieves the entire content of the DB.
+     *
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
+     * Specific error otherwise.
+     */
+    inline std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump() { return dump(0, 0); };
+
     /**
      * @brief Retrieves all filtered content.
      *
