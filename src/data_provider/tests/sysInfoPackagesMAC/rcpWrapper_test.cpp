@@ -49,7 +49,7 @@ TEST_F(RCPWrapperTest, Wazuh)
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), "");
     EXPECT_EQ(wrapper->installPrefixPath(), "/");
     auto bomPaths = wrapper->bomPaths();
     EXPECT_EQ(bomPaths.size(), (size_t)248);
