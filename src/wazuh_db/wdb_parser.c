@@ -197,13 +197,13 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
-
 int wdb_parse(char * input, char * output, int peer) {
     char * actor;
     char * id;
     char * query;
     char * sql;
     char * next;
+    char path[PATH_MAX + 1];
     int agent_id = 0;
     char sagent_id[64] = "000";
     wdb_t * wdb;
@@ -740,6 +740,15 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
+            if (!w_is_file(path)) {
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
+        }
         return result;
     } else if (strcmp(actor, "wazuhdb") == 0) {
         query = next;
@@ -1348,6 +1357,15 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            if (!w_is_file(path)) {
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
+        }
         return result;
     } else if (strcmp(actor, "task") == 0) {
         cJSON *parameters_json = NULL;
