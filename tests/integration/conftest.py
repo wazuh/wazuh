@@ -167,6 +167,10 @@ def configure_local_internal_options_function(request):
     It uses the test variable local_internal_options. This should be
     a dictionary wich keys and values corresponds to the internal option configuration, For example:
     local_internal_options = {'monitord.rotate_log': '0', 'syscheck.debug': '0' }
+
+    Args:
+        request (fixture): Provide information on the executing test function.
+
     """
     try:
         local_internal_options = request.param
@@ -190,7 +194,7 @@ def configure_local_internal_options_function(request):
     wazuh_configuration.set_local_internal_options_dict(backup_local_internal_options)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def restart_wazuh_function(request):
     """Restart before starting a test, and stop it after finishing.
 
@@ -226,7 +230,7 @@ def restart_wazuh_function(request):
             control_service('stop', daemon=daemon)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def file_monitoring(request):
     """Fixture to handle the monitoring of a specified file.
 
