@@ -9,21 +9,20 @@
  * Foundation.
  */
 
-#ifndef _CONTENT_MODULE_FACADE_TEST_HPP
-#define _CONTENT_MODULE_FACADE_TEST_HPP
+#ifndef _CONTENT_REGISTER_TEST_HPP
+#define _CONTENT_REGISTER_TEST_HPP
 
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
-#include <string>
 
 /**
- * @brief Runs unit tests for ContentModuleFacade
+ * @brief Runs unit tests for ContentRegister
  */
-class ContentModuleFacadeTest : public ::testing::Test
+class ContentRegisterTest : public ::testing::Test
 {
 protected:
-    ContentModuleFacadeTest() = default;
-    ~ContentModuleFacadeTest() override = default;
+    ContentRegisterTest() = default;
+    ~ContentRegisterTest() override = default;
 
     nlohmann::json m_parameters;
 
@@ -35,7 +34,7 @@ protected:
     {
         m_parameters = R"(
             {
-                "topicName": "content-module-facade-tests",
+                "topicName": "content-register-tests",
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
@@ -44,29 +43,13 @@ protected:
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
                     "url": "https://swapi.dev/api/people/1",
-                    "outputFolder": "/tmp/content-module-facade-tests",
+                    "outputFolder": "/tmp/content-register-tests",
                     "dataFormat": "json",
                     "fileName": "sample1.json"
                 }
             }
         )"_json;
     }
-
-    /**
-     * @brief Tear down routine for tests
-     *
-     */
-    // cppcheck-suppress unusedFunction
-    void TearDown() override
-    {
-        // Removes the directory if it exists
-        const auto outputFolder = m_parameters.at("configData").at("outputFolder").get<const std::string>();
-        if (std::filesystem::exists(outputFolder))
-        {
-            // Delete the output folder.
-            std::filesystem::remove_all(outputFolder);
-        }
-    }
 };
 
-#endif //_CONTENT_MODULE_FACADE_TEST_HPP
+#endif //_CONTENT_REGISTER_TEST_HPP

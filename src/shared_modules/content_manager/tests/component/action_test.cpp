@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager - Component Tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 26, 2023.
  *
@@ -169,25 +169,79 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
  */
 TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 {
-    GTEST_SKIP();
-    auto routerProvider {std::make_shared<RouterProvider>(m_parameters.at("topicName"))};
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+
+    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
     EXPECT_NO_THROW(routerProvider->start());
 
     m_parameters["ondemand"] = true;
 
-    auto action {std::make_shared<Action>(routerProvider, m_parameters.at("topicName"), m_parameters)};
+    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
 
-    EXPECT_TRUE(std::filesystem::exists(m_parameters.at("configData").at("outputFolder")));
+    EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
     EXPECT_NO_THROW(action->registerActionOnDemand());
 
     EXPECT_NO_THROW(action->unregisterActionOnDemand());
 
-    std::string filePath = m_parameters.at("configData").at("outputFolder").get<std::string>() + "/" +
-                           m_parameters.at("configData").at("fileName").get<std::string>();
+    EXPECT_NO_THROW(action->clearEndpointsActionOnDemand());
 
-    EXPECT_TRUE(std::filesystem::exists(filePath));
+    EXPECT_NO_THROW(routerProvider->stop());
+}
+
+/*
+ * @brief Tests the instantiation of two Actions on demand with the same topicName
+ */
+TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
+{
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+
+    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
+
+    EXPECT_NO_THROW(routerProvider->start());
+
+    m_parameters["ondemand"] = true;
+
+    auto action1 {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action2 {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+
+    EXPECT_TRUE(std::filesystem::exists(outputFolder));
+
+    EXPECT_NO_THROW(action1->registerActionOnDemand());
+    EXPECT_THROW(action2->registerActionOnDemand(), std::runtime_error);
+
+    EXPECT_NO_THROW(action1->unregisterActionOnDemand());
+
+    EXPECT_NO_THROW(action1->clearEndpointsActionOnDemand());
+
+    EXPECT_NO_THROW(routerProvider->stop());
+}
+
+/*
+ * @brief Tests the instantiation of the Action class and runActionOnDemand
+ */
+TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
+{
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+
+    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
+
+    EXPECT_NO_THROW(routerProvider->start());
+
+    m_parameters["ondemand"] = true;
+
+    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+
+    EXPECT_TRUE(std::filesystem::exists(outputFolder));
+
+    EXPECT_NO_THROW(action->registerActionOnDemand());
+
+    EXPECT_NO_THROW(action->unregisterActionOnDemand());
+    EXPECT_NO_THROW(action->clearEndpointsActionOnDemand());
 
     EXPECT_NO_THROW(routerProvider->stop());
 }

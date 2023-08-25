@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager - Component Tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 26, 2023.
  *
@@ -35,21 +35,21 @@ protected:
     void SetUp() override
     {
         m_parameters = R"(
-          {
-              "topicName": "component-tests",
-              "interval": 1,
-              "ondemand": true,
-              "configData": {
-                 "contentSource": "api",
-                 "compressionType": "raw",
-                 "versionedContent": "false",
-                 "deleteDownloadedContent": false,
-                 "url": "https://swapi.dev/api/people/1",
-                 "outputFolder": "/tmp/component-tests",
-                 "dataFormat": "json",
-                 "fileName": "sample1.json"
-              }
-           }
+            {
+                "topicName": "action-orchestrator-tests",
+                "interval": 1,
+                "ondemand": true,
+                "configData": {
+                    "contentSource": "api",
+                    "compressionType": "raw",
+                    "versionedContent": "false",
+                    "deleteDownloadedContent": false,
+                    "url": "https://swapi.dev/api/people/1",
+                    "outputFolder": "/tmp/action-orchestrator-tests",
+                    "dataFormat": "json",
+                    "fileName": "sample1.json"
+                }
+            }
         )"_json;
     }
     /**

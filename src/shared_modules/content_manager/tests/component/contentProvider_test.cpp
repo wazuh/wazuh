@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager - Component Tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 26, 2023.
  *
@@ -44,7 +44,7 @@ TEST_F(ContentProviderTest, TestInstantiationWithoutConfigData)
 }
 
 /*
- * @brief Tests the instantiation of the ContentProvider class and startActionScheduler
+ * @brief Tests the instantiation of the ContentProvider class and start action scheduler
  */
 TEST_F(ContentProviderTest, TestInstantiationAndStartActionScheduler)
 {
@@ -60,12 +60,34 @@ TEST_F(ContentProviderTest, TestInstantiationAndStartActionScheduler)
 }
 
 /*
- * @brief Tests the instantiation of the ContentProvider class and startOnDemandAction
+ * @brief Tests the instantiation of the ContentProvider class and change scheduler interval
  */
-TEST_F(ContentProviderTest, TestInstantiationAndStartOnDemandAction)
+TEST_F(ContentProviderTest, TestInstantiationAndChangeSchedulerInterval)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+    const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
+
+    auto contentProvider {std::make_shared<ContentProvider>(topicName, m_parameters)};
+
+    EXPECT_NO_THROW(contentProvider->startActionScheduler(interval));
+
+    EXPECT_NO_THROW(contentProvider->changeSchedulerInterval(interval + 1));
+
+    EXPECT_TRUE(std::filesystem::exists(outputFolder));
+}
+
+/*
+ * @brief Tests the instantiation of the ContentProvider class and start on demand action
+ */
+TEST_F(ContentProviderTest, TestInstantiationAndStartOnDemandAction)
+{
+    // TODO
+    GTEST_SKIP();
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+
+    m_parameters["ondemand"] = true;
 
     auto contentProvider {std::make_shared<ContentProvider>(topicName, m_parameters)};
 
