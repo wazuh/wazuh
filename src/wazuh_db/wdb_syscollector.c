@@ -569,7 +569,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, format, -1, NULL);
+    sqlite3_bind_text(stmt, 3, NULL != format ? format : "", -1, NULL); // Avoid bind NULL for agents older than 4.5.2
     sqlite3_bind_text(stmt, 4, name, -1, NULL);
     sqlite3_bind_text(stmt, 5, priority, -1, NULL);
     sqlite3_bind_text(stmt, 6, section, -1, NULL);
@@ -585,7 +585,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 12, multiarch, -1, NULL);
     sqlite3_bind_text(stmt, 13, source, -1, NULL);
     sqlite3_bind_text(stmt, 14, description, -1, NULL);
-    sqlite3_bind_text(stmt, 15, location, -1, NULL);
+    sqlite3_bind_text(stmt, 15, NULL != location ? location : "", -1, NULL); // Avoid bind NULL for agents older than 4.5.2
     sqlite3_bind_int(stmt, 16, triaged);
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 18, item_id, -1, NULL);

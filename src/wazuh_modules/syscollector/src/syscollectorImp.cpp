@@ -331,9 +331,9 @@ constexpr auto PACKAGES_SQL_STATEMENT
     format TEXT,
     checksum TEXT,
     item_id TEXT,
-    PRIMARY KEY (name,version,architecture,location)) WITHOUT ROWID;)"
+    PRIMARY KEY (name,version,architecture,format,location)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> PACKAGES_ITEM_ID_FIELDS{"name", "version", "architecture", "location"};
+static const std::vector<std::string> PACKAGES_ITEM_ID_FIELDS{"name", "version", "architecture", "format", "location"};
 
 constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
 {
