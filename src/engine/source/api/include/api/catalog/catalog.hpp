@@ -68,10 +68,38 @@ private:
 
     std::optional<base::Error> validate(const Resource& item, const json::Json& content) const;
 
+    /**
+     * @brief Get the Document or error from the store.
+     *
+     * @param resource Resource identifying the document
+     * @return base::RespOrError<store::Doc> Document or error
+     */
     base::RespOrError<store::Doc> getDoc(const Resource& resource) const;
+
+    /**
+     * @brief Get a collection or error from the store.
+     *
+     * @param resource Resource identifying the collection
+     * @param namespaceId Namespace name where the collection search
+     * @return base::RespOrError<store::Col>
+     */
     base::RespOrError<store::Col> getCol(const Resource& resource, const std::string& namespaceId) const;
 
+    /**
+     * @brief Delete a document or error from the store.
+     *
+     * @param resource Resource identifying the document
+     * @return base::OptError Error if the operation failed
+     */
     base::OptError delDoc(const Resource& resource);
+
+    /**
+     * @brief Delete a collection or error from the store.
+     *
+     * @param resource Resource identifying the collection
+     * @param namespaceId Namespace name where the collection is located
+     * @return base::OptError Error if the operation failed
+     */
     base::OptError delCol(const Resource& resource, const std::string& namespaceId);
 
 
@@ -123,10 +151,10 @@ public:
      *
      * @param resource Resource identifying the item or collection to get
      * @param namespaceIds Namespace names where the items are located, only needed if resource is a collection
-     * @return std::variant<std::string, base::Error> Error if the operation failed or the
+     * @return base::RespOrError<std::string> Error if the operation failed or the
      * content of the resource
      */
-    std::variant<std::string, base::Error> getResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {}) const;
+    base::RespOrError<std::string> getResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {}) const;
 
     /**
      * @brief Delete a resource
@@ -135,7 +163,7 @@ public:
      * @param namespaceIds Namespace names where the items are located, only needed if resource is a collection
      * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {});
+    base::OptError deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {});
 
     /**
      * @brief Validate an Asset or Environment.

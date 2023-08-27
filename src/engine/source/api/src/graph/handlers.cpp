@@ -81,10 +81,10 @@ api::Handler resourceGet(const Config& config)
             return ::api::adapter::genericError<ResponseType>(std::string {"Invalid /policy name: "} + e.what());
         }
 
-        decltype(config.builder->buildPolicy({})) policy;
+        decltype(config.m_builder->buildPolicy({})) policy;
         try
         {
-            policy = config.builder->buildPolicy({policyName});
+            policy = config.m_builder->buildPolicy({policyName});
         }
         catch (const std::exception& e)
         {
