@@ -9,6 +9,9 @@
 #include <unistd.h>
 
 #include <gtest/gtest.h>
+
+#include <filesystem>
+
 #include <logging/logging.hpp>
 #include <uvw.hpp>
 
@@ -18,15 +21,28 @@
 
 using namespace engineserver::endpoint;
 
+namespace
+{
+std::filesystem::path uniquePath()
+{
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid; // Unique path per thread and process
+    return std::filesystem::path("/tmp") / (ss.str() + "_unixDatagram_test.sock");
+}
+} // namespace
+
 class UnixDatagramTest : public ::testing::Test
 {
 protected:
     std::shared_ptr<uvw::Loop> loop;
-    std::string socketPath = "/tmp/unix_datagram_test.sock";
+    std::string socketPath;
 
     void SetUp() override
     {
         initLogging();
+        socketPath = uniquePath().c_str();
         loop = uvw::Loop::create();
     }
 
