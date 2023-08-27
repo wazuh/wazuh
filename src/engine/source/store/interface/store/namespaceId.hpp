@@ -8,14 +8,26 @@
 namespace store
 {
 
+/**
+ * @brief Represents a namespace identifier with only one part.
+ *
+ * A NamespaceId is a unique identifier for a namespace with only one part. It is represented as a base::Name object.
+ *
+ * @note NamespaceId must have only one part, cannot be empty and cannot contain '/'.
+ */
 class NamespaceId
 {
 public:
-    static const std::size_t PARTS_NAMESPACE_SIZE = 1;
+    static const std::size_t PARTS_NAMESPACE_SIZE = 1; ///< NamespaceId must have only one part
 
 private:
-    base::Name m_id;
+    base::Name m_id; ///< NamespaceId as a base::Name
 
+    /**
+     * @brief Assert that the NamespaceId is valid
+     *
+     * @throws std::invalid_argument if the NamespaceId is invalid
+     */
     void assertValid()
     {
         if (m_id.parts().size() != PARTS_NAMESPACE_SIZE)
@@ -29,22 +41,45 @@ public:
     NamespaceId() = default;
     ~NamespaceId() = default;
 
+    /**
+     * @brief Constructs a NamespaceId object with the given id.
+     *
+     * @param id The id of the namespace.
+     */
     explicit NamespaceId(const std::string& id)
         : m_id(id)
     {
         assertValid();
     }
+
+    /**
+     * @brief Constructs a NamespaceId object with the given id.
+     *
+     * @param id The id of the namespace.
+     */
     explicit NamespaceId(const char* id)
         : m_id(id)
     {
         assertValid();
     }
+
+    /**
+     * @brief Constructs a NamespaceId object with the given id.
+     *
+     * @param id The id of the namespace.
+     */
     explicit NamespaceId(const base::Name& id)
         : m_id(id)
     {
         assertValid();
     }
 
+    /**
+     * @brief Converts a base::Name object to a NamespaceId object.
+     *
+     * @param name The base::Name object to convert.
+     * @return A base::RespOrError object containing either a NamespaceId object or an error message.
+     */
     static base::RespOrError<NamespaceId> fromName(const base::Name& name)
     {
         NamespaceId namespaceId;
