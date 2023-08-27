@@ -13,7 +13,7 @@ namespace api::graph::handlers
  */
 struct Config
 {
-    std::shared_ptr<builder::Builder> builder;
+    std::shared_ptr<builder::Builder> m_builder;
 };
 
 /** @brief Handler for the resource endpoint get command.

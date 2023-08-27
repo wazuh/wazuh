@@ -23,12 +23,18 @@ private:
 
 public:
     /**
-     * @brief Construct a new Api
+     * @brief Construct a new Api object
+     *
      */
     Api()
         : m_registry(std::make_shared<api::Registry>())
         , m_rbac(std::weak_ptr<rbac::IRBAC>()) {};
 
+    /**
+     * @brief Construct a new Api object
+     *
+     * @param rbac RBAC instance to use in the API
+     */
     Api(std::weak_ptr<rbac::IRBAC> rbac)
         : m_registry(std::make_shared<api::Registry>())
         , m_rbac(rbac) {};

@@ -93,6 +93,10 @@ static inline void loggingInit(LoggingConfig& cfg)
     getDefaultLogger()->set_pattern(cfg.headerFormat);
 }
 
+/**
+ * @brief Used to initialize the logging system in a test environment.
+ *
+ */
 inline void testInit()
 {
     static bool initialized = false;

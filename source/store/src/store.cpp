@@ -288,8 +288,6 @@ Store::Store(std::shared_ptr<IDriver> driver)
     }
 
     // Load the cache
-
-    // TODO Remove 'this' of copy lambda (m_driver and m_store)
     auto visitor = [this](const base::Name& name, const NamespaceId& nsid, auto& visitorRef) -> void
     {
         // Is a document of nsid
