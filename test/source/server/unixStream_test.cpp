@@ -7,6 +7,7 @@
 #include <tuple>
 #include <typeinfo>
 #include <unistd.h>
+#include <filesystem>
 
 #include <condition_variable>
 #include <gtest/gtest.h>
@@ -21,6 +22,18 @@
 using namespace engineserver;
 using namespace engineserver::endpoint;
 using SharedCounter = std::shared_ptr<std::atomic<std::size_t>>;
+
+namespace
+{
+std::filesystem::path uniquePath()
+{
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid; // Unique path per thread and process
+    return std::filesystem::path("/tmp") / (ss.str() + "_unixStream_test.sock");
+}
+} // namespace
 
 class TestProtocolHandler : public ProtocolHandler
 {
@@ -156,7 +169,7 @@ protected:
         SharedCounter m_proccessdMessages = std::make_shared<std::atomic<std::size_t>>(0);
         SharedCounter m_conexions = std::make_shared<std::atomic<std::size_t>>(0);
         m_factory = std::make_shared<TestProtocolHandlerFactory>(m_proccessdMessages, m_conexions);
-        m_socketPath = "/tmp/unix_stream_test.sock";
+        m_socketPath = uniquePath().c_str();
     }
 
     void TearDown() override { unlink(m_socketPath.c_str()); }
