@@ -345,7 +345,7 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
     return std::nullopt;
 }
 
-std::variant<store::Doc, base::Error> Catalog::getDoc(const Resource& resource) const
+base::RespOrError<store::Doc> Catalog::getDoc(const Resource& resource) const
 {
     const auto storeResult = store::utils::get(m_store, resource.m_name, true);
     if (std::holds_alternative<base::Error>(storeResult))
@@ -358,7 +358,7 @@ std::variant<store::Doc, base::Error> Catalog::getDoc(const Resource& resource) 
     return content;
 }
 
-std::variant<store::Col, base::Error> Catalog::getCol(const Resource& resource, const std::string& namespaceId) const
+base::RespOrError<store::Col> Catalog::getCol(const Resource& resource, const std::string& namespaceId) const
 {
     auto result = m_store->readCol(resource.m_name, store::NamespaceId {namespaceId});
     if (base::isError(result))
@@ -370,7 +370,7 @@ std::variant<store::Col, base::Error> Catalog::getCol(const Resource& resource, 
     return col;
 }
 
-std::variant<std::string, base::Error> Catalog::getResource(const Resource& resource,
+base::RespOrError<std::string> Catalog::getResource(const Resource& resource,
                                                             const std::vector<std::string>& namespaceIds) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
@@ -463,7 +463,7 @@ base::OptError Catalog::delCol(const Resource& resource, const std::string& name
     return m_store->deleteCol(resource.m_name, store::NamespaceId {namespaceId});
 }
 
-std::optional<base::Error> Catalog::deleteResource(const Resource& resource,
+base::OptError Catalog::deleteResource(const Resource& resource,
                                                    const std::vector<std::string>& namespaceIds)
 {
     if (Resource::Type::collection == resource.m_type)

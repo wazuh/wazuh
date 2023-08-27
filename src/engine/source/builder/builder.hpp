@@ -22,10 +22,17 @@ namespace builder
 class Builder : public IValidator
 {
 private:
-    std::shared_ptr<store::IStoreReader> m_storeRead;
-    std::shared_ptr<internals::Registry<internals::Builder>> m_registry;
+    std::shared_ptr<store::IStoreReader> m_storeRead;                    ///< Store reader interface
+    std::shared_ptr<internals::Registry<internals::Builder>> m_registry; ///< Registry of builders
 
 public:
+
+    /**
+     * @brief Construct a new Builder
+     *
+     * @param storeRead Store reader interface to manipulate the Asset, Environment and Schema files
+     * @param registry Registry of builders to build the assets
+     */
     Builder(std::shared_ptr<store::IStoreReader> storeRead, std::shared_ptr<internals::Registry<internals::Builder>> registry)
         : m_storeRead {storeRead}
         , m_registry {registry}

@@ -73,22 +73,16 @@ public:
      */
     virtual std::optional<NamespaceId> getNamespace(const base::Name& name) const = 0;
 
-    // List in first level (?)
-    // virtual base::RespOrError<Col> list(const NamespaceId& namespaceId) const = 0;
-    // virtual base::RespOrError<Col> listDoc(const NamespaceId& namespaceId) const = 0;
-    // virtual base::RespOrError<Col> listCol(const NamespaceId& namespaceId) const = 0;
-    // decoder
-    // filter
 
 
 };
 
 /**
  * @brief Internal Document manager interface. Stores documents that are not accessible from the outside.
- * 
+ *
  * @details The documents managed by this interface are stored under a special namespace, only accessible
  * from the internal interface.
- * 
+ *
  */
 class IStoreInternal
 {
@@ -97,7 +91,7 @@ public:
 
     /**
      * @brief Create a Internal Document in the store.
-     * 
+     *
      * @param name name of the document.
      * @param content document content.
      * @return base::OptError with the error or empty if no error.
@@ -106,7 +100,7 @@ public:
 
     /**
      * @brief Read a Internal document from the store.
-     * 
+     *
      * @param name name of the document.
      * @return base::RespOrError<Doc> with the document or error.
      */
@@ -114,7 +108,7 @@ public:
 
     /**
      * @brief Update a Internal document in the store.
-     * 
+     *
      * @param name name of the document.
      * @param content document content.
      * @return base::OptError with the error or empty if no error.
@@ -123,16 +117,16 @@ public:
 
     /**
      * @brief Upsert a Internal document in the store.
-     * 
+     *
      * @param name name of the document.
-     * @param content document content. 
-     * @return base::OptError with the error or empty if no error. 
+     * @param content document content.
+     * @return base::OptError with the error or empty if no error.
      */
     virtual base::OptError upsertInternalDoc(const base::Name& name, const Doc& content) = 0;
 
     /**
      * @brief Delete a Internal document from the store.
-     * 
+     *
      * @param name name of the document.
      * @return base::OptError with the error or empty if no error.
      */
