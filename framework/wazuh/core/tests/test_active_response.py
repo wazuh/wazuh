@@ -4,7 +4,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import os
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -12,6 +12,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
+        from wazuh.core.agent import Agent
 
 # Variables
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
@@ -153,7 +154,8 @@ def test_create_json_message(expected_exception, command, arguments, alert):
         with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
             active_response.ARJsonMessage().create_message(command=command, arguments=arguments, alert=alert)
     else:
-        ret = json.loads(active_response.ARJsonMessage().create_message(command=command, arguments=arguments, alert=alert))
+        ret = json.loads(
+            active_response.ARJsonMessage().create_message(command=command, arguments=arguments, alert=alert))
         assert ret["version"] == 1, f'Wrong message version'
         assert command in ret["command"], f'Command not being returned'
         if arguments:
@@ -187,3 +189,59 @@ def test_shell_escape(command, expected_escape):
     """
     ret = active_response.shell_escape(command)
     assert ret.count('\\') == expected_escape, f'Number of escaped symbols do not match'
+
+
+@pytest.mark.parametrize('agent_id, command, arguments, alert',
+                         [
+                             ('agent001', 'ls', ['arg1', 'arg2'], {'type': 'Firewall', 'src_ip': '192.168.1.1'})
+                         ])
+def test_send_ar_message(agent_id, command, arguments, alert):
+    mock_agent_info = {'status': 'active', 'version': '3.0'}
+    mock_agent_conf = {'active-response': {'disabled': 'no'}}
+
+    mock_wq = MagicMock()
+
+    with patch.object(Agent, 'get_basic_information', return_value=mock_agent_info) as mock_get_basic_info, \
+            patch.object(Agent, 'get_config', return_value=mock_agent_conf) as mock_get_config, \
+            patch.object(active_response.ARMessageBuilder, 'choose_builder') as mock_choose_builder:
+        mock_message_builder = MagicMock()
+        mock_message_builder_instance = mock_message_builder.return_value
+        mock_choose_builder.return_value = mock_message_builder_instance
+
+        active_response.send_ar_message(agent_id=agent_id, wq=mock_wq, command=command, arguments=arguments,
+                                        alert=alert)
+
+        mock_get_basic_info.assert_called_once_with()
+        mock_get_config.assert_called_once_with('com', 'active-response', '3.0')
+        mock_choose_builder.assert_called_once_with('3.0')
+        mock_message_builder_instance.create_message.assert_called_once_with(command=command, arguments=arguments,
+                                                                             alert=alert)
+        mock_wq.send_msg_to_agent.assert_called_once_with(msg=mock_message_builder_instance.create_message.return_value,
+                                                          agent_id=agent_id,
+                                                          msg_type=active_response.WazuhQueue.AR_TYPE)
+
+
+@pytest.mark.parametrize('mock_agent_info, mock_agent_conf, expected_error_code',
+                         [
+                             ({'status': 'not-active', 'version': '3.0'}, {'active-response': {'disabled': 'no'}}, 1707),
+                             ({'status': 'active', 'version': '3.0'}, {'active-response': {'disabled': 'yes'}}, 1750),
+                         ])
+def test_send_ar_message_nok(mock_agent_info, mock_agent_conf, expected_error_code):
+    agent_id = 'agent001'
+    command = 'ls'
+    arguments = ['arg1', 'arg2']
+    alert = {'type': 'Firewall', 'src_ip': '192.168.1.1'}
+
+    mock_wq = MagicMock()
+
+    with patch.object(Agent, 'get_basic_information', return_value=mock_agent_info) as mock_get_basic_info, \
+            patch.object(Agent, 'get_config', return_value=mock_agent_conf) as mock_get_config, \
+            patch.object(active_response.ARMessageBuilder, 'choose_builder') as mock_choose_builder:
+        mock_message_builder = MagicMock()
+        mock_message_builder_instance = mock_message_builder.return_value
+        mock_choose_builder.return_value = mock_message_builder_instance
+
+        with pytest.raises(Exception) as e:
+            active_response.send_ar_message(agent_id=agent_id, wq=mock_wq, command=command, arguments=arguments,
+                                            alert=alert)
+        assert e.value.code == expected_error_code

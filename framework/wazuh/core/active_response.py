@@ -46,10 +46,8 @@ def shell_escape(command: str) -> str:
     """
     shell_escapes = \
         ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
-
-    if any(special_char in command for special_char in shell_escapes):
-        for shell_esc_char in shell_escapes:
-            command = command.replace(shell_esc_char, "\\" + shell_esc_char)
+    for shell_esc_char in shell_escapes:
+        command = command.replace(shell_esc_char, "\\" + shell_esc_char)
 
     return command
 
@@ -237,12 +235,10 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
     agent_id : str
         ID specifying the agent where the msg_queue will be sent to.
     wq : WazuhQueue
-        WazuhQueue used for the active response messages.
+        Used for the active response messages.
     command : str
         Command running in the agents. If this value starts with !, then it refers to a script name instead of a
         command name.
-    custom : bool
-        Whether the specified command is a custom command or not.
     arguments : list
         Command arguments.
     alert : dict
