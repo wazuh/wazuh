@@ -1,4 +1,4 @@
-from api_communication import communication #TODO: check on a clean install!
+from cli_communication import communication #TODO: check on a clean install!
 from behave import given, when, then, step
 import os
 import json
@@ -36,12 +36,15 @@ def step_impl(context):
 
 @when('I run the command "{command}"')
 def step_impl(context, command: str):
-    context.result = CLI_KVDB.execute_command(command)
-    CLI_KVDB.execute_command("kvdb delete --name TestDB")
+    context.code, context.result = CLI_KVDB.execute_command(command)
+    CLI_KVDB.execute_command("kvdb delete --name TestDB1")
 
 @then('I should receive a {response} message with the new database information')
 def step_impl(context, response: str):
-    context.result != response
+    if response == "success":
+        assert 0 == context.code
+    else:
+        assert 7 == context.code
 
 
 # Second Scenario
@@ -66,17 +69,23 @@ def step_impl(context, database_name: str):
 
 @when('I run the command "{command}')
 def step_impl(context, command: str):
-    context.result = CLI_KVDB.execute_command(command)
+    context.code, context.result = CLI_KVDB.execute_command(command)
 
-@then('I should receive a success message indicating that "{response}"')
+@then('I should receive a {response} message indicating that "The database TestDB has been deleted."')
 def step_impl(context, response: str):
     assert context.result != response
-
+    if response == "success":
+        assert 0 == context.code
+    else:
+        assert 7 == context.code
 
 # Fourth Scenario
 @then('I should receive a {response} message with the new key-value pair information')
 def step_impl(context, response: str):
-    assert context.result != response
+    if response == "success":
+        assert 0 == context.code
+    else:
+        assert 7 == context.code
 
 
 # Fifth Scenario
@@ -86,18 +95,25 @@ def step_impl(context, key_name: str):
 
 @then('I should receive for CLI a {result} indicating that the key value has been updated')
 def step_impl(context, result: str):
-    assert context.result != result
+    if result == "success":
+        assert 0 == context.code
+    else:
+        assert 7 == context.code
 
 
 # Sixth Scenario
 @then('I should receive a {response} message indicating that the key-value pair with the key "sampleKey" has been deleted')
 def step_impl(context, response: str):
-    assert context.result != response
+    if response == "success":
+        assert 0 == context.code
+    else:
+        assert 7 == context.code
 
 
 # Seventh Scenario
 @when('I add using CLI in the database "{database_name}" {i} key-value pairs with the key called "{key_name}"_id and another {j} key-value pairs with the key called "{other_key_name}"_id')
 def step_impl(context, database_name:str , i: str, key_name: str, j: str, other_key_name: str):
+    CLI_KVDB.execute_command(f"kvdb create -n {database_name}")
     for first in range(int(i)):
         name = key_name + "_" + str(first)
         CLI_KVDB.execute_command(f"kvdb insert -n {database_name} -k {name} -v sampleValue")
@@ -105,10 +121,12 @@ def step_impl(context, database_name:str , i: str, key_name: str, j: str, other_
         name = other_key_name + "_" + str(second)
         CLI_KVDB.execute_command(f"kvdb insert -n {database_name} -k {name} -v sampleValue")
 
-@when('I run from CLI the command "{command}')
+@when('I run from CLI the command "{command}"')
 def step_impl(context, command: str):
     context.result = CLI_KVDB.execute_command(command)
+    CLI_KVDB.execute_command(f"kvdb delete -n TestDBsearch")
 
-@then('I should receive a JSON of entries with the {i} key-value pairs whose keyname contains the prefix.')
-def step_impl(context, i: str):
+@then('I should receive a JSON of entries with the {size} key-value pairs whose keyname contains the prefix.')
+def step_impl(context, size: str):
     print(context.result)
+

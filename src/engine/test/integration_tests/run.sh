@@ -1,45 +1,54 @@
 #!/bin/bash
-
-# Check if a path argument is provided
-if [ $# -lt 1 ]; then
-    echo "Usage: $0 <github_working_directory> [<config_file>]"
-    exit 1
-fi
-
-GITHUB_WORKING_DIRECTORY="$1"
-CONF_FILE="${2:-general.conf}"
-ENGINE_SRC_DIR=$GITHUB_WORKING_DIRECTORY/src/engine
-ENVIRONMENT_DIR=$GITHUB_WORKING_DIRECTORY/environment
-INTEGRATION_TESTS_DIR=$ENGINE_SRC_DIR/test/integration_tests
-SERV_CONF_FILE=$INTEGRATION_TESTS_DIR/configuration_files/$CONF_FILE
-
-# Check if the configuration file exists
-if [ ! -f "$SERV_CONF_FILE" ]; then
-    echo "Error: Configuration file $SERV_CONF_FILE not found."
-    exit 1
-fi
-
-# Replace occurrences of /var/ossec with the new path
-sed -i "s|github_workspace|$ENVIRONMENT_DIR|g" "$SERV_CONF_FILE"
-
-# Execute the binary with the argument "server start"
-"$ENGINE_SRC_DIR/build/main" --config $SERV_CONF_FILE server -l trace start  &
-
-# Capture the process ID of the binary
-BINARY_PID=$!
-
-# Wait for the server to start
-# You might need to replace this with a more reliable check
-sleep 2
-
-# Find "features" folders and execute Behave
-find "$INTEGRATION_TESTS_DIR" -type d -name "features" | while read features_dir; do
-    steps_dir=$(dirname "$features_dir")/steps
-    if [ -d "$steps_dir" ]; then
-        echo "Running Behave in $features_dir"
-        behave "$features_dir"
+check_arguments() {
+    if [ $# -lt 1 ]; then
+        echo "Usage: $0 <github_working_directory> [<config_file>]"
+        exit 1
     fi
-done
+}
 
-# Terminate the binary process by sending a termination signal
-kill $BINARY_PID
+check_config_file() {
+    local conf_file="$1"
+    if [ ! -f "$conf_file" ]; then
+        echo "Error: Configuration file $conf_file not found."
+        exit 1
+    fi
+}
+
+run_behave_tests() {
+    local integration_tests_dir="$1"
+    local exit_code=0
+    for features_dir in $(find "$integration_tests_dir" -type d -name "features"); do
+        local steps_dir=$(dirname "$features_dir")/steps
+        if [ -d "$steps_dir" ]; then
+            echo "Running Behave in $features_dir"
+            behave "$features_dir" || exit_code=1
+        fi
+    done
+    echo "Exit code $exit_code"
+    return $exit_code
+}
+
+main() {
+    check_arguments "$@"
+    local github_working_dir="$1"
+    local conf_file="${2:-general.conf}"
+    local engine_src_dir="$github_working_dir/src/engine"
+    local environment_dir="$github_working_dir/environment"
+    local integration_tests_dir="$engine_src_dir/test/integration_tests"
+    local serv_conf_file="$integration_tests_dir/configuration_files/$conf_file"
+    check_config_file "$serv_conf_file"
+    # Replace occurrences of /var/ossec with the new path
+    sed -i "s|github_workspace|$environment_dir|g" "$serv_conf_file"
+    # Execute the binary with the argument "server start"
+    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l trace start &
+    # Capture the process ID of the binary
+    local binary_pid=$!
+    # Wait for the server to start
+    sleep 2
+    run_behave_tests "$integration_tests_dir"
+    local behave_exit_code=$?
+    # Terminate the binary process
+    kill $binary_pid
+    exit $behave_exit_code
+}
+main "$@"
