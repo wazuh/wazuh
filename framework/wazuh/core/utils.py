@@ -1360,6 +1360,8 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 class WazuhDBQuery(object):
     """This class describes a database query for wazuh."""
 
+    JOIN_TYPES = ['LEFT', 'CROSS', 'OUTER']
+
     def __init__(self, offset: int, limit: int, table: str, sort: dict, search: dict, select: list, query: str,
                  fields: dict, default_sort_field: str, count: bool, get_data: bool, backend: str,
                  default_sort_order: str = 'ASC', filters: dict = {}, min_select_fields: set = set(),
@@ -1464,7 +1466,6 @@ class WazuhDBQuery(object):
         self.backend = backend
         self.rbac_negate = rbac_negate
         self.joins = joins
-        self.join_types = ['LEFT', 'CROSS', 'OUTER']
         self.group_by = group_by
 
     def __enter__(self):
@@ -1578,7 +1579,7 @@ class WazuhDBQuery(object):
 
         for table, join in self.joins.items():
             join_type = join['type'].upper()
-            if join_type not in self.join_types:
+            if join_type not in WazuhDBQuery.JOIN_TYPES:
                 raise WazuhError(1416, 'invalid join type: ' + join_type)
 
             conditions = join['conditions']
