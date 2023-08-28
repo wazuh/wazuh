@@ -34,7 +34,7 @@ private:
 
     std::weak_ptr<store::IStoreInternal> m_store;
 
-    std::optional<base::Error> loadModel()
+    base::OptError loadModel()
     {
         const auto store = m_store.lock();
         if (!store)
@@ -43,12 +43,12 @@ private:
         }
 
         auto model = store->readInternalDoc(detail::MODEL_NAME);
-        if (std::holds_alternative<base::Error>(model))
+        if (base::isError(model))
         {
-            return std::get<base::Error>(model);
+            return base::getError(model);
         }
 
-        auto modelJson = std::get<json::Json>(model);
+        auto modelJson = base::getResponse<json::Json>(model);
 
         auto roles = modelJson.getObject();
         if (!roles || roles.value().empty())
@@ -59,17 +59,17 @@ private:
         for (const auto& [roleName, permissionsJson] : roles.value())
         {
             auto role = Role::fromJson(roleName, permissionsJson);
-            if (std::holds_alternative<base::Error>(role))
+            if (base::isError(role))
             {
-                return std::get<base::Error>(role);
-            }
+                return base::getError(role);
+            }   
             m_roles[roleName] = std::get<Role>(role);
         }
 
         return std::nullopt;
     }
 
-    std::optional<base::Error> saveModel() const
+    base::OptError saveModel() const
     {
         json::Json modelJson;
         modelJson.setObject();
