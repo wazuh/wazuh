@@ -761,10 +761,8 @@ os_info *get_unix_version()
                   } else {
                       char *base;
                       char *found = NULL;
-                      char tag[] = "Oracle Solaris";
-                      char alt_tag[] = "Solaris";
-                      found = strstr(buff,tag) ? strstr(buff,alt_tag) : found;
-                      if (found) {
+                      char tag[] = "Solaris";
+                      if (found = strstr(buff, tag), found) {
                           for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
                           for (base = found; *found != '\0' && *found != ' '; found++);
                           *found = '\0';
