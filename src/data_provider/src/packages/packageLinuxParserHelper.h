@@ -12,6 +12,7 @@
 #ifndef _PACKAGE_LINUX_PARSER_HELPER_H
 #define _PACKAGE_LINUX_PARSER_HELPER_H
 
+#include "sharedDefs.h"
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
@@ -129,9 +130,11 @@ namespace PackageLinuxHelper
             ret["source"]       = source;
             ret["version"]      = version;
             ret["format"]       = "deb";
+            ret["location"]     = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
             ret["install_time"] = UNKNOWN_VALUE;
             ret["description"]  = description;
+            ret["location"]     = UNKNOWN_VALUE;
         }
 
         return ret;

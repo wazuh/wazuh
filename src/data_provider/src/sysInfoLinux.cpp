@@ -12,6 +12,7 @@
 #include <iostream>
 #include <regex>
 #include <sys/utsname.h>
+#include "packages/modernPackageDataRetriever.hpp"
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
@@ -594,6 +595,12 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     FactoryPackagesCreator<LINUX_TYPE>::getPackages(callback);
+    std::map<std::string, std::set<std::string>> searchPaths =
+    {
+        {"PYPI", UNIX_PYPI_DEFAULT_BASE_DIRS},
+        {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
+    };
+    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const

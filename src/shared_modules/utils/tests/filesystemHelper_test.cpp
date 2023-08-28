@@ -10,7 +10,6 @@
  */
 
 #include "filesystemHelper_test.h"
-#include "filesystemHelper.h"
 
 void FilesystemUtilsTest::SetUp() {};
 
@@ -60,4 +59,6 @@ TEST_F(FilesystemUtilsTest, getFileBinaryContent)
     const auto binContent {Utils::getBinaryContent("/usr/bin/gcc")};
     EXPECT_FALSE(binContent.empty());
 }
+
+
 #endif
