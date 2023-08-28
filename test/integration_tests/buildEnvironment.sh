@@ -1,35 +1,44 @@
 #!/bin/bash
+setup_directories() {
+    local base_dir="$1"
+    local src_dir="$2"
+    echo "--- Folder creation ---"
+    mkdir -p "$base_dir" "$base_dir/engine" "$base_dir/queue/sockets" "$base_dir/logs"
+    local ruleset_dir="$src_dir/ruleset/wazuh-core-test"
+    mkdir -p "$ruleset_dir/decoders" "$ruleset_dir/filters"
+    echo "name: decoder/test-message/0" > "$ruleset_dir/decoders/test-message.yml"
+    echo "name: filter/allow-all/0" > "$ruleset_dir/filters/allow-all.yml"
+    cat <<- EOM > "$ruleset_dir/manifest.yml"
+name: integration/wazuh-core-test/0
+decoders:
+  - decoder/test-message/0
+filters:
+  - filter/allow-all/0
+EOM
+}
 
-if [ $# -lt 1 ]; then
-    echo "Usage: $0 <github_working_directory>"
-    exit 1
-fi
+setup_engine() {
+    local src_dir="$1"
+    local engine_dir="$2"
+    echo "--- Setting up the engine ---"
+    mkdir -p "$engine_dir/store/schema" "$engine_dir/etc/kvdb"
+    local schemas=("wazuh-logpar-types" "wazuh-asset" "wazuh-policy" "engine-schema")
+    for schema in "${schemas[@]}"; do
+        mkdir -p "$engine_dir/store/schema/$schema"
+        cp "$src_dir/ruleset/schemas/$schema.json" "$engine_dir/store/schema/$schema/0"
+    done
+}
 
-GITHUB_WORKING_DIRECTORY="$1"
-CONF_FILE="${2:-general.conf}"
-
-ENGINE_SRC_DIR=$GITHUB_WORKING_DIRECTORY/src/engine
-ENVIRONMENT_DIR=$GITHUB_WORKING_DIRECTORY/environment
-ENGINE_DIR=$ENVIRONMENT_DIR/engine
-
-echo "--- Folder creation ---"
-mkdir -p $ENVIRONMENT_DIR
-mkdir -p $ENGINE_DIR
-mkdir -p $ENVIRONMENT_DIR/queue/sockets
-mkdir $ENVIRONMENT_DIR/logs
-touch $ENVIRONMENT_DIR/logs/engine-flood.log
-
-
-echo "--- Setting up the engine ---"
-mkdir -p $ENGINE_DIR/store/schema
-mkdir -p $ENVIRONMENT_DIR/etc/kvdb/
-mkdir -p $ENVIRONMENT_DIR/etc/kvdb_test/
-# Copy needed files in the store so the engine can start
-mkdir -p $ENGINE_DIR/store/schema/wazuh-logpar-types
-cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-logpar-types.json $ENGINE_DIR/store/schema/wazuh-logpar-types/0
-mkdir -p $ENGINE_DIR/store/schema/wazuh-asset
-cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-asset.json $ENGINE_DIR/store/schema/wazuh-asset/0
-mkdir -p $ENGINE_DIR/store/schema/wazuh-policy
-cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-policy.json $ENGINE_DIR/store/schema/wazuh-policy/0
-mkdir -p $ENGINE_DIR/store/schema/engine-schema
-cp $ENGINE_SRC_DIR/ruleset/schemas/engine-schema.json $ENGINE_DIR/store/schema/engine-schema/0
+main() {
+    if [ $# -lt 1 ]; then
+        echo "Usage: $0 <github_working_directory>"
+        exit 1
+    fi
+    GITHUB_WORKING_DIRECTORY="$1"
+    ENGINE_SRC_DIR="$GITHUB_WORKING_DIRECTORY/src/engine"
+    ENVIRONMENT_DIR="$GITHUB_WORKING_DIRECTORY/environment"
+    ENGINE_DIR="$ENVIRONMENT_DIR/engine"
+    setup_directories "$ENVIRONMENT_DIR" "$ENGINE_SRC_DIR"
+    setup_engine "$ENGINE_SRC_DIR" "$ENGINE_DIR"
+}
+main "$@"
