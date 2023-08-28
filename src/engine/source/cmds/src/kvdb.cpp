@@ -346,7 +346,9 @@ void configure(const CLI::App_p& app)
     auto search_subcommand = kvdbApp->add_subcommand(details::API_KVDB_SEARCH_SUBCOMMAND,
                                                   "Gets a list of keys filtered by a prefix of a DB named db-name.");
     search_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
-    search_subcommand->add_option("-p, --prefix", options->prefix, "prefix to filter.")->required();
+    search_subcommand->add_option("-f, --filter_prefix", options->prefix, "prefix to filter.")->required();
+    search_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")->default_val(ENGINE_KVDB_CLI_PAGE);
+    search_subcommand->add_option("-r, --records", options->records, "Number of records per page.")->default_val(ENGINE_KVDB_CLI_RECORDS);
     search_subcommand->callback([options]()
     {
         const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
