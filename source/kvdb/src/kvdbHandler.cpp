@@ -33,16 +33,16 @@ std::optional<base::Error> KVDBHandler::set(const std::string& key, const std::s
             else
             {
                 return base::Error {
-                    fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
+                    fmt::format("Can not save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
             }
         }
         else
         {
-            return base::Error {"Cannot access RocksDB Column Family Handle"};
+            return base::Error {"Can not access RocksDB Column Family Handle"};
         }
     }
 
-    return base::Error {"Cannot access RocksDB::DB"};
+    return base::Error {"Can not access RocksDB::DB"};
 }
 
 std::optional<base::Error> KVDBHandler::set(const std::string& key, const json::Json& value)
@@ -71,16 +71,16 @@ std::optional<base::Error> KVDBHandler::remove(const std::string& key)
             }
             else
             {
-                return base::Error {fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState())};
+                return base::Error {fmt::format("Can not remove key '{}'. Error: {}", key, status.getState())};
             }
         }
         else
         {
-            return base::Error {"Cannot access RocksDB Column Family Handle"};
+            return base::Error {"Can not access RocksDB Column Family Handle"};
         }
     }
 
-    return base::Error {"Cannot access RocksDB::DB"};
+    return base::Error {"Can not access RocksDB::DB"};
 }
 
 std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
@@ -103,16 +103,16 @@ std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
             }
             catch (const std::exception& ex)
             {
-                return base::Error {fmt::format("Cannot validate existance of key {}. Error: {}", key, ex.what())};
+                return base::Error {fmt::format("Can not validate existance of key {}. Error: {}", key, ex.what())};
             }
         }
         else
         {
-            return base::Error {"Cannot access RocksDB Column Family Handle"};
+            return base::Error {"Can not access RocksDB Column Family Handle"};
         }
     }
 
-    return base::Error {"Cannot access RocksDB::DB"};
+    return base::Error {"Can not access RocksDB::DB"};
 }
 
 std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
@@ -132,20 +132,32 @@ std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
             }
             else
             {
-                return base::Error {fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState())};
+                return base::Error {fmt::format("Can not get key '{}'. Error: {}", value, key, status.getState())};
             }
         }
         else
         {
-            return base::Error {"Cannot access RocksDB Column Family Handle"};
+            return base::Error {"Can not access RocksDB Column Family Handle"};
         }
     }
 
-    return base::Error {"Cannot access RocksDB::DB"};
+    return base::Error {"Can not access RocksDB::DB"};
 }
 
-std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHandler::dump(const unsigned int page,
-                                                                                            const unsigned int records)
+std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::dump(const unsigned int page,
+                                                                                const unsigned int records)
+{
+    return pageContent("", page, records);
+}
+
+std::variant<std::map<std::string, std::string>, base::Error>
+KVDBHandler::search(const std::string& prefix, const unsigned int page, const unsigned int records)
+{
+    return pageContent(prefix, page, records);
+}
+
+std::variant<std::map<std::string, std::string>, base::Error>
+KVDBHandler::pageContent(const std::string& prefix, const unsigned int page, const unsigned int records)
 {
     auto pRocksDB = m_weakDB.lock();
     if (pRocksDB)
@@ -153,24 +165,43 @@ std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHa
         auto pCFhandle = m_weakCFHandle.lock();
         if (pCFhandle)
         {
-            std::list<std::pair<std::string, std::string>> content;
-            std::shared_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
+            std::unique_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
+            rocksdb::Slice sliceFilter(prefix);
+            std::map<std::string, std::string> content;
             uint32_t actualPage = 1, counterRecords = 1;
 
             if (page == 0 && records == 0)
             {
-                for (iter->SeekToFirst(); iter->Valid(); iter->Next())
+                if (!sliceFilter.empty())
                 {
-                    content.push_back(std::make_pair(iter->key().ToString(), iter->value().ToString()));
+                    for (iter->SeekToFirst(); iter->Valid() && iter->key().starts_with(sliceFilter); iter->Next())
+                    {
+                        content[iter->key().ToString()] = iter->value().ToString();
+                    }
+                }
+                else
+                {
+                    for (iter->SeekToFirst(); iter->Valid(); iter->Next())
+                    {
+                        content[iter->key().ToString()] = iter->value().ToString();
+                    }
                 }
             }
             else
             {
                 for (iter->SeekToFirst(); iter->Valid() && actualPage <= page; iter->Next())
                 {
+                    if (!sliceFilter.empty())
+                    {
+                        if (!iter->key().starts_with(sliceFilter))
+                        {
+                            continue;
+                        }
+                    }
+
                     if (actualPage == page)
                     {
-                        content.push_back(std::make_pair(iter->key().ToString(), iter->value().ToString()));
+                        content[iter->key().ToString()] = iter->value().ToString();
                     }
 
                     if (counterRecords == records)
@@ -194,45 +225,10 @@ std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHa
             return content;
         }
 
-        return base::Error {"Cannot access RocksDB Column Family Handle"};
+        return base::Error {"Can not access RocksDB Column Family Handle"};
     }
 
-    return base::Error {"Cannot access RocksDB::DB"};
-}
-
-std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHandler::search(const std::string& prefix)
-{
-    auto pRocksDB = m_weakDB.lock();
-    if (pRocksDB)
-    {
-        auto pCFhandle = m_weakCFHandle.lock();
-        if (pCFhandle)
-        {
-            std::unordered_map<std::string, std::string> content {};
-            std::shared_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
-            rocksdb::Slice sliceFilter(prefix);
-
-            // if Iterator::Valid() is true, status() is guaranteed to be OK() so it's
-            // safe to proceed other operations without checking status():
-            for (iter->Seek(sliceFilter); iter->Valid() && iter->key().starts_with(sliceFilter); iter->Next())
-            {
-                content[iter->key().ToString()] = iter->value().ToString();
-            }
-
-            // errors include I/O errors, checksum mismatch, unsupported operations, internal errors, or other errors.
-            if (!iter->status().ok())
-            {
-                return base::Error {fmt::format(
-                    "Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
-            }
-
-            return content;
-        }
-
-        return base::Error {"Cannot access RocksDB Column Family Handle"};
-    }
-
-    return base::Error {"Cannot access RocksDB::DB"};
+    return base::Error {"Can not access RocksDB::DB"};
 }
 
 } // namespace kvdbManager

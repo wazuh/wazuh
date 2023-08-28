@@ -286,7 +286,7 @@ TEST_F(KVDBTest, DumpOkValidateOrder)
     const auto resultDump = handler->dump(1, 10);
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultDump));
-    const auto& result = std::get<std::list<std::pair<std::string, std::string>>>(resultDump);
+    const auto& result = std::get<std::map<std::string, std::string>>(resultDump);
 
     auto i = 1, key10 = 0;
     for (auto& [key, value] : result)
@@ -317,7 +317,7 @@ TEST_F(KVDBTest, DumpWihoutKeys)
     const auto resultDump = handler->dump(1, 100);
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultDump));
-    const auto& result = std::get<std::list<std::pair<std::string, std::string>>>(resultDump);
+    const auto& result = std::get<std::map<std::string, std::string>>(resultDump);
 
     ASSERT_EQ(result.size(), 0);
 }
@@ -340,7 +340,7 @@ TEST_P(DumpWithMultiplePages, Functionality)
     const auto result = handler->dump(page, records);
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
-    const auto& resultPage = std::get<std::list<std::pair<std::string, std::string>>>(result);
+    const auto& resultPage = std::get<std::map<std::string, std::string>>(result);
     ASSERT_EQ(resultPage.size(), expected);
 }
 

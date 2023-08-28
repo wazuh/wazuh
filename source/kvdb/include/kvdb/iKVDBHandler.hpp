@@ -2,8 +2,8 @@
 #define _I_KVDB_HANDLER_H
 
 #include <list>
+#include <map>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <variant>
 
@@ -80,36 +80,57 @@ public:
     virtual std::variant<std::string, base::Error> get(const std::string& key) = 0;
 
     /**
-     * @brief Retrieves all paginated content from the database.
+     * @brief Retrieves all content with pagination from the database.
      *
      * To retrieve all the contents of the database, without paging, the parameter page and records must be
      * sent in 0.
      *
      * @param page Page number.
      * @param records Quantity of records for page.
-     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
+     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs.
      * Specific error otherwise.
      */
-    virtual std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const unsigned int page,
-                                                                                           const unsigned int records) = 0;
+    virtual std::variant<std::map<std::string, std::string>, base::Error> dump(const unsigned int page,
+                                                                               const unsigned int records) = 0;
 
     /**
-     * @brief Retrieves the entire content of the DB.
+     * @brief Retrieves the entire content of the database.
      *
-     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
+     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs.
      * Specific error otherwise.
      */
-    inline std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump() { return dump(0, 0); };
+    inline std::variant<std::map<std::string, std::string>, base::Error> dump() { return dump(0, 0); };
 
     /**
-     * @brief Retrieves all filtered content.
+     * @brief Retrieves all filtered content with pagination of the database.
      *
-     * @param key Filter value.
-     * @return std::variant<std::unordered_map<std::string, std::string>, base::Error> Map of key-value pairs. Specific
+     * To retrieve all the contents of the database, without paging, the parameter page and records must be
+     * sent in 0.
+     *
+     * @param prefix Filter value.
+     * @param page Page number.
+     * @param records Quantity of records for page.
+     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs. Specific
      * error otherwise.
      */
-    virtual std::variant<std::unordered_map<std::string, std::string>, base::Error>
-    search(const std::string& prefix) = 0;
+    virtual std::variant<std::map<std::string, std::string>, base::Error>
+    search(const std::string& prefix, const unsigned int page, const unsigned int records) = 0;
+
+    /**
+     * @brief Retrieves all filtered content of the database.
+     *
+     * To retrieve all the contents of the database, without paging, the parameter page and records must be
+     * sent in 0.
+     *
+     * @param prefix Filter value.
+     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs. Specific
+     * error otherwise.
+     */
+    inline std::variant<std::map<std::string, std::string>, base::Error>
+    search(const std::string& prefix)
+    {
+        return search(prefix, 0, 0);
+    };
 };
 
 } // namespace kvdbManager
