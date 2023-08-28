@@ -37,7 +37,6 @@ protected:
 
 TEST_F(unixSecureStreamSocket, build)
 {
-    ASSERT_NO_THROW(unixSecureStream uStream());
     ASSERT_NO_THROW(unixSecureStream uStream(m_streamSockPath));
     ASSERT_NO_THROW(unixSecureStream uStream("qwertyuiop"));
 }

@@ -56,7 +56,7 @@ public:
         return json;
     }
 
-    static std::variant<Permission, base::Error> fromJson(const json::Json& json)
+    static base::RespOrError<Permission> fromJson(const json::Json& json)
     {
         auto res = json.getString(detail::RES_JPATH);
         if (!res)

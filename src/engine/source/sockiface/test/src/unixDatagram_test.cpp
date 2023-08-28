@@ -35,7 +35,6 @@ protected:
 
 TEST_F(unixDatagramSocket, build)
 {
-    ASSERT_NO_THROW(unixDatagram uDgram());
     ASSERT_NO_THROW(unixDatagram uDgram(m_datagramSockPath));
     ASSERT_NO_THROW(unixDatagram uDgram("qwertyuiop"));
 }
