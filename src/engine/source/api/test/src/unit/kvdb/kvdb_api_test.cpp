@@ -116,7 +116,7 @@ protected:
     void TearDown() override { ::TearDown(); };
 };
 
-class DbSearchTestFuncionality : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
+class DbSearchTestFuncionality : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
 {
 protected:
     void SetUp() override { ::Setup(); }
@@ -523,14 +523,14 @@ TEST_P(DumpParameters, ValidateParameters)
 INSTANTIATE_TEST_SUITE_P(
     KVDB,
     DumpParameters,
-    ::testing::Values(std::make_tuple(R"({"page": 0, "records": 0})",
-                                      R"({"status":"ERROR","entries":[],"error":"Missing /name"})"),
-                      std::make_tuple(R"({"name": "", "page": 0, "records": 0})",
-                                      R"({"status":"ERROR","entries":[],"error":"Field /name cannot be empty"})"),
-                      std::make_tuple(R"({"name": "test", "page": 1, "records": 0})",
-                                      R"({"status":"ERROR","entries":[],"error":"Field /records must be greater than 0"})"),
-                      std::make_tuple(R"({"name": "test", "page": 0, "records": 2})",
-                                      R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})")));
+    ::testing::Values(
+        std::make_tuple(R"({"page": 0, "records": 0})", R"({"status":"ERROR","entries":[],"error":"Missing /name"})"),
+        std::make_tuple(R"({"name": "", "page": 0, "records": 0})",
+                        R"({"status":"ERROR","entries":[],"error":"Field /name cannot be empty"})"),
+        std::make_tuple(R"({"name": "test", "page": 1, "records": 0})",
+                        R"({"status":"ERROR","entries":[],"error":"Field /records must be greater than 0"})"),
+        std::make_tuple(R"({"name": "test", "page": 0, "records": 2})",
+                        R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})")));
 
 TEST_P(DumpWithMultiplePages, Functionality)
 {
@@ -552,14 +552,12 @@ TEST_P(DumpWithMultiplePages, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     KVDB,
     DumpWithMultiplePages,
-    ::testing::Values(std::make_tuple(R"({"name": "test_db", "page": 1, "records": 1})",
-                                      R"({"status":"OK","entries":[]})"),
-                      std::make_tuple(R"({"name": "test_db", "page": 0, "records": 0})",
-                                      R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})"),
-                      std::make_tuple(R"({"name": "test_db", "page": 1, "records": 10})",
-                                      R"({"status":"OK","entries":[]})"),
-                      std::make_tuple(R"({"name": "test_db", "page": 3, "records": 5})",
-                                      R"({"status":"OK","entries":[]})")));
+    ::testing::Values(
+        std::make_tuple(R"({"name": "test_db", "page": 1, "records": 1})", R"({"status":"OK","entries":[]})"),
+        std::make_tuple(R"({"name": "test_db", "page": 0, "records": 0})",
+                        R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})"),
+        std::make_tuple(R"({"name": "test_db", "page": 1, "records": 10})", R"({"status":"OK","entries":[]})"),
+        std::make_tuple(R"({"name": "test_db", "page": 3, "records": 5})", R"({"status":"OK","entries":[]})")));
 
 TEST_F(KVDBApiTest, dbGetOk)
 {
@@ -751,7 +749,7 @@ TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "keyNotExists"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Cannot get key ''. Error: keyNotExists"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Can not get key ''. Error: keyNotExists"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -1167,7 +1165,7 @@ TEST_P(DbSearchTestParameters, ValidateParameters)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    ValidateParameters,
+    KVDB,
     DbSearchTestParameters,
     ::testing::Values(
         std::make_tuple(
@@ -1186,7 +1184,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(DbSearchTestFuncionality, Functionality)
 {
     api::Handler cmd;
-    auto [name, prefix, expectedValue] = GetParam();
+    auto [params, expectedValue] = GetParam();
     ASSERT_FALSE(kvdbManager->createDB("test"));
     auto resultHandler = kvdbManager->getKVDBHandler("test", "test");
 
@@ -1197,9 +1195,13 @@ TEST_P(DbSearchTestFuncionality, Functionality)
     handler->set("key1", "\"value1\"");
     handler->set("key11", "\"value1\"");
     handler->set("key2", "\"value2\"");
+    handler->set("key3", "\"value3\"");
+    handler->set("key4", "\"value4\"");
+    handler->set("key5", "\"value5\"");
 
     ASSERT_NO_THROW(cmd = dbSearch(kvdbManager, "test"));
-    const auto response = cmd(dbSearchWRequest(name.c_str(), prefix.c_str()));
+    json::Json jsonParams(params.c_str());
+    const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, jsonParams));
     const auto expectedData = json::Json(expectedValue.c_str());
 
     ASSERT_TRUE(response.isValid());
@@ -1209,16 +1211,21 @@ TEST_P(DbSearchTestFuncionality, Functionality)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Functionality,
+    KVDB,
     DbSearchTestFuncionality,
     ::testing::Values(
         std::make_tuple(
-            "test",
-            "key1",
-            R"({"status":"OK","entries":[{"key":"key11","value":"value1"},{"key":"key1","value":"value1"}]})"),
-        std::make_tuple("test", "keyx", R"({"status":"OK","entries":[]})"),
-        std::make_tuple("default2",
-                        "keyx",
-                        R"({"status":"ERROR","entries":[],"error":"The KVDB 'default2' does not exist."})")));
+            R"({"name":"test", "prefix":"key1"})",
+            R"({"status":"OK","entries":[{"key":"key1","value":"value1"},{"key":"key11","value":"value1"}]})"),
+        std::make_tuple(R"({"name":"test", "prefix":"keyx"})", R"({"status":"OK","entries":[]})"),
+        std::make_tuple(R"({"name":"default2", "prefix":"keyx"})",
+                        R"({"status":"ERROR","entries":[],"error":"The KVDB 'default2' does not exist."})"),
+        std::make_tuple(
+            R"({"name":"test", "prefix":"key", "page": 1, "records":"5"})",
+            R"({"status":"OK","entries":[{"key":"key1","value":"value1"},{"key":"key11","value":"value1"},{"key":"key2","value":"value2"},{"key":"key3","value":"value3"},{"key":"key4","value":"value4"}]})"),
+        std::make_tuple(R"({"name":"test", "prefix":"key", "page": 2, "records":"1"})",
+                        R"({"status":"OK","entries":[{"key":"key11","value":"value1"}]})"),
+        std::make_tuple(R"({"name":"test", "prefix":"key", "page": 2, "records":"2"})",
+                        R"({"status":"OK","entries":[{"key":"key2","value":"value2"},{"key":"key3","value":"value3"}]})")));
 
 } // namespace

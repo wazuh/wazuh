@@ -95,14 +95,15 @@ public:
      * @copydoc IKVDBHandler::dump
      *
      */
-    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const unsigned int page,
-                                                                                   const unsigned int records) override;
+    std::variant<std::map<std::string, std::string>, base::Error> dump(const unsigned int page,
+                                                                       const unsigned int records) override;
 
     /**
      * @copydoc IKVDBHandler::search
      *
      */
-    std::variant<std::unordered_map<std::string, std::string>, base::Error> search(const std::string& filter) override;
+    std::variant<std::map<std::string, std::string>, base::Error>
+    search(const std::string& filter, const unsigned int page, const unsigned int records) override;
 
 protected:
     /**
@@ -134,6 +135,18 @@ protected:
      *
      */
     std::shared_ptr<IKVDBHandlerCollection> m_spCollection;
+
+private:
+    /**
+     * @brief Function to page the content of iterator
+     *
+     * @param prefix
+     * @param page
+     * @param records
+     * @return std::variant<std::map<std::string, std::string>, base::Error>
+     */
+    std::variant<std::map<std::string, std::string>, base::Error>
+    pageContent(const std::string& prefix, const unsigned int page, const unsigned int records);
 };
 
 } // namespace kvdbManager
