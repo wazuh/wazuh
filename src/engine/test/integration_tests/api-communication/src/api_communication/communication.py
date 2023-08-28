@@ -1,7 +1,6 @@
 import socket
 import json
 import struct
-import subprocess
 
 class APIClient:
     def __init__(self, api_socket: str, component: str):
@@ -63,16 +62,3 @@ class APIClient:
         except:
             raise Exception(f'Could not parse response message "{response_json}".')
 
-class CLIClient:
-    def __init__(self, binary_path: str, api_socket: str):
-        self.binary_path = binary_path
-        self.api_socket = api_socket
-
-    def execute_command(self, command):
-        try:
-            words = command.split()
-            arguments = [words[0], "--api_socket", self.api_socket] + words[1:]
-            result = subprocess.run([self.binary_path] + arguments, text=True, capture_output=True, check=True)
-            return result.stdout
-        except subprocess.CalledProcessError as e:
-            print(f"Error executing the command: {e}")
