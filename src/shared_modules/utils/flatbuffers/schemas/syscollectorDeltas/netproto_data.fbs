@@ -1,0 +1,12 @@
+namespace Syscollector;
+
+table dbsync_network_protocol {
+    scan_time:string;
+    iface:string;
+    type:string;
+    gateway:string;
+    dhcp:string;
+    metric:string;
+    checksum:string;
+    item_id:string;
+}

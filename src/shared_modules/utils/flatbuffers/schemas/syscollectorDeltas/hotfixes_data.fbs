@@ -1,0 +1,7 @@
+namespace Syscollector;
+
+table dbsync_hotfixes {
+    scan_time:string;
+    hotfix:string;
+    checksum:string;
+}

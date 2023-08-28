@@ -57,7 +57,7 @@ def checkCoverage(output):
         raise ValueError(errorString)
 
 
-def runASAN(moduleName, testToolConfig, targetType):
+def runASAN(moduleName, testToolConfig):
     """
     Execute Address Sanitizer dynamic analysis tool using the test tool
     defined for a library.
@@ -66,8 +66,6 @@ def runASAN(moduleName, testToolConfig, targetType):
         - moduleName(str): Library to be analyzed using ASAN dynamic analysis
                            tool.
         - testToolConfig(map): Test tool parameters.
-
-        - targetType(str): Target build type.
 
     Returns:
         - None
@@ -82,8 +80,7 @@ def runASAN(moduleName, testToolConfig, targetType):
     build_tools.configureCMake(moduleName=moduleName,
                                debugMode=True,
                                testMode=False,
-                               withAsan=True,
-                               withTarget=targetType)
+                               withAsan=True)
     build_tools.makeLib(moduleName)
     module = testToolConfig[moduleName]
     if moduleName == "syscheckd":
@@ -358,8 +355,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # Running this type of check in Windows will be analyzed in #17019
     if moduleName != "shared_modules/utils" and target != "winagent":
         runASAN(moduleName=moduleName,
-                testToolConfig=smokeTestConfig,
-                targetType=target)
+                testToolConfig=smokeTestConfig)
     if clean:
         os.chdir(os.path.join(utils.rootPath(), moduleName))
         utils.deleteLogs(moduleName=moduleName)
@@ -678,8 +674,9 @@ def runValgrind(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     valgrindCommand = "valgrind --leak-check=full --show-leak-kinds=all \
-                       -q --error-exitcode=1 {}".format(currentDir)
-
+                       -q --error-exitcode=1 {}".format("./")
+    oldPath = os.getcwd()
+    os.chdir(currentDir)
     for test in tests:
         out = subprocess.run(os.path.join(valgrindCommand, test),
                              stdout=subprocess.PIPE,
@@ -694,5 +691,6 @@ def runValgrind(moduleName):
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)
+    os.chdir(oldPath)
     utils.printGreen(msg="[Memory leak check: PASSED]",
                      module=moduleName)

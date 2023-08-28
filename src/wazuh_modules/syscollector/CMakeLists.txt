@@ -10,6 +10,7 @@ endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 get_filename_component(FLATBUFFERS_FOLDER ${CMAKE_SOURCE_DIR}/schemas/ ABSOLUTE)
+get_filename_component(DELTA_FLATBUFFERS_FOLDER ${SRC_FOLDER}/shared_modules/utils/flatbuffers/schemas/ ABSOLUTE)
 get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
@@ -138,6 +139,37 @@ elseif(UNIX AND NOT APPLE)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if (NOT ${TARGET} STREQUAL "")
+  if(${TARGET} STREQUAL "server")
+    list(APPEND DeltaSchemas
+                          netiface_data
+                          netproto_data
+                          netaddr_data
+                          osinfo_data
+                          hwinfo_data
+                          ports_data
+                          programs_data
+                          hotfixes_data
+                          processes_data
+                          syscollector_deltas
+                          common_agentInfo
+    )
+
+    foreach(schema IN LISTS DeltaSchemas)
+      if (${schema} STREQUAL "common_agentInfo")
+        set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/common/${schema}.fbs")
+      else()
+        set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
+      endif()
+      add_custom_target(${schema}_target
+        COMMAND ${FLATC_PATH}/flatc -c -o ${DELTA_FLATBUFFERS_FOLDER}/../include/ ${FBS_FILE}
+        COMMENT "Executing flatc to generate ${schema} header file."
+      )
+      add_dependencies(${PROJECT_NAME} ${schema}_target)
+    endforeach()
+  endif()
+endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)
