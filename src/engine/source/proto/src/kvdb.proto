@@ -41,6 +41,8 @@ message dbSearch_Request
 {
     optional string name = 1;   // Name of the db to get the entry
     optional string prefix = 2; // prefix of the entries to get
+    optional uint32 page = 3;
+    optional uint32 records = 4;
 }
 
 message dbSearch_Response

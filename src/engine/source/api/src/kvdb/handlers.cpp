@@ -200,7 +200,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(dumpRes).message);
         }
-        const auto& dump = std::get<std::list<std::pair<std::string, std::string>>>(dumpRes);
+        const auto& dump = std::get<std::map<std::string, std::string>>(dumpRes);
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -423,14 +423,21 @@ api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
         {
             return std::move(std::get<api::wpResponse>(res));
         }
+
         const auto& eRequest = std::get<RequestType>(res);
+        unsigned int page = eRequest.has_page() ? eRequest.page() : DEFAULT_HANDLER_PAGE;
+        unsigned int records = eRequest.has_records() ? eRequest.records() : DEFAULT_HANDLER_RECORDS;
 
         // Validate the params request
         auto errorMsg = !eRequest.has_name()        ? std::make_optional(MESSAGE_MISSING_NAME)
                         : eRequest.name().empty()   ? std::make_optional(MESSAGE_NAME_EMPTY)
                         : !eRequest.has_prefix()    ? std::make_optional("Missing /prefix")
                         : eRequest.prefix().empty() ? std::make_optional("Field /prefix is empty")
-                                                    : std::nullopt;
+                        : eRequest.has_page() && eRequest.page() == 0
+                            ? std::make_optional("Field /page must be greater than 0")
+                        : eRequest.has_records() && eRequest.records() == 0
+                            ? std::make_optional("Field /records must be greater than 0")
+                            : std::nullopt;
 
         if (errorMsg.has_value())
         {
@@ -451,13 +458,13 @@ api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
 
-        const auto searchRes = handler->search(eRequest.prefix());
+        const auto searchRes = handler->search(eRequest.prefix(), page, records);
 
         if (std::holds_alternative<base::Error>(searchRes))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(searchRes).message);
         }
-        const auto& resultSearch = std::get<std::unordered_map<std::string, std::string>>(searchRes);
+        const auto& resultSearch = std::get<std::map<std::string, std::string>>(searchRes);
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
