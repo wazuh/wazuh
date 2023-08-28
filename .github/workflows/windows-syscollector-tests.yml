@@ -116,6 +116,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r src/data_provider/qa/requirements.txt
+          npm install json path yaml
       - name: Run tests
         run: |
           cd src/data_provider

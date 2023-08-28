@@ -420,3 +420,4 @@ TEST_F(StringUtilsTest, stringIsNumberTrue)
 {
     EXPECT_TRUE(Utils::isNumber("12345"));
 }
+

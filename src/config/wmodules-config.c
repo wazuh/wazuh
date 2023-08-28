@@ -613,6 +613,61 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1) {
     OS_ClearNode(children);
     return 0;
 }
+
+int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if (cur_wmodule_exists->tag) {
+                if (strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //MS Graph module
+    if (!strcmp(node->element, WM_MS_GRAPH_CONTEXT.name)) {
+        if (wm_ms_graph_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
 #endif
 
 int Test_WModule(const char * path) {

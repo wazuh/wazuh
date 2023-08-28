@@ -13,9 +13,9 @@
 #define _PACKAGE_LINUX_DATA_RETRIEVER_H
 
 #include <memory>
+#include "filesystemHelper.h"
 #include "json.hpp"
 #include "sharedDefs.h"
-#include "filesystemHelper.h"
 #include "utilsWrapperLinux.hpp"
 
 /**

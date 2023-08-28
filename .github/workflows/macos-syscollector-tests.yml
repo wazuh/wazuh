@@ -15,11 +15,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version-file: ".github/workflows/.python-version"
-          architecture: x64
       # Build wazuh agent for macOS.
       - name: Build wazuh agent for macOS
         run: |
@@ -29,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew install wget
-          pip install -r src/data_provider/qa/requirements.txt
+          pip3 install -r src/data_provider/qa/requirements.txt
       - name: Install macports package manager
         run: |
           wget https://github.com/macports/macports-base/releases/download/v2.8.1/MacPorts-2.8.1-11-BigSur.pkg
@@ -41,4 +36,4 @@ jobs:
       - name: Run tests
         run: |
           cd src/data_provider
-          sudo python -m pytest -vv qa/
+          sudo python3 -m pytest -vv qa/
