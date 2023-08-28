@@ -115,6 +115,30 @@ class ARMessageBuilder:
 
         raise WazuhError(1000, "No suitable message builder found for agent version: {}".format(agent_version))
 
+    def validate_command(self, command: str):
+        """Validate the command for Active Response.
+
+        Parameters
+        ----------
+        command : str
+            Command running in the agent. If this value starts with !, then it refers to a script name instead of a command
+            name.
+
+        Raises
+        ------
+        WazuhError(1650)
+            If the command is not specified.
+        WazuhError(1652)
+            If the command is not custom and the command is not one of the available commands.
+        """
+        if not command:
+            raise WazuhError(1650)
+
+        if not command.startswith('!'):
+            commands = get_commands()
+            if command not in commands:
+                raise WazuhError(1652)
+
 
 class ARStrMessage(ARMessageBuilder):
     @staticmethod
@@ -158,12 +182,7 @@ class ARStrMessage(ARMessageBuilder):
         str
             Message that will be sent to the socket.
         """
-        if not command:
-            raise WazuhError(1650)
-
-        commands = get_commands()
-        if not command.startswith('!') and command not in commands:
-            raise WazuhError(1652)
+        self.validate_command(command)
 
         msg_queue = command
         msg_queue += " " + " ".join(shell_escape(str(x)) for x in arguments) if arguments else " - -"
@@ -205,14 +224,15 @@ class ARJsonMessage(ARMessageBuilder):
         ------
         WazuhError(1650)
             If the command is not specified.
+        WazuhError(1652)
+            If the command is not custom and the command is not one of the available commands.
 
         Returns
         -------
         str
             Message that will be sent to the socket.
         """
-        if not command:
-            raise WazuhError(1650)
+        self.validate_command(command)
 
         cluster_enabled = not read_cluster_config()['disabled']
         node_name = get_node().get('node') if cluster_enabled else None

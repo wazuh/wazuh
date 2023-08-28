@@ -130,7 +130,7 @@ def test_create_message(expected_exception, command, arguments):
     (None, 'restart-wazuh0', [], None),
     (None, 'restart-wazuh0', [], None),
     (None, 'restart-wazuh0', ["arg1", "arg2"], None),
-    (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
+    (1652, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
 ])
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
