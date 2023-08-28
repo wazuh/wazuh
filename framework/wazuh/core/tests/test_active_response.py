@@ -196,6 +196,19 @@ def test_shell_escape(command, expected_escape):
                              ('agent001', 'ls', ['arg1', 'arg2'], {'type': 'Firewall', 'src_ip': '192.168.1.1'})
                          ])
 def test_send_ar_message(agent_id, command, arguments, alert):
+    """ Checks if the functions behaves as expected
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent id
+    command : str
+        Command to be used
+    arguments : List[str]
+        List of arguments for the command
+    alert : Dict[str, str]
+        Alert information
+    """
     mock_agent_info = {'status': 'active', 'version': '3.0'}
     mock_agent_conf = {'active-response': {'disabled': 'no'}}
 
@@ -227,6 +240,18 @@ def test_send_ar_message(agent_id, command, arguments, alert):
                              ({'status': 'active', 'version': '3.0'}, {'active-response': {'disabled': 'yes'}}, 1750),
                          ])
 def test_send_ar_message_nok(mock_agent_info, mock_agent_conf, expected_error_code):
+    """ Checks if the function raises the expected exceptions
+
+    Parameters
+    ----------
+    mock_agent_info : Dict[str, Any]
+        Agent information
+    mock_agent_conf : Dict[str, Any]
+        Agent configuration
+    expected_error_code : int
+        Expected error code
+
+    """
     agent_id = 'agent001'
     command = 'ls'
     arguments = ['arg1', 'arg2']
