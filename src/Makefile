@@ -1681,6 +1681,8 @@ build_shared_modules: $(WAZUHEXT_LIB)
 .PHONY: flatbuffers_schemas
 flatbuffers_schemas: ${FLATCCRT_LIB}
 	${FLATCC_BIN} --json -a -g -o generated_headers/ wazuh_modules/syscollector/schemas/*.fbs
+	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/common/*.fbs
+	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/syscollectorDeltas/*.fbs
 
 #### Sysinfo ##
 build_sysinfo: $(WAZUHEXT_LIB)
