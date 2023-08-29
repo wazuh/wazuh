@@ -38,10 +38,22 @@ typedef struct ThreadInfo {
 
 static OSList * wm_children_list = NULL;    // Child process list
 
+// 
+static void wm_children_node_clean(pid_t *p_sid) {
+    os_free(p_sid);
+}
+
 // Initialize children pool
 
 void wm_children_pool_init() {
     wm_children_list = OSList_Create();
+    OSList_SetFreeDataPointer(wm_children_list, (void (*)(void *))wm_children_node_clean);
+}
+
+// Destroy children pool
+
+void wm_children_pool_destroy() {
+    OSList_Destroy(wm_children_list);
 }
 
 #ifdef WIN32
@@ -242,6 +254,7 @@ void wm_remove_handle(HANDLE hProcess) {
         p_hProcess = (HANDLE *)node_it->data;
         if (p_hProcess && *p_hProcess == hProcess) {
             OSList_DeleteThisNode(wm_children_list, node_it);
+            os_free(p_hProcess);
             return;
         }
     }
@@ -259,7 +272,7 @@ void wm_kill_children() {
 
     OSList_foreach(node_it, wm_children_list) {
         p_hProcess = (HANDLE *)node_it->data;
-        TerminateProcess(*p_hProcess, 127);
+        TerminateProcess(*p_hProcess, 127); //TODO: Check and avoid magic 127
     }
 }
 
@@ -468,12 +481,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                         case -1:
                             switch(errno){
                                 case ESRCH:
-                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
+                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
                                     retval = -2;
                                     break;
 
                                 default:
-                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
+                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
                                     retval = -3;
                             }
                             break;
@@ -609,7 +622,7 @@ void wm_append_sid(pid_t sid) {
     *p_sid = sid;
 
     if(!OSList_AddData(wm_children_list, (void *)p_sid)) {
-        merror("Child process sid %d could not be registered.", (int)sid);
+        merror("Child process sid %d could not be registered.", sid);
         os_free(p_sid);
     }
 }
@@ -629,7 +642,7 @@ void wm_remove_sid(pid_t sid) {
             return;
         }
     }
-    merror("Child process %d not found.", (int)sid);
+    merror("Child process %d not found.", sid);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -672,7 +685,7 @@ void wm_kill_children() {
                                 exit(EXIT_SUCCESS);
 
                             default:
-                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", (int)sid, errno, strerror(errno));
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
                                 exit(EXIT_FAILURE);
                             }
 
@@ -683,7 +696,7 @@ void wm_kill_children() {
 
                     // If time is gone, kill process
 
-                    mdebug1("Killing process group %d", (int)sid);
+                    mdebug1("Killing process group %d", sid);
 
                     kill(-sid, SIGKILL);
                     exit(EXIT_SUCCESS);
@@ -698,6 +711,7 @@ void wm_kill_children() {
             }
         }
     }
+    wm_children_pool_destroy();
 }
 
 #endif // WIN32

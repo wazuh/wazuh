@@ -36,7 +36,8 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND tests_names "test_wm_exec")
 list(APPEND tests_flags "-Wl,--wrap,fim_db_init -Wl,--wrap=syscom_dispatch \
                          -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
-                         -Wl,--wrap=is_fim_shutdown \
+                         -Wl,--wrap=is_fim_shutdown -Wl,--wrap,OSList_AddData \
+                         -Wl,--wrap,merror -Wl,--wrap,OSList_DeleteThisNode \
                          ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
