@@ -131,6 +131,21 @@ public:
      * @return base::OptError with the error or empty if no error.
      */
     virtual base::OptError deleteInternalDoc(const base::Name& name) = 0;
+
+    /**
+     * @brief Get collection of Internal documents from the store.
+     *
+     * @param name name of the collection.
+     */
+    virtual base::RespOrError<Col> readInternalCol(const base::Name& name) const = 0;
+
+    /**
+     * @brief Check if a Internal document exists in the store.
+     *
+     * @param name name of the document.
+     * @return true if the document exists, false otherwise.
+     */
+    virtual bool existsInternalDoc(const base::Name& name) const = 0;
 };
 
 class IStore : public IStoreReader, public IStoreInternal

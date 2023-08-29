@@ -52,6 +52,11 @@ public:
     base::OptError del(const base::Name& policyName) override;
 
     /**
+     * @copydoc IPolicy::list
+     */
+    base::RespOrError<std::vector<base::Name>> list() const override;
+
+    /**
      * @copydoc IPolicy::addAsset
      */
     base::OptError
