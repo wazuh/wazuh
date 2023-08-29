@@ -11,7 +11,7 @@
 #ifndef CSYSLOGD_H
 #define CSYSLOGD_H
 
-#include "config/csyslogd-config.h"
+#include "../config/csyslogd-config.h"
 #include "cJSON.h"
 
 #define OS_CSYSLOGD_MAX_TRIES 10

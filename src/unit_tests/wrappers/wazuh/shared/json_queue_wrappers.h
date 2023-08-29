@@ -11,8 +11,10 @@
 #ifndef JSON_QUEUE_WRAPPERS_H
 #define JSON_QUEUE_WRAPPERS_H
 
-#include "headers/shared.h"
+#include "../headers/shared.h"
 
 int __wrap_jqueue_open(__attribute__((unused)) file_queue *queue, __attribute__((unused)) int tail);
 
 cJSON * __wrap_jqueue_next(__attribute__((unused)) file_queue * queue);
+
+#endif

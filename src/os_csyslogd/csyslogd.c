@@ -92,11 +92,13 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         } else {
             minfo("Forwarding alerts via syslog to: '%s:%d'.",
                    syslog_config[s]->server, syslog_config[s]->port);
+                
         }
+        
     }
 
     /* Infinite loop reading the alerts and inserting them */
-    while (1) {
+    while (FOREVER()) {    
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
 
