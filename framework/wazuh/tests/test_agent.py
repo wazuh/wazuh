@@ -348,7 +348,7 @@ def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agents_in_group_formats_q(socket_mock, send_mock, mock_get_groups, mock_get_agents, group,
+def test_agent_get_agents_in_group_q_formats(socket_mock, send_mock, mock_get_groups, mock_get_agents, group,
                                              q, expected_q):
     """Test the formatting of the `q` parameter in `get_agents_in_group` from agent module.
 
@@ -367,7 +367,6 @@ def test_agent_get_agents_in_group_formats_q(socket_mock, send_mock, mock_get_gr
     kwargs = mock_get_agents.call_args.kwargs
 
     assert kwargs['q'] == expected_q
-
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [
