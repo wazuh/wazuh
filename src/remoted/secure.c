@@ -15,7 +15,7 @@
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
-
+#include "flatcc_helpers.h"
 #include "syscollector_synchronization_builder.h"
 #include "syscollector_synchronization_json_parser.h"
 #include "syscollector_deltas_builder.h"
@@ -835,12 +835,6 @@ void router_message_forward(char* msg, const char* agent_id) {
         return;
     }
 
-    flatcc_builder_t builder;
-    if(flatcc_builder_init(&builder)) {
-        mdebug1("Failed to initialize flatcc structure.");
-        return;
-    }
-
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
@@ -849,7 +843,6 @@ void router_message_forward(char* msg, const char* agent_id) {
     char* msg_start = msg + message_header_size;
     size_t msg_size = strnlen(msg_start, OS_MAXSTR);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
-        msg_start[msg_size] = '\0';
         j_msg = cJSON_Parse(msg_start);
         if(!j_msg) {
             goto clean_and_exit;
@@ -877,20 +870,20 @@ void router_message_forward(char* msg, const char* agent_id) {
         }
 
         size_t msg_to_send_len = strlen(msg_to_send);
-
         size_t flatbuffer_size;
-        flatcc_json_parser_flags_t parse_flags = flatcc_json_parser_f_skip_unknown;
-        flatcc_json_parser_t parser_ctx;
-        flatcc_json_parser_table_as_root(&builder, &parser_ctx, msg_to_send, msg_to_send_len, parse_flags, NULL, parser);
-        void* flatbuffer = flatcc_builder_finalize_aligned_buffer(&builder, &flatbuffer_size);
 
-        router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+        void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size,
+                                               flatcc_json_parser_f_skip_unknown, parser);
 
-        flatcc_builder_aligned_free(flatbuffer);
+        if (flatbuffer) {
+            router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+            w_flatcc_free_buffer(flatbuffer);
+        } else {
+            mdebug2("Unable to forward message for agent %s", agent_id);
+        }
     }
 
 clean_and_exit:
-    flatcc_builder_clear(&builder);
     cJSON_Delete(j_msg_to_send);
     cJSON_Delete(j_msg);
     cJSON_free(msg_to_send);
