@@ -7,8 +7,8 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
-- Added a file containing the dependencies required for running the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
+- Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
+- Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
 
 #### Deleted
 
@@ -25,9 +25,9 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed error handling when reading files encoded other than utf-8. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
-- Fixed error in `WazuhException` class that could break API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
-- Fixed empty value in API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
+- Addressed error handling for non-utf-8 encoded file readings. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
+- Resolved an issue in the `WazuhException` class that disrupted the API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
+- Corrected an empty value problem in the API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
 
 
 ## [v4.6.0]
