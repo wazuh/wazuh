@@ -596,4 +596,16 @@ base::OptError Store::deleteInternalDoc(const base::Name& name)
     return m_driver->deleteDoc(name);
 }
 
+base::RespOrError<Col> Store::readInternalCol(const base::Name& name) const
+{
+    // No check if the document starts with the internal namespace, allow to read any document
+    return m_driver->readCol(name);
+}
+
+bool Store::existsInternalDoc(const base::Name& name) const
+{
+    // No check if the document starts with the internal namespace, allow to read any document
+    return m_driver->existsDoc(name);
+}
+
 } // namespace store

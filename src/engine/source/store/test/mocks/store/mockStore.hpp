@@ -86,6 +86,8 @@ public:
     MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), upsertInternalDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
+    MOCK_METHOD((base::RespOrError<Col>), readInternalCol, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsInternalDoc, (const base::Name&), (const, override));
 };
 
 class MockStore : public store::IStore
@@ -103,6 +105,8 @@ public:
     MOCK_METHOD((base::OptError), updateInternalDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), upsertInternalDoc, (const base::Name&, const Doc&), (override));
     MOCK_METHOD((base::OptError), deleteInternalDoc, (const base::Name&), (override));
+    MOCK_METHOD((base::RespOrError<Col>), readInternalCol, (const base::Name&), (const, override));
+    MOCK_METHOD((bool), existsInternalDoc, (const base::Name&), (const, override));
 
     MOCK_METHOD((base::OptError), createDoc, (const base::Name&, const NamespaceId&, const Doc&), (override));
     MOCK_METHOD((base::OptError), updateDoc, (const base::Name&, const Doc&), (override));

@@ -201,6 +201,17 @@ public:
      * @copydoc IStoreInternal::deleteInternalDoc
      */
     base::OptError deleteInternalDoc(const base::Name& name) override;
+
+    /**
+     * @copydoc IStoreInternal::readInternalCol
+     */
+    base::RespOrError<Col> readInternalCol(const base::Name& name) const override;
+
+    /**
+     * @copydoc IStoreInternal::existsInternalDoc
+     */
+    bool existsInternalDoc(const base::Name& name) const override;
+
 };
 
 } // namespace store
