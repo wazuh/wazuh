@@ -261,7 +261,11 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1650: 'Active response - Command not specified',
 
-        1652: 'Active response - Unable to run command',
+        1652: {'message': 'The command used is not defined in the configuration.',
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
+                              f'{DOCU_VERSION}/user-manual/capabilities/active-response/how-to-configure.html)'
+                              'to get more information'
+               },
 
         # Agents: 1700 - 1799
         1701: {'message': 'Agent does not exist',
