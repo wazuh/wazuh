@@ -3,6 +3,32 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.7.0]
 
+### Manager
+
+#### Added
+
+- Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
+- Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
+
+#### Deleted
+
+- Delete unused framework RBAC migration folder. ([#17225](https://github.com/wazuh/wazuh/pull/17225))
+
+### Agent
+
+#### Added
+
+- Added support for Custom Logs in Buckets via AWS SQS. ([#17951](https://github.com/wazuh/wazuh/pull/17951))
+- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([16198](https://github.com/wazuh/wazuh/pull/16198))
+
+### RESTful API
+
+#### Fixed
+
+- Addressed error handling for non-utf-8 encoded file readings. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
+- Resolved an issue in the `WazuhException` class that disrupted the API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
+- Corrected an empty value problem in the API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
+
 
 ## [v4.6.0]
 
