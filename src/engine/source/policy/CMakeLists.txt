@@ -16,8 +16,10 @@ add_library(policy STATIC
 target_include_directories(policy
     PUBLIC
     ${INC_DIR}
+    PRIVATE
+    ${SRC_DIR}
 )
-target_link_libraries(policy policy::ipolicy)
+target_link_libraries(policy policy::ipolicy builder::ivalidator)
 
 # Tests
 if(ENGINE_BUILD_TEST)
