@@ -33,6 +33,8 @@
 #include "../wrappers/wazuh/remoted/netcounter_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/remoted/state_wrappers.h"
+#include "../wrappers/wazuh/shared/flatcc_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/router_wrappers.h"
 #include "../../remoted/secure.c"
 
 extern keystore keys;
@@ -71,6 +73,22 @@ static int setup_new_tcp(void **state) {
 static int teardown_new_tcp(void **state) {
     test_mode = 0;
     os_free(notify);
+    return 0;
+}
+
+static int setup_remoted_configuration(void **state) {
+    test_mode = 1;
+    node_name = "test_node_name";
+
+    return 0;
+}
+
+static int teardown_remoted_configuration(void **state) {
+    test_mode = 0;
+    node_name = "";
+    router_syscollector_handle = NULL;
+    router_rsync_handle = NULL;
+
     return 0;
 }
 
@@ -1966,6 +1984,72 @@ void test_handle_outgoing_data_to_tcp_socket_success(void **state)
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
 
+// Tests router_message_forward
+
+void test_router_message_forward_non_syscollector_message(void **state)
+{
+    char* agent_id = "001";
+    char* message = "1:nonsyscollector:{\"message\":\"test\"}";
+
+    // No function call is expected in this case
+    router_message_forward(message, agent_id);
+}
+
+void test_router_message_forward_malformed_json_message(void **state)
+{
+    char* agent_id = "001";
+    char* message = "5:syscollector:{\"message\":fail";
+
+    expect_string(__wrap_router_provider_create, name, "rsync");
+    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+
+    router_message_forward(message, agent_id);
+}
+
+void test_router_message_forward_invalid_json_message(void **state)
+{
+    char* agent_id = "001";
+    char* message = "5:syscollector:{\"message\":\"not_valid\"}";
+    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"test_node_name\"}}";
+
+    expect_string(__wrap_router_provider_create, name, "rsync");
+    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+
+    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
+    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
+    will_return(__wrap_w_flatcc_parse_json, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
+
+    router_message_forward(message, agent_id);
+}
+
+void test_router_message_forward_valid_integrity_check_global(void **state)
+{
+    char* agent_id = "001";
+    char* message = "5:syscollector:{\"component\":\"syscollector_hwinfo\",\"data\":{\"begin\":\"0\",\"checksum\":\"b66d0703ee882571cd1865f393bd34f7d5940339\","
+                    "\"end\":\"0\",\"id\":1691259777},\"type\":\"integrity_check_global\"}";
+    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_global\",\"data\":"
+                             "{\"begin\":\"0\",\"checksum\":\"b66d0703ee882571cd1865f393bd34f7d5940339\",\"end\":\"0\",\"id\":1691259777,\"attributes_type\":"
+                             "\"syscollector_hwinfo\"}}";
+
+    expect_string(__wrap_router_provider_create, name, "rsync");
+    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+
+    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
+    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
+    will_return(__wrap_w_flatcc_parse_json, (void*)1);
+
+    expect_function_call(__wrap_router_provider_send);
+    will_return(__wrap_router_provider_send, 0);
+
+    expect_function_call(__wrap_w_flatcc_free_buffer);
+
+    router_message_forward(message, agent_id);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2014,7 +2098,11 @@ int main(void)
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EAGAIN),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
-
+        // Tests router_message_forward
+        cmocka_unit_test_setup_teardown(test_router_message_forward_non_syscollector_message, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_malformed_json_message, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_invalid_json_message, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_check_global, setup_remoted_configuration, teardown_remoted_configuration),
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
