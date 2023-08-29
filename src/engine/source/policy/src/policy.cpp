@@ -23,13 +23,56 @@ base::OptError Policy::upsert(PolicyRep policy)
 
 base::OptError Policy::create(const base::Name& policyName)
 {
-    // TODO: add exists to internal store interface
+    // Check if policyName is valid
+    if (policyName.parts().size() != 3)
+    {
+        return base::Error {fmt::format("Invalid policy name: {}, expected 3 parts", policyName.fullName())};
+    }
+    else if (policyName.parts()[0] != "policy")
+    {
+        return base::Error {
+            fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
+    }
+
+    if (m_store->existsInternalDoc(policyName))
+    {
+        return base::Error {fmt::format("Policy already exists: {}", policyName.fullName())};
+    }
+
     return upsert(PolicyRep {policyName});
 }
 
 base::OptError Policy::del(const base::Name& policyName)
 {
     return m_store->deleteInternalDoc(policyName.fullName());
+}
+
+
+base::RespOrError<std::vector<base::Name>> Policy::list() const
+{
+    const auto basePolicy = base::Name {"policy"};
+    auto col = m_store->readInternalCol(basePolicy);
+    if (base::isError(col))
+    {
+        return base::getError(col);
+    }
+
+    std::vector<base::Name> policies;
+    // Get all versions of each policy
+    for (const auto& subCol : base::getResponse<store::Col>(col))
+    {
+        auto versions = m_store->readInternalCol(subCol);
+        if (base::isError(versions))
+        {
+            return base::getError(versions);
+        }
+        for (const auto& version : base::getResponse<store::Col>(versions))
+        {
+            policies.emplace_back(version);
+        }
+    }
+
+    return policies;
 }
 
 base::OptError

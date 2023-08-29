@@ -632,3 +632,23 @@ TEST_F(StoreTest, deleteInternalDoc_ok)
     EXPECT_CALL(*driver, deleteDoc(base::Name("x"))).WillOnce(testing::Return(std::nullopt));
     ASSERT_FALSE(base::isError(store->deleteInternalDoc("x")));
 }
+
+/*******************************************************************************
+                        Store::readInternalCol
+*******************************************************************************/
+TEST_F(StoreTest, readInternalCol_fail)
+{
+    // Fail driver
+    EXPECT_CALL(*driver, readCol(base::Name("x"))).WillOnce(testing::Return(driverReadError<Col>()));
+    ASSERT_TRUE(base::isError(store->readInternalCol("x")));
+}
+
+TEST_F(StoreTest, readInternalCol_ok)
+{
+    EXPECT_CALL(*driver, readCol(base::Name("x"))).WillOnce(testing::Return(driverReadColResp(Col{base::Name("a")})));
+    auto res = store->readInternalCol("x");
+
+    ASSERT_FALSE(base::isError(res));
+    ASSERT_EQ(std::get<Col>(res).size(), 1);
+    ASSERT_EQ(std::get<Col>(res)[0], base::Name("a"));
+}

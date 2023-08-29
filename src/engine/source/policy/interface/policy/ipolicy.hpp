@@ -33,6 +33,14 @@ public:
     virtual base::OptError del(const base::Name& policyName) = 0;
 
     /**
+     * @brief List all policies
+     *
+     * @return base::RespOrError<std::list<base::Name>>
+     */
+    virtual base::RespOrError<std::vector<base::Name>> list() const = 0;
+
+
+    /**
      * @brief Add a new asset to a policy
      *
      * Add a new asset to a policy.
@@ -66,6 +74,13 @@ public:
      */
     virtual base::RespOrError<std::list<base::Name>> listAssets(const base::Name& policyName,
                                                                 const store::NamespaceId& namespaceId) const = 0;
+
+    /**
+     * @brief Get the default parent for a namespace from a policy
+     *
+     */
+    
+
 };
 } // namespace api::policy
 
