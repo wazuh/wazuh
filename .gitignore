@@ -158,3 +158,4 @@ src/wazuh_modules/vulnerability_detector/msu.json.gz
 
 # Flatbuffers generated headers.
 src/shared_modules/utils/flatbuffers/include/
+src/wazuh_modules/syscollector/include/
