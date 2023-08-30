@@ -33,40 +33,40 @@ public:
     // From subscriber.
 
     /**
-     * @brief Adds a suscriber to a given provider.
+     * @brief Adds a subscriber to a given provider.
      *
      * @param name Provider name.
-     * @param subscriberId Suscriber ID.
-     * @param callback Suscriber update callback.
+     * @param subscriberId Subscriber ID.
+     * @param callback Subscriber update callback.
      */
     void addSubscriber(const std::string& name,
                        const std::string& subscriberId,
                        const std::function<void(const std::vector<char>&)>& callback);
 
     /**
-     * @brief Adds a suscriber to a given remote provider.
+     * @brief Adds a subscriber to a given remote provider.
      *
      * @param name Provider name.
-     * @param subscriberId Suscriber ID.
-     * @param callback Suscriber update callback.
+     * @param subscriberId Subscriber ID.
+     * @param callback Subscriber update callback.
      */
     void addSubscriberRemote(const std::string& name,
                              const std::string& subscriberId,
                              const std::function<void(const std::vector<char>&)>& callback);
 
     /**
-     * @brief Removes a local suscriber.
+     * @brief Removes a local subscriber.
      *
      * @param name Provider name.
-     * @param subscriberId Suscriber ID.
+     * @param subscriberId Subscriber ID.
      */
     void removeSubscriberLocal(const std::string& name, const std::string& subscriberId);
 
     /**
-     * @brief Removes a remote suscriber.
+     * @brief Removes a remote subscriber.
      *
-     * @param name Suscriber name.
-     * @param subscriberId Suscriber ID.
+     * @param name Subscriber name.
+     * @param subscriberId Subscriber ID.
      */
     void removeSubscriberRemote(const std::string& name, const std::string& subscriberId);
 
@@ -117,7 +117,7 @@ public:
     void initialize();
 
     /**
-     * @brief Stop server and clean providers/suscribers info.
+     * @brief Stop server and clean providers/subscribers info.
      *
      */
     void destroy();

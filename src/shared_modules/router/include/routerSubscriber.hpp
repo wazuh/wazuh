@@ -42,8 +42,8 @@ public:
      * @brief Class constructor.
      *
      * @param topicName Topic name.
-     * @param subscriberId Suscriber ID.
-     * @param isLocal True for a local suscriber, false otherwise.
+     * @param subscriberId Subscriber ID.
+     * @param isLocal True for a local subscriber, false otherwise.
      */
     explicit RouterSubscriber(std::string topicName, std::string subscriberId, const bool isLocal = true)
         : m_topicName {std::move(topicName)}
@@ -66,7 +66,7 @@ public:
     /**
      * @brief Adds subscriber to the list.
      *
-     * @param callback Suscriber update callback.
+     * @param callback Subscriber update callback.
      */
     void subscribe(const std::function<void(const std::vector<char>&)>& callback);
 };

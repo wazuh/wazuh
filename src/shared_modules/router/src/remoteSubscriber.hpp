@@ -21,7 +21,7 @@
 #include <functional>
 
 /**
- * @brief RemoteSuscriber class.
+ * @brief RemoteSubscriber class.
  *
  */
 class RemoteSubscriber final

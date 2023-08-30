@@ -16,9 +16,9 @@
 #include <functional>
 
 /**
- * @brief Suscriber class.
+ * @brief Subscriber class.
  *
- * @tparam T Suscriber data type.
+ * @tparam T Subscriber data type.
  */
 template<typename T>
 class Subscriber final : public Observer<T>

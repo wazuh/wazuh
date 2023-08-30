@@ -46,7 +46,7 @@ public:
     void start();
 
     /**
-     * @brief Clean suscribers and delete socket.
+     * @brief Clean subscribers and delete socket.
      *
      */
     void stop();
