@@ -12,6 +12,7 @@ class MockPolicy : public IPolicy
 public:
     MOCK_METHOD(base::OptError, create, (const base::Name& policyName), (override));
     MOCK_METHOD(base::OptError, del, (const base::Name& policyName), (override));
+    MOCK_METHOD(base::RespOrError<std::vector<base::Name>>, list, (), (const, override));
     MOCK_METHOD(base::OptError,
                 addAsset,
                 (const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName),
@@ -24,6 +25,8 @@ public:
                 listAssets,
                 (const base::Name& policyName, const store::NamespaceId& namespaceId),
                 (const, override));
+    MOCK_METHOD(base::RespOrError<base::Name>, getDefaultParent, (const base::Name& policyName, const store::NamespaceId& namespaceId), (const, override));
+    MOCK_METHOD(base::OptError, setDefaultParent, (const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName), (override));
 };
 } // namespace api::policy::mocks
 

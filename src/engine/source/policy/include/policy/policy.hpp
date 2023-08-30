@@ -15,7 +15,7 @@ class Policy : public IPolicy
 private:
     class PolicyRep; ///< PIMPL forward declaration of the PolicyRep class
 
-    std::shared_ptr<store::IStoreInternal> m_store;   ///< Store instance to access policies documents
+    std::shared_ptr<store::IStore> m_store;   ///< Store instance to access policies documents and query assets
     std::shared_ptr<builder::IValidator> m_validator; ///< Validator instance to validate policy documents
 
     /**
@@ -35,7 +35,7 @@ private:
     base::OptError upsert(PolicyRep policy);
 
 public:
-    Policy(std::shared_ptr<store::IStoreInternal> store, std::shared_ptr<builder::IValidator> validator)
+    Policy(std::shared_ptr<store::IStore> store, std::shared_ptr<builder::IValidator> validator)
         : m_store {store}
         , m_validator {validator}
     {
@@ -73,6 +73,19 @@ public:
      */
     base::RespOrError<std::list<base::Name>> listAssets(const base::Name& policyName,
                                                         const store::NamespaceId& namespaceId) const override;
+
+    /**
+     * @copydoc IPolicy::getDefaultParent
+     */
+    base::RespOrError<base::Name> getDefaultParent(const base::Name& policyName,
+                                                   const store::NamespaceId& namespaceId) const override;
+
+    /**
+     * @copydoc IPolicy::setDefaultParent
+     */
+    base::OptError setDefaultParent(const base::Name& policyName,
+                                    const store::NamespaceId& namespaceId,
+                                    const base::Name& assetName) override;
 };
 } // namespace api::policy
 
