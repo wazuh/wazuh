@@ -111,6 +111,7 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
     if monitor.callback_result:
         fim_data = get_fim_event_data(monitor.callback_result)
         checked = set(fim_data['attributes'].keys())
+        checks.update([configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE])
     assert checks == checked
 
     # Delete
@@ -129,5 +130,4 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
         fim_data = get_fim_event_data(monitor.callback_result)
         checked = set(fim_data['attributes'].keys())
         checks.update([configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE])
-    assert monitor.callback_result
     assert checks == checked
