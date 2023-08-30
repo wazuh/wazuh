@@ -124,6 +124,10 @@ public:
         OnDemandManager::instance().removeEndpoint(m_topicName);
     }
 
+    /**
+     * @brief Clear all endpoints.
+     *
+     */
     void clearEndpoints()
     {
         OnDemandManager::instance().clearEndpoints();
