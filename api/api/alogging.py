@@ -27,12 +27,6 @@ class AccessLogger(AbstractAccessLogger):
     """
     Define the log writter used by aiohttp.
     """
-    def check_stream(self):
-        """Renew logger handler stream if it has been closed."""
-        for handler in self.logger.handlers:
-            if not handler.stream or handler.stream.closed:
-                handler.stream = handler._open()
-
     def custom_logging(self, user, remote, method, path, query, body, time, status, hash_auth_context=''):
         """Provide the log entry structure depending on the logging format.
 
@@ -85,7 +79,6 @@ class AccessLogger(AbstractAccessLogger):
         self.logger.info(json_info, extra={'log_type': 'json'})
 
     def log(self, request, response, time):
-        self.check_stream()
         query = dict(request.query)
         body = request.get("body", dict())
         if 'password' in query:
@@ -130,12 +123,12 @@ class APILogger(WazuhLogger):
         super().__init__(*args, **kwargs,
                          custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
 
-    def setup_logger(self):
+    def setup_logger(self, custom_handler: logging.Handler = None):
         """
         Set ups API logger. In addition to super().setup_logger() this method adds:
             * Sets up log level based on the log level defined in API configuration file.
         """
-        super().setup_logger()
+        super().setup_logger(handler=custom_handler)
 
         if self.debug_level == 'debug2':
             debug_level = logging.DEBUG2
