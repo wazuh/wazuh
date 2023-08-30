@@ -25,7 +25,7 @@ protected:
     ContentProviderTest() = default;
     ~ContentProviderTest() override = default;
 
-    nlohmann::json m_parameters;
+    nlohmann::json m_parameters; ///< Parameters used to create the ContentProvider
 
     /**
      * @brief Sets initial conditions for each test case.

@@ -26,7 +26,7 @@ protected:
     ActionOrchestratorTest() = default;
     ~ActionOrchestratorTest() override = default;
 
-    nlohmann::json m_parameters;
+    nlohmann::json m_parameters; ///< Parameters used to create the ActionOrchestrator
 
     /**
      * @brief Sets initial conditions for each test case.
