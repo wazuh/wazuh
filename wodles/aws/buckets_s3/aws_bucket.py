@@ -47,6 +47,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
     Parameters
     ----------
+    requester_pays : bool
+        Whether to confirm that the requester pays the storage transfers or not.
     reparse : bool
         Whether to parse already parsed logs or not.
     access_key : str
@@ -85,7 +87,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     """
     empty_bucket_message_template = "+++ No logs to process in bucket: {aws_account_id}/{aws_region}"
 
-    def __init__(self, db_table_name, bucket, reparse, access_key, secret_key, profile, iam_role_arn,
+    def __init__(self, db_table_name, bucket, requester_pays, reparse, access_key, secret_key, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
                  region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         # common SQL queries
@@ -200,6 +202,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                                                     iam_role_duration=iam_role_duration,
                                                     skip_on_error=skip_on_error)
         self.retain_db_records = MAX_RECORD_RETENTION
+        self.requester_pays = requester_pays
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, DB_DATE_FORMAT) if only_logs_after else None
         self.account_alias = account_alias
@@ -343,8 +346,15 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
     def find_account_ids(self):
         try:
-            prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
-                                                   Delimiter='/')['CommonPrefixes']
+            if self.requester_pays:
+                prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
+                                                    Delimiter='/',
+                                                    RequestPayer='requester'
+                                                    )['CommonPrefixes']
+            else:
+                prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
+                                                    Delimiter='/'
+                                                    )['CommonPrefixes']
             accounts = []
             for p in prefixes:
                 account_id = p['Prefix'].split('/')[-2]
@@ -366,9 +376,15 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
     def find_regions(self, account_id):
         try:
-            regions = self.client.list_objects_v2(Bucket=self.bucket,
-                                                  Prefix=self.get_service_prefix(account_id=account_id),
-                                                  Delimiter='/')
+            if self.requester_pays:
+                regions = self.client.list_objects_v2(Bucket=self.bucket,
+                                                    Prefix=self.get_service_prefix(account_id=account_id),
+                                                    Delimiter='/',
+                                                    RequestPayer='requester')
+            else:
+                regions = self.client.list_objects_v2(Bucket=self.bucket,
+                                                Prefix=self.get_service_prefix(account_id=account_id),
+                                                Delimiter='/')
 
             if 'CommonPrefixes' in regions:
                 return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
@@ -412,6 +428,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             'MaxKeys': 1000,
             'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
+
+        if self.requester_pays:
+            filter_args['RequestPayer'] = 'requester'
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
@@ -590,7 +609,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     # Remove file from S3 Bucket
                     if self.delete_file:
                         aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                        if self.requester_pays:
+                            self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'], RequestPayer='requester')
+                        else:
+                            self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, **kwargs)
                     processed_logs += 1
 
