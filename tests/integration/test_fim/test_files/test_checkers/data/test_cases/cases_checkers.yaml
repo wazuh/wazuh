@@ -1,0 +1,185 @@
+- name: Check None - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks: null
+
+- name: Check All - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks:
+      - 'hash_sha1'
+      - 'hash_md5'
+      - 'hash_sha256'
+      - 'size'
+      - 'uid'
+      - 'user_name'
+      - 'gid' 
+      - 'group_name'
+      - 'perm'
+      - 'mtime'
+      - 'inode'
+
+- name: Check All but check_mtime - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'yes'
+      - check_mtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks:
+      - 'hash_sha1'
+      - 'hash_md5'
+      - 'hash_sha256'
+      - 'size'
+      - 'uid'
+      - 'user_name'
+      - 'gid' 
+      - 'group_name'
+      - 'perm'
+      - 'inode'
+
+- name: Check All but check_size - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'yes'
+      - check_size: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks:
+      - 'hash_sha1'
+      - 'hash_md5'
+      - 'hash_sha256'
+      - 'uid'
+      - 'user_name'
+      - 'gid' 
+      - 'group_name'
+      - 'perm'
+      - 'mtime'
+      - 'inode'
+
+- name: Check All but check_sha256sum - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'yes'
+      - check_sha256sum: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks:
+      - 'hash_sha1'
+      - 'hash_md5'
+      - 'size'
+      - 'uid'
+      - 'user_name'
+      - 'gid' 
+      - 'group_name'
+      - 'perm'
+      - 'mtime'
+      - 'inode'
+
+- name: Check All but check_md5sum - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'yes'
+      - check_md5sum: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks:
+      - 'hash_sha1'
+      - 'hash_sha256'
+      - 'size'
+      - 'uid'
+      - 'user_name'
+      - 'gid' 
+      - 'group_name'
+      - 'perm'
+      - 'mtime'
+      - 'inode'
+
+- name: Check All but check_sha1sum - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log. 
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - check_all: 'yes'
+      - check_sha1sum: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+    fim_mode: whodata
+    checks:
+      - 'hash_md5'
+      - 'hash_sha256'
+      - 'size'
+      - 'uid'
+      - 'user_name'
+      - 'gid' 
+      - 'group_name'
+      - 'perm'
+      - 'mtime'
+      - 'inode'
+
+# - name: Checkers - Scheduled
+#   description: When a scheduled monitored directory es deleted
+#                or added FIM raises a log in the next scan, in
+#                this case the scan are made every 3 secconds. 
+#   configuration_parameters:
+#     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+#     FREQUENCY: 3
+#     ATTRIBUTES:
+#       - realtime: 'no'
+#       - check_all: 'no'
+#   metadata:
+#     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+#     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
+#     fim_mode: scheduled
