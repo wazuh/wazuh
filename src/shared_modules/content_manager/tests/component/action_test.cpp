@@ -186,7 +186,7 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 
     EXPECT_NO_THROW(action->unregisterActionOnDemand());
 
-    EXPECT_NO_THROW(action->clearEndpointsActionOnDemand());
+    EXPECT_NO_THROW(action->clearEndpoints());
 
     EXPECT_NO_THROW(routerProvider->stop());
 }
@@ -215,7 +215,7 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 
     EXPECT_NO_THROW(action1->unregisterActionOnDemand());
 
-    EXPECT_NO_THROW(action1->clearEndpointsActionOnDemand());
+    EXPECT_NO_THROW(action1->clearEndpoints());
 
     EXPECT_NO_THROW(routerProvider->stop());
 }
@@ -241,7 +241,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     EXPECT_NO_THROW(action->registerActionOnDemand());
 
     EXPECT_NO_THROW(action->unregisterActionOnDemand());
-    EXPECT_NO_THROW(action->clearEndpointsActionOnDemand());
+    EXPECT_NO_THROW(action->clearEndpoints());
 
     EXPECT_NO_THROW(routerProvider->stop());
 }
