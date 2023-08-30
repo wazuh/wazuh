@@ -94,12 +94,15 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                 } else {
                     field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL == field_value) {
-                        if (column->value.is_pk) {
+                        if (column->value.is_pk && 0 != strncmp(kv_value->value, "sys_programs", 12)) {
                             has_error = true;
                         } else {
                             field_value = wdb_dbsync_get_field_default(&column->value);
                             is_default = true;
                         }
+                    } else if (0 == strncmp(kv_value->value, "sys_programs", 12) && column->value.is_pk && cJSON_NULL == field_value->type) {
+                        field_value = wdb_dbsync_get_field_default(&column->value);
+                        is_default = true;
                     }
                 }
 
@@ -169,17 +172,30 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
             bool has_error = false;
             int index = 1;
             for (column = kv_value->column_list; column && !has_error; column = column->next) {
+                bool is_default = false;
                 if (column->value.is_pk) {
                     const char * field_name = wdb_dbsync_translate_field(&column->value);
                     cJSON * field_value = cJSON_GetObjectItem(data, field_name);
                     if (NULL == field_value) {
-                        has_error = true;
-                    } else if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
+                        if (0 != strncmp(kv_value->value, "sys_programs", 12)) {
+                            has_error = true;
+                        } else {
+                            field_value = wdb_dbsync_get_field_default(&column->value);
+                            is_default = true;
+                        }
+                    } else if (0 == strncmp(kv_value->value, "sys_programs", 12) && cJSON_NULL == field_value->type) {
+                        field_value = wdb_dbsync_get_field_default(&column->value);
+                        is_default = true;
+                    }
+                    if (!wdb_dbsync_stmt_bind_from_json(stmt, index, column->value.type, field_value,
                                                                column->value.convert_empty_string_as_null)) {
                         merror(DB_INVALID_DELTA_MSG, wdb->id, field_name, kv_value->key);
                         has_error = true;
                     }
                     ++index;
+                    if (is_default) {
+                        cJSON_Delete(field_value);
+                    }
                 }
             }
             ret_val = !has_error && SQLITE_DONE == wdb_step(stmt);
