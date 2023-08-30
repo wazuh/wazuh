@@ -27,10 +27,23 @@
 #define EXPORTED
 #endif
 
+/**
+ * @brief ContentModule class.
+ *
+ */
 class EXPORTED ContentModule final : public Singleton<ContentModule>
 {
 public:
+    /**
+     * @brief Starts module facade.
+     *
+     */
     void start(const std::function<void(const modules_log_level_t, const std::string&)>& /*logFunction*/);
+
+    /**
+     * @brief Stop module facade.
+     *
+     */
     void stop();
 };
 

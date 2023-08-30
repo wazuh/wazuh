@@ -29,9 +29,20 @@ enum ActionID
     ON_DEMAND
 };
 
+/**
+ * @brief Action class.
+ *
+ */
 class Action final
 {
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param channel Router provider.
+     * @param topicName Topic name.
+     * @param parameters ActionOrchestrator parameters.
+     */
     explicit Action(const std::shared_ptr<RouterProvider> channel, std::string topicName, nlohmann::json parameters)
         : m_channel {channel}
         , m_actionInProgress {false}
@@ -43,6 +54,11 @@ public:
         m_parameters = std::move(parameters);
     }
 
+    /**
+     * @brief Action scheduler start.
+     *
+     * @param interval Scheduler interval.
+     */
     void startActionScheduler(const size_t interval)
     {
         m_schedulerRunning = true;
@@ -74,6 +90,10 @@ public:
             });
     }
 
+    /**
+     * @brief Stops action scheduler.
+     *
+     */
     void stopActionScheduler()
     {
         m_schedulerRunning = false;
@@ -86,16 +106,28 @@ public:
         std::cout << "Action: Scheduler stopped for " << m_topicName << std::endl;
     }
 
+    /**
+     * @brief Registers new ondemand action.
+     *
+     */
     void registerActionOnDemand()
     {
         OnDemandManager::instance().addEndpoint(m_topicName, [this]() { this->runActionOnDemand(); });
     }
 
+    /**
+     * @brief Unregisters ondemand action.
+     *
+     */
     void unregisterActionOnDemand()
     {
         OnDemandManager::instance().removeEndpoint(m_topicName);
     }
 
+    /**
+     * @brief Runs ondemand action.
+     *
+     */
     void runActionOnDemand()
     {
         auto expected = false;
@@ -110,6 +142,11 @@ public:
         }
     }
 
+    /**
+     * @brief Changes scheduler interval.
+     *
+     * @param interval New interval value.
+     */
     void changeSchedulerInterval(size_t interval)
     {
         m_interval = interval;

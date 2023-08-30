@@ -59,6 +59,10 @@ namespace HealthCheckColumns
     };
 };
 
+/**
+ * @brief Monitoring class.
+ *
+ */
 class Monitoring final
 {
     std::map<std::string, bool> m_values;
@@ -77,6 +81,12 @@ public:
             m_thread.join();
         }
     }
+
+    /**
+     * @brief Class constructor. Initializes values map and check servers' health.
+     *
+     * @param values Servers to be monitored.
+     */
     explicit Monitoring(const std::vector<std::string>& values)
     {
         // Initialize the map with the values, all servers are available.
@@ -142,6 +152,13 @@ public:
             });
     }
 
+    /**
+     * @brief Checks whether a server is available or not.
+     *
+     * @param value Server's address.
+     * @return true if available.
+     * @return false if not available.
+     */
     bool isAvailable(const std::string& value)
     {
         // Check if the server is available.

@@ -18,6 +18,10 @@
 
 constexpr auto CONTENT_MODULE_ENDPOINT_NAME {"content"};
 
+/**
+ * @brief ContentModuleFacade class.
+ *
+ */
 class ContentModuleFacade final : public Singleton<ContentModuleFacade>
 {
 private:
@@ -25,11 +29,47 @@ private:
     std::shared_mutex m_mutex;
 
 public:
+    /**
+     * @brief Register endpoint to receive initialization of modules from other processes.
+     *
+     */
     void start();
+
+    /**
+     * @brief Clear providers.
+     *
+     */
     void stop();
+
+    /**
+     * @brief Adds a new provider.
+     *
+     * @param name Provider name.
+     * @param parameters Provider parameters.
+     */
     void addProvider(const std::string& name, const nlohmann::json& parameters);
+
+    /**
+     * @brief Starts action scheduler.
+     *
+     * @param name Provider name.
+     * @param interval Scheduler interval.
+     */
     void startScheduling(const std::string& name, size_t interval);
+
+    /**
+     * @brief Starts ondeman action.
+     *
+     * @param name Provider name.
+     */
     void startOndemand(const std::string& name);
+
+    /**
+     * @brief Changes scheduler interval.
+     *
+     * @param name Provider name.
+     * @param interval New scheduler interval.
+     */
     void changeSchedulerInterval(const std::string& name, size_t interval);
 };
 

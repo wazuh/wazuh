@@ -20,6 +20,10 @@
 #include <external/nlohmann/json.hpp>
 #include <functional>
 
+/**
+ * @brief RemoteSubscriber class.
+ *
+ */
 class RemoteSubscriber final
 {
 private:
@@ -29,6 +33,14 @@ private:
     bool m_isRegistered;
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param endpoint
+     * @param subscriberId
+     * @param callback
+     * @param socketPath
+     */
     explicit RemoteSubscriber(std::string endpoint,
                               std::string subscriberId,
                               const std::function<void(const std::vector<char>&)>& callback,

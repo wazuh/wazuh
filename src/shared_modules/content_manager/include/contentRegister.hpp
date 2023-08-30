@@ -25,15 +25,30 @@
 #define EXPORTED
 #endif
 
+/**
+ * @brief ContentRegister class.
+ *
+ */
 class EXPORTED ContentRegister final
 {
 private:
     std::string m_name;
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param topicName Topic name.
+     * @param parameters Object parameters, including interval and ondemand.
+     */
     explicit ContentRegister(std::string topicName, const nlohmann::json parameters);
     ~ContentRegister() = default;
 
+    /**
+     * @brief Changes schedular interval to a new value.
+     *
+     * @param newInterval New value to set.
+     */
     void changeSchedulerInterval(size_t newInterval);
 };
 

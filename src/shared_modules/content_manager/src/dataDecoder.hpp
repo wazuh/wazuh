@@ -12,11 +12,19 @@
 #ifndef _DATA_DECODER_HPP
 #define _DATA_DECODER_HPP
 
+/**
+ * @brief DataDecoder class.
+ *
+ */
 class DataDecoder
 {
 public:
     virtual ~DataDecoder() = default;
 
+    /**
+     * @brief Decodes data.
+     *
+     */
     virtual void decode() = 0;
 };
 

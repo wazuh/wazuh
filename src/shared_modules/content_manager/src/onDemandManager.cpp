@@ -67,12 +67,6 @@ void OnDemandManager::stopServer()
     std::cout << "Server stopped" << std::endl;
 }
 
-/**
- * @brief Add an endpoint to the server and start it if it's not running
- *
- * @param endpoint Endpoint to add
- * @param func Function to call when the endpoint is called
- */
 void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void()> func)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};
@@ -90,11 +84,6 @@ void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<voi
     m_endpoints[endpoint] = std::move(func);
 }
 
-/**
- * @brief Remove an endpoint and stop the server if there are no more endpoints
- *
- * @param endpoint Endpoint to remove
- */
 void OnDemandManager::removeEndpoint(const std::string& endpoint)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};

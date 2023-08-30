@@ -20,6 +20,10 @@
 #include <external/nlohmann/json.hpp>
 #include <functional>
 
+/**
+ * @brief RemoteProvider class.
+ *
+ */
 class RemoteProvider final
 {
 private:
@@ -27,6 +31,12 @@ private:
     std::string m_endpointName {};
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param endpoint Endpoint name.
+     * @param socketPath Client socket path.
+     */
     explicit RemoteProvider(std::string endpoint, const std::string& socketPath)
         : m_endpointName {std::move(endpoint)}
     {
@@ -38,6 +48,11 @@ public:
         m_socketClient->connect([&](const char*, uint32_t, const char*, uint32_t) {});
     }
 
+    /**
+     * @brief Sends a message into the client socket.
+     *
+     * @param message Message to be sent.
+     */
     void push(const std::vector<char>& message)
     {
         m_socketClient->send(message.data(), message.size(), "P", 1);

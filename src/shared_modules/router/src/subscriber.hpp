@@ -15,6 +15,11 @@
 #include "observer.hpp"
 #include <functional>
 
+/**
+ * @brief Subscriber class.
+ *
+ * @tparam T Subscriber data type.
+ */
 template<typename T>
 class Subscriber final : public Observer<T>
 {
@@ -22,6 +27,12 @@ private:
     std::function<void(T)> m_callback {};
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param callback Update callback.
+     * @param observerId Observer ID.
+     */
     explicit Subscriber(const std::function<void(T)>& callback, std::string observerId)
         : m_callback {callback}
         , Observer<T>(std::move(observerId))
@@ -30,6 +41,11 @@ public:
 
     ~Subscriber() = default;
 
+    /**
+     * @brief Executes update callback.
+     *
+     * @param data Data to be used on the callback routine.
+     */
     void update(T data)
     {
         m_callback(data);

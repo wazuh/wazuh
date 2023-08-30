@@ -15,17 +15,30 @@
 #include "contentModuleFacade.hpp"
 #include "dataDecoder.hpp"
 
+/**
+ * @brief RegisterProviderDecoder class.
+ *
+ */
 class RegisterProviderDecoder final : public DataDecoder
 {
 private:
     const std::shared_ptr<std::vector<char>>& m_data;
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param data
+     */
     explicit RegisterProviderDecoder(const std::shared_ptr<std::vector<char>>& data)
         : m_data {data}
     {
     }
 
+    /**
+     * @brief Decode data.
+     *
+     */
     void decode() override
     {
         auto decodedData = nlohmann::json::parse(m_data->begin() + sizeof(uint32_t), m_data->end());
