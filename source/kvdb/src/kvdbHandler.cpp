@@ -147,17 +147,33 @@ std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
 std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::dump(const unsigned int page,
                                                                                 const unsigned int records)
 {
-    return pageContent("", page, records);
+    return pageContent(page, records);
 }
 
 std::variant<std::map<std::string, std::string>, base::Error>
 KVDBHandler::search(const std::string& prefix, const unsigned int page, const unsigned int records)
 {
-    return pageContent(prefix, page, records);
+    auto filter = [&prefix](const rocksdb::Slice& keyIter) -> bool
+    {
+        rocksdb::Slice slicePrefix(prefix);
+
+        if (slicePrefix.empty())
+            return true;
+        else
+            return keyIter.starts_with(slicePrefix);
+    };
+
+    return pageContent(page, records, filter);
 }
 
-std::variant<std::map<std::string, std::string>, base::Error>
-KVDBHandler::pageContent(const std::string& prefix, const unsigned int page, const unsigned int records)
+std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::pageContent(const unsigned int page,
+                                                                                       const unsigned int records)
+{
+    return pageContent(page, records, {});
+}
+
+std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::pageContent(
+    const unsigned int page, const unsigned int records, const std::function<bool(const rocksdb::Slice&)>& filter)
 {
     auto pRocksDB = m_weakDB.lock();
     if (pRocksDB)
@@ -166,53 +182,21 @@ KVDBHandler::pageContent(const std::string& prefix, const unsigned int page, con
         if (pCFhandle)
         {
             std::unique_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
-            rocksdb::Slice sliceFilter(prefix);
             std::map<std::string, std::string> content;
-            uint32_t actualPage = 1, counterRecords = 1;
 
-            if (page == 0 && records == 0)
+            unsigned int fromRecords = (page - 1) * records;
+            unsigned int toRecords = fromRecords + records;
+
+            unsigned int i = 0;
+            for (iter->SeekToFirst(); iter->Valid() && i < toRecords; iter->Next())
             {
-                if (!sliceFilter.empty())
+                if (!filter || filter(iter->key()))
                 {
-                    for (iter->SeekToFirst(); iter->Valid() && iter->key().starts_with(sliceFilter); iter->Next())
+                    if (i >= fromRecords)
                     {
                         content[iter->key().ToString()] = iter->value().ToString();
                     }
-                }
-                else
-                {
-                    for (iter->SeekToFirst(); iter->Valid(); iter->Next())
-                    {
-                        content[iter->key().ToString()] = iter->value().ToString();
-                    }
-                }
-            }
-            else
-            {
-                for (iter->SeekToFirst(); iter->Valid() && actualPage <= page; iter->Next())
-                {
-                    if (!sliceFilter.empty())
-                    {
-                        if (!iter->key().starts_with(sliceFilter))
-                        {
-                            continue;
-                        }
-                    }
-
-                    if (actualPage == page)
-                    {
-                        content[iter->key().ToString()] = iter->value().ToString();
-                    }
-
-                    if (counterRecords == records)
-                    {
-                        counterRecords = 1;
-                        actualPage++;
-                    }
-                    else
-                    {
-                        counterRecords++;
-                    }
+                    i++;
                 }
             }
 

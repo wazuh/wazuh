@@ -80,8 +80,8 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
 
 void runDump(std::shared_ptr<apiclnt::Client> client,
              const std::string& kvdbName,
-             const uint32_t page,
-             const uint32_t records)
+             const unsigned int page,
+             const unsigned int records)
 {
     using RequestType = eKVDB::managerDump_Request;
     using ResponseType = eKVDB::managerDump_Response;
@@ -202,7 +202,11 @@ void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvd
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runSearch(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& prefix)
+void runSearch(std::shared_ptr<apiclnt::Client> client,
+               const std::string& kvdbName,
+               const std::string& prefix,
+               const unsigned int page,
+               const unsigned int records)
 {
     using RequestType = eKVDB::dbSearch_Request;
     using ResponseType = eKVDB::dbSearch_Response;
@@ -212,6 +216,8 @@ void runSearch(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbN
     RequestType eRequest;
     eRequest.set_name(kvdbName);
     eRequest.set_prefix(prefix);
+    eRequest.set_page(page);
+    eRequest.set_records(records);
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -278,8 +284,10 @@ void configure(const CLI::App_p& app)
                                                    "Dumps the full content of a DB named db-name to a JSON.");
     // dump kvdb name
     dump_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be dumped.")->required();
-    dump_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")->default_val(ENGINE_KVDB_CLI_PAGE);
-    dump_subcommand->add_option("-r, --records", options->records, "Number of records per page.")->default_val(ENGINE_KVDB_CLI_RECORDS);
+    dump_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")
+        ->default_val(ENGINE_KVDB_CLI_PAGE);
+    dump_subcommand->add_option("-r, --records", options->records, "Number of records per page.")
+        ->default_val(ENGINE_KVDB_CLI_RECORDS);
     dump_subcommand->callback(
         [options]()
         {
@@ -336,24 +344,28 @@ void configure(const CLI::App_p& app)
     remove_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     // remove key
     auto key = remove_subcommand->add_option("-k, --key", options->kvdbKey, "key name to be removed.")->required();
-    remove_subcommand->callback([options]()
-    {
-        const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-        runRemoveKV(client, options->kvdbName, options->kvdbKey);
-    });
+    remove_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runRemoveKV(client, options->kvdbName, options->kvdbKey);
+        });
 
     // KVDB search subcommand
     auto search_subcommand = kvdbApp->add_subcommand(details::API_KVDB_SEARCH_SUBCOMMAND,
-                                                  "Gets a list of keys filtered by a prefix of a DB named db-name.");
+                                                     "Gets a list of keys filtered by a prefix of a DB named db-name.");
     search_subcommand->add_option("-n, --name", options->kvdbName, "KVDB name to be queried.")->required();
     search_subcommand->add_option("-f, --filter_prefix", options->prefix, "prefix to filter.")->required();
-    search_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")->default_val(ENGINE_KVDB_CLI_PAGE);
-    search_subcommand->add_option("-r, --records", options->records, "Number of records per page.")->default_val(ENGINE_KVDB_CLI_RECORDS);
-    search_subcommand->callback([options]()
-    {
-        const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-        runSearch(client, options->kvdbName, options->prefix);
-    });
+    search_subcommand->add_option("-p, --page", options->page, "Page number of pagination.")
+        ->default_val(ENGINE_KVDB_CLI_PAGE);
+    search_subcommand->add_option("-r, --records", options->records, "Number of records per page.")
+        ->default_val(ENGINE_KVDB_CLI_RECORDS);
+    search_subcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runSearch(client, options->kvdbName, options->prefix, options->page, options->records);
+        });
 }
 
 } // namespace cmd::kvdb
