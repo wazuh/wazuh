@@ -78,7 +78,7 @@ public:
 
     /**
      * @brief Set namespace default parent from a policy
-     * 
+     *
      * @param policyName
      * @param namespaceId
      */

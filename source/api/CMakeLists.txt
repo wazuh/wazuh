@@ -13,6 +13,7 @@ add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/integration/integration.cpp
     ${ENGINE_API_SOURCE_DIR}/kvdb/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/metrics/handlers.cpp
+    ${ENGINE_API_SOURCE_DIR}/policy/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/registry.cpp
     ${ENGINE_API_SOURCE_DIR}/router/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/test/handlers.cpp
@@ -29,6 +30,7 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}/integration
     ${ENGINE_API_SOURCE_DIR}/kvdb
     ${ENGINE_API_SOURCE_DIR}/metrics
+    ${ENGINE_API_SOURCE_DIR}/policy
     ${ENGINE_API_SOURCE_DIR}/router
     ${ENGINE_API_SOURCE_DIR}/test
 )
@@ -47,6 +49,7 @@ target_link_libraries(api
     yml
     schemf
     rbac::irbac
+    policy::ipolicy
 )
 
 # Tests
@@ -54,6 +57,7 @@ if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
 set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
+# TODO Add policy handler test
 
 add_executable(api_ctest
   ${TEST_SRC_COMPONENT_DIR}/test/handlers_test.cpp
