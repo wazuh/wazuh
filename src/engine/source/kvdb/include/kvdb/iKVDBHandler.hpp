@@ -25,7 +25,7 @@ public:
      *
      * @param key Provided key.
      * @param value Provided value. Must be a string.
-     * @return std::variant<base::Error> If base::Error not exists the value was stored successfully. Specific error
+     * @return std::optional<base::Error> If base::Error not exists the value was stored successfully. Specific error
      * otherwise.
      *
      */
