@@ -4,8 +4,8 @@
 #include <string>
 
 #include <CLI/CLI.hpp>
-#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <cmds/apiclnt/client.hpp>
+#include <utils/wazuhProtocol/wazuhProtocol.hpp>
 
 namespace cmd::kvdb
 {
@@ -32,8 +32,8 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& kvdbInputFilePath);
 void runDump(std::shared_ptr<apiclnt::Client> client,
              const std::string& kvdbName,
-             const uint32_t page,
-             const uint32_t records);
+             const unsigned int page,
+             const unsigned int records);
 void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName);
 void runGetKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey);
 void runInsertKV(std::shared_ptr<apiclnt::Client> client,
@@ -41,7 +41,11 @@ void runInsertKV(std::shared_ptr<apiclnt::Client> client,
                  const std::string& kvdbKey,
                  const std::string& kvdbValue);
 void runRemoveKV(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& kvdbKey);
-void runSearch(std::shared_ptr<apiclnt::Client> client, const std::string& kvdbName, const std::string& prefix);
+void runSearch(std::shared_ptr<apiclnt::Client> client,
+               const std::string& kvdbName,
+               const std::string& prefix,
+               const unsigned int page,
+               const unsigned int records);
 void configure(const CLI::App_p& app);
 
 } // namespace cmd::kvdb

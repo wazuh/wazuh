@@ -3,6 +3,8 @@
 
 #include <kvdb/iKVDBHandler.hpp>
 
+#include <rocksdb/slice.h>
+
 /**
  * @brief Forward Declaration of RocksDB types used here
  *
@@ -15,9 +17,6 @@ class ColumnFamilyHandle;
 
 namespace kvdbManager
 {
-
-const uint32_t DEFAULT_PAGE = 1;
-const uint32_t DEFAULT_RECORDS = 50;
 
 class IKVDBHandlerCollection;
 
@@ -140,13 +139,23 @@ private:
     /**
      * @brief Function to page the content of iterator
      *
-     * @param prefix
+     * @param page
+     * @param records
+     * @param filter
+     * @return std::variant<std::map<std::string, std::string>, base::Error>
+     */
+    std::variant<std::map<std::string, std::string>, base::Error> pageContent(
+        const unsigned int page, const unsigned int records, const std::function<bool(const rocksdb::Slice&)>& filter);
+
+    /**
+     * @brief Function to page the content of iterator
+     *
      * @param page
      * @param records
      * @return std::variant<std::map<std::string, std::string>, base::Error>
      */
-    std::variant<std::map<std::string, std::string>, base::Error>
-    pageContent(const std::string& prefix, const unsigned int page, const unsigned int records);
+    std::variant<std::map<std::string, std::string>, base::Error> pageContent(const unsigned int page,
+                                                                              const unsigned int records);
 };
 
 } // namespace kvdbManager
