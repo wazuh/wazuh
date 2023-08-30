@@ -12,12 +12,19 @@ base::RespOrError<Policy::PolicyRep> Policy::read(const base::Name& policyName) 
         return base::getError(resp);
     }
 
-    return PolicyRep::fromDoc(base::getResponse<store::Doc>(resp));
+    return PolicyRep::fromDoc(base::getResponse<store::Doc>(resp), m_store);
 }
 
 base::OptError Policy::upsert(PolicyRep policy)
 {
-    auto resp = m_store->upsertInternalDoc(policy.name().fullName(), policy.toDoc());
+    auto doc = policy.toDoc();
+    auto error = m_validator->validatePolicy(doc);
+    if (base::isError(error))
+    {
+        return error;
+    }
+
+    auto resp = m_store->upsertInternalDoc(policy.name().fullName(), std::move(doc));
     return resp;
 }
 
@@ -46,7 +53,6 @@ base::OptError Policy::del(const base::Name& policyName)
 {
     return m_store->deleteInternalDoc(policyName.fullName());
 }
-
 
 base::RespOrError<std::vector<base::Name>> Policy::list() const
 {
@@ -124,6 +130,39 @@ base::RespOrError<std::list<base::Name>> Policy::listAssets(const base::Name& po
 
     auto policy = base::getResponse<PolicyRep>(resp);
     return policy.listAssets(namespaceId);
+}
+
+base::RespOrError<base::Name> Policy::getDefaultParent(const base::Name& policyName,
+                                                       const store::NamespaceId& namespaceId) const
+{
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    return policy.getDefaultParent(namespaceId);
+}
+
+base::OptError Policy::setDefaultParent(const base::Name& policyName,
+                                        const store::NamespaceId& namespaceId,
+                                        const base::Name& parentName)
+{
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    auto error = policy.setDefaultParent(namespaceId, parentName);
+    if (base::isError(error))
+    {
+        return error;
+    }
+
+    return upsert(policy);
 }
 
 } // namespace api::policy

@@ -10,14 +10,12 @@
 namespace api::policy
 {
 
-// TODO: add setters and getters for default parent
 class IPolicy
 {
 public:
     /**
      * @brief Create a new policy with the given name
      *
-     * Create a empty policy with the given name.
      * @param policyName
      * @return base::OptError
      */
@@ -26,7 +24,6 @@ public:
     /**
      * @brief Delete a policy with the given name
      *
-     * Delete a policy with the given name.
      * @param policyName
      * @return base::OptError
      */
@@ -43,7 +40,6 @@ public:
     /**
      * @brief Add a new asset to a policy
      *
-     * Add a new asset to a policy.
      * @param policyName
      * @param namespaceId
      * @param assetName
@@ -55,7 +51,6 @@ public:
     /**
      * @brief Remove an asset from a policy
      *
-     * Remove an asset from a policy.
      * @param policyName
      * @param namespaceId
      * @param assetName
@@ -67,7 +62,6 @@ public:
     /**
      * @brief List assets from a policy
      *
-     * List assets from a policy.
      * @param policyName
      * @param namespaceId
      * @return base::RespOrError<std::list<AssetName>>
@@ -76,10 +70,20 @@ public:
                                                                 const store::NamespaceId& namespaceId) const = 0;
 
     /**
-     * @brief Get the default parent for a namespace from a policy
+     * @brief Get the namespace default parent from a policy
      *
      */
-    
+    virtual base::RespOrError<base::Name> getDefaultParent(const base::Name& policyName,
+                                                           const store::NamespaceId& namespaceId) const = 0;
+
+    /**
+     * @brief Set namespace default parent from a policy
+     * 
+     * @param policyName
+     * @param namespaceId
+     */
+    virtual base::OptError setDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId,
+                                            const base::Name& parentName) = 0;
 
 };
 } // namespace api::policy
