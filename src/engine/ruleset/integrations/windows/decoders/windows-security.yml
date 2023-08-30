@@ -370,5 +370,5 @@ normalize:
       - file.directory: $windows.EventData.ShareLocalPath
       - file.path: concat($file.directory, '\\', $file.name)
       - file.target_path: concat($windows.EventData.ShareName, '\\', $file.name)
-      - $file_parts: parse_file($file.name)
+      - file_parts: parse_file($file.name)
       - file.extension: $file_parts.ext
