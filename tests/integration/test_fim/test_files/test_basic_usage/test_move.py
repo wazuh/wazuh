@@ -158,8 +158,8 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
 
     # Assert
     file.move(path_to_edit, Path(folder_to_monitor, 'test'))
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
-    assert wazuh_log_monitor.callback_result
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
+    assert wazuh_log_monitor.callback_result
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
