@@ -38,7 +38,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config);
 int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config);
 
 /* Database inserting main function */
+#ifdef WAZUH_UNIT_TESTING
+void OS_CSyslogD(SyslogConfig **syslog_config);
+#else
 void OS_CSyslogD(SyslogConfig **syslog_config) __attribute__((noreturn));
+#endif
+
 
 /* Conditional Field Formatting */
 int field_add_int(char *dest, size_t size, const char *format, const int value );

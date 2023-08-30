@@ -29,9 +29,8 @@ list(APPEND os_csyslogd_names "test_csyslogd")
 list(APPEND os_csyslogd_flags "-Wl,--wrap,jqueue_open -Wl,--wrap,jqueue_next -Wl,--wrap,FOREVER -Wl,--wrap,time ${DEBUG_OP_WRAPPERS} \
                                  -Wl,--wrap,os_random -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fprintf -Wl,--wrap,File_DateofChange ${STDIO_OP_WRAPPERS} \
                                  -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 -Wl,--wrap,mdebug2 -Wl,--wrap,merror \
-                                 -Wl,--wrap,pcre2_match_data_create_from_pattern -Wl,--wrap,pcre2_match \
                                  -Wl,--wrap,w_ftell -Wl,--wrap,fgets -Wl,--wrap,OS_Alert_SendSyslog_JSON \
-                                 -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_GetHost -Wl,--wrap,OS_ConnectUDP -Wl,--wrap,time")
+                                 -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_ConnectUDP -Wl,--wrap,time")
 
                             
 # Compiling tests

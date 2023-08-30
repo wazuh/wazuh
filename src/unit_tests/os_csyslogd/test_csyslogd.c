@@ -39,7 +39,7 @@ int             gPort = 1514;
 int             gRuleId[] = {0};
 
 int __wrap_OS_Alert_SendSyslog_JSON(__attribute__((unused)) cJSON *json_data, __attribute__((unused)) SyslogConfig *syslog_config) {
-    return 1;
+    return mock();
 }
 
 
@@ -73,7 +73,6 @@ static void test_csyslogd_OS_CSyslogD(void **state) {
     pSyslogConfig[0] = state[0];
 
     char *ip = pSyslogConfig[0]->server;
-    char *host = "localhost"; 
     int   port = pSyslogConfig[0]->port;
 
     pSyslogConfig[1] = NULL;
@@ -81,21 +80,16 @@ static void test_csyslogd_OS_CSyslogD(void **state) {
     cJSON *pJSON = cJSON_Parse((char*)("{\"alert\":\"valid jason description\"}\n"));
 
     will_return(__wrap_jqueue_open, 1);
-    expect_string(__wrap__merror, formatted_msg, "Could not open queue after 1 tries.");
     expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
     
     char strDbgResolving[128];
     sprintf(strDbgResolving, "Resolving server hostname: %s", ip);
     expect_string(__wrap__mdebug2, formatted_msg, strDbgResolving);
-    
-    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
-    will_return(wrap_pcre2_match, 0);
-    
+        
     expect_string(__wrap_OS_IsValidIP, ip_address, ip);
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
     
-    will_return(__wrap_OS_GetHost, strdup(host));
     will_return(__wrap_OS_ConnectUDP, 21);
 
     char strDbgForwarding[128];
@@ -108,15 +102,13 @@ static void test_csyslogd_OS_CSyslogD(void **state) {
 
     will_return(__wrap_jqueue_next, pJSON);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "jqueue_next()");
-
     will_return(__wrap_OS_Alert_SendSyslog_JSON, 1);
     will_return(__wrap_FOREVER, 1);
     will_return(__wrap_FOREVER, 0);
 
- 
     OS_CSyslogD(pSyslogConfig);
 
+    //pJSON is deleted in OS_CSyslogD
 }
 
 static int test_csyslogd_teardown(void **state) {
