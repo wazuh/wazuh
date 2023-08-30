@@ -14,6 +14,9 @@
 
 #include <gtest/gtest.h>
 
+/**
+ * @brief Runs unit tests for Publisher class
+ */
 class PublisherTest : public ::testing::Test
 {
 protected:
