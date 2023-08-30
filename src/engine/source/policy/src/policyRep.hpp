@@ -2,18 +2,17 @@
 #define __API_POLICY_POLICYREP_HPP
 
 #include <map>
+#include <sstream>
 
 #include <fmt/format.h>
 #include <store/istore.hpp>
 
 namespace
 {
-// constexpr const char* NAME_PREFIX = "policy";
 constexpr auto NAME_PATH = "/name";
 constexpr auto HASH_PATH = "/hash";
-constexpr auto NSS_PATH = "/namespaces";
-constexpr auto NS_ASSETS_KEY = "assets";
-constexpr auto NS_DEF_PARENT_KEY = "default_parent";
+constexpr auto ASSETS_PATH = "/assets";
+constexpr auto DEF_PARENTS_PATH = "/default_parents";
 } // namespace
 
 namespace api::policy
@@ -183,47 +182,51 @@ public:
     /**
      * @brief Build a PolicyRep from a policy document
      *
+     * Store policy document structure (in store would be a JSON):
+     * ---
+     * name: <policy_name>
+     * hash: <policy_hash>
+     * assets: [<asset_name>, ...]
+     * default_parents:
+     *   <namespace_id>: <parent_name>
+     *   ...
+     * ---
      */
-    static inline base::RespOrError<PolicyRep> fromDoc(const store::Doc& policyDoc)
+    static inline base::RespOrError<PolicyRep> fromDoc(const store::Doc& policyDoc,
+                                                       std::shared_ptr<store::IStoreReader> store)
     {
         base::Name name {policyDoc.getString(NAME_PATH).value()};
-        // TODO add unsigned int64_t to json
-        size_t hash {policyDoc.getInt64(HASH_PATH).value()};
+        std::stringstream ss;
+        ss << policyDoc.getString(HASH_PATH).value();
+        size_t hash;
+        ss >> hash;
         std::multimap<store::NamespaceId, base::Name> nss;
         std::map<store::NamespaceId, base::Name> defaultParents;
 
-        auto optNss = policyDoc.getObject(NSS_PATH);
-        if (optNss)
+        // Assets
+        auto assets = policyDoc.getArray(ASSETS_PATH).value();
+        for (const auto& asset : assets)
         {
-            auto nssObj = std::move(optNss.value());
-            // Iterate over namespaces
-            for (const auto& [nsName, ns] : nssObj)
+            auto assetName = base::Name {asset.getString().value()};
+            auto ns = store->getNamespace(assetName);
+            if (!ns)
             {
-                // Namespace id
-                store::NamespaceId nsId {nsName};
-                auto nsObj = ns.getObject().value();
+                return base::Error {fmt::format("Asset not found: {}", assetName.fullName())};
+            }
 
-                // Default parent
-                auto defParentPos =
-                    std::find_if(nsObj.begin(),
-                                 nsObj.end(),
-                                 [](const auto& tuple) { return std::get<0>(tuple) == NS_DEF_PARENT_KEY; });
-                if (defParentPos != nsObj.end())
-                {
-                    defaultParents.emplace(nsId, base::Name {std::get<1>(*defParentPos).getString().value()});
-                }
+            nss.emplace(ns.value(), assetName);
+        }
 
-                // Iterate over assets
-                auto assetsPos = std::find_if(
-                    nsObj.begin(), nsObj.end(), [](const auto& tuple) { return std::get<0>(tuple) == NS_ASSETS_KEY; });
-                if (assetsPos != nsObj.end())
-                {
-                    auto assets = std::get<1>(*assetsPos).getArray().value();
-                    for (const auto& asset : assets)
-                    {
-                        nss.emplace(nsId, base::Name {asset.getString().value()});
-                    }
-                }
+        // Default parents
+        auto defParents = policyDoc.getObject(DEF_PARENTS_PATH);
+        if (defParents)
+        {
+            auto defParentsObj = std::move(defParents.value());
+            for (const auto& [nsName, parent] : defParentsObj)
+            {
+                auto nsId = store::NamespaceId {nsName};
+                auto parentName = base::Name {parent.getString().value()};
+                defaultParents.emplace(nsId, parentName);
             }
         }
 
@@ -244,28 +247,49 @@ public:
         policyDoc.setString(m_name.fullName(), NAME_PATH);
 
         // Hash
-        policyDoc.setInt64(m_hash, HASH_PATH);
+        std::stringstream ss;
+        ss << m_hash;
+        policyDoc.setString(ss.str(), HASH_PATH);
 
-        // Namespaces
-        policyDoc.setObject(NSS_PATH);
+        // Assets
+        policyDoc.setArray(ASSETS_PATH);
         for (const auto& [nsId, asset] : m_nss)
         {
-            auto nsPath = fmt::format("{}/{}", NSS_PATH, nsId.name().fullName());
-
-            // Assets
-            auto assetsPath = fmt::format("{}/{}", nsPath, NS_ASSETS_KEY);
-            policyDoc.appendString(asset.fullName(), assetsPath);
+            policyDoc.appendString(asset.fullName(), ASSETS_PATH);
         }
 
         // Default parents
+        policyDoc.setObject(DEF_PARENTS_PATH);
         for (const auto& [nsId, parent] : m_defaultParents)
         {
-            auto parentPath = fmt::format("{}/{}/{}", NSS_PATH, nsId.name().fullName(), NS_DEF_PARENT_KEY);
-
-            policyDoc.setString(parent.fullName(), parentPath);
+            policyDoc.setString(parent.fullName(), fmt::format("{}/{}", DEF_PARENTS_PATH, nsId.name().fullName()));
         }
 
         return policyDoc;
+    }
+
+    base::RespOrError<base::Name> getDefaultParent(const store::NamespaceId& namespaceId) const
+    {
+        auto it = m_defaultParents.find(namespaceId);
+        if (it != m_defaultParents.end())
+        {
+            return it->second;
+        }
+
+        return base::Error {"Namespace not found"};
+    }
+
+    base::OptError setDefaultParent(const store::NamespaceId& namespaceId, const base::Name& parent)
+    {
+        auto it = m_defaultParents.find(namespaceId);
+        if (it != m_defaultParents.end())
+        {
+
+            it->second = parent;
+            return base::noError();
+        }
+
+        return base::Error {"Namespace not found"};
     }
 };
 
