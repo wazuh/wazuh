@@ -14,6 +14,9 @@
 
 #include <gtest/gtest.h>
 
+/**
+ * @brief Runs unit tests for Subscriber class
+ */
 class SubscriberTest : public ::testing::Test
 {
 protected:
