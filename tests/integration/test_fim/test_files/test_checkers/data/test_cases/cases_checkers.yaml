@@ -11,7 +11,7 @@
     folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
     file_to_monitor:  !!python/object/apply:os.path.join [/test_dir, testfile.log]
     fim_mode: whodata
-    checks: null
+    checks: []
 
 - name: Check All - Who-data
   description: When a real-time monitored directory es deleted
@@ -38,6 +38,8 @@
       - 'perm'
       - 'mtime'
       - 'inode'
+      - 'type'
+      - 'checksum'
 
 - name: Check All but check_mtime - Who-data
   description: When a real-time monitored directory es deleted
@@ -64,6 +66,8 @@
       - 'group_name'
       - 'perm'
       - 'inode'
+      - 'type'
+      - 'checksum'
 
 - name: Check All but check_size - Who-data
   description: When a real-time monitored directory es deleted
@@ -90,6 +94,8 @@
       - 'perm'
       - 'mtime'
       - 'inode'
+      - 'type'
+      - 'checksum'
 
 - name: Check All but check_sha256sum - Who-data
   description: When a real-time monitored directory es deleted
@@ -116,6 +122,8 @@
       - 'perm'
       - 'mtime'
       - 'inode'
+      - 'type'
+      - 'checksum'
 
 - name: Check All but check_md5sum - Who-data
   description: When a real-time monitored directory es deleted
@@ -142,6 +150,8 @@
       - 'perm'
       - 'mtime'
       - 'inode'
+      - 'type'
+      - 'checksum'
 
 - name: Check All but check_sha1sum - Who-data
   description: When a real-time monitored directory es deleted
@@ -168,6 +178,8 @@
       - 'perm'
       - 'mtime'
       - 'inode'
+      - 'type'
+      - 'checksum'
 
 # - name: Checkers - Scheduled
 #   description: When a scheduled monitored directory es deleted
