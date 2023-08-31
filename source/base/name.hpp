@@ -4,12 +4,11 @@
 #include <initializer_list>
 #include <iostream>
 #include <numeric>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include <fmt/format.h>
-#include <logging/logging.hpp>
+#include <fmt/core.h>
 
 #include "utils/stringUtils.hpp"
 
@@ -46,8 +45,6 @@ private:
         }
         if (MAX_PARTS < size)
         {
-            LOG_DEBUG("Engine base name: '{}' method: Name '{}'.", __func__, fullName());
-
             throw std::runtime_error(fmt::format(
                 "Name size must have {} parts at most at most, but the one inserted has {}", MAX_PARTS, size));
         }
@@ -83,7 +80,6 @@ public:
         assertSize(parts.size());
         m_parts = std::move(parts);
     }
-
 
     /**
      * @brief Construct a new Name object
@@ -170,28 +166,53 @@ public:
      */
     bool operator!=(const Name& other) const { return !(*this == other); }
 
+    /**
+     * @brief Implicit conversion to std::string
+     *
+     * @return std::string
+     */
+    std::string toStr() const 
+    {
+        return std::accumulate(m_parts.begin(),
+                               m_parts.end(),
+                               std::string(),
+                               [](const std::string& a, const std::string& b) -> std::string
+                               { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
+    }
+
+    /**
+     * @brief Implicit conversion to std::string
+     * 
+     * @return std::string 
+     */
+    operator std::string() const { return toStr(); }
+    
+    /**
+     * @brief Operator << to print the name
+     * 
+     * @param os 
+     * @param name 
+     * @return std::ostream& 
+     */
     friend std::ostream& operator<<(std::ostream& os, const Name& name)
     {
-        os << std::accumulate(
-            name.m_parts.begin(),
-            name.m_parts.end(),
-            std::string(),
-            [](const std::string& a, const std::string& b) -> std::string
-            { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
+        os << name.toStr();
         return os;
     }
 
     /**
-     * @brief Operator to concatenate two names
-     *
-     * @param other Name to concatenate
-     * @return Name
+     * @brief Operator + to concatenate two names
+     * 
+     * @param lhs 
+     * @param rhs 
+     * @return Name 
      */
-    Name operator+(const Name& other) const
+    friend Name operator+(const Name& lhs, const Name& rhs)
     {
-        std::vector<std::string> parts = m_parts;
-        parts.insert(parts.end(), other.m_parts.begin(), other.m_parts.end());
-        return Name {parts};
+        auto parts = lhs.parts();
+        parts.insert(parts.end(), rhs.parts().begin(), rhs.parts().end());
+
+        return Name(parts);
     }
 
     /**
@@ -216,12 +237,7 @@ public:
      * @return std::string Full name string in the form
      * <type>SEPARATOR<name>SEPARATOR<version>
      */
-    std::string fullName() const
-    {
-        std::stringstream ss;
-        ss << *this;
-        return ss.str();
-    }
+    std::string fullName() const { return toStr(); } // TODO deprecated, remove
 
     /**
      * @brief Get the parts of the name
@@ -252,5 +268,15 @@ struct hash<base::Name>
 };
 } // namespace std
 
+// Make Name formatable by fmt
+template<> struct fmt::formatter<base::Name> : formatter<std::string>
+{
+    // parse is inherited from formatter<string_view>.
+    template<typename FormatContext>
+    auto format(const base::Name& name, FormatContext& ctx)
+    {
+        return formatter<std::string>::format(name.toStr(), ctx);
+    }
+};
 
 #endif // _BASE_NAME_HPP

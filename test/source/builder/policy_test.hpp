@@ -207,80 +207,64 @@ std::map<std::string, const char*> policys =
     {"oneDecEnv",
 R"({
 "name": "policy/oneDecEnv/version",
-"decoders": [
+"assets": [
   "decoder/decoder1/version"
 ]
 })"},
     {"oneRuleEnv",
 R"({
 "name": "policy/oneRuleEnv/version",
-"rules": [
+"assets": [
   "rule/rule1/version"
 ]
 })"},
     {"oneFilEnv",
 R"({
 "name": "policy/oneFilEnv/version",
-"filters": [
+"assets": [
   "filter/filter1/version"
 ]
 })"},
     {"oneOutEnv",
 R"({
 "name": "policy/oneOutEnv/version",
-"outputs": [
+"assets": [
   "output/output1/version"
 ]
 })"},
     {"orphanAssetEnv",
 R"({
     "name": "policy/orphanAssetEnv/version",
-    "decoders": [
-        "decoder/decoder1_1/version"
-    ],
-    "rules": [
-        "rule/rule1/version"
-    ],
-    "filters": [
-        "filter/filter1/version"
-    ],
-    "outputs": [
+    "assets": [
+        "decoder/decoder1_1/version",
+        "rule/rule1/version",
+        "filter/filter1/version",
         "output/output1/version"
     ]
 })"},
     {"orphanFilterEnv",
 R"({
     "name": "policy/orphanFilterEnv/version",
-    "rules": [
+    "assets": [
         "rule/rule1/version"
-    ],
-    "filters": [
-        "filter/filter1/version"
-    ],
-    "outputs": [
+        "filter/filter1/version",
         "output/output1/version"
     ]
 })"},
     {"completeEnv",
 R"({
     "name": "policy/completeEnv/version",
-    "decoders": [
+    "assets": [
         "decoder/decoder1/version",
         "decoder/decoder1_1/version",
         "decoder/decoder1_2/version",
         "decoder/decoder2/version",
         "decoder/decoder3/version",
-        "decoder/decoder23_1/version"
-    ],
-    "rules": [
+        "decoder/decoder23_1/version",
         "rule/rule1/version",
         "rule/rule1_1/version",
-        "rule/rule2/version"
-    ],
-    "filters": [
-        "filter/filter1/version"
-    ],
-    "outputs": [
+        "rule/rule2/version",
+        "filter/filter1/version",
         "output/output1/version"
     ]
 })"}
