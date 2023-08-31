@@ -15,6 +15,12 @@
 #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
+#define MAX_SIZE_STR_DEBUG     (10)
+#define MAX_SIZE_STR_INFO      (9)
+#define MAX_SIZE_STR_CRITICAL  (13)
+#define MAX_SIZE_STR_ERROR     (10)
+#define MAX_SIZE_STR_WARNING   (12)
+
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
@@ -691,3 +697,59 @@ char * win_strerror(unsigned long error) {
     return messageBuffer;
 }
 #endif
+
+void w_parse_output(char *output, char *logger_name, char *tag) {
+    char *line;
+    char * parsing_output = output;
+    int debug_level = isDebug();
+
+    if (output != NULL && logger_name != NULL) {
+        for (line = strstr(parsing_output, logger_name); line; line = strstr(parsing_output, logger_name)) {
+            char * tokenized_line;
+            os_calloc(_W_STRING_MAX, sizeof(char), tokenized_line);
+            char * next_lines;
+
+            line += strlen(logger_name);
+            next_lines = strstr(line, logger_name);
+
+            int next_lines_chars = next_lines == NULL ? 0 : strlen(next_lines);
+
+            // 1 is added because it's mandatory to consider the null byte
+            int cp_length = 1 + strlen(line) - next_lines_chars > _W_STRING_MAX ? _W_STRING_MAX : 1 + strlen(line) - next_lines_chars;
+            snprintf(tokenized_line, cp_length, "%s", line);
+            if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
+
+            char *p_line = NULL;
+
+            if (debug_level >= LOGLEVEL_WARNING) {
+                if ((p_line = strstr(tokenized_line, "- DEBUG - "))) {
+                    p_line += MAX_SIZE_STR_DEBUG;
+                    mtdebug1(tag, "%s", p_line);
+                }
+            }
+            if (debug_level >= LOGLEVEL_INFO) {
+                if ((p_line = strstr(tokenized_line, "- INFO - "))) {
+                    p_line += MAX_SIZE_STR_INFO;
+                    mtinfo(tag, "%s", p_line);
+                }
+            }
+            if (debug_level >= LOGLEVEL_DEBUG) {
+                if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
+                    p_line += MAX_SIZE_STR_CRITICAL;
+                    mterror(tag, "%s", p_line);
+                }
+                if ((p_line = strstr(tokenized_line, "- ERROR - "))) {
+                    p_line += MAX_SIZE_STR_ERROR;
+                    mterror(tag, "%s", p_line);
+                }
+                if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
+                    p_line += MAX_SIZE_STR_WARNING;
+                    mtwarn(tag, "%s", p_line);
+                }
+            }
+
+            parsing_output += cp_length + strlen(logger_name) - 1;
+            os_free(tokenized_line);
+        }
+    }
+}
