@@ -87,19 +87,19 @@ public:
      *
      * @param page Page number.
      * @param records Quantity of records for page.
-     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs.
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
      * Specific error otherwise.
      */
-    virtual std::variant<std::map<std::string, std::string>, base::Error> dump(const unsigned int page,
-                                                                               const unsigned int records) = 0;
+    virtual std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
+    dump(const unsigned int page, const unsigned int records) = 0;
 
     /**
      * @brief Retrieves the entire content of the database.
      *
-     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs.
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
      * Specific error otherwise.
      */
-    inline std::variant<std::map<std::string, std::string>, base::Error> dump() { return dump(0, 0); };
+    inline std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump() { return dump(0, 0); };
 
     /**
      * @brief Retrieves all filtered content with pagination of the database.
@@ -110,10 +110,10 @@ public:
      * @param prefix Filter value.
      * @param page Page number.
      * @param records Quantity of records for page.
-     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs. Specific
-     * error otherwise.
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
+     * Specific error otherwise.
      */
-    virtual std::variant<std::map<std::string, std::string>, base::Error>
+    virtual std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
     search(const std::string& prefix, const unsigned int page, const unsigned int records) = 0;
 
     /**
@@ -123,11 +123,10 @@ public:
      * sent in 0.
      *
      * @param prefix Filter value.
-     * @return std::variant<std::map<std::string, std::string>, base::Error> Map of key-value pairs. Specific
-     * error otherwise.
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error> Map of key-value pairs.
+     * Specific error otherwise.
      */
-    inline std::variant<std::map<std::string, std::string>, base::Error>
-    search(const std::string& prefix)
+    inline std::variant<std::list<std::pair<std::string, std::string>>, base::Error> search(const std::string& prefix)
     {
         return search(prefix, 0, 0);
     };

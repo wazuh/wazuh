@@ -144,13 +144,13 @@ std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
     return base::Error {"Can not access RocksDB::DB"};
 }
 
-std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::dump(const unsigned int page,
-                                                                                const unsigned int records)
+std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHandler::dump(const unsigned int page,
+                                                                                            const unsigned int records)
 {
     return pageContent(page, records);
 }
 
-std::variant<std::map<std::string, std::string>, base::Error>
+std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
 KVDBHandler::search(const std::string& prefix, const unsigned int page, const unsigned int records)
 {
     auto filter = [&prefix](const rocksdb::Slice& keyIter) -> bool
@@ -166,13 +166,13 @@ KVDBHandler::search(const std::string& prefix, const unsigned int page, const un
     return pageContent(page, records, filter);
 }
 
-std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::pageContent(const unsigned int page,
-                                                                                       const unsigned int records)
+std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
+KVDBHandler::pageContent(const unsigned int page, const unsigned int records)
 {
     return pageContent(page, records, {});
 }
 
-std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::pageContent(
+std::variant<std::list<std::pair<std::string, std::string>>, base::Error> KVDBHandler::pageContent(
     const unsigned int page, const unsigned int records, const std::function<bool(const rocksdb::Slice&)>& filter)
 {
     auto pRocksDB = m_weakDB.lock();
@@ -182,7 +182,7 @@ std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::pageC
         if (pCFhandle)
         {
             std::unique_ptr<rocksdb::Iterator> iter(pRocksDB->NewIterator(rocksdb::ReadOptions(), pCFhandle.get()));
-            std::map<std::string, std::string> content;
+            std::list<std::pair<std::string, std::string>> content;
 
             unsigned int fromRecords = (page - 1) * records;
             unsigned int toRecords = fromRecords + records;
@@ -194,7 +194,7 @@ std::variant<std::map<std::string, std::string>, base::Error> KVDBHandler::pageC
                 {
                     if (i >= fromRecords)
                     {
-                        content[iter->key().ToString()] = iter->value().ToString();
+                        content.emplace_back(std::make_pair(iter->key().ToString(), iter->value().ToString()));
                     }
                     i++;
                 }
