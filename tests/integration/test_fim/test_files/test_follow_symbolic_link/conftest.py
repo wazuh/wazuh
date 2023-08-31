@@ -22,7 +22,7 @@ def file_symlink(test_metadata: dict) -> str:
     file.remove_file(target)
 
 @pytest.fixture
-def symlink_new_target(test_metadata: dict) -> str:
+def symlink_new_target(test_metadata: dict) -> Path:
     target = test_metadata.get('symlink_new_target')
 
     if not '.' in target:
