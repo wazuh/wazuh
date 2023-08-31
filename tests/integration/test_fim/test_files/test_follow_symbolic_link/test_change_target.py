@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
+from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -83,7 +83,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_audit_rules_with_symlink.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_change_target.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -94,18 +94,20 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                  configure_local_internal_options, folder_to_monitor, file_symlink, symlink_new_target,
-                                  daemons_handler, start_monitoring):
+def test_change_target(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                       configure_local_internal_options, folder_to_monitor, file_symlink, symlink_new_target,
+                       daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     file.modify_symlink_target(symlink_new_target, file_symlink)
-    file.write_file(symlink_new_target.joinpath('testie.log'))
-
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
 
+    file.write_file(symlink_new_target.joinpath('testie.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
-    rules_paths = commands.get_rules_path()
     assert wazuh_log_monitor.callback_result
-    assert 'testie.log' not in rules_paths
+
+    if str(folder_to_monitor) in str(symlink_new_target):
+        # The new target is inside the folder to monitor.
+        wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+        assert wazuh_log_monitor.callback_result
