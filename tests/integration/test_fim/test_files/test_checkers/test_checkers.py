@@ -93,6 +93,7 @@ test_configuration = load_configuration_template(config_path, test_configuration
 local_internal_options = {configuration.SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
+base_checks = [configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE]
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_move(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
@@ -101,33 +102,29 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
     '''
     monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
-    checks = test_metadata.get('checks')
-    checks = set(checks) if checks else set()
-    checked = set()
+    checks = set(test_metadata.get('checks'))
 
     # Update
     file.write_file(file_to_monitor, "update")
     monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
-    if monitor.callback_result:
+    if not checks:
+        assert not monitor.callback_result
+        checks.update(configuration.ATTR_BASE)
+    else:
         fim_data = get_fim_event_data(monitor.callback_result)
-        checked = set(fim_data['attributes'].keys())
-        checks.update([configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE])
-    assert checks == checked
+        assert fim_data['mode'] == fim_mode
+        assert set(fim_data['attributes'].keys()) == checks
 
     # Delete
     file.remove_file(file_to_monitor)
     monitor.start(generate_callback(EVENT_TYPE_DELETED))
-    if monitor.callback_result:
-        fim_data = get_fim_event_data(monitor.callback_result)
-        checked = set(fim_data['attributes'].keys())
-        checks.update([configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE])
-    assert checks == checked
+    fim_data = get_fim_event_data(monitor.callback_result)
+    assert fim_data['mode'] == fim_mode
+    assert set(fim_data['attributes'].keys()) == checks
 
     # Create
     file.write_file(file_to_monitor)
     monitor.start(generate_callback(EVENT_TYPE_ADDED))
-    if monitor.callback_result:
-        fim_data = get_fim_event_data(monitor.callback_result)
-        checked = set(fim_data['attributes'].keys())
-        checks.update([configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE])
-    assert checks == checked
+    fim_data = get_fim_event_data(monitor.callback_result)
+    assert fim_data['mode'] == fim_mode
+    assert set(fim_data['attributes'].keys()) == checks
