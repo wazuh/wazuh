@@ -14,7 +14,7 @@
 // Remove static qualifier when unit testing
 #define STATIC
 #ifdef WIN32
-    #include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+    #include "../unit_tests/wrappers/wazuh/shared/url_wrappers.h"
 #endif
 #else
 #define STATIC static

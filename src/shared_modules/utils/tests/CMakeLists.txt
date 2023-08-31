@@ -11,10 +11,20 @@ endif(COVERITY)
 # Enable testing
 enable_testing()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+# If is Linux, Windows or macOS > 10.15, use C++17
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Windows" OR (CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND NOT CMAKE_HOST_SYSTEM_VERSION VERSION_LESS "19.0.0"))
+  set(CMAKE_CXX_STANDARD 17)
+  file(GLOB UTIL_CXX_UNITTEST_CPP17_SRC
+      "stdFileSystemHelper_test.cpp")
+else()
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
@@ -43,6 +53,8 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "threadDispatcher_test.cpp"
     "threadSafeQueue_test.cpp"
     "timeHelper_test.cpp"
+    "loggerHelper_test.cpp"
+    "globHelper_test.cpp"
     "main.cpp"
 )
 
@@ -63,6 +75,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_executable(utils_unit_test
       ${UTIL_CXX_UNITTEST_COMMON_SRC}
       ${UTIL_CXX_UNITTEST_WINDOWS_SRC}
+      ${UTIL_CXX_UNITTEST_CPP17_SRC}
     )
     add_definitions(-DWIN32=1
                     -D_WIN32_WINNT=0x600)
@@ -83,10 +96,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         crypt32
     )
 else()
-    add_executable(utils_unit_test
-      ${UTIL_CXX_UNITTEST_COMMON_SRC}
-      ${UTIL_CXX_UNITTEST_LINUX_SRC}
-    )
+
+    if (APPLE)
+      add_executable(utils_unit_test
+        ${UTIL_CXX_UNITTEST_COMMON_SRC}
+        ${UTIL_CXX_UNITTEST_CPP17_SRC}
+      )
+    else()
+      add_executable(utils_unit_test
+        ${UTIL_CXX_UNITTEST_COMMON_SRC}
+        ${UTIL_CXX_UNITTEST_LINUX_SRC}
+        ${UTIL_CXX_UNITTEST_CPP17_SRC}
+      )
+    endif(APPLE)
+
     target_link_libraries(utils_unit_test
         debug gtestd
         debug gmockd

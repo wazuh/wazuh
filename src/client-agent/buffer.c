@@ -11,12 +11,11 @@
 
 #include <pthread.h>
 #include "shared.h"
-#include "agentd.h"
-
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
 #endif
+#include "agentd.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -43,17 +42,8 @@ struct{
 static char ** buffer;
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
-
 static time_t start, end;
-
-/**
- * @brief Sleep according to max_eps parameter
- *
- * Sleep (1 / max_eps) - ts_loop
- *
- * @param ts_loop Loop time.
- */
-static void delay(struct timespec * ts_loop);
+limits_t *agentd_limits;
 
 /* Create agent buffer */
 void buffer_init(){
@@ -77,6 +67,10 @@ void buffer_init(){
 
 /* Send messages to buffer. */
 int buffer_append(const char *msg){
+    char flood_msg[OS_MAXSTR];
+    char full_msg[OS_MAXSTR];
+    char warn_msg[OS_MAXSTR];
+    char warn_str[OS_SIZE_2048];
 
     w_mutex_lock(&mutex_lock);
 
@@ -114,6 +108,28 @@ int buffer_append(const char *msg){
             break;
     }
 
+    if (buff.warn){
+        buff.warn = 0;
+        mwarn(WARN_BUFFER, warn_level);
+        snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
+        snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
+        send_msg(warn_msg, -1);
+    }
+
+    if (buff.full){
+        buff.full = 0;
+        mwarn(FULL_BUFFER);
+        snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
+        send_msg(full_msg, -1);
+    }
+
+    if (buff.flood){
+        buff.flood = 0;
+        mwarn(FLOODED_BUFFER);
+        snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
+        send_msg(flood_msg, -1);
+    }
+
     w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
     /* When buffer is full, event is dropped */
@@ -135,23 +151,37 @@ int buffer_append(const char *msg){
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI update_limits_thread(__attribute__((unused)) LPVOID arg) {
+#else
+void *update_limits_thread() {
+#endif
+    /* Initialize EPS limits */
+    agentd_limits = init_limits(agt->events_persec, agt->eps_timeframe);
+
+    while (1) {
+        sleep(1);
+        update_limits(agentd_limits);
+    }
+
+#ifdef WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
 /* Send messages from buffer to the server */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
 #else
 void *dispatch_buffer(__attribute__((unused)) void * arg){
 #endif
-    char flood_msg[OS_MAXSTR];
-    char full_msg[OS_MAXSTR];
-    char warn_msg[OS_MAXSTR];
     char normal_msg[OS_MAXSTR];
 
-    char warn_str[OS_SIZE_2048];
-    struct timespec ts0;
-    struct timespec ts1;
-
     while(1){
-        gettime(&ts0);
+        // Maximum events per second limits
+        get_eps_credit(agentd_limits);
 
         w_mutex_lock(&mutex_lock);
 
@@ -196,33 +226,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
-        if (buff.warn){
-
-            buff.warn = 0;
-            mwarn(WARN_BUFFER, warn_level);
-            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
-            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
-            send_msg(warn_msg, -1);
-        }
-
-        if (buff.full){
-
-            buff.full = 0;
-            mwarn(FULL_BUFFER);
-            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
-            send_msg(full_msg, -1);
-        }
-
-        if (buff.flood){
-
-            buff.flood = 0;
-            mwarn(FLOODED_BUFFER);
-            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
-            send_msg(flood_msg, -1);
-        }
-
         if (buff.normal){
-
             buff.normal = 0;
             minfo(NORMAL_BUFFER, normal_level);
             snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_NORMAL_BUFFER);
@@ -232,23 +236,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         os_wait();
         send_msg(msg_output, -1);
         free(msg_output);
-
-        gettime(&ts1);
-        time_sub(&ts1, &ts0);
-
-        if (ts1.tv_sec >= 0) {
-            delay(&ts1);
-        }
-    }
-}
-
-void delay(struct timespec * ts_loop) {
-    long interval_ns = 1000000000 / agt->events_persec;
-    struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
-    time_sub(&ts_timeout, ts_loop);
-
-    if (ts_timeout.tv_sec >= 0) {
-        nanosleep(&ts_timeout, NULL);
     }
 }
 

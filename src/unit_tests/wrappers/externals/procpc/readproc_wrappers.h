@@ -11,7 +11,7 @@
 #ifndef READPROC_WRAPPERS_H
 #define READPROC_WRAPPERS_H
 
-#include "external/procps/readproc.h"
+#include "../external/procps/readproc.h"
 
 void __wrap_closeproc(PROCTAB* PT);
 

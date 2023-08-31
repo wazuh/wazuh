@@ -44,6 +44,7 @@ typedef struct _agent {
     int buffer;
     int buflength;
     int events_persec;
+    int eps_timeframe;
     int crypto_method;
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;

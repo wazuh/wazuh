@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(sysInfoMacPackage_unit_test)
 
+# Copy input files to the build directory
+file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 file(GLOB sysinfo_UNIT_TEST_SRC

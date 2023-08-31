@@ -17,7 +17,7 @@
 policy:
   id: "cis_apache"
   file: "cis_apache_24.yml"
-  name: "CIS Apache HTTP Server 2.4 Benchmark"
+  name: "CIS Apache HTTP Server 2.4 Benchmark v1.5.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apache Web Server version 2.4 running on Linux."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "4.6.0"
-!define REVISION "40600"
+!define VERSION "4.8.0"
+!define REVISION "40800"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -219,6 +219,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
+    File /oname=libfimdb.dll ..\syscheckd/build/bin/libfimdb.dll
     File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
     File VERSION
     File REVISION

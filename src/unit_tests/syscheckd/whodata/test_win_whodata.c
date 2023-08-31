@@ -37,7 +37,7 @@
 #include "wrappers/windows/ntsecapi_wrappers.h"
 
 
-#include "syscheckd/include/syscheck.h"
+#include "../../../syscheckd/include/syscheck.h"
 
 int set_winsacl(const char *dir, directory_t *configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);

@@ -13,7 +13,7 @@
 policy:
   id: "cis_nginx1"
   file: "cis_nginx1.yml"
-  name: "CIS Benchmark for NGINX version 1.14.0"
+  name: "CIS NGINX version 1.14.0 Benchmark v1.0.0"
   description: "This document, CIS NGINX Benchmark, provides prescriptive guidance for establishing a secure configuration posture for NGINX version 1.14.0 running on Linux."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

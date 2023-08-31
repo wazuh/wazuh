@@ -45,7 +45,7 @@
 #include <sys/types.h>
 #include "labels_op.h"
 #include "expression.h"
-#include "os_xml/os_xml.h"
+#include "../os_xml/os_xml.h"
 #include "exec_op.h"
 #include "list_op.h"
 

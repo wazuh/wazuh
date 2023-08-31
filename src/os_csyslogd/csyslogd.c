@@ -111,26 +111,31 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
             json_data = jqueue_next(&jfileq);
         }
 
-        /* Send via syslog */
+        if(al_data == NULL && json_data == NULL) {
+            sleep(1);
+        } else {
 
-        for (s = 0; syslog_config[s]; s++) {
-            if (syslog_config[s]->format == JSON_CSYSLOG) {
-                if (json_data) {
-                    OS_Alert_SendSyslog_JSON(json_data, syslog_config[s]);
+            /* Send via syslog */
+
+            for (s = 0; syslog_config[s]; s++) {
+                if (syslog_config[s]->format == JSON_CSYSLOG) {
+                    if (json_data) {
+                        OS_Alert_SendSyslog_JSON(json_data, syslog_config[s]);
+                    }
+                } else if (al_data) {
+                    OS_Alert_SendSyslog(al_data, syslog_config[s]);
                 }
-            } else if (al_data) {
-                OS_Alert_SendSyslog(al_data, syslog_config[s]);
             }
-        }
 
-        /* Clear the memory */
+            /* Clear the memory */
 
-        if (al_data) {
-            FreeAlertData(al_data);
-        }
+            if (al_data) {
+                FreeAlertData(al_data);
+            }
 
-        if (json_data) {
-            cJSON_Delete(json_data);
+            if (json_data) {
+                cJSON_Delete(json_data);
+            }
         }
     }
 }

@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 
 #include "../wrappers/posix/dirent_wrappers.h"

@@ -14,7 +14,38 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
+include(CheckCXXSourceCompiles)
+set(CMAKE_CXX_STANDARD 17)
+#Check if std::optional is available, therefore C++17 is available
+check_cxx_source_compiles("
+    #include <optional>
+    int main() {
+        std::optional<int> o;
+        return 0;
+    }
+" HAS_OPTIONAL)
+
+if(NOT HAS_OPTIONAL AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+#Check if filesystem is available
+check_cxx_source_compiles("
+    #include <filesystem>
+    int main() {
+        std::filesystem::path p;
+        return 0;
+    }
+" HAS_FILESYSTEM)
+
+if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DHAS_STDFILESYSTEM=true)
+else()
+  add_definitions(-DHAS_STDFILESYSTEM=false)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -33,7 +64,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
-include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
@@ -47,10 +77,17 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
-include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+  include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+  include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+  include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Avoid download externals from http-request submodule
+  set(EXTERNAL_RES "")
+  set(PRECOMPILED_EXTERNAL_RES "")
+  include_directories(${SRC_FOLDER}/shared_modules/http-request/include/)
+  include_directories(${SRC_FOLDER}/shared_modules/http-request/shared/)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
@@ -69,7 +106,10 @@ link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
-
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/shared_modules/http-request/build)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -98,12 +138,23 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
   add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+  if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
+    file(GLOB SYSINFO_SRC
+        "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+        "${CMAKE_SOURCE_DIR}/src/hardware/*ARMMac.cpp")
+  else()
+    file(GLOB SYSINFO_SRC
+        "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+        "${CMAKE_SOURCE_DIR}/src/hardware/*X86_64Mac.cpp")
+  endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*FreeBSD.cpp"
@@ -156,11 +207,26 @@ elseif(UNIX AND NOT APPLE)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 elseif(APPLE)
-  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
+  find_library(iokit_lib IOKit)
+  if(NOT iokit_lib)
+    message(FATAL_ERROR "IOKit library not found! Aborting...")
+  endif()
+  find_library(corefoundation_lib CoreFoundation)
+  if(NOT corefoundation_lib)
+    message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
+  endif()
+  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(sysinfo urlrequest)
+  if(CMAKE_CHECK_CENTOS5)
+      set(USE_HTTP 1)
+  endif(CMAKE_CHECK_CENTOS5)
+  add_subdirectory(${SRC_FOLDER}/shared_modules/http-request ${SRC_FOLDER}/shared_modules/http-request/build)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

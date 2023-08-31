@@ -64,7 +64,7 @@
 
   <rule id="92655" level="15">
     <if_sid>60011</if_sid>
-    <field name="win.system.eventID" type="pcre2">808</field>
+    <field name="win.system.eventID">^808$</field>
     <description>Printer driver failed to load, possible remote code execution using PrinterNightmare exploit: CVE-2021-34527.</description>
     <mitre>
       <id>T1210</id>

@@ -25,6 +25,12 @@
 #define ARGV0 "wazuh-agent"
 #endif
 
+/**************************************************************************************
+    WARNING: all the logging functions of this file must use the plain_ variant
+    to avoid calling any external library that could be loaded before the signature
+    verification can be executed in local_start.
+**************************************************************************************/
+
 /* Help message */
 void agent_help()
 {
@@ -68,7 +74,7 @@ int main(int argc, char **argv)
         mypath[1] = '\0';
     }
     if (chdir(mypath) < 0) {
-        merror_exit(CHDIR_ERROR, mypath, errno, strerror(errno));
+        plain_merror_exit(CHDIR_ERROR, mypath, errno, strerror(errno));
     }
     getcwd(mypath, OS_MAXSTR - 1);
     snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
@@ -87,14 +93,14 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[1], "help") == 0) {
             agent_help();
         } else {
-            merror("Unknown option: %s", argv[1]);
+            plain_merror("Unknown option: %s", argv[1]);
             exit(1);
         }
     }
 
     /* Start it */
     if (!os_WinMain(argc, argv)) {
-        merror_exit("Unable to start WinMain.");
+        plain_merror_exit("Unable to start WinMain.");
     }
 
     return (0);

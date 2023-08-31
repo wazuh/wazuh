@@ -13,7 +13,7 @@
 
 #ifndef WIN32
 #include <regex.h>
-#include "external/sqlite/sqlite3.h"
+#include "../external/sqlite/sqlite3.h"
 
 /**
  * @brief Compare a string with a regular expression.

@@ -64,6 +64,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
     const char *office365 = "office365";                /* Office365 Module */
+    const char *ms_graph = "ms-graph";                  /* MS Graph Module */
 #endif
 
     while (node[i]) {
@@ -129,7 +130,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
-            if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
+            if ((modules & CREMOTE) && (Read_Remote(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
@@ -253,6 +254,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, office365) == 0)) {
             if ((modules & CWMODULE) && (Read_Office365(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, ms_graph) == 0)) {
+            if ((modules & CWMODULE) && (Read_MS_Graph(xml, node[i], d1) < 0)) {
                 goto fail;
             }
         }

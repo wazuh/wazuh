@@ -14,8 +14,7 @@ policy:
   id: "cis_postgresql_13"
   file: "cis_postgre-sql-13.yml"
   name: "CIS Benchmark for PostgreSQL 13"
-  description: >
-    "This document, CIS PostgreSQL 13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for PostgreSQL 13."
+  description: "This document, CIS PostgreSQL 13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for PostgreSQL 13."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 

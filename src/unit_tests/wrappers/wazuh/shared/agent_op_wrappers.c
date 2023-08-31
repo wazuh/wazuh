@@ -61,3 +61,12 @@ int __wrap_w_send_clustered_message(const char* command, const char* payload, ch
 
     return mock();
 }
+
+int __wrap_getsockname(int fd, struct sockaddr* addr, __attribute__((unused)) socklen_t* len) {
+    int ret = -1;
+    if(fd) {
+        ret = mock();
+        addr->sa_family = mock();
+    }
+    return ret;
+}

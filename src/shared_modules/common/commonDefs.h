@@ -121,6 +121,18 @@ typedef struct
 typedef void((*log_fnc_t)(const char* msg));
 
 /**
+ * @brief Callback function for user defined logging but adding a tag, the file name,
+ * the line number and the name of the function where the log was generated.
+ *
+ * @param tag      Tag to identify the log.
+ * @param file     File name where the log is generated.
+ * @param line     Line number where the log is generated.
+ * @param func     Function name where the log is generated.
+ * @param msg      Message to be logged.
+ */
+typedef void ((*full_log_fnc_t)(const char* tag, const char* file, int line, const char* func, const char* msg, ...));
+
+/**
 * @brief Definition to indicate the unlimited queue.
 *
 * @details It's used to define the unlimited queue size.

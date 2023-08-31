@@ -10,9 +10,9 @@
 
 #include <shared.h>
 #include "syscheck.h"
-#include "rootcheck/rootcheck.h"
-#include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
+#include "../rootcheck/rootcheck.h"
+#include "../os_net/os_net.h"
+#include "../wazuh_modules/wmodules.h"
 #include "db/include/db.h"
 
 #ifdef WAZUH_UNIT_TESTING

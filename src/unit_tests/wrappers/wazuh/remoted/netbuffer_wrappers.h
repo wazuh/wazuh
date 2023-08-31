@@ -12,7 +12,7 @@
 #ifndef NETBUFFER_WRAPPERS_H
 #define NETBUFFER_WRAPPERS_H
 
-#include "remoted/remoted.h"
+#include "../../../../remoted/remoted.h"
 
 void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock);
 

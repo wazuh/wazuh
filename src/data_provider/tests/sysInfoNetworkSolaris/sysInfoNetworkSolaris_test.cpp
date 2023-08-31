@@ -53,7 +53,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET_THROW)
     nlohmann::json ifaddr { };
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET)
@@ -66,7 +66,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET)
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return("0"));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("disabled"));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv4"))
     {
@@ -84,7 +84,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET6_THROW)
     nlohmann::json ifaddr { };
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET6)
@@ -97,7 +97,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET6)
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return(""));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return("0"));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("enabled"));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv6"))
     {
@@ -122,7 +122,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_UNSPEC)
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{436300, 220902, 641204623, 12252455, 0, 0, 0, 0}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500u));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.0.2.2"));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
     EXPECT_EQ("net0", ifaddr.at("name").get_ref<const std::string&>());
     EXPECT_EQ("", ifaddr.at("adapter").get_ref<const std::string&>());
@@ -146,5 +146,5 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_UNSPEC)
 TEST_F(SysInfoNetworkSolarisTest, Test_THROW_NULLPTR)
 {
     nlohmann::json ifaddr { };
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(nullptr)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(nullptr)->buildNetworkData(ifaddr));
 }

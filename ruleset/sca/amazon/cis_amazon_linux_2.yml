@@ -13,8 +13,8 @@
 policy:
   id: "cis_amazon_linux_2"
   file: "cis_amazon_linux_2.yml"
-  name: "CIS Benchmark for Amazon Linux 2"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Amazon Linux 2 systems running on x86 and x64 platforms. This document was tested against Amazon Linux 2."
+  name: "CIS Amazon Linux 2 Benchmark v2.0.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Amazon Linux 2 systems."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 

@@ -19,7 +19,7 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
     OSDecoderNode *node = NULL;
     int i;
 
-    for (node=list;node->next;node = node->next) {
+    for (node = list; node != NULL; node = node->next) {
         cJSON *decoder = cJSON_CreateObject();
 
         cJSON_AddNumberToObject(decoder,"id",node->osdecoder->id);
@@ -234,7 +234,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         "different_location"
     };
 
-    for (node=list;node->next;node = node->next) {
+    for (node = list; node != NULL; node = node->next) {
         cJSON *rule = cJSON_CreateObject();
 
         if (node->child) {

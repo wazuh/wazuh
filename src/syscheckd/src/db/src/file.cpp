@@ -75,14 +75,14 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["perm"] = data.at("perm");
     }
 
-    if (ctx->config->options & CHECK_OWNER)
+    if (data.contains("uid") && data.at("uid") != "" && ctx->config->options & CHECK_OWNER)
     {
-        jsonEvent["data"]["attributes"]["uid"] = to_string(data.at("uid"));
+        jsonEvent["data"]["attributes"]["uid"] = data.at("uid");
     }
 
-    if (ctx->config->options & CHECK_GROUP)
+    if (data.contains("gid") && data.at("gid") != "" && ctx->config->options & CHECK_GROUP)
     {
-        jsonEvent["data"]["attributes"]["gid"] = to_string(data.at("gid"));
+        jsonEvent["data"]["attributes"]["gid"] = data.at("gid");
     }
 
     if (data.at("user_name") != "")
@@ -105,7 +105,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
         jsonEvent["data"]["attributes"]["mtime"] = data.at("mtime");
     }
 
-    if (ctx->config->options & CHECK_SHA1SUM)
+    if (ctx->config->options & CHECK_MD5SUM)
     {
         jsonEvent["data"]["attributes"]["hash_md5"] = data.at("hash_md5");
     }
@@ -175,29 +175,29 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             }
         }
 
-        if (ctx->config->options & CHECK_OWNER)
+        if (data.contains("uid") && data.at("uid") != "" && ctx->config->options & CHECK_OWNER)
         {
             if (old_data.contains("uid"))
             {
-                jsonEvent["data"]["old_attributes"]["uid"] = to_string(old_data["uid"]);
+                jsonEvent["data"]["old_attributes"]["uid"] = old_data["uid"];
                 changed_attributes.push_back("uid");
             }
             else
             {
-                jsonEvent["data"]["old_attributes"]["uid"] = to_string(data.at("uid"));
+                jsonEvent["data"]["old_attributes"]["uid"] = data.at("uid");
             }
         }
 
-        if (ctx->config->options & CHECK_GROUP)
+        if (data.contains("gid") && data.at("gid") != "" && ctx->config->options & CHECK_GROUP)
         {
             if (old_data.contains("gid"))
             {
-                jsonEvent["data"]["old_attributes"]["gid"] = to_string(old_data["gid"]);
+                jsonEvent["data"]["old_attributes"]["gid"] = old_data["gid"];
                 changed_attributes.push_back("gid");
             }
             else
             {
-                jsonEvent["data"]["old_attributes"]["gid"] = to_string(data.at("gid"));
+                jsonEvent["data"]["old_attributes"]["gid"] = data.at("gid");
             }
         }
 

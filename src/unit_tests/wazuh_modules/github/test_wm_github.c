@@ -17,9 +17,9 @@
 #include <time.h>
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_github.h"
-#include "wazuh_modules/wm_github.c"
+#include "../../../wazuh_modules/wmodules.h"
+#include "../../../wazuh_modules/wm_github.h"
+#include "../../../wazuh_modules/wm_github.c"
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"

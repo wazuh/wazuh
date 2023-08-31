@@ -13,7 +13,7 @@
 policy:
   id: "cis_hpux"
   file: "cis_hpux_11i.yml"
-  name: "CIS HP-UX 11i Benchmark"
+  name: "CIS HP-UX 11i Benchmark v1.5.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for HPUX version 11i. This guide was tested against HP-UX"
   references:
     - https://www.cisecurity.org/wp-content/uploads/2017/04/CIS_HP-UX_11i_Benchmark_v1.5.0.pdf

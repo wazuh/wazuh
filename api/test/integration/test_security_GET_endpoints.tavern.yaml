@@ -351,6 +351,46 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  - name: Get security roles using query parameter
+    request:
+      verify: False
+      <<: *all_roles_request
+      params:
+        q: id=2
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: 2
+              name: readonly
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Try to get security roles using an invalid query
+    request:
+      verify: False
+      <<: *all_roles_request
+      params:
+        q: id%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Get distinct security roles
+    request:
+      verify: False
+      <<: *all_roles_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /security/policies
 
@@ -640,6 +680,46 @@ stages:
       status_code: 200
       json:
         <<: *response_error
+    
+  - name: Get security policies using query parameter
+    request:
+      verify: False
+      <<: *all_policies_request
+      params:
+        q: id=103
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: 103
+              name: administratorPolicy
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Try to get security policies using an invalid query
+    request:
+      verify: False
+      <<: *all_policies_request
+      params:
+        q: id%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Get distinct security policies
+    request:
+      verify: False
+      <<: *all_policies_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /security/rules
@@ -968,6 +1048,46 @@ stages:
                 - '999'
           total_affected_items: 1
           total_failed_items: 1
+
+  - name: Get security rules using query parameter
+    request:
+      verify: False
+      <<: *all_rules_request
+      params:
+        q: id=101
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: 101
+              name: rule2
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Try to get security rules using an invalid query
+    request:
+      verify: False
+      <<: *all_rules_request
+      params:
+        q: id%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Get distinct security rules
+    request:
+      verify: False
+      <<: *all_rules_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /security/user/authenticate
@@ -1430,6 +1550,46 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
+
+  - name: Get security users using query parameter
+    request:
+      verify: False
+      <<: *all_users_request
+      params:
+        q: id=1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: 1
+              username: wazuh
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Try to get security users using an invalid query
+    request:
+      verify: False
+      <<: *all_users_request
+      params:
+        q: id%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Get distinct security users
+    request:
+      verify: False
+      <<: *all_users_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /security/users/me

@@ -1,0 +1,56 @@
+- name: MIDDLEWARE_BAD_REQUEST
+  description: Check if the response_postprocessing API middleware works
+  configuration_parameters:
+  metadata:
+    method: post
+    endpoint_url: /agents
+    json_body:
+      wrong_key: value
+    use_login_token: yes
+    expected_status_code: 400
+    expected_response_text:
+      title: Bad Request
+      detail: "'name' is a required property"
+    expected_content_type: application/problem+json; charset=utf-8
+
+- name: MIDDLEWARE_ROUTE_NOT_FOUND
+  description: Check if the response_postprocessing API middleware works.
+  configuration_parameters:
+  metadata:
+    method: get
+    endpoint_url: /not_found_endpoint
+    json_body: null
+    use_login_token: yes
+    expected_status_code: 404
+    expected_response_text:
+      title: Not Found
+      detail: "404: Not Found"
+    expected_content_type: application/problem+json; charset=utf-8
+
+- name: MIDDLEWARE_NO_TOKEN
+  description: Check if the response_postprocessing API middleware works.
+  configuration_parameters:
+  metadata:
+    method: get
+    endpoint_url: /agents
+    json_body: null
+    use_login_token: no
+    expected_status_code: 401
+    expected_response_text:
+      title: Unauthorized
+      detail: No authorization token provided
+    expected_content_type: application/problem+json; charset=utf-8
+
+- name: MIDDLEWARE_INVALID_CREDENTIALS
+  description: Check if the response_postprocessing API middleware works.
+  configuration_parameters:
+  metadata:
+    method: post
+    endpoint_url: /security/user/authenticate
+    json_body: null
+    use_login_token: no
+    expected_status_code: 401
+    expected_response_text:
+      title: Unauthorized
+      detail: Invalid credentials
+    expected_content_type: application/problem+json; charset=utf-8

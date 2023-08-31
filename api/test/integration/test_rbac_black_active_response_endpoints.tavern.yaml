@@ -30,8 +30,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "custom"
-        custom: True
+        command: "!custom"
       params:
         agents_list: '002'
     response:
@@ -54,8 +53,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "custom"
-        custom: True
+        command: "!custom"
       params:
         agents_list: 002,004,005,007,010,011
     response:

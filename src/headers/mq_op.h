@@ -11,7 +11,7 @@
 #ifndef MQ_H
 #define MQ_H
 
-#include "config/localfile-config.h"
+#include "../config/localfile-config.h"
 #include <sys/types.h>
 
 /* Default queues */

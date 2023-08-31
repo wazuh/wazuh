@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "headers/shared.h"
+#include "../headers/shared.h"
 
 #define BUFFER_LEN 64
 #define N_READERS 4

@@ -11,9 +11,9 @@
 #ifndef WM_AGENT_UPGRADE_WRAPPERS_H
 #define WM_AGENT_UPGRADE_WRAPPERS_H
 
-#include "headers/shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
+#include "../../../../headers/shared.h"
+#include "../../../../wazuh_modules/wmodules.h"
+#include "../../../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 
 int setup_hash_table(void (free_data_function)(wm_agent_task* agent_task));
 

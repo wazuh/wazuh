@@ -8,7 +8,7 @@
  */
 
 #include "shared.h"
-#include "os_crypto/md5/md5_op.h"
+#include "../os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
 

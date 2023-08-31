@@ -79,7 +79,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -151,7 +151,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -183,7 +183,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -339,7 +339,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -407,7 +407,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -435,7 +435,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -512,7 +512,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -580,7 +580,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult11
     {
@@ -608,7 +608,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -684,7 +684,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -740,7 +740,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -760,7 +760,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1007,7 +1007,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -1075,7 +1075,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1103,7 +1103,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1180,7 +1180,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -1252,7 +1252,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1284,7 +1284,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1363,7 +1363,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -1428,7 +1428,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1456,7 +1456,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1534,7 +1534,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
 
@@ -1606,7 +1606,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1638,7 +1638,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1691,7 +1691,6 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         t.join();
     }
-
 }
 
 TEST_F(SyscollectorImpTest, pushMessageOk)
@@ -1757,7 +1756,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14", "os_patch":""})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14", "os_patch":"","format":"deb","location":" "})"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
@@ -1810,7 +1809,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult5
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult6
     {
@@ -1858,7 +1857,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult17
     {
-        R"({"data":{"architecture":"amd64","checksum":"031f048e87e1b1ebb4e33b68d3198527a60b4b41","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","os_patch":null,"priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c1a125f40a70bab20a252f42ea4ec0dcf90733e8","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","os_patch":null,"priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult18
     {
@@ -2286,9 +2285,9 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::DoAll(
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json),
+                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json),
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json)));
+                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json)));
 
 
 
@@ -2306,7 +2305,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 
     const auto expectedResult1
     {
-        R"({"data":{"architecture":"amd64","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);

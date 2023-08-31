@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "../headers/defs.h"
 #include "../headers/file_op.h"
-#include "error_messages/error_messages.h"
+#include "../error_messages/error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -890,6 +890,42 @@ void test_get_file_content(void **state)
     free(content);
 }
 
+void test_get_file_pointer_NULL(void **state)
+{
+    const char * path = NULL;
+    
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot open NULL path");
+
+    FILE * fp = w_get_file_pointer(path);
+
+    assert_int_equal(NULL, fp);
+}
+
+void test_get_file_pointer_invalid(void **state)
+{
+    const char * file_name = "test_file.txt";
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "(1103): Could not open file 'test_file.txt' due to [(0)-(Success)].");
+
+    FILE * fp = w_get_file_pointer(file_name);
+
+    assert_int_equal(NULL, fp);
+}
+
+void test_get_file_pointer_success(void **state)
+{
+    const char * file_name = "test_file.txt";
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    FILE * fp = w_get_file_pointer(file_name);
+
+    assert_int_equal(fp, fp);
+}
+
 #ifdef TEST_WINAGENT
 void test_get_UTC_modification_time_success(void **state) {
     HANDLE hdle = (HANDLE)1234;
@@ -1112,6 +1148,10 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_check_argv0),
         cmocka_unit_test(test_w_homedir_env_var),
         cmocka_unit_test(test_w_homedir_stat_fail),
+        // w_get_file_pointer
+        cmocka_unit_test(test_get_file_pointer_NULL),
+        cmocka_unit_test(test_get_file_pointer_invalid),
+        cmocka_unit_test(test_get_file_pointer_success),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

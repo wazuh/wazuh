@@ -128,11 +128,11 @@ CREATE TABLE IF NOT EXISTS sys_hwinfo (
     scan_time TEXT,
     board_serial TEXT,
     cpu_name TEXT,
-    cpu_cores INTEGER CHECK (cpu_cores > 0),
-    cpu_mhz REAL CHECK (cpu_mhz > 0),
-    ram_total INTEGER CHECK (ram_total > 0),
-    ram_free INTEGER CHECK (ram_free > 0),
-    ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+    cpu_cores INTEGER,
+    cpu_mhz REAL,
+    ram_total INTEGER,
+    ram_free INTEGER,
+    ram_usage INTEGER,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, board_serial)
 );
@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk')),
+    format TEXT,
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    PRIMARY KEY (scan_id, name, version, architecture)
+    PRIMARY KEY (scan_id, name, version, architecture, format, location)
 );
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
@@ -397,7 +397,7 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '11');
+INSERT INTO metadata (key, value) VALUES ('db_version', '13');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');

@@ -250,6 +250,38 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  - name: Get ruleset decoder_dir section distinct configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: ruleset
+        field: decoder_dir
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+  - name: Get ruleset rule_dir section distinct configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: ruleset
+        field: rule_dir
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /manager/daemons/stats
 
@@ -771,6 +803,57 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
+  - name: Read logs using valid select
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        select: 'timestamp,tag'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'timestamp,tag'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to read logs using invalid select
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Get distinct manager logs
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /manager/logs/summary
 
@@ -879,6 +962,9 @@ stages:
                       exceptions: !anything
                   limits:
                     eps:
+                      allow: !anybool
+                  agents:
+                    allow_higher_versions:
                       allow: !anybool
           total_affected_items: 1
           total_failed_items: 0
@@ -1152,6 +1238,24 @@ stages:
           affected_items:
             - monitord: !anything
           failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of monitor/reports in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/reports"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - reports: !anything
+          failed_items: [ ]
           total_affected_items: 1
           total_failed_items: 0
 

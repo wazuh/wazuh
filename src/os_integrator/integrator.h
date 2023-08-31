@@ -12,7 +12,7 @@
 #ifndef INTEGRATORD_H
 #define INTEGRATORD_H
 
-#include "config/integrator-config.h"
+#include "../config/integrator-config.h"
 
 /** Prototypes **/
 

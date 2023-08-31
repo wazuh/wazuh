@@ -15,7 +15,7 @@
 #include <shared.h>
 #include <pthread.h>
 #include <openssl/evp.h>
-#include "external/sqlite/sqlite3.h"
+#include "../external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
 #include "wazuhdb_op.h"
@@ -429,6 +429,8 @@ extern char *schema_upgrade_v8_sql;
 extern char *schema_upgrade_v9_sql;
 extern char *schema_upgrade_v10_sql;
 extern char *schema_upgrade_v11_sql;
+extern char *schema_upgrade_v12_sql;
+extern char *schema_upgrade_v13_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;

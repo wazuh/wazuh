@@ -41,7 +41,6 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif(APPLE)
 
-include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)

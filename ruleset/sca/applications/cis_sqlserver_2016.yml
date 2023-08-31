@@ -12,7 +12,7 @@
 policy:
   id: "cis_sqlserver_2016"
   file: "cis_sqlserver_2016.yml"
-  name: "CIS Microsoft SQL Server 2016"
+  name: "CIS Microsoft SQL Server 2016 Benchmark v1.3.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft SQL Server 2016."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

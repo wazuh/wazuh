@@ -20,7 +20,7 @@ logger = logging.getLogger('wazuh-api')
 
 async def get_lists(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                     select: list = None, sort: str = None, search: str = None, filename: str = None,
-                    relative_dirname: str = None) -> web.Response:
+                    relative_dirname: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get all CDB lists.
 
     Parameters
@@ -45,6 +45,10 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
         Filenames to filter by (separated by comma).
     relative_dirname : str
         Filter by relative dirname.
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -61,6 +65,8 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'filename': filename,
                 'relative_dirname': relative_dirname,
+                'q': q,
+                'distinct': distinct
                 }
 
     dapi = DistributedAPI(f=cdb_list.get_lists,

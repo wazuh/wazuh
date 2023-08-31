@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Ubuntu Linux 16.04 LTS Benchmark v1.1.0 - 12-28-2017
+# Center for Internet Security Ubuntu Linux 16.04 LTS Benchmark v1.1.0 - 09-08-2022
 
 policy:
   id: "cis_ubuntu16-04"
   file: "cis_ubuntu16-04.yml"
-  name: "CIS benchmark for Ubuntu Linux 16.04 LTS"
+  name: "CIS Ubuntu Linux 16.04 LTS Benchmark v1.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 16.04 LTS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

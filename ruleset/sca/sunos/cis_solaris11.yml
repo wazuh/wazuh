@@ -13,7 +13,7 @@
 policy:
   id: "cis_solaris11"
   file: "cis_solaris11.yml"
-  name: "CIS Benchmark for Oracle Solaris 11"
+  name: "CIS Benchmark for Oracle Solaris 11 v1.1.0"
   description: "This document, CIS Oracle Solaris 11 Benchmark v1.1.0, provides prescriptive guidance for establishing a secure configuration posture for Oracle Solaris 11 on both x86 and SPARC platforms. This guide was tested against  Solaris 11 11/11 release, updated to the Software Repository Update 5 (SRU5). As of the publication of this document, Solaris 11 11/11 SRU5 is the latest available support update for the Solaris 11 OS. The recommendations included in this document may need to be adjusted for future Solaris 11 updates."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

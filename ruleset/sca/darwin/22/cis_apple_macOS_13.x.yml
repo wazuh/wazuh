@@ -13,7 +13,7 @@
 policy:
   id: "cis_macOS_13"
   file: "cis_apple_macOS_13.x.yml"
-  name: "SCA policy for Apple macOS 13.x Ventura based on CIS benchmark for Apple macOS 13.x Ventura. 11-14-2022"
+  name: "CIS Apple macOS 13.0 Ventura Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 13.x. This guide was tested against Apple macOS 13.x."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

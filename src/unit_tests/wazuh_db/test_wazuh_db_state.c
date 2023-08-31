@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "wazuh_db/wdb_state.h"
+#include "../wazuh_db/wdb_state.h"
 
 extern wdb_state_t wdb_state;
 

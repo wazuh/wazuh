@@ -9,14 +9,14 @@ from jsonschema.exceptions import ValidationError
 
 
 def call_binary(binary_path):
-    try:
-        # Run the binary and capture its output
-        result = subprocess.run(
-            [binary_path], capture_output=True, check=True, text=True)
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error while executing the binary: {e}") from e
-
+    # Run the binary and capture its output
+    command =  f"{binary_path}" if platform.system() == "Windows" else f"sudo {binary_path}"
+    result = subprocess.run(command, capture_output=True, check=False, text=True, shell=True)
+    if result.returncode != 0 or result.stderr:
+        print(result.stdout)
+        print(result.stderr)
+        pytest.fail("The execution of the test tool failed.")
+    return result.stdout.strip()
 
 def validate_network_json(json_data):
     # Path to the schema file
@@ -31,6 +31,7 @@ def validate_network_json(json_data):
         validate(instance=json_data, schema=network_schema)
     except ValidationError as e:
         # If the validation fails, print the error message
+        print(json_data)
         pytest.fail(f"The output does not comply with the schema: {e}")
 
 
@@ -50,6 +51,7 @@ def test_json_output():
     try:
         json_data = json.loads(output)
     except json.JSONDecodeError as e:
+        print(output)
         pytest.fail(f"The output is not valid JSON: {e}")
 
     # Validate that the JSON complies with the schema

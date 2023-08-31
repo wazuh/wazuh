@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "remoted/remoted.h"
-#include "remoted/state.h"
+#include "../../remoted/remoted.h"
+#include "../../remoted/state.h"
 
 #include "../wrappers/posix/select_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"

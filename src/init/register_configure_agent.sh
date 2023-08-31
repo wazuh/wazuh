@@ -13,6 +13,7 @@ CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
+WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 
 # Set default sed alias
@@ -181,22 +182,6 @@ set_vars () {
     export WAZUH_AGENT_NAME
     export WAZUH_AGENT_GROUP
     export ENROLLMENT_DELAY
-
-    WAZUH_MANAGER=$(launchctl getenv WAZUH_MANAGER)
-    WAZUH_MANAGER_PORT=$(launchctl getenv WAZUH_MANAGER_PORT)
-    WAZUH_PROTOCOL=$(launchctl getenv WAZUH_PROTOCOL)
-    WAZUH_REGISTRATION_SERVER=$(launchctl getenv WAZUH_REGISTRATION_SERVER)
-    WAZUH_REGISTRATION_PORT=$(launchctl getenv WAZUH_REGISTRATION_PORT)
-    WAZUH_REGISTRATION_PASSWORD=$(launchctl getenv WAZUH_REGISTRATION_PASSWORD)
-    WAZUH_KEEP_ALIVE_INTERVAL=$(launchctl getenv WAZUH_KEEP_ALIVE_INTERVAL)
-    WAZUH_TIME_RECONNECT=$(launchctl getenv WAZUH_TIME_RECONNECT)
-    WAZUH_REGISTRATION_CA=$(launchctl getenv WAZUH_REGISTRATION_CA)
-    WAZUH_REGISTRATION_CERTIFICATE=$(launchctl getenv WAZUH_REGISTRATION_CERTIFICATE)
-    WAZUH_REGISTRATION_KEY=$(launchctl getenv WAZUH_REGISTRATION_KEY)
-    WAZUH_AGENT_NAME=$(launchctl getenv WAZUH_AGENT_NAME)
-    WAZUH_AGENT_GROUP=$(launchctl getenv WAZUH_AGENT_GROUP)
-    ENROLLMENT_DELAY=$(launchctl getenv ENROLLMENT_DELAY)
-
     # The following variables are yet supported but all of them are deprecated
     export WAZUH_MANAGER_IP
     export WAZUH_NOTIFY_TIME
@@ -208,21 +193,14 @@ set_vars () {
     export WAZUH_KEY
     export WAZUH_PEM
 
-    WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
-    WAZUH_NOTIFY_TIME=$(launchctl getenv WAZUH_NOTIFY_TIME)
-    WAZUH_AUTHD_SERVER=$(launchctl getenv WAZUH_AUTHD_SERVER)
-    WAZUH_AUTHD_PORT=$(launchctl getenv WAZUH_AUTHD_PORT)
-    WAZUH_PASSWORD=$(launchctl getenv WAZUH_PASSWORD)
-    WAZUH_GROUP=$(launchctl getenv WAZUH_GROUP)
-    WAZUH_CERTIFICATE=$(launchctl getenv WAZUH_CERTIFICATE)
-    WAZUH_KEY=$(launchctl getenv WAZUH_KEY)
-    WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
+    if [ -r "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}" ]; then
+        . ${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}
+        rm -rf "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}"
+    fi
 
 }
 
 unset_vars() {
-
-    OS=$1
 
     vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
@@ -233,9 +211,6 @@ unset_vars() {
           ENROLLMENT_DELAY)
 
     for var in "${vars[@]}"; do
-        if [ "${OS}" = "Darwin" ]; then
-            launchctl unsetenv "${var}"
-        fi
         unset "${var}"
     done
 
@@ -371,7 +346,7 @@ main () {
     edit_value_tag "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 
-    unset_vars "${uname_s}"
+    unset_vars
 
 }
 

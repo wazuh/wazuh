@@ -33,83 +33,101 @@
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
 
+constexpr auto RSYNC_LOG_TAG { "rsync" };
+
 class EXPORTED RemoteSync
 {
-public:
-    /**
-    * @brief Initializes the shared library.
-    *
-    * @param logFunction Pointer to log function to be used by the rsync.
-    */
-    static void initialize(std::function<void(const std::string&)> logFunction);
+    public:
+        /**
+        * @brief Initializes the shared library.
+        *
+        * @param logFunction Pointer to log function to be used by the rsync.
+        */
+        static void initialize(std::function<void(const std::string&)> logFunction);
 
-    /**
-     * @brief Remote sync initializes the instance.
-     *
-     * @param threadPoolSize Size of the thread pool.
-     * @param maxQueueSize Maximum size of the queue.
-     */
-    RemoteSync(const unsigned int threadPoolSize = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
+        /**
+         * @brief Initialize all the logs functions used by RSync with a full log function.
+         *
+         * @param debugVerboseFunction Function pointer to the debug verbose log function.
+         * @param debugFunction Function pointer to the debug log function.
+         * @param infoFunction Function pointer to the info log function.
+         * @param warningFunction Function pointer to the warning function.
+         * @param errorFunction Function pointer to the error function.
+         */
+        static void initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                              full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
+                                              full_log_fnc_t errorFunction);
 
-    /**
-     * @brief RSync Constructor.
-     *
-     * @param handle Handle to point another rsync instance.
-     *
-     */
-    RemoteSync(RSYNC_HANDLE handle);
-    // LCOV_EXCL_START
-    virtual ~RemoteSync();
-    // LCOV_EXCL_STOP
+        /**
+         * @brief Remote sync initializes the instance.
+         *
+         * @param threadPoolSize Size of the thread pool.
+         * @param maxQueueSize Maximum size of the queue.
+         */
+        RemoteSync(const unsigned int threadPoolSize = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
 
-    /**
-     * @brief Turns off the services provided by the shared library.
-     */
-    static void teardown();
+        /**
+         * @brief RSync Constructor.
+         *
+         * @param handle Handle to point another rsync instance.
+         *
+         */
+        RemoteSync(RSYNC_HANDLE handle);
+        // LCOV_EXCL_START
+        virtual ~RemoteSync();
+        // LCOV_EXCL_STOP
 
-    /**
-     * @brief Initializes the \p handle instance.
-     * @param dbsyncHandle       DBSync handle to synchronize databases.
-     * @param startConfiguration Statement used as a synchronization start.
-     * @param callbackData       This callback is used to send sync information.
-     *
-     */
-    virtual void startSync(const DBSYNC_HANDLE   dbsyncHandle,
-                           const nlohmann::json& startConfiguration,
-                           SyncCallbackData      callbackData);
+        /**
+         * @brief Turns off the services provided by the shared library.
+         */
+        static void teardown();
 
-    /**
-     * @brief Establishes a message-id to be processed in the agent-manager sync.
-     *
-     * @param messageHeaderID    Message ID associated to procees messages between
-     *                           agent and manager.
-     * @param dbsyncHandle       DBSync handle to synchronize databases.
-     * @param syncConfiguration  Statement used as a configuration.
-     * @param callbackData       This callback is used to send sync information.
-     *
-     */
-    virtual void registerSyncID(const std::string&    messageHeaderID,
-                                const DBSYNC_HANDLE   dbsyncHandle,
-                                const nlohmann::json& syncConfiguration,
-                                SyncCallbackData      callbackData);
-    /**
-     * @brief Pushes the \p payload message within a queue to process it in an async
-     *  dispatch queue.
-     *
-     * @param payload Message to be queued and processed.
-     *
-     */
-    virtual void pushMessage(const std::vector<uint8_t>& payload);
-    /**
-     * @brief Get current rsync handle in the instance.
-     *
-     * @return RSYNC_HANDLE to be used in all internal calls.
-     */
-    RSYNC_HANDLE handle() { return m_handle; }
+        /**
+         * @brief Initializes the \p handle instance.
+         * @param dbsyncHandle       DBSync handle to synchronize databases.
+         * @param startConfiguration Statement used as a synchronization start.
+         * @param callbackData       This callback is used to send sync information.
+         *
+         */
+        virtual void startSync(const DBSYNC_HANDLE   dbsyncHandle,
+                               const nlohmann::json& startConfiguration,
+                               SyncCallbackData      callbackData);
 
-private:
-    RSYNC_HANDLE m_handle;
-    bool m_shouldBeRemoved;
+        /**
+         * @brief Establishes a message-id to be processed in the agent-manager sync.
+         *
+         * @param messageHeaderID    Message ID associated to procees messages between
+         *                           agent and manager.
+         * @param dbsyncHandle       DBSync handle to synchronize databases.
+         * @param syncConfiguration  Statement used as a configuration.
+         * @param callbackData       This callback is used to send sync information.
+         *
+         */
+        virtual void registerSyncID(const std::string&    messageHeaderID,
+                                    const DBSYNC_HANDLE   dbsyncHandle,
+                                    const nlohmann::json& syncConfiguration,
+                                    SyncCallbackData      callbackData);
+        /**
+         * @brief Pushes the \p payload message within a queue to process it in an async
+         *  dispatch queue.
+         *
+         * @param payload Message to be queued and processed.
+         *
+         */
+        virtual void pushMessage(const std::vector<uint8_t>& payload);
+        /**
+         * @brief Get current rsync handle in the instance.
+         *
+         * @return RSYNC_HANDLE to be used in all internal calls.
+         */
+        RSYNC_HANDLE handle()
+        {
+            return m_handle;
+        }
+
+    private:
+        RSYNC_HANDLE m_handle;
+        bool m_shouldBeRemoved;
 
 };
 
@@ -214,42 +232,42 @@ class EXPORTED QueryParameter final : public Utils::Builder<QueryParameter>
          *
          * @param rowFilter Field name to be used as a row filter.
          */
-        QueryParameter & rowFilter(const std::string& filter);
+        QueryParameter& rowFilter(const std::string& filter);
 
         /**
          * @brief Set column list to be queried.
          *
          * @param columns Column list to be queried.
          */
-        QueryParameter & columnList(const std::vector<std::string>& fields);
+        QueryParameter& columnList(const std::vector<std::string>& fields);
 
         /**
          * @brief Set distinct flag.
          *
          * @param distinct Distinct flag to be set.
          */
-        QueryParameter & distinctOpt(const bool distinct);
+        QueryParameter& distinctOpt(const bool distinct);
 
         /**
          * @brief Set order by field.
          *
          * @param orderBy Field name to be used as order by.
          */
-        QueryParameter & orderByOpt(const std::string& orderBy);
+        QueryParameter& orderByOpt(const std::string& orderBy);
 
         /**
          * @brief Set count field name.
          *
          * @param countFieldName Field name to be used as count.
          */
-        QueryParameter & countFieldName(const std::string& countFieldName);
+        QueryParameter& countFieldName(const std::string& countFieldName);
 
         /**
          * @brief Set count limit value.
          *
          * @param count Count limit to be set.
          */
-        QueryParameter & countOpt(const uint32_t count);
+        QueryParameter& countOpt(const uint32_t count);
 };
 
 class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfiguration>
@@ -266,7 +284,7 @@ class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfig
         * @param decoderType Decoder type to be applied in the received message.
         *
         */
-        RegisterConfiguration & decoderType(const std::string& decoderType);
+        RegisterConfiguration& decoderType(const std::string& decoderType);
 
         /**
          * @brief Set the nodata object to be used during the selection of data when all data are requested.
@@ -274,7 +292,7 @@ class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfig
         * @param parameter Nodata object to be used during the selection of data when all data are requested.
         *
         */
-        RegisterConfiguration & noData(QueryParameter& parameter);
+        RegisterConfiguration& noData(QueryParameter& parameter);
 
         /**
          * @brief Set the query parameter to be used during the binary search to get the number of rows.
@@ -282,7 +300,7 @@ class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfig
          * @param parameter Query parameter to be used during the binary search to get the number of rows.
          *
          */
-        RegisterConfiguration & countRange(QueryParameter& parameter);
+        RegisterConfiguration& countRange(QueryParameter& parameter);
 
         /**
         * @brief Set the query parameter to be used during the single row search.
@@ -290,7 +308,7 @@ class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfig
         * @param parameter Query parameter to be used during the single row search.
         *
         */
-        RegisterConfiguration & rowData(QueryParameter& parameter);
+        RegisterConfiguration& rowData(QueryParameter& parameter);
 
         /**
          * @brief Set the query parameter to be used during the selection of data for the binary search.
@@ -298,7 +316,7 @@ class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfig
          * @param parameter Query parameter to be used during the selection of data for the binary search.
          *
          */
-        RegisterConfiguration & rangeChecksum(QueryParameter& parameter);
+        RegisterConfiguration& rangeChecksum(QueryParameter& parameter);
 };
 
 class EXPORTED StartSyncConfiguration final : public Configuration<StartSyncConfiguration>
@@ -315,7 +333,7 @@ class EXPORTED StartSyncConfiguration final : public Configuration<StartSyncConf
          * @param parameter Query parameter to be used during the selection of data for the binary search on the left side.
          *
          */
-        StartSyncConfiguration & first(QueryParameter& parameter);
+        StartSyncConfiguration& first(QueryParameter& parameter);
 
         /**
          * @brief Set the query parameter to be used during the selection of data for the binary search on the right side.
@@ -323,7 +341,7 @@ class EXPORTED StartSyncConfiguration final : public Configuration<StartSyncConf
          * @param parameter Query parameter to be used during the selection of data for the binary search on the right side.
          *
          */
-        StartSyncConfiguration & last(QueryParameter& parameter);
+        StartSyncConfiguration& last(QueryParameter& parameter);
 
         /**
          * @brief Set the query parameter to be used during the selection of data used to get the global checksum value.
@@ -331,7 +349,7 @@ class EXPORTED StartSyncConfiguration final : public Configuration<StartSyncConf
          * @param parameter Query parameter to be used during the selection of data for to get the global checksum value.
          *
          */
-        StartSyncConfiguration & rangeChecksum(QueryParameter& parameter);
+        StartSyncConfiguration& rangeChecksum(QueryParameter& parameter);
 };
 
 

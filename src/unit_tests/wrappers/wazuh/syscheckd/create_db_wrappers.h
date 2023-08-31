@@ -11,7 +11,7 @@
 #ifndef CREATE_DB_WRAPPERS_H
 #define CREATE_DB_WRAPPERS_H
 
-#include "syscheckd/include/syscheck.h"
+#include "../../../../syscheckd/include/syscheck.h"
 
 void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration);
 

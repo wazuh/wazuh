@@ -12,10 +12,10 @@
 #include "remoted.h"
 #include "state.h"
 #include "remoted_op.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
-#include "os_net/os_net.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
+#include "../os_net/os_net.h"
 #include "shared_download.h"
-#include "os_crypto/sha256/sha256_op.h"
+#include "../os_crypto/sha256/sha256_op.h"
 #include <pthread.h>
 
 #if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
@@ -302,8 +302,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
-                    if (compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
-                        send_wrong_version_response(key->id, HC_INVALID_VERSION, INVALID_VERSION, version->valuestring, wdb_sock);
+                    if (!logr.allow_higher_versions &&
+                        compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
+
+                        send_wrong_version_response(key->id, HC_INVALID_VERSION,
+                                                    INVALID_VERSION, version->valuestring,
+                                                    wdb_sock);
                         cJSON_Delete(agent_info);
                         os_free(clean);
                         return;

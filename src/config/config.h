@@ -56,8 +56,8 @@ typedef enum needed_tags {
 } NeededTags;
 
 
-#include "os_xml/os_xml.h"
-#include "config/wazuh_db-config.h"
+#include "../os_xml/os_xml.h"
+#include "../config/wazuh_db-config.h"
 #include "time.h"
 
 /* Main function to read the config */
@@ -75,7 +75,7 @@ int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
-int Read_Remote(XML_NODE node, void *d1, void *d2);
+int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
@@ -141,6 +141,14 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1);
  * @param d1 office365 configuration structure
  */
 int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for MS Graph module
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 ms_graph configuration structure
+ */
+int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1);
 #endif
 
 /**

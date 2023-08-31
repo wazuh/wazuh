@@ -127,7 +127,7 @@ static struct column_list const TABLE_PORTS[PORTS_FIELD_COUNT+1] = {
 static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_PACKAGES[2] },
-    { .value = { FIELD_TEXT, 3, false, false, NULL, "format", {.text = ""}, false}, .next = &TABLE_PACKAGES[3] },
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "format", {.text = ""}, false}, .next = &TABLE_PACKAGES[3] },
     { .value = { FIELD_TEXT, 4, false, true, NULL, "name", {.text = ""}, true}, .next = &TABLE_PACKAGES[4] },
     { .value = { FIELD_TEXT, 5, false, false, NULL, "priority", {.text = ""}, true}, .next = &TABLE_PACKAGES[5] },
     { .value = { FIELD_TEXT, 6, false, false, "groups", "section", {.text = ""}, true}, .next = &TABLE_PACKAGES[6] },
@@ -139,7 +139,7 @@ static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 12, false, false, NULL, "multiarch", {.text = ""}, true}, .next = &TABLE_PACKAGES[12] },
     { .value = { FIELD_TEXT, 13, false, false, NULL, "source", {.text = ""}, true}, .next = &TABLE_PACKAGES[13] },
     { .value = { FIELD_TEXT, 14, false, false, NULL, "description", {.text = ""}, true}, .next = &TABLE_PACKAGES[14] },
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "location", {.text = ""}, true}, .next = &TABLE_PACKAGES[15] },
+    { .value = { FIELD_TEXT, 15, false, true, NULL, "location", {.text = ""}, false}, .next = &TABLE_PACKAGES[15] },
     { .value = { FIELD_INTEGER, 16, true, false, NULL, "triaged", {.integer = 0}, true}, .next = &TABLE_PACKAGES[16] },
     { .value = { FIELD_TEXT, 17, true, false, NULL, "cpe", {.text = ""}, true}, .next = &TABLE_PACKAGES[17] },
     { .value = { FIELD_TEXT, 18, true, false, NULL, "msu_name", {.text = ""}, true}, .next = &TABLE_PACKAGES[18] },
@@ -197,13 +197,13 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
-
 int wdb_parse(char * input, char * output, int peer) {
     char * actor;
     char * id;
     char * query;
     char * sql;
     char * next;
+    char path[PATH_MAX + 1];
     int agent_id = 0;
     char sagent_id[64] = "000";
     wdb_t * wdb;
@@ -740,6 +740,15 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
+            if (!w_is_file(path)) {
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
+        }
         return result;
     } else if (strcmp(actor, "wazuhdb") == 0) {
         query = next;
@@ -1348,6 +1357,15 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            if (!w_is_file(path)) {
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
+        }
         return result;
     } else if (strcmp(actor, "task") == 0) {
         cJSON *parameters_json = NULL;

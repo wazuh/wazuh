@@ -8,13 +8,13 @@
 # Foundation
 #
 # Based on:
-# CIS Microsoft Windows 10 Enterprise (Release 1903) Benchmark v1.12.0 - 02-15-2022
+# CIS Microsoft Windows 10 Enterprise (Release 21H2) Benchmark v1.12.0 - 02-15-2022
 
 policy:
   id: "cis_win10_enterprise"
   file: "cis_win10_enterprise.yml"
-  name: "CIS Benchmark for Windows 10 Enterprise (Release 21H2)"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 10."
+  name: "CIS Microsoft Windows 10 Enterprise Benchmark v1.12.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 10 Enterprise."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -75,18 +75,6 @@ checks:
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
-
-  - id: 15504
-    title: "Ensure 'Password must meet complexity requirements' is set to 'Enabled'."
-    description: "This policy setting checks all new passwords to ensure that they meet basic requirements for strong passwords. When this policy is enabled, passwords must meet the following minimum requirements: - Not contain the user's account name or parts of the user's full name that exceed two consecutive characters - Be at least six characters in length - Contain characters from three of the following categories: - English uppercase characters (A through Z) - English lowercase characters (a through z) - Base 10 digits (0 through 9) - Non-alphabetic characters (for example, !, $, #, %) o A catch-all category of any Unicode character that does not fall under the    previous four categories. This fifth category can be regionally specific. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 267 (approximately 8 x 109 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 527 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 627 combinations. An eight-character password has 268 (or 2 x 1011) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as '!'' or '@''. Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
-    rationale: "Passwords that contain only alphanumeric characters are extremely easy to discover with several publicly available tools."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Password must meet complexity requirements"
-    compliance:
-      - cis: ["1.1.5"]
-      - cis_csc: ["5.2"]
-    condition: all
-    rules:
-      - 'c:powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser -> r:ComplexityEnabled\s+: True'
 
   - id: 15505
     title: "Ensure 'Relax minimum password length limits' is set to 'Enabled'."
@@ -3382,7 +3370,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 0'
 
   - id: 15725
     title: "Ensure 'Remote host allows delegation of non-exportable credentials' is set to 'Enabled'."

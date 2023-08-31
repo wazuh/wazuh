@@ -34,23 +34,23 @@
 #define FILETIME_SECOND 10000000
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#include "unit_tests/wrappers/windows/aclapi_wrappers.h"
-#include "unit_tests/wrappers/windows/ntsecapi_wrappers.h"
-#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
-#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
-#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
-#include "unit_tests/wrappers/windows/heapapi_wrappers.h"
-#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
-#include "unit_tests/wrappers/windows/sddl_wrappers.h"
-#include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
-#include "unit_tests/wrappers/windows/stringapiset_wrappers.h"
-#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
-#include "unit_tests/wrappers/windows/sysinfoapi_wrappers.h"
-#include "unit_tests/wrappers/windows/timezoneapi_wrappers.h"
-#include "unit_tests/wrappers/windows/winbase_wrappers.h"
-#include "unit_tests/wrappers/windows/winevt_wrappers.h"
-#include "unit_tests/wrappers/windows/winreg_wrappers.h"
-#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/ntsecapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/heapapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/sddl_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/stringapiset_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/sysinfoapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/timezoneapi_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/winevt_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/winreg_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 // Remove static qualifier when unit testing
 #define STATIC
@@ -740,7 +740,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     unsigned long mask = 0;
     directory_t *configuration;
 
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
 
@@ -1103,7 +1103,7 @@ error:
 }
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+   SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
 
     int exists;
     whodata_dir_status *d_status;

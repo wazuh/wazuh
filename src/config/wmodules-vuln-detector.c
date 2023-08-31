@@ -110,7 +110,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
     } else if (elements == 1) {
         snprintf(*os_name, size, "%s", distr);
     } else {
-        free(*os_name);
+        os_free(*os_name);
         return OS_INVALID;
     }
 
@@ -120,7 +120,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
         *ver_end = '\0';
     }
     if (size = strlen(ver), size >= 20) {
-        free(*os_name);
+        os_free(*os_name);
         return OS_INVALID;
     }
     os_strdup(ver, *os_ver);
@@ -174,7 +174,12 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->dist_ref = FEED_UBUNTU;
 
     } else if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
-        if (!strcmp(version, "11") || strcasestr(version, vu_feed_tag[FEED_BULLSEYE])) {
+        if (!strcmp(version, "12") || strcasestr(version, vu_feed_tag[FEED_BOOKWORM])) {
+            os_index = CVE_BOOKWORM;
+            os_strdup(vu_feed_tag[FEED_BOOKWORM], upd->version);
+            upd->dist_tag_ref = FEED_BOOKWORM;
+            upd->dist_ext = vu_feed_ext[FEED_BOOKWORM];
+        } else if (!strcmp(version, "11") || strcasestr(version, vu_feed_tag[FEED_BULLSEYE])) {
             os_index = CVE_BULLSEYE;
             os_strdup(vu_feed_tag[FEED_BULLSEYE], upd->version);
             upd->dist_tag_ref = FEED_BULLSEYE;
@@ -340,6 +345,30 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->dist_ref = FEED_ARCH;
         upd->json_format = 1;
 
+    } else if (strcasestr(feed, vu_feed_tag[FEED_ALMA])) {
+        if (!version) {
+            retval = OS_INVALID;
+            goto end;
+        }
+        // ALMA9
+        if (!strcmp(version, "9")) {
+            os_index = CVE_ALMA9;
+            upd->dist_tag_ref = FEED_ALMA9;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALMA9];
+        // ALMA8
+        } else if (!strcmp(version, "8")) {
+            os_index = CVE_ALMA8;
+            upd->dist_tag_ref = FEED_ALMA8;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALMA8];
+        } else {
+            merror("Invalid AlmaLinux version '%s'", version);
+            retval = OS_INVALID;
+            goto end;
+        }
+        upd->dist_ref = FEED_ALMA;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
@@ -352,7 +381,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd->dist_tag_ref = FEED_NVD;
         upd->dist_ext = vu_feed_ext[FEED_NVD];
         upd->dist_ref = FEED_NVD;
-        upd->update_from_year = NVD_REPO_DEFAULT_MIN_YEAR;
         upd->json_format = 1;
         upd->interval = WM_VULNDETECTOR_NVD_UPDATE_INTERVAL;
         // Set the Wazuh CPE dictionary
@@ -373,8 +401,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     if (upd_list[os_index]) {
         mdebug1("Duplicate OVAL configuration for '%s%s%s'", upd->dist, upd->version ? " " : "", upd->version ? upd->version : "");
-        wm_vuldet_free_update_node(upd_list[os_index]);
-        free(upd_list[os_index]);
+        wm_vuldet_release_update_node(upd_list, os_index);
     }
 
     upd_list[os_index] = upd;
@@ -960,15 +987,18 @@ int wm_vuldet_add_allow_os(update_node *update, char *os_tags) {
         }
         mdebug1("'%s' successfully added to the monitored OS list.", os_tags);
         update->allowed_os_name[size + 1] = NULL;
+        update->allowed_os_ver[size + 1] = NULL;
         os_tags = found;
     }
     os_realloc(update->allowed_os_name, (size + 2)*sizeof(char *), update->allowed_os_name);
+    os_realloc(update->allowed_os_ver, (size + 2)*sizeof(char *), update->allowed_os_ver);
     if (format_os_version(os_tags, &update->allowed_os_name[size], &update->allowed_os_ver[size])) {
         merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
         return OS_INVALID;
     }
     mdebug1("'%s' successfully added to the monitored OS list.", os_tags);
     update->allowed_os_name[size + 1] = NULL;
+    update->allowed_os_ver[size + 1] = NULL;
 
     return 0;
 }
@@ -976,8 +1006,6 @@ int wm_vuldet_add_allow_os(update_node *update, char *os_tags) {
 int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options) {
     int i, j;
     int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
-    int8_t msu_enabled = (strcasestr(name, vu_feed_tag[FEED_MSU])) ? 1 : 0;
-    int8_t arch_enabled = (strcasestr(name, vu_feed_tag[FEED_ARCH])) ? 1 : 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -989,18 +1017,14 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             // Deprecated in RHEL
             if (rhel_enabled) {
                 minfo("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
-            // Even though MSU and ArchLinux are multi_provider, they do not use the update_from_year option.
-            } else if (msu_enabled || arch_enabled) {
-                mwarn("'%s' option cannot be used for '%s' provider.", node[i]->element, name);
-                continue;
-            }
-
-            if (multi_provider || rhel_enabled) {
-                int min_year = rhel_enabled ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
-                if (!wm_vuldet_is_valid_year(node[i]->content, &options->update_since, min_year)) {
+                if (!wm_vuldet_is_valid_year(node[i]->content, &options->update_since, RED_HAT_REPO_MIN_YEAR)) {
                     merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                     return OS_INVALID;
                 }
+            // Even though MSU, ArchLinux and NVD are multi_provider, they do not use the update_from_year option.
+            } else if (multi_provider) {
+                mwarn("'%s' option cannot be used for '%s' provider.", node[i]->element, name);
+                continue;
             } else {
                 mwarn("Invalid option '%s' for '%s' provider at '%s'", node[i]->element, name, WM_VULNDETECTOR_CONTEXT.name);
             }
@@ -1067,7 +1091,8 @@ int wm_vuldet_provider_type(char *pr_name) {
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_ALAS]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_SUSE]) ||
-        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
+        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_ALMA])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_MSU]) ||

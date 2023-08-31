@@ -13,8 +13,8 @@
 
 #include "shared.h"
 #include "sec.h"
-#include "config/config.h"
-#include "config/client-config.h"
+#include "../config/config.h"
+#include "../config/client-config.h"
 #include "state.h"
 
 /* Buffer functions */
@@ -60,6 +60,13 @@ void buffer_init();
 
 /* Send message to a buffer with the aim to avoid flooding issues */
 int buffer_append(const char *msg);
+
+/* Thread to limits eps of message sended from the buffer */
+#ifdef WIN32
+DWORD WINAPI update_limits_thread(LPVOID arg);
+#else
+void *update_limits_thread();
+#endif
 
 /* Thread to dispatch messages from the buffer */
 #ifdef WIN32

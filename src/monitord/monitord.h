@@ -16,8 +16,8 @@
 #define ARGV0 "wazuh-monitord"
 #endif
 
-#include "config/reports-config.h"
-#include "config/global-config.h"
+#include "../config/reports-config.h"
+#include "../config/global-config.h"
 
 #define MAX_DAY_WAIT 600
 #define MONITORD_MSG_HEADER "1:" ARGV0 ":"
