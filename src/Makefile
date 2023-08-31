@@ -1375,15 +1375,6 @@ external/$(CPYTHON).tar.gz:
 	rm $(patsubst %.gz,%,$@)
 endif
 
-FLATCC_REPO_BRANCH := master
-FLATCC_REPO_URL := https://github.com/dvidelabs/flatcc/tarball/$(FLATCC_REPO_BRANCH)
-
-external/flatcc.tar.gz:
-	$(CURL) $@ -L $(FLATCC_REPO_URL)
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@) --strip-components=1 --one-top-level
-	rm $(patsubst %.gz,%,$@)
-
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
