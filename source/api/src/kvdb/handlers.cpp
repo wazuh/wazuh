@@ -200,7 +200,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(dumpRes).message);
         }
-        const auto& dump = std::get<std::map<std::string, std::string>>(dumpRes);
+        const auto& dump = std::get<std::list<std::pair<std::string, std::string>>>(dumpRes);
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -464,7 +464,7 @@ api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(searchRes).message);
         }
-        const auto& resultSearch = std::get<std::map<std::string, std::string>>(searchRes);
+        const auto& resultSearch = std::get<std::list<std::pair<std::string, std::string>>>(searchRes);
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
