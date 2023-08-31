@@ -103,7 +103,7 @@ def test_change_target(test_configuration, test_metadata, set_wazuh_configuratio
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
 
-    file.write_file(symlink_new_target.joinpath('testie.log'))
+    file.write_file(file_symlink.joinpath('testie.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     assert wazuh_log_monitor.callback_result
 
