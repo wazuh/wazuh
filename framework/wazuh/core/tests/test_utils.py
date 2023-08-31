@@ -970,7 +970,7 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
       {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
       {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
     ('((group=default2,group=default3);id!=000);status=active',
-      [{'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+     [{'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
       {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
       {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
       {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}]),
