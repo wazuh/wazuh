@@ -38,6 +38,8 @@
 #endif
 #endif
 
+#define _W_STRING_MAX   67108864  // Max. dynamic string size (64 MB).
+
 #define mdebug1(msg, ...) _mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define plain_mdebug1(msg, ...) _plain_mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtdebug1(tag, msg, ...) _mtdebug1(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
@@ -107,6 +109,8 @@ void nowChroot(void);
 void nowDaemon(void);
 
 int isChroot(void);
+
+void w_parse_output(char *output, char *logger_name, char *tag);
 
 /* Debug analysisd */
 #ifdef DEBUGAD
