@@ -10,6 +10,7 @@
 #include <rbac/irbac.hpp>
 #include <rbac/model.hpp>
 #include <store/istore.hpp>
+#include <logging/logging.hpp>
 
 namespace rbac
 {

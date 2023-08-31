@@ -22,7 +22,7 @@ namespace builder
 class Builder : public IValidator
 {
 private:
-    std::shared_ptr<store::IStoreReader> m_storeRead;                    ///< Store reader interface
+    std::shared_ptr<store::IStore> m_storeRead;                    ///< Store reader interface
     std::shared_ptr<internals::Registry<internals::Builder>> m_registry; ///< Registry of builders
 
 public:
@@ -30,10 +30,10 @@ public:
     /**
      * @brief Construct a new Builder
      *
-     * @param storeRead Store reader interface to manipulate the Asset, Environment and Schema files
+     * @param storeRead Store reader interface to manipulate the Asset, Policy and Schema files
      * @param registry Registry of builders to build the assets
      */
-    Builder(std::shared_ptr<store::IStoreReader> storeRead, std::shared_ptr<internals::Registry<internals::Builder>> registry)
+    Builder(std::shared_ptr<store::IStore> storeRead, std::shared_ptr<internals::Registry<internals::Builder>> registry)
         : m_storeRead {storeRead}
         , m_registry {registry}
     {
@@ -41,13 +41,13 @@ public:
 
     Policy buildPolicy(const base::Name& name) const
     {
-        auto envJson = store::utils::get(m_storeRead, name);
-        if (std::holds_alternative<base::Error>(envJson))
+        auto policyDoc = m_storeRead->readInternalDoc(name);
+        if (base::isError(policyDoc))
         {
-            throw std::runtime_error(std::get<base::Error>(envJson).message);
+            throw std::runtime_error(base::getError(policyDoc).message);
         }
 
-        return Policy {std::get<json::Json>(envJson), m_storeRead, m_registry};
+        return Policy {base::getResponse<store::Doc>(policyDoc), m_storeRead, m_registry};
     }
 
     /**
@@ -61,20 +61,20 @@ public:
     Asset buildFilter(const base::Name& name) const
     {
         auto routeJson = store::utils::get(m_storeRead, name);
-        if (std::holds_alternative<base::Error>(routeJson))
+        if (base::isError(routeJson))
         {
-            throw std::runtime_error(std::get<base::Error>(routeJson).message);
+            throw std::runtime_error(base::getError(routeJson).message);
         }
 
-        return Asset {std::get<json::Json>(routeJson), Asset::Type::FILTER, m_registry};
+        return Asset {base::getResponse<store::Doc>(routeJson), Asset::Type::FILTER, m_registry};
     }
 
     std::optional<base::Error> validatePolicy(const json::Json& json) const override
     {
         try
         {
-            Policy env {json, m_storeRead, m_registry};
-            env.getExpression();
+            Policy policy {json, m_storeRead, m_registry};
+            policy.expression();
         }
         catch (const std::exception& e)
         {

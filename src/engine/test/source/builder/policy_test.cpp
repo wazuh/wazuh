@@ -6,6 +6,7 @@
 
 #include <schemf/emptySchema.hpp>
 #include <store/mockStore.hpp>
+#include <logging/logging.hpp>
 
 #include "builder/builder.hpp"
 #include "builder/policy.hpp"
@@ -20,11 +21,11 @@ using namespace store::mocks;
 class PolicyTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<MockStoreRead> storeRead;
+    std::shared_ptr<MockStore> storeRead;
 
     void SetUp() override
     {
-        storeRead = std::make_shared<MockStoreRead>();
+        storeRead = std::make_shared<MockStore>();
 
         EXPECT_CALL(*storeRead, readDoc(testing::_))
             .WillRepeatedly(testing::Invoke(
@@ -75,30 +76,21 @@ protected:
     }
 };
 
-TEST_F(PolicyTest, GetAssetType)
-{
-    ASSERT_EQ(getAssetType(DECODERS), Asset::Type::DECODER);
-    ASSERT_EQ(getAssetType(RULES), Asset::Type::RULE);
-    ASSERT_EQ(getAssetType(OUTPUTS), Asset::Type::OUTPUT);
-    ASSERT_EQ(getAssetType(FILTERS), Asset::Type::FILTER);
-}
-
 TEST_F(PolicyTest, DefaultConstructor)
 {
-    ASSERT_NO_THROW(Policy env);
+    ASSERT_NO_THROW(Policy policy);
 }
 
 TEST_F(PolicyTest, GetName)
 {
-    Policy env;
-    ASSERT_NO_THROW(env.name());
+    Policy policy;
+    ASSERT_NO_THROW(policy.name());
 }
 
 TEST_F(PolicyTest, GetAssets)
 {
-    Policy env;
-    ASSERT_NO_THROW(auto& assets = env.assets());
-    ASSERT_NO_THROW(const auto& assets = env.assets());
+    Policy policy;
+    ASSERT_NO_THROW(const auto& assets = policy.assets());
 }
 
 TEST_F(PolicyTest, OneDecoderPolicy)
@@ -111,13 +103,13 @@ TEST_F(PolicyTest, OneDecoderPolicy)
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name("policy/oneDecEnv/version")));
-    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
-    auto env = Policy(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "policy/oneDecEnv/version");
-    ASSERT_EQ(env.assets().size(), 1);
-    ASSERT_NO_THROW(env.getExpression());
-    auto expr = env.getExpression();
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name("policy/oneDecEnv/version")));
+    ASSERT_NO_THROW(Policy(policyJson, storeRead, registry));
+    auto policy = Policy(policyJson, storeRead, registry);
+    ASSERT_EQ(policy.name(), "policy/oneDecEnv/version");
+    ASSERT_EQ(policy.assets().size(), 1);
+    ASSERT_NO_THROW(policy.expression());
+    auto expr = policy.expression();
     ASSERT_TRUE(expr->isChain());
     ASSERT_EQ(expr->getPtr<Operation>()->getOperands().size(), 1);
 
@@ -140,13 +132,13 @@ TEST_F(PolicyTest, OneRulePolicy)
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneRuleEnv/version"}));
-    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
-    auto env = Policy(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "policy/oneRuleEnv/version");
-    ASSERT_EQ(env.assets().size(), 1);
-    ASSERT_NO_THROW(env.getExpression());
-    auto expr = env.getExpression();
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneRuleEnv/version"}));
+    ASSERT_NO_THROW(Policy(policyJson, storeRead, registry));
+    auto policy = Policy(policyJson, storeRead, registry);
+    ASSERT_EQ(policy.name(), "policy/oneRuleEnv/version");
+    ASSERT_EQ(policy.assets().size(), 1);
+    ASSERT_NO_THROW(policy.expression());
+    auto expr = policy.expression();
     ASSERT_TRUE(expr->isChain());
     ASSERT_EQ(expr->getPtr<Operation>()->getOperands().size(), 1);
 
@@ -169,13 +161,13 @@ TEST_F(PolicyTest, OneOutputPolicy)
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneOutEnv/version"}));
-    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
-    auto env = Policy(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "policy/oneOutEnv/version");
-    ASSERT_EQ(env.assets().size(), 1);
-    ASSERT_NO_THROW(env.getExpression());
-    auto expr = env.getExpression();
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneOutEnv/version"}));
+    ASSERT_NO_THROW(Policy(policyJson, storeRead, registry));
+    auto policy = Policy(policyJson, storeRead, registry);
+    ASSERT_EQ(policy.name(), "policy/oneOutEnv/version");
+    ASSERT_EQ(policy.assets().size(), 1);
+    ASSERT_NO_THROW(policy.expression());
+    auto expr = policy.expression();
     ASSERT_TRUE(expr->isChain());
     ASSERT_EQ(expr->getPtr<Operation>()->getOperands().size(), 1);
 
@@ -198,8 +190,8 @@ TEST_F(PolicyTest, OneFilterPolicy)
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneFilEnv/version"}));
-    ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/oneFilEnv/version"}));
+    ASSERT_THROW(Policy(policyJson, storeRead, registry), std::runtime_error);
 }
 
 TEST_F(PolicyTest, OrphanAsset)
@@ -212,8 +204,8 @@ TEST_F(PolicyTest, OrphanAsset)
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanAssetEnv/version"}));
-    ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanAssetEnv/version"}));
+    ASSERT_THROW(Policy(policyJson, storeRead, registry), std::runtime_error);
 }
 
 TEST_F(PolicyTest, OrphanFilter)
@@ -222,8 +214,8 @@ TEST_F(PolicyTest, OrphanFilter)
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanFilterEnv/version"}));
-    ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanFilterEnv/version"}));
+    ASSERT_THROW(Policy(policyJson, storeRead, registry), std::runtime_error);
 }
 
 TEST_F(PolicyTest, CompletePolicy)
@@ -236,20 +228,20 @@ TEST_F(PolicyTest, CompletePolicy)
     deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
 
-    auto envJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/completeEnv/version"}));
-    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
-    auto env = Policy(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "policy/completeEnv/version");
-    ASSERT_EQ(env.assets().size(), 11);
-    ASSERT_NO_THROW(env.getExpression());
-    auto expr = env.getExpression();
+    auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/completeEnv/version"}));
+    ASSERT_NO_THROW(Policy(policyJson, storeRead, registry));
+    auto policy = Policy(policyJson, storeRead, registry);
+    ASSERT_EQ(policy.name(), "policy/completeEnv/version");
+    ASSERT_EQ(policy.assets().size(), 11);
+    ASSERT_NO_THROW(policy.expression());
+    auto expr = policy.expression();
     ASSERT_TRUE(expr->isChain());
     ASSERT_EQ(expr->getPtr<Operation>()->getOperands().size(), 3);
 
     // Decoder graph
     auto decoderGraphExpr = expr->getPtr<Operation>()->getOperands()[0];
     ASSERT_TRUE(decoderGraphExpr->isOr());
-    ASSERT_EQ(decoderGraphExpr->getName(), "decodersInput");
+    ASSERT_EQ(decoderGraphExpr->getName(), "decoderInput");
     ASSERT_EQ(decoderGraphExpr->getPtr<Operation>()->getOperands().size(), 3);
     // Decoder 1 subgraph
     auto decoder1Pos = std::find_if(decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
@@ -326,7 +318,7 @@ TEST_F(PolicyTest, CompletePolicy)
     // Rule graph
     auto ruleGraphExpr = expr->getPtr<Operation>()->getOperands()[1];
     ASSERT_TRUE(ruleGraphExpr->isBroadcast());
-    ASSERT_EQ(ruleGraphExpr->getName(), "rulesInput");
+    ASSERT_EQ(ruleGraphExpr->getName(), "ruleInput");
     ASSERT_EQ(ruleGraphExpr->getPtr<Operation>()->getOperands().size(), 2);
     // Rule 1 subgraph
     auto rule1Pos = std::find_if(ruleGraphExpr->getPtr<Operation>()->getOperands().begin(),
@@ -354,7 +346,7 @@ TEST_F(PolicyTest, CompletePolicy)
     // Output graph
     auto outputGraphExpr = expr->getPtr<Operation>()->getOperands()[2];
     ASSERT_TRUE(outputGraphExpr->isBroadcast());
-    ASSERT_EQ(outputGraphExpr->getName(), "outputsInput");
+    ASSERT_EQ(outputGraphExpr->getName(), "outputInput");
     ASSERT_EQ(outputGraphExpr->getPtr<Operation>()->getOperands().size(), 1);
     // Output 1 subgraph
     assetExpr = outputGraphExpr->getPtr<Operation>()->getOperands()[0];

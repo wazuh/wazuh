@@ -236,7 +236,7 @@ Observable rxFactory(
     Controller& controller,
     std::function<void(const std::string&)> tracerFn = [](auto) {});
 
-Controller buildRxPipeline(const builder::Policy& environment);
+Controller buildRxPipeline(const builder::Policy& policy);
 
 Controller buildRxPipeline(base::Expression expression, const std::unordered_set<std::string>& assetNames);
 
