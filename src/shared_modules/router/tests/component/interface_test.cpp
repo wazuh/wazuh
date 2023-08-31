@@ -37,6 +37,22 @@ TEST_F(RouterInterfaceTest, TestCreateProviderSubscriberSimple)
     });
 }
 
+TEST_F(RouterInterfaceTest, TestStopLocalProviderWithoutStart)
+{
+    auto provider = std::make_unique<RouterProvider>("test");
+
+    // Simulate call from specific provider in the same process
+    EXPECT_THROW(provider->stop(), std::runtime_error);
+}
+
+TEST_F(RouterInterfaceTest, TestCreateSubscriberWithoutProvider)
+{
+    EXPECT_NO_THROW({
+        auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
+        subscriptor->subscribe([](const std::vector<char>&) {});
+    });
+}
+
 TEST_F(RouterInterfaceTest, TestDoubleProviderInit)
 {
     auto provider = std::make_unique<RouterProvider>("test");
@@ -185,6 +201,14 @@ TEST_F(RouterInterfaceTest, TestRemoteCreateProviderSubscriberSimple)
         subscriptor->subscribe([](const std::vector<char>&) {});
         subscriptor.reset();
     });
+}
+
+TEST_F(RouterInterfaceTest, TestStopRemoteProviderWithoutStart)
+{
+    auto provider = std::make_unique<RouterProvider>("test", false);
+
+    // Simulate call from specific provider in the same process
+    EXPECT_THROW(provider->stop(), std::runtime_error);
 }
 
 TEST_F(RouterInterfaceTest, TestRemoteDoubleProviderInit)
