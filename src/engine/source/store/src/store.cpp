@@ -4,6 +4,8 @@
 #include <list>
 #include <set>
 
+#include <logging/logging.hpp>
+
 namespace
 {
 

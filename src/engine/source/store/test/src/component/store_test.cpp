@@ -3,7 +3,7 @@
 #include <store/store.hpp>
 #include <store/drivers/fileDriver.hpp>
 
-
+#include <logging/logging.hpp>
 
 void inline initLogging(void)
 {

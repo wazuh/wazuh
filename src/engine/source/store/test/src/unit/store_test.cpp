@@ -2,6 +2,7 @@
 
 #include <store/mockDriver.hpp>
 #include <store/store.hpp>
+#include <logging/logging.hpp>
 
 using namespace store;
 using namespace store::mocks;
