@@ -809,6 +809,8 @@ int main_analysisd(int argc, char **argv)
     /* Startup message */
     minfo(STARTUP_MSG, (int)getpid());
 
+    w_init_queues();
+
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
 
@@ -924,8 +926,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     if (Config.custom_alert_output) {
         mdebug1("Custom output found.!");
     }
-
-    w_init_queues();
 
     int num_decode_event_threads = getDefine_Int("analysisd", "event_threads", 0, 32);
     int num_decode_syscheck_threads = getDefine_Int("analysisd", "syscheck_threads", 0, 32);
