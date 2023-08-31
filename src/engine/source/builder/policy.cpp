@@ -1,78 +1,45 @@
 #include "policy.hpp"
 
-#include "registry.hpp"
-namespace builder
+#include <algorithm>
+#include <map>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
+
+#include <store/utils.hpp>
+
+#include "syntax.hpp"
+
+namespace
 {
+using namespace builder;
 
 Asset::Type getAssetType(const std::string& name)
 {
-    if (DECODERS == name)
+    if (internals::syntax::INTEGRATION_DECODERS == name)
     {
         return Asset::Type::DECODER;
     }
-    else if (RULES == name)
+    else if (internals::syntax::INTEGRATION_RULES == name)
     {
         return Asset::Type::RULE;
     }
-    else if (OUTPUTS == name)
+    else if (internals::syntax::INTEGRATION_OUTPUTS == name)
     {
         return Asset::Type::OUTPUT;
     }
-    else if (FILTERS == name)
+    else if (internals::syntax::INTEGRATION_FILTERS == name)
     {
         return Asset::Type::FILTER;
     }
     else
     {
-        // TODO: should this be a logic_error?
-        throw std::runtime_error(fmt::format("Engine environment: Unknown type of asset \"{}\".", name));
+        throw std::runtime_error(fmt::format("Engine policy: Unknown type of asset \"{}\".", name));
     }
 }
+} // namespace
 
-void Policy::buildGraph(const std::vector<std::shared_ptr<Asset>>& assets, const std::string& graphName)
-{
-    auto graphPos = std::find_if(
-        m_graphs.begin(), m_graphs.end(), [&graphName](const auto& graph) { return std::get<0>(graph) == graphName; });
-    auto& graph = std::get<1>(*graphPos);
-    for (auto& asset : assets)
-    {
-        // Build Asset object and insert
-        graph.addNode(asset->m_name, asset);
-        if (asset->m_parents.empty())
-        {
-            graph.addEdge(graph.rootId(), asset->m_name);
-        }
-        else
-        {
-            for (auto& parent : asset->m_parents)
-            {
-                graph.addEdge(parent, asset->m_name);
-            }
-        }
-    }
-}
-
-void Policy::addFilters(const std::string& graphName)
-{
-    auto graphPos = std::find_if(
-        m_graphs.begin(), m_graphs.end(), [&graphName](const auto& graph) { return std::get<0>(graph) == graphName; });
-    auto& graph = std::get<1>(*graphPos);
-    for (auto& [name, asset] : m_assets)
-    {
-        if (Asset::Type::FILTER == asset->m_type)
-        {
-            for (auto& parent : asset->m_parents)
-            {
-                if (graph.hasNode(parent))
-                {
-                    graph.injectNode(name, asset, parent);
-                }
-            }
-        }
-    }
-}
-
-std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
+std::unordered_map<Asset::Type, std::vector<std::shared_ptr<Asset>>>
 Policy::getManifestAssets(const json::Json& jsonDefinition,
                           std::shared_ptr<const store::IStoreReader> storeRead,
                           std::shared_ptr<internals::Registry<internals::Builder>> registry)
@@ -99,11 +66,12 @@ Policy::getManifestAssets(const json::Json& jsonDefinition,
 
     manifestObj.erase(nameIt);
 
-    std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>> assets;
+    std::unordered_map<Asset::Type, std::vector<std::shared_ptr<Asset>>> assets;
 
     for (auto& [key, value] : manifestObj)
     {
-        if (key == DECODERS || key == RULES || key == OUTPUTS || key == FILTERS)
+        if (key == internals::syntax::INTEGRATION_DECODERS || key == internals::syntax::INTEGRATION_RULES
+            || key == internals::syntax::INTEGRATION_OUTPUTS || key == internals::syntax::INTEGRATION_FILTERS)
         {
             if (!value.isArray())
             {
@@ -134,105 +102,108 @@ Policy::getManifestAssets(const json::Json& jsonDefinition,
                                auto asset =
                                    std::make_shared<Asset>(std::get<json::Json>(assetDef), assetType, registry);
 
-                               // TODO: hardcoded default parent based on namespace
-                               auto nsId = storeRead->getNamespace(name.value());
-                               if (asset->m_type == Asset::Type::DECODER && asset->m_parents.empty() && nsId
-                                   && nsId.value().name().fullName() != "system")
-                               {
-                                   asset->m_parents.emplace("decoder/integrations/0");
-                               }
-
                                return asset;
                            });
 
-            assets[key] = assetList;
+            assets[assetType] = assetList;
         }
     }
 
     return assets;
 }
 
-std::string Policy::name() const
+namespace builder
 {
-    return m_name;
-}
 
-std::unordered_map<std::string, std::shared_ptr<Asset>>& Policy::assets()
+void Policy::buildGraph(const std::string& graphName, const std::unordered_set<base::Name>& assets, Asset::Type type)
 {
-    return m_assets;
-}
+    // 1. Add input node of the subgraph
+    auto inputName = graphName + "Input";
+    // Creates a dummy Asset with the name of the input node, to be transformed later into a expression
+    Subgraph graph {inputName, std::make_shared<Asset>(inputName, type)};
 
-const std::unordered_map<std::string, std::shared_ptr<Asset>>& Policy::assets() const
-{
-    return m_assets;
-}
-
-std::string Policy::getGraphivzStr()
-{
-    std::stringstream ss;
-    ss << "digraph G {" << std::endl;
-    ss << "compound=true;" << std::endl;
-    ss << fmt::format("fontname=\"Helvetica,Arial,sans-serif\";") << std::endl;
-    ss << fmt::format("fontsize=12;") << std::endl;
-    ss << fmt::format("node [fontname=\"Helvetica,Arial,sans-serif\", "
-                      "fontsize=10];")
-       << std::endl;
-    ss << fmt::format("edge [fontname=\"Helvetica,Arial,sans-serif\", "
-                      "fontsize=8];")
-       << std::endl;
-    ss << "environment [label=\"" << m_name << "\", shape=Mdiamond];" << std::endl;
-
-    auto removeHyphen = [](const std::string& text)
+    // 2. For each asset in the set:
+    for (auto& asset : assets)
     {
-        auto ret = text;
-        auto pos = ret.find("-");
-        while (pos != std::string::npos)
-        {
-            ret.erase(pos, 1);
-            pos = ret.find("-");
-        }
+        // 2.1. Add asset node
+        auto assetPtr = m_assets.at(asset);
+        graph.addNode(asset, assetPtr);
 
-        pos = ret.find("/");
-        while (pos != std::string::npos)
+        // 2.2. If no parents, connect to input node
+        if (assetPtr->m_parents.empty())
         {
-            ret.erase(pos, 1);
-            pos = ret.find("/");
+            graph.addEdge(inputName, asset);
         }
-
-        return ret;
-    };
-
-    for (auto& [name, graph] : m_graphs)
-    {
-        ss << std::endl;
-        ss << "subgraph cluster_" << name << " {" << std::endl;
-        ss << "label=\"" << name << "\";" << std::endl;
-        ss << "style=filled;" << std::endl;
-        ss << "color=lightgrey;" << std::endl;
-        ss << fmt::format("node [style=filled,color=white];") << std::endl;
-        for (auto& [name, asset] : graph.nodes())
+        else
         {
-            ss << removeHyphen(name) << " [label=\"" << name << "\"];" << std::endl;
-        }
-        for (auto& [parent, children] : graph.edges())
-        {
-            for (auto& child : children)
+            // 2.3. If parents, connect to each parent
+            for (auto& parent : assetPtr->m_parents)
             {
-                ss << removeHyphen(parent) << " -> " << removeHyphen(child) << ";" << std::endl;
+                graph.addEdge(parent, asset);
             }
         }
-        ss << "}" << std::endl;
-        ss << "environment -> " << name << "Input;" << std::endl;
     }
-    ss << "}\n";
-    return ss.str();
+
+    // 3. Add filters
+    // 3.1. For each filter in the policy:
+    for (auto& [name, asset] : m_assets)
+    {
+        if (asset->m_type == Asset::Type::FILTER)
+        {
+            // 3.1.1. If the parent is present in the subgraph, inject the filter between the asset and the children
+            for (auto& parent : asset->m_parents)
+            {
+                if (graph.hasNode(parent))
+                {
+                    graph.injectNode(name, asset, parent);
+                }
+            }
+        }
+    }
+
+    // 4. Check integrity
+    for (auto& [parent, children] : graph.edges())
+    {
+        if (!graph.hasNode(parent))
+        {
+            auto childrenNames = std::string("[");
+            childrenNames += std::accumulate(children.cbegin(),
+                                             children.cend(),
+                                             std::string {},
+                                             [](auto& acc, auto& child) { return acc + ", " + child; });
+            childrenNames += "]";
+            throw std::runtime_error(
+                fmt::format("Parent '{}' does not exist, required by {}", parent.toStr(), childrenNames));
+        }
+        for (auto& child : children)
+        {
+            if (!graph.hasNode(child))
+            {
+                throw std::runtime_error(
+                    fmt::format("Child '{}' does not exist, required by {}", child.toStr(), parent.toStr()));
+            }
+        }
+    }
+
+    // Finally, add the subgraph to the policy
+    insertGraph(graphName, std::move(graph));
 }
 
-base::Expression Policy::getExpression() const
+std::unordered_set<base::Name> Policy::assets() const
 {
-    // Expression of the environment, expression to be returned.
+    std::unordered_set<base::Name> assets;
+    std::transform(m_assets.cbegin(),
+                   m_assets.cend(),
+                   std::inserter(assets, assets.begin()),
+                   [](const auto& pair) { return pair.first; });
+    return assets;
+}
+
+base::Expression Policy::expression() const
+{
+    // Expression of the policy, expression to be returned.
     // All subgraphs are added to this expression.
-    std::shared_ptr<base::Operation> environment = base::Chain::create(m_name, {});
+    std::shared_ptr<base::Operation> policy = base::Chain::create(m_name, {});
 
     // Generate the graph in order decoders->rules->outputs
     for (auto& [graphName, graph] : m_graphs)
@@ -249,13 +220,13 @@ base::Expression Policy::getExpression() const
                 inputExpression = base::Broadcast::create(graph.node(graph.rootId())->m_name, {});
                 break;
             default:
-                throw std::runtime_error(fmt::format("Building environment \"{}\" failed as the type of the "
+                throw std::runtime_error(fmt::format("Building policy \"{}\" failed as the type of the "
                                                      "asset \"{}\" is not supported",
                                                      graphName,
                                                      graph.node(graph.rootId())->m_name));
         }
-        // Add input Expression to environment expression
-        environment->getOperands().push_back(inputExpression);
+        // Add input Expression to policy expression
+        policy->getOperands().push_back(inputExpression);
 
         // Build rest of the graph
 
@@ -336,7 +307,211 @@ base::Expression Policy::getExpression() const
         }
     }
 
-    return environment;
+    return policy;
+}
+
+Policy::Policy(const json::Json& jsonDefinition,
+               std::shared_ptr<const store::IStore> store,
+               std::shared_ptr<internals::Registry<internals::Builder>> registry)
+{
+    // Get name
+    auto nameOpt = jsonDefinition.getString("/name");
+    if (!nameOpt)
+    {
+        if (jsonDefinition.exists("/name"))
+        {
+            throw std::runtime_error("Policy /name is not a string");
+        }
+        else
+        {
+            throw std::runtime_error("Policy /name is not defined");
+        }
+    }
+    m_name = nameOpt.value();
+
+    // Get default parents
+    auto defaultParentsOpt = jsonDefinition.getObject("/default_parents");
+    std::unordered_map<store::NamespaceId, base::Name> defaultParents;
+    if (defaultParentsOpt)
+    {
+        for (const auto& [nsId, asset] : defaultParentsOpt.value())
+        {
+            defaultParents.emplace(store::NamespaceId {nsId}, base::Name {asset.getString().value()});
+        }
+    }
+
+    // Load assets
+    std::unordered_map<Asset::Type, std::unordered_set<base::Name>> assetsByType;
+    std::unordered_set<base::Name> integrations;
+
+    auto assetsOpt = jsonDefinition.getArray("/assets");
+    if (assetsOpt)
+    {
+        for (auto& jAssetName : assetsOpt.value())
+        {
+            if (!jAssetName.isString())
+            {
+                throw std::runtime_error("Asset name is not a string");
+            }
+
+            auto assetDef = store::utils::get(store, jAssetName.getString().value());
+            if (base::isError(assetDef))
+            {
+                throw std::runtime_error(base::getError(assetDef).message);
+            }
+
+            auto assetName = base::Name {jAssetName.getString().value()};
+            if (internals::syntax::isIntegration(assetName))
+            {
+                integrations.insert(assetName);
+            }
+            else
+            {
+                auto type = [&]()
+                {
+                    if (internals::syntax::isDecoder(assetName))
+                    {
+                        return Asset::Type::DECODER;
+                    }
+                    else if (internals::syntax::isRule(assetName))
+                    {
+                        return Asset::Type::RULE;
+                    }
+                    else if (internals::syntax::isOutput(assetName))
+                    {
+                        return Asset::Type::OUTPUT;
+                    }
+                    else if (internals::syntax::isFilter(assetName))
+                    {
+                        return Asset::Type::FILTER;
+                    }
+                    else
+                    {
+                        throw std::runtime_error(fmt::format("Asset type '{}' unknown", assetName.parts().front()));
+                    }
+                }();
+
+                auto asset = std::make_shared<Asset>(base::getResponse<store::Doc>(assetDef), type, registry);
+                // Add default parent
+                auto nsId = store->getNamespace(assetName);
+                if (nsId && asset->m_parents.empty() && defaultParents.find(nsId.value()) != defaultParents.end())
+                {
+                    asset->m_parents.emplace(defaultParents.at(nsId.value()));
+                }
+
+                auto key = internals::syntax::getIntegrationSection(assetName);
+
+                // Keep track of the assets by type, to build the graphs
+                assetsByType[type].insert(assetName);
+
+                // Add asset to the policy
+                m_assets.insert(std::make_pair(assetName, asset));
+            }
+        }
+    }
+
+    // Merge all assets of the integrations if any
+    for (auto& name : integrations)
+    {
+        auto integrationDef = store::utils::get(store, name);
+        if (base::isError(integrationDef))
+        {
+            throw std::runtime_error(base::getError(integrationDef).message);
+        }
+        auto integrationAssets = getManifestAssets(base::getResponse<store::Doc>(integrationDef), store, registry);
+        for (auto& [itype, iassets] : integrationAssets)
+        {
+            for (auto& iasset : iassets)
+            {
+                // Add default parent
+                auto nsId = store->getNamespace(iasset->m_name);
+                if (nsId && iasset->m_parents.empty() && defaultParents.find(nsId.value()) != defaultParents.end())
+                {
+                    iasset->m_parents.emplace(defaultParents.at(nsId.value()));
+                }
+
+                m_assets.insert(std::make_pair(iasset->m_name, iasset));
+                assetsByType[itype].insert(iasset->m_name);
+            }
+        }
+    }
+
+    // Build graphs in order
+    // Decoders -> Rules -> Outputs
+    if (assetsByType.find(Asset::Type::DECODER) != assetsByType.end())
+    {
+        buildGraph(Asset::typeToString(Asset::Type::DECODER), assetsByType.at(Asset::Type::DECODER), Asset::Type::DECODER);
+    }
+    if (assetsByType.find(Asset::Type::RULE) != assetsByType.end())
+    {
+        buildGraph(Asset::typeToString(Asset::Type::RULE), assetsByType.at(Asset::Type::RULE), Asset::Type::RULE);
+    }
+    if (assetsByType.find(Asset::Type::OUTPUT) != assetsByType.end())
+    {
+        buildGraph(Asset::typeToString(Asset::Type::OUTPUT), assetsByType.at(Asset::Type::OUTPUT), Asset::Type::OUTPUT);
+    }
+
+}
+
+std::string Policy::getGraphivzStr() const
+{
+    std::stringstream ss;
+    ss << "digraph G {" << std::endl;
+    ss << "compound=true;" << std::endl;
+    ss << fmt::format("fontname=\"Helvetica,Arial,sans-serif\";") << std::endl;
+    ss << fmt::format("fontsize=12;") << std::endl;
+    ss << fmt::format("node [fontname=\"Helvetica,Arial,sans-serif\", "
+                      "fontsize=10];")
+       << std::endl;
+    ss << fmt::format("edge [fontname=\"Helvetica,Arial,sans-serif\", "
+                      "fontsize=8];")
+       << std::endl;
+    ss << "environment [label=\"" << m_name << "\", shape=Mdiamond];" << std::endl;
+
+    auto removeHyphen = [](const std::string& text)
+    {
+        auto ret = text;
+        auto pos = ret.find("-");
+        while (pos != std::string::npos)
+        {
+            ret.erase(pos, 1);
+            pos = ret.find("-");
+        }
+
+        pos = ret.find("/");
+        while (pos != std::string::npos)
+        {
+            ret.erase(pos, 1);
+            pos = ret.find("/");
+        }
+
+        return ret;
+    };
+
+    for (auto& [name, graph] : m_graphs)
+    {
+        ss << std::endl;
+        ss << "subgraph cluster_" << name << " {" << std::endl;
+        ss << "label=\"" << name << "\";" << std::endl;
+        ss << "style=filled;" << std::endl;
+        ss << "color=lightgrey;" << std::endl;
+        ss << fmt::format("node [style=filled,color=white];") << std::endl;
+        for (auto& [name, asset] : graph.nodes())
+        {
+            ss << removeHyphen(name) << " [label=\"" << name << "\"];" << std::endl;
+        }
+        for (auto& [parent, children] : graph.edges())
+        {
+            for (auto& child : children)
+            {
+                ss << removeHyphen(parent) << " -> " << removeHyphen(child) << ";" << std::endl;
+            }
+        }
+        ss << "}" << std::endl;
+        ss << "environment -> " << name << "Input;" << std::endl;
+    }
+    ss << "}\n";
+    return ss.str();
 }
 
 } // namespace builder

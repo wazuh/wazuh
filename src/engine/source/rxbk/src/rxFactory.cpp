@@ -266,15 +266,18 @@ Observable rxFactory(const Observable& input,
     }
 }
 
-Controller buildRxPipeline(const builder::Policy& environment)
+Controller buildRxPipeline(const builder::Policy& policy)
 {
     Controller controller;
     std::unordered_set<std::string> assetNames;
-    std::transform(environment.assets().begin(),
-                   environment.assets().end(),
+    std::transform(policy.assets().begin(),
+                   policy.assets().end(),
                    std::inserter(assetNames, assetNames.begin()),
-                   [](const auto& pair) { return pair.first; });
-    auto output = rxFactory(controller.getInternalInput(), assetNames, environment.getExpression(), controller);
+                   [](const auto& name) { return name.toStr(); });
+    auto output = rxFactory(controller.getInternalInput(),
+                            assetNames,
+                            policy.expression(),
+                            controller);
     controller.setOutput(std::move(output));
 
     return controller;

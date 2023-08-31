@@ -103,7 +103,7 @@ api::Handler resourceGet(const Config& config)
             base::Expression policyExpression;
             try
             {
-                policyExpression = policy.getExpression();
+                policyExpression = policy.expression();
             }
             catch (const std::exception& e)
             {
