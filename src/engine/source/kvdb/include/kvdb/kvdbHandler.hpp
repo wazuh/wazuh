@@ -94,14 +94,14 @@ public:
      * @copydoc IKVDBHandler::dump
      *
      */
-    std::variant<std::map<std::string, std::string>, base::Error> dump(const unsigned int page,
-                                                                       const unsigned int records) override;
+    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const unsigned int page,
+                                                                                   const unsigned int records) override;
 
     /**
      * @copydoc IKVDBHandler::search
      *
      */
-    std::variant<std::map<std::string, std::string>, base::Error>
+    std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
     search(const std::string& filter, const unsigned int page, const unsigned int records) override;
 
 protected:
@@ -142,9 +142,9 @@ private:
      * @param page
      * @param records
      * @param filter
-     * @return std::variant<std::map<std::string, std::string>, base::Error>
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
      */
-    std::variant<std::map<std::string, std::string>, base::Error> pageContent(
+    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> pageContent(
         const unsigned int page, const unsigned int records, const std::function<bool(const rocksdb::Slice&)>& filter);
 
     /**
@@ -152,10 +152,10 @@ private:
      *
      * @param page
      * @param records
-     * @return std::variant<std::map<std::string, std::string>, base::Error>
+     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
      */
-    std::variant<std::map<std::string, std::string>, base::Error> pageContent(const unsigned int page,
-                                                                              const unsigned int records);
+    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> pageContent(const unsigned int page,
+                                                                                          const unsigned int records);
 };
 
 } // namespace kvdbManager
