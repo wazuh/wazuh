@@ -65,6 +65,7 @@ public:
      */
     inline void updateHash()
     {
+        // TODO: Check if is necessary include the default parents in the hash
         m_hash = std::hash<std::string> {}(m_name.fullName()) ^ std::hash<std::string> {}(nssToStr());
     }
 
@@ -268,6 +269,67 @@ public:
         return policyDoc;
     }
 
+    /**
+     * @brief Print the policy in a human readable format
+     *
+     * TODO: Check and fix Format, json? yaml?
+     * @param namespacesids Namespaces ids to filter. If empty, no filter is applied
+     * @return std::string
+     */
+    std::string print(const std::vector<store::NamespaceId>& namespacesids) const
+    {
+        std::stringstream ss;
+        // Name
+        ss << "policy: " << m_name << std::endl;
+
+        // Hash
+        ss << "hash: " << m_hash << std::endl;
+
+        // Assets
+        {
+            std::stringstream assetSS;
+            bool hasAssets = false;
+            for (const auto& [nsId, asset] : m_nss)
+            {
+                if (namespacesids.empty()
+                    || std::find(namespacesids.begin(), namespacesids.end(), nsId) != namespacesids.end())
+                {
+                    hasAssets = true;
+                    assetSS << "  - " << asset << std::endl;
+                }
+            }
+
+            if (hasAssets)
+            {
+                ss << "assets: " << std::endl;
+                ss << assetSS.str();
+            }
+        }
+
+        // Default parents
+        {
+            std::stringstream defParentSS;
+            bool hasDefParents = false;
+            for (const auto& [nsId, parent] : m_defaultParents)
+            {
+                if (namespacesids.empty()
+                    || std::find(namespacesids.begin(), namespacesids.end(), nsId) != namespacesids.end())
+                {
+                    hasDefParents = true;
+                    defParentSS << "  - " << nsId.name() << ": " << parent << std::endl;
+                }
+            }
+
+            if (hasDefParents)
+            {
+                ss << "default_parents: " << std::endl;
+                ss << defParentSS.str();
+            }
+        }
+
+        return ss.str();
+    }
+
     base::RespOrError<base::Name> getDefaultParent(const store::NamespaceId& namespaceId) const
     {
         auto it = m_defaultParents.find(namespaceId);
@@ -286,6 +348,18 @@ public:
         {
 
             it->second = parent;
+            return base::noError();
+        }
+
+        return base::Error {"Namespace not found"};
+    }
+
+    base::OptError delDefaultParent(const store::NamespaceId& namespaceId)
+    {
+        auto it = m_defaultParents.find(namespaceId);
+        if (it != m_defaultParents.end())
+        {
+            m_defaultParents.erase(it);
             return base::noError();
         }
 

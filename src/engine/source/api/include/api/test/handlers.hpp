@@ -35,6 +35,7 @@ enum class DebugMode
 /**
  * @brief Test configuration parameters.
  *
+ * TODO: Change to weak pointers.
  */
 struct Config
 {

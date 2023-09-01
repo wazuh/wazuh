@@ -30,6 +30,7 @@ target_link_libraries(cmds
     wdb
     sockiface
     rbac
+    policy
 )
 
 target_include_directories(cmds
