@@ -54,7 +54,6 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(os_regex)
   add_subdirectory(os_zlib)
   add_subdirectory(config)
-  add_subdirectory(os_csyslogd)
   endif()
 
 if(${uname} STREQUAL "Linux")

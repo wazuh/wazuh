@@ -49,15 +49,14 @@ static int test_csyslogd_setup(void **state) {
     
     os_calloc(1, sizeof(SyslogConfig), pSyslogConfig);
 
-    if(pSyslogConfig)
-    {
+    if (pSyslogConfig) {
+
         pSyslogConfig->port = gPort;
         pSyslogConfig->format = JSON_CSYSLOG;
         pSyslogConfig->level = 7;
         pSyslogConfig->rule_id = gRuleId;
         pSyslogConfig->server = (char*)gIpAddress;
 
-    
         state[0] = pSyslogConfig;  
         
         return OS_SUCCESS;
@@ -107,8 +106,6 @@ static void test_csyslogd_OS_CSyslogD(void **state) {
     will_return(__wrap_FOREVER, 0);
 
     OS_CSyslogD(pSyslogConfig);
-
-    //pJSON is deleted in OS_CSyslogD
 }
 
 static int test_csyslogd_teardown(void **state) {
@@ -119,8 +116,8 @@ static int test_csyslogd_teardown(void **state) {
 }
 
 
-int main()
-{
+int main() {
+
     const struct CMUnitTest tests[] =
     {
         cmocka_unit_test_setup_teardown(test_csyslogd_OS_CSyslogD, test_csyslogd_setup, test_csyslogd_teardown)
