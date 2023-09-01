@@ -160,9 +160,20 @@ public:
      * @brief Subscribe to the output of all Tracers.
      *
      * @param s Subscriber to subscribe to the outputs.
+     * @param assets Vector of asset names to subscribe to.
+     * @param assetTrace Optional asset name for a specific Trace subscription.
      * @return rx::composite_subscription Aggregated subscription to the outputs.
      */
-    rx::composite_subscription listenOnAllTrace(rxcpp::subscriber<std::string> s);
+    rx::composite_subscription listenOnAllTrace(rxcpp::subscriber<std::string> s,
+                                                const std::vector<std::string>& assets,
+                                                const std::vector<std::string>& assetTrace);
+
+    /**
+     * @brief Get the Assets object
+     *
+     * @return const std::vector<std::string>
+     */
+    const std::vector<std::string> getAssets() const;
 
     /**
      * @brief Check if controller has specific tracer.

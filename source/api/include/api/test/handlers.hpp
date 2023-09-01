@@ -233,7 +233,8 @@ api::Handler sessionsGet(const std::shared_ptr<api::sessionManager::SessionManag
  * @return api::Handler
  */
 api::Handler runPost(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
-                     const std::shared_ptr<::router::Router>& router);
+                     const std::shared_ptr<::router::Router>& router,
+                     const std::shared_ptr<store::IStore>& store);
 
 /**
  * @brief Register all handlers for the test API.

@@ -5,7 +5,6 @@
 #include <rxbk/rxFactory.hpp>
 #include <utils/getExceptionStack.hpp>
 
-
 namespace router
 {
 
@@ -52,12 +51,14 @@ std::optional<base::Error> RuntimePolicy::subscribeToOutput(rxbk::SubscribeToOut
     }
 
     auto subscriber = m_controller->configureSuscribeToOutput(callback);
-    m_controller->getOutput().subscribe(std::move(subscriber));
+    m_csOutput = m_controller->getOutput().subscribe(std::move(subscriber));
 
     return std::nullopt;
 }
 
-std::optional<base::Error> RuntimePolicy::listenAllTrace(rxbk::SubscribeToTraceCallback callback)
+std::optional<base::Error> RuntimePolicy::listenAllTrace(rxbk::SubscribeToTraceCallback callback,
+                                                         const std::vector<std::string>& assets,
+                                                         const std::vector<std::string>& assetTrace)
 {
     if (!callback)
     {
@@ -65,9 +66,34 @@ std::optional<base::Error> RuntimePolicy::listenAllTrace(rxbk::SubscribeToTraceC
     }
 
     auto subscriber = m_controller->configureSuscribeToTrace(callback);
-    m_controller->listenOnAllTrace(std::move(subscriber));
+
+    try
+    {
+        m_csTraces = m_controller->listenOnAllTrace(std::move(subscriber), assets, assetTrace);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
 
     return std::nullopt;
+}
+
+const std::vector<std::string> RuntimePolicy::getAssets() const
+{
+    return m_controller->getAssets();
+}
+
+void RuntimePolicy::unSubscribeTraces()
+{
+    if (m_csTraces.is_subscribed())
+    {
+        m_csTraces.unsubscribe();
+    }
+    if (m_csOutput.is_subscribed())
+    {
+        m_csOutput.unsubscribe();
+    }
 }
 
 } // namespace router

@@ -21,6 +21,8 @@ class RuntimePolicy
 private:
     std::string m_asset;
     std::shared_ptr<rxbk::Controller> m_controller;
+    rxcpp::composite_subscription m_csOutput;
+    rxcpp::composite_subscription m_csTraces;
 
 public:
     /**
@@ -90,10 +92,27 @@ public:
      * corresponding trace data.
      *
      * @param callback The callback function to be invoked with the generated trace data.
+     * @param assets Vector of asset names to subscribe to.
+     * @param assetTrace Optional asset name for a specific Trace subscription.
      * @return std::optional<base::Error> If the listening encounters an error, an error message is returned.
      *         Otherwise, returns std::nullopt if the listening was successful.
      */
-    std::optional<base::Error> listenAllTrace(rxbk::SubscribeToTraceCallback callback);
+    std::optional<base::Error> listenAllTrace(rxbk::SubscribeToTraceCallback callback,
+                                              const std::vector<std::string>& assets,
+                                              const std::vector<std::string>& assetTrace);
+
+    /**
+     * @brief Get the Assets object
+     *
+     * @return const std::vector<std::string>
+     */
+    const std::vector<std::string> getAssets() const;
+
+    /**
+     * @brief
+     *
+     */
+    void unSubscribeTraces();
 };
 
 } // namespace router

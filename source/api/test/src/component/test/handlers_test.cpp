@@ -629,7 +629,7 @@ TEST_P(TestRunCommand, CheckParameters)
 {
     auto [input, output] = GetParam();
 
-    ASSERT_NO_THROW(m_cmdAPI = runPost(m_sessionManager, nullptr));
+    ASSERT_NO_THROW(m_cmdAPI = runPost(m_sessionManager, nullptr, nullptr));
     json::Json params {input.c_str()};
     base::utils::wazuhProtocol::WazuhRequest request;
     ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, params));
@@ -786,9 +786,12 @@ TEST_P(TestRunCommandIntegration, Functionality)
         EXPECT_TRUE(response.isValid());
         EXPECT_EQ(response.error(), 0);
         EXPECT_FALSE(response.message().has_value());
+
+        std::optional<store::NamespaceId> mockReturnValue = store::NamespaceId("system");
+        EXPECT_CALL(*m_spMockStore, getNamespace(testing::_)).WillOnce(testing::Return(mockReturnValue));
     }
 
-    ASSERT_NO_THROW(m_cmdAPI = runPost(m_sessionManager, m_spRouter));
+    ASSERT_NO_THROW(m_cmdAPI = runPost(m_sessionManager, m_spRouter, m_spMockStore));
     json::Json runPostCommandparams {runPostParams.c_str()};
     base::utils::wazuhProtocol::WazuhRequest request;
     ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, runPostCommandparams));
@@ -824,59 +827,82 @@ INSTANTIATE_TEST_SUITE_P(
     TestRunCommandIntegration,
     ::testing::Values(
         std::make_tuple(1,
-                        R"({"name":"dummy", "event":"hello world!"})",
+                        R"({"name":"dummy", "namespaceid":"system", "event":"hello world!"})",
                         R"({"name":"dummy"})",
                         R"({"status":"ERROR","error":"Session 'dummy' could not be found"})"),
-        std::make_tuple(2, R"({"name":"dummy", "event":"hello world!"})", R"({"name":"dummy"})", R"({
+        std::make_tuple(2, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!"})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "run": {
                             "output": {
-                                "TestSessionID": 1,
                                 "wazuh": {
+                                    "queue": 1,
                                     "message": "hello world!",
-                                    "location": "api.test",
-                                    "queue": 1
-                                }
-                            }
-                        }
-                    })"),
-        std::make_tuple(3, R"({"name":"dummy", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
-                        "status": "OK",
-                        "run": {
-                            "output": {
-                                "TestSessionID": 1,
-                                "wazuh": {
-                                    "location": "api.test",
-                                    "message": "hello world!",
-                                    "queue": 1
-                                }
+                                    "location": "api.test"
+                                },
+                                "TestSessionID": 1
                             },
-                            "traces": {
-                                "decoder": {
-                                    "core-hostinfo": [
-                                        "failure"
-                                    ]
-                                }
-                            }
+                            "traces": []
                         }
                     })"),
-        std::make_tuple(4, R"({"name":"dummy", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
+        std::make_tuple(3, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "run": {
                             "output": {
-                                "TestSessionID": 1,
+                                "wazuh": {
+                                    "queue": 1,
+                                    "location": "api.test",
+                                    "message": "hello world!"
+                                },
+                                "TestSessionID": 1
+                            },
+                            "traces": [
+                                "decoder/core-hostinfo/0 failure"
+                            ]
+                        }
+                    })"),
+        std::make_tuple(4, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
+                        "status": "OK",
+                        "run": {
+                            "output": {
                                 "wazuh": {
                                     "location": "api.test",
                                     "queue": 1,
                                     "message": "hello world!"
-                                }
+                                },
+                                "TestSessionID": 1
                             },
-                            "traces": {
-                                "decoder": {
-                                    "core-hostinfo": [
-                                        "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure[decoder/core-hostinfo/0] [condition]:failure"
-                                    ]
-                                }
-                            }
+                            "traces": [
+                                [
+                                    "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure",
+                                    "[decoder/core-hostinfo/0] [condition]:failure"
+                                ]
+                            ]
                         }
+                    })"),
+        std::make_tuple(5, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
+                        "status": "OK",
+                        "run": {
+                            "output": {
+                                "wazuh": {
+                                    "location": "api.test",
+                                    "queue": 1,
+                                    "message": "hello world!"
+                                },
+                                "TestSessionID": 1
+                            },
+                            "traces": [
+                                [
+                                    "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure",
+                                    "[decoder/core-hostinfo/0] [condition]:failure"
+                                ]
+                            ]
+                        }
+                    })"),
+        std::make_tuple(6, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/not-exist/0"})", R"({"name":"dummy"})", R"({
+                        "status": "ERROR",
+                        "error": "Asset 'decoder/not-exist/0' not found."
+                    })"),
+        std::make_tuple(7, R"({"name":"dummy", "namespaceid":"wazuh", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
+                        "status": "ERROR",
+                        "error": "Assets not found in namespace 'wazuh'"
                     })")));
