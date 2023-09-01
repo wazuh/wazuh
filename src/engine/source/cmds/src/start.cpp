@@ -14,9 +14,10 @@
 #include <api/catalog/handlers.hpp>
 #include <api/config/config.hpp>
 #include <api/graph/handlers.hpp>
-#include <api/integration/handlers.hpp>
+#include <api/integration/handlers.hpp> // TODO Delete
 #include <api/kvdb/handlers.hpp>
 #include <api/metrics/handlers.hpp>
+#include <api/policy/handlers.hpp>
 #include <api/router/handlers.hpp>
 #include <api/test/handlers.hpp>
 #include <api/test/sessionManager.hpp>
@@ -29,6 +30,7 @@
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
+#include <policy/policy.hpp>
 #include <rbac/rbac.hpp>
 #include <router/router.hpp>
 #include <rxbk/rxFactory.hpp>
@@ -204,6 +206,8 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
     std::shared_ptr<rbac::RBAC> rbac;
+    std::shared_ptr<api::policy::Policy> policyManager;
+    std::shared_ptr<api::sessionManager::SessionManager> sessionManager;
 
     try
     {
@@ -222,17 +226,6 @@ void runStart(ConfHandler confManager)
             LOG_INFO("RBAC initialized.");
         }
 
-        // API
-        {
-            api = std::make_shared<api::Api>(rbac);
-            LOG_DEBUG("API created.");
-            exitHandler.add(
-                [api]()
-                {
-                    eMessage::ShutdownEMessageLibrary();
-                    LOG_INFO("API terminated.");
-                });
-        }
 
         // Queue
         {
@@ -257,9 +250,6 @@ void runStart(ConfHandler confManager)
                     LOG_INFO("KVDB terminated.");
                 });
 
-            api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
-
-            LOG_DEBUG("KVDB API registered.");
         }
 
         // Schema
@@ -331,15 +321,6 @@ void runStart(ConfHandler confManager)
             catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
             LOG_INFO("Catalog initialized.");
 
-            api::catalog::handlers::registerHandlers(catalog, api);
-            LOG_DEBUG("Catalog API registered.");
-        }
-
-        // Integration manager
-        {
-            auto integration = std::make_shared<api::integration::Integration>(catalog);
-            api::integration::handlers::registerHandlers(integration, api);
-            LOG_DEBUG("Integration manager API registered.");
         }
 
         // Router
@@ -350,10 +331,6 @@ void runStart(ConfHandler confManager)
             router->run(eventQueue);
             exitHandler.add([router]() { router->stop(); });
             LOG_INFO("Router initialized.");
-
-            // Register the API command
-            api::router::handlers::registerHandlers(router, api);
-            LOG_DEBUG("Router API registered.");
 
             // If the router table is empty or the force flag is passed, load from the command line
             if (router->getRouteTable().empty())
@@ -367,19 +344,10 @@ void runStart(ConfHandler confManager)
             }
         }
 
-        // Graph
-        {
-            // Register the Graph command
-            api::graph::handlers::Config graphConfig {
-                builder
-            };
-            api::graph::handlers::registerHandlers(graphConfig, api);
-            LOG_DEBUG("Graph API registered.");
-        }
 
         // Test
         {
-            auto sessionManager = std::make_shared<api::sessionManager::SessionManager>();
+            sessionManager = std::make_shared<api::sessionManager::SessionManager>();
 
             // Try to load the sessions from the store
             const auto strJsonSessions = store->readInternalDoc(api::test::handlers::API_SESSIONS_TABLE_NAME);
@@ -409,24 +377,63 @@ void runStart(ConfHandler confManager)
                 }
             }
 
-            // Register the Test command
-            api::test::handlers::Config testConfig;
-            testConfig.sessionManager = sessionManager;
-            testConfig.catalog = catalog;
-            testConfig.router = router;
-            testConfig.store = store;
-            api::test::handlers::registerHandlers(testConfig, api);
-            LOG_DEBUG("Test API registered.");
         }
 
-        // Register Metrics commands
-        api::metrics::handlers::registerHandlers(metrics, api);
-        LOG_DEBUG("Metrics API registered.");
 
-        // Configuration manager
+         // Create and configure the api endpints
         {
+            // API
+            api = std::make_shared<api::Api>(rbac);
+            LOG_DEBUG("API created.");
+            exitHandler.add(
+                [api]()
+                {
+                    eMessage::ShutdownEMessageLibrary();
+                    LOG_INFO("API terminated.");
+                });
+
+            // Configuration manager
             api::config::handlers::registerHandlers(api, confManager);
             LOG_DEBUG("Configuration manager API registered.");
+
+            // Register Metrics
+            api::metrics::handlers::registerHandlers(metrics, api);
+            LOG_DEBUG("Metrics API registered.");
+
+            // KVDB
+            api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
+            LOG_DEBUG("KVDB API registered.");
+
+            // Catalog
+            api::catalog::handlers::registerHandlers(catalog, api);
+            LOG_DEBUG("Catalog API registered.");
+
+            // Router
+            api::router::handlers::registerHandlers(router, api);
+            LOG_DEBUG("Router API registered.");
+
+            // Test
+            {
+                api::test::handlers::Config testConfig {sessionManager, router, catalog, store};
+                api::test::handlers::registerHandlers(testConfig, api);
+                LOG_DEBUG("Test API registered.");
+            }
+
+            // Policy
+            {
+                policyManager = std::make_shared<api::policy::Policy>(store, builder);
+                api::policy::handlers::registerHandlers(policyManager, api);
+                exitHandler.add([]() { LOG_DEBUG("Policy API terminated."); });
+                LOG_DEBUG("Policy API registered.");
+            }
+
+            // Graph
+            {
+                // Register the Graph command
+                api::graph::handlers::Config graphConfig {builder};
+                api::graph::handlers::registerHandlers(graphConfig, api);
+                LOG_DEBUG("Graph API registered.");
+            }
         }
 
         // Server

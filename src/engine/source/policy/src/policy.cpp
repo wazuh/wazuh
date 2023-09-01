@@ -54,6 +54,19 @@ base::OptError Policy::del(const base::Name& policyName)
     return m_store->deleteInternalDoc(policyName.fullName());
 }
 
+base::RespOrError<std::string> Policy::get(const base::Name& policyName,
+                                                const std::vector<store::NamespaceId>& namespaceIds) const
+{
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    return policy.print(namespaceIds);
+}
+
 base::RespOrError<std::vector<base::Name>> Policy::list() const
 {
     const auto basePolicy = base::Name {"policy"};
@@ -157,6 +170,24 @@ base::OptError Policy::setDefaultParent(const base::Name& policyName,
 
     auto policy = base::getResponse<PolicyRep>(resp);
     auto error = policy.setDefaultParent(namespaceId, parentName);
+    if (base::isError(error))
+    {
+        return error;
+    }
+
+    return upsert(policy);
+}
+
+base::OptError Policy::delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId)
+{
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    auto error = policy.delDefaultParent(namespaceId);
     if (base::isError(error))
     {
         return error;

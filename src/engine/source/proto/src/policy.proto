@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "engine.proto";
-import "google/protobuf/struct.proto"; // For Value
 
 package com.wazuh.api.engine.policy;
 
@@ -45,14 +44,15 @@ message StoreDelete_Request
  **************************************************/
 message StoreGet_Request
 {
-    optional string name = 1; // Policy name
+    optional string name = 1;       // Policy name
+    repeated string namespaces = 2; // List of namespaces to filter in the policy (optional)
 }
 
 message StoreGet_Response
 {
-    ReturnStatus status = 1;                 // Status of the query
-    optional string error = 2;               // Error message if status is ERROR
-    optional google.protobuf.Value data = 3; // TODO: Separate data after define the policy structure
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional string data = 3;  // TODO: Separate data after define the policy structure
 }
 
 // Specific policy handlers
@@ -137,9 +137,15 @@ message DefaultParentPost_Request
 /***************************************************
  * Delete default parent of a namespace in a policy
  *
- * TODO: Check if is necessary
  * command: policy.defaultparent/delete
  **************************************************/
+message DefaultParentDelete_Request
+{
+    optional string policy = 1;    // Policy name
+    optional string namespace = 2; // Namespace of the assets
+}
+
+// message DefaultParentDelete_Response -> Return a GenericStatus_Response
 
 /***************************************************
  * Get all policies in the store

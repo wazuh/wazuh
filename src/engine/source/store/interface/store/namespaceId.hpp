@@ -32,7 +32,7 @@ private:
     {
         if (m_id.parts().size() != PARTS_NAMESPACE_SIZE)
         {
-            throw std::invalid_argument("NamespaceId must have only one part, cannot be empty and cannot contain '/'");
+            throw std::runtime_error("NamespaceId must have only one part, cannot be empty and cannot contain '/'");
         }
     }
 
