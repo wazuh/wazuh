@@ -2,16 +2,17 @@
 
 #include <CLI/CLI.hpp>
 
+#include <cmds/apiExcept.hpp>
 #include <cmds/catalog.hpp>
 #include <cmds/config.hpp>
 #include <cmds/graph.hpp>
+#include <cmds/integration.hpp>
 #include <cmds/kvdb.hpp>
+#include <cmds/metrics.hpp>
+#include <cmds/policy.hpp>
 #include <cmds/router.hpp>
 #include <cmds/start.hpp>
 #include <cmds/test.hpp>
-#include <cmds/apiExcept.hpp>
-#include <cmds/metrics.hpp>
-#include <cmds/integration.hpp>
 
 namespace
 {
@@ -39,7 +40,7 @@ int main(int argc, char* argv[])
 
     // Configure each subcommand
     cmd::server::configure(app);
-    cmd::test::configure(app); //TODO: Create a test command using the new API
+    cmd::test::configure(app);
     cmd::graph::configure(app);
     cmd::kvdb::configure(app);
     cmd::catalog::configure(app);
@@ -47,6 +48,7 @@ int main(int argc, char* argv[])
     cmd::router::configure(app);
     cmd::metrics::configure(app);
     cmd::integration::configure(app);
+    cmd::policy::configure(app);
 
     try
     {

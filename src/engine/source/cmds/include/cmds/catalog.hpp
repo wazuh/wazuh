@@ -15,10 +15,6 @@ namespace cmd::catalog
 namespace details
 {
 constexpr auto ORIGIN_NAME = "engine_integrated_catalog_api";
-std::string commandName(const std::string& command);
-json::Json getParameters(const std::string& format, const std::string& name, const std::string& content = "");
-void processResponse(const base::utils::wazuhProtocol::WazuhResponse& response);
-void singleRequest(const base::utils::wazuhProtocol::WazuhRequest& request, const std::string& socketPath);
 } // namespace details
 
 void runGet(std::shared_ptr<apiclnt::Client> client,
