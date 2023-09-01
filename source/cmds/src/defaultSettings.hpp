@@ -70,6 +70,9 @@ constexpr auto ENGINE_RBAC_ROLE = "user-developer";
 // Namespace
 constexpr auto ENGINE_NAMESPACE = "user";
 
+// Policy
+constexpr auto DEFAULT_PARENT = "decoder/integrations/0";
+
 /******************************************************************************
  *  Test
  ******************************************************************************/
