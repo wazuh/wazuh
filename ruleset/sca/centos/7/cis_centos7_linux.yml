@@ -29,9 +29,9 @@ variables:
   $sshd_file: /etc/ssh/sshd_config
 
 checks:
-  ###############################################
+  ##############################################
   # 1.1 Filesystem Configuration
-  ###############################################
+  ##############################################
 
   # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled. (Automated)
   - id: 6000 
