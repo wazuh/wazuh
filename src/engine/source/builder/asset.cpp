@@ -173,7 +173,7 @@ Asset::Asset(const json::Json& jsonDefinition,
                                            [ifVar](auto e)
                                            {
                                                e->eraseIfKey(ifVar);
-                                               return base::result::makeSuccess(e, "DeleteVariables");
+                                               return base::result::makeSuccess(e, "");
                                            });
 
     asOp->getOperands().push_back(deleteVariables);
@@ -194,7 +194,7 @@ base::Expression Asset::getExpression() const
             else
             {
                 auto trueExpression = base::Term<base::EngineOp>::create(
-                    "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "AcceptAll"); });
+                    "AcceptAll", [](auto e) { return base::result::makeSuccess(e, ""); });
                 asset = base::Implication::create(m_name, trueExpression, m_stages);
             }
             break;

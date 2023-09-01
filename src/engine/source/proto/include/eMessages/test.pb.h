@@ -2049,13 +2049,62 @@ class RunPost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
+    kAssetTraceFieldNumber = 5,
+    kNamespaceidFieldNumber = 7,
     kNameFieldNumber = 1,
     kProtocolQueueFieldNumber = 3,
-    kAssetTraceFieldNumber = 5,
     kProtocolLocationFieldNumber = 6,
     kEventFieldNumber = 2,
     kDebugModeFieldNumber = 4,
   };
+  // repeated string asset_trace = 5;
+  int asset_trace_size() const;
+  private:
+  int _internal_asset_trace_size() const;
+  public:
+  void clear_asset_trace();
+  const std::string& asset_trace(int index) const;
+  std::string* mutable_asset_trace(int index);
+  void set_asset_trace(int index, const std::string& value);
+  void set_asset_trace(int index, std::string&& value);
+  void set_asset_trace(int index, const char* value);
+  void set_asset_trace(int index, const char* value, size_t size);
+  std::string* add_asset_trace();
+  void add_asset_trace(const std::string& value);
+  void add_asset_trace(std::string&& value);
+  void add_asset_trace(const char* value);
+  void add_asset_trace(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& asset_trace() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_asset_trace();
+  private:
+  const std::string& _internal_asset_trace(int index) const;
+  std::string* _internal_add_asset_trace();
+  public:
+
+  // repeated string namespaceid = 7;
+  int namespaceid_size() const;
+  private:
+  int _internal_namespaceid_size() const;
+  public:
+  void clear_namespaceid();
+  const std::string& namespaceid(int index) const;
+  std::string* mutable_namespaceid(int index);
+  void set_namespaceid(int index, const std::string& value);
+  void set_namespaceid(int index, std::string&& value);
+  void set_namespaceid(int index, const char* value);
+  void set_namespaceid(int index, const char* value, size_t size);
+  std::string* add_namespaceid();
+  void add_namespaceid(const std::string& value);
+  void add_namespaceid(std::string&& value);
+  void add_namespaceid(const char* value);
+  void add_namespaceid(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& namespaceid() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_namespaceid();
+  private:
+  const std::string& _internal_namespaceid(int index) const;
+  std::string* _internal_add_namespaceid();
+  public:
+
   // optional string name = 1;
   bool has_name() const;
   private:
@@ -2090,24 +2139,6 @@ class RunPost_Request final :
   const std::string& _internal_protocol_queue() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_protocol_queue(const std::string& value);
   std::string* _internal_mutable_protocol_queue();
-  public:
-
-  // optional string asset_trace = 5;
-  bool has_asset_trace() const;
-  private:
-  bool _internal_has_asset_trace() const;
-  public:
-  void clear_asset_trace();
-  const std::string& asset_trace() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_asset_trace(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_asset_trace();
-  PROTOBUF_NODISCARD std::string* release_asset_trace();
-  void set_allocated_asset_trace(std::string* asset_trace);
-  private:
-  const std::string& _internal_asset_trace() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_asset_trace(const std::string& value);
-  std::string* _internal_mutable_asset_trace();
   public:
 
   // optional string protocol_location = 6;
@@ -2169,9 +2200,10 @@ class RunPost_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> asset_trace_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaceid_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr protocol_queue_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr asset_trace_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr protocol_location_;
     ::PROTOBUF_NAMESPACE_ID::Value* event_;
     int debug_mode_;
@@ -3838,7 +3870,7 @@ inline void RunPost_Request::set_allocated_name(std::string* name) {
 
 // optional .google.protobuf.Value event = 2;
 inline bool RunPost_Request::_internal_has_event() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   PROTOBUF_ASSUME(!value || _impl_.event_ != nullptr);
   return value;
 }
@@ -3861,14 +3893,14 @@ inline void RunPost_Request::unsafe_arena_set_allocated_event(
   }
   _impl_.event_ = event;
   if (event) {
-    _impl_._has_bits_[0] |= 0x00000010u;
+    _impl_._has_bits_[0] |= 0x00000008u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000010u;
+    _impl_._has_bits_[0] &= ~0x00000008u;
   }
   // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.RunPost_Request.event)
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::release_event() {
-  _impl_._has_bits_[0] &= ~0x00000010u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.event_;
   _impl_.event_ = nullptr;
 #ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
@@ -3884,13 +3916,13 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::release_event() {
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::unsafe_arena_release_event() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.event)
-  _impl_._has_bits_[0] &= ~0x00000010u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.event_;
   _impl_.event_ = nullptr;
   return temp;
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::_internal_mutable_event() {
-  _impl_._has_bits_[0] |= 0x00000010u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   if (_impl_.event_ == nullptr) {
     auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
     _impl_.event_ = p;
@@ -3915,9 +3947,9 @@ inline void RunPost_Request::set_allocated_event(::PROTOBUF_NAMESPACE_ID::Value*
       event = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
           message_arena, event, submessage_arena);
     }
-    _impl_._has_bits_[0] |= 0x00000010u;
+    _impl_._has_bits_[0] |= 0x00000008u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000010u;
+    _impl_._has_bits_[0] &= ~0x00000008u;
   }
   _impl_.event_ = event;
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.event)
@@ -3993,7 +4025,7 @@ inline void RunPost_Request::set_allocated_protocol_queue(std::string* protocol_
 
 // optional .com.wazuh.api.engine.test.DebugMode debug_mode = 4;
 inline bool RunPost_Request::_internal_has_debug_mode() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000020u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
   return value;
 }
 inline bool RunPost_Request::has_debug_mode() const {
@@ -4001,7 +4033,7 @@ inline bool RunPost_Request::has_debug_mode() const {
 }
 inline void RunPost_Request::clear_debug_mode() {
   _impl_.debug_mode_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000020u;
+  _impl_._has_bits_[0] &= ~0x00000010u;
 }
 inline ::com::wazuh::api::engine::test::DebugMode RunPost_Request::_internal_debug_mode() const {
   return static_cast< ::com::wazuh::api::engine::test::DebugMode >(_impl_.debug_mode_);
@@ -4011,7 +4043,7 @@ inline ::com::wazuh::api::engine::test::DebugMode RunPost_Request::debug_mode() 
   return _internal_debug_mode();
 }
 inline void RunPost_Request::_internal_set_debug_mode(::com::wazuh::api::engine::test::DebugMode value) {
-  _impl_._has_bits_[0] |= 0x00000020u;
+  _impl_._has_bits_[0] |= 0x00000010u;
   _impl_.debug_mode_ = value;
 }
 inline void RunPost_Request::set_debug_mode(::com::wazuh::api::engine::test::DebugMode value) {
@@ -4019,77 +4051,84 @@ inline void RunPost_Request::set_debug_mode(::com::wazuh::api::engine::test::Deb
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.debug_mode)
 }
 
-// optional string asset_trace = 5;
-inline bool RunPost_Request::_internal_has_asset_trace() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
-  return value;
+// repeated string asset_trace = 5;
+inline int RunPost_Request::_internal_asset_trace_size() const {
+  return _impl_.asset_trace_.size();
 }
-inline bool RunPost_Request::has_asset_trace() const {
-  return _internal_has_asset_trace();
+inline int RunPost_Request::asset_trace_size() const {
+  return _internal_asset_trace_size();
 }
 inline void RunPost_Request::clear_asset_trace() {
-  _impl_.asset_trace_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_.asset_trace_.Clear();
 }
-inline const std::string& RunPost_Request::asset_trace() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
-  return _internal_asset_trace();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void RunPost_Request::set_asset_trace(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
- _impl_.asset_trace_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
-}
-inline std::string* RunPost_Request::mutable_asset_trace() {
-  std::string* _s = _internal_mutable_asset_trace();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+inline std::string* RunPost_Request::add_asset_trace() {
+  std::string* _s = _internal_add_asset_trace();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
   return _s;
 }
-inline const std::string& RunPost_Request::_internal_asset_trace() const {
-  return _impl_.asset_trace_.Get();
+inline const std::string& RunPost_Request::_internal_asset_trace(int index) const {
+  return _impl_.asset_trace_.Get(index);
 }
-inline void RunPost_Request::_internal_set_asset_trace(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  _impl_.asset_trace_.Set(value, GetArenaForAllocation());
+inline const std::string& RunPost_Request::asset_trace(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+  return _internal_asset_trace(index);
 }
-inline std::string* RunPost_Request::_internal_mutable_asset_trace() {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  return _impl_.asset_trace_.Mutable(GetArenaForAllocation());
+inline std::string* RunPost_Request::mutable_asset_trace(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+  return _impl_.asset_trace_.Mutable(index);
 }
-inline std::string* RunPost_Request::release_asset_trace() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
-  if (!_internal_has_asset_trace()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000004u;
-  auto* p = _impl_.asset_trace_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.asset_trace_.IsDefault()) {
-    _impl_.asset_trace_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+inline void RunPost_Request::set_asset_trace(int index, const std::string& value) {
+  _impl_.asset_trace_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
 }
-inline void RunPost_Request::set_allocated_asset_trace(std::string* asset_trace) {
-  if (asset_trace != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
-  }
-  _impl_.asset_trace_.SetAllocated(asset_trace, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.asset_trace_.IsDefault()) {
-    _impl_.asset_trace_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+inline void RunPost_Request::set_asset_trace(int index, std::string&& value) {
+  _impl_.asset_trace_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline void RunPost_Request::set_asset_trace(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.asset_trace_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline void RunPost_Request::set_asset_trace(int index, const char* value, size_t size) {
+  _impl_.asset_trace_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline std::string* RunPost_Request::_internal_add_asset_trace() {
+  return _impl_.asset_trace_.Add();
+}
+inline void RunPost_Request::add_asset_trace(const std::string& value) {
+  _impl_.asset_trace_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline void RunPost_Request::add_asset_trace(std::string&& value) {
+  _impl_.asset_trace_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline void RunPost_Request::add_asset_trace(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.asset_trace_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline void RunPost_Request::add_asset_trace(const char* value, size_t size) {
+  _impl_.asset_trace_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+RunPost_Request::asset_trace() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+  return _impl_.asset_trace_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+RunPost_Request::mutable_asset_trace() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.RunPost_Request.asset_trace)
+  return &_impl_.asset_trace_;
 }
 
 // optional string protocol_location = 6;
 inline bool RunPost_Request::_internal_has_protocol_location() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool RunPost_Request::has_protocol_location() const {
@@ -4097,7 +4136,7 @@ inline bool RunPost_Request::has_protocol_location() const {
 }
 inline void RunPost_Request::clear_protocol_location() {
   _impl_.protocol_location_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
 inline const std::string& RunPost_Request::protocol_location() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.protocol_location)
@@ -4106,7 +4145,7 @@ inline const std::string& RunPost_Request::protocol_location() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RunPost_Request::set_protocol_location(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000008u;
+ _impl_._has_bits_[0] |= 0x00000004u;
  _impl_.protocol_location_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.protocol_location)
 }
@@ -4119,11 +4158,11 @@ inline const std::string& RunPost_Request::_internal_protocol_location() const {
   return _impl_.protocol_location_.Get();
 }
 inline void RunPost_Request::_internal_set_protocol_location(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000008u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   _impl_.protocol_location_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::_internal_mutable_protocol_location() {
-  _impl_._has_bits_[0] |= 0x00000008u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   return _impl_.protocol_location_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RunPost_Request::release_protocol_location() {
@@ -4131,7 +4170,7 @@ inline std::string* RunPost_Request::release_protocol_location() {
   if (!_internal_has_protocol_location()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
   auto* p = _impl_.protocol_location_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.protocol_location_.IsDefault()) {
@@ -4142,9 +4181,9 @@ inline std::string* RunPost_Request::release_protocol_location() {
 }
 inline void RunPost_Request::set_allocated_protocol_location(std::string* protocol_location) {
   if (protocol_location != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000008u;
+    _impl_._has_bits_[0] |= 0x00000004u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000008u;
+    _impl_._has_bits_[0] &= ~0x00000004u;
   }
   _impl_.protocol_location_.SetAllocated(protocol_location, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -4153,6 +4192,81 @@ inline void RunPost_Request::set_allocated_protocol_location(std::string* protoc
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.protocol_location)
+}
+
+// repeated string namespaceid = 7;
+inline int RunPost_Request::_internal_namespaceid_size() const {
+  return _impl_.namespaceid_.size();
+}
+inline int RunPost_Request::namespaceid_size() const {
+  return _internal_namespaceid_size();
+}
+inline void RunPost_Request::clear_namespaceid() {
+  _impl_.namespaceid_.Clear();
+}
+inline std::string* RunPost_Request::add_namespaceid() {
+  std::string* _s = _internal_add_namespaceid();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  return _s;
+}
+inline const std::string& RunPost_Request::_internal_namespaceid(int index) const {
+  return _impl_.namespaceid_.Get(index);
+}
+inline const std::string& RunPost_Request::namespaceid(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  return _internal_namespaceid(index);
+}
+inline std::string* RunPost_Request::mutable_namespaceid(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  return _impl_.namespaceid_.Mutable(index);
+}
+inline void RunPost_Request::set_namespaceid(int index, const std::string& value) {
+  _impl_.namespaceid_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline void RunPost_Request::set_namespaceid(int index, std::string&& value) {
+  _impl_.namespaceid_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline void RunPost_Request::set_namespaceid(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.namespaceid_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline void RunPost_Request::set_namespaceid(int index, const char* value, size_t size) {
+  _impl_.namespaceid_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline std::string* RunPost_Request::_internal_add_namespaceid() {
+  return _impl_.namespaceid_.Add();
+}
+inline void RunPost_Request::add_namespaceid(const std::string& value) {
+  _impl_.namespaceid_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline void RunPost_Request::add_namespaceid(std::string&& value) {
+  _impl_.namespaceid_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline void RunPost_Request::add_namespaceid(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.namespaceid_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline void RunPost_Request::add_namespaceid(const char* value, size_t size) {
+  _impl_.namespaceid_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+RunPost_Request::namespaceid() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  return _impl_.namespaceid_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+RunPost_Request::mutable_namespaceid() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  return &_impl_.namespaceid_;
 }
 
 // -------------------------------------------------------------------

@@ -115,13 +115,35 @@ public:
      * @param traceCallback The callback function to be invoked with the generated trace data.
      * @param name Name of the policy for which output and trace are to be obtained.
      * @param instance Instance of the policy for which output and trace are to be obtained.
+     * @param assets Vector of asset names to subscribe to.
+     * @param assetTrace Optional asset name for a specific Trace subscription.
      * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
     std::optional<base::Error> subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
                                                         rxbk::SubscribeToTraceCallback traceCallback,
+                                                        const std::vector<std::string>& assets,
                                                         const std::string& name,
-                                                        std::size_t instance);
+                                                        std::size_t instance,
+                                                        const std::vector<std::string>& assetTrace);
+
+    /**
+     * @brief Get the Assets object
+     *
+     * @param name
+     * @param instance
+     * @return base::RespOrError<std::vector<std::string>>
+     */
+    base::RespOrError<std::vector<std::string>> getAssets(const std::string& name, std::size_t instance);
+
+    /**
+     * @brief
+     *
+     * @param name
+     * @param instance
+     * @return base::OptError
+     */
+    base::OptError unSubscribeTraces(const std::string& name, std::size_t instance);
 };
 } // namespace router
 
