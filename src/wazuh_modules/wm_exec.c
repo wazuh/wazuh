@@ -54,6 +54,7 @@ void wm_children_pool_init() {
 
 void wm_children_pool_destroy() {
     OSList_Destroy(wm_children_list);
+    wm_children_list = NULL;
 }
 
 #ifdef WIN32
@@ -238,10 +239,13 @@ void wm_append_handle(HANDLE hProcess) {
     os_calloc(1, sizeof(HANDLE), p_hProcess);
     *p_hProcess = hProcess;
 
-    if(!OSList_AddData(wm_children_list, (void *)p_hProcess)) {
-        merror("Child process handle %p could not be registered.", hProcess);
-        os_free(p_hProcess);
+    if(wm_children_list) {
+        if(OSList_AddData(wm_children_list, (void *)p_hProcess)) {
+            return;
+        }
     }
+    merror("Child process handle %p could not be registered.", hProcess);
+    os_free(p_hProcess);
 }
 
 // Remove process from pool
@@ -250,15 +254,16 @@ void wm_remove_handle(HANDLE hProcess) {
     OSListNode * node_it = NULL;
     HANDLE * p_hProcess = NULL;
 
-    OSList_foreach(node_it, wm_children_list) {
-        p_hProcess = (HANDLE *)node_it->data;
-        if (p_hProcess && *p_hProcess == hProcess) {
-            OSList_DeleteThisNode(wm_children_list, node_it);
-            os_free(p_hProcess);
-            return;
+    if(wm_children_list) {
+        OSList_foreach(node_it, wm_children_list) {
+            p_hProcess = (HANDLE *)node_it->data;
+            if (p_hProcess && *p_hProcess == hProcess) {
+                OSList_DeleteThisNode(wm_children_list, node_it);
+                os_free(p_hProcess);
+                return;
+            }
         }
     }
-
     merror("Child process %p not found.", hProcess);
 }
 
@@ -621,10 +626,13 @@ void wm_append_sid(pid_t sid) {
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
 
-    if(!OSList_AddData(wm_children_list, (void *)p_sid)) {
-        merror("Child process sid %d could not be registered.", sid);
-        os_free(p_sid);
+    if(wm_children_list) {
+        if(OSList_AddData(wm_children_list, (void *)p_sid)) {
+            return;
+        }
     }
+    merror("Child process sid %d could not be registered.", sid);
+    os_free(p_sid);    
 }
 
 // Remove process group from pool
@@ -634,12 +642,14 @@ void wm_remove_sid(pid_t sid) {
     OSListNode * node_it = NULL;
     pid_t * p_sid = NULL;
 
-    OSList_foreach(node_it, wm_children_list) {
-        p_sid = (pid_t *)node_it->data;
-        if(p_sid && *p_sid == sid) {
-            OSList_DeleteThisNode(wm_children_list, node_it);
-            os_free(p_sid);
-            return;
+    if(wm_children_list) {
+        OSList_foreach(node_it, wm_children_list) {
+            p_sid = (pid_t *)node_it->data;
+            if(p_sid && *p_sid == sid) {
+                OSList_DeleteThisNode(wm_children_list, node_it);
+                os_free(p_sid);
+                return;
+            }
         }
     }
     merror("Child process %d not found.", sid);

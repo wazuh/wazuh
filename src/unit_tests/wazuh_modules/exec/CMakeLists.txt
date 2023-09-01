@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) 2023, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -38,7 +38,7 @@ list(APPEND tests_flags "-Wl,--wrap,fim_db_init -Wl,--wrap=syscom_dispatch \
                          -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
                          -Wl,--wrap=is_fim_shutdown -Wl,--wrap,OSList_AddData \
                          -Wl,--wrap,merror -Wl,--wrap,OSList_DeleteThisNode \
-                         ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,OSList_GetFirstNode ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH tests_names count)

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) 2023, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -17,10 +17,14 @@ void *__wrap_OSList_AddData(__attribute__((unused))OSList *list, __attribute__((
 
     if(test_mode)
         os_free(data);
-    return mock_type(void*);
+    return mock_type(void *);
 }
 
 void __wrap_OSList_DeleteThisNode(__attribute__((unused))OSList *list, __attribute__((unused))OSListNode *thisnode) {
-
+    function_called();
     return;
+}
+
+OSListNode *__wrap_OSList_GetFirstNode(__attribute__((unused))OSList *list) {
+    return mock_type(OSListNode *);
 }
