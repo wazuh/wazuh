@@ -193,7 +193,7 @@ void test_wdb_agents_find_package_error(void **state) {
     expect_sqlite3_step_call(SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_sql_no_done");
 
     ret = wdb_agents_find_package(data->wdb, reference);
 
@@ -278,7 +278,7 @@ void test_wdb_agents_find_cve_error(void **state) {
     expect_sqlite3_step_call(SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_sql_no_done");
 
     ret = wdb_agents_find_cve(data->wdb, cve, reference);
 

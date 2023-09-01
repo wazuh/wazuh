@@ -2030,6 +2030,7 @@ void test_wdb_parse_global_delete_group_query_error(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-group test_group");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_string(__wrap_wdb_global_delete_group, group_name, "test_group");
     will_return(__wrap_wdb_global_delete_group, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error deleting group in global.db.");
@@ -2058,6 +2059,7 @@ void test_wdb_parse_global_delete_group_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-group test_group");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_string(__wrap_wdb_global_delete_group, group_name, "test_group");
     will_return(__wrap_wdb_global_delete_group, OS_SUCCESS);
 
@@ -2461,6 +2463,7 @@ void test_wdb_parse_global_set_agent_groups_syntax_error(void **state)
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
+   // will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
@@ -2485,6 +2488,7 @@ void test_wdb_parse_global_set_agent_groups_invalid_json(void **state)
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
@@ -2511,6 +2515,7 @@ void test_wdb_parse_global_set_agent_groups_missing_field(void **state)
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
@@ -2537,6 +2542,7 @@ void test_wdb_parse_global_set_agent_groups_invalid_mode(void **state)
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
@@ -2566,6 +2572,7 @@ void test_wdb_parse_global_set_agent_groups_fail(void **state)
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
@@ -2588,6 +2595,7 @@ void test_wdb_parse_global_set_agent_groups_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {\"mode\":\"append\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_value(__wrap_wdb_global_set_agent_groups, mode, WDB_GROUP_APPEND);
     expect_string(__wrap_wdb_global_set_agent_groups, sync_status, "synced");
     expect_string(__wrap_wdb_global_set_agent_groups, agents_group_info, "[{\"id\":1,\"groups\":[\"default\"]}]");
