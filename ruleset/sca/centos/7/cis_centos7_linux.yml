@@ -582,7 +582,6 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "c:grep -r aide /etc/cron.* /etc/crontab -> r:aide"
       - "c:systemctl is-enabled aidecheck.service -> r:enabled"
       - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
       - "c:systemctl status aidecheck.timer -> r:enabled"
