@@ -40,13 +40,13 @@ constexpr auto API_SESSIONS_DATA_FORMAT = R"({"name":"","id":"","creationdate":0
                                           R"("filtername":"","policyname":"","routename":""})"; ///< API session data
                                                                                                 ///< format
 
-constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")";    ///< JSON name field format, where '{}' is the asset name
+constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")"; ///< JSON name field format, where '{}' is the asset name
 constexpr auto FILTER_CONTENT_FORMAT =
-    R"({{"name": "{}", "check":[{{"TestSessionID":{}}}]}})"; ///< Filter content format
+    R"({{"name": "{}", "check":[{{"TestSessionID":{}}}]}})";        ///< Filter content format
 constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0"; ///< Filter name format, '{}' is the session name
 constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy name format, '{}' is the session name
 constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
-constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "TestSessionID";    ///< Field to check in filter.
+constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "TestSessionID";     ///< Field to check in filter.
 constexpr auto TEST_DEFAULT_PROTOCOL_LOCATION = "api.test";         ///< Default protocol location
 
 constexpr auto FILTER_NOT_REMOVED_MSG = "Filter '{}' could not be removed from the catalog: {}";
@@ -114,13 +114,13 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
 using namespace api::test::handlers;
 std::variant<std::tuple<std::string, std::string>, base::Error>
 getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
-        DebugMode debugMode,
-        const std::string& assetTrace)
+        DebugMode debugMode)
 {
     // Wait until callbacks have been executed
     {
         std::unique_lock<std::mutex> lock(dataSync->m_sync);
-        if (!dataSync->m_cvData.wait_for(lock, std::chrono::milliseconds(DEFAULT_TIMEOUT), [dataSync] { return dataSync->m_processedData; }))
+        if (!dataSync->m_cvData.wait_for(
+                lock, std::chrono::milliseconds(DEFAULT_TIMEOUT), [dataSync] { return (dataSync->m_processedData); }))
         {
             dataSync->m_hasTimedout = true;
             return base::Error {"The maximum time to process the event has expired"};
@@ -128,7 +128,8 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
         dataSync->m_processedData = false;
     }
 
-    auto trace = json::Json {R"({})"};
+    std::string traces;
+    rapidjson::Document json(rapidjson::kArrayType); // Set array for keep order of traces
     if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
         if (dataSync->m_history.empty())
@@ -143,8 +144,9 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
             if (dataSync->m_trace.find(asset) == dataSync->m_trace.end())
             {
                 dataSync->m_trace.clear();
-                return base::Error {fmt::format(
-                    "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
+                return base::Error {
+                    fmt::format("Policy '{}' has not been configured for trace tracking and output subscription",
+                                dataSync->m_asset)};
             }
 
             std::set<std::string> uniqueTraces; // Set for warehouses single traces
@@ -153,20 +155,14 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
                 uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
             }
 
-            std::stringstream combinedTrace;
-            for (const auto info : uniqueTraces)
+            rapidjson::Value tmp(rapidjson::kArrayType);
+            for (auto& info : uniqueTraces)
             {
-                combinedTrace << info;
+                rapidjson::Value value(info.c_str(), json.GetAllocator());
+                tmp.PushBack(value, json.GetAllocator());
             }
 
-            if (assetTrace.empty() || assetTrace == asset)
-            {
-                trace.setString(combinedTrace.str(), std::string("/") + asset);
-            }
-            else
-            {
-                trace.setString(condition, std::string("/") + asset);
-            }
+            json.PushBack(tmp, json.GetAllocator());
         }
 
         dataSync->m_trace.clear();
@@ -182,19 +178,27 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
 
         for (const auto& [asset, condition] : dataSync->m_history)
         {
-            trace.setString(condition, std::string("/") + asset);
+            const auto& info = asset + " " + condition;
+            rapidjson::Value value(info.c_str(), json.GetAllocator());
+            json.PushBack(value, json.GetAllocator());
         }
         dataSync->m_trace.clear();
     }
 
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    json.Accept(writer);
+    traces = buffer.GetString();
+
     dataSync->m_trace.clear();
     // TODO: Add a method to verify that a json is empty
-    if (R"({})" == trace.prettyStr())
+    if (traces.empty())
     {
         dataSync->m_trace[dataSync->m_asset].clear();
         return std::make_tuple(dataSync->m_output, std::string());
     }
-    return std::make_tuple(dataSync->m_output, trace.prettyStr());
+
+    return std::make_tuple(dataSync->m_output, traces);
 }
 
 } // namespace
@@ -284,45 +288,6 @@ std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<SessionMan
         if (createSessionError.has_value())
         {
             return createSessionError;
-        }
-
-        // Suscribe to output and Trace
-        auto dataSync = sessionManager->getSession(sessionName.value())->getDataSync();
-        const auto subscriptionError = router->subscribeOutputAndTraces(
-            getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName.value());
-        if (subscriptionError.has_value())
-        {
-            std::string errorMsg {subscriptionError.value().message};
-
-            if (!sessionManager->deleteSession(sessionName.value()))
-            {
-                errorMsg += std::string(". ") + fmt::format(SESSION_NOT_REMOVED_MSG, sessionName.value());
-            }
-
-            const auto deleteRouteError = deleteRouteFromRouter(router, routeName.value());
-            if (deleteRouteError.has_value())
-            {
-                errorMsg += std::string(". ")
-                            + fmt::format(ROUTE_NOT_REMOVED_MSG, routeName.value(), deleteRouteError.value().message);
-            }
-
-            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName.value());
-            if (deleteFilterError.has_value())
-            {
-                errorMsg +=
-                    std::string(". ")
-                    + fmt::format(FILTER_NOT_REMOVED_MSG, filterName.value(), deleteFilterError.value().message);
-            }
-
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName.value());
-            if (deletePolicyError.has_value())
-            {
-                errorMsg +=
-                    std::string(". ")
-                    + fmt::format(POLICY_NOT_REMOVED_MSG, policyName.value(), deletePolicyError.value().message);
-            }
-
-            return base::Error {errorMsg};
         }
     }
 
@@ -734,43 +699,6 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
             return genericError<ResponseType>(errorMsg);
         }
 
-        // Suscribe to output and Trace
-        auto dataSync = sessionManager->getSession(sessionName)->getDataSync();
-        const auto subscriptionError =
-            router->subscribeOutputAndTraces(getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), policyName);
-        if (subscriptionError.has_value())
-        {
-            std::string errorMsg {subscriptionError.value().message};
-
-            if (!sessionManager->deleteSession(sessionName))
-            {
-                errorMsg += std::string(". ") + fmt::format(SESSION_NOT_REMOVED_MSG, sessionName);
-            }
-
-            const auto deleteRouteError = deleteRouteFromRouter(router, routeName);
-            if (deleteRouteError.has_value())
-            {
-                errorMsg +=
-                    std::string(". ") + fmt::format(ROUTE_NOT_REMOVED_MSG, routeName, deleteRouteError.value().message);
-            }
-
-            const auto deleteFilterError = deleteAssetFromCatalog(catalog, filterName);
-            if (deleteFilterError.has_value())
-            {
-                errorMsg += std::string(". ")
-                            + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
-            }
-
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
-            if (deletePolicyError.has_value())
-            {
-                errorMsg += std::string(". ")
-                            + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
-            }
-
-            return genericError<ResponseType>(errorMsg);
-        }
-
         // Save the sessions to the store
         const auto saveSessionsToStoreError = saveSessionsToStore(sessionManager, store);
         if (saveSessionsToStoreError.has_value())
@@ -960,9 +888,11 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
     };
 }
 
-api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, const std::shared_ptr<Router>& router)
+api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
+                     const std::shared_ptr<Router>& router,
+                     const std::shared_ptr<store::IStore>& store)
 {
-    return [sessionManager, router](const api::wpRequest& wRequest) -> api::wpResponse
+    return [sessionManager, router, store](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::RunPost_Request;
         using ResponseType = eTest::RunPost_Response;
@@ -976,9 +906,10 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        const auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /name field")
-                              : !eRequest.has_event() ? std::make_optional("Missing /event field")
-                                                      : std::nullopt;
+        const auto errorMsg = !eRequest.has_name()               ? std::make_optional("Missing /name field")
+                              : !eRequest.has_event()            ? std::make_optional("Missing /event field")
+                              : eRequest.namespaceid_size() == 0 ? std::make_optional("Missing /namespace field")
+                                                                 : std::nullopt;
 
         if (errorMsg.has_value())
         {
@@ -1020,13 +951,85 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
             default: routerDebugMode = DebugMode::OUTPUT_ONLY;
         }
 
-        const auto assetTrace = eRequest.has_asset_trace() ? eRequest.asset_trace() : std::string();
+        // Set assetTraces
+        std::vector<std::string> assetTraces;
+        if (eRequest.asset_trace_size() != 0)
+        {
+            for (const auto& asset : eRequest.asset_trace())
+            {
+                assetTraces.emplace_back(asset);
+            }
+        }
+
+        auto namespaceid = eRequest.namespaceid();
 
         // Get session
         const auto session = sessionManager->getSession(eRequest.name());
         if (!session.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(fmt::format(SESSION_NOT_FOUND_MSG, eRequest.name()));
+        }
+        auto dataSync = session->getDataSync();
+
+        // Unsubscribe traces
+        auto policyName = sessionManager->getSession(eRequest.name())->getPolicyName();
+        auto err = router->unsubscribe(policyName);
+        if (err)
+        {
+            return ::api::adapter::genericError<ResponseType>(err.value().message);
+        }
+
+        // Get assets in namespace
+        std::vector<std::string> assetsInNamespace;
+        std::set<std::string> namespacesFound;
+        auto assets = router->getAssets(policyName);
+        if (!base::isError(assets))
+        {
+            for (const auto& asset : base::getResponse(assets))
+            {
+                base::Name name;
+                try
+                {
+                    name = base::Name {asset};
+                }
+                catch (const std::exception& e)
+                {
+                    return ::api::adapter::genericError<ResponseType>(std::string {"Invalid /name parameter:"}
+                                                                      + e.what());
+                }
+
+                const auto& namespaceFromStore = store->getNamespace(name);
+
+                if (namespaceFromStore
+                    && std::find(namespaceid.begin(), namespaceid.end(), namespaceFromStore.value().str())
+                           != namespaceid.end())
+                {
+                    namespacesFound.emplace(namespaceFromStore.value().str());
+                    assetsInNamespace.emplace_back(asset);
+                }
+            }
+        }
+        else
+        {
+            return ::api::adapter::genericError<ResponseType>(base::getError(assets).message);
+        }
+
+        for (const auto& ns : namespaceid)
+        {
+            if (namespacesFound.find(ns) == namespacesFound.end())
+            {
+                return ::api::adapter::genericError<ResponseType>(
+                    fmt::format("Assets not found in namespace '{}'", ns));
+            }
+        }
+
+        // Suscribe to output and Trace
+        auto subscriptionError = router->subscribeOutputAndTraces(
+            getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), assetsInNamespace, policyName, assetTraces);
+        if (subscriptionError.has_value())
+        {
+            router->unsubscribe(policyName);
+            return ::api::adapter::genericError<ResponseType>(subscriptionError.value().message);
         }
 
         // Event in Wazuh format
@@ -1047,7 +1050,6 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
         const auto formattedPath = json::Json::formatJsonPath(TEST_FIELD_TO_CHECK_IN_FILTER);
         event->setInt(static_cast<int>(sessionID), formattedPath);
 
-        auto dataSync = session->getDataSync();
         auto expected {false};
         if (dataSync->m_sessionVisit.compare_exchange_strong(expected, true))
         {
@@ -1064,7 +1066,8 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager, cons
         }
 
         // Get payload (output and traces)
-        const auto payload = getData(dataSync, routerDebugMode, assetTrace);
+        const auto payload = getData(dataSync, routerDebugMode);
+        dataSync->m_history.clear();
         dataSync->m_sessionVisit.store(false);
         if (std::holds_alternative<base::Error>(payload))
         {
@@ -1115,7 +1118,7 @@ void registerHandlers(const Config& config, std::shared_ptr<api::Api> api)
         api->registerHandler(TEST_DELETE_SESSIONS_API_CMD,
                              sessionsDelete(config.sessionManager, config.catalog, config.router, config.store));
         api->registerHandler(TEST_GET_SESSIONS_LIST_API_CMD, sessionsGet(config.sessionManager));
-        api->registerHandler(TEST_RUN_API_CMD, runPost(config.sessionManager, config.router));
+        api->registerHandler(TEST_RUN_API_CMD, runPost(config.sessionManager, config.router, config.store));
     }
     catch (const std::exception& e)
     {

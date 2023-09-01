@@ -132,8 +132,10 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
 
 std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
                                                                    rxbk::SubscribeToTraceCallback traceCallback,
+                                                                   const std::vector<std::string>& assets,
                                                                    const std::string& name,
-                                                                   std::size_t instance)
+                                                                   std::size_t instance,
+                                                                   const std::vector<std::string>& assetTrace)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
@@ -149,8 +151,58 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::Subscri
     }
     auto& env = it->second[instance];
 
-    env.subscribeToOutput(outputCallback);
-    env.listenAllTrace(traceCallback);
+    const auto& output = env.subscribeToOutput(outputCallback);
+    const auto& trace = env.listenAllTrace(traceCallback, assets, assetTrace);
+
+    if (base::isError(output))
+    {
+        return base::Error{output.value().message};
+    }
+
+    if (base::isError(trace))
+    {
+        return base::Error{trace.value().message};
+    }
+
+    return std::nullopt;
+}
+
+base::RespOrError<std::vector<std::string>> PolicyManager::getAssets(const std::string& name, std::size_t instance)
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto it = m_policies.find(name);
+    if (m_policies.end() == it)
+    {
+        return base::Error {fmt::format("Policy '{}' does not exist", name)};
+    }
+
+    if (m_numInstances <= instance)
+    {
+        return base::Error {
+            fmt::format("Invalid instance number '{}', the maximum is '{}'", instance, m_numInstances - 1)};
+    }
+    auto& env = it->second[instance];
+
+    return env.getAssets();
+}
+
+base::OptError PolicyManager::unSubscribeTraces(const std::string& name, std::size_t instance)
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto it = m_policies.find(name);
+    if (m_policies.end() == it)
+    {
+        return base::Error {fmt::format("Policy '{}' does not exist", name)};
+    }
+
+    if (m_numInstances <= instance)
+    {
+        return base::Error {
+            fmt::format("Invalid instance number '{}', the maximum is '{}'", instance, m_numInstances - 1)};
+    }
+    auto& env = it->second[instance];
+
+    env.unSubscribeTraces();
 
     return std::nullopt;
 }
