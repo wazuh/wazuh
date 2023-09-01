@@ -29,6 +29,17 @@ public:
      */
     virtual base::OptError del(const base::Name& policyName) = 0;
 
+
+    /**
+     * @brief Get the policy with the given name, filtered by the given namespace in a human readable format
+     *
+     * @param policyName Policy name
+     * @param namespaceIds Namespace ids to filter. If empty, no filter is applied
+     * @return base::RespOrError<std::string>
+     */
+    virtual base::RespOrError<std::string> get(const base::Name& policyName,
+                                              const std::vector<store::NamespaceId>& namespaceIds) const = 0;
+
     /**
      * @brief List all policies
      *
@@ -84,6 +95,15 @@ public:
      */
     virtual base::OptError setDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId,
                                             const base::Name& parentName) = 0;
+
+    /**
+     * @brief Delete namespace default parent from a policy
+     *
+     * @param policyName
+     * @param namespaceId
+     * @return base::OptError
+     */
+    virtual base::OptError delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId) = 0;
 
 };
 } // namespace api::policy

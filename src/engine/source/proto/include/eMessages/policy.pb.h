@@ -32,7 +32,6 @@
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
 #include <google/protobuf/unknown_field_set.h>
 #include "engine.pb.h"
-#include <google/protobuf/struct.pb.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_policy_2eproto
@@ -64,6 +63,9 @@ extern AssetGet_ResponseDefaultTypeInternal _AssetGet_Response_default_instance_
 class AssetPost_Request;
 struct AssetPost_RequestDefaultTypeInternal;
 extern AssetPost_RequestDefaultTypeInternal _AssetPost_Request_default_instance_;
+class DefaultParentDelete_Request;
+struct DefaultParentDelete_RequestDefaultTypeInternal;
+extern DefaultParentDelete_RequestDefaultTypeInternal _DefaultParentDelete_Request_default_instance_;
 class DefaultParentGet_Request;
 struct DefaultParentGet_RequestDefaultTypeInternal;
 extern DefaultParentGet_RequestDefaultTypeInternal _DefaultParentGet_Request_default_instance_;
@@ -101,6 +103,7 @@ template<> ::com::wazuh::api::engine::policy::AssetDelete_Request* Arena::Create
 template<> ::com::wazuh::api::engine::policy::AssetGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::AssetGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::policy::AssetGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::AssetGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::policy::AssetPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::AssetPost_Request>(Arena*);
+template<> ::com::wazuh::api::engine::policy::DefaultParentDelete_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::DefaultParentDelete_Request>(Arena*);
 template<> ::com::wazuh::api::engine::policy::DefaultParentGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::DefaultParentGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::policy::DefaultParentGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::DefaultParentGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::policy::DefaultParentPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::policy::DefaultParentPost_Request>(Arena*);
@@ -567,8 +570,33 @@ class StoreGet_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
+    kNamespacesFieldNumber = 2,
     kNameFieldNumber = 1,
   };
+  // repeated string namespaces = 2;
+  int namespaces_size() const;
+  private:
+  int _internal_namespaces_size() const;
+  public:
+  void clear_namespaces();
+  const std::string& namespaces(int index) const;
+  std::string* mutable_namespaces(int index);
+  void set_namespaces(int index, const std::string& value);
+  void set_namespaces(int index, std::string&& value);
+  void set_namespaces(int index, const char* value);
+  void set_namespaces(int index, const char* value, size_t size);
+  std::string* add_namespaces();
+  void add_namespaces(const std::string& value);
+  void add_namespaces(std::string&& value);
+  void add_namespaces(const char* value);
+  void add_namespaces(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& namespaces() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_namespaces();
+  private:
+  const std::string& _internal_namespaces(int index) const;
+  std::string* _internal_add_namespaces();
+  public:
+
   // optional string name = 1;
   bool has_name() const;
   private:
@@ -597,6 +625,7 @@ class StoreGet_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaces_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
   };
   union { Impl_ _impl_; };
@@ -747,23 +776,23 @@ class StoreGet_Response final :
   std::string* _internal_mutable_error();
   public:
 
-  // optional .google.protobuf.Value data = 3;
+  // optional string data = 3;
   bool has_data() const;
   private:
   bool _internal_has_data() const;
   public:
   void clear_data();
-  const ::PROTOBUF_NAMESPACE_ID::Value& data() const;
-  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Value* release_data();
-  ::PROTOBUF_NAMESPACE_ID::Value* mutable_data();
-  void set_allocated_data(::PROTOBUF_NAMESPACE_ID::Value* data);
+  const std::string& data() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_data(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_data();
+  PROTOBUF_NODISCARD std::string* release_data();
+  void set_allocated_data(std::string* data);
   private:
-  const ::PROTOBUF_NAMESPACE_ID::Value& _internal_data() const;
-  ::PROTOBUF_NAMESPACE_ID::Value* _internal_mutable_data();
+  const std::string& _internal_data() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_data(const std::string& value);
+  std::string* _internal_mutable_data();
   public:
-  void unsafe_arena_set_allocated_data(
-      ::PROTOBUF_NAMESPACE_ID::Value* data);
-  ::PROTOBUF_NAMESPACE_ID::Value* unsafe_arena_release_data();
 
   // .com.wazuh.api.engine.ReturnStatus status = 1;
   void clear_status();
@@ -785,7 +814,7 @@ class StoreGet_Response final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
-    ::PROTOBUF_NAMESPACE_ID::Value* data_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr data_;
     int status_;
   };
   union { Impl_ _impl_; };
@@ -2127,6 +2156,184 @@ class DefaultParentPost_Request final :
 };
 // -------------------------------------------------------------------
 
+class DefaultParentDelete_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.policy.DefaultParentDelete_Request) */ {
+ public:
+  inline DefaultParentDelete_Request() : DefaultParentDelete_Request(nullptr) {}
+  ~DefaultParentDelete_Request() override;
+  explicit PROTOBUF_CONSTEXPR DefaultParentDelete_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  DefaultParentDelete_Request(const DefaultParentDelete_Request& from);
+  DefaultParentDelete_Request(DefaultParentDelete_Request&& from) noexcept
+    : DefaultParentDelete_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline DefaultParentDelete_Request& operator=(const DefaultParentDelete_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline DefaultParentDelete_Request& operator=(DefaultParentDelete_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const DefaultParentDelete_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const DefaultParentDelete_Request* internal_default_instance() {
+    return reinterpret_cast<const DefaultParentDelete_Request*>(
+               &_DefaultParentDelete_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    11;
+
+  friend void swap(DefaultParentDelete_Request& a, DefaultParentDelete_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(DefaultParentDelete_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(DefaultParentDelete_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  DefaultParentDelete_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<DefaultParentDelete_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const DefaultParentDelete_Request& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const DefaultParentDelete_Request& from) {
+    DefaultParentDelete_Request::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(DefaultParentDelete_Request* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.policy.DefaultParentDelete_Request";
+  }
+  protected:
+  explicit DefaultParentDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kPolicyFieldNumber = 1,
+    kNamespaceFieldNumber = 2,
+  };
+  // optional string policy = 1;
+  bool has_policy() const;
+  private:
+  bool _internal_has_policy() const;
+  public:
+  void clear_policy();
+  const std::string& policy() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_policy(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_policy();
+  PROTOBUF_NODISCARD std::string* release_policy();
+  void set_allocated_policy(std::string* policy);
+  private:
+  const std::string& _internal_policy() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
+  std::string* _internal_mutable_policy();
+  public:
+
+  // optional string namespace = 2;
+  bool has_namespace_() const;
+  private:
+  bool _internal_has_namespace_() const;
+  public:
+  void clear_namespace_();
+  const std::string& namespace_() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_namespace_(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_namespace_();
+  PROTOBUF_NODISCARD std::string* release_namespace_();
+  void set_allocated_namespace_(std::string* namespace_);
+  private:
+  const std::string& _internal_namespace_() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_namespace_(const std::string& value);
+  std::string* _internal_mutable_namespace_();
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.policy.DefaultParentDelete_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespace__;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_policy_2eproto;
+};
+// -------------------------------------------------------------------
+
 class PoliciesGet_Request final :
     public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.policy.PoliciesGet_Request) */ {
  public:
@@ -2174,7 +2381,7 @@ class PoliciesGet_Request final :
                &_PoliciesGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    12;
 
   friend void swap(PoliciesGet_Request& a, PoliciesGet_Request& b) {
     a.Swap(&b);
@@ -2293,7 +2500,7 @@ class PoliciesGet_Response final :
                &_PoliciesGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    12;
+    13;
 
   friend void swap(PoliciesGet_Response& a, PoliciesGet_Response& b) {
     a.Swap(&b);
@@ -2681,6 +2888,81 @@ inline void StoreGet_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreGet_Request.name)
 }
 
+// repeated string namespaces = 2;
+inline int StoreGet_Request::_internal_namespaces_size() const {
+  return _impl_.namespaces_.size();
+}
+inline int StoreGet_Request::namespaces_size() const {
+  return _internal_namespaces_size();
+}
+inline void StoreGet_Request::clear_namespaces() {
+  _impl_.namespaces_.Clear();
+}
+inline std::string* StoreGet_Request::add_namespaces() {
+  std::string* _s = _internal_add_namespaces();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+  return _s;
+}
+inline const std::string& StoreGet_Request::_internal_namespaces(int index) const {
+  return _impl_.namespaces_.Get(index);
+}
+inline const std::string& StoreGet_Request::namespaces(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+  return _internal_namespaces(index);
+}
+inline std::string* StoreGet_Request::mutable_namespaces(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+  return _impl_.namespaces_.Mutable(index);
+}
+inline void StoreGet_Request::set_namespaces(int index, const std::string& value) {
+  _impl_.namespaces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline void StoreGet_Request::set_namespaces(int index, std::string&& value) {
+  _impl_.namespaces_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline void StoreGet_Request::set_namespaces(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.namespaces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline void StoreGet_Request::set_namespaces(int index, const char* value, size_t size) {
+  _impl_.namespaces_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline std::string* StoreGet_Request::_internal_add_namespaces() {
+  return _impl_.namespaces_.Add();
+}
+inline void StoreGet_Request::add_namespaces(const std::string& value) {
+  _impl_.namespaces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline void StoreGet_Request::add_namespaces(std::string&& value) {
+  _impl_.namespaces_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline void StoreGet_Request::add_namespaces(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.namespaces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline void StoreGet_Request::add_namespaces(const char* value, size_t size) {
+  _impl_.namespaces_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+StoreGet_Request::namespaces() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+  return _impl_.namespaces_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+StoreGet_Request::mutable_namespaces() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.policy.StoreGet_Request.namespaces)
+  return &_impl_.namespaces_;
+}
+
 // -------------------------------------------------------------------
 
 // StoreGet_Response
@@ -2773,90 +3055,71 @@ inline void StoreGet_Response::set_allocated_error(std::string* error) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreGet_Response.error)
 }
 
-// optional .google.protobuf.Value data = 3;
+// optional string data = 3;
 inline bool StoreGet_Response::_internal_has_data() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
-  PROTOBUF_ASSUME(!value || _impl_.data_ != nullptr);
   return value;
 }
 inline bool StoreGet_Response::has_data() const {
   return _internal_has_data();
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& StoreGet_Response::_internal_data() const {
-  const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.data_;
-  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
-      ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
+inline void StoreGet_Response::clear_data() {
+  _impl_.data_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& StoreGet_Response::data() const {
+inline const std::string& StoreGet_Response::data() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StoreGet_Response.data)
   return _internal_data();
 }
-inline void StoreGet_Response::unsafe_arena_set_allocated_data(
-    ::PROTOBUF_NAMESPACE_ID::Value* data) {
-  if (GetArenaForAllocation() == nullptr) {
-    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.data_);
-  }
-  _impl_.data_ = data;
-  if (data) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.policy.StoreGet_Response.data)
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void StoreGet_Response::set_data(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.data_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreGet_Response.data)
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* StoreGet_Response::release_data() {
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.data_;
-  _impl_.data_ = nullptr;
-#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
-  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
-  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
-  if (GetArenaForAllocation() == nullptr) { delete old; }
-#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
-  if (GetArenaForAllocation() != nullptr) {
-    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
-  }
-#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
-  return temp;
-}
-inline ::PROTOBUF_NAMESPACE_ID::Value* StoreGet_Response::unsafe_arena_release_data() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StoreGet_Response.data)
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.data_;
-  _impl_.data_ = nullptr;
-  return temp;
-}
-inline ::PROTOBUF_NAMESPACE_ID::Value* StoreGet_Response::_internal_mutable_data() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  if (_impl_.data_ == nullptr) {
-    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
-    _impl_.data_ = p;
-  }
-  return _impl_.data_;
-}
-inline ::PROTOBUF_NAMESPACE_ID::Value* StoreGet_Response::mutable_data() {
-  ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_data();
+inline std::string* StoreGet_Response::mutable_data() {
+  std::string* _s = _internal_mutable_data();
   // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StoreGet_Response.data)
-  return _msg;
+  return _s;
 }
-inline void StoreGet_Response::set_allocated_data(::PROTOBUF_NAMESPACE_ID::Value* data) {
-  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
-  if (message_arena == nullptr) {
-    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.data_);
+inline const std::string& StoreGet_Response::_internal_data() const {
+  return _impl_.data_.Get();
+}
+inline void StoreGet_Response::_internal_set_data(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.data_.Set(value, GetArenaForAllocation());
+}
+inline std::string* StoreGet_Response::_internal_mutable_data() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.data_.Mutable(GetArenaForAllocation());
+}
+inline std::string* StoreGet_Response::release_data() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StoreGet_Response.data)
+  if (!_internal_has_data()) {
+    return nullptr;
   }
-  if (data) {
-    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
-        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
-                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(data));
-    if (message_arena != submessage_arena) {
-      data = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
-          message_arena, data, submessage_arena);
-    }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.data_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.data_.IsDefault()) {
+    _impl_.data_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void StoreGet_Response::set_allocated_data(std::string* data) {
+  if (data != nullptr) {
     _impl_._has_bits_[0] |= 0x00000002u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000002u;
   }
-  _impl_.data_ = data;
+  _impl_.data_.SetAllocated(data, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.data_.IsDefault()) {
+    _impl_.data_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreGet_Response.data)
 }
 
@@ -4093,6 +4356,146 @@ inline void DefaultParentPost_Request::set_allocated_parent(std::string* parent)
 
 // -------------------------------------------------------------------
 
+// DefaultParentDelete_Request
+
+// optional string policy = 1;
+inline bool DefaultParentDelete_Request::_internal_has_policy() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool DefaultParentDelete_Request::has_policy() const {
+  return _internal_has_policy();
+}
+inline void DefaultParentDelete_Request::clear_policy() {
+  _impl_.policy_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const std::string& DefaultParentDelete_Request::policy() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.DefaultParentDelete_Request.policy)
+  return _internal_policy();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DefaultParentDelete_Request::set_policy(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.DefaultParentDelete_Request.policy)
+}
+inline std::string* DefaultParentDelete_Request::mutable_policy() {
+  std::string* _s = _internal_mutable_policy();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.DefaultParentDelete_Request.policy)
+  return _s;
+}
+inline const std::string& DefaultParentDelete_Request::_internal_policy() const {
+  return _impl_.policy_.Get();
+}
+inline void DefaultParentDelete_Request::_internal_set_policy(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.policy_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DefaultParentDelete_Request::_internal_mutable_policy() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  return _impl_.policy_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DefaultParentDelete_Request::release_policy() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.DefaultParentDelete_Request.policy)
+  if (!_internal_has_policy()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.policy_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void DefaultParentDelete_Request::set_allocated_policy(std::string* policy) {
+  if (policy != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.DefaultParentDelete_Request.policy)
+}
+
+// optional string namespace = 2;
+inline bool DefaultParentDelete_Request::_internal_has_namespace_() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool DefaultParentDelete_Request::has_namespace_() const {
+  return _internal_has_namespace_();
+}
+inline void DefaultParentDelete_Request::clear_namespace_() {
+  _impl_.namespace__.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& DefaultParentDelete_Request::namespace_() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace)
+  return _internal_namespace_();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DefaultParentDelete_Request::set_namespace_(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.namespace__.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace)
+}
+inline std::string* DefaultParentDelete_Request::mutable_namespace_() {
+  std::string* _s = _internal_mutable_namespace_();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace)
+  return _s;
+}
+inline const std::string& DefaultParentDelete_Request::_internal_namespace_() const {
+  return _impl_.namespace__.Get();
+}
+inline void DefaultParentDelete_Request::_internal_set_namespace_(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.namespace__.Set(value, GetArenaForAllocation());
+}
+inline std::string* DefaultParentDelete_Request::_internal_mutable_namespace_() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.namespace__.Mutable(GetArenaForAllocation());
+}
+inline std::string* DefaultParentDelete_Request::release_namespace_() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace)
+  if (!_internal_has_namespace_()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.namespace__.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.namespace__.IsDefault()) {
+    _impl_.namespace__.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void DefaultParentDelete_Request::set_allocated_namespace_(std::string* namespace_) {
+  if (namespace_ != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.namespace__.SetAllocated(namespace_, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.namespace__.IsDefault()) {
+    _impl_.namespace__.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace)
+}
+
+// -------------------------------------------------------------------
+
 // PoliciesGet_Request
 
 // -------------------------------------------------------------------
@@ -4265,6 +4668,8 @@ PoliciesGet_Response::mutable_data() {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

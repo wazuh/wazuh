@@ -10,6 +10,7 @@ namespace api::graph::handlers
 /**
  * @brief Graph configuration parameters.
  *
+ * TODO: Change to weak pointers.
  */
 struct Config
 {
