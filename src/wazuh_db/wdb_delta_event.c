@@ -93,14 +93,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     is_default = true;
                 } else {
                     field_value = cJSON_GetObjectItem(data, field_name);
-                    if (NULL == field_value) {
-                        if (column->value.is_pk && 0 != strncmp(kv_value->value, "sys_programs", 12)) {
-                            has_error = true;
-                        } else {
-                            field_value = wdb_dbsync_get_field_default(&column->value);
-                            is_default = true;
-                        }
-                    } else if (0 == strncmp(kv_value->value, "sys_programs", 12) && column->value.is_pk && cJSON_NULL == field_value->type) {
+                    if (NULL == field_value || (NULL != field_value && cJSON_NULL == field_value->type)) {
                         field_value = wdb_dbsync_get_field_default(&column->value);
                         is_default = true;
                     }
@@ -176,14 +169,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                 if (column->value.is_pk) {
                     const char * field_name = wdb_dbsync_translate_field(&column->value);
                     cJSON * field_value = cJSON_GetObjectItem(data, field_name);
-                    if (NULL == field_value) {
-                        if (0 != strncmp(kv_value->value, "sys_programs", 12)) {
-                            has_error = true;
-                        } else {
-                            field_value = wdb_dbsync_get_field_default(&column->value);
-                            is_default = true;
-                        }
-                    } else if (0 == strncmp(kv_value->value, "sys_programs", 12) && cJSON_NULL == field_value->type) {
+                    if (NULL == field_value || (NULL != field_value && cJSON_NULL == field_value->type)) {
                         field_value = wdb_dbsync_get_field_default(&column->value);
                         is_default = true;
                     }
