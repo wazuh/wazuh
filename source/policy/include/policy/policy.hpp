@@ -51,6 +51,16 @@ public:
      */
     base::OptError del(const base::Name& policyName) override;
 
+
+    /**
+     * @brief Get the policy with the given name, filtered by the given namespace in a human readable format
+     *
+     * @param policyName Policy name
+     * @param namespaceIds Namespace ids to filter. If empty, no filter is applied
+     * @return base::RespOrError<std::string>
+     */
+    base::RespOrError<std::string> get(const base::Name& policyName,
+                                       const std::vector<store::NamespaceId>& namespaceIds) const override;
     /**
      * @copydoc IPolicy::list
      */
@@ -86,6 +96,11 @@ public:
     base::OptError setDefaultParent(const base::Name& policyName,
                                     const store::NamespaceId& namespaceId,
                                     const base::Name& assetName) override;
+
+    /**
+     * @copydoc IPolicy::delDefaultParent
+     */
+    base::OptError delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId) override;
 };
 } // namespace api::policy
 
