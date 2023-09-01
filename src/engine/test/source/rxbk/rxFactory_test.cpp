@@ -135,9 +135,9 @@ TEST(rxbkControllerTest, ListenOnAllTrace)
     };
     auto sub = rx::make_subscriber<std::string>(
         fakeLogger, [](auto) {}, []() {});
-    ASSERT_NO_THROW(controller.listenOnAllTrace(sub));
+    ASSERT_NO_THROW(controller.listenOnAllTrace(sub, {}, {}));
     ASSERT_NO_THROW(controller.addTracer("tracer", Tracer {}));
-    ASSERT_NO_THROW(controller.listenOnAllTrace(sub));
+    ASSERT_NO_THROW(controller.listenOnAllTrace(sub, {}, {}));
 }
 
 TEST(rxbkControllerTest, IngestEvent)
@@ -177,7 +177,7 @@ TEST(rxbkControllerTest, UseCase)
         };
         auto sub = rx::make_subscriber<std::string>(
             fakeLogger, [](auto) {}, []() {});
-        ASSERT_NO_THROW(csAll.add(controller.listenOnAllTrace(sub)));
+        ASSERT_NO_THROW(csAll.add(controller.listenOnAllTrace(sub, {}, {})));
         checksAll.push_back(check);
     }
 

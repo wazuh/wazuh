@@ -30,19 +30,20 @@ constexpr auto OUTPUT_AND_TRACES_WITH_DETAILS {2};
  */
 struct Parameters
 {
-    bool deleteAll;              /**< Perform deletion of all items. */
-    bool jsonFormat;             /**< Output data in JSON format. */
-    int32_t debugLevel;          /**< Debug level value. */
-    std::string apiEndpoint;     /**< API endpoint to connect to. */
-    std::string assetTrace;      /**< Asset tracing configuration. */
-    std::string description;     /**< Description for the operation. */
-    std::string event;           /**< Event associated with the operation. */
-    std::string policy;          /**< Policy configuration. */
-    std::string protocolLocation;/**< Protocol location. */
-    std::string protocolQueue;   /**< Protocol queue. */
-    std::string sessionName;     /**< Session name. */
-    uint32_t lifespan;           /**< Lifespan duration. */
-    int clientTimeout;           /**< Client timeout duration. */
+    bool deleteAll;                       /**< Perform deletion of all items. */
+    bool jsonFormat;                      /**< Output data in JSON format. */
+    int32_t debugLevel;                   /**< Debug level value. */
+    std::string apiEndpoint;              /**< API endpoint to connect to. */
+    std::vector<std::string> assetTrace;  /**< Asset tracing configuration. */
+    std::string description;              /**< Description for the operation. */
+    std::string event;                    /**< Event associated with the operation. */
+    std::vector<std::string> namespaceid; /**< Namespaces where are the assets to test */
+    std::string policy;                   /**< Policy configuration. */
+    std::string protocolLocation;         /**< Protocol location. */
+    std::string protocolQueue;            /**< Protocol queue. */
+    std::string sessionName;              /**< Session name. */
+    uint32_t lifespan;                    /**< Lifespan duration. */
+    int clientTimeout;                    /**< Client timeout duration. */
 };
 
 /**

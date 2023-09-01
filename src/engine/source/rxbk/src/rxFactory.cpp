@@ -66,40 +66,83 @@ void Controller::setOutput(Observable&& output)
     m_envOutput = std::move(output);
 }
 
-std::function<void(const std::string&)> Controller::addTracer(const std::string& name,
-                                                              Tracer&& tracer)
+std::function<void(const std::string&)> Controller::addTracer(const std::string& name, Tracer&& tracer)
 {
     if (m_tracers.end() != m_tracers.find(name))
     {
-        throw std::runtime_error(
-            fmt::format("Tracer \"{}\" already exists", name));
+        throw std::runtime_error(fmt::format("Tracer \"{}\" already exists", name));
     }
 
     m_tracers[name] = std::move(tracer);
     return m_tracers[name].getTracerFn(name);
 }
 
-rx::composite_subscription Controller::listenOnTrace(const std::string& name,
-                                                     rx::subscriber<std::string> s)
+rx::composite_subscription Controller::listenOnTrace(const std::string& name, rx::subscriber<std::string> s)
 {
     if (m_tracers.end() == m_tracers.find(name))
     {
-        throw std::runtime_error(fmt::format(
-            "Error trying to listen on trace \"{}\" that does not exists", name));
+        throw std::runtime_error(fmt::format("Error trying to listen on trace \"{}\" that does not exists", name));
     }
 
     return m_tracers[name].subscribe(s);
 }
 
-rx::composite_subscription Controller::listenOnAllTrace(rx::subscriber<std::string> s)
+rx::composite_subscription Controller::listenOnAllTrace(rx::subscriber<std::string> s,
+                                                        const std::vector<std::string>& assets,
+                                                        const std::vector<std::string>& assetTrace)
 {
     rx::composite_subscription cs;
-    for (auto& [name, tracer] : m_tracers)
+
+    // Function to subscribe to a certain asset
+    auto subscribeToAsset = [&cs, &s, &tracers = m_tracers](const std::string& assetName)
     {
-        cs.add(tracer.subscribe(s));
+        auto it = tracers.find(assetName);
+
+        if (it != tracers.end())
+        {
+            cs.add(it->second.subscribe(s));
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("Asset '{}' not found.", assetName));
+        }
+    };
+
+    // Check if assetTrace is not empty and her value is present in assets
+    if (!assetTrace.empty())
+    {
+        for (const auto& assetT : assetTrace)
+        {
+            if (std::find(assets.begin(), assets.end(), assetT) == assets.end())
+            {
+                throw std::runtime_error(fmt::format("Asset '{}' not found.", assetT));
+            }
+
+            subscribeToAsset(assetT);
+        }
+        return cs;
+    }
+
+    // If assetTrace has not value or not is in assetsVec continue with others assets
+    for (const auto& asset : assets)
+    {
+        std::string assetName = asset;
+        assetName.erase(std::remove(assetName.begin(), assetName.end(), '"'), assetName.end());
+        subscribeToAsset(assetName);
     }
 
     return cs;
+}
+
+const std::vector<std::string> Controller::getAssets() const
+{
+    std::vector<std::string> assets;
+    for (const auto [name, trace] : m_tracers)
+    {
+        assets.emplace_back(name);
+    }
+
+    return assets;
 }
 
 bool Controller::hasTracer(const std::string& name) const
@@ -134,8 +177,7 @@ Observable rxFactory(const Observable& input,
         // tracer again, just retreive it
         if (controller.hasTracer(expression->getName()))
         {
-            tracerFn = controller.getTracer(expression->getName())
-                           .getTracerFn(expression->getName());
+            tracerFn = controller.getTracer(expression->getName()).getTracerFn(expression->getName());
         }
         else
         {
@@ -200,20 +242,17 @@ Observable rxFactory(const Observable& input,
             Observable step = input.publish().ref_count();
             auto step1 = step;
             auto condition = std::make_shared<bool>(false);
-            step1 =
-                rxFactory(step1, assetNames, op->getOperands()[0], controller, tracerFn)
-                    .filter(
-                        [condition, tracer = tracerFn](RxEvent result)
-                        {
-                            *condition = result->success();
-                            // TODO: temporal fix to display history of assets, we need to
-                            // rethink tracers
-                            tracer(std::string {fmt::format(
-                                "[condition]:{}", *condition ? "success" : "failure")});
-                            return result->success();
-                        });
-            rxFactory(step1, assetNames, op->getOperands()[1], controller, tracerFn)
-                .subscribe();
+            step1 = rxFactory(step1, assetNames, op->getOperands()[0], controller, tracerFn)
+                        .filter(
+                            [condition, tracer = tracerFn](RxEvent result)
+                            {
+                                *condition = result->success();
+                                // TODO: temporal fix to display history of assets, we need to
+                                // rethink tracers
+                                tracer(std::string {fmt::format("[condition]:{}", *condition ? "success" : "failure")});
+                                return result->success();
+                            });
+            rxFactory(step1, assetNames, op->getOperands()[1], controller, tracerFn).subscribe();
             return step.map(
                 [condition](RxEvent result)
                 {
@@ -252,10 +291,7 @@ Controller buildRxPipeline(const builder::Policy& environment)
                    environment.assets().end(),
                    std::inserter(assetNames, assetNames.begin()),
                    [](const auto& pair) { return pair.first; });
-    auto output = rxFactory(controller.getInternalInput(),
-                            assetNames,
-                            environment.getExpression(),
-                            controller);
+    auto output = rxFactory(controller.getInternalInput(), assetNames, environment.getExpression(), controller);
     controller.setOutput(std::move(output));
 
     return controller;
