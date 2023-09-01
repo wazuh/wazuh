@@ -16,9 +16,9 @@ package com.wazuh.api.engine.policy;
  **************************************************/
 message StorePost_Request
 {
-    optional string name = 1; // Policy name
-    bool forceEmpty = 2;      // Force empty policy (without default integrations)
-                              // string description = 16; TODO Check if this is useful
+    optional string policy = 1; // Policy name
+    bool forceEmpty = 2;        // Force empty policy (without default integrations)
+                                // string description = 16; TODO Check if this is useful
 }
 
 // message PolicyPost_Response -> Return a GenericStatus_Response
@@ -30,7 +30,7 @@ message StorePost_Request
  **************************************************/
 message StoreDelete_Request
 {
-    optional string name = 1; // Policy name
+    optional string policy = 1; // Policy name
 }
 
 // message PolicyDelete_Response -> Return a GenericStatus_Response
@@ -44,7 +44,7 @@ message StoreDelete_Request
  **************************************************/
 message StoreGet_Request
 {
-    optional string name = 1;       // Policy name
+    optional string policy = 1;     // Policy name
     repeated string namespaces = 2; // List of namespaces to filter in the policy (optional)
 }
 

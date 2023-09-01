@@ -243,25 +243,25 @@ class StorePost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kNameFieldNumber = 1,
+    kPolicyFieldNumber = 1,
     kForceEmptyFieldNumber = 2,
   };
-  // optional string name = 1;
-  bool has_name() const;
+  // optional string policy = 1;
+  bool has_policy() const;
   private:
-  bool _internal_has_name() const;
+  bool _internal_has_policy() const;
   public:
-  void clear_name();
-  const std::string& name() const;
+  void clear_policy();
+  const std::string& policy() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
+  void set_policy(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_policy();
+  PROTOBUF_NODISCARD std::string* release_policy();
+  void set_allocated_policy(std::string* policy);
   private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
+  const std::string& _internal_policy() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
+  std::string* _internal_mutable_policy();
   public:
 
   // bool forceEmpty = 2;
@@ -283,7 +283,7 @@ class StorePost_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
     bool forceempty_;
   };
   union { Impl_ _impl_; };
@@ -412,24 +412,24 @@ class StoreDelete_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kNameFieldNumber = 1,
+    kPolicyFieldNumber = 1,
   };
-  // optional string name = 1;
-  bool has_name() const;
+  // optional string policy = 1;
+  bool has_policy() const;
   private:
-  bool _internal_has_name() const;
+  bool _internal_has_policy() const;
   public:
-  void clear_name();
-  const std::string& name() const;
+  void clear_policy();
+  const std::string& policy() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
+  void set_policy(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_policy();
+  PROTOBUF_NODISCARD std::string* release_policy();
+  void set_allocated_policy(std::string* policy);
   private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
+  const std::string& _internal_policy() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
+  std::string* _internal_mutable_policy();
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.policy.StoreDelete_Request)
@@ -442,7 +442,7 @@ class StoreDelete_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_policy_2eproto;
@@ -571,7 +571,7 @@ class StoreGet_Request final :
 
   enum : int {
     kNamespacesFieldNumber = 2,
-    kNameFieldNumber = 1,
+    kPolicyFieldNumber = 1,
   };
   // repeated string namespaces = 2;
   int namespaces_size() const;
@@ -597,22 +597,22 @@ class StoreGet_Request final :
   std::string* _internal_add_namespaces();
   public:
 
-  // optional string name = 1;
-  bool has_name() const;
+  // optional string policy = 1;
+  bool has_policy() const;
   private:
-  bool _internal_has_name() const;
+  bool _internal_has_policy() const;
   public:
-  void clear_name();
-  const std::string& name() const;
+  void clear_policy();
+  const std::string& policy() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
+  void set_policy(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_policy();
+  PROTOBUF_NODISCARD std::string* release_policy();
+  void set_allocated_policy(std::string* policy);
   private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
+  const std::string& _internal_policy() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy(const std::string& value);
+  std::string* _internal_mutable_policy();
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.policy.StoreGet_Request)
@@ -626,7 +626,7 @@ class StoreGet_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaces_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_policy_2eproto;
@@ -2656,72 +2656,72 @@ class PoliciesGet_Response final :
 #endif  // __GNUC__
 // StorePost_Request
 
-// optional string name = 1;
-inline bool StorePost_Request::_internal_has_name() const {
+// optional string policy = 1;
+inline bool StorePost_Request::_internal_has_policy() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool StorePost_Request::has_name() const {
-  return _internal_has_name();
+inline bool StorePost_Request::has_policy() const {
+  return _internal_has_policy();
 }
-inline void StorePost_Request::clear_name() {
-  _impl_.name_.ClearToEmpty();
+inline void StorePost_Request::clear_policy() {
+  _impl_.policy_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& StorePost_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StorePost_Request.name)
-  return _internal_name();
+inline const std::string& StorePost_Request::policy() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StorePost_Request.policy)
+  return _internal_policy();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void StorePost_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void StorePost_Request::set_policy(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StorePost_Request.name)
+ _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StorePost_Request.policy)
 }
-inline std::string* StorePost_Request::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StorePost_Request.name)
+inline std::string* StorePost_Request::mutable_policy() {
+  std::string* _s = _internal_mutable_policy();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StorePost_Request.policy)
   return _s;
 }
-inline const std::string& StorePost_Request::_internal_name() const {
-  return _impl_.name_.Get();
+inline const std::string& StorePost_Request::_internal_policy() const {
+  return _impl_.policy_.Get();
 }
-inline void StorePost_Request::_internal_set_name(const std::string& value) {
+inline void StorePost_Request::_internal_set_policy(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
+  _impl_.policy_.Set(value, GetArenaForAllocation());
 }
-inline std::string* StorePost_Request::_internal_mutable_name() {
+inline std::string* StorePost_Request::_internal_mutable_policy() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
+  return _impl_.policy_.Mutable(GetArenaForAllocation());
 }
-inline std::string* StorePost_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StorePost_Request.name)
-  if (!_internal_has_name()) {
+inline std::string* StorePost_Request::release_policy() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StorePost_Request.policy)
+  if (!_internal_has_policy()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
+  auto* p = _impl_.policy_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void StorePost_Request::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
+inline void StorePost_Request::set_allocated_policy(std::string* policy) {
+  if (policy != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StorePost_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StorePost_Request.policy)
 }
 
 // bool forceEmpty = 2;
@@ -2748,144 +2748,144 @@ inline void StorePost_Request::set_forceempty(bool value) {
 
 // StoreDelete_Request
 
-// optional string name = 1;
-inline bool StoreDelete_Request::_internal_has_name() const {
+// optional string policy = 1;
+inline bool StoreDelete_Request::_internal_has_policy() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool StoreDelete_Request::has_name() const {
-  return _internal_has_name();
+inline bool StoreDelete_Request::has_policy() const {
+  return _internal_has_policy();
 }
-inline void StoreDelete_Request::clear_name() {
-  _impl_.name_.ClearToEmpty();
+inline void StoreDelete_Request::clear_policy() {
+  _impl_.policy_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& StoreDelete_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StoreDelete_Request.name)
-  return _internal_name();
+inline const std::string& StoreDelete_Request::policy() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StoreDelete_Request.policy)
+  return _internal_policy();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void StoreDelete_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void StoreDelete_Request::set_policy(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreDelete_Request.name)
+ _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreDelete_Request.policy)
 }
-inline std::string* StoreDelete_Request::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StoreDelete_Request.name)
+inline std::string* StoreDelete_Request::mutable_policy() {
+  std::string* _s = _internal_mutable_policy();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StoreDelete_Request.policy)
   return _s;
 }
-inline const std::string& StoreDelete_Request::_internal_name() const {
-  return _impl_.name_.Get();
+inline const std::string& StoreDelete_Request::_internal_policy() const {
+  return _impl_.policy_.Get();
 }
-inline void StoreDelete_Request::_internal_set_name(const std::string& value) {
+inline void StoreDelete_Request::_internal_set_policy(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
+  _impl_.policy_.Set(value, GetArenaForAllocation());
 }
-inline std::string* StoreDelete_Request::_internal_mutable_name() {
+inline std::string* StoreDelete_Request::_internal_mutable_policy() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
+  return _impl_.policy_.Mutable(GetArenaForAllocation());
 }
-inline std::string* StoreDelete_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StoreDelete_Request.name)
-  if (!_internal_has_name()) {
+inline std::string* StoreDelete_Request::release_policy() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StoreDelete_Request.policy)
+  if (!_internal_has_policy()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
+  auto* p = _impl_.policy_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void StoreDelete_Request::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
+inline void StoreDelete_Request::set_allocated_policy(std::string* policy) {
+  if (policy != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreDelete_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreDelete_Request.policy)
 }
 
 // -------------------------------------------------------------------
 
 // StoreGet_Request
 
-// optional string name = 1;
-inline bool StoreGet_Request::_internal_has_name() const {
+// optional string policy = 1;
+inline bool StoreGet_Request::_internal_has_policy() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool StoreGet_Request::has_name() const {
-  return _internal_has_name();
+inline bool StoreGet_Request::has_policy() const {
+  return _internal_has_policy();
 }
-inline void StoreGet_Request::clear_name() {
-  _impl_.name_.ClearToEmpty();
+inline void StoreGet_Request::clear_policy() {
+  _impl_.policy_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& StoreGet_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StoreGet_Request.name)
-  return _internal_name();
+inline const std::string& StoreGet_Request::policy() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StoreGet_Request.policy)
+  return _internal_policy();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void StoreGet_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void StoreGet_Request::set_policy(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreGet_Request.name)
+ _impl_.policy_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StoreGet_Request.policy)
 }
-inline std::string* StoreGet_Request::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StoreGet_Request.name)
+inline std::string* StoreGet_Request::mutable_policy() {
+  std::string* _s = _internal_mutable_policy();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.StoreGet_Request.policy)
   return _s;
 }
-inline const std::string& StoreGet_Request::_internal_name() const {
-  return _impl_.name_.Get();
+inline const std::string& StoreGet_Request::_internal_policy() const {
+  return _impl_.policy_.Get();
 }
-inline void StoreGet_Request::_internal_set_name(const std::string& value) {
+inline void StoreGet_Request::_internal_set_policy(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
+  _impl_.policy_.Set(value, GetArenaForAllocation());
 }
-inline std::string* StoreGet_Request::_internal_mutable_name() {
+inline std::string* StoreGet_Request::_internal_mutable_policy() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
+  return _impl_.policy_.Mutable(GetArenaForAllocation());
 }
-inline std::string* StoreGet_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StoreGet_Request.name)
-  if (!_internal_has_name()) {
+inline std::string* StoreGet_Request::release_policy() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.StoreGet_Request.policy)
+  if (!_internal_has_policy()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
+  auto* p = _impl_.policy_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void StoreGet_Request::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
+inline void StoreGet_Request::set_allocated_policy(std::string* policy) {
+  if (policy != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+  _impl_.policy_.SetAllocated(policy, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_.IsDefault()) {
+    _impl_.policy_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreGet_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StoreGet_Request.policy)
 }
 
 // repeated string namespaces = 2;
