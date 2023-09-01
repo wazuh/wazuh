@@ -8,6 +8,7 @@ add_library(cmds STATIC
     src/router.cpp
     src/metrics.cpp
     src/integration.cpp
+    src/policy.cpp
 )
 
 target_link_libraries(cmds
