@@ -39,7 +39,7 @@ void runAddPolicy(std::shared_ptr<apiclnt::Client> client, const std::string& po
 
     // Prepare request
     RequestType eRequest;
-    eRequest.set_name(policyName);
+    eRequest.set_policy(policyName);
 
     // Call API, any exception will be thrown
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -55,7 +55,7 @@ void runRemovePolicy(std::shared_ptr<apiclnt::Client> client, const std::string&
 
     // Prepare request
     RequestType eRequest;
-    eRequest.set_name(policyName);
+    eRequest.set_policy(policyName);
 
     // Call API, any exception will be thrown
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -73,7 +73,7 @@ void runGetPolicy(std::shared_ptr<apiclnt::Client> client,
 
     // Prepare request
     RequestType eRequest;
-    eRequest.set_name(policyName);
+    eRequest.set_policy(policyName);
     for (const auto& namespaceId : namespaceIds)
     {
         eRequest.add_namespaces(namespaceId);
