@@ -10,7 +10,6 @@ import gzip
 import shutil
 import re
 import calendar
-from multiprocessing import Queue
 
 
 class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):

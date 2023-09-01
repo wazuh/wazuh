@@ -127,6 +127,8 @@ class APILogger(WazuhLogger):
         """
         Set ups API logger. In addition to super().setup_logger() this method adds:
             * Sets up log level based on the log level defined in API configuration file.
+
+        :param custom_handler: custom handler that can be set instead of the default one from the WazuhLogger class.
         """
         super().setup_logger(handler=custom_handler)
 
