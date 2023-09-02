@@ -1066,8 +1066,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q xorg-x11 -> r:^package xorg-x11 is not installed"
 
   # 2.1.3 Ensure Avahi Server is not installed. (Automated)
   - id: 18712
@@ -1084,8 +1085,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q avahi-autoipd -> r:^package avahi-autoipd is not installed"
+      - "c:rpm -q avahi -> r:^package avahi is not installed"
 
   # 2.1.4 Ensure CUPS is not installed. (Automated)
   - id: 18713
@@ -1105,8 +1108,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q cups -> r:package cups is not installed"
 
   # 2.1.5 Ensure DHCP Server is not installed. (Automated)
   - id: 18714
@@ -1123,8 +1127,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q dhcp -> r:^package dhcp is not installed"
 
   # 2.1.6 Ensure LDAP server is not installed. (Automated)
   - id: 18715
@@ -1143,8 +1148,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q openldap-servers -> r:^package openldap-servers is not installed"
 
   # 2.1.7 Ensure DNS Server is not installed. (Automated)
   - id: 18716
@@ -1161,8 +1167,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q bind -> r:^package bind is not installed"
 
   # 2.1.8 Ensure FTP Server is not installed. (Automated)
   - id: 18717
@@ -1179,8 +1186,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
   # 2.1.9 Ensure HTTP server is not installed. (Automated)
   - id: 18718
@@ -1197,8 +1205,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q httpd -> r:^package httpd is not installed"
 
   # 2.1.10 Ensure IMAP and POP3 server is not installed. (Automated)
   - id: 18719
@@ -1215,8 +1224,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q dovecot -> r:^package dovecot is not installed"
 
   # 2.1.11 Ensure Samba is not installed. (Automated)
   - id: 18720
@@ -1233,8 +1243,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q samba -> r:^package samba is not installed"
 
   # 2.1.12 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 18721
@@ -1251,8 +1262,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q squid -> r:^package squid is not installed"
 
   # 2.1.13 Ensure net-snmp is not installed. (Automated)
   - id: 18722
@@ -1269,8 +1281,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q net-snmp -> r:^package net-snmp is not installed"
 
   # 2.1.14 Ensure NIS server is not installed. (Automated)
   - id: 18723
@@ -1287,8 +1300,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q ypserv -> r:^package ypserv is not installed"
 
   # 2.1.15 Ensure telnet-server is not installed. (Automated)
   - id: 18724
@@ -1305,8 +1319,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
 
   # 2.1.16 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 18725
@@ -1323,8 +1338,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ss -lntu -> r:\.*:25\s* && !r:127.0.0.1:25\.*|::1:25\.*'
 
   # 2.1.17 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 18726
@@ -1341,8 +1357,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q nfs-utils -> r:^package nfs-utils is not installed"
+      - "c:systemctl is-enabled nfs-server -> r:^masked"
 
   # 2.1.18 Ensure rpcbind is not installed or the rpcbind services are masked. (Automated)
   - id: 18727
@@ -1359,8 +1377,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q rpcbind -> r:^package rpcbind is not installed"
+      - "c:systemctl is-enabled rpcbind -> r:masked"
+      - "c:systemctl is-enabled rpcbind.socket -> r:masked"
 
   # 2.1.19 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
   - id: 18728
@@ -1378,8 +1399,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q rsync -> r:package rsync is not installed"
+      - "c:systemctl is-enabled rsyncd -> r:masked"
 
   # 2.2.1 Ensure NIS Client is not installed. (Automated)
   - id: 18729
@@ -1397,14 +1420,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
 
   # 2.2.2 Ensure rsh client is not installed. (Automated)
   - id: 18730
     title: "Ensure rsh client is not installed."
     description: "The rsh package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Run the following command to remove the rsh package: # yum remove rsh."
     compliance:
@@ -1416,8 +1440,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q rsh -> r:^package rsh is not installed"
 
   # 2.2.3 Ensure talk client is not installed. (Automated)
   - id: 18731
@@ -1435,8 +1460,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q talk -> r:^package talk is not installed"
 
   # 2.2.4 Ensure telnet client is not installed. (Automated)
   - id: 18732
@@ -1454,8 +1480,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q telnet -> r:^package telnet is not installed"
 
   # 2.2.5 Ensure LDAP client is not installed. (Automated)
   - id: 18733
@@ -1473,26 +1500,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
 
-  # 2.3 Ensure nonessential services are removed or masked. (Manual)
-  - id: 18734
-    title: "Ensure nonessential services are removed or masked."
-    description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP. A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations."
-    rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
-    remediation: "Run the following command to remove the package containing the service: # yum remove <package_name> OR If required packages have a dependency: Run the following command to stop and mask the service: # systemctl --now mask <service_name>."
-    compliance:
-      - cis: ["2.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 2.3 Ensure nonessential services are removed or masked. (Manual) - Not Implemented
 
   # 3.1.1 Disable IPv6. (Manual)
   - id: 18735
