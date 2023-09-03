@@ -13,7 +13,7 @@ azure-storage-common==2.1.0
 boto3==1.17.85
 botocore==1.20.85
 cachetools==4.1.0
-certifi==2022.12.7
+certifi==2023.07.22
 cffi==1.14.4
 chardet==3.0.4
 charset-normalizer==2.0.4
