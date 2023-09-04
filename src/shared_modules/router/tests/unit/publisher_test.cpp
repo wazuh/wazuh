@@ -12,6 +12,7 @@
 #include "publisher_test.hpp"
 #include "src/publisher.hpp"
 #include <memory>
+#include <vector>
 
 /*
  * @brief Tests the instantiation of the Publisher class
@@ -86,7 +87,7 @@ TEST_F(PublisherTest, TestPublishValidData)
 
     const std::vector<char> data = {'h', 'e', 'l', 'l', 'o', '!'};
 
-    const auto publisher = std::make_shared<Publisher>(ENDPOINT_NAME, SOCKET_PATH);
+    const auto publisher {std::make_shared<Publisher>(ENDPOINT_NAME, SOCKET_PATH)};
 
     // Check that the Publisher class can publish data
     EXPECT_NO_THROW(publisher->push(data));
@@ -102,7 +103,7 @@ TEST_F(PublisherTest, TestPublishEmptyData)
 
     const std::vector<char> emptyData;
 
-    const auto publisher = std::make_shared<Publisher>(ENDPOINT_NAME, SOCKET_PATH);
+    const auto publisher {std::make_shared<Publisher>(ENDPOINT_NAME, SOCKET_PATH)};
 
     // Check that the Publisher class can publish empty data
     EXPECT_NO_THROW(publisher->push(emptyData));

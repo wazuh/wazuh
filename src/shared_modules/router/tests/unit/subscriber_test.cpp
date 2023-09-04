@@ -12,7 +12,9 @@
 #include "subscriber_test.hpp"
 #include "src/subscriber.hpp"
 #include <functional>
+#include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 
 /*
@@ -20,7 +22,7 @@
  */
 TEST_F(SubscriberTest, TestSubscriberInstantiation)
 {
-    constexpr auto OBSERVER_ID = "subscriber-id";
+    constexpr auto OBSERVER_ID {"subscriber-id"};
     const std::function<void(const std::vector<char>&)> callback;
 
     // Check that the Subscriber class can be instantiated
@@ -32,7 +34,7 @@ TEST_F(SubscriberTest, TestSubscriberInstantiation)
  */
 TEST_F(SubscriberTest, TestSubscriberWithEmptyObserverId)
 {
-    constexpr auto OBSERVER_ID = "";
+    constexpr auto OBSERVER_ID {""};
     const std::function<void(const std::vector<char>&)> callback;
 
     // Check that the Subscriber class can be instantiated
@@ -44,8 +46,8 @@ TEST_F(SubscriberTest, TestSubscriberWithEmptyObserverId)
  */
 TEST_F(SubscriberTest, TestSubscriberUpdateMethod)
 {
-    constexpr auto OBSERVER_ID = "";
-    constexpr auto EXPECTED_CAPTURED_OUTPUT = "hello!\n";
+    constexpr auto OBSERVER_ID {"subscriber-id"};
+    constexpr auto EXPECTED_CAPTURED_OUTPUT {"hello!\n"};
 
     const std::vector<char> data = {'h', 'e', 'l', 'l', 'o', '!'};
     const std::function<void(const std::vector<char>&)> callback = [](const std::vector<char>& data)
@@ -53,7 +55,7 @@ TEST_F(SubscriberTest, TestSubscriberUpdateMethod)
         std::cout << std::string(data.begin(), data.end()) << "\n";
     };
 
-    const auto subscriber = std::make_shared<Subscriber<const std::vector<char>&>>(callback, OBSERVER_ID);
+    const auto subscriber {std::make_shared<Subscriber<const std::vector<char>&>>(callback, OBSERVER_ID)};
 
     testing::internal::CaptureStdout();
 
