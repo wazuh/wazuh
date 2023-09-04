@@ -28,17 +28,17 @@ if(ENGINE_BUILD_TEST)
     set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
     set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
-    # # Mocks
+    # Mocks
     add_library(policy_mocks INTERFACE)
     target_include_directories(policy_mocks INTERFACE ${TEST_MOCK_DIR})
     target_link_libraries(policy_mocks INTERFACE gmock policy::ipolicy)
     add_library(policy::mocks ALIAS policy_mocks)
 
-    # # policy component test
+    # policy component test
     add_executable(policy_ctest
         ${COMPONENT_SRC_DIR}/policy_test.cpp
     )
-    target_link_libraries(policy_ctest gtest_main policy)
+    target_link_libraries(policy_ctest gtest_main policy store::mocks builder::mocks)
     gtest_discover_tests(policy_ctest)
 
     add_executable(policy_utest
