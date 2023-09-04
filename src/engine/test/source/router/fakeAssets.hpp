@@ -238,12 +238,12 @@ static std::map<std::string, const char*> assets = {{"decoder/deco_1/0", DEC_1},
                                                     {"internal/router_table/0", INTERNAL_ROUTE_TABLE}};
 
 static std::map<std::string, std::vector<std::string>> policies = {
-    {"policy/pol_1/0", {"policy/pol_1/0", "decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
-    {"policy/pol_2/0", {"policy/pol_2/0", "decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
-    {"policy/pol_3/0", {"policy/pol_3/0", "decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
-    {"policy/pol_A1/0", {"policy/pol_A1/0", "decoder/deco_A1/0"}},
-    {"policy/pol_B2/0", {"policy/pol_B2/0", "decoder/deco_B2/0"}},
-    {"policy/pol_C3/0", {"policy/pol_C3/0", "decoder/deco_C3/0"}}};
+    {"policy/pol_1/0", {"decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
+    {"policy/pol_2/0", {"decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
+    {"policy/pol_3/0", {"decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
+    {"policy/pol_A1/0", {"decoder/deco_A1/0"}},
+    {"policy/pol_B2/0", {"decoder/deco_B2/0"}},
+    {"policy/pol_C3/0", {"decoder/deco_C3/0"}}};
 
 static std::map<std::string, std::pair<std::vector<std::string>, std::vector<std::string>>> tables = {
     {"internal/router_table/0",

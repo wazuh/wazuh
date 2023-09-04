@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include <fmt/format.h>
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "utils/stringUtils.hpp"
 
@@ -171,28 +171,28 @@ public:
      *
      * @return std::string
      */
-    std::string toStr() const 
+    std::string toStr() const
     {
-        return std::accumulate(m_parts.begin(),
-                               m_parts.end(),
-                               std::string(),
+        return std::accumulate(m_parts.cbegin() + 1,
+                               m_parts.cend(),
+                               m_parts.front(),
                                [](const std::string& a, const std::string& b) -> std::string
-                               { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
+                               { return a + SEPARATOR_S + b; });
     }
 
     /**
      * @brief Implicit conversion to std::string
-     * 
-     * @return std::string 
+     *
+     * @return std::string
      */
     operator std::string() const { return toStr(); }
-    
+
     /**
      * @brief Operator << to print the name
-     * 
-     * @param os 
-     * @param name 
-     * @return std::ostream& 
+     *
+     * @param os
+     * @param name
+     * @return std::ostream&
      */
     friend std::ostream& operator<<(std::ostream& os, const Name& name)
     {
@@ -202,10 +202,10 @@ public:
 
     /**
      * @brief Operator + to concatenate two names
-     * 
-     * @param lhs 
-     * @param rhs 
-     * @return Name 
+     *
+     * @param lhs
+     * @param rhs
+     * @return Name
      */
     friend Name operator+(const Name& lhs, const Name& rhs)
     {
@@ -269,7 +269,8 @@ struct hash<base::Name>
 } // namespace std
 
 // Make Name formatable by fmt
-template<> struct fmt::formatter<base::Name> : formatter<std::string>
+template<>
+struct fmt::formatter<base::Name> : formatter<std::string>
 {
     // parse is inherited from formatter<string_view>.
     template<typename FormatContext>

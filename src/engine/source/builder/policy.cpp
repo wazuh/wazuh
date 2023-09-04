@@ -167,10 +167,10 @@ void Policy::buildGraph(const std::string& graphName, const std::unordered_set<b
         if (!graph.hasNode(parent))
         {
             auto childrenNames = std::string("[");
-            childrenNames += std::accumulate(children.cbegin(),
+            childrenNames += std::accumulate(children.cbegin() + 1,
                                              children.cend(),
-                                             std::string {},
-                                             [](auto& acc, auto& child) { return acc + ", " + child; });
+                                             children.front().toStr(),
+                                             [](auto& acc, auto& child) { return acc + ", " + child.toStr(); });
             childrenNames += "]";
             throw std::runtime_error(
                 fmt::format("Parent '{}' does not exist, required by {}", parent.toStr(), childrenNames));
