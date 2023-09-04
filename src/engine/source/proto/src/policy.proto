@@ -17,8 +17,6 @@ package com.wazuh.api.engine.policy;
 message StorePost_Request
 {
     optional string policy = 1; // Policy name
-    bool forceEmpty = 2;        // Force empty policy (without default integrations)
-                                // string description = 16; TODO Check if this is useful
 }
 
 // message PolicyPost_Response -> Return a GenericStatus_Response
