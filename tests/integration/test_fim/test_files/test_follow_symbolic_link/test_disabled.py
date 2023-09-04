@@ -99,16 +99,17 @@ def test_disabled(test_configuration, test_metadata, set_wazuh_configuration, tr
                        symlink_new_target, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-
-    file.write_file(symlink_target.joinpath('testie.log'))
+    file.truncate_file(WAZUH_LOG_PATH)
+    file.write_file(file_symlink.joinpath('testie.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert not wazuh_log_monitor.callback_result
 
+    file.truncate_file(WAZUH_LOG_PATH)
     file.modify_symlink_target(symlink_new_target, file_symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
 
     # The new target is inside the folder to monitor.
-    file.write_file(symlink_target.joinpath('SS.log'))
+    file.write_file(file_symlink.joinpath('SS.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert not wazuh_log_monitor.callback_result
