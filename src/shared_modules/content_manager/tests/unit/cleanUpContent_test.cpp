@@ -27,19 +27,18 @@ TEST_F(CleanUpContentTest, OutputPathNotSet)
  */
 TEST_F(CleanUpContentTest, OutputPathSet)
 {
-    // Set the output path
-    m_spUpdaterBaseContext->outputFolder = TEST_DIR;
-
-    // Create content in the folder
-    std::filesystem::create_directory(TEST_DIR + "/test1");
-    std::filesystem::create_directory(TEST_DIR + "/test2");
+    // Create content in the folders
+    std::filesystem::create_directory(DOWNLOAD_DIR + "/test1");
+    std::filesystem::create_directory(CONTENTS_DIR + "/test2");
 
     // Check if the output path is not empty
-    EXPECT_FALSE(std::filesystem::is_empty(TEST_DIR));
+    EXPECT_FALSE(std::filesystem::is_empty(DOWNLOAD_DIR));
+    EXPECT_FALSE(std::filesystem::is_empty(CONTENTS_DIR));
 
     // execute the cleanup
     EXPECT_NO_THROW(m_spCleanUpContent->handleRequest(m_spUpdaterContext));
 
-    // Check if the output path is empty
-    EXPECT_TRUE(std::filesystem::is_empty(TEST_DIR));
+    // Check the folder content
+    EXPECT_TRUE(std::filesystem::is_empty(DOWNLOAD_DIR));
+    EXPECT_FALSE(std::filesystem::is_empty(CONTENTS_DIR));
 }

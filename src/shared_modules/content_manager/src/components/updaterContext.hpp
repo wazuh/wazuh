@@ -43,6 +43,18 @@ struct UpdaterBaseContext
     std::filesystem::path outputFolder;
 
     /**
+     * @brief Path to the folder where the compressed content will be downloaded.
+     *
+     */
+    std::filesystem::path downloadsFolder;
+
+    /**
+     * @brief Path to the folder where the content will be decompressed or the raw content will be stored.
+     *
+     */
+    std::filesystem::path contentsFolder;
+
+    /**
      * @brief For testing purposes. Delete it.
      */
     uint8_t download {1};      ///< download
@@ -66,8 +78,25 @@ struct UpdaterContext final : private UpdaterBaseContext
     /**
      * @brief Data to be published.
      *
+     * @details JSON file structure:
+     *  {
+     *      "paths":
+     *      [
+     *          {
+     *              "path": "/tmp/outputFolder/file1.json"
+     *          }
+     *      ],
+     *      "stageStatus":
+     *      [
+     *          {
+     *              "stage": "download",
+     *              "status": "ok"
+     *          }
+     *      ]
+     *  }
+     *
      */
-    std::vector<char> data;
+    nlohmann::json data = R"({ "paths": [], "stageStatus": [] })"_json;
 };
 
 #endif // _UPDATER_CONTEXT_HPP

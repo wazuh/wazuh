@@ -36,7 +36,10 @@ private:
         // If there is data to publish, send it
         if (!context.data.empty())
         {
-            context.spUpdaterBaseContext->spChannel->send(context.data);
+            // serialize the JSON object
+            const auto stringifyJson = context.data.dump();
+
+            context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
             std::cout << "PubSubPublisher - Data published" << std::endl;
         }
         else

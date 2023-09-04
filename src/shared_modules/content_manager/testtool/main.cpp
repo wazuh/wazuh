@@ -1,13 +1,8 @@
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
 #include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <future>
 #include <iostream>
 #include <thread>
-#include <vector>
 
 /*
  * @brief Configuration parameters for the content provider.
@@ -23,7 +18,7 @@
  * @url: URL where the content is located.
  * @outputFolder: if defined, the content will be downloaded to this folder.
  * @dataFormat: Format of the content downloaded or after decompression.
- * @fileName: Name of the file to download.
+ * @fileName: Name of the file to download or file name in case of raw content.
  */
 static const nlohmann::json CONFIG_PARAMETERS =
     R"(
@@ -33,14 +28,14 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "ondemand": true,
             "configData":
             {
-                "contentSource": "s3",
+                "contentSource": "api",
                 "compressionType": "raw",
                 "versionedContent": "false",
                 "deleteDownloadedContent": true,
-                "url": "url",
+                "url": "https://jsonplaceholder.typicode.com/todos/1",
                 "outputFolder": "/tmp/testProvider",
                 "dataFormat": "json",
-                "fileName": "s3_file"
+                "fileName": "example.json"
             }
         }
         )"_json;

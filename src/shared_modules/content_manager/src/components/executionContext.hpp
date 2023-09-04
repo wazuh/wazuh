@@ -58,10 +58,15 @@ private:
             std::filesystem::remove_all(outputFolderPath);
         }
 
-        // Create the output folder.
+        // Create the folders.
         std::filesystem::create_directory(outputFolderPath);
+        std::filesystem::create_directory(outputFolderPath / "downloads");
+        std::filesystem::create_directory(outputFolderPath / "contents");
 
-        std::cout << "Created output folder: " << outputFolderPath << std::endl;
+        context.downloadsFolder = outputFolderPath / "downloads";
+        context.contentsFolder = outputFolderPath / "contents";
+
+        std::cout << "Output folders created." << std::endl;
     }
 
 public:

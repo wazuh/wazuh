@@ -44,7 +44,7 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 
     m_spUpdaterBaseContext->spChannel->stop();
 
-    EXPECT_TRUE(m_spUpdaterContext->data.empty());
+    EXPECT_FALSE(m_spUpdaterContext->data.empty());
 }
 
 /*
@@ -52,8 +52,6 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
  */
 TEST_F(PubSubPublisherTest, TestPublishValidData)
 {
-    std::string message {"Hello World!"};
-
     auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
     EXPECT_CALL(*mockRouterProvider, start).Times(1);
     EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
@@ -63,7 +61,6 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
     m_spUpdaterBaseContext->spChannel->start();
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = std::vector<char>(message.begin(), message.end());
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 
@@ -112,5 +109,5 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheMockRouterProvider
 
     EXPECT_THROW(m_spUpdaterBaseContext->spChannel->stop(), std::runtime_error);
 
-    EXPECT_TRUE(m_spUpdaterContext->data.empty());
+    EXPECT_FALSE(m_spUpdaterContext->data.empty());
 }

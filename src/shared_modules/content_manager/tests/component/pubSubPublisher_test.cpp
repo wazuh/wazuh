@@ -39,7 +39,7 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 
     m_spUpdaterBaseContext->spChannel->stop();
 
-    EXPECT_TRUE(m_spUpdaterContext->data.empty());
+    EXPECT_FALSE(m_spUpdaterContext->data.empty());
 }
 
 /*
@@ -47,13 +47,10 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
  */
 TEST_F(PubSubPublisherTest, TestPublishValidData)
 {
-    std::string data {"Hello World!"};
-
     m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
     m_spUpdaterBaseContext->spChannel->start();
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = std::vector<char>(data.begin(), data.end());
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 
@@ -89,6 +86,7 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheRouterProvider)
     m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
+    m_spUpdaterContext->data.clear();
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 

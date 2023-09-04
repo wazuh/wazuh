@@ -17,6 +17,8 @@
 #include <gtest/gtest.h>
 
 const std::string TEST_DIR {"/tmp/test"};
+const std::string DOWNLOAD_DIR {TEST_DIR + "/download"};
+const std::string CONTENTS_DIR {TEST_DIR + "/contents"};
 
 /**
  * @brief Runs unit tests for CleanUpContent
@@ -52,12 +54,16 @@ protected:
 
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
+        m_spUpdaterContext->spUpdaterBaseContext->downloadsFolder = DOWNLOAD_DIR;
+        m_spUpdaterContext->spUpdaterBaseContext->contentsFolder = CONTENTS_DIR;
 
         // Instance of the class to test
         m_spCleanUpContent = std::make_shared<CleanUpContent>();
 
         // Create the test directory
         std::filesystem::create_directory(TEST_DIR);
+        std::filesystem::create_directory(DOWNLOAD_DIR);
+        std::filesystem::create_directory(CONTENTS_DIR);
     }
 
     /**

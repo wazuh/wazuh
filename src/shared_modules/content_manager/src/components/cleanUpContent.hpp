@@ -35,7 +35,7 @@ private:
     void cleanUp(const UpdaterContext& context) const
     {
         // Get the path to the folder.
-        const auto path = context.spUpdaterBaseContext->outputFolder;
+        const auto path = context.spUpdaterBaseContext->downloadsFolder;
 
         // Check if the path exists.
         if (!std::filesystem::exists(path))
