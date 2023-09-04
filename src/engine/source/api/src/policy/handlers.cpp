@@ -24,7 +24,8 @@ const std::vector<assetConfig> defaultAsset {{base::Name("integration/wazuh-core
 // TODO Improve message errores (from store)
 
 /**
- * @brief A template alias for a tuple that contains a request type, a shared pointer to an IPolicy object, and a Name object.
+ * @brief A template alias for a tuple that contains a request type, a shared pointer to an IPolicy object, and a Name
+ * object.
  *
  * All request need a policy name and a policy API, so this tuple is used to avoid code duplication.
  * @tparam RequestType The type of the request.
@@ -32,6 +33,20 @@ const std::vector<assetConfig> defaultAsset {{base::Name("integration/wazuh-core
 template<typename RequestType>
 using TupleRequest = std::tuple<RequestType, std::shared_ptr<api::policy::IPolicy>, base::Name>;
 
+/**
+ * @brief This function takes a weak pointer to a policy API and a wazuh request, and returns a tuple
+ * containing the request, a shared pointer to the policy API, and the policy name. The request and policy name are
+ * extracted from the wazuh request. If the policy name is empty or invalid, an error response is
+ * returned. If the policy API is not initialized, an error response is returned.
+ *
+ * @tparam RequestT The type of the request.
+ * @tparam ResponseT The type of the response.
+ * @param wRequest The weak pointer to the request.
+ * @param wpPolicyAPI The weak pointer to the policy API.
+ * @return std::variant<api::wpResponse, std::tuple<RequestT, std::shared_ptr<api::policy::IPolicy>, base::Name>> A
+ * variant containing either an error response or a tuple containing the request, a shared pointer to the policy API,
+ * and the policy name.
+ */
 template<typename RequestT, typename ResponseT>
 std::variant<api::wpResponse, std::tuple<RequestT, std::shared_ptr<api::policy::IPolicy>, base::Name>>
 getTupleRequest(const api::wpRequest& wRequest, const std::weak_ptr<api::policy::IPolicy>& wpPolicyAPI)
@@ -79,6 +94,16 @@ getTupleRequest(const api::wpRequest& wRequest, const std::weak_ptr<api::policy:
     return std::make_tuple(std::move(eRequest), spPolicyAPI, std::move(policy));
 }
 
+/**
+ * @brief This function retrieves the namespace ID from a given request object.
+ *
+ * @tparam RequestT The type of the request object.
+ * @tparam ResponseT The type of the response object.
+ * @param request The request object.
+ * @return std::variant<api::wpResponse, store::NamespaceId> Returns a variant containing either an error response or the namespace ID.
+ * If the namespace is missing or empty, an error response is returned. If the namespace is invalid, an error response is returned.
+ * Otherwise, the namespace ID is returned.
+ */
 template<typename RequestT, typename ResponseT>
 std::variant<api::wpResponse, store::NamespaceId> getNamespace(const RequestT& request)
 {
@@ -117,7 +142,7 @@ std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getName
     static_assert(std::is_same_v<decltype(std::declval<RequestT>().asset()), const std::string&>,
                   "[missing asset(void) -> const std::string&] RequestT must have a asset method");
     static_assert(std::is_same_v<decltype(std::declval<RequestT>().has_asset()), bool>,
-                    "[missing has_asset(void) -> bool] RequestT must have a has_asset method");
+                  "[missing has_asset(void) -> bool] RequestT must have a has_asset method");
 
     auto res = getNamespace<RequestT, ResponseT>(request);
     if (std::holds_alternative<api::wpResponse>(res))
@@ -146,6 +171,14 @@ std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getName
     return std::make_pair(std::move(namespaceId), std::move(asset));
 }
 
+/**
+ * @brief Get the parent of a given request.
+ *
+ * @tparam RequestT Type of the request.
+ * @tparam ResponseT Type of the response.
+ * @param request The request to get the parent from.
+ * @return std::variant<api::wpResponse, base::Name> The parent of the request or an error message if the parent is invalid.
+ */
 template<typename RequestT, typename ResponseT>
 std::variant<api::wpResponse, base::Name> getParent(const RequestT& request)
 {
@@ -169,7 +202,6 @@ std::variant<api::wpResponse, base::Name> getParent(const RequestT& request)
     }
 
     return parent;
-
 }
 
 } // namespace
@@ -203,19 +235,19 @@ api::Handler storePost(const std::shared_ptr<policy::IPolicy>& policyManager)
         }
 
         // Add default integration
-        if (!eRequest.forceempty())
-        {
-            for (auto [asset, namespaceId] : defaultAsset)
-            {
-                err = spPolicyAPI->addAsset(eRequest.policy(), namespaceId, asset);
-                if (base::isError(err))
-                {
-                    // TODO: Rollback policy creation
-                    spPolicyAPI->del(eRequest.policy());
-                    return ::api::adapter::genericError<ResponseType>(err.value().message);
-                }
-            }
-        }
+        // if (!eRequest.forceempty())
+        // {
+        //     for (auto [asset, namespaceId] : defaultAsset)
+        //     {
+        //         err = spPolicyAPI->addAsset(eRequest.policy(), namespaceId, asset);
+        //         if (base::isError(err))
+        //         {
+        //             // TODO: Rollback policy creation
+        //             spPolicyAPI->del(eRequest.policy());
+        //             return ::api::adapter::genericError<ResponseType>(err.value().message);
+        //         }
+        //     }
+        // }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -251,7 +283,8 @@ api::Handler storeDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
     };
 }
 
-api::Handler storeGet(const std::shared_ptr<policy::IPolicy>& policyManager) {
+api::Handler storeGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+{
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -297,7 +330,6 @@ api::Handler storeGet(const std::shared_ptr<policy::IPolicy>& policyManager) {
         eResponse.set_status(eEngine::ReturnStatus::OK);
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
-
 }
 
 api::Handler policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManager)
@@ -323,7 +355,6 @@ api::Handler policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManag
             return std::move(std::get<api::wpResponse>(resNs));
         }
         auto& [namespaceId, asset] = std::get<std::pair<store::NamespaceId, base::Name>>(resNs);
-
 
         auto err = spPolicyAPI->addAsset(policy, namespaceId, asset);
         if (base::isError(err))
@@ -374,7 +405,6 @@ api::Handler policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyMan
     };
 }
 
-
 api::Handler policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
@@ -418,7 +448,6 @@ api::Handler policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManage
     };
 }
 
-
 api::Handler policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
@@ -456,7 +485,6 @@ api::Handler policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& poli
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
-
 
 api::Handler policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
@@ -544,7 +572,6 @@ api::Handler policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
     };
 }
 
-
 api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
@@ -582,7 +609,6 @@ api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& p
     };
 }
 
-
 void registerHandlers(const std::shared_ptr<policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
 {
     auto resOk = api->registerHandler("policy.store/post", storePost(policy))
@@ -601,6 +627,5 @@ void registerHandlers(const std::shared_ptr<policy::IPolicy>& policy, std::share
         throw std::runtime_error("Error registering policy handlers");
     }
 }
-
 
 } // namespace api::policy::handlers
