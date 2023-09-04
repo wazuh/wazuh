@@ -117,7 +117,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:findmnt --kernel /tmp -> r:^/tmp\s'
       - "c:systemctl is-enabled tmp.mount -> r:enabled|static|generated"
@@ -203,6 +203,7 @@ checks:
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s'
+      - 'f:/etc/fstab -> r:\s/dev/shm\s'
 
   # 1.1.7 Ensure noexec option set on /dev/shm partition. (Automated)
   - id: 4508
@@ -548,6 +549,7 @@ checks:
     rules:
       - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
       - "c:systemctl is-enabled autofs -> r:disabled"
+      - 'not c:systemctl show "autofs.service" -> r:\s*unitfilestate=enabled'
 
   # 1.1.24 Disable USB Storage. (Automated)
   - id: 4524
@@ -593,8 +595,8 @@ checks:
       - soc_2: ["CC7.1"]
     condition: all
     rules:
-      - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
-      - "not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck=0"
+      - "f:/etc/yum.conf -> r:gpgcheck=1"
+      - 'd:/etc/yum.repos.d/ -> r:\.*.repo -> r:gpgcheck=1'
 
   # 1.2.4 Ensure Red Hat Subscription Manager connection is configured. (Manual) - Not Implemented
 
@@ -717,8 +719,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "f:/usr/lib/systemd/system/rescue.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue"
-      - "f:/usr/lib/systemd/system/emergency.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency"
+      - 'f:/usr/lib/systemd/system/rescue.service -> r:ExecStart=-/bin/sh -c "/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"|ExecStart=-/bin/sh -c "/usr/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"'
+      - 'f:/usr/lib/systemd/system/emergency.service -> r:ExecStart=-/bin/sh -c "/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"|ExecStart=-/bin/sh -c "/usr/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"'
 
   ###############################################
   # 1.5 Additional Process Hardening
@@ -742,7 +744,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
+      - 'f:/etc/security/limits.conf -> r:hard\s*\t*core\s*\t*0$'
+      - 'd:/etc/security/limits.d/ -> r:\. -> r:hard\s*\t*core\s*\t*0$'
+      - 'c:sysctl fs.suid_dumpable -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+      - 'f:/etc/sysctl.conf -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+      - 'd:/etc/sysctl.d/ -> r:\. -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
 
   # 1.5.2 Ensure XD/NX support is enabled. (Automated)
   - id: 4532
@@ -757,8 +763,9 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'c:journalctl -> r:\s*protection:\s*\t*active'
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Automated)
   - id: 4533
@@ -775,8 +782,9 @@ checks:
       - soc_2: ["CC6.8"]
     condition: all
     rules:
-      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
+      - 'd:/etc/sysctl.d -> r:\.* -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
 
   # 1.5.4 Ensure prelink is not installed. (Automated)
   - id: 4534
@@ -898,6 +906,7 @@ checks:
       - 'c:sestatus -> r:^Current mode:\s+enforcing$'
       - 'c:sestatus -> r:^Mode from config file:\s+enforcing$'
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
+      - "c:getenforce -> r:^Enforcing|^Permissive"
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
   - id: 4539
@@ -906,7 +915,7 @@ checks:
     rationale: "Running SELinux in disabled mode the system not only avoids enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
     remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing."
     references:
-      - "https://access.redhat.com/documentation/en-"
+      - "https://access.redhat.com/documentation/en-us/selinux-mode"
     compliance:
       - cis: ["1.6.1.5"]
       - cis_csc_v8: ["3.3"]
@@ -921,6 +930,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
+      - "c:getenforce -> r:^Enforcing"
 
   # 1.6.1.6 Ensure no unconfined services exist. (Automated)
   - id: 4540
@@ -1240,6 +1250,7 @@ checks:
     condition: all
     rules:
       - "c:rpm -q chrony -> r:^chrony-"
+      - "c:rpm -q ntp -> r:ntp-"
 
   # 2.2.1.2 Ensure chrony is configured. (Automated)
   - id: 4555
@@ -1323,6 +1334,7 @@ checks:
     condition: all
     rules:
       - "c:rpm -q avahi -> r:^package avahi is not installed"
+      - "c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed"
 
   # 2.2.4 Ensure CUPS is not installed. (Automated)
   - id: 4559
@@ -1771,6 +1783,9 @@ checks:
     condition: all
     rules:
       - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && !r:ipv6.disable=1'
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6\s*=\s*0'
 
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
 
@@ -1792,10 +1807,16 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: none
     rules:
-      - 'c:grep -Rh -E -s ^\s*net.ipv4.ip_forward /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
-      - 'c:grep -Rh -E -s ^\s*net.ipv6.conf.all.forwarding /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
-      - 'c:sysctl net.ipv4.ip_forward -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
-      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
+      - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.ip_forward\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*1$'
 
   # 3.2.2 Ensure packet redirect sending is disabled. (Automated)
   - id: 4582
@@ -1815,10 +1836,16 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:grep -Rh net.ipv4.conf.all.send_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.send_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
 
   ###############################################
   # 3.3 Network Parameters (Host and Router)
@@ -1842,14 +1869,16 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.all.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0|No such file or directory'
-      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0|No such file or directory'
-      - 'c:grep -Rh net.ipv6.conf.all.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.default.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
 
   # 3.3.2 Ensure ICMP redirects are not accepted. (Automated)
   - id: 4584
@@ -1869,14 +1898,26 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.all.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^\s*net.ipv6.conf.all.accept_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.all.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.all.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.default.accept_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
 
   # 3.3.3 Ensure secure ICMP redirects are not accepted. (Automated)
   - id: 4585
@@ -1896,10 +1937,16 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
-      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.all.secure_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
-      - 'c:grep -Rh net.ipv4.conf.default.secure_redirects /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
 
   # 3.3.4 Ensure suspicious packets are logged. (Automated)
   - id: 4586
@@ -1919,10 +1966,16 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
-      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
-      - 'c:grep -Rh net.ipv4.conf.all.log_martians /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
-      - 'c:grep -Rh net.ipv4.conf.default.log_martians /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
 
   # 3.3.5 Ensure broadcast ICMP requests are ignored. (Automated)
   - id: 4587
@@ -1942,8 +1995,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
-      - 'not c:grep -E -s -Rh ^\s*net.ipv4.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*0'
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated)
   - id: 4588
@@ -1963,8 +2019,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
-      - 'not c:grep -E -s -Rh ^\s*net.ipv4.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*0'
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated)
   - id: 4589
@@ -1984,10 +2043,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*1'
-      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
-      - 'not c:grep -E -s -Rh ^\s*net.ipv4.conf.all.rp_filter /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*0'
-      - 'c:grep -E -s -Rh ^\s*net.ipv4.conf.default.rp_filter /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
 
   # 3.3.8 Ensure TCP SYN Cookies is enabled. (Automated)
   - id: 4590
@@ -2007,8 +2067,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*1'
-      - 'not c:grep -E -r -Rh ^\s*net.ipv4.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*[02]'
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated)
   - id: 4591
@@ -2028,10 +2091,20 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.all.accept_ra /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
-      - 'c:grep -Rh net.ipv6.conf.default.accept_ra /etc/sysctl.conf /etc/sysctl.d/* -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_raa -> r:^net.ipv6.conf.all.accept_raa\s*=\s*1$'
+      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^net.ipv6.conf.default.accept_ra\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv6.conf.all.accept_raa\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_raa\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_raa\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.all.accept_raa\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net.ipv6.conf.default.accept_ra\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_ra\s*=\s*1$'
+      - 'd:->/usr/lib/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_ra\s*=\s*1$'
+      - 'd:->/run/sysctl.d/ -> r:\.*.conf -> r:^net.ipv6.conf.default.accept_ra\s*=\s*1$'
+
+  ###############################################
+  # 3.4 Uncommon Network Protocols
+  ###############################################
 
   # 3.4.1 Ensure DCCP is disabled. (Automated)
   - id: 4592
@@ -2048,8 +2121,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:modprobe -n -v dccp -> r:install\s*\t*/bin/true'
+      - "not c:lsmod -> r:dccp"
 
   # 3.4.2 Ensure SCTP is disabled. (Automated)
   - id: 4593
@@ -2066,8 +2141,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:modprobe -n -v sctp -> r:install\s*\t*/bin/true'
+      - "not c:lsmod -> r:sctp"
 
   ###############################################
   # 3.5 Firewall Configuration
@@ -2135,11 +2212,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
-      - 'c:systemctl status nftables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
-      - 'c:systemctl status nftables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
-      - "not p:nftables"
+      - "c:rpm -q nftables -> r:package nftables is not installed"
+      - 'not c:systemctl status nftables -> r:active \(running\)|\(exited\)'
+      - "c:systemctl is-enabled nftables -> r:masked"
 
   # 3.5.1.4 Ensure firewalld service enabled and running. (Automated)
   - id: 4597
@@ -2312,9 +2389,8 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
-      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr 127.0.0.0/8'
-      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip6 saddr ::1'
+      - 'c:nft list ruleset -> r:iif "lo" accept'
+      - "c:nft list ruleset -> r:ip saddr 127.0.0.0/8 counter packets 0 bytes 0 drop"
 
   # 3.5.2.8 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
@@ -2389,6 +2465,7 @@ checks:
     condition: all
     rules:
       - "c:rpm -q iptables -> r:^iptables-"
+      - "c:rpm -q iptables-services -> r:iptables-services-"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables. (Automated)
   - id: 4608
@@ -2408,8 +2485,6 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl status nftables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
-      - 'c:systemctl status nftables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
       - "c:rpm -q nftables -> r:^package nftables is not installed"
 
   # 3.5.3.1.3 Ensure firewalld is either not installed or masked with iptables. (Automated)
@@ -2430,8 +2505,9 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "p:firewalld"
-      - "c:firewall-cmd --state -> r:running"
+      - "c:rpm -q firewalld -> r:package firewalld is not installed"
+      - 'not c:systemctl status firewalld -> r:active \(running\)'
+      - "c:systemctl is-enabled firewalld -> r:masked"
 
   # 3.5.3.2.1 Ensure iptables loopback traffic is configured. (Automated)
   - id: 4610
@@ -2500,7 +2576,8 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "c:systemctl is-enabled iptables -> r:^enabled"
+      - "c:systemctl is-enabled iptables -> r:enabled"
+      - 'c:systemctl status iptables -> r:active \(running\)|\(exited\)'
 
   ###############################################
   # 3.5.3.3 Configure IPv6 ip6tables
@@ -2600,7 +2677,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - "c:rpm -q audit audit-libs -> r:^audit-"
+      - "c:rpm -q audit -> r:^audit-"
+      - "c:rpm -q audit-libs -> r:^audit-libs-"
 
   # 4.1.1.2 Ensure auditd service is enabled and running. (Automated)
   - id: 4617
@@ -2620,7 +2698,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - "c:systemctl is-enabled auditd -> r:enabled"
+      - "c:systemctl is-enabled auditd -> r:^enabled"
+      - 'c:systemctl status auditd -> r:Active: active \(running\)'
 
   # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 4618
@@ -2977,8 +3056,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d -> .rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope"
-      - "d:/etc/audit/rules.d -> .rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope"
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope'
 
   # 4.1.15 Ensure system administrator command executions (sudo) are collected. (Automated)
   - id: 4633
@@ -3019,16 +3098,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
-      - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
-      - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
-      - "c:ls -l /usr/sbin/modinfo -> r:/bin/kmod"
-      - "c:ls -l /usr/sbin/modprobe -> r:/bin/kmod"
-      - "c:ls -l /usr/sbin/depmod -> r:/bin/kmod"
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/insmod && r:-p x && r:-k modules'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/rmmod && r:-p x && r:-k modules'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/modprobe && r:-p x && r:-k modules'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-a && r:always,exit|exit,always && r:-F arch=b\d\d && r:-S init_module && r:-S delete_module && r:-k modules'
 
   # 4.1.17 Ensure the audit configuration is immutable. (Automated)
   - id: 4635
@@ -3095,7 +3168,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - "c:systemctl is-enabled rsyslog -> r:^enabled"
+      - "c:systemctl is-enabled rsyslog -> r:enabled"
+      - 'c:systemctl status rsyslog -> r:active \(running\)'
 
   # 4.2.1.3 Ensure rsyslog default file permissions configured. (Automated)
   - id: 4638
@@ -3116,8 +3190,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
 
   # 4.2.1.4 Ensure logging is configured. (Manual) - Not Implemented
 
@@ -3277,8 +3351,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:systemctl is-enabled cron -> r:enabled"
-      - 'c:systemctl status cron -> r:Active: active \(running\)'
+      - "c:systemctl is-enabled crond -> r:enabled"
+      - 'c:systemctl status crond -> r:Active: active \(running\) since \w+ \d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d'
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 4646
@@ -3299,7 +3373,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 4647
@@ -3424,8 +3498,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
-      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - "c:stat /etc/cron.deny -> r:No such file or directory$"
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 4653
@@ -3536,53 +3610,11 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.3.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 4658
-    title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following commands to set permissions, ownership, and group on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod u-x,go-rwx {} \\;."
-    compliance:
-      - cis: ["5.3.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+  # 5.3.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
-  # 5.3.3 Ensure permissions on SSH public host key files are configured. (Automated)
-  - id: 4659
-    title: "Ensure permissions on SSH public host key files are configured."
-    description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
-    rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go- wx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;."
-    compliance:
-      - cis: ["5.3.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/\w\w\w\w\w\w-\w\w-\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/\w\w\w\w\w\w-\w\w-\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/\w\w\w\w\w\w-\w\w-\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+  # 5.3.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.3.4 Ensure SSH access is limited. (Automated)
   - id: 4660
