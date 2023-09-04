@@ -20,8 +20,14 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
     try
     {
         // Build the policy and create the pipeline
-        auto env = builder->buildPolicy(m_asset);
-        m_controller = std::make_shared<rxbk::Controller>(rxbk::buildRxPipeline(env));
+        auto policy = builder->buildPolicy(m_asset);
+
+        if (policy.assets().empty())
+        {
+            return base::Error {fmt::format("Policy '{}' has no assets", m_asset)};
+        }
+
+        m_controller = std::make_shared<rxbk::Controller>(rxbk::buildRxPipeline(policy));
     }
     catch (std::exception& e)
     {
