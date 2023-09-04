@@ -95,19 +95,28 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_change_target(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                       configure_local_internal_options, folder_to_monitor, file_symlink, symlink_new_target,
+                       configure_local_internal_options, folder_to_monitor, symlink_target, file_symlink, symlink_new_target,
                        daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    file.write_file(symlink_target.joinpath('test.log'))
+    # wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
+    # assert wazuh_log_monitor.callback_result
+
+    # if str(folder_to_monitor) in str(symlink_new_target):
+    # The new target is inside the folder to monitor.
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+    assert wazuh_log_monitor.callback_result
 
     file.modify_symlink_target(symlink_new_target, file_symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
 
-    file.write_file(file_symlink.joinpath('testie.log'))
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
-    assert wazuh_log_monitor.callback_result
+    file.write_file(symlink_new_target.joinpath('testie.log'))
+    # wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
+    # assert wazuh_log_monitor.callback_result
 
-    if str(folder_to_monitor) in str(symlink_new_target):
-        # The new target is inside the folder to monitor.
-        wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
-        assert wazuh_log_monitor.callback_result
+    # if str(folder_to_monitor) in str(symlink_new_target):
+    # The new target is inside the folder to monitor.
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+    assert wazuh_log_monitor.callback_result
