@@ -185,7 +185,7 @@ void runGetDefaultParent(std::shared_ptr<apiclnt::Client> client,
 {
     using RequestType = ePolicy::DefaultParentGet_Request;
     using ResponseType = ePolicy::DefaultParentGet_Response;
-    const std::string command = "policy.defaultparent/get";
+    const std::string command = "policy.defaultParent/get";
 
     // Prepare request
     RequestType eRequest;
@@ -208,7 +208,7 @@ void runSetDefaultParent(std::shared_ptr<apiclnt::Client> client,
 {
     using RequestType = ePolicy::DefaultParentPost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
-    const std::string command = "policy.defaultparent/post";
+    const std::string command = "policy.defaultParent/post";
 
     // Prepare request
     RequestType eRequest;
@@ -228,7 +228,7 @@ void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
 {
     using RequestType = ePolicy::DefaultParentDelete_Request;
     using ResponseType = eEngine::GenericStatus_Response;
-    const std::string command = "policy.defaultparent/delete";
+    const std::string command = "policy.defaultParent/delete";
 
     // Prepare request
     RequestType eRequest;

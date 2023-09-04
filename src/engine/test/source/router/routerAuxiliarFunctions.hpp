@@ -16,6 +16,7 @@
 #include <registry.hpp>
 
 #include "fakeAssets.hpp"
+#include <builder/mockPolicy.hpp>
 #include <mocks/fakeMetric.hpp>
 
 using namespace store::mocks;
@@ -84,6 +85,10 @@ protected:
         {
             FAIL() << "Policy " << name << " not found";
         }
+        EXPECT_CALL(*m_store, readInternalDoc(base::Name(name)))
+            .Times(times)
+            .WillRepeatedly(::testing::Return(storeReadDocResp(json::Json(aux::assets[name]))));
+
         auto assets = aux::policies[name];
         for (const auto& asset : assets)
         {

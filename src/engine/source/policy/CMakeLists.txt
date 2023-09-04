@@ -19,7 +19,7 @@ target_include_directories(policy
     PRIVATE
     ${SRC_DIR}
 )
-target_link_libraries(policy policy::ipolicy builder::ivalidator)
+target_link_libraries(policy policy::ipolicy builder::ibuilder)
 
 # Tests
 if(ENGINE_BUILD_TEST)
