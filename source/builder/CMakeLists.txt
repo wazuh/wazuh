@@ -23,10 +23,15 @@ find_package(OpenSSL REQUIRED)
 # ###################################################################################################
 # Sources - Includes
 # ###################################################################################################
-add_library(builder_ivalidator INTERFACE)
-target_include_directories(builder_ivalidator INTERFACE ${CMAKE_CURRENT_LIST_DIR}/interface)
-target_link_libraries(builder_ivalidator INTERFACE base json)
-add_library(builder::ivalidator ALIAS builder_ivalidator)
+add_library(builder_ibuilder INTERFACE)
+target_include_directories(builder_ibuilder INTERFACE ${CMAKE_CURRENT_LIST_DIR}/interface)
+target_link_libraries(builder_ibuilder INTERFACE base json)
+add_library(builder::ibuilder ALIAS builder_ibuilder)
+
+add_library(builder_mocks INTERFACE)
+target_include_directories(builder_mocks INTERFACE ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+target_link_libraries(builder_mocks INTERFACE builder::ibuilder)
+add_library(builder::mocks ALIAS builder_mocks)
 
 add_library(builders OBJECT
   asset.cpp
@@ -63,7 +68,7 @@ target_include_directories(builders
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
 target_link_libraries(builders
-  builder::ivalidator
+  builder::ibuilder
   store::istore
   defs
   base
