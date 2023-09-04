@@ -236,12 +236,42 @@ struct PoliciesGet_ResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 PoliciesGet_ResponseDefaultTypeInternal _PoliciesGet_Response_default_instance_;
+PROTOBUF_CONSTEXPR NamespacesGet_Request::NamespacesGet_Request(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+struct NamespacesGet_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR NamespacesGet_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~NamespacesGet_RequestDefaultTypeInternal() {}
+  union {
+    NamespacesGet_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 NamespacesGet_RequestDefaultTypeInternal _NamespacesGet_Request_default_instance_;
+PROTOBUF_CONSTEXPR NamespacesGet_Response::NamespacesGet_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.data_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct NamespacesGet_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR NamespacesGet_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~NamespacesGet_ResponseDefaultTypeInternal() {}
+  union {
+    NamespacesGet_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 NamespacesGet_ResponseDefaultTypeInternal _NamespacesGet_Response_default_instance_;
 }  // namespace policy
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_policy_2eproto[14];
+static ::_pb::Metadata file_level_metadata_policy_2eproto[16];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_policy_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_policy_2eproto = nullptr;
 
@@ -392,6 +422,26 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,
   0,
   ~0u,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Request, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Request, _impl_.policy_),
+  0,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::NamespacesGet_Response, _impl_.data_),
+  ~0u,
+  0,
+  ~0u,
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 7, -1, sizeof(::com::wazuh::api::engine::policy::StorePost_Request)},
@@ -408,6 +458,8 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 118, 126, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
   { 128, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
   { 134, 143, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
+  { 146, 153, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Request)},
+  { 154, 163, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -425,6 +477,8 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::policy::_DefaultParentDelete_Request_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_PoliciesGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_PoliciesGet_Response_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_NamespacesGet_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_NamespacesGet_Response_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_policy_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -463,17 +517,21 @@ const char descriptor_table_protodef_policy_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "\n_namespace\"\025\n\023PoliciesGet_Request\"v\n\024Po"
   "liciesGet_Response\0222\n\006status\030\001 \001(\0162\".com"
   ".wazuh.api.engine.ReturnStatus\022\022\n\005error\030"
-  "\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_errorb\006prot"
-  "o3"
+  "\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_error\"7\n\025Na"
+  "mespacesGet_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001"
+  "B\t\n\007_policy\"x\n\026NamespacesGet_Response\0222\n"
+  "\006status\030\001 \001(\0162\".com.wazuh.api.engine.Ret"
+  "urnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 "
+  "\003(\tB\010\n\006_errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_policy_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_policy_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_policy_2eproto = {
-    false, false, 1442, descriptor_table_protodef_policy_2eproto,
+    false, false, 1621, descriptor_table_protodef_policy_2eproto,
     "policy.proto",
-    &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 14,
+    &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 16,
     schemas, file_default_instances, TableStruct_policy_2eproto::offsets,
     file_level_metadata_policy_2eproto, file_level_enum_descriptors_policy_2eproto,
     file_level_service_descriptors_policy_2eproto,
@@ -4249,6 +4307,509 @@ void PoliciesGet_Response::InternalSwap(PoliciesGet_Response* other) {
       file_level_metadata_policy_2eproto[13]);
 }
 
+// ===================================================================
+
+class NamespacesGet_Request::_Internal {
+ public:
+  using HasBits = decltype(std::declval<NamespacesGet_Request>()._impl_._has_bits_);
+  static void set_has_policy(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+};
+
+NamespacesGet_Request::NamespacesGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.NamespacesGet_Request)
+}
+NamespacesGet_Request::NamespacesGet_Request(const NamespacesGet_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  NamespacesGet_Request* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.policy_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.policy_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_policy()) {
+    _this->_impl_.policy_.Set(from._internal_policy(), 
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.NamespacesGet_Request)
+}
+
+inline void NamespacesGet_Request::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.policy_){}
+  };
+  _impl_.policy_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+NamespacesGet_Request::~NamespacesGet_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void NamespacesGet_Request::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.policy_.Destroy();
+}
+
+void NamespacesGet_Request::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void NamespacesGet_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    _impl_.policy_.ClearNonDefaultToEmpty();
+  }
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* NamespacesGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // optional string policy = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_policy();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.NamespacesGet_Request.policy"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* NamespacesGet_Request::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // optional string policy = 1;
+  if (_internal_has_policy()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_policy().data(), static_cast<int>(this->_internal_policy().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.NamespacesGet_Request.policy");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_policy(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  return target;
+}
+
+size_t NamespacesGet_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // optional string policy = 1;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_policy());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData NamespacesGet_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    NamespacesGet_Request::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*NamespacesGet_Request::GetClassData() const { return &_class_data_; }
+
+
+void NamespacesGet_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<NamespacesGet_Request*>(&to_msg);
+  auto& from = static_cast<const NamespacesGet_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_has_policy()) {
+    _this->_internal_set_policy(from._internal_policy());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void NamespacesGet_Request::CopyFrom(const NamespacesGet_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.NamespacesGet_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool NamespacesGet_Request::IsInitialized() const {
+  return true;
+}
+
+void NamespacesGet_Request::InternalSwap(NamespacesGet_Request* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.policy_, lhs_arena,
+      &other->_impl_.policy_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata NamespacesGet_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[14]);
+}
+
+// ===================================================================
+
+class NamespacesGet_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<NamespacesGet_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+};
+
+NamespacesGet_Response::NamespacesGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.NamespacesGet_Response)
+}
+NamespacesGet_Response::NamespacesGet_Response(const NamespacesGet_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  NamespacesGet_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.data_){from._impl_.data_}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.NamespacesGet_Response)
+}
+
+inline void NamespacesGet_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.data_){arena}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+NamespacesGet_Response::~NamespacesGet_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void NamespacesGet_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.data_.~RepeatedPtrField();
+  _impl_.error_.Destroy();
+}
+
+void NamespacesGet_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void NamespacesGet_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.data_.Clear();
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    _impl_.error_.ClearNonDefaultToEmpty();
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* NamespacesGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.NamespacesGet_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated string data = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_data();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.NamespacesGet_Response.data"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<26>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* NamespacesGet_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.NamespacesGet_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // repeated string data = 3;
+  for (int i = 0, n = this->_internal_data_size(); i < n; i++) {
+    const auto& s = this->_internal_data(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.NamespacesGet_Response.data");
+    target = stream->WriteString(3, s, target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  return target;
+}
+
+size_t NamespacesGet_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated string data = 3;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.data_.size());
+  for (int i = 0, n = _impl_.data_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.data_.Get(i));
+  }
+
+  // optional string error = 2;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error());
+  }
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData NamespacesGet_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    NamespacesGet_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*NamespacesGet_Response::GetClassData() const { return &_class_data_; }
+
+
+void NamespacesGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<NamespacesGet_Response*>(&to_msg);
+  auto& from = static_cast<const NamespacesGet_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.data_.MergeFrom(from._impl_.data_);
+  if (from._internal_has_error()) {
+    _this->_internal_set_error(from._internal_error());
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void NamespacesGet_Response::CopyFrom(const NamespacesGet_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.NamespacesGet_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool NamespacesGet_Response::IsInitialized() const {
+  return true;
+}
+
+void NamespacesGet_Response::InternalSwap(NamespacesGet_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  _impl_.data_.InternalSwap(&other->_impl_.data_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata NamespacesGet_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[15]);
+}
+
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace policy
 }  // namespace engine
@@ -4311,6 +4872,14 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::PoliciesGet_Reques
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::PoliciesGet_Response*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::PoliciesGet_Response >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::PoliciesGet_Response >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::NamespacesGet_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::NamespacesGet_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::NamespacesGet_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::NamespacesGet_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::NamespacesGet_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::NamespacesGet_Response >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 
