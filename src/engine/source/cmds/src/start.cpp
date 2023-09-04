@@ -14,7 +14,6 @@
 #include <api/catalog/handlers.hpp>
 #include <api/config/config.hpp>
 #include <api/graph/handlers.hpp>
-#include <api/integration/handlers.hpp> // TODO Delete
 #include <api/kvdb/handlers.hpp>
 #include <api/metrics/handlers.hpp>
 #include <api/policy/handlers.hpp>

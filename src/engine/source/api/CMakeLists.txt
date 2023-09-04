@@ -9,8 +9,6 @@ add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/catalog/catalog.cpp
     ${ENGINE_API_SOURCE_DIR}/catalog/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/graph/handlers.cpp
-    ${ENGINE_API_SOURCE_DIR}/integration/handlers.cpp
-    ${ENGINE_API_SOURCE_DIR}/integration/integration.cpp
     ${ENGINE_API_SOURCE_DIR}/kvdb/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/metrics/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/policy/handlers.cpp
@@ -27,7 +25,6 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}
     ${ENGINE_API_SOURCE_DIR}/catalog
     ${ENGINE_API_SOURCE_DIR}/graph
-    ${ENGINE_API_SOURCE_DIR}/integration
     ${ENGINE_API_SOURCE_DIR}/kvdb
     ${ENGINE_API_SOURCE_DIR}/metrics
     ${ENGINE_API_SOURCE_DIR}/policy
@@ -37,7 +34,7 @@ target_include_directories(api
 
 target_link_libraries(api
     base
-    builder::ivalidator
+    builder::ibuilder
     eMessages
     fmt
     json
@@ -59,12 +56,6 @@ set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
 set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
 # TODO Add policy handler test
 
-add_executable(api_ctest
-  ${TEST_SRC_COMPONENT_DIR}/test/handlers_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/integration/handlers_test.cpp
-  ${TEST_SRC_COMPONENT_DIR}/integration/integration_test.cpp
-)
-
 add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/catalog/catalog_test.cpp
   ${TEST_SRC_UNIT_DIR}/catalog/handlers_test.cpp
@@ -77,10 +68,6 @@ add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/api_test.cpp
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp
 )
-
-# TODO: Replace test_mocks with the metrics executable when you have the test folder available.
-target_link_libraries(api_ctest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks)
-gtest_discover_tests(api_ctest)
 
 target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks)
 gtest_discover_tests(api_utest)
