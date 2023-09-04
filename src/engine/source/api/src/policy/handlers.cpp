@@ -609,6 +609,41 @@ api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& p
     };
 }
 
+api::Handler policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+{
+
+    return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = ePolicy::NamespacesGet_Request;
+        using ResponseType = ePolicy::NamespacesGet_Response;
+
+        // Validate the eRequest
+        auto res = getTupleRequest<RequestType, ResponseType>(wRequest, wpPolicyAPI);
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+        auto& [eRequest, spPolicyAPI, policy] = std::get<TupleRequest<RequestType>>(res);
+
+
+
+        auto listRes = spPolicyAPI->listNamespaces(policy);
+        if (base::isError(listRes))
+        {
+            return ::api::adapter::genericError<ResponseType>(base::getError(listRes).message);
+        }
+        auto list = base::getResponse(listRes);
+
+        ResponseType eResponse;
+        for (const auto& ns : list)
+        {
+            eResponse.add_data(std::string(ns));
+        }
+
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+    };
+}
 void registerHandlers(const std::shared_ptr<policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
 {
     auto resOk = api->registerHandler("policy.store/post", storePost(policy))
@@ -620,7 +655,8 @@ void registerHandlers(const std::shared_ptr<policy::IPolicy>& policy, std::share
                  && api->registerHandler("policy.defaultParent/get", policyDefaultParentGet(policy))
                  && api->registerHandler("policy.defaultParent/post", policyDefaultParentPost(policy))
                  && api->registerHandler("policy.defaultParent/delete", policyDefaultParentDelete(policy))
-                 && api->registerHandler("policy.policies/get", policiesGet(policy));
+                 && api->registerHandler("policy.policies/get", policiesGet(policy))
+                 && api->registerHandler("policy.namespaces/get", policyNamespacesGet(policy));
 
     if (!resOk)
     {

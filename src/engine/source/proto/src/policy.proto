@@ -158,3 +158,20 @@ message PoliciesGet_Response
     optional string error = 2; // Error message if status is ERROR
     repeated string data = 3;  // List of policies
 }
+
+/***************************************************
+ * Get all policies in the store
+ *
+ * command: policy.namespaces/get
+ **************************************************/
+message NamespacesGet_Request
+{
+    optional string policy = 1; // Policy name
+}
+
+message NamespacesGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated string data = 3;  // List of namespaces
+}

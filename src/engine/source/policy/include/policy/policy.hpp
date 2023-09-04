@@ -101,6 +101,11 @@ public:
      * @copydoc IPolicy::delDefaultParent
      */
     base::OptError delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId) override;
+
+    /**
+     * @copydoc IPolicy::listNamespaces
+     */
+    base::RespOrError<std::list<store::NamespaceId>> listNamespaces(const base::Name& policyName) const override;
 };
 } // namespace api::policy
 
