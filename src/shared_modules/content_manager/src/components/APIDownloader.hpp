@@ -46,12 +46,14 @@ private:
         // full path where the content will be saved
         const std::string fullFilePath {outputFolder + "/" + fileName};
 
-        const auto onError {[](const std::string& message, const long /*statusCode*/)
-                            {
-                                std::cout << "APIDownloader - Could not get response from API because: " << message
-                                          << std::endl;
-                                throw std::runtime_error(message);
-                            }};
+        const auto onError {
+            [&context](const std::string& message, const long /*statusCode*/)
+            {
+                std::cout << "APIDownloader - Could not get response from API because: " << message << std::endl;
+                // Set the status of the stage
+                context.data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
+                throw std::runtime_error(message);
+            }};
 
         // Run the request. Save the file on disk.
         HTTPRequest::instance().download(HttpURL(url), fullFilePath, onError);
@@ -61,12 +63,9 @@ private:
         {
             context.data.at("paths").push_back(fullFilePath);
         }
-        // Update the status of the stage
-        for (auto& element : context.data.at("stageStatus"))
-        {
-            if (element.at("stage").get<std::string>() == "APIDownloader")
-                element.at("status") = "ok";
-        }
+
+        // Set the status of the stage
+        context.data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
 
         std::cout << "APIDownloader - Download done successfully" << std::endl;
     }
@@ -80,9 +79,6 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-        // Pre-set the status of the stage to fail
-        context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "fail"})"_json);
-
         download(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);

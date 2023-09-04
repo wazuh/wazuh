@@ -19,17 +19,17 @@ TEST_F(SkipStepTest, CheckBehaviour)
 {
     auto updaterContext {std::make_shared<UpdaterContext>()};
 
-    EXPECT_TRUE(updaterContext->data.empty());
+    EXPECT_FALSE(updaterContext->data.empty());
 
     SkipStep skipStep;
     skipStep.registerPreAction(
         [](std::shared_ptr<UpdaterContext> context)
         {
-            std::string data {"example data"};
-            context->data = std::vector<char>(data.begin(), data.end());
+            // delete the data content
+            context->data.clear();
         });
 
     EXPECT_NO_THROW(skipStep.handleRequest(updaterContext));
 
-    EXPECT_FALSE(updaterContext->data.empty());
+    EXPECT_TRUE(updaterContext->data.empty());
 }
