@@ -244,7 +244,6 @@ class StorePost_Request final :
 
   enum : int {
     kPolicyFieldNumber = 1,
-    kForceEmptyFieldNumber = 2,
   };
   // optional string policy = 1;
   bool has_policy() const;
@@ -264,15 +263,6 @@ class StorePost_Request final :
   std::string* _internal_mutable_policy();
   public:
 
-  // bool forceEmpty = 2;
-  void clear_forceempty();
-  bool forceempty() const;
-  void set_forceempty(bool value);
-  private:
-  bool _internal_forceempty() const;
-  void _internal_set_forceempty(bool value);
-  public:
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.policy.StorePost_Request)
  private:
   class _Internal;
@@ -284,7 +274,6 @@ class StorePost_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
-    bool forceempty_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_policy_2eproto;
@@ -2722,26 +2711,6 @@ inline void StorePost_Request::set_allocated_policy(std::string* policy) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.StorePost_Request.policy)
-}
-
-// bool forceEmpty = 2;
-inline void StorePost_Request::clear_forceempty() {
-  _impl_.forceempty_ = false;
-}
-inline bool StorePost_Request::_internal_forceempty() const {
-  return _impl_.forceempty_;
-}
-inline bool StorePost_Request::forceempty() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.StorePost_Request.forceEmpty)
-  return _internal_forceempty();
-}
-inline void StorePost_Request::_internal_set_forceempty(bool value) {
-  
-  _impl_.forceempty_ = value;
-}
-inline void StorePost_Request::set_forceempty(bool value) {
-  _internal_set_forceempty(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.StorePost_Request.forceEmpty)
 }
 
 // -------------------------------------------------------------------
