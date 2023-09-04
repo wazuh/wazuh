@@ -196,4 +196,15 @@ base::OptError Policy::delDefaultParent(const base::Name& policyName, const stor
     return upsert(policy);
 }
 
+base::RespOrError<std::list<store::NamespaceId>> Policy::listNamespaces(const base::Name& policyName) const {
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    return policy.listNs();
+}
+
 } // namespace api::policy
