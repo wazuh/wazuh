@@ -9,6 +9,7 @@
         value: TEST_DIR
         attributes:
         - FIM_MODE
+        - follow_symbolic_link: 'yes'
   - section: sca
     elements:
     - enabled:
