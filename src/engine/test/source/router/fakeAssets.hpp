@@ -218,6 +218,11 @@ auto constexpr POLICY_C3 = R"e({
     ]
 })e";
 
+auto constexpr POLICY_EMPTY = R"e({
+    "name": "policy/empty/0",
+    "assets": []
+})e";
+
 static std::map<std::string, const char*> assets = {{"decoder/deco_1/0", DEC_1},
                                                     {"decoder/deco_2/0", DEC_2},
                                                     {"decoder/deco_3/0", DEC_3},
@@ -235,6 +240,7 @@ static std::map<std::string, const char*> assets = {{"decoder/deco_1/0", DEC_1},
                                                     {"policy/pol_A1/0", POLICY_A1},
                                                     {"policy/pol_B2/0", POLICY_B2},
                                                     {"policy/pol_C3/0", POLICY_C3},
+                                                    {"policy/empty/0", POLICY_EMPTY},
                                                     {"internal/router_table/0", INTERNAL_ROUTE_TABLE}};
 
 static std::map<std::string, std::vector<std::string>> policies = {
@@ -243,7 +249,8 @@ static std::map<std::string, std::vector<std::string>> policies = {
     {"policy/pol_3/0", {"decoder/deco_1/0", "decoder/deco_2/0", "decoder/deco_3/0"}},
     {"policy/pol_A1/0", {"decoder/deco_A1/0"}},
     {"policy/pol_B2/0", {"decoder/deco_B2/0"}},
-    {"policy/pol_C3/0", {"decoder/deco_C3/0"}}};
+    {"policy/pol_C3/0", {"decoder/deco_C3/0"}},
+    {"policy/empty/0", {}}};
 
 static std::map<std::string, std::pair<std::vector<std::string>, std::vector<std::string>>> tables = {
     {"internal/router_table/0",
