@@ -2,10 +2,32 @@
 
 #include "policyRep.hpp"
 
+namespace {
+    base::OptError vaidateNsName(const base::Name& policyName) {
+        // Check if policyName is valid
+        if (policyName.parts().size() != 3)
+        {
+            return base::Error {fmt::format("Invalid policy name: {}, expected 3 parts", policyName.fullName())};
+        }
+        else if (policyName.parts()[0] != "policy")
+        {
+            return base::Error {
+                fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
+        }
+
+        return std::nullopt;
+    }
+}
+
 namespace api::policy
 {
 base::RespOrError<Policy::PolicyRep> Policy::read(const base::Name& policyName) const
 {
+    // Check if policyName is valid
+    if (auto error = vaidateNsName(policyName); base::isError(error))
+    {
+        return *error;
+    }
     auto resp = m_store->readInternalDoc(policyName.fullName());
     if (base::isError(resp))
     {
@@ -17,6 +39,12 @@ base::RespOrError<Policy::PolicyRep> Policy::read(const base::Name& policyName) 
 
 base::OptError Policy::upsert(PolicyRep policy)
 {
+
+    if (auto error = vaidateNsName(policy.name()); base::isError(error))
+    {
+        return error;
+    }
+
     auto doc = policy.toDoc();
     auto error = m_validator->validatePolicy(doc);
     if (base::isError(error))
@@ -31,14 +59,9 @@ base::OptError Policy::upsert(PolicyRep policy)
 base::OptError Policy::create(const base::Name& policyName)
 {
     // Check if policyName is valid
-    if (policyName.parts().size() != 3)
+    if (auto error = vaidateNsName(policyName); base::isError(error))
     {
-        return base::Error {fmt::format("Invalid policy name: {}, expected 3 parts", policyName.fullName())};
-    }
-    else if (policyName.parts()[0] != "policy")
-    {
-        return base::Error {
-            fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
+        return error;
     }
 
     if (m_store->existsInternalDoc(policyName))
@@ -51,6 +74,11 @@ base::OptError Policy::create(const base::Name& policyName)
 
 base::OptError Policy::del(const base::Name& policyName)
 {
+    // Check if policyName is valid
+    if (auto error = vaidateNsName(policyName); base::isError(error))
+    {
+        return error;
+    }
     return m_store->deleteInternalDoc(policyName.fullName());
 }
 

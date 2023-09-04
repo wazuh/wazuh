@@ -8,6 +8,14 @@
 namespace builder::mocks
 {
 
+/******************************************************************************/
+// Helper functions to mock method responses
+/******************************************************************************/
+inline base::OptError validateError()
+{
+    return base::Error {"Mocked validator error"};
+}
+
 class MockValidator : public IValidator
 {
 public:
