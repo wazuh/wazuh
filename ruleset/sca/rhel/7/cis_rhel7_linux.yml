@@ -3613,7 +3613,6 @@ checks:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.3.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
-
   # 5.3.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.3.4 Ensure SSH access is limited. (Automated)
@@ -3635,10 +3634,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC6.3"]
     condition: any
     rules:
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowGroups'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*DenyUsers'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*DenyGroups'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
   # 5.3.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 4661
@@ -3661,8 +3658,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
-      - "f:/etc/ssh/sshd_config -> r:loglevel"
+      - 'c:sshd -T -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
+      - 'f:/etc/ssh/sshd_config ->!r:^# && r:loglevel\s*(VERBOSE|INFO)'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 4662
@@ -3702,7 +3699,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.3.8 Ensure SSH IgnoreRhosts is enabled. (Automated)
@@ -3723,7 +3720,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:ignorerhosts\s*\t*yes'
+      - 'c:sshd -T -> r:\s*ignorerhosts\s*yes'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
 
   # 5.3.9 Ensure SSH HostbasedAuthentication is disabled. (Automated)
@@ -3743,7 +3740,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:HostbasedAuthentication\s*\t*no'
+      - 'c:sshd -T -> r:^\s*HostbasedAuthentication\s*\t*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.3.10 Ensure SSH root login is disabled. (Automated)
@@ -3763,7 +3760,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:PermitRootLogin\s*\t*no'
+      - 'c:sshd -T -> !r:^# && r:PermitRootLogin\s*\t*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
 
   # 5.3.11 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
@@ -3783,7 +3780,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
+      - 'c:sshd -T -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.3.12 Ensure SSH PermitUserEnvironment is disabled. (Automated)
@@ -3804,7 +3801,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*\t*no'
+      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s*\t*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.3.13 Ensure only strong Ciphers are used. (Automated)
@@ -3830,9 +3827,10 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition: none
+    condition: all
     rules:
-      - "c:sshd -T -> r:^ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
+      - "c: sshd -T -> r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "not f:/etc/ssh/sshd_config -> r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
   # 5.3.14 Ensure only strong MAC algorithms are used. (Automated)
   - id: 4670
@@ -3852,9 +3850,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: none
+    condition: all
     rules:
-      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "c: sshd -T -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "not f:/etc/ssh/sshd_config -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.3.15 Ensure only strong Key Exchange algorithms are used. (Automated)
   - id: 4671
@@ -3872,9 +3871,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: none
+    condition: all
     rules:
-      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - "c: sshd -T -C user=root -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - "not f:/etc/ssh/sshd_config -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.3.16 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 4672
@@ -3897,8 +3897,10 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0 && n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare == 0'
+      - 'c:sshd -T -> n:^\s*clientaliveinterval\s*\t*(\d+) compare => 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
+      - 'c:sshd -T -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*\t*(\d+) compare => 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 4673
@@ -3918,8 +3920,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
 
   # 5.3.18 Ensure SSH warning banner is configured. (Automated)
   - id: 4674
@@ -3939,7 +3941,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/\w+'
+      - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue.net'
 
   # 5.3.19 Ensure SSH PAM is enabled. (Automated)
   - id: 4675
@@ -3960,8 +3962,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
+      - 'c:sshd -T -> r:^\s*usepam\s*yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*UsePAM\s+no'
 
   # 5.3.20 Ensure SSH AllowTcpForwarding is disabled. (Automated)
   - id: 4676
@@ -3984,7 +3986,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
+      - 'c:sshd -T -> r:^\s*allowtcpforwarding\s*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.3.21 Ensure SSH MaxStartups is configured. (Automated)
@@ -4005,9 +4007,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
-      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
-      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
@@ -4030,7 +4032,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
+      - 'c:sshd -T -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 10'
 
   ###############################################
