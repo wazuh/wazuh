@@ -10,7 +10,7 @@
 #include "active_responses.h"
 #include "dll_load_notify.h"
 
-#define ROUTE_PATH "%%WINDIR%%\\system32\\route.exe"
+#define ROUTE_PATH "\\system32\\route.exe"
 
 int main (int argc, char **argv) {
 #ifdef WIN32
@@ -123,6 +123,11 @@ int main (int argc, char **argv) {
     }
 #else
     char log_msg[OS_MAXSTR];
+    char route_full_path[OS_MAXSTR -1];
+    char win_dir[OS_MAXSTR -1];
+
+    get_win_dir(win_dir, sizeof(win_dir) - 1);
+    snprintf(route_full_path, OS_MAXSTR -1, "%s%s", win_dir, ROUTE_PATH);
 
     if (action == ADD_COMMAND) {
         const char *regex = ".*Default Gateway.*[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*";
@@ -147,12 +152,12 @@ int main (int argc, char **argv) {
         remove(tmp_file);
 
         if (gateway[0]) {
-            char *exec_args_add[8] = { ROUTE_PATH, "-p", "ADD", (char *)srcip, "MASK", "255.255.255.255", gateway, NULL };
+            char *exec_args_add[8] = { route_full_path, "-p", "ADD", (char *)srcip, "MASK", "255.255.255.255", gateway, NULL };
 
-            wfd_t *wfd = wpopenv(ROUTE_PATH, exec_args_add, W_BIND_STDERR);
+            wfd_t *wfd = wpopenv(route_full_path, exec_args_add, W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Unable to run %s, action: 'ADD'", ROUTE_PATH);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run %s, action: 'ADD'", route_full_path);
                 write_debug_file(argv[0], log_msg);
             }
             else {
@@ -164,12 +169,12 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
     } else {
-        char *exec_args_delete[4] = { ROUTE_PATH, "DELETE", (char *)srcip, NULL };
+        char *exec_args_delete[4] = { route_full_path, "DELETE", (char *)srcip, NULL };
 
-        wfd_t *wfd = wpopenv(ROUTE_PATH, exec_args_delete, W_BIND_STDERR);
+        wfd_t *wfd = wpopenv(route_full_path, exec_args_delete, W_BIND_STDERR);
         if (!wfd) {
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR -1, "Unable to run %s, action: 'DELETE'", ROUTE_PATH);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to run %s, action: 'DELETE'", route_full_path);
             write_debug_file(argv[0], log_msg);
         }
         else {

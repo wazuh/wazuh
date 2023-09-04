@@ -17,6 +17,7 @@
 #include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../headers/version_op.h"
 
 /* setup/teardowns */
@@ -1165,7 +1166,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1173,7 +1178,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
+    expect_string(__wrap_get_binary_path, command, "system_profiler");
+    will_return(__wrap_get_binary_path, "/path/to/system_profiler");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/system_profiler SPSoftwareDataType");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1196,7 +1205,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    expect_string(__wrap_popen, command, "sw_vers -productVersion");
+    expect_string(__wrap_get_binary_path, command, "sw_vers");
+    will_return(__wrap_get_binary_path, "/path/to/sw_vers");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -productVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1207,7 +1220,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -buildVersion
-    expect_string(__wrap_popen, command, "sw_vers -buildVersion");
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -buildVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1218,7 +1231,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // uname -r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1310,7 +1327,11 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1318,7 +1339,11 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
+    expect_string(__wrap_get_binary_path, command, "system_profiler");
+    will_return(__wrap_get_binary_path, "/path/to/system_profiler");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/system_profiler SPSoftwareDataType");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1335,7 +1360,11 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    expect_string(__wrap_popen, command, "sw_vers -productVersion");
+    expect_string(__wrap_get_binary_path, command, "sw_vers");
+    will_return(__wrap_get_binary_path, "/path/to/sw_vers");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -productVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1346,7 +1375,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -buildVersion
-    expect_string(__wrap_popen, command, "sw_vers -buildVersion");
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -buildVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1357,7 +1386,11 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // uname -r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1449,7 +1482,11 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1749,7 +1786,11 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1757,7 +1798,11 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     will_return(__wrap_fgets, "HP-UX\n");
 
     // uname - r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1849,7 +1894,11 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1857,7 +1906,11 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     will_return(__wrap_fgets, "OpenBSD\n");
 
     // uname - r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1949,7 +2002,11 @@ void test_get_unix_version_zscaler(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1957,7 +2014,11 @@ void test_get_unix_version_zscaler(void **state)
     will_return(__wrap_fgets, "ZscalerOS\n");
 
     // uname - r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -2046,7 +2107,11 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -2054,7 +2119,11 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     will_return(__wrap_fgets, "AIX\n");
 
     // oslevel
-    expect_string(__wrap_popen, command, "oslevel");
+    expect_string(__wrap_get_binary_path, command, "oslevel");
+    will_return(__wrap_get_binary_path, "/path/to/oslevel");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/oslevel");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 

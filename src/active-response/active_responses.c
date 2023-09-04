@@ -24,6 +24,12 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
  * */
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
+
+#ifdef WIN32
+/* Check if dir exists */
+static int direxist(char *dir);
+#endif
+
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -644,5 +650,28 @@ int get_ip_version(const char *ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
+#else
 
+/* Check if dir exists */
+static int direxist(char *dir) {
+    DIR *dp;
+
+    /* Open dir */
+    dp = opendir(dir);
+    if (dp == NULL) {
+        return (0);
+    }
+
+    closedir(dp);
+    return (1);
+}
+
+/* Get Windows directory */
+void get_win_dir(char *file, int f_size) {
+    ExpandEnvironmentStrings("%WINDIR%", file, f_size);
+
+    if (!direxist(file)) {
+        strncpy(file, "C:\\WINDOWS", f_size);
+    }
+}
 #endif

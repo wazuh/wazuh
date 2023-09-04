@@ -13,8 +13,8 @@
 #include "dll_load_notify.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
-#define NETSH     "%%WINDIR%%\\system32\\netsh.exe"
-#define REG       "C:\\Windows\\System32\\reg.exe"
+#define NETSH     "\\system32\\netsh.exe"
+#define REG       "\\system32\\reg.exe"
 
 #define PATH_FIREWALL_PROFILES_REG_DEFAULT "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\"
 #define FIREWALL_DATA_INITIALIZE { false, false, FIREWALL_DOMAIN }
@@ -111,12 +111,17 @@ int main (int argc, char **argv) {
     char description[OS_MAXSTR -1];
     char remoteip[OS_MAXSTR -1];
     wfd_t *wfd = NULL;
+    char netsh_path[OS_MAXSTR -1];
+    char win_dir[OS_MAXSTR -1];
+
+    get_win_dir(win_dir, sizeof(win_dir) - 1);
 
     snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
     snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
+    snprintf(netsh_path, OS_MAXSTR -1, "%s%s", win_dir, NETSH);
 
-    char *exec_args_add[11] = { NETSH, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
-    char *exec_args_delete[8] = { NETSH, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
+    char *exec_args_add[11] = { netsh_path, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
+    char *exec_args_delete[8] = { netsh_path, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
 
     if ((action == ADD_COMMAND)) {
         if (getAllProfilesStatus(argv[0]) == OS_INVALID) {
@@ -126,7 +131,7 @@ int main (int argc, char **argv) {
     }
 
     if (1 == checkVista()) {
-        wfd = wpopenv(NETSH, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
+        wfd = wpopenv(netsh_path, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
         if (!wfd) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: '%s', rule: '%s'", (action == ADD_COMMAND) ? "ADD" : "DELETE", RULE_NAME);
@@ -138,14 +143,14 @@ int main (int argc, char **argv) {
         snprintf(description, OS_MAXSTR -1, "description=\"%s\"", RULE_NAME);
         snprintf(remoteip, OS_MAXSTR -1, "srcaddr=\"%s\"", srcip);
 
-        char *exec_args_delete[12] = { NETSH, "ipsec", "static", "delete", "filter", "filterlist=\"wazuh_filter\"", "srcmask=\"255.255.255.255\"", remoteip, "dstaddr=Me", "protocol=\"any\"", "mirrored=yes", NULL };
-        char *exec_args_filter[12] = { NETSH, "ipsec", "static", "add", "filter", "filterlist=\"wazuh_filter\"", "srcmask=\"255.255.255.255\"", remoteip, "dstaddr=Me", "protocol=\"any\"", "mirrored=yes", NULL };
-        char *exec_args_faction[8] = { NETSH, "ipsec", "static", "add", "filteraction", "name=\"wazuh_action\"", "action=block", NULL };
-        char *exec_args_policy[9]  = { NETSH, "ipsec", "static", "add", "policy", "name=\"wazuh_policy\"", "assign=yes", description, NULL };
-        char *exec_args_rule[10]   = { NETSH, "ipsec", "static", "add", "rule", "name=wazuh_rule", "policy=wazuh_policy", "filterlist=wazuh_filter", "filteraction=wazuh_action", NULL };
+        char *exec_args_delete[12] = { netsh_path, "ipsec", "static", "delete", "filter", "filterlist=\"wazuh_filter\"", "srcmask=\"255.255.255.255\"", remoteip, "dstaddr=Me", "protocol=\"any\"", "mirrored=yes", NULL };
+        char *exec_args_filter[12] = { netsh_path, "ipsec", "static", "add", "filter", "filterlist=\"wazuh_filter\"", "srcmask=\"255.255.255.255\"", remoteip, "dstaddr=Me", "protocol=\"any\"", "mirrored=yes", NULL };
+        char *exec_args_faction[8] = { netsh_path, "ipsec", "static", "add", "filteraction", "name=\"wazuh_action\"", "action=block", NULL };
+        char *exec_args_policy[9]  = { netsh_path, "ipsec", "static", "add", "policy", "name=\"wazuh_policy\"", "assign=yes", description, NULL };
+        char *exec_args_rule[10]   = { netsh_path, "ipsec", "static", "add", "rule", "name=wazuh_rule", "policy=wazuh_policy", "filterlist=wazuh_filter", "filteraction=wazuh_action", NULL };
 
         if (action == ADD_COMMAND) {
-            wfd = wpopenv(NETSH, exec_args_filter, W_BIND_STDERR);
+            wfd = wpopenv(netsh_path, exec_args_filter, W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_filter'");
@@ -154,7 +159,7 @@ int main (int argc, char **argv) {
                 wpclose(wfd);
             }
 
-            wfd = wpopenv(NETSH, exec_args_faction, W_BIND_STDERR);
+            wfd = wpopenv(netsh_path, exec_args_faction, W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_action'");
@@ -163,7 +168,7 @@ int main (int argc, char **argv) {
                 wpclose(wfd);
             }
 
-            wfd = wpopenv(NETSH, exec_args_policy, W_BIND_STDERR);
+            wfd = wpopenv(netsh_path, exec_args_policy, W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_policy'");
@@ -172,7 +177,7 @@ int main (int argc, char **argv) {
                 wpclose(wfd);
             }
 
-            wfd = wpopenv(NETSH, exec_args_rule, W_BIND_STDERR);
+            wfd = wpopenv(netsh_path, exec_args_rule, W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_rule'");
@@ -181,7 +186,7 @@ int main (int argc, char **argv) {
                 wpclose(wfd);
             }
         } else {
-            wfd = wpopenv(NETSH, exec_args_delete, W_BIND_STDERR);
+            wfd = wpopenv(netsh_path, exec_args_delete, W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'DELETE', rule: 'wazuh_rule'");
@@ -201,7 +206,6 @@ int main (int argc, char **argv) {
 
 static int getAllProfilesStatus(const char *argv) {
     char pathFirewallProfilesReg[256] = {0};
-    char *exec_args_show_profile[6] = { REG, "query", pathFirewallProfilesReg, "/v", "EnableFirewall", NULL };
     char *firewallProfilesReg[FIREWALL_PROFILES_MAX] = { "DomainProfile", "StandardProfile", "PublicProfile" };
     bool globalfirewallStatus = true;
     char aux_buf[OS_MAXSTR] = {0}, aux_buf2[OS_MAXSTR] = {0}, msgLengths[FIREWALL_PROFILES_MAX] = {0,0,0};
@@ -211,6 +215,13 @@ static int getAllProfilesStatus(const char *argv) {
     const char *firewallProfileStr[FIREWALL_PROFILES_MAX + 1] = { "FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC", "FIREWALL_DEFAULT" };
     firewallData_t firewallData = FIREWALL_DATA_INITIALIZE;
     wfd_t *wfd = NULL;
+    char reg_path[OS_MAXSTR -1];
+    char win_dir[OS_MAXSTR -1];
+
+    get_win_dir(win_dir, sizeof(win_dir) - 1);
+    snprintf(reg_path, OS_MAXSTR -1, "%s%s", win_dir, REG);
+
+    char *exec_args_show_profile[6] = { reg_path, "query", pathFirewallProfilesReg, "/v", "EnableFirewall", NULL };
     memset(aux_buf2, '\0', OS_MAXSTR);
     memset(log_msg, '\0', OS_MAXSTR);
     strcpy(log_msg, "{\"message\":\"Active response may not have an effect\",\"firewall\":{");
@@ -220,11 +231,11 @@ static int getAllProfilesStatus(const char *argv) {
         strcpy(pathFirewallProfilesReg, PATH_FIREWALL_PROFILES_REG_DEFAULT);
         strcat(pathFirewallProfilesReg, firewallProfilesReg[i]);
 
-        wfd = wpopenv(REG, exec_args_show_profile, W_BIND_STDOUT);
+        wfd = wpopenv(reg_path, exec_args_show_profile, W_BIND_STDOUT);
 
         if (!wfd) {
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s' : %s", REG, strerror(errno));
+            snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s' : %s", reg_path, strerror(errno));
             write_debug_file(argv, log_msg);
             return OS_INVALID;
         } else {

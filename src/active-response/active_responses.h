@@ -155,4 +155,13 @@ void unlock(const char *lock_path, const char *log_path);
  * */
 int get_ip_version(const char *ip);
 
+#else
+
+/**
+ * Get Windows main directory
+ * @param file A pointer to a buffer that receives the result.
+ * @param f_size Maximum number of characters that can be stored in the buffer.
+ * */
+void get_win_dir(char *file, int f_size);
+
 #endif

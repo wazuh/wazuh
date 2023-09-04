@@ -496,11 +496,6 @@ os_info *get_unix_version()
         regex_t regexCompiled;
         regmatch_t match[4];
         int match_size;
-        char cmd_path[PATH_MAX + 1] = {0};
-
-        if (get_binary_path("uname", cmd_path) < 0) {
-            mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-        }
 
         // CentOS
         if (version_release = fopen("/etc/centos-release","r"), version_release){
@@ -694,215 +689,223 @@ os_info *get_unix_version()
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        } else if (cmd_output = popen(cmd_path, "r"), cmd_output) {
-            char full_cmd[OS_MAXSTR] = {0};
+        } else {
+            char cmd_path[PATH_MAX + 1] = {0};
 
-            if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
-                mdebug1("Cannot read from command output (uname).");
-            // MacOSX
-            } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
-                info->os_platform = strdup("darwin");
+            if (get_binary_path("uname", cmd_path) < 0) {
+                mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+            }
 
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("system_profiler", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
+            if (cmd_output = popen(cmd_path, "r"), cmd_output) {
+                char full_cmd[OS_MAXSTR] = {0};
 
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "SPSoftwareDataType");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
-                        char *key = strtok_r(buff, ":", &save_ptr);
-                        if (key) {
-                            const char *expected_key = "System Version";
-                            char *trimmed_key = w_strtrim(key);
-                            if (NULL != trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
-                                char *value = strtok_r(NULL, " ", &save_ptr);
-                                if (value) {
-                                    w_strdup(value, info->os_name);
-                                } else {
-                                    mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                if (fgets(buff,sizeof(buff) - 1, cmd_output) == NULL) {
+                    mdebug1("Cannot read from command output (uname).");
+                // MacOSX
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0) {
+                    info->os_platform = strdup("darwin");
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("system_profiler", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "SPSoftwareDataType");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
+                            char *key = strtok_r(buff, ":", &save_ptr);
+                            if (key) {
+                                const char *expected_key = "System Version";
+                                char *trimmed_key = w_strtrim(key);
+                                if (NULL != trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
+                                    char *value = strtok_r(NULL, " ", &save_ptr);
+                                    if (value) {
+                                        w_strdup(value, info->os_name);
+                                    } else {
+                                        mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                                    }
+                                }
+                                if(info->os_name) {
+                                    break;
                                 }
                             }
-                            if(info->os_name) {
-                                break;
+                        }
+                        if (NULL == info->os_name) {
+                            mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
+                        }
+                        pclose(cmd_output_ver);
+                    }
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("sw_vers", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    memset(full_cmd, '\0', OS_MAXSTR);
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-productVersion");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -productVersion).");
+                        } else {
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_version);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+
+                    memset(full_cmd, '\0', OS_MAXSTR);
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-buildVersion");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (sw_vers -buildVersion).");
+                        } else {
+                            w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_build);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("uname", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    memset(full_cmd, '\0', OS_MAXSTR);
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (uname -r).");
+                        } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            char *kern = NULL;
+                            os_malloc(match_size + 1, kern);
+                            snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                            w_strdup(OSX_ReleaseName(atoi(kern)), info->os_codename);
+                            free(kern);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"SunOS") == 0){ // Sun OS
+                    info->os_name = strdup("SunOS");
+                    info->os_platform = strdup("sunos");
+
+                    if (os_release = fopen("/etc/release", "r"), os_release) {
+                    if(fgets(buff, sizeof(buff) - 1, os_release) == NULL){
+                        merror("Cannot read from /etc/release.");
+                        fclose(os_release);
+                        pclose(cmd_output);
+                        goto free_os_info;
+                    } else {
+                        char *base;
+                        char tag[]  = "Solaris";
+                        char *found = strstr(buff, tag);
+                        if (found) {
+                            for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
+                            for (base = found; *found != '\0' && *found != ' '; found++);
+                            *found = '\0';
+                            os_strdup(base, info->os_version);
+                            fclose(os_release);
+                        } else {
+                            merror("Cannot get the Solaris version.");
+                            fclose(os_release);
+                            pclose(cmd_output);
+                            goto free_os_info;
+                        }
+                    }
+                    } else {
+                        pclose(cmd_output);
+                    goto free_os_info;
+                    }
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
+                    info->os_name = strdup("HP-UX");
+                    info->os_platform = strdup("hp-ux");
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("uname", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    memset(full_cmd, '\0', OS_MAXSTR);
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (uname -r).");
+                        } else if (w_regexec("B\\.([0-9][0-9]*\\.[0-9]*)", buff, 2, match)){
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_malloc(match_size + 1, info->os_version);
+                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
+                        strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
+                        strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD
+                    info->os_name = strdup("BSD");
+                    info->os_platform = strdup("bsd");
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("uname", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    memset(full_cmd, '\0', OS_MAXSTR);
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (uname -r).");
+                        } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_malloc(match_size + 1, info->os_version);
+                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"ZscalerOS") == 0) {
+                    info->os_name = strdup("BSD");
+                    info->os_platform = strdup("bsd");
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("uname", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    memset(full_cmd, '\0', OS_MAXSTR);
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
+                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                            mdebug1("Cannot read from command output (uname -r).");
+                        } else if (w_regexec("([0-9]+-\\S*).*", buff, 2, match)){
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_malloc(match_size + 1, info->os_version);
+                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        }
+                        pclose(cmd_output_ver);
+                    }
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
+                    os_strdup("AIX", info->os_name);
+                    os_strdup("aix", info->os_platform);
+
+                    memset(cmd_path, '\0', PATH_MAX);
+                    if (get_binary_path("oslevel", cmd_path) < 0) {
+                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                    }
+
+                    if (cmd_output_ver = popen(cmd_path, "r"), cmd_output_ver) {
+                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
+                            int buff_len = strlen(buff);
+                            if (buff_len > 0) {
+                                buff[buff_len - 1] = '\0';
+                                os_strdup(buff, info->os_version);
                             }
+                        } else {
+                            mdebug1("Cannot read from command output (oslevel).");
                         }
+                        pclose(cmd_output_ver);
                     }
-                    if (NULL == info->os_name) {
-                        mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
-                    }
-                    pclose(cmd_output_ver);
+                } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
+                    info->os_name = strdup("Linux");
+                    info->os_platform = strdup("linux");
                 }
-
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("sw_vers", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
-
-                memset(full_cmd, '\0', OS_MAXSTR);
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-productVersion");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productVersion).");
-                    } else {
-                        w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_version);
-                    }
-                    pclose(cmd_output_ver);
-                }
-
-                memset(full_cmd, '\0', OS_MAXSTR);
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-buildVersion");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -buildVersion).");
-                    } else {
-                        w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_build);
-                    }
-                    pclose(cmd_output_ver);
-                }
-
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("uname", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
-
-                memset(full_cmd, '\0', OS_MAXSTR);
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        char *kern = NULL;
-                        os_malloc(match_size + 1, kern);
-                        snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                        w_strdup(OSX_ReleaseName(atoi(kern)), info->os_codename);
-                        free(kern);
-                    }
-                    pclose(cmd_output_ver);
-                }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"SunOS") == 0){ // Sun OS
-                info->os_name = strdup("SunOS");
-                info->os_platform = strdup("sunos");
-
-                if (os_release = fopen("/etc/release", "r"), os_release) {
-                  if(fgets(buff, sizeof(buff) - 1, os_release) == NULL){
-                      merror("Cannot read from /etc/release.");
-                      fclose(os_release);
-                      pclose(cmd_output);
-                      goto free_os_info;
-                  } else {
-                      char *base;
-                      char tag[]  = "Solaris";
-                      char *found = strstr(buff, tag);
-                      if (found) {
-                          for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
-                          for (base = found; *found != '\0' && *found != ' '; found++);
-                          *found = '\0';
-                          os_strdup(base, info->os_version);
-                          fclose(os_release);
-                      } else {
-                          merror("Cannot get the Solaris version.");
-                          fclose(os_release);
-                          pclose(cmd_output);
-                          goto free_os_info;
-                      }
-                  }
-                } else {
-                    pclose(cmd_output);
-                  goto free_os_info;
-                }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
-                info->os_name = strdup("HP-UX");
-                info->os_platform = strdup("hp-ux");
-
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("uname", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
-
-                memset(full_cmd, '\0', OS_MAXSTR);
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("B\\.([0-9][0-9]*\\.[0-9]*)", buff, 2, match)){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_malloc(match_size + 1, info->os_version);
-                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                    }
-                    pclose(cmd_output_ver);
-                }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
-                       strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
-                       strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD
-                info->os_name = strdup("BSD");
-                info->os_platform = strdup("bsd");
-
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("uname", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
-
-                memset(full_cmd, '\0', OS_MAXSTR);
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_malloc(match_size + 1, info->os_version);
-                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                    }
-                    pclose(cmd_output_ver);
-                }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"ZscalerOS") == 0) {
-                info->os_name = strdup("BSD");
-                info->os_platform = strdup("bsd");
-
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("uname", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
-
-                memset(full_cmd, '\0', OS_MAXSTR);
-                snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
-                if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("([0-9]+-\\S*).*", buff, 2, match)){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_malloc(match_size + 1, info->os_version);
-                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                    }
-                    pclose(cmd_output_ver);
-                }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
-                os_strdup("AIX", info->os_name);
-                os_strdup("aix", info->os_platform);
-
-                memset(cmd_path, '\0', PATH_MAX);
-                if (get_binary_path("oslevel", cmd_path) < 0) {
-                    mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                }
-
-                if (cmd_output_ver = popen(cmd_path, "r"), cmd_output_ver) {
-                    if (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
-                        int buff_len = strlen(buff);
-                        if (buff_len > 0) {
-                            buff[buff_len - 1] = '\0';
-                            os_strdup(buff, info->os_version);
-                        }
-                    } else {
-                        mdebug1("Cannot read from command output (oslevel).");
-                    }
-                    pclose(cmd_output_ver);
-                }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
-                info->os_name = strdup("Linux");
-                info->os_platform = strdup("linux");
+                pclose(cmd_output);
             }
-            pclose(cmd_output);
         }
     }
 
