@@ -33,6 +33,8 @@ from wazuh.rbac.utils import clear_cache
 logger = logging.getLogger("wazuh-api")
 
 # Max reserved ID value
+WAZUH_DEFAULT_ID = 1
+WAZUH_WUI_DEFAULT_ID = 2
 MAX_ID_RESERVED = 99
 CLOUD_RESERVED_RANGE = 89
 
@@ -2826,6 +2828,9 @@ class DatabaseManager:
         old_users = get_data(User, User.id)
         with AuthenticationManager(self.sessions[target]) as auth_manager:
             for user in old_users:
+                if user.id is WAZUH_DEFAULT_ID or user.id is WAZUH_WUI_DEFAULT_ID:
+                    auth_manager.update_user(user_id=user.id, password=user.password)
+                    continue
                 status = auth_manager.add_user(username=user.username,
                                                password=user.password,
                                                created_at=user.created_at,
@@ -2843,6 +2848,9 @@ class DatabaseManager:
                                           user_id=user.id,
                                           hashed_password=True,
                                           check_default=False)
+
+        if from_id is WAZUH_DEFAULT_ID and to_id is WAZUH_WUI_DEFAULT_ID:
+            return
 
         old_roles = get_data(Roles, Roles.id)
         with RolesManager(self.sessions[target]) as role_manager:
@@ -3084,6 +3092,8 @@ def check_database_integrity():
                 db_manager.insert_default_resources(DB_FILE_TMP)
 
                 # Migrate data from old database
+                db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=WAZUH_DEFAULT_ID,
+                                        to_id=WAZUH_WUI_DEFAULT_ID)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=CLOUD_RESERVED_RANGE,
                                         to_id=MAX_ID_RESERVED)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=MAX_ID_RESERVED + 1)
