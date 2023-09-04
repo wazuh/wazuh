@@ -95,21 +95,21 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_disabled(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                       configure_local_internal_options, folder_to_monitor, symlink_target, file_symlink,
+                       configure_local_internal_options, folder_to_monitor, symlink_target, symlink,
                        symlink_new_target, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     file.truncate_file(WAZUH_LOG_PATH)
-    file.write_file(file_symlink.joinpath('testie.log'))
+    file.write_file(symlink.joinpath('testie.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert not wazuh_log_monitor.callback_result
 
     file.truncate_file(WAZUH_LOG_PATH)
-    file.modify_symlink_target(symlink_new_target, file_symlink)
+    file.modify_symlink_target(symlink_new_target, symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
 
     # The new target is inside the folder to monitor.
-    file.write_file(file_symlink.joinpath('SS.log'))
+    file.write_file(symlink.joinpath('SS.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert not wazuh_log_monitor.callback_result

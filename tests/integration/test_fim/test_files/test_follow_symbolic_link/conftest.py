@@ -20,7 +20,7 @@ def symlink_target(test_metadata: dict) -> str:
 
 
 @pytest.fixture
-def file_symlink(symlink_target: Path, test_metadata: dict) -> str:
+def symlink(symlink_target: Path, test_metadata: dict) -> str:
     symlink_path = test_metadata.get('symlink')
 
     Path(symlink_path).symlink_to(symlink_target)
