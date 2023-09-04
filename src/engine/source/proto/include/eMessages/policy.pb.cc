@@ -29,8 +29,7 @@ PROTOBUF_CONSTEXPR StorePost_Request::StorePost_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.forceempty_)*/false} {}
+  , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
 struct StorePost_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR StorePost_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -254,9 +253,7 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::StorePost_Request, _impl_.policy_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::StorePost_Request, _impl_.forceempty_),
   0,
-  ~0u,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::StoreDelete_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::StoreDelete_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -397,20 +394,20 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 8, -1, sizeof(::com::wazuh::api::engine::policy::StorePost_Request)},
-  { 10, 17, -1, sizeof(::com::wazuh::api::engine::policy::StoreDelete_Request)},
-  { 18, 26, -1, sizeof(::com::wazuh::api::engine::policy::StoreGet_Request)},
-  { 28, 37, -1, sizeof(::com::wazuh::api::engine::policy::StoreGet_Response)},
-  { 40, 49, -1, sizeof(::com::wazuh::api::engine::policy::AssetPost_Request)},
-  { 52, 61, -1, sizeof(::com::wazuh::api::engine::policy::AssetDelete_Request)},
-  { 64, 72, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Request)},
-  { 74, 83, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Response)},
-  { 86, 94, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Request)},
-  { 96, 105, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Response)},
-  { 108, 117, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentPost_Request)},
-  { 120, 128, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
-  { 130, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
-  { 136, 145, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
+  { 0, 7, -1, sizeof(::com::wazuh::api::engine::policy::StorePost_Request)},
+  { 8, 15, -1, sizeof(::com::wazuh::api::engine::policy::StoreDelete_Request)},
+  { 16, 24, -1, sizeof(::com::wazuh::api::engine::policy::StoreGet_Request)},
+  { 26, 35, -1, sizeof(::com::wazuh::api::engine::policy::StoreGet_Response)},
+  { 38, 47, -1, sizeof(::com::wazuh::api::engine::policy::AssetPost_Request)},
+  { 50, 59, -1, sizeof(::com::wazuh::api::engine::policy::AssetDelete_Request)},
+  { 62, 70, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Request)},
+  { 72, 81, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Response)},
+  { 84, 92, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Request)},
+  { 94, 103, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Response)},
+  { 106, 115, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentPost_Request)},
+  { 118, 126, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
+  { 128, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
+  { 134, 143, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -432,49 +429,49 @@ static const ::_pb::Message* const file_default_instances[] = {
 
 const char descriptor_table_protodef_policy_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\014policy.proto\022\033com.wazuh.api.engine.pol"
-  "icy\032\014engine.proto\"G\n\021StorePost_Request\022\023"
-  "\n\006policy\030\001 \001(\tH\000\210\001\001\022\022\n\nforceEmpty\030\002 \001(\010B"
-  "\t\n\007_policy\"5\n\023StoreDelete_Request\022\023\n\006pol"
-  "icy\030\001 \001(\tH\000\210\001\001B\t\n\007_policy\"F\n\020StoreGet_Re"
-  "quest\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\022\n\nnamespaces"
-  "\030\002 \003(\tB\t\n\007_policy\"\201\001\n\021StoreGet_Response\022"
-  "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
-  "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\021\n\004data\030"
-  "\003 \001(\tH\001\210\001\001B\010\n\006_errorB\007\n\005_data\"w\n\021AssetPo"
-  "st_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\022\n\005asset"
-  "\030\002 \001(\tH\001\210\001\001\022\026\n\tnamespace\030\003 \001(\tH\002\210\001\001B\t\n\007_"
-  "policyB\010\n\006_assetB\014\n\n_namespace\"y\n\023AssetD"
-  "elete_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\022\n\005as"
-  "set\030\002 \001(\tH\001\210\001\001\022\026\n\tnamespace\030\003 \001(\tH\002\210\001\001B\t"
-  "\n\007_policyB\010\n\006_assetB\014\n\n_namespace\"X\n\020Ass"
-  "etGet_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tna"
-  "mespace\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namesp"
-  "ace\"s\n\021AssetGet_Response\0222\n\006status\030\001 \001(\016"
-  "2\".com.wazuh.api.engine.ReturnStatus\022\022\n\005"
-  "error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_error"
-  "\"`\n\030DefaultParentGet_Request\022\023\n\006policy\030\001"
-  " \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001B\t\n\007_po"
-  "licyB\014\n\n_namespace\"\211\001\n\031DefaultParentGet_"
-  "Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.api"
-  ".engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001"
-  "\022\021\n\004data\030\003 \001(\tH\001\210\001\001B\010\n\006_errorB\007\n\005_data\"\201"
-  "\001\n\031DefaultParentPost_Request\022\023\n\006policy\030\001"
-  " \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001\022\023\n\006par"
-  "ent\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\014\n\n_namespaceB"
-  "\t\n\007_parent\"c\n\033DefaultParentDelete_Reques"
-  "t\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001("
-  "\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"\025\n\023Polic"
-  "iesGet_Request\"v\n\024PoliciesGet_Response\0222"
-  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
-  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003"
-  " \003(\tB\010\n\006_errorb\006proto3"
+  "icy\032\014engine.proto\"3\n\021StorePost_Request\022\023"
+  "\n\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_policy\"5\n\023StoreD"
+  "elete_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_p"
+  "olicy\"F\n\020StoreGet_Request\022\023\n\006policy\030\001 \001("
+  "\tH\000\210\001\001\022\022\n\nnamespaces\030\002 \003(\tB\t\n\007_policy\"\201\001"
+  "\n\021StoreGet_Response\0222\n\006status\030\001 \001(\0162\".co"
+  "m.wazuh.api.engine.ReturnStatus\022\022\n\005error"
+  "\030\002 \001(\tH\000\210\001\001\022\021\n\004data\030\003 \001(\tH\001\210\001\001B\010\n\006_error"
+  "B\007\n\005_data\"w\n\021AssetPost_Request\022\023\n\006policy"
+  "\030\001 \001(\tH\000\210\001\001\022\022\n\005asset\030\002 \001(\tH\001\210\001\001\022\026\n\tnames"
+  "pace\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\010\n\006_assetB\014\n\n"
+  "_namespace\"y\n\023AssetDelete_Request\022\023\n\006pol"
+  "icy\030\001 \001(\tH\000\210\001\001\022\022\n\005asset\030\002 \001(\tH\001\210\001\001\022\026\n\tna"
+  "mespace\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\010\n\006_assetB"
+  "\014\n\n_namespace\"X\n\020AssetGet_Request\022\023\n\006pol"
+  "icy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001B\t"
+  "\n\007_policyB\014\n\n_namespace\"s\n\021AssetGet_Resp"
+  "onse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.eng"
+  "ine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004"
+  "data\030\003 \003(\tB\010\n\006_error\"`\n\030DefaultParentGet"
+  "_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespa"
+  "ce\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"\211"
+  "\001\n\031DefaultParentGet_Response\0222\n\006status\030\001"
+  " \001(\0162\".com.wazuh.api.engine.ReturnStatus"
+  "\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\021\n\004data\030\003 \001(\tH\001\210\001\001B"
+  "\010\n\006_errorB\007\n\005_data\"\201\001\n\031DefaultParentPost"
+  "_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespa"
+  "ce\030\002 \001(\tH\001\210\001\001\022\023\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_p"
+  "olicyB\014\n\n_namespaceB\t\n\007_parent\"c\n\033Defaul"
+  "tParentDelete_Request\022\023\n\006policy\030\001 \001(\tH\000\210"
+  "\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n"
+  "\n_namespace\"\025\n\023PoliciesGet_Request\"v\n\024Po"
+  "liciesGet_Response\0222\n\006status\030\001 \001(\0162\".com"
+  ".wazuh.api.engine.ReturnStatus\022\022\n\005error\030"
+  "\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_errorb\006prot"
+  "o3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_policy_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_policy_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_policy_2eproto = {
-    false, false, 1462, descriptor_table_protodef_policy_2eproto,
+    false, false, 1442, descriptor_table_protodef_policy_2eproto,
     "policy.proto",
     &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 14,
     schemas, file_default_instances, TableStruct_policy_2eproto::offsets,
@@ -515,8 +512,7 @@ StorePost_Request::StorePost_Request(const StorePost_Request& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.policy_){}
-    , decltype(_impl_.forceempty_){}};
+    , decltype(_impl_.policy_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.policy_.InitDefault();
@@ -527,7 +523,6 @@ StorePost_Request::StorePost_Request(const StorePost_Request& from)
     _this->_impl_.policy_.Set(from._internal_policy(), 
       _this->GetArenaForAllocation());
   }
-  _this->_impl_.forceempty_ = from._impl_.forceempty_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.StorePost_Request)
 }
 
@@ -539,7 +534,6 @@ inline void StorePost_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.policy_){}
-    , decltype(_impl_.forceempty_){false}
   };
   _impl_.policy_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -575,7 +569,6 @@ void StorePost_Request::Clear() {
   if (cached_has_bits & 0x00000001u) {
     _impl_.policy_.ClearNonDefaultToEmpty();
   }
-  _impl_.forceempty_ = false;
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -594,14 +587,6 @@ const char* StorePost_Request::_InternalParse(const char* ptr, ::_pbi::ParseCont
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.StorePost_Request.policy"));
-        } else
-          goto handle_unusual;
-        continue;
-      // bool forceEmpty = 2;
-      case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
-          _impl_.forceempty_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -645,12 +630,6 @@ uint8_t* StorePost_Request::_InternalSerialize(
         1, this->_internal_policy(), target);
   }
 
-  // bool forceEmpty = 2;
-  if (this->_internal_forceempty() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_forceempty(), target);
-  }
-
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -675,11 +654,6 @@ size_t StorePost_Request::ByteSizeLong() const {
         this->_internal_policy());
   }
 
-  // bool forceEmpty = 2;
-  if (this->_internal_forceempty() != 0) {
-    total_size += 1 + 1;
-  }
-
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -700,9 +674,6 @@ void StorePost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, cons
 
   if (from._internal_has_policy()) {
     _this->_internal_set_policy(from._internal_policy());
-  }
-  if (from._internal_forceempty() != 0) {
-    _this->_internal_set_forceempty(from._internal_forceempty());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -728,7 +699,6 @@ void StorePost_Request::InternalSwap(StorePost_Request* other) {
       &_impl_.policy_, lhs_arena,
       &other->_impl_.policy_, rhs_arena
   );
-  swap(_impl_.forceempty_, other->_impl_.forceempty_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata StorePost_Request::GetMetadata() const {

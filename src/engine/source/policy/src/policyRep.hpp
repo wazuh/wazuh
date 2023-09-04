@@ -65,8 +65,14 @@ public:
      */
     inline void updateHash()
     {
-        // TODO: Check if is necessary include the default parents in the hash
-        m_hash = std::hash<std::string> {}(m_name.fullName()) ^ std::hash<std::string> {}(nssToStr());
+        // Hash the policy nss and default parents
+        std::hash<std::string> hasher;
+        std::string str = nssToStr();
+        for (const auto& [nsId, parent] : m_defaultParents)
+        {
+            str += nsId.name().fullName() + ":" + parent.fullName() + ";";
+        }
+        m_hash = hasher(str);
     }
 
     /**
@@ -338,20 +344,20 @@ public:
             return it->second;
         }
 
-        return base::Error {"Namespace not found"};
+        return base::Error {"Namespace not found or no default parent"};
     }
 
     base::OptError setDefaultParent(const store::NamespaceId& namespaceId, const base::Name& parent)
     {
+        // If not exists, add it, and if exists, return error
         auto it = m_defaultParents.find(namespaceId);
         if (it != m_defaultParents.end())
         {
-
-            it->second = parent;
-            return base::noError();
+            return base::Error {"Namespace already has a default parent"};
         }
 
-        return base::Error {"Namespace not found"};
+        m_defaultParents[namespaceId] = parent;
+        return base::noError();
     }
 
     base::OptError delDefaultParent(const store::NamespaceId& namespaceId)
@@ -363,7 +369,7 @@ public:
             return base::noError();
         }
 
-        return base::Error {"Namespace not found"};
+        return base::Error {"Namespace not found  or no default parent"};
     }
 };
 
