@@ -56,7 +56,7 @@ from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.agentd.patterns import AGENTD_UPDATING_STATE_FILE, AGENTD_SENDING_KEEP_ALIVE, AGENTD_RECEIVED_ACK, AGENTD_RECEIVED_ACK 
+from wazuh_testing.modules.agentd.patterns import * 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
@@ -92,15 +92,16 @@ def start_remoted_server(test_metadata) -> None:
     """"Start RemotedSimulator if test case need it"""
     if 'remoted' in test_metadata and test_metadata['remoted']:
         remoted_server = RemotedSimulator()
+        remoted_server.start()
         return remoted_server
 
-def add_custom_key():
+def add_custom_key() -> None:
     """Set test client.keys file"""
     with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
         client_keys.write("100 ubuntu-agent any TopSecret")
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state(test_configuration, test_metadata, remove_state_file, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration,remove_state_file, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check that the statistics file 'wazuh-agentd.state' is created automatically
                  and verify that the content of its fields is correct.
@@ -130,11 +131,13 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, conf
         - r'pending'
         - r'connected'
     '''
-    # Start RemotedSimulator if test case need it
-    remoted_server = start_remoted_server(test_metadata) 
+    import pdb; pdb.set_trace()
 
     # Stop service
     control_service('stop')
+
+    # Start RemotedSimulator if test case need it
+    remoted_server = start_remoted_server(test_metadata) 
 
     # Add dummy key in order to communicate with RemotedSimulator
     add_custom_key()
@@ -142,11 +145,9 @@ def test_agentd_state(test_configuration, test_metadata, remove_state_file, conf
     # Start service
     control_service('start')
 
-    import pdb; pdb.set_trace()
-
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
-        check_fields(expected_output)
+        check_fields(expected_output, remoted_server)
     
 def parse_state_file():
     """Parse state file
@@ -184,7 +185,7 @@ def remoted_get_state(remoted_server):
     return response['data']
 
 
-def check_fields(expected_output):
+def check_fields(expected_output, remoted_server):
     """Check every field agains expected data
 
     Args:
@@ -192,17 +193,15 @@ def check_fields(expected_output):
     """
     checks = {
         'last_ack': {'handler': check_last_ack, 'precondition': [wait_ack]},
-        'last_keepalive': {'handler': check_last_keepalive,
-                           'precondition': [wait_keepalive]},
-        'msg_count': {'handler': check_last_keepalive,
-                      'precondition': [wait_keepalive]},
+        'last_keepalive': {'handler': check_last_keepalive, 'precondition': [wait_keepalive]},
+        'msg_count': {'handler': check_last_keepalive, 'precondition': [wait_keepalive]},
         'status': {'handler': check_status, 'precondition': []}
-        }
+    }
 
     if expected_output['type'] == 'file':
         get_state = parse_state_file
     else:
-        get_state = remoted_get_state
+        get_state = remoted_get_state(remoted_server)
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
@@ -230,14 +229,9 @@ def check_last_ack(expected_value=None, get_state_callback=None):
         if expected_value == '':
             return expected_value == current_value
 
-    received_msg = "Received message: '#!-agent ack '"
-
-    with open(WAZUH_LOG_PATH) as log:
-        for line in log:
-            if current_value.replace('-', '/') in line and received_msg in line:
-                return True
-    return False
-
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
+    return(wazuh_log_monitor.callback_result != None)
 
 def check_last_keepalive(expected_value=None, get_state_callback=None):
     """Check `field` status
@@ -256,14 +250,12 @@ def check_last_keepalive(expected_value=None, get_state_callback=None):
         if expected_value == '':
             return expected_value == current_value
 
-    keep_alive_msg = 'Sending keep alive'
-    agent_notification_msg = 'Sending agent notification'
-
-    with open(WAZUH_LOG_PATH, 'r') as log:
-        for line in log:
-            if current_value.replace('-', '/') in line and (keep_alive_msg in line or agent_notification_msg in line):
-                return True
-    return False
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE))
+    
+    wazuh_log_monitor_ = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor_.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION))
+    return(wazuh_log_monitor.callback_result != None or wazuh_log_monitor_.callback_result != None)
 
 
 def check_msg_count(expected_value=None, get_state_callback=None):
@@ -283,7 +275,9 @@ def check_msg_count(expected_value=None, get_state_callback=None):
         if expected_value == '':
             return expected_value == current_value
 
-    sent_messages = 0
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION))
+    return(wazuh_log_monitor.callback_result != None or wazuh_log_monitor.callback_result != None)
 
     with open(WAZUH_LOG_PATH, 'r') as log:
         for line in log:
@@ -313,7 +307,7 @@ def check_status(expected_value=None, get_state_callback=None):
     return expected_value == current_value
 
 
-def wait_connect(update_position=False):
+def wait_connect():
     """
         Watch ossec.log until received "Connected to the server" message is found
     """
