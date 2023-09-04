@@ -2,7 +2,7 @@
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -32,7 +32,7 @@
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -47,7 +47,7 @@
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -62,7 +62,7 @@
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -77,7 +77,7 @@
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
