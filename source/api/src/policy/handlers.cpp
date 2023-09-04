@@ -15,11 +15,11 @@ using assetConfig = std::pair<base::Name, store::NamespaceId>;
 
 // TODO through cli
 const std::vector<assetConfig> defaultAsset {{base::Name("integration/wazuh-core/0"), store::NamespaceId("system")},
-                                             {base::Name("integrations/syslog/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integrations/system/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integrations/windows/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integrations/apache-http/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integrations/suricata/0"), store::NamespaceId("wazuh")}};
+                                             {base::Name("integration/syslog/0"), store::NamespaceId("wazuh")},
+                                             {base::Name("integration/system/0"), store::NamespaceId("wazuh")},
+                                             {base::Name("integration/windows/0"), store::NamespaceId("wazuh")},
+                                             {base::Name("integration/apache-http/0"), store::NamespaceId("wazuh")},
+                                             {base::Name("integration/suricata/0"), store::NamespaceId("wazuh")}};
 
 // TODO Improve message errores (from store)
 
