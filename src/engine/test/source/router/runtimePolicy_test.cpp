@@ -12,6 +12,7 @@
 #include <testsCommon.hpp>
 
 constexpr auto POLICY_1 = "policy/pol_1/0";
+constexpr auto EMPTY_POLICY = "policy/empty/0";
 constexpr auto INVALID_POLICY = "policy/invalid/0";
 
 using namespace store::mocks;
@@ -45,6 +46,14 @@ TEST_F(RuntimePolicyTest, build_fail_policy)
     auto policy = std::make_shared<router::RuntimePolicy>(INVALID_POLICY);
     EXPECT_CALL(*m_store, readInternalDoc(base::Name(INVALID_POLICY)))
         .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+    auto error = policy->build(m_builder);
+    ASSERT_TRUE(error.has_value());
+}
+
+TEST_F(RuntimePolicyTest, build_fail_empty_policy)
+{
+    auto policy = std::make_shared<router::RuntimePolicy>(EMPTY_POLICY);
+    expectBuildPolicy(EMPTY_POLICY);
     auto error = policy->build(m_builder);
     ASSERT_TRUE(error.has_value());
 }
