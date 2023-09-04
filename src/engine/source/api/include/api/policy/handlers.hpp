@@ -24,6 +24,9 @@ api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& p
 /* Policy manager handlers */
 api::Handler policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
 
+/* Policy namespaces handlers */
+api::Handler policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+
 /**
  * @brief Register all policy commands
  *
