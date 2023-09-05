@@ -132,6 +132,13 @@ Policy::addAsset(const base::Name& policyName, const store::NamespaceId& namespa
     }
 
     auto policy = base::getResponse<PolicyRep>(resp);
+
+    auto assetNamespace = m_store->getNamespace(assetName);
+    if ( assetNamespace.has_value() && assetNamespace.value() != namespaceId)
+    {
+        return base::Error {fmt::format("Asset {} does not belong to namespace {}", assetName, namespaceId.name())};
+    }
+
     auto error = policy.addAsset(namespaceId, assetName);
     if (base::isError(error))
     {
