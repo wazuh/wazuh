@@ -1,6 +1,5 @@
 name: integration/windows/0
 decoders:
-- decoder/windows-json/0
 - decoder/windows-security/0
 - decoder/windows-powershell-operational/0
 - decoder/windows-event/0
