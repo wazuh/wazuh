@@ -16,6 +16,11 @@ inline base::OptError validateError()
     return base::Error {"Mocked validator error"};
 }
 
+inline base::OptError validateOk()
+{
+    return std::nullopt;
+}
+
 class MockValidator : public IValidator
 {
 public:

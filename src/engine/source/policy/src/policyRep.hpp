@@ -211,17 +211,20 @@ public:
         std::map<store::NamespaceId, base::Name> defaultParents;
 
         // Assets
-        auto assets = policyDoc.getArray(ASSETS_PATH).value();
-        for (const auto& asset : assets)
+        auto assets = policyDoc.getArray(ASSETS_PATH);
+        if (assets)
         {
-            auto assetName = base::Name {asset.getString().value()};
-            auto ns = store->getNamespace(assetName);
-            if (!ns)
+            for (const auto& asset : assets.value())
             {
-                return base::Error {fmt::format("Asset not found: {}", assetName.fullName())};
-            }
+                auto assetName = base::Name {asset.getString().value()};
+                auto ns = store->getNamespace(assetName);
+                if (!ns)
+                {
+                    return base::Error {fmt::format("Asset not found: {}", assetName.fullName())};
+                }
 
-            nss.emplace(ns.value(), assetName);
+                nss.emplace(ns.value(), assetName);
+            }
         }
 
         // Default parents
