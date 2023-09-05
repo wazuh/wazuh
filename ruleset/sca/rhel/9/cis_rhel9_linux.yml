@@ -463,6 +463,7 @@ checks:
       - cis: ["1.1.6.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - iso_27001-2013: ["A.9.1.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
@@ -510,6 +511,7 @@ checks:
       - cis: ["1.1.6.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - iso_27001-2013: ["A.9.1.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
@@ -540,6 +542,7 @@ checks:
       - cis: ["1.1.7.1"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - iso_27001-2013: ["A.9.1.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
@@ -747,6 +750,7 @@ checks:
       - cis: ["1.3.1"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - nist_sp_800-53: ["AU-2"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
       - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
@@ -1003,6 +1007,7 @@ checks:
       - cis: ["1.6.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - iso_27001-2013: ["A.9.1.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
@@ -1270,7 +1275,6 @@ checks:
       - cis: ["1.9"]
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4"]
-      - iso_27001-2013: ["A.13.1.3"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_v3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
@@ -2432,8 +2436,8 @@ checks:
 
   # 4.2.1.4 Ensure rsyslog default file permissions configured (Automated)
   - id: 28095
-    title: "Ensure rsyslog default file permissions configured."
-    description: "Rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
+    title: "Ensure rsyslog default file permissions are configured."
+    description: "RSyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has its own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog."
@@ -2442,6 +2446,7 @@ checks:
       - cis_csc_v8: ["3.3", "8.2"]
       - cis_csc_v7: ["5.1", "6.2", "6.3"]
       - nist_sp_800-53: ["AC-3", "AU-2", "AU-4", "AU-12", "MP-2", "SI-5"]
+      - iso_27001-2013: ["A.12.4.1", "A.14.2.5", "A.8.1.3"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2", "AU.L2-3.3.1"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)", "164.312(b)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3", "10.2", "10.3"]
@@ -2487,7 +2492,7 @@ checks:
   - id: 28097
     title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
-    rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
+    rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside its operational boundary."
     remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. New format: module(load="imtcp") input(type="imtcp" port="514") -OR- Old format: $ModLoad imtcp $InputTCPServerRun - Restart the service: # systemctl restart rsyslog.'
     compliance:
       - cis: ["4.2.1.7"]
@@ -3596,7 +3601,7 @@ checks:
     title: "Ensure password expiration is 365 days or less."
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
-    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: chage --maxdays 365 <user>."
+    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>."
     compliance:
       - cis: ["5.6.1.1"]
       - cis_csc_v8: ["4.1"]
@@ -3618,7 +3623,7 @@ checks:
     title: "Ensure minimum days between password changes is configured."
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
-    remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs: PASS_MIN_DAYS 1 and modify user parameters for all users with a password set to match: chage --mindays 1 <user>."
+    remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs: PASS_MIN_DAYS 1 and modify user parameters for all users with a password set to match: # chage --mindays 1 <user>."
     compliance:
       - cis: ["5.6.1.2"]
       - cis_csc_v8: ["5.2"]
@@ -3641,7 +3646,7 @@ checks:
     title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
-    remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7 and modify user parameters for all users with a password set to match: chage --warndays 7 <user>."
+    remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7 and modify user parameters for all users with a password set to match: # chage --warndays 7 <user>."
     compliance:
       - cis: ["5.6.1.3"]
       - cis_csc_v8: ["4.1"]
@@ -3665,7 +3670,7 @@ checks:
     title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
-    remediation: "Run the following command to set the default password inactivity period to 30 days: useradd -D -f 30 and modify user parameters for all users with a password set to match: chage --inactive 30 <user>."
+    remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 and modify user parameters for all users with a password set to match: chage --inactive 30 <user>."
     compliance:
       - cis: ["5.6.1.4"]
       - cis_csc_v8: ["5.2"]
@@ -3921,6 +3926,7 @@ checks:
       - cis: ["6.1.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["16.4"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
@@ -3948,7 +3954,7 @@ checks:
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated)
   - id: 28157
     title: "Ensure accounts in /etc/passwd use shadowed passwords."
-    description: "Local accounts can uses shadowed passwords. With shadowed passwords, the passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
+    description: "Local accounts can use shadowed passwords. With shadowed passwords, the passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
     remediation: "Run the following command to set accounts to use shadowed passwords: # sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwd Investigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off."
     compliance:
@@ -3974,7 +3980,7 @@ checks:
     title: "Ensure /etc/shadow password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
-    remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: passwd -l <username>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+    remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
       - cis: ["6.2.2"]
       - cis_csc_v8: ["5.2"]
