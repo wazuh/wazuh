@@ -310,7 +310,7 @@ public:
 
             if (hasAssets)
             {
-                ss << "assets: " << std::endl;
+                ss << "assets:" << std::endl;
                 ss << assetSS.str();
             }
         }
@@ -331,7 +331,7 @@ public:
 
             if (hasDefParents)
             {
-                ss << "default_parents: " << std::endl;
+                ss << "default_parents:" << std::endl;
                 ss << defParentSS.str();
             }
         }

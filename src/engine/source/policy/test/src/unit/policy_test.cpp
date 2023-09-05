@@ -24,11 +24,45 @@ const store::Doc POLICY_DOC {R"({
     }
 })"};
 
+const std::string POLICY_YML_ALL {R"(policy: policy/name/version
+hash: 4112711263806056918
+assets:
+  - decoder/system/0
+  - decoder/user/0
+  - decoder/wazuh/0
+default_parents:
+  - user: decoder/system/0
+)"};
+
+const std::string POLICY_YML_SYS {R"(policy: policy/name/version
+hash: 4112711263806056918
+assets:
+  - decoder/system/0
+)"};
+
+const std::string POLICY_YML_USR {R"(policy: policy/name/version
+hash: 4112711263806056918
+assets:
+  - decoder/user/0
+default_parents:
+  - user: decoder/system/0
+)"};
+
+const std::string POLICY_YML_WZH {R"(policy: policy/name/version
+hash: 4112711263806056918
+assets:
+  - decoder/wazuh/0
+)"};
+
+const std::string POLICY_YML_OTHER {R"(policy: policy/name/version
+hash: 4112711263806056918
+)"};
+
 void expectNsPolicy(std::shared_ptr<MockStore> store)
 {
-    EXPECT_CALL(*store, getNamespace(testing::_))
-        .Times(3)
-        .WillRepeatedly(testing::Invoke([](const base::Name& name) { return name.parts()[1]; }));
+    EXPECT_CALL(*store, getNamespace({"decoder/system/0"})).WillRepeatedly(testing::Return(storeGetNamespaceResp("system")));
+    EXPECT_CALL(*store, getNamespace({"decoder/wazuh/0"})).WillRepeatedly(testing::Return(storeGetNamespaceResp("wazuh")));
+    EXPECT_CALL(*store, getNamespace({"decoder/user/0"})).WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
 }
 
 template<typename T>
@@ -297,7 +331,7 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                           expectNsPolicy(store);
-                                          return POLICY_DOC.str();
+                                          return POLICY_YML_ALL;
                                       })),
                              // Success with namespaces
                              GetT(POLICY_NAME,
@@ -308,7 +342,7 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                           expectNsPolicy(store);
-                                          return POLICY_DOC.str();
+                                          return POLICY_YML_USR;
                                       })),
                              GetT(POLICY_NAME,
                                   {"nonexists"},
@@ -318,7 +352,7 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                           expectNsPolicy(store);
-                                          return POLICY_DOC.str();
+                                          return POLICY_YML_OTHER;
                                       })),
                              GetT(POLICY_NAME,
                                   {"user", "wazuh", "system"},
@@ -328,7 +362,7 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                           expectNsPolicy(store);
-                                          return POLICY_DOC.str();
+                                          return POLICY_YML_ALL;
                                       }))));
 
 /*******************************************************************************
@@ -455,41 +489,47 @@ INSTANTIATE_TEST_SUITE_P(
                       })),
         // Validation error
         AddAssetT(POLICY_NAME,
-                  "unused",
-                  "unused",
+                  "user",
+                  "decoder/user/1",
                   failure(
                       [](auto store, auto validator)
                       {
                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                           expectNsPolicy(store);
+                          EXPECT_CALL(*store, getNamespace({"decoder/user/1"}))
+                              .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
                           EXPECT_CALL(*validator, validatePolicy(testing::_))
                               .WillOnce(::testing::Return(validateError()));
                       })),
         // Store upsert error
         AddAssetT(POLICY_NAME,
-                  "unused",
-                  "unused",
+                  "user",
+                  "decoder/user/1",
                   failure(
                       [](auto store, auto validator)
                       {
                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                           expectNsPolicy(store);
+                          EXPECT_CALL(*store, getNamespace({"decoder/user/1"}))
+                              .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
                           EXPECT_CALL(*validator, validatePolicy(testing::_)).WillOnce(::testing::Return(validateOk()));
                           EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME, testing::_))
                               .WillOnce(::testing::Return(storeError()));
                       })),
         // Success
         AddAssetT(POLICY_NAME,
-                  "unused",
-                  "unused",
+                  "user",
+                  "decoder/user/1",
                   success(
                       [](auto store, auto validator)
                       {
                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                           expectNsPolicy(store);
+                          EXPECT_CALL(*store, getNamespace({"decoder/user/1"}))
+                              .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
                           EXPECT_CALL(*validator, validatePolicy(testing::_)).WillOnce(::testing::Return(validateOk()));
                           EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME, testing::_))
                               .WillOnce(::testing::Return(storeOk()));
