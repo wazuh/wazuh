@@ -1088,7 +1088,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -qa setroubleshoot -> r:setroubleshoot"
+      - "c:rpm -q setroubleshoot -> r:setroubleshoot"
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
   - id: 5049
@@ -1107,7 +1107,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -qa mcstrans -> r:mcstrans"
+      - "c:rpm -q mcstrans -> r:mcstrans"
 
   ###############################################
   # 1.7  Warning Banners
@@ -1565,7 +1565,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
+      - "c:rpm -q ftpd -> r:^package ftpd is not installed"
 
   # 2.2.8 Ensure VSFTP Server is not installed. (Automated)
   - id: 5071
@@ -1775,9 +1775,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: any
     rules:
-      - "p:nfs-utils"
+      - "c:rpm -q nfs-utils -> r:package nfs-utils is not installed"
+      - "c:systemctl is-enabled nfs-server -> r:masked"
 
   # 2.2.19 Ensure rpcbind is not installed or the rpcbind services are masked. (Automated)
   - id: 5082
@@ -1797,7 +1798,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "p:rpcbind"
+      - "c:rpm -q -> r:rpcbind package rpcbind is not installed"
+      - "c:systemctl is-enabled rpcbind rpcbind.socket -> r:masked"
 
   # 2.2.20 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
   - id: 5083
@@ -1817,7 +1819,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "p:rsyncd"
+      - "c:rpm -q rsync -> r:package rsync is not installed"
+      - "c:systemctl is-enabled rsyncd -> r:masked"
 
   ###############################################
   # 2.3 Service Clients
@@ -1841,7 +1844,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -qa ypbind -> r:ypbind"
+      - "c:rpm -q ypbind -> r:ypbind"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 5085
@@ -1861,7 +1864,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -qa rsh -> r:rsh"
+      - "c:rpm -q rsh -> r:rsh"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 5086
@@ -1881,7 +1884,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -qa talk -> r:talk"
+      - "c:rpm -q talk -> r:talk"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 5087
