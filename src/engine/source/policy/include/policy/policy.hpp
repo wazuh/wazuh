@@ -39,6 +39,15 @@ public:
         : m_store {store}
         , m_validator {validator}
     {
+        if (!m_store)
+        {
+            throw std::runtime_error("Policy API got null store instance");
+        }
+
+        if (!m_validator)
+        {
+            throw std::runtime_error("Policy API got null validator instance");
+        }
     }
 
     /**

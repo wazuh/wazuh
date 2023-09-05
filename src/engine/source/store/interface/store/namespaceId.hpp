@@ -46,7 +46,7 @@ public:
      *
      * @param id The id of the namespace.
      */
-    explicit NamespaceId(const std::string& id)
+    NamespaceId(const std::string& id)
         : m_id(id)
     {
         assertValid();
@@ -57,7 +57,7 @@ public:
      *
      * @param id The id of the namespace.
      */
-    explicit NamespaceId(const char* id)
+    NamespaceId(const char* id)
         : m_id(id)
     {
         assertValid();
