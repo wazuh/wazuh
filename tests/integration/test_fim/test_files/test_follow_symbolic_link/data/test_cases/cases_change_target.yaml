@@ -33,7 +33,8 @@
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
-      whodata: 'yes'
+      realtime: 'yes'
+      # whodata: 'yes'
   metadata:
     symlink:  !!python/object/apply:os.path.join [/symlink]
     symlink_target:  !!python/object/apply:os.path.join [/target]

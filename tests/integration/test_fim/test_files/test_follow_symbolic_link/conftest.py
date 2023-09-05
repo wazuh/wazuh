@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -7,22 +8,26 @@ from wazuh_testing.utils import file
 
 @pytest.fixture
 def symlink_target(test_metadata: dict) -> str:
-    target = test_metadata.get('symlink_target')
+    path = test_metadata.get('symlink_target')
+    if file.exists(path):
+        file.remove_file(path)
 
-    if not '.' in target:
-        file.create_folder(target)
+    if not '.' in path:
+        file.create_folder(path)
     else:
-        file.write_file(target)
+        file.write_file(path)
 
-    yield Path(target)
+    yield Path(path)
 
-    file.remove_file(target)
+    file.remove_file(path)
 
 
 @pytest.fixture
 def symlink(symlink_target: Path, test_metadata: dict) -> str:
     symlink_path = test_metadata.get('symlink')
-
+    if file.exists(symlink_path):
+        file.remove_file(symlink_path)
+        
     Path(symlink_path).symlink_to(symlink_target)
 
     yield Path(symlink_path)
@@ -32,13 +37,15 @@ def symlink(symlink_target: Path, test_metadata: dict) -> str:
 
 @pytest.fixture
 def symlink_new_target(test_metadata: dict) -> Path:
-    target = test_metadata.get('symlink_new_target')
+    path = test_metadata.get('symlink_new_target')
+    if file.exists(path):
+        file.remove_file(path)
 
-    if not '.' in target:
-        file.create_folder(target)
+    if not '.' in path:
+        file.create_folder(path)
     else:
-        file.write_file(target)
+        file.write_file(path)
 
-    yield Path(target)
+    yield Path(path)
 
-    file.remove_file(target)
+    file.remove_file(path)

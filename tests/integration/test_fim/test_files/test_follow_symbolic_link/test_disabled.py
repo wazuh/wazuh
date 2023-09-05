@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
+from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -98,18 +98,31 @@ def test_disabled(test_configuration, test_metadata, set_wazuh_configuration, tr
                        configure_local_internal_options, folder_to_monitor, symlink_target, symlink,
                        symlink_new_target, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    testfile_name = 'testie.txt'
 
+    # Create in original target.
     file.truncate_file(WAZUH_LOG_PATH)
-    file.write_file(symlink.joinpath('testie.log'))
+    file.write_file(symlink.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert not wazuh_log_monitor.callback_result
 
+    # Delete in original target.
+    file.remove_file(symlink.joinpath(testfile_name))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
+    assert not wazuh_log_monitor.callback_result
+
+    # Change target.
     file.truncate_file(WAZUH_LOG_PATH)
     file.modify_symlink_target(symlink_new_target, symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
 
-    # The new target is inside the folder to monitor.
-    file.write_file(symlink.joinpath('SS.log'))
+    # Create in new target.
+    file.write_file(symlink.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+    assert not wazuh_log_monitor.callback_result
+
+    # Delete in new target.
+    file.remove_file(symlink.joinpath(testfile_name))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert not wazuh_log_monitor.callback_result
