@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
+from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -105,6 +105,11 @@ def test_change_target(test_configuration, test_metadata, set_wazuh_configuratio
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
 
+    # Delete in original target.
+    file.remove_file(symlink_target.joinpath(testfile_name))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
+    assert wazuh_log_monitor.callback_result
+
     # Change target.
     file.truncate_file(WAZUH_LOG_PATH)
     file.modify_symlink_target(symlink_new_target, symlink)
@@ -114,4 +119,9 @@ def test_change_target(test_configuration, test_metadata, set_wazuh_configuratio
     # Create in new target.
     file.write_file(symlink_new_target.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+    assert wazuh_log_monitor.callback_result
+
+    # Delete in new target.
+    file.remove_file(symlink_new_target.joinpath(testfile_name))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
