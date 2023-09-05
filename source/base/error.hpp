@@ -95,9 +95,14 @@ inline T getResponse(const RespOrError<T>& response)
 }
 
 template<typename T>
-inline Error getError(const T& error)
+inline Error getError(const RespOrError<T>& error)
 {
     return std::get<Error>(error);
+}
+
+inline Error getError(const OptError& error)
+{
+    return error.value();
 }
 
 } // namespace base
