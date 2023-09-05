@@ -29,9 +29,12 @@ void* w_flatcc_parse_json(size_t msg_len, const char* msg, size_t* flatbuffer_si
     int err_code = flatcc_json_parser_table_as_root(&builder, &parser_ctx, msg, msg_len, flags, NULL, parser);
     if (err_code) {
         mdebug2("Failed to parse message with flatbuffer schema: %s", flatcc_json_parser_error_string(err_code));
+        flatcc_builder_clear(&builder);
         return NULL;
     } else {
-        return flatcc_builder_finalize_aligned_buffer(&builder, flatbuffer_size);
+        void* ret = flatcc_builder_finalize_aligned_buffer(&builder, flatbuffer_size);
+        flatcc_builder_clear(&builder);
+        return ret;
     }
 }
 

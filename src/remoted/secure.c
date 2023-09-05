@@ -872,8 +872,7 @@ void router_message_forward(char* msg, const char* agent_id) {
         size_t msg_to_send_len = strlen(msg_to_send);
         size_t flatbuffer_size;
 
-        void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size,
-                                               flatcc_json_parser_f_skip_unknown, parser);
+        void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, parser);
 
         if (flatbuffer) {
             router_provider_send(router_handle, flatbuffer, flatbuffer_size);
