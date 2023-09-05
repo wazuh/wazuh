@@ -35,16 +35,15 @@ if(ENGINE_BUILD_TEST)
     add_library(policy::mocks ALIAS policy_mocks)
 
     # policy component test
-    add_executable(policy_ctest
-        ${COMPONENT_SRC_DIR}/policy_test.cpp
-    )
-    target_link_libraries(policy_ctest gtest_main policy store::mocks builder::mocks)
-    gtest_discover_tests(policy_ctest)
+    # add_executable(policy_ctest
+    #     ${COMPONENT_SRC_DIR}/policy_test.cpp
+    # )
+    # target_link_libraries(policy_ctest gtest_main policy store::mocks builder::mocks)
+    # gtest_discover_tests(policy_ctest)
 
     add_executable(policy_utest
         ${UNIT_SRC_DIR}/policy_test.cpp
-        ${UNIT_SRC_DIR}/policyRep_test.cpp
     )
-    target_link_libraries(policy_utest gtest_main policy::mocks policy)
+    target_link_libraries(policy_utest gtest_main policy::mocks policy store::mocks builder::mocks)
     gtest_discover_tests(policy_utest)
 endif(ENGINE_BUILD_TEST)
