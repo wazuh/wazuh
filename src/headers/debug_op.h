@@ -110,7 +110,7 @@ void nowDaemon(void);
 
 int isChroot(void);
 
-void w_parse_output(char *output, char *logger_name, char *tag);
+void w_parse_output(char *output, char *logger_name, char *tag, char* service_title);
 
 /* Debug analysisd */
 #ifdef DEBUGAD
