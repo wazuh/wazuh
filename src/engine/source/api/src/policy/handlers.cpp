@@ -234,21 +234,6 @@ api::Handler storePost(const std::shared_ptr<policy::IPolicy>& policyManager)
             return ::api::adapter::genericError<ResponseType>(err.value().message);
         }
 
-        // Add default integration
-        // if (!eRequest.forceempty())
-        // {
-        //     for (auto [asset, namespaceId] : defaultAsset)
-        //     {
-        //         err = spPolicyAPI->addAsset(eRequest.policy(), namespaceId, asset);
-        //         if (base::isError(err))
-        //         {
-        //             // TODO: Rollback policy creation
-        //             spPolicyAPI->del(eRequest.policy());
-        //             return ::api::adapter::genericError<ResponseType>(err.value().message);
-        //         }
-        //     }
-        // }
-
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
