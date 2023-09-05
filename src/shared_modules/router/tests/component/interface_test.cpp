@@ -39,17 +39,16 @@ TEST_F(RouterInterfaceTest, TestCreateProviderSubscriberSimple)
 
 TEST_F(RouterInterfaceTest, TestStopLocalProviderWithoutStart)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
 
-    // Simulate call from specific provider in the same process
     EXPECT_THROW(provider->stop(), std::runtime_error);
 }
 
 TEST_F(RouterInterfaceTest, TestCreateSubscriberWithoutProvider)
 {
     EXPECT_NO_THROW({
-        auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
-        subscriptor->subscribe([](const std::vector<char>&) {});
+        auto subscriber = std::make_unique<RouterSubscriber>("test", "subscriberTest");
+        subscriber->subscribe([](const std::vector<char>&) {});
     });
 }
 
@@ -205,9 +204,8 @@ TEST_F(RouterInterfaceTest, TestRemoteCreateProviderSubscriberSimple)
 
 TEST_F(RouterInterfaceTest, TestStopRemoteProviderWithoutStart)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
 
-    // Simulate call from specific provider in the same process
     EXPECT_THROW(provider->stop(), std::runtime_error);
 }
 
