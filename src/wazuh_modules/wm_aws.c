@@ -506,33 +506,9 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
         pthread_exit(NULL);
     } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
-        if(status == 1) {
-            char * unknown_error_msg = strstr(output,"Unknown error");
-            if (unknown_error_msg == NULL)
-                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", trail_title);
-            else
-                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, unknown_error_msg);
-        } else if(status == 2) {
-            char * ptr;
-            if (ptr = strstr(output, "aws.py: error:"), ptr) {
-                ptr += 14;
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, ptr);
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", trail_title);
-            }
-        } else {
-            char * ptr;
-            if (ptr = strstr(output, "ERROR: "), ptr) {
-                ptr += 7;
-                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, ptr);
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, output);
-            }
-        }
-        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
-    } else {
-        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
     }
+
+    w_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, trail_title);
 
     char *line;
     char *save_ptr = NULL;
@@ -675,35 +651,9 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
         pthread_exit(NULL);
     } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
-        if(status == 1) {
-            char * unknown_error_msg = strstr(output,"Unknown error");
-            if (unknown_error_msg == NULL)
-                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", service_title);
-            else
-                mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, unknown_error_msg);
-        } else if(status == 2) {
-            char * ptr;
-            if (ptr = strstr(output, "aws.py: error:"), ptr) {
-                ptr += 14;
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", service_title, ptr);
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", service_title);
-            }
-        } else {
-            char * ptr;
-            if (ptr = strstr(output, "ERROR: "), ptr) {
-                ptr += 7;
-                mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, ptr);
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, output);
-            }
-        }
-        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
-    } else {
-        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
     }
 
-    os_free(service_title);
+    w_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, service_title);
 
     char *line;
     char *save_ptr = NULL;
@@ -711,6 +661,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
         wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
 
+    os_free(service_title);
     os_free(output);
 }
 
@@ -819,35 +770,9 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
         pthread_exit(NULL);
     } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", subscriber_title, status);
-        if(status == 1) {
-            char * unknown_error_msg = strstr(output,"Unknown error");
-            if (unknown_error_msg == NULL)
-                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", subscriber_title);
-            else
-                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, unknown_error_msg);
-        } else if(status == 2) {
-            char * ptr;
-            if (ptr = strstr(output, "aws.py: error:"), ptr) {
-                ptr += 14;
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", subscriber_title, ptr);
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", subscriber_title);
-            }
-        } else {
-            char * ptr;
-            if (ptr = strstr(output, "ERROR: "), ptr) {
-                ptr += 7;
-                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, ptr);
-            } else {
-                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, output);
-            }
-        }
-        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", subscriber_title, output);
-    } else {
-        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", subscriber_title, output);
     }
 
-    os_free(subscriber_title);
+    w_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, subscriber_title);
 
     char *line;
     char *save_ptr = NULL;
@@ -855,5 +780,6 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
         wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
 
+    os_free(subscriber_title);
     os_free(output);
 }
