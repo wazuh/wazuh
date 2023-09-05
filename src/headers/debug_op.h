@@ -110,6 +110,14 @@ void nowDaemon(void);
 
 int isChroot(void);
 
+/**
+ * @brief Parse the output of the GCP/AWS/AZURE or any script and prints it depending on the debug
+ *        level stated by the script
+ * @param output Output returned by the call to the script
+ * @param logger_name String to match with content of output
+ * @param tag Tag that should be used when printing the messages
+ * @param service_title String indicating which service is used
+ */
 void w_parse_output(char *output, char *logger_name, char *tag, char* service_title);
 
 /* Debug analysisd */
