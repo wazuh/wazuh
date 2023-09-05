@@ -9,6 +9,18 @@ All notable changes to this project will be documented in this file.
 
 - Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
 - Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
+- Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
+- Added unit tests for the manage_agents tool. ([#15999](https://github.com/wazuh/wazuh/pull/15999))
+- Added an option to customize the Slack integration. ([#16090](https://github.com/wazuh/wazuh/pull/16090))
+
+#### Changed
+
+- An unnecessary sanity check related to Syscollector has been removed from wazuh-db. ([#16008](https://github.com/wazuh/wazuh/pull/16008))
+
+#### Fixed
+
+- Fixed an unexpected error by the Cluster when a worker gets restarted. ([#16683](https://github.com/wazuh/wazuh/pull/16683))
+- Fixed an issue that let the manager validate wrong XML configurations. ([#16681](https://github.com/wazuh/wazuh/pull/16681))
 
 #### Deleted
 
@@ -20,6 +32,21 @@ All notable changes to this project will be documented in this file.
 
 - Added support for Custom Logs in Buckets via AWS SQS. ([#17951](https://github.com/wazuh/wazuh/pull/17951))
 - Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([16198](https://github.com/wazuh/wazuh/pull/16198))
+- Added package inventory support for Alpine Linux in Syscollector. ([#15699](https://github.com/wazuh/wazuh/pull/15699))
+- Added package inventory support for MacPorts in Syscollector. ([#15877](https://github.com/wazuh/wazuh/pull/15877))
+- Added package inventory support for PYPI and node in Syscollector. ([#17982](https://github.com/wazuh/wazuh/pull/17982))
+- Added related process information to the open ports inventory in Syscollector. ([#15000](https://github.com/wazuh/wazuh/pull/15000))
+- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
+
+#### Changed
+
+- The shared modules' code has been sanitized according to the convention. ([#17966](https://github.com/wazuh/wazuh/pull/17966))
+- The package inventory internal messages have been modified to honor the schema compliance. ([#18006](https://github.com/wazuh/wazuh/pull/18006))
+- The agent's leaky bucket throughput limit has been extended to 100.000 EPS. ([#16346](https://github.com/wazuh/wazuh/pull/16346))
+
+#### Fixed
+
+- Fixed detection of osquery 5.4.0+ running outside the integration. ([#17006](https://github.com/wazuh/wazuh/pull/17006))
 
 ### RESTful API
 
@@ -28,6 +55,12 @@ All notable changes to this project will be documented in this file.
 - Addressed error handling for non-utf-8 encoded file readings. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
 - Resolved an issue in the `WazuhException` class that disrupted the API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
 - Corrected an empty value problem in the API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
+
+### Other
+
+#### Fixed
+
+- Fixed the signature of the internal function `OSHash_GetIndex()`. ([#17040](https://github.com/wazuh/wazuh/pull/17040))
 
 
 ## [v4.6.0]
