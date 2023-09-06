@@ -68,11 +68,11 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED
+from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils import file
+from wazuh_testing.utils import file, commands
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -83,7 +83,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_cud.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_new_target_populated.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -94,23 +94,21 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_change_target(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                       configure_local_internal_options, symlink_target, symlink, daemons_handler,
-                       start_monitoring):
+def test_new_target_populated(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                              configure_local_internal_options, symlink_target, symlink, symlink_new_target,
+                              fill_folder_to_monitor, daemons_handler, start_monitoring):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     testfile_name = 'testie.txt'
 
-    # Create
-    file.write_file(symlink.joinpath(testfile_name))
+    # Change target.
+    file.truncate_file(WAZUH_LOG_PATH)
+    file.modify_symlink_target(symlink_new_target, symlink)
+    wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
+    assert wazuh_log_monitor.callback_result
+
+    # No added event is raised.
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
-    assert wazuh_log_monitor.callback_result
-
-    # Update
-    file.write_file(symlink.joinpath(testfile_name), 'new_text')
+    assert not wazuh_log_monitor.callback_result
+    # No modified event is raised.
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
-    assert wazuh_log_monitor.callback_result
-
-    # Remove
-    file.remove_file(symlink.joinpath(testfile_name))
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
-    assert wazuh_log_monitor.callback_result
+    assert not wazuh_log_monitor.callback_result
