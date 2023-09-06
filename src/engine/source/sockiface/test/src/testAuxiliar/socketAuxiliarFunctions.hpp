@@ -45,8 +45,6 @@ constexpr int MESSAGE_HEADER_SIZE {sizeof(uint32_t)};
 constexpr int MSG_MAX_SIZE {65536}; ///< Maximum message size (2^16)
 
 constexpr std::string_view TEST_SEND_MESSAGE = "Test message to be send!\n";
-constexpr std::string_view TEST_DGRAM_SOCK_PATH = "/tmp/testDgram.socket";
-constexpr std::string_view TEST_STREAM_SOCK_PATH = "/tmp/testStream.socket";
 
 /**
  * @brief Test auxiliar function to bind a UNIX socket
