@@ -8,6 +8,7 @@
 #include <cmds/apiclnt/client.hpp>
 #include <logging/logging.hpp>
 #include <utils/stringUtils.hpp>
+#include <ymlFormat.hpp>
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
@@ -104,11 +105,7 @@ void runListPolicies(std::shared_ptr<apiclnt::Client> client)
 
     // Print response
     auto policies = std::vector(eResponse.data().begin(), eResponse.data().end());
-    const auto start = "[";
-    std::string end = "]";
-    const auto separator = ", ";
-    std::cout << fmt::format("[{}]", policies.empty() ? "" : base::utils::string::join(policies, separator))
-              << std::endl;
+    std::cout << base::ymlfmt::toYmlStr(policies) << std::endl;
 }
 
 void runAddAsset(std::shared_ptr<apiclnt::Client> client,
@@ -173,10 +170,8 @@ void runListAssets(std::shared_ptr<apiclnt::Client> client,
 
     // Print response
     auto assets = std::vector(eResponse.data().begin(), eResponse.data().end());
-    const auto start = "[";
-    std::string end = "]";
-    const auto separator = ", ";
-    std::cout << fmt::format("[{}]", assets.empty() ? "" : base::utils::string::join(assets, separator)) << std::endl;
+
+    std::cout << base::ymlfmt::toYmlStr(assets) << std::endl;
 }
 
 void runGetDefaultParent(std::shared_ptr<apiclnt::Client> client,
@@ -241,9 +236,30 @@ void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
+void listNamespaces(std::shared_ptr<apiclnt::Client> client, const std::string& policyName)
+{
+    using RequestType = ePolicy::NamespacesGet_Request;
+    using ResponseType = ePolicy::NamespacesGet_Response;
+    const std::string command = "policy.namespaces/get";
+
+    // Prepare request
+    RequestType eRequest;
+    eRequest.set_policy(policyName);
+
+    // Call API, any exception will be thrown
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print response
+    auto namespaces = std::vector(eResponse.data().begin(), eResponse.data().end());
+
+    std::cout << base::ymlfmt::toYmlStr(namespaces) << std::endl;
+}
+
 void configure(CLI::App_p app)
 {
-    auto policyApp = app->add_subcommand("policy", "Manage policies");
+    auto policyApp = app->add_subcommand("policy", "Manage Engine policies");
     policyApp->require_subcommand(1);
     auto options = std::make_shared<Options>();
 
@@ -259,8 +275,9 @@ void configure(CLI::App_p app)
         ->check(CLI::NonNegativeNumber);
 
     // Add policy
-    auto addPolicySubcommand = policyApp->add_subcommand("add", "Create an empty policy");
-    addPolicySubcommand->add_option("policyName", options->policyName, "Name of the policy to create")->required();
+    auto addPolicySubcommand = policyApp->add_subcommand("add", "Create a new, empty policy");
+    addPolicySubcommand->add_option("-p, --policy", options->policyName, "Specify the name of the policy to create")
+        ->required();
 
     addPolicySubcommand->callback(
         [options]()
@@ -270,8 +287,9 @@ void configure(CLI::App_p app)
         });
 
     // Remove policy
-    auto removePolicySubcommand = policyApp->add_subcommand("remove", "Remove a policy");
-    removePolicySubcommand->add_option("policyName", options->policyName, "Name of the policy to remove")->required();
+    auto removePolicySubcommand = policyApp->add_subcommand("remove", "Delete an existing policy");
+    removePolicySubcommand->add_option("-p, --policy", options->policyName, "Specify the name of the policy to remove")
+        ->required();
 
     removePolicySubcommand->callback(
         [options]()
@@ -281,10 +299,11 @@ void configure(CLI::App_p app)
         });
 
     // Get policy
-    auto getPolicySubcommand = policyApp->add_subcommand("get", "Get a policy");
-    getPolicySubcommand->add_option("policyName", options->policyName, "Name of the policy to get")->required();
+    auto getPolicySubcommand = policyApp->add_subcommand("get", "Retrieve information about a policy");
+    getPolicySubcommand->add_option("-p, --policy", options->policyName, "Specify the name of the policy to retrieve")
+        ->default_val(ENGINE_DEFAULT_POLICY);
     getPolicySubcommand
-        ->add_option("-n, --namespaces", options->namespaceIds, "Get the information about specific namespaces only")
+        ->add_option("-n, --namespaces", options->namespaceIds, "Retrieve information for specific namespaces only")
         ->default_val(ENGINE_NAMESPACE)
         ->expected(1, 10);
 
@@ -296,7 +315,7 @@ void configure(CLI::App_p app)
         });
 
     // List policies
-    auto listPoliciesSubcommand = policyApp->add_subcommand("list", "List all policies");
+    auto listPoliciesSubcommand = policyApp->add_subcommand("list", "Display a list of all policies");
     listPoliciesSubcommand->callback(
         [options]()
         {
@@ -306,11 +325,12 @@ void configure(CLI::App_p app)
 
     // Add asset
     auto addAssetSubcommand = policyApp->add_subcommand("asset-add", "Add an asset to a policy");
-    addAssetSubcommand->add_option("-p, --policy", options->policyName, "Name of the policy to add the asset")
+    addAssetSubcommand
+        ->add_option("-p, --policy", options->policyName, "Name of the policy to which the asset will be added")
         ->default_val(ENGINE_DEFAULT_POLICY);
     addAssetSubcommand->add_option("-n, --namespace", options->namespaceId, "Namespace of the asset")
         ->default_val(ENGINE_NAMESPACE);
-    addAssetSubcommand->add_option("assetName", options->assetName, "Name of the asset to add")->required();
+    addAssetSubcommand->add_option("asset_name", options->assetName, "Name of the asset to add")->required();
 
     addAssetSubcommand->callback(
         [options]()
@@ -321,11 +341,12 @@ void configure(CLI::App_p app)
 
     // Remove asset
     auto removeAssetSubcommand = policyApp->add_subcommand("asset-remove", "Remove an asset from a policy");
-    removeAssetSubcommand->add_option("-p, --policy", options->policyName, "Name of the policy to remove the asset")
+    removeAssetSubcommand
+        ->add_option("-p, --policy", options->policyName, "Name of the policy to which the asset will be removed")
         ->default_val(ENGINE_DEFAULT_POLICY);
     removeAssetSubcommand->add_option("-n, --namespace", options->namespaceId, "Namespace of the asset")
         ->default_val(ENGINE_NAMESPACE);
-    removeAssetSubcommand->add_option("assetName", options->assetName, "Name of the asset to remove")->required();
+    removeAssetSubcommand->add_option("asset_name", options->assetName, "Name of the asset to remove")->required();
 
     removeAssetSubcommand->callback(
         [options]()
@@ -335,7 +356,7 @@ void configure(CLI::App_p app)
         });
 
     // List assets
-    auto listAssetsSubcommand = policyApp->add_subcommand("asset-list", "List all assets of a policy");
+    auto listAssetsSubcommand = policyApp->add_subcommand("asset-list", "Show all assets included in a policy");
     listAssetsSubcommand->add_option("-p, --policy", options->policyName, "Name of the policy to list the assets")
         ->default_val(ENGINE_DEFAULT_POLICY);
     listAssetsSubcommand->add_option("-n, --namespace", options->namespaceId, "Namespace of the assets")
@@ -349,12 +370,14 @@ void configure(CLI::App_p app)
         });
 
     // Get default parent
-    auto getDefaultParentSubcommand = policyApp->add_subcommand("parent-get", "Get the default parent of a policy");
+    auto getDefaultParentSubcommand =
+        policyApp->add_subcommand("parent-get", "Retrieve the default parent for assets under a specific namespace");
     getDefaultParentSubcommand
         ->add_option("-p, --policy", options->policyName, "Name of the policy to get the default parent")
         ->default_val(ENGINE_DEFAULT_POLICY);
-    getDefaultParentSubcommand->add_option("namespace", options->namespaceId, "Namespace of the default parent")
-        ->required();
+    getDefaultParentSubcommand
+        ->add_option("-n, --namespace", options->namespaceId, "Namespace to get the default parent")
+        ->default_val(ENGINE_NAMESPACE);
 
     getDefaultParentSubcommand->callback(
         [options]()
@@ -364,13 +387,15 @@ void configure(CLI::App_p app)
         });
 
     // Set default parent
-    auto setDefaultParentSubcommand = policyApp->add_subcommand("parent-set", "Set the default parent of a policy");
+    auto setDefaultParentSubcommand =
+        policyApp->add_subcommand("parent-set", "Set the default parent for assets under a specific namespace");
     setDefaultParentSubcommand
         ->add_option("-p, --policy", options->policyName, "Name of the policy to set the default parent")
-        ->required();
-    setDefaultParentSubcommand->add_option("-n, --namespace", options->namespaceId, "Namespace of the default parent")
+        ->default_val(ENGINE_DEFAULT_POLICY);
+    setDefaultParentSubcommand
+        ->add_option("-n, --namespace", options->namespaceId, "Namespace to set the default parent")
         ->default_val(ENGINE_NAMESPACE);
-    setDefaultParentSubcommand->add_option("parentAssetName", options->parentAssetName, "Name of the default parent")
+    setDefaultParentSubcommand->add_option("parent_name", options->parentAssetName, "Name of the default parent")
         ->required();
 
     setDefaultParentSubcommand->callback(
@@ -382,18 +407,33 @@ void configure(CLI::App_p app)
 
     // Remove default parent
     auto removeDefaultParentSubcommand =
-        policyApp->add_subcommand("parent-remove", "Remove the default parent of a policy");
+        policyApp->add_subcommand("parent-remove", "Unset the default parent for assets under a specific namespace");
     removeDefaultParentSubcommand
-        ->add_option("policyName", options->policyName, "Name of the policy to remove the default parent")
-        ->required();
-    removeDefaultParentSubcommand->add_option("namespaceId", options->namespaceId, "Namespace of the default parent")
-        ->required();
+        ->add_option("-p, --policy", options->policyName, "Name of the policy to remove the default parent")
+        ->default_val(ENGINE_DEFAULT_POLICY);
+    removeDefaultParentSubcommand
+        ->add_option("-n, --namespace", options->namespaceId, "Namespace to remove the default parent")
+        ->default_val(ENGINE_NAMESPACE);
 
     removeDefaultParentSubcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             runRemoveDefaultParent(client, options->policyName, options->namespaceId);
+        });
+
+    // List namespaces
+    auto listNamespacesSubcommand =
+        policyApp->add_subcommand("namespace-list", "List all namespaces included in a policy");
+    listNamespacesSubcommand
+        ->add_option("-p, --policy", options->policyName, "Name of the policy to list the namespaces")
+        ->default_val(ENGINE_DEFAULT_POLICY);
+
+    listNamespacesSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            listNamespaces(client, options->policyName);
         });
 }
 
