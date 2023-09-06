@@ -1755,7 +1755,7 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: all
     rules:
       - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
 
@@ -1796,7 +1796,7 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: any
     rules:
       - "c:rpm -q -> r:rpcbind package rpcbind is not installed"
       - "c:systemctl is-enabled rpcbind rpcbind.socket -> r:masked"
@@ -1817,7 +1817,7 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: none
+    condition: any
     rules:
       - "c:rpm -q rsync -> r:package rsync is not installed"
       - "c:systemctl is-enabled rsyncd -> r:masked"
@@ -1844,7 +1844,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q ypbind -> r:ypbind"
+      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 5085
@@ -1864,7 +1864,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q rsh -> r:rsh"
+      - "c:rpm -q rsh -> r:^package rsh is not installed"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 5086
@@ -1884,7 +1884,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - "c:rpm -q talk -> r:talk"
+      - "c:rpm -q talk -> r:^package talk is not installed"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 5087
