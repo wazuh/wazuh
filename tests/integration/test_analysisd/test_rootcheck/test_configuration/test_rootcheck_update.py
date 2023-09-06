@@ -46,7 +46,10 @@ import time
 from pathlib import Path
 
 from wazuh_testing.utils import configuration
-from conftest import inject_rootcheck_events, retrieve_rootcheck_rows
+from wazuh_testing.utils.services import control_service
+from wazuh_testing.utils.database import get_sqlite_query_result
+from wazuh_testing.constants.paths.sockets import QUEUE_DB_PATH
+
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -69,7 +72,7 @@ daemons_handler_configuration = {'all_daemons': True}
                          zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_rootcheck_update(test_configuration, test_metadata, set_wazuh_configuration,
                    daemons_handler, wait_for_rootcheck_start, truncate_monitored_files,
-                   load_agents):
+                   simulate_agents):
     '''
     Testing with daemons_handler,
     description: Check if the 'rootcheck' modules is working properly, that is, by checking if the created logs
@@ -106,7 +109,7 @@ def test_rootcheck_update(test_configuration, test_metadata, set_wazuh_configura
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
-        - load_agents:
+        - simulate_agents:
             type: fixture
             brief: Handler simulates agents.
 
@@ -121,14 +124,31 @@ def test_rootcheck_update(test_configuration, test_metadata, set_wazuh_configura
         - First time in log was updated after insertion
         - Updated time in log was not updated
     '''
-    agents = load_agents
-    update_threshold = time.time()
+    injectors = []
+    agents = simulate_agents
 
-    inject_rootcheck_events(agents)
+    for agent in agents:
+        agent.modules['rootcheck']['status'] = 'enabled'
+        _, injector = connect(agent)
+        injectors.append(injector)
+        agents.append(agent)
+
+    # Let rootcheck events to be sent for 60 seconds
+    time.sleep(30)
+    update_threshold = time.time()
+    time.sleep(30)
+
+    for injector in injectors:
+        injector.stop_receive()
+
+    # Service needs to be stopped otherwise db lock will be held by Wazuh db
+    control_service('stop')
 
     # Check that logs have been updated
     for agent in agents:
-        rows = retrieve_rootcheck_rows(agent.id)
+        rows = get_sqlite_query_result(
+                    os.path.join(QUEUE_DB_PATH, f'{agent.id}.db'),
+                    "SELECT * FROM pm_event" )
 
         logs_string = [':'.join(x.split(':')[2:]) for x in
                         agent.rootcheck.messages_list]

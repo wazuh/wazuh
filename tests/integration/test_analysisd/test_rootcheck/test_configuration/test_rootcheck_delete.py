@@ -45,22 +45,16 @@ import pytest
 import time
 from pathlib import Path
 
-from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
-from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.database import get_sqlite_query_result
 from wazuh_testing.utils.services import control_service
-from conftest import retrieve_rootcheck_rows
+from wazuh_testing.utils.sockets import send_request_socket
+from wazuh_testing.constants.paths.sockets import QUEUE_DB_PATH
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
-
-def send_delete_table_request(agent_id):
-    controller = SocketController(WAZUH_DB_SOCKET_PATH)
-    controller.send(f'agent {agent_id} rootcheck delete', size=True)
-    response = controller.receive(size=True)
-    return response
 
 # Configuration and cases data.
 test_configs_path = Path(CONFIGS_PATH, 'config_template.yaml')
@@ -78,7 +72,7 @@ daemons_handler_configuration = {'all_daemons': True}
                          zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_rootcheck_delete(test_configuration, test_metadata, set_wazuh_configuration,
                    daemons_handler, wait_for_rootcheck_start, truncate_monitored_files,
-                   load_agents):
+                   simulate_agents):
     '''
     Testing with daemons_handler,
     description: Check if the 'rootcheck' modules is working properly, that is, by checking if the logs
@@ -111,7 +105,7 @@ def test_rootcheck_delete(test_configuration, test_metadata, set_wazuh_configura
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
-        - load_agents:
+        - simulate_agents:
             type: fixture
             brief: Handler simulates agents.
 
@@ -123,12 +117,26 @@ def test_rootcheck_delete(test_configuration, test_metadata, set_wazuh_configura
         - Wazuh DB returned an error trying to delete the agent
         - Rootcheck events were not deleted
     '''
-    agents = load_agents
+    injectors = []
+    agents = simulate_agents
+
+    for agent in agents:
+        agent.modules['rootcheck']['status'] = 'enabled'
+        _, injector = connect(agent)
+        injectors.append(injector)
+        agents.append(agent)
+
+    # Let rootcheck events to be sent for 60 seconds
+    time.sleep(60)
+
+    for injector in injectors:
+        injector.stop_receive()
+
     # Service needs to be restarted
     control_service('start')
 
     for agent in agents:
-        response = send_delete_table_request(agent.id)
+        response = send_request_socket(f'agent {agent.id} rootcheck delete')
         assert response.startswith(b'ok'), "Wazuh DB returned an error " \
                                             "trying to delete the agent"
 
@@ -140,6 +148,8 @@ def test_rootcheck_delete(test_configuration, test_metadata, set_wazuh_configura
 
     # Check that logs have been deleted
     for agent in agents:
-        rows = retrieve_rootcheck_rows(agent.id)
+        rows = get_sqlite_query_result(
+                    os.path.join(QUEUE_DB_PATH, f'{agent.id}.db'),
+                    "SELECT * FROM pm_event" )
         assert len(rows) == 0, 'Rootcheck events were not deleted'
 
