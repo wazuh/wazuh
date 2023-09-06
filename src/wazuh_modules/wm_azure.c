@@ -170,21 +170,19 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
         // Run script
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
-        switch (wm_exec(command, &output, &status, timeout, NULL)) {
-            case 0:
-                if (status > 0) {
-                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
-                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
-                }
-                break;
-            case WM_ERROR_TIMEOUT:
-                mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
-                break;
-            default:
-                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
-                os_free(command);
-                pthread_exit(NULL);
+
+        const int wm_exec_ret_code = wm_exec(command, &output, &status, timeout, NULL);
+        if (wm_exec_ret_code != 0){
+            mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
+            if (wm_exec_ret_code > 0) {
+                os_free(output);
+            }
+            pthread_exit(NULL);
+        } else if (status > 0) {
+            mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_request->tag, status);
         }
+
+        w_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
 
@@ -257,21 +255,19 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
 
         // Run script
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
-        switch (wm_exec(command, &output, &status, timeout, NULL)) {
-            case 0:
-                if (status > 0) {
-                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
-                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
-                }
-                break;
-            case WM_ERROR_TIMEOUT:
-                mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
-                break;
-            default:
-                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
-                os_free(command);
-                pthread_exit(NULL);
+
+        const int wm_exec_ret_code = wm_exec(command, &output, &status, timeout, NULL);
+        if (wm_exec_ret_code != 0){
+            mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
+            if (wm_exec_ret_code > 0) {
+                os_free(output);
+            }
+            pthread_exit(NULL);
+        } else if (status > 0) {
+            mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_request->tag, status);
         }
+
+        w_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for request '%s'.", curr_request->tag);
 
@@ -362,21 +358,19 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
         // Run script
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
-        switch (wm_exec(command, &output, &status, timeout, NULL)) {
-            case 0:
-                if (status > 0) {
-                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_container->name, status);
-                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
-                }
-                break;
-            case WM_ERROR_TIMEOUT:
-                mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_container->name);
-                break;
-            default:
-                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
-                os_free(command);
-                pthread_exit(NULL);
+
+        const int wm_exec_ret_code = wm_exec(command, &output, &status, timeout, NULL);
+        if (wm_exec_ret_code != 0){
+            mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
+            if (wm_exec_ret_code > 0) {
+                os_free(output);
+            }
+            pthread_exit(NULL);
+        } else if (status > 0) {
+            mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_container->name, status);
         }
+
+        w_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for container '%s'.", curr_container->name);
 
