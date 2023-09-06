@@ -3,7 +3,7 @@
 
 #include <gmock/gmock.h>
 
-#include <policy/ipolicy.hpp>
+#include <api/policy/ipolicy.hpp>
 
 namespace api::policy::mocks
 {

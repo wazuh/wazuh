@@ -3,7 +3,7 @@
 #include <builder/mockValidator.hpp>
 #include <store/mockStore.hpp>
 
-#include <policy/policy.hpp>
+#include <api/policy/policy.hpp>
 
 using namespace store::mocks;
 using namespace builder::mocks;
