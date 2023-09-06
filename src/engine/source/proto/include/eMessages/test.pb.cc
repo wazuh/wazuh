@@ -49,8 +49,8 @@ PROTOBUF_CONSTEXPR Run::Run(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.output_)*/nullptr
-  , /*decltype(_impl_.traces_)*/nullptr} {}
+  , /*decltype(_impl_.traces_)*/{}
+  , /*decltype(_impl_.output_)*/nullptr} {}
 struct RunDefaultTypeInternal {
   PROTOBUF_CONSTEXPR RunDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -246,7 +246,7 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _impl_.output_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _impl_.traces_),
   0,
-  1,
+  ~0u,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -394,10 +394,9 @@ const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "oto\"\220\001\n\007Session\022\014\n\004name\030\001 \001(\t\022\n\n\002id\030\002 \001("
   "\r\022\025\n\rcreation_date\030\003 \001(\r\022\016\n\006policy\030\004 \001(\t"
   "\022\016\n\006filter\030\005 \001(\t\022\r\n\005route\030\006 \001(\t\022\020\n\010lifes"
-  "pan\030\007 \001(\r\022\023\n\013description\030\010 \001(\t\"u\n\003Run\022+\n"
+  "pan\030\007 \001(\r\022\023\n\013description\030\010 \001(\t\"M\n\003Run\022+\n"
   "\006output\030\001 \001(\0132\026.google.protobuf.ValueH\000\210"
-  "\001\001\022+\n\006traces\030\002 \001(\0132\026.google.protobuf.Val"
-  "ueH\001\210\001\001B\t\n\007_outputB\t\n\007_traces\"0\n\022Session"
+  "\001\001\022\016\n\006traces\030\002 \003(\tB\t\n\007_output\"0\n\022Session"
   "Get_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\""
   "\255\001\n\023SessionGet_Response\0222\n\006status\030\001 \001(\0162"
   "\".com.wazuh.api.engine.ReturnStatus\022\022\n\005e"
@@ -438,7 +437,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_test_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_test_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_test_2eproto = {
-    false, false, 1647, descriptor_table_protodef_test_2eproto,
+    false, false, 1607, descriptor_table_protodef_test_2eproto,
     "test.proto",
     &descriptor_table_test_2eproto_once, descriptor_table_test_2eproto_deps, 2, 12,
     schemas, file_default_instances, TableStruct_test_2eproto::offsets,
@@ -968,27 +967,15 @@ class Run::_Internal {
   static void set_has_output(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static const ::PROTOBUF_NAMESPACE_ID::Value& traces(const Run* msg);
-  static void set_has_traces(HasBits* has_bits) {
-    (*has_bits)[0] |= 2u;
-  }
 };
 
 const ::PROTOBUF_NAMESPACE_ID::Value&
 Run::_Internal::output(const Run* msg) {
   return *msg->_impl_.output_;
 }
-const ::PROTOBUF_NAMESPACE_ID::Value&
-Run::_Internal::traces(const Run* msg) {
-  return *msg->_impl_.traces_;
-}
 void Run::clear_output() {
   if (_impl_.output_ != nullptr) _impl_.output_->Clear();
   _impl_._has_bits_[0] &= ~0x00000001u;
-}
-void Run::clear_traces() {
-  if (_impl_.traces_ != nullptr) _impl_.traces_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000002u;
 }
 Run::Run(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
@@ -1002,15 +989,12 @@ Run::Run(const Run& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.output_){nullptr}
-    , decltype(_impl_.traces_){nullptr}};
+    , decltype(_impl_.traces_){from._impl_.traces_}
+    , decltype(_impl_.output_){nullptr}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_output()) {
     _this->_impl_.output_ = new ::PROTOBUF_NAMESPACE_ID::Value(*from._impl_.output_);
-  }
-  if (from._internal_has_traces()) {
-    _this->_impl_.traces_ = new ::PROTOBUF_NAMESPACE_ID::Value(*from._impl_.traces_);
   }
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.test.Run)
 }
@@ -1022,8 +1006,8 @@ inline void Run::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.traces_){arena}
     , decltype(_impl_.output_){nullptr}
-    , decltype(_impl_.traces_){nullptr}
   };
 }
 
@@ -1038,8 +1022,8 @@ Run::~Run() {
 
 inline void Run::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.traces_.~RepeatedPtrField();
   if (this != internal_default_instance()) delete _impl_.output_;
-  if (this != internal_default_instance()) delete _impl_.traces_;
 }
 
 void Run::SetCachedSize(int size) const {
@@ -1052,16 +1036,11 @@ void Run::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
+  _impl_.traces_.Clear();
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    if (cached_has_bits & 0x00000001u) {
-      GOOGLE_DCHECK(_impl_.output_ != nullptr);
-      _impl_.output_->Clear();
-    }
-    if (cached_has_bits & 0x00000002u) {
-      GOOGLE_DCHECK(_impl_.traces_ != nullptr);
-      _impl_.traces_->Clear();
-    }
+  if (cached_has_bits & 0x00000001u) {
+    GOOGLE_DCHECK(_impl_.output_ != nullptr);
+    _impl_.output_->Clear();
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -1082,11 +1061,18 @@ const char* Run::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
-      // optional .google.protobuf.Value traces = 2;
+      // repeated string traces = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          ptr = ctx->ParseMessage(_internal_mutable_traces(), ptr);
-          CHK_(ptr);
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_traces();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.Run.traces"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<18>(ptr));
         } else
           goto handle_unusual;
         continue;
@@ -1127,11 +1113,14 @@ uint8_t* Run::_InternalSerialize(
         _Internal::output(this).GetCachedSize(), target, stream);
   }
 
-  // optional .google.protobuf.Value traces = 2;
-  if (_internal_has_traces()) {
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(2, _Internal::traces(this),
-        _Internal::traces(this).GetCachedSize(), target, stream);
+  // repeated string traces = 2;
+  for (int i = 0, n = this->_internal_traces_size(); i < n; i++) {
+    const auto& s = this->_internal_traces(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.Run.traces");
+    target = stream->WriteString(2, s, target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1150,23 +1139,22 @@ size_t Run::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    // optional .google.protobuf.Value output = 1;
-    if (cached_has_bits & 0x00000001u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-          *_impl_.output_);
-    }
-
-    // optional .google.protobuf.Value traces = 2;
-    if (cached_has_bits & 0x00000002u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-          *_impl_.traces_);
-    }
-
+  // repeated string traces = 2;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.traces_.size());
+  for (int i = 0, n = _impl_.traces_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.traces_.Get(i));
   }
+
+  // optional .google.protobuf.Value output = 1;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.output_);
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -1185,16 +1173,10 @@ void Run::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_N
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    if (cached_has_bits & 0x00000001u) {
-      _this->_internal_mutable_output()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
-          from._internal_output());
-    }
-    if (cached_has_bits & 0x00000002u) {
-      _this->_internal_mutable_traces()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
-          from._internal_traces());
-    }
+  _this->_impl_.traces_.MergeFrom(from._impl_.traces_);
+  if (from._internal_has_output()) {
+    _this->_internal_mutable_output()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
+        from._internal_output());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -1214,12 +1196,8 @@ void Run::InternalSwap(Run* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(Run, _impl_.traces_)
-      + sizeof(Run::_impl_.traces_)
-      - PROTOBUF_FIELD_OFFSET(Run, _impl_.output_)>(
-          reinterpret_cast<char*>(&_impl_.output_),
-          reinterpret_cast<char*>(&other->_impl_.output_));
+  _impl_.traces_.InternalSwap(&other->_impl_.traces_);
+  swap(_impl_.output_, other->_impl_.output_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata Run::GetMetadata() const {
