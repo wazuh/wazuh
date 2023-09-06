@@ -82,114 +82,111 @@ processJson(const json::Json& json, const std::string& jsonPath, const std::stri
 {
     rapidjson::Document doc;
 
-    if (json.isArray(jsonPath))
+    const auto jsonValue = json.getJson(jsonPath);
+
+    if (jsonValue.has_value())
     {
-        auto arrayValue = json.getArray(jsonPath).value();
+        doc.Parse(jsonValue.value().str().c_str());
+
+        const auto yaml = yml::Converter::jsonToYaml(doc);
+
         YAML::Node rootNode;
-        for (size_t i = 0; i < arrayValue.size(); i++)
-        {
-            doc.Parse(arrayValue[i].str().c_str());
-            const auto yaml = yml::Converter::jsonToYaml(doc);
-            rootNode[rootName].push_back(yaml);
-        }
+        rootNode[rootName] = yaml;
+
         return rootNode;
-    }
-    else
-    {
-        const auto jsonValue = json.getJson(jsonPath);
-
-        if (jsonValue.has_value())
-        {
-            doc.Parse(jsonValue.value().str().c_str());
-
-            const auto yaml = yml::Converter::jsonToYaml(doc);
-
-            YAML::Node rootNode;
-            rootNode[rootName] = yaml;
-
-            return rootNode;
-        }
     }
 
     return std::nullopt;
 }
 
 /**
- * @brief Print a YAML node
+ * @brief Print traces in YAML format.
  *
- * @param node YAML node
+ * This function takes a vector of strings containing traces and formats them in YAML
+ * format with indentation.
+ *
+ * @param tracesStr A vector of strings containing traces to be formatted.
  */
-inline void printYML(const YAML::Node& node)
+inline void printTracesInYMLFormat(std::vector<std::string> tracesStr)
 {
-    YAML::Emitter out;
-
-    if (node["Traces"])
+    if (!tracesStr.empty())
     {
-        YAML::Node newNode;
+        std::vector<std::pair<std::string, std::string>> formattedData;
 
-        out << YAML::BeginMap;
-
-        out << YAML::Key << "Traces" << YAML::Value << YAML::BeginSeq;
-
-        auto addPartsToNode = [&newNode](const std::string& value)
+        for (const auto& trace : tracesStr)
         {
-            size_t pos = value.find(" ");
+            size_t pos = trace.find(" ");
             if (pos != std::string::npos)
             {
-                auto firstPart = value.substr(0, pos);
-                auto secondPart = value.substr(pos + 1);
-                newNode[firstPart].push_back(secondPart);
-            }
-        };
+                auto firstPart = trace.substr(0, pos);
+                auto secondPart = trace.substr(pos + 1);
+                bool found = false;
 
-        for (const YAML::Node& trace : node["Traces"])
-        {
-            if (trace.IsScalar())
-            {
-                addPartsToNode(trace.Scalar());
-            }
-            else
-            {
-                for (const auto& scalar : trace)
+                // Search if the key already exist in the vector
+                for (auto& entry : formattedData)
                 {
-                    addPartsToNode(scalar.Scalar());
+                    if (entry.first == firstPart)
+                    {
+                        // Si existe, combinar contenido
+                        entry.second += "\n" + secondPart;
+                        found = true;
+                        break;
+                    }
+                }
+
+                // If not found the key, add new input to vetor
+                if (!found)
+                {
+                    formattedData.emplace_back(firstPart, secondPart);
                 }
             }
         }
-        out << newNode;
-    }
-    else
-    {
-        out << node;
-    }
 
-    std::cout << std::endl << out.c_str() << std::endl << std::endl;
+        std::cout << std::endl << std::endl << "Traces:" << std::endl;
+        for (const auto& entry : formattedData)
+        {
+            std::cout << "  - \"" << entry.first << "\":" << std::endl;
+
+            // Split the second part in lines and show with indentations
+            std::istringstream iss(entry.second);
+            std::string line;
+            while (std::getline(iss, line))
+            {
+                std::cout << "    - " << line << std::endl;
+            }
+        }
+    }
 }
 
 /**
- * @brief Print a json object string as YAML
+ * @brief Print data as YAML.
  *
- * @param strJsonObject Json value
+ * This function takes a JSON string, processes it, and prints the resulting data in
+ * YAML format. It also prints traces in YAML format if provided.
+ *
+ * @param strJsonObject A JSON string to be processed and printed as YAML.
+ * @param tracesStr A vector of strings containing traces to be printed in YAML format.
+ *
  */
-inline void printJsonAsYML(const std::string& strJsonObject)
+inline void printAsYML(const std::string& strJsonObject, std::vector<std::string> tracesStr)
 {
     std::optional<YAML::Node> outputNode;
     try
     {
+        // Print traces in yml format
+        printTracesInYMLFormat(tracesStr);
+
+        // Print output in yml format
         auto jsonObject = json::Json {strJsonObject.c_str()};
         jsonObject.erase("/status");
-
-        outputNode = processJson(jsonObject, "/traces", "Traces");
-        if (outputNode.has_value())
-        {
-            printYML(outputNode.value());
-        }
-
         outputNode = processJson(jsonObject, "/output", "Output");
         if (outputNode.has_value())
         {
-            printYML(outputNode.value());
+            YAML::Emitter out;
+            out << outputNode.value();
+            std::cout << std::endl << out.c_str() << std::endl << std::endl;
         }
+
     }
     catch (const std::exception& e)
     {
@@ -238,13 +235,20 @@ void processEvent(const std::string& eventStr,
     std::string jsonOutputAndTrace;
     const auto& run = eResponse.run();
     google::protobuf::util::MessageToJsonString(run, &jsonOutputAndTrace);
+
     if (parameters.jsonFormat)
     {
         std::cout << jsonOutputAndTrace << std::endl;
     }
     else
     {
-        printJsonAsYML(jsonOutputAndTrace);
+        const auto& traces = eResponse.run().traces();
+        std::vector<std::string> tracesStr;
+        for(const auto& trace : traces)
+        {
+            tracesStr.emplace_back(trace);
+        }
+        printAsYML(jsonOutputAndTrace, tracesStr);
     }
 }
 
@@ -573,3 +577,4 @@ void configure(CLI::App_p app)
 }
 
 } // namespace cmd::test
+

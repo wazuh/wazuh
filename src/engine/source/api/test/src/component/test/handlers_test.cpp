@@ -864,18 +864,16 @@ INSTANTIATE_TEST_SUITE_P(
                         "status": "OK",
                         "run": {
                             "output": {
+                                "TestSessionID": 1,
                                 "wazuh": {
-                                    "location": "api.test",
                                     "queue": 1,
-                                    "message": "hello world!"
-                                },
-                                "TestSessionID": 1
+                                    "message": "hello world!",
+                                    "location": "api.test"
+                                }
                             },
                             "traces": [
-                                [
-                                    "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure",
-                                    "[decoder/core-hostinfo/0] [condition]:failure"
-                                ]
+                                "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure",
+                                "[decoder/core-hostinfo/0] [condition]:failure"
                             ]
                         }
                     })"),
@@ -883,18 +881,16 @@ INSTANTIATE_TEST_SUITE_P(
                         "status": "OK",
                         "run": {
                             "output": {
+                                "TestSessionID": 1,
                                 "wazuh": {
+                                    "message": "hello world!",
                                     "location": "api.test",
-                                    "queue": 1,
-                                    "message": "hello world!"
-                                },
-                                "TestSessionID": 1
+                                    "queue": 1
+                                }
                             },
                             "traces": [
-                                [
-                                    "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure",
-                                    "[decoder/core-hostinfo/0] [condition]:failure"
-                                ]
+                                "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure",
+                                "[decoder/core-hostinfo/0] [condition]:failure"
                             ]
                         }
                     })"),

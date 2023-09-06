@@ -22,7 +22,7 @@ message Session
 message Run
 {
     optional google.protobuf.Value output = 1; // test output
-    optional google.protobuf.Value traces = 2; // test rules
+    repeated string traces = 2;                // test rules
 }
 
 enum DebugMode
