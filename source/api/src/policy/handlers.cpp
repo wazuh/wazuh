@@ -10,17 +10,6 @@
 
 namespace
 {
-// TODO: Move to a common place or maybe detect automatically all wazuh integrations an load them by default
-using assetConfig = std::pair<base::Name, store::NamespaceId>;
-
-// TODO through cli
-const std::vector<assetConfig> defaultAsset {{base::Name("integration/wazuh-core/0"), store::NamespaceId("system")},
-                                             {base::Name("integration/syslog/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integration/system/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integration/windows/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integration/apache-http/0"), store::NamespaceId("wazuh")},
-                                             {base::Name("integration/suricata/0"), store::NamespaceId("wazuh")}};
-
 // TODO Improve message errores (from store)
 
 /**
@@ -75,6 +64,16 @@ getTupleRequest(const api::wpRequest& wRequest, const std::weak_ptr<api::policy:
     try
     {
         policy = base::Name(eRequest.policy());
+        // Check parts
+        if (policy.parts().size() != 3) {
+            return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must have 3 parts");
+        }
+        if (policy.parts()[0] != "policy") {
+            return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must start with 'policy'");
+        }
+        if (policy.parts()[1].empty() || policy.parts()[2].empty()) {
+            return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must have non-empty second and third parts");
+        }
     }
     catch (const std::runtime_error& e)
     {
@@ -160,6 +159,12 @@ std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getName
     try
     {
         asset = base::Name(request.asset());
+        if (asset.parts().size() != 3) {
+            return ::api::adapter::genericError<ResponseT>("Error: Asset name must have 3 parts");
+        }
+        if (asset.parts()[0].empty() || asset.parts()[1].empty() || asset.parts()[2].empty()) {
+            return ::api::adapter::genericError<ResponseT>("Error: Asset name must have non-empty parts");
+        }
     }
     catch (const std::runtime_error& e)
     {
