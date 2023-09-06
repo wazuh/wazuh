@@ -14,6 +14,11 @@ namespace {
             return base::Error {
                 fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
         }
+        else if (policyName.parts()[1].empty() || policyName.parts()[2].empty())
+        {
+            return base::Error {fmt::format("Invalid policy name: {}, expected non-empty second and third parts",
+                                            policyName.fullName())};
+        }
 
         return std::nullopt;
     }
