@@ -12,6 +12,18 @@
 #include "interface_c_module_test.hpp"
 #include "router.h"
 
+TEST(RouterModuleCInterfaceTest, TestInitialize)
+{
+    EXPECT_EQ(router_initialize(
+                  [](const modules_log_level_t level, const char* log, const char* tag)
+                  {
+                      std::ignore = level;
+                      std::ignore = log;
+                      std::ignore = tag;
+                  }),
+              0);
+}
+
 TEST(RouterModuleCInterfaceTest, TestInitializeAndDestroy)
 {
     EXPECT_EQ(router_start(), 0);
