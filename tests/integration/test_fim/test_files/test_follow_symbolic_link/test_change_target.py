@@ -68,11 +68,11 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
+from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils import file, commands
+from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
