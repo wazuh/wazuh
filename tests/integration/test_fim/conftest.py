@@ -50,6 +50,9 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     amount = test_metadata.get('files_amount')
     amount = 2 if not amount else amount
 
+    if not file.exists(path):
+        file.create_folder(path)
+
     [file.write_file(Path(path, f'test{i}.log')) for i in range(amount)]
 
     yield
