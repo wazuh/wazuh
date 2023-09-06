@@ -246,7 +246,7 @@ R"({
 R"({
     "name": "policy/orphanFilterEnv/version",
     "assets": [
-        "rule/rule1/version"
+        "rule/rule1/version",
         "filter/filter1/version",
         "output/output1/version"
     ]
