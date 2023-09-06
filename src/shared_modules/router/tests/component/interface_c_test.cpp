@@ -32,7 +32,7 @@ void RouterCInterfaceTest::TearDown()
 
 TEST_F(RouterCInterfaceTest, TestProviderSubscriberSimple)
 {
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, DISABLED_TestDoubleProviderInit)
@@ -45,7 +45,7 @@ TEST_F(RouterCInterfaceTest, DISABLED_TestDoubleProviderInit)
 
 TEST_F(RouterCInterfaceTest, TestDoubleSubscriberInit)
 {
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSend)
@@ -55,7 +55,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSend)
 
     EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
 
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSendNull)
@@ -65,7 +65,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendNull)
 
     EXPECT_EQ(router_provider_send(handle, nullptr, 4), -1);
 
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSendZero)
@@ -75,7 +75,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 
     EXPECT_EQ(router_provider_send(handle, "test", 0), -1);
 
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
@@ -88,7 +88,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
 
     EXPECT_NO_THROW(router_provider_destroy(handle));
 
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
@@ -97,7 +97,7 @@ TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
 
     EXPECT_EQ(handle, nullptr);
 
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestTwoProvidersWithTheSameTopicName)
