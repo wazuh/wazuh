@@ -78,60 +78,58 @@ void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *deco
             child_node = node;
         }
 
-        else {
-            /* Check if we have any child osdecoder */
-            while (child_node) {
-                nnode = child_node->osdecoder;
+        /* Check if we have any child osdecoder */
+        while (child_node) {
+            nnode = child_node->osdecoder;
 
-                /* If we have a pre match and it matches, keep
-                 * going. If we don't have a prematch, stop
-                 * and go for the regexes.
-                 */
-                if (nnode->prematch) {
-                    const char *llog2;
+            /* If we have a pre match and it matches, keep
+                * going. If we don't have a prematch, stop
+                * and go for the regexes.
+                */
+            if (nnode->prematch) {
+                const char *llog2;
 
-                    /* If we have an offset set, use it */
-                    if (nnode->prematch_offset & AFTER_PARENT) {
-                        llog2 = pmatch;
-                    } else {
-                        llog2 = lf->log;
-                    }
-
-                    if (w_expression_match(nnode->prematch, llog2, &cmatch, decoder_match)) {
-
-                        if (*cmatch != '\0') {
-                            cmatch++;
-                        }
-
-                        lf->decoder_info = nnode;
-                        lf->log_after_parent = pmatch;
-                        lf->log_after_prematch = cmatch;
-
-                        break;
-                    }
+                /* If we have an offset set, use it */
+                if (nnode->prematch_offset & AFTER_PARENT) {
+                    llog2 = pmatch;
                 } else {
-                    cmatch = pmatch;
+                    llog2 = lf->log;
+                }
+
+                if (w_expression_match(nnode->prematch, llog2, &cmatch, decoder_match)) {
+
+                    if (*cmatch != '\0') {
+                        cmatch++;
+                    }
+
+                    lf->decoder_info = nnode;
+                    lf->log_after_parent = pmatch;
+                    lf->log_after_prematch = cmatch;
+
                     break;
                 }
+            } else {
+                cmatch = pmatch;
+                break;
+            }
 
-                /* If we have multiple regex-only childs,
-                 * do not attempt to go any further with them.
-                 */
-                if (child_node->osdecoder->get_next) {
-                    do {
-                        child_node = child_node->next;
-                    } while (child_node && child_node->osdecoder->get_next);
-
-                    if (!child_node) {
-                        return;
-                    }
-
+            /* If we have multiple regex-only childs,
+                * do not attempt to go any further with them.
+                */
+            if (child_node->osdecoder->get_next) {
+                do {
                     child_node = child_node->next;
-                    nnode = NULL;
-                } else {
-                    child_node = child_node->next;
-                    nnode = NULL;
+                } while (child_node && child_node->osdecoder->get_next);
+
+                if (!child_node) {
+                    return;
                 }
+
+                child_node = child_node->next;
+                nnode = NULL;
+            } else {
+                child_node = child_node->next;
+                nnode = NULL;
             }
         }
 
