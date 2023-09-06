@@ -436,11 +436,33 @@ Policy::Policy(const json::Json& jsonDefinition,
         }
     }
 
+    // Check orphan filters
+    for (auto& [name, asset] : m_assets)
+    {
+        if (asset->m_type == Asset::Type::FILTER)
+        {
+            if (asset->m_parents.empty())
+            {
+                throw std::runtime_error(fmt::format("Filter '{}' has no parents", name));
+            }
+
+            for (auto& parent : asset->m_parents)
+            {
+                if (m_assets.find(parent) == m_assets.end())
+                {
+                    throw std::runtime_error(
+                        fmt::format("Parent '{}' of filter '{}' does not exist", parent, name));
+                }
+            }
+        }
+    }
+
     // Build graphs in order
     // Decoders -> Rules -> Outputs
     if (assetsByType.find(Asset::Type::DECODER) != assetsByType.end())
     {
-        buildGraph(Asset::typeToString(Asset::Type::DECODER), assetsByType.at(Asset::Type::DECODER), Asset::Type::DECODER);
+        buildGraph(
+            Asset::typeToString(Asset::Type::DECODER), assetsByType.at(Asset::Type::DECODER), Asset::Type::DECODER);
     }
     if (assetsByType.find(Asset::Type::RULE) != assetsByType.end())
     {
@@ -450,7 +472,6 @@ Policy::Policy(const json::Json& jsonDefinition,
     {
         buildGraph(Asset::typeToString(Asset::Type::OUTPUT), assetsByType.at(Asset::Type::OUTPUT), Asset::Type::OUTPUT);
     }
-
 }
 
 std::string Policy::getGraphivzStr() const

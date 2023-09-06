@@ -210,10 +210,14 @@ TEST_F(PolicyTest, OrphanAsset)
 
 TEST_F(PolicyTest, OrphanFilter)
 {
-    GTEST_SKIP();
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
-    registerBuilders(registry);
-
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
+    registerHelperBuilders(helperRegistry);
+    builder::internals::dependencies deps {};
+    deps.helperRegistry = helperRegistry;
+    deps.schema = schemf::mocks::EmptySchema::create();
+    registerBuilders(registry, deps);
+    
     auto policyJson = std::get<json::Json>(storeRead->readDoc(base::Name {"policy/orphanFilterEnv/version"}));
     ASSERT_THROW(Policy(policyJson, storeRead, registry), std::runtime_error);
 }
