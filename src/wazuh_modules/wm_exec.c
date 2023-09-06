@@ -23,6 +23,7 @@
 #endif
 
 // Data structure to share with the reader thread
+static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 typedef struct ThreadInfo {
 #ifdef WIN32
@@ -46,6 +47,7 @@ static void wm_children_node_clean(pid_t *p_sid) {
 // Initialize children pool
 
 void wm_children_pool_init() {
+    w_mutex_init(&wm_children_mutex, NULL);
     wm_children_list = OSList_Create();
     OSList_SetFreeDataPointer(wm_children_list, (void (*)(void *))wm_children_node_clean);
 }
@@ -58,6 +60,8 @@ void wm_children_pool_destroy() {
 }
 
 #ifdef WIN32
+
+#define ERROR_PROC_NOT_FOUND 127
 
 // Windows version -------------------------------------------------------------
 
@@ -255,14 +259,17 @@ void wm_remove_handle(HANDLE hProcess) {
     HANDLE * p_hProcess = NULL;
 
     if(wm_children_list) {
+        w_mutex_lock(&wm_children_mutex);
         OSList_foreach(node_it, wm_children_list) {
             p_hProcess = (HANDLE *)node_it->data;
             if (p_hProcess && *p_hProcess == hProcess) {
                 OSList_DeleteThisNode(wm_children_list, node_it);
                 os_free(p_hProcess);
+                w_mutex_unlock(&wm_children_mutex);
                 return;
             }
         }
+        w_mutex_unlock(&wm_children_mutex);
     }
     merror("Child process %p not found.", hProcess);
 }
@@ -275,10 +282,14 @@ void wm_kill_children() {
     HANDLE * p_hProcess = NULL;
     OSListNode * node_it = NULL;
 
+    w_mutex_lock(&wm_children_mutex);
     OSList_foreach(node_it, wm_children_list) {
-        p_hProcess = (HANDLE *)node_it->data;
-        TerminateProcess(*p_hProcess, 127); //TODO: Check and avoid magic 127
+        if(node_it->data) {
+            p_hProcess = (HANDLE *)node_it->data;
+            TerminateProcess(*p_hProcess, ERROR_PROC_NOT_FOUND);
+        }
     }
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 #else
@@ -643,14 +654,17 @@ void wm_remove_sid(pid_t sid) {
     pid_t * p_sid = NULL;
 
     if(wm_children_list) {
+        w_mutex_lock(&wm_children_mutex);
         OSList_foreach(node_it, wm_children_list) {
             p_sid = (pid_t *)node_it->data;
             if(p_sid && *p_sid == sid) {
                 OSList_DeleteThisNode(wm_children_list, node_it);
                 os_free(p_sid);
+                w_mutex_unlock(&wm_children_mutex);
                 return;
             }
         }
+        w_mutex_unlock(&wm_children_mutex);
     }
     merror("Child process %d not found.", sid);
 }
@@ -665,6 +679,7 @@ void wm_kill_children() {
     pid_t * p_sid = NULL;
     OSListNode * node_it = NULL;
 
+    w_mutex_lock(&wm_children_mutex);
     OSList_foreach(node_it, wm_children_list) {
         p_sid = (pid_t *)node_it->data;
         if (p_sid) {
@@ -721,6 +736,7 @@ void wm_kill_children() {
             }
         }
     }
+    w_mutex_unlock(&wm_children_mutex);
     wm_children_pool_destroy();
 }
 
