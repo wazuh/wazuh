@@ -37,7 +37,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSubscriberSimple)
 
 TEST_F(RouterCInterfaceTest, DISABLED_TestDoubleProviderInit)
 {
-    auto handle = router_provider_create("test");
+    auto handle {router_provider_create("test")};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_create("test"), nullptr);
@@ -50,7 +50,7 @@ TEST_F(RouterCInterfaceTest, TestDoubleSubscriberInit)
 
 TEST_F(RouterCInterfaceTest, TestProviderSend)
 {
-    auto handle = router_provider_create("test");
+    auto handle {router_provider_create("test")};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
@@ -60,7 +60,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSend)
 
 TEST_F(RouterCInterfaceTest, TestProviderSendNull)
 {
-    auto handle = router_provider_create("test");
+    auto handle {router_provider_create("test")};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_send(handle, nullptr, 4), -1);
@@ -70,7 +70,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendNull)
 
 TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 {
-    auto handle = router_provider_create("test");
+    auto handle {router_provider_create("test")};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_send(handle, "test", 0), -1);
@@ -80,7 +80,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 
 TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
 {
-    auto handle = router_provider_create("test");
+    auto handle {router_provider_create("test")};
 
     EXPECT_NE(handle, nullptr);
 
@@ -93,7 +93,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
 
 TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
 {
-    auto handle = router_provider_create("");
+    auto handle {router_provider_create("")};
 
     EXPECT_EQ(handle, nullptr);
 
@@ -102,13 +102,13 @@ TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
 
 TEST_F(RouterCInterfaceTest, TestTwoProvidersWithTheSameTopicName)
 {
-    auto handle1 = router_provider_create("test-provider");
+    auto handle1 {router_provider_create("test-provider")};
 
     EXPECT_NE(handle1, nullptr);
 
-    auto handle2 = router_provider_create("test-provider");
+    auto handle2 {router_provider_create("test-provider")};
 
     EXPECT_EQ(handle2, nullptr);
 
-    // TO DO - Add C interface for subscribers.
+    // TODO - Add C interface for subscribers.
 }
