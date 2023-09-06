@@ -30,7 +30,7 @@ private:
      */
     void assertValid()
     {
-        if (m_id.parts().size() != PARTS_NAMESPACE_SIZE)
+        if (m_id.parts().size() != PARTS_NAMESPACE_SIZE || m_id.parts()[0].empty())
         {
             throw std::runtime_error("NamespaceId must have only one part, cannot be empty and cannot contain '/'");
         }
