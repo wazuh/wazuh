@@ -2,7 +2,7 @@
 
 #include <api/policy/handlers.hpp>
 
-#include <policy/mockPolicy.hpp>
+#include <api/policy/mockPolicy.hpp>
 
 using namespace api::policy::mocks;
 using namespace api::policy::handlers;
