@@ -1,3 +1,12 @@
+/**
+ * @file handlers_test.cpp
+ * @brief Unit tests for policy handlers.
+ *
+ * This file contains unit tests for the policy handlers, which are responsible for processing policy-related requests.
+ * The tests cover various scenarios, including successful and failed requests, and different combinations of parameters.
+ * The tests use a mock policy object to simulate policy data and behavior.
+ *
+ */
 #include <gtest/gtest.h>
 
 #include <api/policy/handlers.hpp>
@@ -7,28 +16,47 @@
 using namespace api::policy::mocks;
 using namespace api::policy::handlers;
 
-using ExpectedFn = std::function<api::wpResponse(const std::shared_ptr<MockPolicy>&)>;
+
+/***
+ * @brief Represent the type signature of the all function to test
+ *
+ * The handlers is created with a function that return the handler to test.
+*/
 using GetHandlerToTest = std::function<api::Handler(const std::shared_ptr<api::policy::IPolicy>&)>;
-using TestPolT = std::tuple<GetHandlerToTest, std::string, ExpectedFn>;
 
+/**
+ * @brief Represent the type signature of the expected function
+ *
+ * The expected function return the response of the handler.
+*/
+using ExpectedFn = std::function<api::wpResponse(const std::shared_ptr<MockPolicy>&)>;
+
+/**
+ * @brief Test parameters.
+ * @param getHandlerFn Function that return the handler to test.
+ * @param params Parameters to pass to the handler.
+ * @param expectedFn Function that return the expected response.
+*/
+using TestPolT = std::tuple<GetHandlerToTest, json::Json, ExpectedFn>;
+
+/**
+ * @brief Describe the behaviour of the handler (mocks function)
+ *
+ * Its used for build a success or fail response
+ */
 using Behaviour = std::function<void(std::shared_ptr<MockPolicy>)>;
+
+/**
+ * @brief Describe the behaviour of the handler (mocks function) with return
+ * json::Json is the return type
+ *
+ * Its used for build a success or fail response
+*/
 using BehaviourWRet = std::function<json::Json(std::shared_ptr<MockPolicy>)>;
-
-class PolicyHandlerTest : public ::testing::TestWithParam<TestPolT>
-{
-protected:
-    std::shared_ptr<MockPolicy> m_policy;
-
-    void SetUp() override { m_policy = std::make_shared<MockPolicy>(); }
-
-    void TearDown() override { m_policy.reset(); }
-};
-
 
 const std::string STATUS_PATH = "/status";
 const std::string STATUS_OK = "OK";
 const std::string STATUS_ERROR = "ERROR";
-
 
 ExpectedFn success(const Behaviour& behaviour = {})
 {
@@ -80,6 +108,10 @@ const std::string NAMESPACE_S = "system";
 const std::string ASSET_NAME_A = "asset/name/0";
 const std::string ASSET_NAME_B = "asset/name/1";
 
+/**
+ * @brief User for build the params of the handler in a easy way
+ *
+ */
 struct JParams
 {
 
@@ -169,6 +201,10 @@ struct JParams
     operator std::string() const { return json::Json(*this).str(); }
 };
 
+/**
+ * @brief User for build the response of the handler in a easy way
+ *
+ */
 struct JPayload
 {
     json::Json m_json;
@@ -200,24 +236,22 @@ struct JPayload
 };
 
 
+class PolicyHandlerTest : public ::testing::TestWithParam<TestPolT>
+{
+protected:
+    std::shared_ptr<MockPolicy> m_policy;
+
+    void SetUp() override { m_policy = std::make_shared<MockPolicy>(); }
+
+    void TearDown() override { m_policy.reset(); }
+};
 
 TEST_P(PolicyHandlerTest, processRequest)
 {
     const auto [getHandlerFn, params, expectedFn] = GetParam();
 
-    json::Json jParams;
-    try
-    {
-        jParams = json::Json {params.c_str()};
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "Error parsing params: [" << e.what() << "] " << params << std::endl;
-        throw;
-    }
-
     auto expectedResponse = expectedFn(m_policy);
-    auto request = api::wpRequest::create("policy.command", "test", jParams);
+    auto request = api::wpRequest::create("policy.command", "test", params);
 
     auto response = getHandlerFn(m_policy)(request);
 
@@ -238,74 +272,69 @@ INSTANTIATE_TEST_SUITE_P(
     PolicyHandlerTest,
     testing::Values(
         // [storePost]: Fail
-        TestPolT(storePost, R"( { "name": "test" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "other/name/version" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "pol/name/version" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "policy/name/version/ext" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "policy/name" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "policy/" } )", failure()),
-        TestPolT(storePost, R"( { "policy": "policy//0" } )", failure()),
+        TestPolT(storePost, JParams("test"), failure()),
+        TestPolT(storePost, JParams(""), failure()),
+        TestPolT(storePost, JParams("other/name/version"), failure()),
+        TestPolT(storePost, JParams("pol/name/version"), failure()),
+        TestPolT(storePost, JParams("policy/name/version/ext"), failure()),
+        TestPolT(storePost, JParams("policy/name"), failure()),
+        TestPolT(storePost, JParams("policy/"), failure()),
+        TestPolT(storePost, JParams("policy//0"), failure()),
         TestPolT(storePost,
-                 R"( { "policy": "policy/name/0" } )",
+                 JParams(POLICY_NAME),
                  failure(
                      [](auto policy) {
-                         EXPECT_CALL(*policy, create(base::Name {"policy/name/0"}))
+                         EXPECT_CALL(*policy, create(base::Name {POLICY_NAME}))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [storePost]: OK
-        TestPolT(storePost,
-                 R"( { "policy": "policy/name/0" } )",
-                 success(
-                     [](auto policy) {
-                         EXPECT_CALL(*policy, create(base::Name {"policy/name/0"}))
-                             .WillOnce(::testing::Return(std::nullopt));
-                     })),
+        TestPolT(
+            storePost,
+            JParams(POLICY_NAME),
+            success(
+                [](auto policy)
+                { EXPECT_CALL(*policy, create(base::Name {POLICY_NAME})).WillOnce(::testing::Return(std::nullopt)); })),
         // [storeDelete]: fail
-        TestPolT(storeDelete, R"( { "name": "test" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "other/name/version" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "pol/name/version" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "policy/name/version/ext" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "policy/name" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "policy/" } )", failure()),
-        TestPolT(storeDelete, R"( { "policy": "policy//0" } )", failure()),
-        TestPolT(storeDelete,
-                 R"( { "policy": "policy/name/0" } )",
-                 failure(
-                     [](auto policy) {
-                         EXPECT_CALL(*policy, del(base::Name {"policy/name/0"}))
-                             .WillOnce(::testing::Return(base::Error {}));
-                     })),
+        TestPolT(storeDelete, JParams("test"), failure()),
+        TestPolT(storeDelete, JParams(""), failure()),
+        TestPolT(storeDelete, JParams("other/name/version"), failure()),
+        TestPolT(storeDelete, JParams("pol/name/version"), failure()),
+        TestPolT(storeDelete, JParams("policy/name/version/ext"), failure()),
+        TestPolT(storeDelete, JParams("policy/name"), failure()),
+        TestPolT(storeDelete, JParams("policy/"), failure()),
+        TestPolT(storeDelete, JParams("policy//0"), failure()),
+        TestPolT(
+            storeDelete,
+            JParams(POLICY_NAME),
+            failure(
+                [](auto policy)
+                { EXPECT_CALL(*policy, del(base::Name {POLICY_NAME})).WillOnce(::testing::Return(base::Error {})); })),
         // [storeDelete]: ok
         TestPolT(storeDelete,
-                 R"( { "policy": "policy/name/0" } )",
+                 JParams(POLICY_NAME),
                  success(
                      [](auto policy) {
-                         EXPECT_CALL(*policy, del(base::Name {"policy/name/0"}))
-                             .WillOnce(::testing::Return(std::nullopt));
+                         EXPECT_CALL(*policy, del(base::Name {POLICY_NAME})).WillOnce(::testing::Return(std::nullopt));
                      })),
         // [storeGet]: fail
         TestPolT(storeGet, R"( { "name": "test" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "other/name/version" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "pol/name/version" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy/name/version/ext" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy/name" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy/" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy//0" } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy/valid/0", "namespaces" : ["invalid/name"] } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy/valid/0", "namespaces" : ["validName" , ""] } )", failure()),
-        TestPolT(storeGet, R"( { "policy": "policy/valid/0", "namespaces" : ["", "validName"] } )", failure()),
+        TestPolT(storeGet, JParams(""), failure()),
+        TestPolT(storeGet, JParams("other/name/version"), failure()),
+        TestPolT(storeGet, JParams("pol/name/version"), failure()),
+        TestPolT(storeGet, JParams("policy/name/version/ext"), failure()),
+        TestPolT(storeGet, JParams("policy/name"), failure()),
+        TestPolT(storeGet, JParams("policy/"), failure()),
+        TestPolT(storeGet, JParams("policy//0"), failure()),
+        TestPolT(storeGet, JParams(POLICY_NAME).namespaces("invalid/name"), failure()),
+        TestPolT(storeGet, JParams(POLICY_NAME).namespaces({NAMESPACE_U, ""}), failure()),
+        TestPolT(storeGet, JParams(POLICY_NAME).namespaces({"", NAMESPACE_U}), failure()),
+        TestPolT(storeGet, JParams(POLICY_NAME).namespaces({NAMESPACE_W, NAMESPACE_U}), failure()),
         TestPolT(storeGet,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["validName", "invalid/name"] } )",
-                 failure()),
-        TestPolT(storeGet,
-                 R"( { "policy": "policy/name/0" } )",
+                 JParams(POLICY_NAME),
                  failure(
                      [](auto policy)
                      {
-                         EXPECT_CALL(*policy, get(base::Name {"policy/name/0"}, std::vector<store::NamespaceId> {}))
+                         EXPECT_CALL(*policy, get(base::Name {POLICY_NAME}, std::vector<store::NamespaceId> {}))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [storeGet]: ok
@@ -318,7 +347,7 @@ INSTANTIATE_TEST_SUITE_P(
                          EXPECT_CALL(*policy,
                                      get(base::Name {params.m_policy.value()}, std::vector<store::NamespaceId> {}))
                              .WillOnce(::testing::Return("Dump of policy"));
-                         return json::Json {R"({"data": "Dump of policy"})"};
+                         return JPayload().setString("Dump of policy", "/data");
                      })),
 
         TestPolT(storeGet,
@@ -329,7 +358,7 @@ INSTANTIATE_TEST_SUITE_P(
                          EXPECT_CALL(*policy,
                                      get(base::Name {POLICY_NAME}, std::vector<store::NamespaceId> {NAMESPACE_U}))
                              .WillOnce(::testing::Return("Dump of policy"));
-                         return json::Json {R"({"data": "Dump of policy"})"};
+                         return JPayload().setString("Dump of policy", "/data");
                      })),
         TestPolT(storeGet,
                  JParams(POLICY_NAME).namespaces(NAMESPACE_U).namespaces(NAMESPACE_W),
@@ -344,115 +373,102 @@ INSTANTIATE_TEST_SUITE_P(
                      })),
 
         // [policyAssetPost]: Fail
-        TestPolT(policyAssetPost, R"( { "policy": "" } )", failure()),
-        TestPolT(policyAssetPost, R"( { "policy": "other/name/version", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetPost, R"( { "policy": "pol/name/version", "asset": "valid/asset/name"  } )", failure()),
+        TestPolT(policyAssetPost, JParams(""), failure()),
+        TestPolT(policyAssetPost, JParams("other/name/version").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams("pol/name/version").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams("policy/name/version/ext").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams("policy/name").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams("policy/").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_("invalid/name").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(""), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("/"), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("as/"), failure()),
+
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("/asd"), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("invalid/name"), failure()),
+        TestPolT(policyAssetPost, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("invalid/name/exc/va"), failure()),
         TestPolT(policyAssetPost,
-                 R"( { "policy": "policy/name/version/ext", "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(policyAssetPost, R"( { "policy": "policy/name", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetPost, R"( { "policy": "policy/", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetPost, R"( { "policy": "policy/valid/0", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetPost,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["invalid/name"], "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(policyAssetPost,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["validName" , ""], "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(policyAssetPost,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["", "validName"], "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(
-            policyAssetPost,
-            R"( { "policy": "policy/valid/0", "namespaces" : ["validName", "invalid/name"], "asset": "valid/asset/name"  } )",
-            failure()),
-        TestPolT(policyAssetPost,
-                 R"( { "policy": "policy/name/0", "namespace": "user", "asset":  "valid/asset/name" } )",
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(ASSET_NAME_A),
                  failure(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
-                                     addAsset(base::Name {"policy/name/0"},
-                                              store::NamespaceId {"user"},
-                                              base::Name {"valid/asset/name"}))
+                                     addAsset(base::Name {POLICY_NAME},
+                                              store::NamespaceId {NAMESPACE_U},
+                                              base::Name {ASSET_NAME_A}))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [policyAssetPost]: Ok
         TestPolT(policyAssetPost,
-                 R"( { "policy": "policy/name/0", "namespace": "user", "asset":  "valid/asset/name" } )",
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(ASSET_NAME_A),
                  success(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
-                                     addAsset(base::Name {"policy/name/0"},
-                                              store::NamespaceId {"user"},
-                                              base::Name {"valid/asset/name"}))
+                                     addAsset(base::Name {POLICY_NAME},
+                                              store::NamespaceId {NAMESPACE_U},
+                                              base::Name {ASSET_NAME_A}))
                              .WillOnce(::testing::Return(std::nullopt));
                      })),
         // [policyAssetDelete]: Fail
-        TestPolT(policyAssetDelete, R"( { "policy": "" } )", failure()),
-        TestPolT(policyAssetDelete, R"( { "policy": "other/name/version", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetDelete, R"( { "policy": "pol/name/version", "asset": "valid/asset/name"  } )", failure()),
+        TestPolT(policyAssetDelete, JParams(""), failure()),
+        TestPolT(policyAssetDelete, JParams("other/name/version").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams("pol/name/version").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams("policy/name/version/ext").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams("policy/name").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams("policy/").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).namespace_("invalid/name").asset(ASSET_NAME_A), failure()),
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(""), failure()),
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("/"), failure()),
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("as/"), failure()),
+
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("/asd"), failure()),
+        TestPolT(policyAssetDelete, JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("invalid/name"), failure()),
         TestPolT(policyAssetDelete,
-                 R"( { "policy": "policy/name/version/ext", "asset": "valid/asset/name"  } )",
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset("invalid/name/exc/va"),
                  failure()),
-        TestPolT(policyAssetDelete, R"( { "policy": "policy/name", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetDelete, R"( { "policy": "policy/", "asset": "valid/asset/name"  } )", failure()),
-        TestPolT(policyAssetDelete, R"( { "policy": "policy/valid/0", "asset": "valid/asset/name"  } )", failure()),
         TestPolT(policyAssetDelete,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["invalid/name"], "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(policyAssetDelete,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["validName" , ""], "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(policyAssetDelete,
-                 R"( { "policy": "policy/valid/0", "namespaces" : ["", "validName"], "asset": "valid/asset/name"  } )",
-                 failure()),
-        TestPolT(
-            policyAssetDelete,
-            R"( { "policy": "policy/valid/0", "namespaces" : ["validName", "invalid/name"], "asset": "valid/asset/name"  } )",
-            failure()),
-        TestPolT(policyAssetDelete,
-                 R"( { "policy": "policy/name/0", "namespace": "user", "asset":  "valid/asset/name" } )",
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(ASSET_NAME_A),
                  failure(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
-                                     delAsset(base::Name {"policy/name/0"},
-                                              store::NamespaceId {"user"},
-                                              base::Name {"valid/asset/name"}))
+                                     delAsset(base::Name {POLICY_NAME},
+                                              store::NamespaceId {NAMESPACE_U},
+                                              base::Name {ASSET_NAME_A}))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [policyAssetDelete]: Ok
         TestPolT(policyAssetDelete,
-                 R"( { "policy": "policy/name/0", "namespace": "user", "asset":  "valid/asset/name" } )",
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(ASSET_NAME_A),
                  success(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
-                                     delAsset(base::Name {"policy/name/0"},
-                                              store::NamespaceId {"user"},
-                                              base::Name {"valid/asset/name"}))
+                                     delAsset(base::Name {POLICY_NAME},
+                                              store::NamespaceId {NAMESPACE_U},
+                                              base::Name {ASSET_NAME_A}))
                              .WillOnce(::testing::Return(std::nullopt));
                      })),
         // [policyAssetGet]: Fail
         TestPolT(policyAssetGet, R"( { "name": "test" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "other/name/version" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "pol/name/version" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy/name/version/ext" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy/name" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy/" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy//0" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy/valid/0", "namespace" : "invalid/name" } )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy/valid/0", "namespace" : ""} )", failure()),
-        TestPolT(policyAssetGet, R"( { "policy": "policy/valid/0", "namespace" : "nsName" } )", failure()),
+        TestPolT(policyAssetGet, JParams(""), failure()),
+        TestPolT(policyAssetGet, JParams("other/name/version"), failure()),
+        TestPolT(policyAssetGet, JParams("pol/name/version"), failure()),
+        TestPolT(policyAssetGet, JParams("policy/name/version/ext"), failure()),
+        TestPolT(policyAssetGet, JParams("policy/name"), failure()),
+        TestPolT(policyAssetGet, JParams("policy/"), failure()),
+        TestPolT(policyAssetGet, JParams("policy//0"), failure()),
+        TestPolT(policyAssetGet, JParams(POLICY_NAME).namespace_("invalid/name"), failure()),
+        TestPolT(policyAssetGet, JParams(POLICY_NAME).namespace_(""), failure()),
         TestPolT(policyAssetGet,
-                 R"( { "policy": "policy/name/0", "namespace" : "nsName" } )",
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U),
                  failure(
                      [](auto policy)
                      {
-                         EXPECT_CALL(*policy, listAssets(base::Name {"policy/name/0"}, store::NamespaceId {"nsName"}))
+                         EXPECT_CALL(*policy, listAssets(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [policyAssetGet]: ok
@@ -486,7 +502,8 @@ INSTANTIATE_TEST_SUITE_P(
                  failure(
                      [](auto policy)
                      {
-                         EXPECT_CALL(*policy, getDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}))
+                         EXPECT_CALL(*policy,
+                                     getDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [policyDefaultParentGet]: ok
@@ -587,14 +604,11 @@ INSTANTIATE_TEST_SUITE_P(
                              .WillOnce(::testing::Return(std::nullopt));
                      })),
         // [policiesGet]: Fail
-         TestPolT(policiesGet, R"( { } )", failure(
-                    [](auto policy)
-                     {
-                         EXPECT_CALL(*policy, list())
-                             .WillOnce(::testing::Return(base::Error {}));
-                     }
+        TestPolT(policiesGet,
+                 R"( { } )",
+                 failure([](auto policy) { EXPECT_CALL(*policy, list()).WillOnce(::testing::Return(base::Error {})); }
 
-         )),
+                         )),
         // [policiesGet]: ok
         TestPolT(policiesGet,
                  R"( { } )",
@@ -603,9 +617,7 @@ INSTANTIATE_TEST_SUITE_P(
                      {
                          EXPECT_CALL(*policy, list())
                              .WillOnce(::testing::Return(std::vector<base::Name> {POLICY_NAME}));
-                         return JPayload()
-                             .setArray("/data")
-                             .appendString(POLICY_NAME, "/data");
+                         return JPayload().setArray("/data").appendString(POLICY_NAME, "/data");
                      })),
         // [policyNamespacesGet]: Fail
         TestPolT(policyNamespacesGet, R"( { "name": "test" } )", failure()),
@@ -616,13 +628,13 @@ INSTANTIATE_TEST_SUITE_P(
         TestPolT(policyNamespacesGet, JParams("policy/name"), failure()),
         TestPolT(policyNamespacesGet, JParams("policy/"), failure()),
         TestPolT(policyNamespacesGet, JParams("policy//0"), failure()),
-        TestPolT(policyNamespacesGet, JParams(POLICY_NAME), failure(
-            [](auto policy)
-            {
-                EXPECT_CALL(*policy, listNamespaces(base::Name {POLICY_NAME}))
-                    .WillOnce(::testing::Return(base::Error {}));
-            }
-        )),
+        TestPolT(policyNamespacesGet,
+                 JParams(POLICY_NAME),
+                 failure(
+                     [](auto policy) {
+                         EXPECT_CALL(*policy, listNamespaces(base::Name {POLICY_NAME}))
+                             .WillOnce(::testing::Return(base::Error {}));
+                     })),
         // [policyNamespacesGet]: ok
         TestPolT(policyNamespacesGet,
                  JParams(POLICY_NAME),
