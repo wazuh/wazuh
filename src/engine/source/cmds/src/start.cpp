@@ -17,6 +17,7 @@
 #include <api/kvdb/handlers.hpp>
 #include <api/metrics/handlers.hpp>
 #include <api/policy/handlers.hpp>
+#include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
 #include <api/test/handlers.hpp>
 #include <api/test/sessionManager.hpp>
@@ -29,7 +30,6 @@
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
-#include <policy/policy.hpp>
 #include <rbac/rbac.hpp>
 #include <router/router.hpp>
 #include <rxbk/rxFactory.hpp>
@@ -225,7 +225,6 @@ void runStart(ConfHandler confManager)
             LOG_INFO("RBAC initialized.");
         }
 
-
         // Queue
         {
             // Create the scope here
@@ -248,7 +247,6 @@ void runStart(ConfHandler confManager)
                     kvdbManager->finalize();
                     LOG_INFO("KVDB terminated.");
                 });
-
         }
 
         // Schema
@@ -319,7 +317,6 @@ void runStart(ConfHandler confManager)
 
             catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
             LOG_INFO("Catalog initialized.");
-
         }
 
         // Router
@@ -342,7 +339,6 @@ void runStart(ConfHandler confManager)
                 router->addRoute(routeName, routePriority, routeFilter, routePolicy);
             }
         }
-
 
         // Test
         {
@@ -375,11 +371,9 @@ void runStart(ConfHandler confManager)
                     LOG_ERROR("API sessions loading could not be completed: {}", loadError.value().message);
                 }
             }
-
         }
 
-
-         // Create and configure the api endpints
+        // Create and configure the api endpints
         {
             // API
             api = std::make_shared<api::Api>(rbac);

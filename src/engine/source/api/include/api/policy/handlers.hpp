@@ -2,7 +2,7 @@
 #define _API_POLICY_HANDLERS_HPP
 
 #include <api/api.hpp>
-#include <policy/ipolicy.hpp>
+#include <api/policy/ipolicy.hpp>
 
 namespace api::policy::handlers
 {

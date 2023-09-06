@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <builder/ivalidator.hpp>
-#include <policy/ipolicy.hpp>
+#include <api/policy/ipolicy.hpp>
 #include <store/istore.hpp>
 
 namespace api::policy
