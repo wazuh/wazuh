@@ -513,9 +513,33 @@ class Run final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kOutputFieldNumber = 1,
     kTracesFieldNumber = 2,
+    kOutputFieldNumber = 1,
   };
+  // repeated string traces = 2;
+  int traces_size() const;
+  private:
+  int _internal_traces_size() const;
+  public:
+  void clear_traces();
+  const std::string& traces(int index) const;
+  std::string* mutable_traces(int index);
+  void set_traces(int index, const std::string& value);
+  void set_traces(int index, std::string&& value);
+  void set_traces(int index, const char* value);
+  void set_traces(int index, const char* value, size_t size);
+  std::string* add_traces();
+  void add_traces(const std::string& value);
+  void add_traces(std::string&& value);
+  void add_traces(const char* value);
+  void add_traces(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& traces() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_traces();
+  private:
+  const std::string& _internal_traces(int index) const;
+  std::string* _internal_add_traces();
+  public:
+
   // optional .google.protobuf.Value output = 1;
   bool has_output() const;
   private:
@@ -534,24 +558,6 @@ class Run final :
       ::PROTOBUF_NAMESPACE_ID::Value* output);
   ::PROTOBUF_NAMESPACE_ID::Value* unsafe_arena_release_output();
 
-  // optional .google.protobuf.Value traces = 2;
-  bool has_traces() const;
-  private:
-  bool _internal_has_traces() const;
-  public:
-  void clear_traces();
-  const ::PROTOBUF_NAMESPACE_ID::Value& traces() const;
-  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Value* release_traces();
-  ::PROTOBUF_NAMESPACE_ID::Value* mutable_traces();
-  void set_allocated_traces(::PROTOBUF_NAMESPACE_ID::Value* traces);
-  private:
-  const ::PROTOBUF_NAMESPACE_ID::Value& _internal_traces() const;
-  ::PROTOBUF_NAMESPACE_ID::Value* _internal_mutable_traces();
-  public:
-  void unsafe_arena_set_allocated_traces(
-      ::PROTOBUF_NAMESPACE_ID::Value* traces);
-  ::PROTOBUF_NAMESPACE_ID::Value* unsafe_arena_release_traces();
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.Run)
  private:
   class _Internal;
@@ -562,8 +568,8 @@ class Run final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> traces_;
     ::PROTOBUF_NAMESPACE_ID::Value* output_;
-    ::PROTOBUF_NAMESPACE_ID::Value* traces_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_test_2eproto;
@@ -2812,91 +2818,79 @@ inline void Run::set_allocated_output(::PROTOBUF_NAMESPACE_ID::Value* output) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.Run.output)
 }
 
-// optional .google.protobuf.Value traces = 2;
-inline bool Run::_internal_has_traces() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
-  PROTOBUF_ASSUME(!value || _impl_.traces_ != nullptr);
-  return value;
+// repeated string traces = 2;
+inline int Run::_internal_traces_size() const {
+  return _impl_.traces_.size();
 }
-inline bool Run::has_traces() const {
-  return _internal_has_traces();
+inline int Run::traces_size() const {
+  return _internal_traces_size();
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& Run::_internal_traces() const {
-  const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.traces_;
-  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
-      ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
+inline void Run::clear_traces() {
+  _impl_.traces_.Clear();
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& Run::traces() const {
+inline std::string* Run::add_traces() {
+  std::string* _s = _internal_add_traces();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.Run.traces)
+  return _s;
+}
+inline const std::string& Run::_internal_traces(int index) const {
+  return _impl_.traces_.Get(index);
+}
+inline const std::string& Run::traces(int index) const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.Run.traces)
-  return _internal_traces();
+  return _internal_traces(index);
 }
-inline void Run::unsafe_arena_set_allocated_traces(
-    ::PROTOBUF_NAMESPACE_ID::Value* traces) {
-  if (GetArenaForAllocation() == nullptr) {
-    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.traces_);
-  }
-  _impl_.traces_ = traces;
-  if (traces) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.Run.traces)
+inline std::string* Run::mutable_traces(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.Run.traces)
+  return _impl_.traces_.Mutable(index);
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* Run::release_traces() {
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.traces_;
-  _impl_.traces_ = nullptr;
-#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
-  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
-  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
-  if (GetArenaForAllocation() == nullptr) { delete old; }
-#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
-  if (GetArenaForAllocation() != nullptr) {
-    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
-  }
-#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
-  return temp;
+inline void Run::set_traces(int index, const std::string& value) {
+  _impl_.traces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.traces)
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* Run::unsafe_arena_release_traces() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.Run.traces)
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.traces_;
-  _impl_.traces_ = nullptr;
-  return temp;
+inline void Run::set_traces(int index, std::string&& value) {
+  _impl_.traces_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.traces)
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* Run::_internal_mutable_traces() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  if (_impl_.traces_ == nullptr) {
-    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
-    _impl_.traces_ = p;
-  }
+inline void Run::set_traces(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.traces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.Run.traces)
+}
+inline void Run::set_traces(int index, const char* value, size_t size) {
+  _impl_.traces_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.Run.traces)
+}
+inline std::string* Run::_internal_add_traces() {
+  return _impl_.traces_.Add();
+}
+inline void Run::add_traces(const std::string& value) {
+  _impl_.traces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.traces)
+}
+inline void Run::add_traces(std::string&& value) {
+  _impl_.traces_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.traces)
+}
+inline void Run::add_traces(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.traces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.Run.traces)
+}
+inline void Run::add_traces(const char* value, size_t size) {
+  _impl_.traces_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.Run.traces)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+Run::traces() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.Run.traces)
   return _impl_.traces_;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* Run::mutable_traces() {
-  ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_traces();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.Run.traces)
-  return _msg;
-}
-inline void Run::set_allocated_traces(::PROTOBUF_NAMESPACE_ID::Value* traces) {
-  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
-  if (message_arena == nullptr) {
-    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.traces_);
-  }
-  if (traces) {
-    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
-        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
-                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(traces));
-    if (message_arena != submessage_arena) {
-      traces = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
-          message_arena, traces, submessage_arena);
-    }
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.traces_ = traces;
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.Run.traces)
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+Run::mutable_traces() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.Run.traces)
+  return &_impl_.traces_;
 }
 
 // -------------------------------------------------------------------

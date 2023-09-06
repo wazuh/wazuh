@@ -112,7 +112,7 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
 }
 
 using namespace api::test::handlers;
-std::variant<std::tuple<std::string, std::string>, base::Error>
+std::variant<std::tuple<std::string, json::Json>, base::Error>
 getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
         DebugMode debugMode)
 {
@@ -128,8 +128,8 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
         dataSync->m_processedData = false;
     }
 
-    std::string traces;
-    rapidjson::Document json(rapidjson::kArrayType); // Set array for keep order of traces
+    json::Json json;
+    json.setArray();
     if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
         if (dataSync->m_history.empty())
@@ -155,14 +155,14 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
                 uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
             }
 
-            rapidjson::Value tmp(rapidjson::kArrayType);
+            json::Json tmp;
+            tmp.setArray();
             for (auto& info : uniqueTraces)
             {
-                rapidjson::Value value(info.c_str(), json.GetAllocator());
-                tmp.PushBack(value, json.GetAllocator());
+                tmp.appendString(info);
             }
 
-            json.PushBack(tmp, json.GetAllocator());
+            json.appendJson(tmp);
         }
 
         dataSync->m_trace.clear();
@@ -175,30 +175,22 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
             return base::Error {fmt::format(
                 "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
         }
-
         for (const auto& [asset, condition] : dataSync->m_history)
         {
             const auto& info = asset + " " + condition;
-            rapidjson::Value value(info.c_str(), json.GetAllocator());
-            json.PushBack(value, json.GetAllocator());
+            json.appendString(info);
         }
         dataSync->m_trace.clear();
     }
 
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    json.Accept(writer);
-    traces = buffer.GetString();
-
     dataSync->m_trace.clear();
     // TODO: Add a method to verify that a json is empty
-    if (traces.empty())
+    if (json.str().empty())
     {
         dataSync->m_trace[dataSync->m_asset].clear();
-        return std::make_tuple(dataSync->m_output, std::string());
     }
 
-    return std::make_tuple(dataSync->m_output, traces);
+    return std::make_tuple(dataSync->m_output, std::move(json));
 }
 
 } // namespace
@@ -1078,7 +1070,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
 
         // Get output
         const auto output = eMessage::eMessageFromJson<google::protobuf::Value>(
-            std::get<0>(std::get<std::tuple<std::string, std::string>>(payload)));
+            std::get<0>(std::get<std::tuple<std::string, json::Json>>(payload)));
         if (std::holds_alternative<base::Error>(output))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(output).message);
@@ -1090,16 +1082,25 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
         }
 
         // Get traces
-        if (!std::get<1>(std::get<std::tuple<std::string, std::string>>(payload)).empty())
+        auto traceArray = std::get<1>(std::get<std::tuple<std::string, json::Json>>(payload));
+        if (!traceArray.isNull())
         {
-            const auto trace = eMessage::eMessageFromJson<google::protobuf::Value>(
-                std::get<1>(std::get<std::tuple<std::string, std::string>>(payload)));
-            if (std::holds_alternative<base::Error>(trace))
+            auto traces = traceArray.getArray().value();
+            for (size_t i = 0; i < traces.size(); i++)
             {
-                return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(trace).message);
+                if (traces[i].getArray().has_value())
+                {
+                    auto subArray = traces[i].getArray().value();
+                    for (size_t j = 0; j < subArray.size(); j++)
+                    {
+                        eResponse.mutable_run()->add_traces(subArray[j].getString().value());
+                    }
+                }
+                else
+                {
+                    eResponse.mutable_run()->add_traces(traces[i].getString().value());
+                }
             }
-            const auto jsonTrace = std::get<google::protobuf::Value>(trace);
-            eResponse.mutable_run()->mutable_traces()->CopyFrom(jsonTrace);
         }
 
         eResponse.set_status(eEngine::ReturnStatus::OK);
