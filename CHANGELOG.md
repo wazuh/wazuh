@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - The manager stops restricting the possible package formats in the inventory, to increase compatibility. ([#18437](https://github.com/wazuh/wazuh/pull/18437))
 - wazuh-remoted now prints the connection family when an unknown client gets connected. ([#18468](https://github.com/wazuh/wazuh/pull/18468))
 - The manager stops blocking updates by WPK to macOS agents on ARM64, allowing custom updates. ([#18545](https://github.com/wazuh/wazuh/pull/18545))
+- Vulnerability Detector now fetches the Debian feeds in BZ2 compressed format. ([#18770](https://github.com/wazuh/wazuh/pull/18770))
 
 ### Fixed
 
