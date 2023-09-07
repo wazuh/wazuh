@@ -188,6 +188,51 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
     return std::make_tuple(dataSync->m_output, std::move(json));
 }
 
+/**
+ * @brief Prepare a list of assets for subscription.
+ *
+ * This function takes a list of assets and an asset trace list (assetTrace), checks if
+ * all assets in assetTrace are present in the assets list, and returns a new list
+ * containing only the assets that should be subscribed to. If some assets from assetTrace
+ * are not found in the assets list, an exception is thrown.
+ *
+ * @param assetTrace The list of assets to trace.
+ * @param assets The list of all available assets.
+ * @return A new list containing only the assets to be subscribed to.
+ * @throws std::runtime_error If assets in assetTrace are not present in assets.
+ */
+std::vector<std::string> prepareAssetsForSubscription(const std::vector<std::string>& assets, const std::vector<std::string>& assetTrace)
+{
+    if (!assetTrace.empty())
+    {
+        std::vector<std::string> assetsToSubscribe;
+        std::string missingAssets; // Store missing assets
+
+        for (const auto& assetT : assetTrace)
+        {
+            if (std::find(assets.begin(), assets.end(), assetT) != assets.end())
+            {
+                assetsToSubscribe.push_back(assetT);
+            }
+            else
+            {
+                missingAssets += assetT + ", ";
+            }
+        }
+
+        if (!missingAssets.empty())
+        {
+            // Remove last comma and space in string for missing assets
+            missingAssets = missingAssets.substr(0, missingAssets.length() - 2);
+            throw std::runtime_error("Not all assets were found: " + missingAssets);
+        }
+
+        return assetsToSubscribe;
+    }
+
+    return assets;
+}
+
 } // namespace
 
 namespace api::test::handlers
@@ -895,7 +940,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
         const auto& eRequest = std::get<RequestType>(res);
         const auto errorMsg = !eRequest.has_name()               ? std::make_optional("Missing /name field")
                               : !eRequest.has_event()            ? std::make_optional("Missing /event field")
-                              : eRequest.namespaceid_size() == 0 ? std::make_optional("Missing /namespace field")
+                              : eRequest.namespaces_size() == 0 ? std::make_optional("Missing /namespace field")
                                                                  : std::nullopt;
 
         if (errorMsg.has_value())
@@ -948,7 +993,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
             }
         }
 
-        auto namespaceid = eRequest.namespaceid();
+        auto namespaces = eRequest.namespaces();
 
         // Get session
         const auto session = sessionManager->getSession(eRequest.name());
@@ -968,7 +1013,6 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
 
         // Get assets in namespace
         std::vector<std::string> assetsInNamespace;
-        std::set<std::string> namespacesFound;
         auto assets = router->getAssets(policyName);
         if (!base::isError(assets))
         {
@@ -988,10 +1032,9 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
                 const auto& namespaceFromStore = store->getNamespace(name);
 
                 if (namespaceFromStore
-                    && std::find(namespaceid.begin(), namespaceid.end(), namespaceFromStore.value().str())
-                           != namespaceid.end())
+                    && std::find(namespaces.begin(), namespaces.end(), namespaceFromStore.value().str())
+                           != namespaces.end())
                 {
-                    namespacesFound.emplace(namespaceFromStore.value().str());
                     assetsInNamespace.emplace_back(asset);
                 }
             }
@@ -1001,18 +1044,20 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
             return ::api::adapter::genericError<ResponseType>(base::getError(assets).message);
         }
 
-        for (const auto& ns : namespaceid)
+        // Prepare assets for Subscription
+        std::vector<std::string> assetsForSubscription;
+        try
         {
-            if (namespacesFound.find(ns) == namespacesFound.end())
-            {
-                return ::api::adapter::genericError<ResponseType>(
-                    fmt::format("Assets not found in namespace '{}'", ns));
-            }
+            assetsForSubscription = prepareAssetsForSubscription(assetsInNamespace, assetTraces);
+        }
+        catch(const std::exception& e)
+        {
+            return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
         // Suscribe to output and Trace
         auto subscriptionError = router->subscribeOutputAndTraces(
-            getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), assetsInNamespace, policyName, assetTraces);
+            getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), assetsForSubscription, policyName);
         if (subscriptionError.has_value())
         {
             dataSync->m_history.clear();

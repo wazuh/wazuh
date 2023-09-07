@@ -205,15 +205,13 @@ public:
      * @param traceCallback The callback function to be invoked with the generated trace data.
      * @param name Name of the policy for which output and trace are to be obtained.
      * @param assets Vector of asset names to subscribe to.
-     * @param assetTrace Optional asset name for a specific Trace subscription.
      * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
     std::optional<base::Error> subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
                                                         rxbk::SubscribeToTraceCallback traceCallback,
                                                         const std::vector<std::string>& assets,
-                                                        const std::string& policyName,
-                                                        const std::vector<std::string>& assetTrace);
+                                                        const std::string& policyName);
 
     /**
      * @brief Get the Assets object
