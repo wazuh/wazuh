@@ -1,18 +1,20 @@
 import pytest
 from wazuh_testing.logger import logger
-from wazuh_testing.modules.aws import (
+from wazuh_testing.constants.aws import (
     FAKE_CLOUDWATCH_LOG_GROUP,
     PERMANENT_CLOUDWATCH_LOG_GROUP,
 )
-from wazuh_testing.modules.aws.cloudwatch_utils import (
+from wazuh_testing.modules.aws.utils import (
     create_log_events,
     create_log_group,
     create_log_stream,
     delete_log_group,
     delete_log_stream,
+    delete_file,
+    file_exists,
+    upload_file
 )
 from wazuh_testing.modules.aws.db_utils import delete_s3_db, delete_services_db
-from wazuh_testing.modules.aws.s3_utils import delete_file, file_exists, upload_file
 from wazuh_testing.utils.services import control_service
 
 
