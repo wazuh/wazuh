@@ -1039,7 +1039,26 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
                 '"https://ubuntu.com/security/CVE-2021-3996","https://ubuntu.com/security/notices/USN-5279-1",'
                 '"https://www.openwall.com/lists/oss-security/2022/01/24/2"]',
        'operator': '=', 'field': 'external_references$0', 'separator': 'OR', 'level': 1},
-      {'value': 'Kernel', 'operator': 'LIKE', 'field': 'name$0', 'separator': '', 'level': 0}])
+      {'value': 'Kernel', 'operator': 'LIKE', 'field': 'name$0', 'separator': '', 'level': 0}]),
+    # Cases with $
+    ('file=/test$/test.txt;(type=file,type=registry_key)',
+     [
+        {"value": "/test$/test.txt", "operator": "=", "field": "file$0", "separator": "AND", "level": 0},
+        {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
+        {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
+     ]),
+    ('file=/$test/test.txt;(type=file,type=registry_key)',
+     [
+         {"value": "/$test/test.txt", "operator": "=", "field": "file$0", "separator": "AND", "level": 0},
+         {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
+         {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
+     ]),
+    ('file=/tes$t/test.txt;(type=file,type=registry_key)',
+     [
+         {"value": "/tes$t/test.txt", "operator": "=", "field": "file$0", "separator": "AND", "level": 0},
+         {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
+         {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
+     ]),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')

@@ -16,6 +16,7 @@ from sqlalchemy.exc import OperationalError
 
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db
+from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -1026,6 +1027,9 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
                     call.create_database(fresh_in_memory_db.DB_FILE_TMP),
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
+                                      from_id=fresh_in_memory_db.WAZUH_USER_ID,
+                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
@@ -1068,3 +1072,57 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
             close_sessions_mock.assert_called_once()
             mock_exists.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
             remove_mock.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
+
+@pytest.mark.parametrize('from_id, to_id, users', [
+    (WAZUH_USER_ID, WAZUH_WUI_USER_ID, [
+        User('wazuh', 'test', user_id=WAZUH_USER_ID),
+        User('wazuh-wui', 'test2', user_id=WAZUH_WUI_USER_ID)
+    ]),
+    (MAX_ID_RESERVED + 1, None, [
+        User('custom', 'test', user_id=110),
+        User('custom', 'test', user_id=101)
+    ])
+])
+def test_migrate_data(db_setup, from_id, to_id, users):
+    """Test `migrate_data` function briefly.
+    
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    # This test case updates the default user passwords and omits the rest of the migration
+    if to_id == WAZUH_WUI_USER_ID:
+        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=users):
+            with patch("wazuh.rbac.orm.AuthenticationManager.update_user") as mock_update_user:
+                db_setup.db_manager.migrate_data(source=db_setup.DB_FILE, target=db_setup.DB_FILE,
+                                                 from_id=from_id, to_id=to_id)
+
+                mock_update_user.assert_has_calls([
+                    call.update_user(users[0].id, users[0].password, hashed_password=True),
+                    call.update_user(users[1].id, users[1].password, hashed_password=True),
+                ])
+    else:
+        # Represents empty items to skip custom rules, policies and roles migration,
+        # since they do not depend on the users being migrated
+        empty_list = []
+        user_exists = False
+        with patch("wazuh.rbac.orm.AuthenticationManager.add_user",
+                   side_effect=[not user_exists, user_exists, not user_exists]) as mock_add_user:
+            with patch("wazuh.rbac.orm.db_manager.get_data",
+                       side_effect=[users, empty_list, empty_list, empty_list, empty_list, empty_list, empty_list]):
+                db_setup.db_manager.migrate_data(source=db_setup.DB_FILE, target=db_setup.DB_FILE,
+                                                 from_id=from_id, to_id=to_id)
+                user1 = users[0]
+                user2 = users[1]
+
+                mock_add_user.assert_has_calls([
+                    call.add_user(
+                        username=user1.username, password=user1.password, created_at=user1.created_at, user_id=user1.id,
+                        hashed_password=True, check_default=False,
+                    ),
+                    call.add_user(
+                        username=user2.username, password=user2.password, created_at=user2.created_at, user_id=user2.id,
+                        hashed_password=True, check_default=False,
+                    ),
+                    call.add_user(
+                        username=f"{user2.username}_user", password=user2.password, created_at=user2.created_at,
+                        user_id=user2.id, hashed_password=True, check_default=False,
+                    ),
+                ])
