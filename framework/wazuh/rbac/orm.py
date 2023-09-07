@@ -33,6 +33,8 @@ from wazuh.rbac.utils import clear_cache
 logger = logging.getLogger("wazuh-api")
 
 # Max reserved ID value
+WAZUH_USER_ID = 1
+WAZUH_WUI_USER_ID = 2
 MAX_ID_RESERVED = 99
 CLOUD_RESERVED_RANGE = 89
 
@@ -825,7 +827,7 @@ class AuthenticationManager(RBACManager):
         user_id : int
             User ID.
         hashed_password : bool
-            Hash the password before saving it to the database if `False`. Save it raw otherwise.
+            Whether the password is already hashed or not.
         created_at : datetime
             Date when the resource was created.
         check_default : bool
@@ -853,7 +855,7 @@ class AuthenticationManager(RBACManager):
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: int, password: str = None, name: str = None) -> bool:
+    def update_user(self, user_id: int, password: str = None, name: str = None, hashed_password: bool = False) -> bool:
         """Update an existent user's name or password.
 
         Parameters
@@ -864,6 +866,8 @@ class AuthenticationManager(RBACManager):
             Password provided by user. It will be stored hashed.
         name : str
             New username.
+        hashed_password : bool
+            Whether the password is already hashed or not.
 
         Returns
         -------
@@ -876,7 +880,7 @@ class AuthenticationManager(RBACManager):
                 if name is not None:
                     user.username = name
                 if password is not None:
-                    user.password = generate_password_hash(password)
+                    user.password = password if hashed_password else generate_password_hash(password)
                 if name is not None or password is not None:
                     self.session.commit()
                     return True
@@ -919,7 +923,7 @@ class AuthenticationManager(RBACManager):
         username : str
             Name of the user to be validated.
         password : str
-            Password to be checked against the one saved in the database
+            Password to be checked against the one saved in the database.
 
         Returns
         -------
@@ -2772,6 +2776,48 @@ class DatabaseManager:
             return session.query(table).with_entities(*[column for column in table.__table__.columns
                                                         if column.key not in _new_columns])
 
+    def get_data(self, source: str, table: callable, col_a: Column, col_b: Column = None, from_id: int = None,
+                 to_id: int = None) -> list:
+        """Get the resources from the given table filtering up to 2 columns by the 'from_id' and 'to_id'
+        parameters.
+
+        Parameters
+        ----------
+        source : str
+            Path to the database to migrate data from.
+        table : callable
+            Table from which the resources are gotten.
+        col_a : Column
+            First column to filter in.
+        col_b : Column
+            Second column to filter in.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+
+        Returns
+        -------
+        list
+            List of resources from the given table with ID filter.
+        """
+        result = []
+        try:
+            if from_id and to_id:
+                condition = or_(col_a.between(from_id, to_id),
+                                col_b.between(from_id, to_id)) if col_b else col_a.between(from_id, to_id)
+            elif from_id:
+                condition = or_(col_a >= from_id, col_b >= from_id) if col_b else col_a >= from_id
+            elif to_id:
+                condition = or_(col_a <= from_id, col_b <= from_id) if col_b else col_a <= from_id
+
+            result = [resource for resource in
+                      self.get_table(self.sessions[source], table).filter(condition).order_by(col_a).all()]
+        except OperationalError:
+            pass
+
+        return result
+
     def migrate_data(self, source: str, target: str, from_id: int = None, to_id: int = None):
         """Get the resources from the `source` database filtering by IDs and insert them into the `target` database.
         This function will adapt the relationship between problematic resources if needed.
@@ -2787,45 +2833,13 @@ class DatabaseManager:
         to_id : id
             ID which the resources will be migrated to.
         """
-
-        def get_data(table: callable, col_a: Column, col_b: Column = None) -> list:
-            """Get the resources from the given table filtering up to 2 columns by the 'from_id' and 'to_id'
-            parameters.
-
-            Parameters
-            ----------
-            table : callable
-                Table from which the resources are gotten.
-            col_a : Column
-                First column to filter in.
-            col_b : Column
-                Second column to filter in.
-
-            Returns
-            -------
-            list
-                List of resources from the given table with ID filter.
-            """
-            result = []
-            try:
-                if from_id and to_id:
-                    condition = or_(col_a.between(from_id, to_id),
-                                    col_b.between(from_id, to_id)) if col_b else col_a.between(from_id, to_id)
-                elif from_id:
-                    condition = or_(col_a >= from_id, col_b >= from_id) if col_b else col_a >= from_id
-                elif to_id:
-                    condition = or_(col_a <= from_id, col_b <= from_id) if col_b else col_a <= from_id
-
-                result = [resource for resource in
-                          self.get_table(self.sessions[source], table).filter(condition).order_by(col_a).all()]
-            except OperationalError:
-                pass
-
-            return result
-
-        old_users = get_data(User, User.id)
+        old_users = self.get_data(source, User, User.id, from_id=from_id, to_id=to_id)
         with AuthenticationManager(self.sessions[target]) as auth_manager:
             for user in old_users:
+                if user.id in (WAZUH_USER_ID, WAZUH_WUI_USER_ID):
+                    auth_manager.update_user(user.id, user.password, hashed_password=True)
+                    continue
+                
                 status = auth_manager.add_user(username=user.username,
                                                password=user.password,
                                                created_at=user.created_at,
@@ -2843,8 +2857,12 @@ class DatabaseManager:
                                           user_id=user.id,
                                           hashed_password=True,
                                           check_default=False)
+        
+        # This is to avoid an error when trying to update default users roles, policies and rules
+        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            return
 
-        old_roles = get_data(Roles, Roles.id)
+        old_roles = self.get_data(source, Roles, Roles.id, from_id=from_id, to_id=to_id)
         with RolesManager(self.sessions[target]) as role_manager:
             for role in old_roles:
                 status = role_manager.add_role(name=role.name,
@@ -2861,7 +2879,7 @@ class DatabaseManager:
                                           role_id=role.id,
                                           check_default=False)
 
-        old_rules = get_data(Rules, Rules.id)
+        old_rules = self.get_data(source, Rules, Rules.id, from_id=from_id, to_id=to_id)
         with RulesManager(self.sessions[target]) as rule_manager:
             for rule in old_rules:
                 status = rule_manager.add_rule(name=rule.name,
@@ -2886,7 +2904,7 @@ class DatabaseManager:
                                                                 force_admin=True)
                         logger.info(f"All relationships were migrated to the new rule {new_rule_id}")
 
-        old_policies = get_data(Policies, Policies.id)
+        old_policies = self.get_data(source, Policies, Policies.id, from_id=from_id, to_id=to_id)
         with PoliciesManager(self.sessions[target]) as policy_manager:
             for policy in old_policies:
                 status = policy_manager.add_policy(name=policy.name,
@@ -2912,7 +2930,9 @@ class DatabaseManager:
                                                                    force_admin=True)
                         logger.info(f"All relationships were migrated to the new policy {new_policy_id}")
 
-        old_user_roles = sorted(get_data(UserRoles, UserRoles.user_id, UserRoles.role_id), key=lambda item: item.level)
+        old_user_roles = self.get_data(source, UserRoles, UserRoles.user_id, UserRoles.role_id, from_id=from_id,
+                                       to_id=to_id)
+        old_user_roles = sorted(old_user_roles, key=lambda item: item.level)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
             for user_role in old_user_roles:
                 user_id = user_role.user_id
@@ -2945,8 +2965,9 @@ class DatabaseManager:
                                                    force_admin=True)
 
         # Role-Policies relationships
-        old_roles_policies = sorted(get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id),
-                                    key=lambda item: item.level)
+        old_roles_policies = self.get_data(source, RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id,
+                                           from_id, to_id)
+        old_roles_policies = sorted(old_roles_policies, key=lambda item: item.level)
         with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
             for role_policy in old_roles_policies:
                 role_id = role_policy.role_id
@@ -2979,7 +3000,8 @@ class DatabaseManager:
                                                        force_admin=True)
 
         # Role-Rules relationships
-        old_roles_rules = get_data(RolesRules, RolesRules.role_id, RolesRules.rule_id)
+        old_roles_rules = self.get_data(source, RolesRules, RolesRules.role_id, RolesRules.rule_id, from_id=from_id,
+                                        to_id=to_id)
         with RolesRulesManager(self.sessions[target]) as role_rule_manager:
             for role_rule in old_roles_rules:
                 role_id = role_rule.role_id
@@ -3084,6 +3106,8 @@ def check_database_integrity():
                 db_manager.insert_default_resources(DB_FILE_TMP)
 
                 # Migrate data from old database
+                db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=WAZUH_USER_ID,
+                                        to_id=WAZUH_WUI_USER_ID)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=CLOUD_RESERVED_RANGE,
                                         to_id=MAX_ID_RESERVED)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=MAX_ID_RESERVED + 1)
