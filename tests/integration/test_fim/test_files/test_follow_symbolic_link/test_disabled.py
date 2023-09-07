@@ -112,10 +112,10 @@ def test_disabled(test_configuration, test_metadata, set_wazuh_configuration, tr
     assert not wazuh_log_monitor.callback_result
 
     # Change target.
-    file.truncate_file(WAZUH_LOG_PATH)
     file.modify_symlink_target(symlink_new_target, symlink)
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
+    file.truncate_file(WAZUH_LOG_PATH)
 
     # Create in new target.
     file.write_file(symlink.joinpath(testfile_name))
