@@ -322,7 +322,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     // Set namespaces
     for (const auto& name : parameters.namespaceid)
     {
-        eRequest.add_namespaceid(name);
+        eRequest.add_namespaces(name);
     }
 
     if (!parameters.event.empty())

@@ -134,8 +134,7 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::Subscri
                                                                    rxbk::SubscribeToTraceCallback traceCallback,
                                                                    const std::vector<std::string>& assets,
                                                                    const std::string& name,
-                                                                   std::size_t instance,
-                                                                   const std::vector<std::string>& assetTrace)
+                                                                   std::size_t instance)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
@@ -152,7 +151,7 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::Subscri
     auto& env = it->second[instance];
 
     const auto& output = env.subscribeToOutput(outputCallback);
-    const auto& trace = env.listenAllTrace(traceCallback, assets, assetTrace);
+    const auto& trace = env.listenAllTrace(traceCallback, assets);
 
     if (base::isError(output))
     {

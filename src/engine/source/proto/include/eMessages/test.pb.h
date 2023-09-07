@@ -2056,7 +2056,7 @@ class RunPost_Request final :
 
   enum : int {
     kAssetTraceFieldNumber = 5,
-    kNamespaceidFieldNumber = 7,
+    kNamespacesFieldNumber = 7,
     kNameFieldNumber = 1,
     kProtocolQueueFieldNumber = 3,
     kProtocolLocationFieldNumber = 6,
@@ -2087,28 +2087,28 @@ class RunPost_Request final :
   std::string* _internal_add_asset_trace();
   public:
 
-  // repeated string namespaceid = 7;
-  int namespaceid_size() const;
+  // repeated string namespaces = 7;
+  int namespaces_size() const;
   private:
-  int _internal_namespaceid_size() const;
+  int _internal_namespaces_size() const;
   public:
-  void clear_namespaceid();
-  const std::string& namespaceid(int index) const;
-  std::string* mutable_namespaceid(int index);
-  void set_namespaceid(int index, const std::string& value);
-  void set_namespaceid(int index, std::string&& value);
-  void set_namespaceid(int index, const char* value);
-  void set_namespaceid(int index, const char* value, size_t size);
-  std::string* add_namespaceid();
-  void add_namespaceid(const std::string& value);
-  void add_namespaceid(std::string&& value);
-  void add_namespaceid(const char* value);
-  void add_namespaceid(const char* value, size_t size);
-  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& namespaceid() const;
-  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_namespaceid();
+  void clear_namespaces();
+  const std::string& namespaces(int index) const;
+  std::string* mutable_namespaces(int index);
+  void set_namespaces(int index, const std::string& value);
+  void set_namespaces(int index, std::string&& value);
+  void set_namespaces(int index, const char* value);
+  void set_namespaces(int index, const char* value, size_t size);
+  std::string* add_namespaces();
+  void add_namespaces(const std::string& value);
+  void add_namespaces(std::string&& value);
+  void add_namespaces(const char* value);
+  void add_namespaces(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& namespaces() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_namespaces();
   private:
-  const std::string& _internal_namespaceid(int index) const;
-  std::string* _internal_add_namespaceid();
+  const std::string& _internal_namespaces(int index) const;
+  std::string* _internal_add_namespaces();
   public:
 
   // optional string name = 1;
@@ -2207,7 +2207,7 @@ class RunPost_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> asset_trace_;
-    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaceid_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaces_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr protocol_queue_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr protocol_location_;
@@ -4188,79 +4188,79 @@ inline void RunPost_Request::set_allocated_protocol_location(std::string* protoc
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.protocol_location)
 }
 
-// repeated string namespaceid = 7;
-inline int RunPost_Request::_internal_namespaceid_size() const {
-  return _impl_.namespaceid_.size();
+// repeated string namespaces = 7;
+inline int RunPost_Request::_internal_namespaces_size() const {
+  return _impl_.namespaces_.size();
 }
-inline int RunPost_Request::namespaceid_size() const {
-  return _internal_namespaceid_size();
+inline int RunPost_Request::namespaces_size() const {
+  return _internal_namespaces_size();
 }
-inline void RunPost_Request::clear_namespaceid() {
-  _impl_.namespaceid_.Clear();
+inline void RunPost_Request::clear_namespaces() {
+  _impl_.namespaces_.Clear();
 }
-inline std::string* RunPost_Request::add_namespaceid() {
-  std::string* _s = _internal_add_namespaceid();
-  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+inline std::string* RunPost_Request::add_namespaces() {
+  std::string* _s = _internal_add_namespaces();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.RunPost_Request.namespaces)
   return _s;
 }
-inline const std::string& RunPost_Request::_internal_namespaceid(int index) const {
-  return _impl_.namespaceid_.Get(index);
+inline const std::string& RunPost_Request::_internal_namespaces(int index) const {
+  return _impl_.namespaces_.Get(index);
 }
-inline const std::string& RunPost_Request::namespaceid(int index) const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
-  return _internal_namespaceid(index);
+inline const std::string& RunPost_Request::namespaces(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.namespaces)
+  return _internal_namespaces(index);
 }
-inline std::string* RunPost_Request::mutable_namespaceid(int index) {
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
-  return _impl_.namespaceid_.Mutable(index);
+inline std::string* RunPost_Request::mutable_namespaces(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.namespaces)
+  return _impl_.namespaces_.Mutable(index);
 }
-inline void RunPost_Request::set_namespaceid(int index, const std::string& value) {
-  _impl_.namespaceid_.Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+inline void RunPost_Request::set_namespaces(int index, const std::string& value) {
+  _impl_.namespaces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline void RunPost_Request::set_namespaceid(int index, std::string&& value) {
-  _impl_.namespaceid_.Mutable(index)->assign(std::move(value));
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+inline void RunPost_Request::set_namespaces(int index, std::string&& value) {
+  _impl_.namespaces_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline void RunPost_Request::set_namespaceid(int index, const char* value) {
+inline void RunPost_Request::set_namespaces(int index, const char* value) {
   GOOGLE_DCHECK(value != nullptr);
-  _impl_.namespaceid_.Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  _impl_.namespaces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline void RunPost_Request::set_namespaceid(int index, const char* value, size_t size) {
-  _impl_.namespaceid_.Mutable(index)->assign(
+inline void RunPost_Request::set_namespaces(int index, const char* value, size_t size) {
+  _impl_.namespaces_.Mutable(index)->assign(
     reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline std::string* RunPost_Request::_internal_add_namespaceid() {
-  return _impl_.namespaceid_.Add();
+inline std::string* RunPost_Request::_internal_add_namespaces() {
+  return _impl_.namespaces_.Add();
 }
-inline void RunPost_Request::add_namespaceid(const std::string& value) {
-  _impl_.namespaceid_.Add()->assign(value);
-  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+inline void RunPost_Request::add_namespaces(const std::string& value) {
+  _impl_.namespaces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline void RunPost_Request::add_namespaceid(std::string&& value) {
-  _impl_.namespaceid_.Add(std::move(value));
-  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+inline void RunPost_Request::add_namespaces(std::string&& value) {
+  _impl_.namespaces_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline void RunPost_Request::add_namespaceid(const char* value) {
+inline void RunPost_Request::add_namespaces(const char* value) {
   GOOGLE_DCHECK(value != nullptr);
-  _impl_.namespaceid_.Add()->assign(value);
-  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+  _impl_.namespaces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
-inline void RunPost_Request::add_namespaceid(const char* value, size_t size) {
-  _impl_.namespaceid_.Add()->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
+inline void RunPost_Request::add_namespaces(const char* value, size_t size) {
+  _impl_.namespaces_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.RunPost_Request.namespaces)
 }
 inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
-RunPost_Request::namespaceid() const {
-  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
-  return _impl_.namespaceid_;
+RunPost_Request::namespaces() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.RunPost_Request.namespaces)
+  return _impl_.namespaces_;
 }
 inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
-RunPost_Request::mutable_namespaceid() {
-  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.RunPost_Request.namespaceid)
-  return &_impl_.namespaceid_;
+RunPost_Request::mutable_namespaces() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.RunPost_Request.namespaces)
+  return &_impl_.namespaces_;
 }
 
 // -------------------------------------------------------------------

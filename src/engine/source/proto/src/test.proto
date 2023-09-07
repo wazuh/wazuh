@@ -114,7 +114,7 @@ message RunPost_Request
                                        // traces with or without verbosity.
     repeated string asset_trace = 5;   // Asset of which you only want to have details
     optional string protocol_location = 6; // The protocol location for the event.
-    repeated string namespaceid = 7;       // Namespaces where are the assets to test
+    repeated string namespaces = 7;        // Namespaces where are the assets to test
 }
 
 message RunPost_Response
