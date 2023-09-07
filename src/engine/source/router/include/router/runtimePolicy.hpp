@@ -20,6 +20,7 @@ class RuntimePolicy
 {
 private:
     std::string m_asset;
+    std::string m_hash;
     std::shared_ptr<rxbk::Controller> m_controller;
     rxcpp::composite_subscription m_csOutput;
     rxcpp::composite_subscription m_csTraces;
@@ -33,6 +34,7 @@ public:
     RuntimePolicy(std::string asset)
         : m_asset {asset}
         , m_controller {}
+        , m_hash {}
     {
     }
 
@@ -111,6 +113,16 @@ public:
      *
      */
     void unSubscribeTraces();
+
+    /**
+     * @brief Get the hash of the policy
+     *
+     * @return const std::string&
+     */
+    const std::string& hash() const
+    {
+        return m_hash;
+    }
 };
 
 } // namespace router

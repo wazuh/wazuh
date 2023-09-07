@@ -22,6 +22,7 @@ private:
     using Subgraph = Graph<base::Name, AssetPtr>;
 
     base::Name m_name;                                      ///< Name of the policy
+    std::string m_hash;                                     ///< Hash of the policy
     std::unordered_map<base::Name, AssetPtr> m_assets;      ///< Assets of the policy
     std::vector<std::pair<std::string, Subgraph>> m_graphs; ///< Graphs of the policy
 
@@ -96,6 +97,13 @@ public:
     getManifestAssets(const json::Json& jsonDefinition,
                       std::shared_ptr<const store::IStoreReader> storeRead,
                       std::shared_ptr<internals::Registry<internals::Builder>> registry);
+
+    /*
+     * @brief Get the policy hash.
+     *
+     * @return std::string Hash of the policy.
+     */
+    const std::string& hash() const override;
 };
 } // namespace builder
 

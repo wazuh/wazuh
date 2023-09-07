@@ -366,7 +366,7 @@ inline int32_t getMaximumAvailablePriority(const std::shared_ptr<Router>& router
     std::unordered_set<uint32_t> takenPriorities;
 
     const auto routerTable = router->getRouteTable();
-    for (const auto& [name, priority, filter, policy] : routerTable)
+    for (const auto& [name, priority, filter, policy, hash] : routerTable)
     {
         takenPriorities.insert(priority);
     }

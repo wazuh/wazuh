@@ -358,8 +358,8 @@ public:
         {
             return base::Error {"Namespace already has a default parent"};
         }
-
         m_defaultParents[namespaceId] = parent;
+        updateHash();
         return base::noError();
     }
 
@@ -369,10 +369,18 @@ public:
         if (it != m_defaultParents.end())
         {
             m_defaultParents.erase(it);
+            updateHash();
             return base::noError();
         }
 
         return base::Error {"Namespace not found  or no default parent"};
+    }
+
+    std::string getHash() const
+    {
+        std::stringstream ss;
+        ss << m_hash;
+        return ss.str();
     }
 };
 

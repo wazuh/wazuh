@@ -113,6 +113,13 @@ public:
      */
     virtual base::RespOrError<std::list<store::NamespaceId>> listNamespaces(const base::Name& policyName) const = 0;
 
+    /**
+     * @brief Get the hash of a policy
+     *
+     * @return base::RespOrError<std::string> Hash of the policy or an error
+     */
+    virtual base::RespOrError<std::string> getHash(const base::Name& policyName) const = 0;
+
 };
 } // namespace api::policy
 

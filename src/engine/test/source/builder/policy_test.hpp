@@ -207,6 +207,7 @@ std::map<std::string, const char*> policys =
     {"oneDecEnv",
 R"({
 "name": "policy/oneDecEnv/version",
+"hash": "4112711263806056918",
 "assets": [
   "decoder/decoder1/version"
 ]
@@ -214,6 +215,7 @@ R"({
     {"oneRuleEnv",
 R"({
 "name": "policy/oneRuleEnv/version",
+"hash": "4112711263806056918",
 "assets": [
   "rule/rule1/version"
 ]
@@ -221,6 +223,7 @@ R"({
     {"oneFilEnv",
 R"({
 "name": "policy/oneFilEnv/version",
+"hash": "4112711263806056918",
 "assets": [
   "filter/filter1/version"
 ]
@@ -228,6 +231,7 @@ R"({
     {"oneOutEnv",
 R"({
 "name": "policy/oneOutEnv/version",
+"hash": "4112711263806056918",
 "assets": [
   "output/output1/version"
 ]
@@ -235,6 +239,7 @@ R"({
     {"orphanAssetEnv",
 R"({
     "name": "policy/orphanAssetEnv/version",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/decoder1_1/version",
         "rule/rule1/version",
@@ -245,6 +250,7 @@ R"({
     {"orphanFilterEnv",
 R"({
     "name": "policy/orphanFilterEnv/version",
+    "hash": "4112711263806056918",
     "assets": [
         "rule/rule1/version",
         "filter/filter1/version",
@@ -254,6 +260,7 @@ R"({
     {"completeEnv",
 R"({
     "name": "policy/completeEnv/version",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/decoder1/version",
         "decoder/decoder1_1/version",

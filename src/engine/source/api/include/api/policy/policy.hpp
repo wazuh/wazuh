@@ -115,6 +115,11 @@ public:
      * @copydoc IPolicy::listNamespaces
      */
     base::RespOrError<std::list<store::NamespaceId>> listNamespaces(const base::Name& policyName) const override;
+
+    /**
+     * @copydoc IPolicy::getHash
+     */
+    base::RespOrError<std::string> getHash(const base::Name& policyName) const override;
 };
 } // namespace api::policy
 
