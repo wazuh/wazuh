@@ -827,10 +827,10 @@ INSTANTIATE_TEST_SUITE_P(
     TestRunCommandIntegration,
     ::testing::Values(
         std::make_tuple(1,
-                        R"({"name":"dummy", "namespaceid":"system", "event":"hello world!"})",
+                        R"({"name":"dummy", "namespaces":"system", "event":"hello world!"})",
                         R"({"name":"dummy"})",
                         R"({"status":"ERROR","error":"Session 'dummy' could not be found"})"),
-        std::make_tuple(2, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!"})", R"({"name":"dummy"})", R"({
+        std::make_tuple(2, R"({"name":"dummy", "namespaces":"system", "event":"hello world!"})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "run": {
                             "output": {
@@ -844,7 +844,7 @@ INSTANTIATE_TEST_SUITE_P(
                             "traces": []
                         }
                     })"),
-        std::make_tuple(3, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
+        std::make_tuple(3, R"({"name":"dummy", "namespaces":"system", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "run": {
                             "output": {
@@ -860,7 +860,7 @@ INSTANTIATE_TEST_SUITE_P(
                             ]
                         }
                     })"),
-        std::make_tuple(4, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
+        std::make_tuple(4, R"({"name":"dummy", "namespaces":"system", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "run": {
                             "output": {
@@ -877,7 +877,7 @@ INSTANTIATE_TEST_SUITE_P(
                             ]
                         }
                     })"),
-        std::make_tuple(5, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
+        std::make_tuple(5, R"({"name":"dummy", "namespaces":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "run": {
                             "output": {
@@ -894,11 +894,11 @@ INSTANTIATE_TEST_SUITE_P(
                             ]
                         }
                     })"),
-        std::make_tuple(6, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/not-exist/0"})", R"({"name":"dummy"})", R"({
+        std::make_tuple(6, R"({"name":"dummy", "namespaces":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/not-exist/0"})", R"({"name":"dummy"})", R"({
                         "status": "ERROR",
                         "error": "Not all assets were found: decoder/not-exist/0"
                     })"),
-        std::make_tuple(7, R"({"name":"dummy", "namespaceid":"wazuh", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
+        std::make_tuple(7, R"({"name":"dummy", "namespaces":"wazuh", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
                         "status": "ERROR",
-                        "error": "Assets not found in namespace 'wazuh'"
+                        "error": "Not all assets were found: decoder/core-hostinfo/0"
                     })")));
