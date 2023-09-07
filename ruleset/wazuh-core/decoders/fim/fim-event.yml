@@ -31,20 +31,14 @@ check:
 normalize:
   - map:
       - wazuh.decoders: array_append(fim-event)
+      - _do_save: false
 
-      - _do_save2: false
-
-  - check:
-      - json_event.data.type: string_equal(added)
+  - check: json_event.data.type == added || json_event.data.type == modified
     map:
-      - _do_save2: true
-  - check:
-      - json_event.data.type: string_equal(modified)
-    map:
-      - _do_save2: true
+      - _do_save: true
 
   - check:
-      - _do_save2: is_true()
+      - _do_save: true
     map:
       - json_event.data.audit: delete()
       - json_event.data.content_changes: delete()
@@ -58,7 +52,7 @@ normalize:
       - _query_result: wdb_query($_query)
 
   - check:
-      - _do_save2: is_false()
+      - _do_save: false
       - json_event.data.type: string_equal(deleted)
     map:
       - _query: concat(agent , $agent.id,  syscheck delete , $json_event.data.path)
