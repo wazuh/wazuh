@@ -409,6 +409,27 @@ TEST_F(SysInfoParsersTest, Solaris1)
     EXPECT_EQ("10", output["os_major"]);
 }
 
+TEST_F(SysInfoParsersTest, Solaris2)
+{
+    constexpr auto SOLARIS_VERSION_FILE
+    {
+        R"(
+                            Solaris 10 5/09 s10x_u7wos_08 X86
+           Copyright 2009 Sun Microsystems, Inc. All rights reserved.
+                                Use is subject to license terms.
+                                Assembled 17 January 2013
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{SOLARIS_VERSION_FILE};
+    const auto spParser{FactorySysOsParser::create("solaris")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("10", output["os_version"]);
+    EXPECT_EQ("SunOS", output["os_name"]);
+    EXPECT_EQ("sunos", output["os_platform"]);
+    EXPECT_EQ("10", output["os_major"]);
+}
+
 TEST_F(SysInfoParsersTest, HPUX)
 {
     // https://docstore.mik.ua/manuals/hp-ux/en/5992-4826/pr01s02.html
