@@ -198,7 +198,8 @@ std::vector<Router::Entry> Router::getRouteTable()
             const auto& priority = std::get<0>(route.second);
             const auto& filterName = std::get<1>(route.second);
             const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
-            table.emplace_back(name, priority, filterName, policyName);
+            const auto& hash = m_policyManager->getPolicyHash(policyName).value_or("");
+            table.emplace_back(name, priority, filterName, policyName, hash);
         }
     }
     catch (const std::exception& e)
@@ -223,8 +224,9 @@ std::optional<Router::Entry> Router::getEntry(const std::string& name)
     }
     const auto& [priority, filterName] = it->second;
     const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
+    const auto& hash = m_policyManager->getPolicyHash(policyName).value_or("UNKNOWN");
 
-    return Entry {name, priority, filterName, policyName};
+    return Entry {name, priority, filterName, policyName, hash};
 }
 
 std::optional<base::Error> Router::changeRoutePriority(const std::string& name, int priority)
@@ -372,13 +374,14 @@ json::Json Router::tableToJson()
     data.setArray();
 
     const auto table = getRouteTable();
-    for (const auto& [name, priority, filterName, policyName] : table)
+    for (const auto& [name, priority, filterName, policyName, hash] : table)
     {
         json::Json entry {};
         entry.setString(name, JSON_PATH_NAME);
         entry.setInt(static_cast<int>(priority), JSON_PATH_PRIORITY);
         entry.setString(filterName, JSON_PATH_FILTER);
         entry.setString(policyName, JSON_PATH_TARGET);
+        // Don't save the hash
         data.appendJson(entry);
     }
     return data;
@@ -447,6 +450,11 @@ base::OptError Router::unsubscribe(const std::string& policyName)
     }
 
     return std::nullopt;
+}
+
+std::optional<std::string> Router::getPolicyHash(const std::string& policyName) const
+{
+    return m_policyManager->getPolicyHash(policyName);
 }
 
 } // namespace router
