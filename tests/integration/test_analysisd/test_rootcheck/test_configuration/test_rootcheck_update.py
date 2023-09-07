@@ -47,9 +47,7 @@ from pathlib import Path
 
 from wazuh_testing.utils import configuration
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.utils.database import get_sqlite_query_result
-from wazuh_testing.constants.paths.sockets import QUEUE_DB_PATH
-
+from wazuh_testing.utils.db_queries import agent_db
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -146,10 +144,7 @@ def test_rootcheck_update(test_configuration, test_metadata, set_wazuh_configura
 
     # Check that logs have been updated
     for agent in agents:
-        rows = get_sqlite_query_result(
-                    os.path.join(QUEUE_DB_PATH, f'{agent.id}.db'),
-                    "SELECT * FROM pm_event" )
-
+        rows = agent_db.update_pm_event(agent.id)
         logs_string = [':'.join(x.split(':')[2:]) for x in
                         agent.rootcheck.messages_list]
         for row in rows:

@@ -10,7 +10,7 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.manage_agents import remove_agents
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.tools.simulators.agent_simulator import connect, create_agents
+from wazuh_testing.tools.simulators.agent_simulator import create_agents
 
 
 @pytest.fixture()
