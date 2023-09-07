@@ -222,8 +222,8 @@ int main (int argc, char **argv) {
 static int checking_if_its_configured(const char *path, const char *table) {
     char command[COMMANDSIZE_4096];
     char output_buf[OS_MAXSTR];
-    char cat_path[PATH_MAX + 1] = {0};
-    char grep_path[PATH_MAX + 1] = {0};
+    char cat_path[PATH_MAX] = {0};
+    char grep_path[PATH_MAX] = {0};
     char log_msg[OS_MAXSTR];
 
     if (get_binary_path("cat", cat_path) < 0) {
