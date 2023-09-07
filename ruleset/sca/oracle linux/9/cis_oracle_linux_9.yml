@@ -3176,8 +3176,9 @@ checks:
       - mitre_tactics: ["TA0005"]
       - mitre_techniques: ["T1562", "T1562.001"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled crond -> r:^enabled"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 33673
@@ -3199,8 +3200,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 33674
@@ -3222,8 +3224,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 33675
@@ -3245,8 +3248,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 33676
@@ -3268,8 +3272,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 33677
@@ -3291,8 +3296,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 33678
@@ -3314,55 +3320,15 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
-  # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
-  - id: 33679
-    title: "Ensure cron is restricted to authorized users."
-    description: "If cron is installed in the system, configure /etc/cron.allow to allow specific users to use these services. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in those files is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
-    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: 'Run the following script to remove /etc/cron.deny, create /etc/cron.allow, and set the file mode on /etc/cron.allow: #!/usr/bin/env bash { if rpm -q cronie >/dev/null; then [ -e /etc/cron.deny ] && rm -f /etc/cron.deny [ ! -e /etc/cron.allow ] && touch /etc/cron.allow chown root:root /etc/cron.allow chmod u-x,go-rwx /etc/cron.allow else echo "cron is not installed on the system" fi } OR Run the following command to remove cron: # dnf remove cronie.'
-    compliance:
-      - cis: ["5.1.8"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002", "TA0007"]
-      - mitre_techniques: ["T1053", "T1053.003"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.1.9 Ensure at is restricted to authorized users. (Automated)
-  - id: 33680
-    title: "Ensure at is restricted to authorized users."
-    description: "If at is installed in the system, configure /etc/at.allow to allow specific users to use these services. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in those files is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Even though a given user is not listed in at.allow, at jobs can still be run as that user. The at.allow file only controls administrative access to the at command for scheduling and modifying at jobs."
-    rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: 'Run the following script to remove /etc/at.deny, create /etc/at.allow, and set the file mode for /etc/at.allow: #!/usr/bin/env bash { if rpm -q at >/dev/null; then [ -e /etc/at.deny ] && rm -f /etc/at.deny [ ! -e /etc/at.allow ] && touch /etc/at.allow chown root:root /etc/at.allow chmod u-x,go-rwx /etc/at.allow else echo "at is not installed on the system" fi } OR Run the following command to remove at: # dnf remove at.'
-    compliance:
-      - cis: ["5.1.9"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002", "TA0007"]
-      - mitre_techniques: ["T1053", "T1053.003"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
+  # 5.1.8 Ensure cron is restricted to authorized users. (Automated) - Not Implemented
+  # 5.1.9 Ensure at is restricted to authorized users. (Automated) - Not Implemented
+  ###############################################
+  # 5.2 Configure SSH Server
+  ###############################################
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 33681
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
@@ -3383,54 +3349,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
 
-  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 33682
-    title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following script to set mode, ownership, and group on the private SSH host key files: #!/usr/bin/env bash { l_skgn=\"ssh_keys\" # Group designated to own openSSH keys l_skgid=\"$(awk -F: '($1 == \"'\"$l_skgn\"'\"){print $3}' /etc/group)\" [ -n \"$l_skgid\" ] && l_cga=\"$l_skgn\" || l_cga=\"root\" awk '{print}' <<< \"$(find -L /etc/ssh -xdev -type f -exec stat -L -c \"%n %#a %U %G %g\" {} +)\" | (while read -r l_file l_mode l_owner l_group l_gid; do if file \"$l_file\" | grep -Pq ':\\h+OpenSSH\\h+private\\h+key\\b'; then [ \"$l_gid\" = \"$l_skgid\" ] && l_pmask=\"0137\" || l_pmask=\"0177\" l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" if [ $(( $l_mode & $l_pmask )) -gt 0 ]; then echo -e \" - File: \\\"$l_file\\\" is mode \\\"$l_mode\\\" changing to mode: \\\"$l_maxperm\\\"\" if [ -n \"$l_skgid\" ]; then chmod u-x,g-wx,o-rwx \"$l_file\" else chmod u-x,go-rwx \"$l_file\" fi fi if [ \"$l_owner\" != \"root\" ]; then echo -e \" - File: \\\"$l_file\\\" is owned by: \\\"$l_owner\\\" changing owner to \\\"root\\\"\" chown root \"$l_file\" fi if [ \"$l_group\" != \"root\" ] && [ \"$l_gid\" != \"$l_skgid\" ]; then echo -e \" - File: \\\"$l_file\\\" is owned by group \\\"$l_group\\\" should belong to group \\\"$l_cga\\\"\" chgrp \"$l_cga\" \"$l_file\" fi fi done ) }."
-    compliance:
-      - cis: ["5.2.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1552", "T1552.004"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated)
-  - id: 33683
-    title: "Ensure permissions on SSH public host key files are configured."
-    description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
-    rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following script to set mode, ownership, and group on the public SSH host key files: #!/usr/bin/env bash { l_pmask=\"0133\" l_maxperm=\"$( printf '%o' $(( 0777 & ~$l_pmask )) )\" awk '{print}' <<< \"$(find -L /etc/ssh -xdev -type f -exec stat -Lc \"%n %#a %U %G\" {} +)\" | (while read -r l_file l_mode l_owner l_group; do if file \"$l_file\" | grep -Pq ':\\h+OpenSSH\\h+(\\H+\\h+)?public\\h+key\\b'; then echo -e \" - Checking private key file: \\\"$l_file\\\"\" if [ $(( $l_mode & $l_pmask )) -gt 0 ]; then echo -e \" - File: \\\"$l_file\\\" is mode \\\"$l_mode\\\" changing to mode: \\\"$l_maxperm\\\"\" chmod u-x,go-wx \"$l_file\" fi if [ \"$l_owner\" != \"root\" ]; then echo -e \" - File: \\\"$l_file\\\" is owned by: \\\"$l_owner\\\" changing owner to \\\"root\\\"\" chown root \"$l_file\" fi if [ \"$l_group\" != \"root\" ]; then echo -e \" - File: \\\"$l_file\\\" is owned by group \\\"$l_group\\\" changing to group \\\"root\\\"\" chgrp \"root\" \"$l_file\" fi fi done ) }."
-    compliance:
-      - cis: ["5.2.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_techniques: ["T1557"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
+  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.2.4 Ensure SSH access is limited. (Automated)
   - id: 33684
@@ -3452,8 +3376,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 33685
@@ -3475,13 +3401,15 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
+      - "f:/etc/ssh/sshd_config -> r:loglevel"
 
   # 5.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 33686
     title: "Ensure SSH PAM is enabled."
-    description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
+    description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd as a non-root user."
     remediation: "Edit or create a file in the directory /etc/ssh/sshd_config.d/ ending in *.conf or the /etc/ssh/sshd_config file and set the parameter as follows: UsePAM yes Run the following command to comment out any UsePAM parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than yes # grep -Pi '^\\h*UsePAM\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'yes' | while read -r l_out; do sed -ri \"/^\\s*UsePAM\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
@@ -3491,8 +3419,10 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1021", "T1021.004"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled. (Automated)
   - id: 33687
@@ -3512,8 +3442,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled. (Automated)
   - id: 33688
@@ -3533,8 +3465,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
   - id: 33689
@@ -3554,8 +3488,10 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled. (Automated)
   - id: 33690
@@ -3576,8 +3512,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled. (Automated)
   - id: 33691
@@ -3591,8 +3529,10 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:\s*ignorerhosts\s*yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 33692
@@ -3613,8 +3553,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled. (Automated)
   - id: 33693
@@ -3638,8 +3580,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden. (Automated)
   - id: 33694
@@ -3657,8 +3601,9 @@ checks:
       - nist_sp_800-53: ["SC-8"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/sysconfig/sshd -> r:^\s*CRYPTO_POLICY='
 
   # 5.2.15 Ensure SSH warning banner is configured. (Automated)
   - id: 33695
@@ -3671,8 +3616,9 @@ checks:
       - mitre_mitigations: ["M1035"]
       - mitre_tactics: ["TA0001", "TA0007"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/\w+'
 
   # 5.2.16 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
   - id: 33696
@@ -3692,8 +3638,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.17 Ensure SSH MaxStartups is configured. (Automated)
   - id: 33697
@@ -3713,8 +3661,14 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.2.18 Ensure SSH MaxSessions is set to 10 or less. (Automated)
   - id: 33698
@@ -3727,8 +3681,10 @@ checks:
       - mitre_tactics: ["TA0040"]
       - mitre_techniques: ["T1499", "T1499.002"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: any
     rules:
+      - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 33699
@@ -3741,13 +3697,15 @@ checks:
       - mitre_mitigations: ["M1036"]
       - mitre_tactics: ["TA0006"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
 
   # 5.2.20 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 33700
     title: "Ensure SSH Idle Timeout Interval is configured."
-    description: "NOTE: To clarify, the two settings described below are only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not, and never had, intentionally the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they were abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus may no longer be abused to disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option en‐abled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
+    description: "NOTE: To clarify, the two settings described below are only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not, and never had, intentionally the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they were abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus may no longer be abused to disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option enabled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinitely, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the ClientAliveInterval and ClientAliveCountMax parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3 Edit files ending in *.conf in the /etc/ssh/sshd_config.d/ directory and the /etc/ssh/sshd_config file and remove occurrences of the ClientAliveInterval and ClientAliveCountMax parameters not in accordance with local site policy. Run the following command to comment out any ClientAliveCountMax parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include the setting of 0 \"disabled\": # grep -Pi '^\\h*ClientAliveCountMax\\h+0\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | while read -r l_out; do sed -ri \"/^\\s*ClientAliveCountMax\\s+0/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     references:
@@ -3758,9 +3716,14 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare > 0'
 
+  ############################################################
+  # 5.3 Configure privilege escalation
+  ############################################################
   # 5.3.1 Ensure sudo is installed. (Automated)
   - id: 33701
     title: "Ensure sudo is installed."
@@ -3776,8 +3739,9 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - "c:dnf list sudo -> r:sudo"
 
   # 5.3.2 Ensure sudo commands use pty. (Automated)
   - id: 33702
@@ -3798,8 +3762,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
+      - 'd:/etc/sudoers.d -> r:\. -> r:^\s*Defaults\s+use_pty'
 
   # 5.3.3 Ensure sudo log file exists. (Automated)
   - id: 33703
@@ -3821,8 +3787,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^Defaults logfile="'
+      - 'd:/etc/sudoers.d -> r:\. -> r:^Defaults\s+logfile="'
 
   # 5.3.4 Ensure users must provide password for escalation. (Automated)
   - id: 33704
@@ -3840,8 +3808,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/sudoers -> !r:^\s*# && r:NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 33705
@@ -3858,8 +3828,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/sudoers -> !r:^\s*# && r:!authenticate'
+      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 33706
@@ -3878,8 +3850,12 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
   # 5.3.7 Ensure access to the su command is restricted. (Automated)
   - id: 33707
@@ -3901,15 +3877,19 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
 
+  ###############################################
+  # 5.4 Configure authselect
+  ###############################################
   # 5.4.1 Ensure custom authselect profile is used. (Manual)
   - id: 33708
     title: "Ensure custom authselect profile is used."
     description: "A custom profile can be created by copying and customizing one of the default profiles. The default profiles include: sssd, winbind, or the nis. This profile can then be customized to follow site specific requirements. You can select a profile for the authselect utility for a specific host. The profile will be applied to every user logging into the host."
     rationale: "A custom profile is required to customize many of the pam options. When you deploy a profile, the profile is applied to every user logging into the given host."
-    remediation: "Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example: # authselect select custom/custom-profile with-sudo with-faillock without- nullok."
+    remediation: 'Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example: # authselect select custom/custom-profile with-sudo with-faillock without-nullok.'
     compliance:
       - cis: ["5.4.1"]
       - cis_csc_v8: ["16.2"]
@@ -3918,8 +3898,10 @@ checks:
       - iso_27001-2013: ["A.9.2.6"]
       - pci_dss_v3.2.1: ["6.3.2"]
       - pci_dss_v4.0: ["6.3.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:authselect list -> r:^\w*\s*custom'
+      - "f:/etc/authselect/authselect.conf -> r:custom"
 
   # 5.4.2 Ensure authselect includes with-faillock. (Automated)
   - id: 33709
@@ -3937,9 +3919,14 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/password-auth -> r:required && r:pam_faillock.so"
+      - "f:/etc/pam.d/system-auth -> r:required && r:pam_faillock.so"
 
+  ###############################################
+  # 5.5 Configure PAM
+  ###############################################
   # 5.5.1 Ensure password creation requirements are configured. (Automated)
   - id: 33710
     title: "Ensure password creation requirements are configured."
@@ -3957,8 +3944,12 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/password-auth -> r:pam_pwquality.so && r:try_first_pass && r:retry="
+      - "f:/etc/pam.d/system-auth -> r:pam_pwquality.so && r:try_first_pass && r:retry="
+      - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> r:^\s*minclass|^\s*\Scredit'
 
   # 5.5.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 33711
@@ -3981,8 +3972,10 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:deny\s*\t*=\s*\t*(\d+) compare > 0 && n:deny\s*\t*=\s*\t*(\d+) compare <= 5'
+      - 'not f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && n:unlock_time\s*\t*=\s*\t*(\d+) compare < 900'
 
   # 5.5.3 Ensure password reuse is limited. (Automated)
   - id: 33712
@@ -4000,8 +3993,10 @@ checks:
       - nist_sp_800-53: ["IA-5(1)"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512 or yescrypt. (Automated)
   - id: 33713
@@ -4023,9 +4018,19 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512|^\s*crypt_style\s*\t*=\s*\t*yescrypt'
+      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512|^\s*\t*ENCRYPT_METHOD YESCRYPT'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
 
+  ###############################################
+  # 5.6 User Accounts and Environment
+  ###############################################
+  ###############################################
+  # 5.6.1 Set Shadow Password Suite Parameters
+  ###############################################
   # 5.6.1.1 Ensure password expiration is 365 days or less. (Automated)
   - id: 33714
     title: "Ensure password expiration is 365 days or less."
@@ -4043,8 +4048,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.6.1.2 Ensure minimum days between password changes is configured. (Automated)
   - id: 33715
@@ -4063,8 +4070,11 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:(\d+):\S*:\S*:\S*:\S*:\S* compare < 1'
+      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*::\S*:\S*:\S*:\S*:\S*'
 
   # 5.6.1.3 Ensure password expiration warning days is 7 or more. (Automated)
   - id: 33716
@@ -4085,8 +4095,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
+      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.6.1.4 Ensure inactive password lock is 30 days or less. (Automated)
   - id: 33717
@@ -4105,71 +4118,15 @@ checks:
       - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
+      - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
-  # 5.6.1.5 Ensure all users last password change date is in the past. (Automated)
-  - id: 33718
-    title: "Ensure all users last password change date is in the past."
-    description: "All users should have a password change date in the past."
-    rationale: "If a user's recorded password change date is in the future, then they could bypass any set password expiration."
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
-    compliance:
-      - cis: ["5.6.1.5"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
-    condition:
-    rules:
-
-  # 5.6.2 Ensure system accounts are secured. (Automated)
-  - id: 33719
-    title: "Ensure system accounts are secured."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    remediation: "System accounts Set the shell for any accounts returned by the audit to nologin: # usermod -s $(command -v nologin) <user> Disabled accounts Lock any non root accounts returned by the audit: # usermod -L <user> Large scale changes The following command will set all system accounts to nologin: # awk -F: '($1!~/^(root|halt|sync|shutdown|nfsnobody)$/ && ($3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' || $3 == 65534)) { print $1 }' /etc/passwd | while read user; do usermod -s $(command -v nologin) $user >/dev/null; done The following command will automatically lock all accounts that have their shell set to nologin: # awk -F: '/nologin/ {print $1}' /etc/passwd | while read user; do usermod -L $user; done."
-    compliance:
-      - cis: ["5.6.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - nist_sp_800-53: ["AC-11", "AC-2(5)", "AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.6.3 Ensure default user shell timeout is 900 seconds or less. (Automated)
-  - id: 33720
-    title: "Ensure default user shell timeout is 900 seconds or less."
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, /etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
-    remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bashrc TMOUT configuration examples: - As multiple lines: TMOUT=900 readonly TMOUT export TMOUT - As a single line: readonly TMOUT=900 ; export TMOUT."
-    compliance:
-      - cis: ["5.6.3"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
+  # 5.6.1.5 Ensure all users last password change date is in the past. (Automated) - Not Implemented
+  # 5.6.2 Ensure system accounts are secured. (Automated) - Not Implemented
+  # 5.6.3 Ensure default user shell timeout is 900 seconds or less. (Automated) - Not Implemented
 
   # 5.6.4 Ensure default group for the root account is GID 0. (Automated)
   - id: 33721
@@ -4190,30 +4147,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/passwd -> r:^root:x:0:0"
 
-  # 5.6.5 Ensure default user umask is 027 or more restrictive. (Automated)
-  - id: 33722
-    title: "Ensure default user umask is 027 or more restrictive."
-    description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. The default umask can be set to use the pam_umask module or in a System Wide Shell Configuration File. The user creating the directories or files has the discretion of changing the permissions via the chmod command, or choosing a different default umask by adding the umask command into a User Shell Configuration File, ( .bash_profile or .bashrc), in their home directory. Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): ▪ will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the <primary group name> ▪ userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login."
-    rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
-    remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all umask entries to follow local site policy. Any remaining entries should be: umask 027, umask u=rwx,g=rx,o= or more restrictive. Configure umask in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bashrc Example: # vi /etc/profile.d/set_umask.sh umask 027 Run the following command and remove or modify the umask of any returned files: # grep -RPi '(^|^[^#]*)\\s*umask\\s+([0-7][0-7][01][0-7]\\b|[0-7][0-7][0-7][0- 6]\\b|[0-7][01][0-7]\\b|[0-7][0-7][0- 6]\\b|(u=[rwx]{0,3},)?(g=[rwx]{0,3},)?o=[rwx]+\\b|(u=[rwx]{1,3},)?g=[^rx]{1,3}( ,o=[rwx]{0,3})?\\b)' /etc/login.defs /etc/profile* /etc/bashrc* Follow one of the following methods to set the default user umask: Edit /etc/login.defs and edit the UMASK and USERGROUPS_ENAB lines as follows: UMASK 027 USERGROUPS_ENAB no Edit the files /etc/pam.d/password-auth and /etc/pam.d/system-auth and add or edit the following: session optional pam_umask.so OR Configure umask in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bashrc Example: /etc/profile.d/set_umask.sh umask 027 Note: this method only applies to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked."
-    compliance:
-      - cis: ["5.6.5"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1083"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.6.5 Ensure default user umask is 027 or more restrictive. (Automated) - Not Implemented
 
   # 5.6.6 Ensure root password is set. (Automated)
   - id: 33723
@@ -4236,9 +4174,16 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:passwd -S root -> r:Password set"
 
+  ###############################################
+  # 6 System Maintenance
+  ###############################################
+  ###############################################
+  # 6.1 System File Permissions
+  ###############################################
   # 6.1.1 Ensure permissions on /etc/passwd are configured. (Automated)
   - id: 33724
     title: "Ensure permissions on /etc/passwd are configured."
@@ -4259,8 +4204,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/passwd -> r:0/root 0/root && r:644|640|604|600'
 
   # 6.1.2 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 33725
@@ -4282,8 +4228,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/passwd- -> r:0/root 0/root && r:644|640|604|600'
 
   # 6.1.3 Ensure permissions on /etc/group are configured. (Automated)
   - id: 33726
@@ -4305,8 +4252,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/group -> r:0/root 0/root && r:644|640|604|600'
 
   # 6.1.4 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 33727
@@ -4328,8 +4276,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/group- -> r:0/root 0/root && r:644|640|604|600'
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 33728
@@ -4351,8 +4300,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:\s0 0/root 0/root'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 33729
@@ -4374,8 +4324,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- ->  r:\s0 0/root 0/root'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 33730
@@ -4397,8 +4348,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow ->  r:\s0 0/root 0/root'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 33731
@@ -4420,170 +4372,20 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- ->  r:\s0 0/root 0/root'
 
-  # 6.1.9 Ensure no world writable files exist. (Automated)
-  - id: 33732
-    title: "Ensure no world writable files exist."
-    description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
-    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
-    remediation: 'Removing write access for the "other" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file.'
-    compliance:
-      - cis: ["6.1.9"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1", "13"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.10 Ensure no unowned files or directories exist. (Automated)
-  - id: 33733
-    title: "Ensure no unowned files or directories exist."
-    description: "Sometimes when administrators delete users from the password file, they neglect to remove all files owned by those users from the system."
-    rationale: 'A new user who is assigned the deleted user''s user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.'
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    compliance:
-      - cis: ["6.1.10"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["13.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.11 Ensure no ungrouped files or directories exist. (Automated)
-  - id: 33734
-    title: "Ensure no ungrouped files or directories exist."
-    description: "Sometimes when administrators delete users or groups from the system, they neglect to remove all files owned by those users or groups."
-    rationale: 'A new user who is assigned the deleted user''s user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.'
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    compliance:
-      - cis: ["6.1.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["13.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.12 Ensure sticky bit is set on all world-writable directories. (Automated)
-  - id: 33735
-    title: "Ensure sticky bit is set on all world-writable directories."
-    description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
-    rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
-    remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}'."
-    compliance:
-      - cis: ["6.1.12"]
-      - cis_csc_v8: ["3.3", "4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1548"]
-      - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.1.13 Audit SUID executables. (Manual)
-  - id: 33736
-    title: "Audit SUID executables."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
-    remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    compliance:
-      - cis: ["6.1.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1548"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.14 Audit SGID executables. (Manual)
-  - id: 33737
-    title: "Audit SGID executables."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
-    remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    compliance:
-      - cis: ["6.1.14"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1548"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.15 Audit system file permissions. (Manual)
-  - id: 33738
-    title: "Audit system file permissions."
-    description: "The RPM package manager has a number of useful options. One of these, the -V for RPM option, can be used to verify that system packages are correctly installed. The -V option can be used to verify a particular package or to verify all system packages. If no output is returned, the package is installed correctly. The following table describes the meaning of output from the verify option: Code Meaning S File size differs. M File mode differs (includes permissions and file type). 5 The MD5 checksum differs. D The major and minor version numbers differ on a device file. L A mismatch occurs in a link. U The file ownership differs. G The file group owner differs. T The file time (mtime) differs. The rpm -qf command can be used to determine which package a particular file belongs to. For example, the following commands determines which package the /bin/bash file belongs to: # rpm -qf /bin/bash bash-4.1.2-29.el6.x86_64 # rpm -S /bin/bash bash: /bin/bash To verify the settings for the package that controls the /bin/bash file, run the following: # rpm -V bash-4.1.2-29.el6.x86_64 .M....... /bin/bash # rpm --verify bash ??5?????? c /etc/bash.bashrc Note that you can feed the output of the rpm -qf command to the rpm -V command: # rpm -V `rpm -qf /etc/passwd` .M...... c /etc/passwd S.5....T c /etc/printcap."
-    rationale: "It is important to confirm that packaged system files and directories are maintained with the permissions they were intended to have from the OS vendor."
-    remediation: "Correct any discrepancies found and rerun the audit until output is clean or risk is mitigated or accepted."
-    references:
-      - "http://docs.fedoraproject.org/en-"
-    compliance:
-      - cis: ["6.1.15"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222"]
-      - nist_sp_800-53: ["AC-3", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "MP-2"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
+  # 6.1.9 Ensure no world writable files exist. (Automated) - Not Implemented
+  # 6.1.10 Ensure no unowned files or directories exist. (Automated) - Not Implemented
+  # 6.1.11 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
+  # 6.1.12 Ensure sticky bit is set on all world-writable directories. (Automated) - Not Implemented
+  # 6.1.13 Audit SUID executables. (Manual) - Not Implemented
+  # 6.1.14 Audit SGID executables. (Manual) - Not Implemented
+  # 6.1.15 Audit system file permissions. (Manual) - Not Implemented
+  ################################################
+  # 6.2 Local User and Group Settings
+  ################################################
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords. (Automated)
   - id: 33739
     title: "Ensure accounts in /etc/passwd use shadowed passwords."
@@ -4604,8 +4406,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 33740
@@ -4624,92 +4427,16 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
 
-  # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated)
-  - id: 33741
-    title: "Ensure all groups in /etc/passwd exist in /etc/group."
-    description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
-    rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
-    remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
-    compliance:
-      - cis: ["6.2.3"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0003"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-    condition:
-    rules:
-
-  # 6.2.4 Ensure no duplicate UIDs exist. (Automated)
-  - id: 33742
-    title: "Ensure no duplicate UIDs exist."
-    description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
-    rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique UIDs and review all files owned by the shared UIDs to determine which UID they are supposed to belong to."
-    compliance:
-      - cis: ["6.2.4"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 6.2.5 Ensure no duplicate GIDs exist. (Automated)
-  - id: 33743
-    title: "Ensure no duplicate GIDs exist."
-    description: "Although the groupadd program will not let you create a duplicate Group ID (GID), it is possible for an administrator to manually edit the /etc/group file and change the GID field."
-    rationale: "User groups must be assigned unique GIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to."
-    compliance:
-      - cis: ["6.2.5"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 6.2.6 Ensure no duplicate user names exist. (Automated)
-  - id: 33744
-    title: "Ensure no duplicate user names exist."
-    description: "Although the useradd program will not let you create a duplicate user name, it is possible for an administrator to manually edit the /etc/passwd file and change the username."
-    rationale: 'If a user is assigned a duplicate user name, it will create and have access to files with the first UID for that username in /etc/passwd . For example, if "test4" has a UID of 1000 and a subsequent "test4" entry has a UID of 2000, logging in as "test4" will use UID 1000. Effectively, the UID is shared, which is a security problem.'
-    remediation: "Based on the results of the audit script, establish unique user names for the users. File ownerships will automatically reflect the change as long as the users have unique UIDs."
-    compliance:
-      - cis: ["6.2.6"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 6.2.7 Ensure no duplicate group names exist. (Automated)
-  - id: 33745
-    title: "Ensure no duplicate group names exist."
-    description: "Although the groupadd program will not let you create a duplicate group name, it is possible for an administrator to manually edit the /etc/group file and change the group name."
-    rationale: "If a group is assigned a duplicate group name, it will create and have access to files with the first GID for that group in /etc/group . Effectively, the GID is shared, which is a security problem."
-    remediation: "Based on the results of the audit script, establish unique names for the user groups. File group ownerships will automatically reflect the change as long as the groups have unique GIDs."
-    compliance:
-      - cis: ["6.2.7"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 6.2.8 Ensure root PATH Integrity. (Automated)
-  - id: 33746
-    title: "Ensure root PATH Integrity."
-    description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
-    rationale: "Including the current working directory (.) or other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
-    remediation: "Correct or justify any items discovered in the Audit step."
-    compliance:
-      - cis: ["6.2.8"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_techniques: ["T1204", "T1204.002"]
-    condition:
-    rules:
+  # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
+  # 6.2.4 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
+  # 6.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
+  # 6.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
+  # 6.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
+  # 6.2.8 Ensure root PATH Integrity. (Automated) - Not Implemented
 
   # 6.2.9 Ensure root is the only UID 0 account. (Automated)
   - id: 33747
@@ -4722,165 +4449,14 @@ checks:
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1548"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
 
-  # 6.2.10 Ensure local interactive user home directories exist. (Automated)
-  - id: 33748
-    title: "Ensure local interactive user home directories exist."
-    description: "Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
-    rationale: 'If the user''s home directory does not exist or is unassigned, the user will be placed in "/" and will not be able to write any files or have local environment variables set.'
-    remediation: "If any users' home directories do not exist, create them and make sure the respective user owns the directory. Users without an assigned home directory should be removed or assigned a home directory as appropriate. The following script will create a home directory for users with an interactive shell whose home directory doesn't exist: #!/usr/bin/env bash { valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | while read -r user home; do if [ ! -d \"$home\" ]; then echo -e \"\\n- User \\\"$user\\\" home directory \\\"$home\\\" doesn't exist\\n- creating home directory \\\"$home\\\"\\n\" mkdir \"$home\" chmod g-w,o-wrx \"$home\" chown \"$user\" \"$home\" fi done }."
-    compliance:
-      - cis: ["6.2.10"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.11 Ensure local interactive users own their home directories. (Automated)
-  - id: 33749
-    title: "Ensure local interactive users own their home directories."
-    description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
-    rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
-    remediation: "Change the ownership of any home directories that are not owned by the defined user to the correct user. The following script will update local interactive user home directories to be owned by the user: #!/usr/bin/env bash { output=\"\" valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | while read -r user home; do owner=\"$(stat -L -c \"%U\" \"$home\")\" if [ \"$owner\" != \"$user\" ]; then echo -e \"\\n- User \\\"$user\\\" home directory \\\"$home\\\" is owned by user \\\"$owner\\\"\\n - changing ownership to \\\"$user\\\"\\n\" chown \"$user\" \"$home\" fi done }."
-    compliance:
-      - cis: ["6.2.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.12 Ensure local interactive user home directories are mode 750 or more restrictive. (Automated)
-  - id: 33750
-    title: "Ensure local interactive user home directories are mode 750 or more restrictive."
-    description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
-    rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to user home directories without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user file permissions and determine the action to be taken in accordance with site policy. The following script can be used to remove permissions is excess of 750 from interactive user home directories: #!/usr/bin/env bash { perm_mask='0027' maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | (while read -r user home; do mode=$( stat -L -c '%#a' \"$home\" ) if [ $(( $mode & $perm_mask )) -gt 0 ]; then echo -e \"- modifying User $user home directory: \\\"$home\\\"\\n- removing excessive permissions from current mode of \\\"$mode\\\"\" chmod g-w,o-rwx \"$home\" fi done ) }."
-    compliance:
-      - cis: ["6.2.12"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.13 Ensure no local interactive user has .netrc files. (Automated)
-  - id: 33751
-    title: "Ensure no local interactive user has .netrc files."
-    description: "The .netrc file contains data for logging into a remote host for file transfers via FTP. While the system administrator can establish secure permissions for users' .netrc files, the users can easily override these."
-    rationale: "The .netrc file presents a significant security risk since it stores passwords in unencrypted form. Even if FTP is disabled, user accounts may have brought over .netrc files from other systems which could pose a risk to those systems. If a .netrc file is required, and follows local site policy, it should have permissions of 600 or more restrictive."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc file permissions and determine the action to be taken in accordance with local site policy. The following script will remove .netrc files from interactive users' home directories #!/usr/bin/env bash { perm_mask='0177' valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | while read -r user home; do if [ -f \"$home/.netrc\" ]; then echo -e \"\\n- User \\\"$user\\\" file: \\\"$home/.netrc\\\" exists\\n - removing file: \\\"$home/.netrc\\\"\\n\" rm -f \"$home/.netrc\" fi done }."
-    compliance:
-      - cis: ["6.2.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_techniques: ["T1152", "T1552.001"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.14 Ensure no local interactive user has .forward files. (Automated)
-  - id: 33752
-    title: "Ensure no local interactive user has .forward files."
-    description: "The .forward file specifies an email address to forward the user's mail to."
-    rationale: "Use of the .forward file poses a security risk in that sensitive data may be inadvertently transferred outside the organization. The .forward file also poses a risk as it can be used to execute commands that may perform unintended actions."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .forward files and determine the action to be taken in accordance with site policy. The following script will remove .forward files from interactive users' home directories #!/usr/bin/env bash { output=\"\" fname=\".forward\" valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | (while read -r user home; do if [ -f \"$home/$fname\" ]; then echo -e \"$output\\n- User \\\"$user\\\" file: \\\"$home/$fname\\\" exists\\n - removing file: \\\"$home/$fname\\\"\\n\" rm -r \"$home/$fname\" fi done ) }."
-    compliance:
-      - cis: ["6.2.14"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1031"]
-      - mitre_tactics: ["TA0010"]
-      - mitre_techniques: ["T1114", "T1114.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.15 Ensure no local interactive user has .rhosts files. (Automated)
-  - id: 33753
-    title: "Ensure no local interactive user has .rhosts files."
-    description: "While no .rhosts files are shipped by default, users can easily create them."
-    rationale: "This action is only meaningful if .rhosts support is permitted in the file /etc/pam.conf . Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, they may have been brought over from other systems and could contain information useful to an attacker for those other systems."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .rhosts files and determine the action to be taken in accordance with site policy. The following script will remove .rhosts files from interactive users' home directories #!/usr/bin/env bash { perm_mask='0177' valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | while read -r user home; do if [ -f \"$home/.rhosts\" ]; then echo -e \"\\n- User \\\"$user\\\" file: \\\"$home/.rhosts\\\" exists\\n - removing file: \\\"$home/.rhosts\\\"\\n\" rm -f \"$home/.rhosts\" fi done }."
-    compliance:
-      - cis: ["6.2.15"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1049"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.16 Ensure local interactive user dot files are not group or world writable. (Automated)
-  - id: 33754
-    title: "Ensure local interactive user dot files are not group or world writable."
-    description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
-    rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy. The following script will remove excessive permissions on dot files within interactive users' home directories. #!/usr/bin/env bash { perm_mask='0022' valid_shells=\"^($( sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' /etc/shells | paste -s - d '|' - ))$\" awk -v pat=\"$valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | while read -r user home; do find \"$home\" -type f -name '.*' | while read -r dfile; do mode=$( stat -L -c '%#a' \"$dfile\" ) if [ $(( $mode & $perm_mask )) -gt 0 ]; then echo -e \"\\n- Modifying User \\\"$user\\\" file: \\\"$dfile\\\"\\n- removing group and other write permissions\" chmod go-w \"$dfile\" fi done done }."
-    compliance:
-      - cis: ["6.2.16"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222", "T1222.001", "T1222.002", "T1552", "T1552.003", "T1552.004"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.2.10 Ensure local interactive user home directories exist. (Automated) - Not Implemented
+  # 6.2.11 Ensure local interactive users own their home directories. (Automated) - Not Implemented
+  # 6.2.12 Ensure local interactive user home directories are mode 750 or more restrictive. (Automated) - Not Implemented
+  # 6.2.13 Ensure no local interactive user has .netrc files. (Automated) - Not Implemented
+  # 6.2.14 Ensure no local interactive user has .forward files. (Automated) - Not Implemented
+  # 6.2.15 Ensure no local interactive user has .rhosts files. (Automated) - Not Implemented
+  # 6.2.16 Ensure local interactive user dot files are not group or world writable. (Automated) - Not Implemented
