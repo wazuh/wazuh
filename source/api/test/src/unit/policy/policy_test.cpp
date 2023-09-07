@@ -24,6 +24,8 @@ const store::Doc POLICY_DOC {R"({
     }
 })"};
 
+const std::string POLICY_DOC_HASH = "4112711263806056918";
+
 const std::string POLICY_YML_ALL {R"(policy: policy/name/version
 hash: 4112711263806056918
 assets:
@@ -1009,3 +1011,56 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                                      expectNsPolicy(store);
                                                      return std::list<store::NamespaceId> {"system", "user", "wazuh"};
                                                  }))));
+
+/*******************************************************************************
+ * Get the hash of the policy
+ ******************************************************************************/
+
+using GetHashT = std::tuple<base::Name, ExpectedFn<base::RespOrError<std::string>>>;
+
+using GetHash = PolicyTest<GetHashT>;
+
+TEST_P(GetHash, Get)
+{
+    auto [policy, expectedFn] = GetParam();
+
+    auto expected = expectedFn(m_store, m_validator);
+    auto res = m_policyManager->getHash(policy);
+    if (base::isError(expected))
+    {
+        ASSERT_TRUE(base::isError(res));
+    }
+    else
+    {
+        ASSERT_FALSE(base::isError(res)) << "Error: " << base::getError(res).message << std::endl;
+        ASSERT_EQ(base::getResponse<std::string>(res), base::getResponse<std::string>(expected));
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(PolicyTest,
+                         GetHash,
+                         testing::Values(
+                             // Invalid policy names
+                             GetHashT("invalidName", failure<std::string>()),
+                             GetHashT("pol/icy", failure<std::string>()),
+                             GetHashT("policy/noVersion", failure<std::string>()),
+                             GetHashT("policy/name/version/extraPart", failure<std::string>()),
+                             GetHashT("\n", failure<std::string>()),
+                             GetHashT("poLICY/name/version", failure<std::string>()),
+                             // Store get policy error
+                             GetHashT(POLICY_NAME,
+                                      failure<std::string>(
+                                          [](auto store, auto) {
+                                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                                  .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+                                          })),
+                             // Success
+                             GetHashT(POLICY_NAME,
+                                      success<std::string>(
+                                          [](auto store, auto)
+                                          {
+                                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                                              expectNsPolicy(store);
+                                              return POLICY_DOC_HASH;
+                                          }))));

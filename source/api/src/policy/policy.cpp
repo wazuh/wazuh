@@ -14,11 +14,6 @@ namespace {
             return base::Error {
                 fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
         }
-        else if (policyName.parts()[1].empty() || policyName.parts()[2].empty())
-        {
-            return base::Error {fmt::format("Invalid policy name: {}, expected non-empty second and third parts",
-                                            policyName.fullName())};
-        }
 
         return std::nullopt;
     }
@@ -245,6 +240,18 @@ base::RespOrError<std::list<store::NamespaceId>> Policy::listNamespaces(const ba
 
     auto policy = base::getResponse<PolicyRep>(resp);
     return policy.listNs();
+}
+
+base::RespOrError<std::string> Policy::getHash(const base::Name& policyName) const
+{
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    return policy.getHash();
 }
 
 } // namespace api::policy

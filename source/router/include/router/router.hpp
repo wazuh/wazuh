@@ -81,8 +81,10 @@ private:
     void dumpTableToStorage();
 
 public:
-    using Entry = std::tuple<std::string, std::size_t, std::string, std::string>; ///< Entry of the routes table (name,
-                                                                                  ///< priority, filter, target)
+    using Entry =
+        std::tuple<std::string, std::size_t, std::string, std::string, std::string>; ///< Entry of the routes table
+                                                                                     ///< [name, priority, filter,
+                                                                                     ///< target, hash]
 
     /**
      * @brief Construct a new Router with the given builder, store and number of threads for the pool
@@ -228,6 +230,13 @@ public:
      * @return base::OptError
      */
     base::OptError unsubscribe(const std::string& policyName);
+
+    /**
+     * @brief Get a hash of the policy
+     *
+     * @return std::optional<std::string> Hash of the policy or nullopt if the policy does not exist
+     */
+    std::optional<std::string> getPolicyHash(const std::string& policyName) const;
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP

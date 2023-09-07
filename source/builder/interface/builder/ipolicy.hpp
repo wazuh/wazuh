@@ -40,6 +40,13 @@ public:
      * @return std::string
      */
     virtual std::string getGraphivzStr() const = 0;
+
+    /**
+     * @brief Get the policy hash.
+     *
+     * @return std::string Hash of the policy.
+     */
+    virtual const std::string& hash() const = 0;
 };
 } // namespace builder
 
