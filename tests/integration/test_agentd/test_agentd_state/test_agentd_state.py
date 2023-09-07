@@ -46,6 +46,7 @@ tags:
     - stats_file
 '''
 
+import json
 import pytest
 from pathlib import Path
 import sys
@@ -93,7 +94,9 @@ def start_remoted_server(test_metadata) -> None:
     if 'remoted' in test_metadata and test_metadata['remoted']:
         remoted_server = RemotedSimulator()
         remoted_server.start()
-        return remoted_server
+    else:
+        remoted_server = None
+    return remoted_server
 
 def add_custom_key() -> None:
     """Set test client.keys file"""
@@ -149,6 +152,10 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     for expected_output in test_metadata['output']:
         check_fields(expected_output, remoted_server)
     
+    if remoted_server:
+        remoted_server.clear()
+        remoted_server.shutdown()
+    
 def parse_state_file():
     """Parse state file
 
@@ -179,9 +186,9 @@ def remoted_get_state(remoted_server):
     Returns:
         state info
     """
-    remoted_server.request('agent getstate')
+    remoted_server.send_custom_message('agent getstate')
     sleep(2)
-    response = json.loads(remoted_server.request_answer)
+    response = json.loads(remoted_server.custom_message)
     return response['data']
 
 
