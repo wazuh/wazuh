@@ -48,6 +48,13 @@ private:
             throw std::runtime_error(fmt::format(
                 "Name size must have {} parts at most at most, but the one inserted has {}", MAX_PARTS, size));
         }
+        for (const auto& part : m_parts)
+        {
+            if (part.empty())
+            {
+                throw std::runtime_error(fmt::format("Name cannot have empty parts"));
+            }
+        }
     }
 
     void copy(const Name& other) { m_parts = other.m_parts; }
@@ -77,8 +84,8 @@ public:
      */
     Name(std::vector<std::string>&& parts)
     {
-        assertSize(parts.size());
         m_parts = std::move(parts);
+        assertSize(m_parts.size());
     }
 
     /**

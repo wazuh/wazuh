@@ -33,6 +33,7 @@ public:
     MOCK_METHOD(base::OptError, setDefaultParent, (const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName), (override));
     MOCK_METHOD(base::OptError, delDefaultParent, (const base::Name& policyName, const store::NamespaceId& namespaceId), (override));
     MOCK_METHOD(base::RespOrError<std::list<store::NamespaceId>>, listNamespaces, (const base::Name& policyName), (const, override));
+    MOCK_METHOD(base::RespOrError<std::string>, getHash, (const base::Name& policyName), (const, override));
 };
 } // namespace api::policy::mocks
 

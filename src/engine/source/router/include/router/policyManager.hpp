@@ -142,6 +142,14 @@ public:
      * @return base::OptError
      */
     base::OptError unSubscribeTraces(const std::string& name, std::size_t instance);
+
+    /**
+     * @brief Get the hash of the policy
+     *
+     * @return std::optional<std::string> Hash of the policy, or std::nullopt if the policy does not loaded
+     */
+    std::optional<std::string> getPolicyHash(const std::string& name);
+
 };
 } // namespace router
 

@@ -329,6 +329,17 @@ Policy::Policy(const json::Json& jsonDefinition,
     }
     m_name = nameOpt.value();
 
+    // Get hash
+    auto hashOpt = jsonDefinition.getString("/hash");
+    if (hashOpt)
+    {
+        m_hash = hashOpt.value();
+    }
+    else
+    {
+        throw std::runtime_error("Policy /hash not defined or not a string");
+    }
+
     // Get default parents
     auto defaultParentsOpt = jsonDefinition.getObject("/default_parents");
     std::unordered_map<store::NamespaceId, base::Name> defaultParents;
@@ -529,4 +540,8 @@ std::string Policy::getGraphivzStr() const
     return ss.str();
 }
 
+const std::string& Policy::hash() const
+{
+    return m_hash;
+}
 } // namespace builder

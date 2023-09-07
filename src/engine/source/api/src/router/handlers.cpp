@@ -9,9 +9,59 @@ namespace api::router::handlers
 namespace eRouter = ::com::wazuh::api::engine::router;
 namespace eEngine = ::com::wazuh::api::engine;
 
-api::Handler routeGet(std::shared_ptr<::router::Router> router)
+
+namespace {
+
+/**
+ * @brief Compare the hash of the policy stored in the router with the hash of the policy stored in the store and
+ * return the status of the comparison in human readable format:
+ *
+ * - OUTDATED: The policy stored in the router is outdated. The policy stored in the store differs from the policy
+ * stored
+ * - UPDATED: The policy stored in the router is updated. The policy stored in the store is the same as the policy
+ * - ERROR: An error occurred while comparing the hashes, The policy stored in the store is inaccesible
+ *
+ * @tparam ResponseType
+ * @param policyApi
+ * @param policyName
+ * @return std::string
+ */
+std::string getHashStatus(const std::weak_ptr<api::policy::IPolicy>& policyApi,
+                                                   const std::string& policyName,
+                                                   const std::string& hash)
 {
-    return [router](const api::wpRequest& wRequest) -> api::wpResponse
+    auto policyApiPtr = policyApi.lock();
+    if (!policyApiPtr)
+    {
+        return "Error: Policy API is not available";
+    }
+
+    base::Name name;
+    try {
+        name = base::Name(policyName);
+    } catch (const std::exception& e) {
+        return "Error: Invalid policy name";
+    }
+
+    const auto policyHash = policyApiPtr->getHash(name);
+    if (base::isError(policyHash))
+    {
+        return std::string("Error: ") + base::getError(policyHash).message;
+    }
+
+    const auto hashStored = base::getResponse<std::string>(policyHash);
+    if (hashStored != hash)
+    {
+        return std::string("OUTDATED");
+    }
+
+    return std::string("UPDATED");
+}
+}
+
+api::Handler routeGet(std::shared_ptr<::router::Router> router, std::weak_ptr<api::policy::IPolicy> policyApi)
+{
+    return [router, policyApi](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -32,19 +82,24 @@ api::Handler routeGet(std::shared_ptr<::router::Router> router)
 
         // Execute the command
         const auto& entry = router->getEntry(eRequest.name());
+
+        // Get policy hash from api policy
         if (!entry.has_value())
         {
             return ::api::adapter::genericError<ResponseType>("Route not found");
         }
 
         // Build the response
-        const auto& [name, priority, filterName, envName] = entry.value();
+        const auto& [name, priority, filterName, envName, hash] = entry.value();
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
         eResponse.mutable_route()->set_name(name);
         eResponse.mutable_route()->set_filter(filterName);
         eResponse.mutable_route()->set_policy(envName);
         eResponse.mutable_route()->set_priority(static_cast<int32_t>(priority));
+
+        auto hashStatus = getHashStatus(policyApi, envName, hash); // Get policy hash from the store
+        eResponse.mutable_route()->set_policysync(hashStatus);
 
         // Adapt the response to wazuh api
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
@@ -185,9 +240,9 @@ api::Handler routeDelete(std::shared_ptr<::router::Router> router)
     };
 }
 
-api::Handler tableGet(std::shared_ptr<::router::Router> router)
+api::Handler tableGet(std::shared_ptr<::router::Router> router, std::weak_ptr<api::policy::IPolicy> policyApi)
 {
-    return [router](const api::wpRequest& wRequest) -> api::wpResponse
+    return [router, policyApi](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
@@ -202,13 +257,17 @@ api::Handler tableGet(std::shared_ptr<::router::Router> router)
         // Build the response
         ResponseType eResponse;
         auto eTable = eResponse.mutable_table(); // Create the empty table
-        for (const auto& [name, priority, filter, policy] : router->getRouteTable())
+        for (const auto& [name, priority, filter, policy, hash] : router->getRouteTable())
         {
             auto eEntry = eRouter::Entry();
             eEntry.mutable_name()->assign(name);
             eEntry.mutable_filter()->assign(filter);
             eEntry.mutable_policy()->assign(policy);
             eEntry.set_priority(static_cast<int32_t>(priority));
+
+            auto hashStatus = getHashStatus(policyApi, policy, hash); // Get policy hash from the store
+            eEntry.set_policysync(hashStatus);
+
             eTable->Add(std::move(eEntry));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -248,15 +307,15 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router)
     };
 }
 
-void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Api> api)
+void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Api> api, std::weak_ptr<api::policy::IPolicy> policyApi)
 {
     // Commands to manage routes
-    const bool ok = api->registerHandler("router.route/get", routeGet(router))
+    const bool ok = api->registerHandler("router.route/get", routeGet(router, policyApi))
                     && api->registerHandler("router.route/post", routePost(router))
                     && api->registerHandler("router.route/patch", routePatch(router))
                     && api->registerHandler("router.route/delete", routeDelete(router)) &&
                     // Commands to manage the routes table
-                    api->registerHandler("router.table/get", tableGet(router)) &&
+                    api->registerHandler("router.table/get", tableGet(router, policyApi)) &&
                     // Commands to manage the queue of events
                     api->registerHandler("router.queue/post", queuePost(router));
 

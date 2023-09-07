@@ -7,10 +7,11 @@ package com.wazuh.api.engine.router;
 /* Client-facing representation of a route exposed in APIs */
 message Entry
 {
-    optional string name = 1;    // Name of the route
-    optional string filter = 2;  // Filter to apply to the route
-    optional string policy = 3;  // Policy to end of the route
-    optional int32 priority = 4; // Priority of the route
+    optional string name = 1;       // Name of the route
+    optional string filter = 2;     // Filter to apply to the route
+    optional string policy = 3;     // Policy to end of the route
+    optional int32 priority = 4;    // Priority of the route
+    optional string policy_sync = 5; // Status of the policy [updated|updated|error]
 }
 
 /***************************************************

@@ -206,4 +206,15 @@ base::OptError PolicyManager::unSubscribeTraces(const std::string& name, std::si
     return std::nullopt;
 }
 
+std::optional<std::string>  PolicyManager::getPolicyHash(const std::string& name) {
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto it = m_policies.find(name);
+    if (m_policies.end() == it)
+    {
+        return std::nullopt;
+    }
+
+    return it->second[0].hash();
+}
+
 } // namespace router

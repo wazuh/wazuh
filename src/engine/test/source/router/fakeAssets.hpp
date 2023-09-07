@@ -172,6 +172,7 @@ auto constexpr INTERNAL_ROUTE_TABLE = R"e([
 
 auto constexpr POLICY_1 = R"e({
     "name": "policy/pol_1/0",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/deco_1/0",
         "decoder/deco_2/0",
@@ -181,6 +182,7 @@ auto constexpr POLICY_1 = R"e({
 
 auto constexpr POLICY_2 = R"e({
     "name": "policy/pol_2/0",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/deco_1/0",
         "decoder/deco_2/0",
@@ -190,6 +192,7 @@ auto constexpr POLICY_2 = R"e({
 
 auto constexpr POLICY_3 = R"e({
     "name": "policy/pol_3/0",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/deco_1/0",
         "decoder/deco_2/0",
@@ -199,6 +202,7 @@ auto constexpr POLICY_3 = R"e({
 
 auto constexpr POLICY_A1 = R"e({
     "name": "policy/pol_A1/0",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/deco_A1/0"
     ]
@@ -206,6 +210,7 @@ auto constexpr POLICY_A1 = R"e({
 
 auto constexpr POLICY_B2 = R"e({
     "name": "policy/pol_B2/0",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/deco_B2/0"
     ]
@@ -213,6 +218,7 @@ auto constexpr POLICY_B2 = R"e({
 
 auto constexpr POLICY_C3 = R"e({
     "name": "policy/pol_C3/0",
+    "hash": "4112711263806056918",
     "assets": [
         "decoder/deco_C3/0"
     ]
@@ -220,6 +226,7 @@ auto constexpr POLICY_C3 = R"e({
 
 auto constexpr POLICY_EMPTY = R"e({
     "name": "policy/empty/0",
+    "hash": "4112711263806056918",
     "assets": []
 })e";
 

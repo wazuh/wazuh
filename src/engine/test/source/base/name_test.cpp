@@ -127,11 +127,3 @@ TEST_F(NameTest, FullName)
                           base::Name::SEPARATOR_S,
                           base::Name::SEPARATOR_S));
 }
-TEST_F(NameTest, FullName_emptyPart)
-{
-    base::Name name ({"type", "", "version"});
-    ASSERT_EQ(name.toStr(),
-              fmt::format("type{}{}version",
-                          base::Name::SEPARATOR_S,
-                          base::Name::SEPARATOR_S));
-}

@@ -28,6 +28,7 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
         }
 
         m_controller = std::make_shared<rxbk::Controller>(rxbk::buildRxPipeline(policy));
+        m_hash = policy.hash();
     }
     catch (std::exception& e)
     {

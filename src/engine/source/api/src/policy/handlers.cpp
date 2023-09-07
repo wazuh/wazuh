@@ -71,9 +71,6 @@ getTupleRequest(const api::wpRequest& wRequest, const std::weak_ptr<api::policy:
         if (policy.parts()[0] != "policy") {
             return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must start with 'policy'");
         }
-        if (policy.parts()[1].empty() || policy.parts()[2].empty()) {
-            return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must have non-empty second and third parts");
-        }
     }
     catch (const std::runtime_error& e)
     {
@@ -161,9 +158,6 @@ std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getName
         asset = base::Name(request.asset());
         if (asset.parts().size() != 3) {
             return ::api::adapter::genericError<ResponseT>("Error: Asset name must have 3 parts");
-        }
-        if (asset.parts()[0].empty() || asset.parts()[1].empty() || asset.parts()[2].empty()) {
-            return ::api::adapter::genericError<ResponseT>("Error: Asset name must have non-empty parts");
         }
     }
     catch (const std::runtime_error& e)
