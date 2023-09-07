@@ -199,7 +199,7 @@ static std::string getName()
     std::string name;
     static const std::string MSFT_PREFIX{"Microsoft"};
     constexpr auto SM_SERVER32_VALUE{89};//www.docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsystemmetrics
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_WOW64_64KEY | KEY_READ};
 
     if (currentVersion.string("ProductName", name))
     {
