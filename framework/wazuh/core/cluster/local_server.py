@@ -304,10 +304,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
         dict
             Dict object containing nodes information.
         """
-        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes)),
-                                 default=lambda o: "n/a" if
-                                 isinstance(o, datetime) and o == get_date_from_timestamp(0)
-                                 else (o.__str__() if isinstance(o, datetime) else None)).encode()
+        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.

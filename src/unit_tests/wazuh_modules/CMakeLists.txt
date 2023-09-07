@@ -30,4 +30,5 @@ endif()
 
 add_subdirectory(github)
 add_subdirectory(office365)
-
+add_subdirectory(ms_graph)
+add_subdirectory(osquery)

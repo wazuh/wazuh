@@ -584,7 +584,7 @@ def _ar_conf2json(file_path: str) -> dict:
 
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
-                   from_import: bool = False) -> dict:
+                   from_import: bool = False, distinct: bool = False) -> dict:
     """Return ossec.conf (manager) as dictionary.
 
     Parameters
@@ -597,6 +597,8 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         Path of the configuration file to read. Default: common.OSSEC_CONF
     from_import : bool
         This flag indicates whether this function has been called from a module load (True) or from a function (False).
+    distinct : bool
+        Look for distinct values.
 
     Raises
     ------
@@ -641,7 +643,15 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
             if isinstance(data[section], list):
                 data = {section: [{field: item[field]} for item in data[section]]}
             else:
-                data = {section: {field: data[section][field]}}
+                field_data = data[section][field]
+                if distinct and section == 'ruleset':
+                    if field in ('decoder_dir', 'rule_dir'):
+                        # Remove duplicates
+                        values = []
+                        [values.append(x) for x in field_data if x not in values]
+                        field_data = values
+
+                data = {section: {field: field_data}}
         except KeyError:
             raise WazuhError(1103)
 
@@ -1099,7 +1109,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
         The active configuration the agent is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'agent', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
+    component_socket_mapping = {'agent': 'analysis', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
                                 'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
                                 'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}

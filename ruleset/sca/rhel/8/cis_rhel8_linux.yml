@@ -13,7 +13,7 @@
 policy:
   id: "cis_rhel8_linux"
   file: "cis_rhel8_linux.yml"
-  name: "CIS Benchmark for Red Hat Enterprise Linux 8"
+  name: "CIS Red Hat Enterprise Linux 8 Benchmark v1.0.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 8 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 8"
   references:
     - https://www.cisecurity.org/cis-benchmarks/

@@ -86,9 +86,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_OWNER) {
         if (aux = cJSON_GetObjectItem(changed_data, "uid"), aux != NULL) {
-            char uid_str [OS_SIZE_64] = {0};
-            snprintf(uid_str, OS_SIZE_64, "%d", aux->valueint);
-            cJSON_AddStringToObject(old_attributes, "uid", uid_str);
+            cJSON_AddStringToObject(old_attributes, "uid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
 
         } else {
@@ -98,9 +96,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_GROUP) {
         if (aux = cJSON_GetObjectItem(changed_data, "gid"), aux != NULL) {
-            char gid_str [OS_SIZE_64] = {0};
-            snprintf(gid_str, OS_SIZE_64, "%d", aux->valueint);
-            cJSON_AddStringToObject(old_attributes, "gid", gid_str);
+            cJSON_AddStringToObject(old_attributes, "gid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
 
         } else {
@@ -234,22 +230,19 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
 
     if (configuration->options & CHECK_OWNER) {
         if (aux = cJSON_GetObjectItem(dbsync_event, "uid"), aux != NULL) {
-            char * buffer;
-            os_malloc(OS_SIZE_64, buffer);
-            snprintf(buffer, OS_SIZE_64, "%d", aux->valueint);
-            cJSON_AddStringToObject(attributes, "uid", buffer);
-            os_free(buffer);
+            char *uid = cJSON_GetStringValue(aux);
+            if (uid != NULL && *uid != '\0') {
+                cJSON_AddStringToObject(attributes, "uid", uid);
+            }
         }
     }
 
     if (configuration->options & CHECK_GROUP) {
         if (aux = cJSON_GetObjectItem(dbsync_event, "gid"), aux != NULL) {
-            char * buffer;
-            os_malloc(OS_SIZE_64, buffer);
-            snprintf(buffer, OS_SIZE_64, "%d", aux->valueint);
-
-            cJSON_AddStringToObject(attributes, "gid", buffer);
-            os_free(buffer)
+            char *gid = cJSON_GetStringValue(aux);
+            if (gid != NULL && *gid != '\0') {
+                cJSON_AddStringToObject(attributes, "gid", gid);
+            }
         }
     }
 
@@ -499,7 +492,7 @@ time_t fim_scan() {
 #endif
 
 #ifdef WIN32
-    Wow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
 #endif
     cputime_start = clock();
     gettime(&start);
@@ -1472,11 +1465,11 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
 #endif
     }
 
-    if (data->options & CHECK_OWNER) {
+    if (data->options & CHECK_OWNER && data->uid && *data->uid != '\0' ) {
         cJSON_AddStringToObject(attributes, "uid", data->uid);
     }
 
-    if (data->options & CHECK_GROUP) {
+    if (data->options & CHECK_GROUP && data->gid && *data->gid != '\0' ) {
         cJSON_AddStringToObject(attributes, "gid", data->gid);
     }
 

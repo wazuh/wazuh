@@ -465,6 +465,17 @@ stages:
     response:
       <<: *connexion_error
 
+  - name: Get distinct cluster nodes
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /cluster/nodes
 
@@ -566,7 +577,7 @@ marks:
 
 stages:
 
-  - name: Request {master-node}
+  - name: Request (master-node)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
@@ -979,6 +990,9 @@ stages:
                   limits:
                     eps:
                       allow: !anybool
+                  agents:
+                    allow_higher_versions:
+                      allow: !anybool
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config
@@ -1285,6 +1299,24 @@ stages:
                 sign: !anyint
                 size_rotate: !anyint
           failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of monitor/reports in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/reports"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - reports: !anything
+          failed_items: [ ]
           total_affected_items: 1
           total_failed_items: 0
 
@@ -1777,6 +1809,48 @@ stages:
           extra_kwargs:
             key: "level"
             expected_values: "info"
+
+  - name: Read logs using valid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'timestamp,tag'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'timestamp,tag'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to read logs using invalid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Get distinct cluster node logs
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary

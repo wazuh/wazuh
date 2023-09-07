@@ -184,4 +184,58 @@ TEST_F(WindowsHelperTest, getSerialNumberFromSMBIOSTables2NoEndDoubleNull_TEST)
     EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
 }
 
+TEST_F(WindowsHelperTest, normalizeTimestampShortRegistryInstallDateValue)
+{
+    std::string RegistryInstallDateValue = "202202";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
+
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampLongRegistryInstallDateValue)
+{
+    std::string RegistryInstallDateValue = "2022021516";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
+
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampUnknownRegistryInstallDateValue)
+{
+    std::string RegistryInstallDateValue;
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
+
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampNotEqual)
+{
+    std::string RegistryInstallDateValue = "20220214";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
+    std::string expected = "2022/02/14 00:00:00";
+
+    std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
+
+    EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampEqual)
+{
+    std::string RegistryInstallDateValue = "20220215";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
+    std::string expected = "2022/02/15 14:04:50";
+
+    std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
+
+    EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampWrongRegistryInstallDateValue)
+{
+    std::string RegistryInstallDateValue = "a0220215";
+    std::string RegistryModificationDateValue = "2022/02/15 23:59:59";
+
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
+}
+
 #endif

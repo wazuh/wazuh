@@ -26,7 +26,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
     {
         [](std::function<void(nlohmann::json&)> cb)
         {
-            const auto rawRpmPackagesInfo{ UtilsWrapper::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'") };
+            const auto rawRpmPackagesInfo{ UtilsWrapperLinux::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'") };
 
             if (!rawRpmPackagesInfo.empty())
             {
@@ -45,7 +45,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
         }
     };
 
-    if (!UtilsWrapper::existsRegular(RPM_DATABASE))
+    if (!UtilsWrapperLinux::existsRegular(RPM_DATABASE))
     {
         // We are probably using RPM >= 4.16 – get the packages from librpm.
         try

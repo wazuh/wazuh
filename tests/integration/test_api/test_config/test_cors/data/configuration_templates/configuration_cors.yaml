@@ -1,0 +1,7 @@
+- blocks:
+    cors:
+      enabled: ENABLED
+      source_route: SOURCE_ROUTE
+      expose_headers: EXPOSE_HEADERS
+      allow_headers: ALLOW_HEADERS
+      allow_credentials: ALLOW_CREDENTIALS

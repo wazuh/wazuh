@@ -61,6 +61,10 @@ set_target_properties(
 
 target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
+
 # Add fim_tools library to compilation
 include_directories(${SRC_FOLDER}/syscheckd/include)
 include_directories(${SRC_FOLDER}/syscheckd/src)
@@ -296,6 +300,10 @@ foreach(counter RANGE ${count})
       ${TEST_DEPS}
     )
 
+    if(${TARGET} STREQUAL "winagent")
+      target_link_libraries(test_${test_name} fimdb)
+    endif(${TARGET} STREQUAL "winagent")
+
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             test_${test_name}
@@ -320,6 +328,7 @@ if(${TARGET} STREQUAL "winagent")
         ${test_name}
         SYSCHECK_EVENT_O
         ${TEST_EVENT_DEPS}
+        fimdb
       )
 
       target_compile_definitions(${test_name} PUBLIC WIN_WHODATA)
@@ -370,7 +379,8 @@ if(${TARGET} STREQUAL "winagent")
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown"
+                                          fimdb)
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \

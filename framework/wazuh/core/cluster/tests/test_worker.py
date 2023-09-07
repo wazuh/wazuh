@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 from unittest.mock import patch, MagicMock, AsyncMock, call, ANY
+import datetime
 
 import pytest
 import uvloop
@@ -377,7 +378,8 @@ def test_worker_handler_process_request_ok(logger_mock):
             assert worker_handler.process_request(
                 command=b"syn_m_a_e", data=b'{"updated_chunks": 4, "error_messages": []}') == b"ok"
             sync_mock.assert_called_once_with(setup_task_logger_mock,
-                                              0.0, b'{"updated_chunks": 4, "error_messages": []}'.decode())
+                                              datetime.datetime(1970, 1, 1, 0, 0),
+                                              b'{"updated_chunks": 4, "error_messages": []}'.decode())
             logger_mock.assert_called_with("Command received: 'b'syn_m_a_e''")
     # Test the seventh condition
     with patch("wazuh.core.cluster.worker.c_common.error_receiving_agent_information",

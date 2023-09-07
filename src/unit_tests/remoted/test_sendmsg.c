@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "remoted/remoted.h"
-#include "remoted/state.h"
-#include "headers/shared.h"
+#include "../remoted/remoted.h"
+#include "../remoted/state.h"
+#include "../headers/shared.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
@@ -134,11 +134,7 @@ void test_send_msg_disconnected_agent(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, now);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_rwlock_unlock);
 
@@ -164,11 +160,7 @@ void test_send_msg_encryption_error(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -179,10 +171,6 @@ void test_send_msg_encryption_error(void ** state) {
     const ssize_t crypto_size = 0;
     will_return(__wrap_CreateSecMSG, crypto_size);
     will_return(__wrap_CreateSecMSG, crypto_msg);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_rwlock_unlock);
 
@@ -211,11 +199,7 @@ void test_send_msg_tcp_ok(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -258,11 +242,7 @@ void test_send_msg_tcp_err(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -308,11 +288,7 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -350,11 +326,7 @@ void test_send_msg_udp_ok(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -394,11 +366,7 @@ void test_send_msg_udp_error(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -440,11 +408,7 @@ void test_send_msg_udp_error_connection_reset(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -486,11 +450,7 @@ void test_send_msg_udp_error_agent_not_responding(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
@@ -532,11 +492,7 @@ void test_send_msg_udp_error_generic(void ** state) {
     expect_string(__wrap_OS_IsAllowedID, id, agent_id);
     will_return(__wrap_OS_IsAllowedID, key);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_CreateSecMSG, msg, msg);
     expect_value(__wrap_CreateSecMSG, msg_length, msg_length);

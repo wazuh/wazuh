@@ -16,6 +16,17 @@
 #include "shared.h"
 #include "client-agent/agentd.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#ifdef WIN32
+#define get_agent_ip_legacy_win32 wrap_get_agent_ip_legacy_win32
+#define getDefine_Int __wrap_getDefine_Int
+#endif
+#else
+#define STATIC static
+#endif
+
 /**
  * @brief Update the hostname value
  *
@@ -34,10 +45,10 @@ static int log_builder_update_hostname(log_builder_t * builder);
  * @retval 0 If the host IP was updated successfully.
  * @retval 1 If the host IP failed to be updated.
  */
-static int log_builder_update_host_ip(log_builder_t * builder);
+STATIC int log_builder_update_host_ip(log_builder_t * builder);
 
 /* Number of seconds of how often the IP must be updated. */
-static int g_ip_update_interval = 0;
+STATIC int g_ip_update_interval = 0;
 
 // Initialize a log builder structure
 log_builder_t * log_builder_init(bool update) {
@@ -238,10 +249,10 @@ int log_builder_update_host_ip(log_builder_t * builder) {
     static time_t last_update = 0;
     time_t now = time(NULL);
 
-    if ((now - last_update) >= g_ip_update_interval) {
+    if (g_ip_update_interval > 0 && (now - last_update) >= g_ip_update_interval) {
         last_update = now;
 #ifdef WIN32
-        char * tmp_host_ip = get_agent_ip();
+        char * tmp_host_ip = get_agent_ip_legacy_win32();
 
         if (tmp_host_ip) {
             strncpy(host_ip, tmp_host_ip, IPSIZE - 1);

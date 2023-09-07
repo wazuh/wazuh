@@ -62,6 +62,9 @@ void stop_wmodules()
 /* Locally start (after service/win init) */
 int local_start()
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
@@ -75,8 +78,6 @@ int local_start()
         nowDebug();
         debug_level--;
     }
-
-    enable_dll_verification();
 
     if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
     {
@@ -99,10 +100,6 @@ int local_start()
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
         merror_exit("WSAStartup() failed");
     }
-
-    /* Initialize error logging for shared modulesd */
-    dbsync_initialize(loggingErrorFunction);
-    rsync_initialize(loggingErrorFunction);
 
     /* Read agent config */
     mdebug1("Reading agent configuration.");
@@ -206,11 +203,18 @@ int local_start()
     if (agt->buffer){
         buffer_init();
         w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
+                        0,
+                        update_limits_thread,
+                        NULL,
+                        0,
+                        (LPDWORD)&threadID);
+
+        w_create_thread(NULL,
+                        0,
+                        dispatch_buffer,
+                        NULL,
+                        0,
+                        (LPDWORD)&threadID);
     }else{
         minfo(DISABLED_BUFFER);
     }
@@ -400,7 +404,7 @@ int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute_
     return (0);
 }
 
-char *get_agent_ip()
+char *get_agent_ip_legacy_win32()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
     cJSON *object;

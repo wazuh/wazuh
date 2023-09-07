@@ -376,6 +376,7 @@ const char *OSX_ReleaseName(int version) {
     /* 20 */ "Big Sur",
     /* 21 */ "Monterey",
     /* 22 */ "Ventura",
+    /* 23 */ "Sonoma",
     };
 
     version -= 10;
@@ -424,7 +425,7 @@ os_info *get_unix_version()
                         info->os_name = strdup(name);
                     }
                 } else if (strcmp (tag,"VERSION") == 0) {
-                    if (!version) {    
+                    if (!version) {
                         if (version_id) {
                             os_free(info->os_version);
                         }
@@ -456,6 +457,7 @@ os_info *get_unix_version()
         fclose(os_release);
 
         // If the OS is CentOS, try to get the version from the 'centos-release' file.
+        // If the OS is Arch Linux, openSUSE Tumbleweed set os_version as empty string.
         if (info->os_platform) {
             if (strcmp(info->os_platform, "centos") == 0) {
                 regex_t regexCompiled;
@@ -478,9 +480,10 @@ os_info *get_unix_version()
                     regfree(&regexCompiled);
                     fclose(version_release);
                 }
-            }
-            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0) {
-                os_strdup("rolling", info->os_build);
+            } else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0 ||
+                          strcmp(info->os_platform, "arch") == 0) {
+                os_free(info->os_version);
+                os_strdup("", info->os_version);
             }
         }
     }
@@ -577,8 +580,9 @@ os_info *get_unix_version()
                 }
             }
             if (info->os_version == NULL) {
-                os_strdup("rolling", info->os_build);
+                os_strdup("", info->os_version);
             }
+
             regfree(&regexCompiled);
             fclose(version_release);
         // Ubuntu
@@ -756,9 +760,9 @@ os_info *get_unix_version()
                       goto free_os_info;
                   } else {
                       char *base;
-                      char *found;
-                      char tag[] = "Oracle Solaris";
-                      if (found = strstr(buff, tag), found) {
+                      char tag[]  = "Solaris";
+                      char *found = strstr(buff, tag);
+                      if (found) {
                           for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
                           for (base = found; *found != '\0' && *found != ' '; found++);
                           *found = '\0';
@@ -851,52 +855,51 @@ os_info *get_unix_version()
     }
 
     if (info->os_version) { // Parsing version
-        // os_major.os_minor (os_codename)
-        os_strdup(info->os_version, version);
-        if (codename = strstr(version, " ("), codename){
-            *codename = '\0';
-            codename += 2;
-            *(codename + strlen(codename) - 1) = '\0';
-            info->os_codename = strdup(codename);
-        }
-        free(version);
-        // Get os_major
-        if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size + 1, info->os_major);
-            snprintf(info->os_major, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get os_minor
-        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size + 1, info->os_minor);
-            snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get os_patch
-        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size + 1, info->os_patch);
-            snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get OSX codename
-        if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
-            if (info->os_codename) {
-                char * tmp_os_version;
-                size_t len = 4;
-                len += strlen(info->os_version);
-                len += strlen(info->os_codename);
-                os_malloc(len, tmp_os_version);
-                snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
-                free(info->os_version);
-                info->os_version = tmp_os_version;
+        if (strcmp(info->os_version, "") != 0) {
+            // os_major.os_minor (os_codename)
+            os_strdup(info->os_version, version);
+            if (codename = strstr(version, " ("), codename){
+                *codename = '\0';
+                codename += 2;
+                *(codename + strlen(codename) - 1) = '\0';
+                info->os_codename = strdup(codename);
+            }
+            free(version);
+            // Get os_major
+            if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, info->os_major);
+                snprintf(info->os_major, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+            }
+            // Get os_minor
+            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, info->os_minor);
+                snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+            }
+            // Get os_patch
+            if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, info->os_patch);
+                snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+            }
+            // Get OSX codename
+            if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
+                if (info->os_codename) {
+                    char * tmp_os_version;
+                    size_t len = 4;
+                    len += strlen(info->os_version);
+                    len += strlen(info->os_codename);
+                    os_malloc(len, tmp_os_version);
+                    snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                    free(info->os_version);
+                    info->os_version = tmp_os_version;
+                }
             }
         }
-    } else if (info->os_build && strcmp(info->os_build, "rolling") == 0) {
-        // Rolling releases doesn't have a version.
-        info->os_version = strdup("");
     } else {
         // Empty version
-        info->os_version = strdup("0.0");
+        os_strdup("0.0", info->os_version);
     }
 
     return info;

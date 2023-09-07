@@ -10,8 +10,8 @@
 
 #include "shared.h"
 #include "syscheck.h"
-#include "config/config.h"
-#include "rootcheck/rootcheck.h"
+#include "../config/config.h"
+#include "../rootcheck/rootcheck.h"
 
 #ifdef WIN32
 static registry_t REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };

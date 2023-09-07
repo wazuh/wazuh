@@ -36,12 +36,11 @@ class InstallCommand(install):
                        'installation_date': datetime.utcnow().replace(tzinfo=timezone.utc).strftime(
                            '%a %b %d %H:%M:%S UTC %Y')
                        }, f)
-        # install.run(self)  # OR: install.do_egg_install(self)
-        install.do_egg_install(self)
+        install.run(self)
 
 
 setup(name='wazuh',
-      version='4.6.0',
+      version='4.8.0',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',

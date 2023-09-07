@@ -14,7 +14,7 @@
 
 #include "shared.h"
 #include "syscheck.h"
-#include "rootcheck/rootcheck.h"
+#include "../rootcheck/rootcheck.h"
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 // Global variables
@@ -88,7 +88,9 @@ void fim_initialize() {
                                          0,
                                          false,
                                          syscheck.sync_thread_pool,
-                                         syscheck.sync_queue_size);
+                                         syscheck.sync_queue_size,
+                                         NULL,
+                                         NULL);
 #else
     FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
                                          syscheck.sync_interval,
@@ -100,7 +102,9 @@ void fim_initialize() {
                                          syscheck.db_entry_registry_limit,
                                          syscheck.enable_registry_synchronization,
                                          syscheck.sync_thread_pool,
-                                         syscheck.sync_queue_size);
+                                         syscheck.sync_queue_size,
+                                         loggingErrorFunction,
+                                         loggingErrorFunction);
 #endif
 
     if (ret_val != FIMDB_OK) {

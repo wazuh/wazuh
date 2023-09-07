@@ -22,6 +22,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     const char *xml_buffer_disabled = "disabled";
     const char *xml_buffer_queue_size = "queue_size";
     const char *xml_events_per_second = "events_per_second";
+    const char *xml_eps_timeframe = "eps_timeframe";
 
     /* Old XML definition */
     const char *xml_buffer_length = "length";
@@ -79,7 +80,18 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
                 return (OS_INVALID);
             }
             logr->events_persec = atoi(node[i]->content);
-            if (logr->events_persec <= 0 || logr->events_persec > 1000) {
+            if (logr->events_persec < 0 || logr->events_persec > 100000) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+        } else if (strcmp(node[i]->element, xml_eps_timeframe) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->eps_timeframe = atoi(node[i]->content);
+            if (logr->eps_timeframe < 1 || logr->eps_timeframe > 3600) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

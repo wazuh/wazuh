@@ -37,6 +37,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
     cfg->queue_size = 131072;
+    cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
+    cfg->connection_overtake_time = 60;
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
@@ -105,7 +107,12 @@ cJSON *getRemoteConfig(void) {
             }
             if (logr.queue_size && (logr.conn[i] == SECURE_CONN)) {
                 sprintf(queue_size,"%ld",logr.queue_size);
-                cJSON_AddStringToObject(conn,"queue_size",queue_size); };
+                cJSON_AddStringToObject(conn,"queue_size", queue_size);
+
+                cJSON * agents = cJSON_CreateObject();
+                cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
+                cJSON_AddItemToObject(conn, "agents", agents);
+            }
             if (logr.allowips && (int)i!=logr.position) {
                 cJSON *list = cJSON_CreateArray();
                 for(j=0;logr.allowips[j];j++){
@@ -120,6 +127,9 @@ cJSON *getRemoteConfig(void) {
                 }
                 cJSON_AddItemToObject(conn,"denied-ips",list);
             }
+
+            cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+
             cJSON_AddItemToArray(rem,conn);
         }
     }

@@ -11,8 +11,8 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "syscheckd/include/syscheck.h"
-#include "syscheckd/src/registry/registry.h"
+#include "../../../syscheckd/include/syscheck.h"
+#include "../../../syscheckd/src/registry/registry.h"
 #include "test_fim.h"
 
 #define CHECK_REGISTRY_ALL                                                                             \

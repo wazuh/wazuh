@@ -13,6 +13,10 @@ import json
 import socket
 import sys
 import time
+from os.path import abspath, dirname
+
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+from utils import MAX_EVENT_SIZE
 
 try:
     import docker
@@ -20,8 +24,8 @@ except:
     sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
     exit(1)
 
-class DockerListener:
 
+class DockerListener:
     wait_time = 5
     field_debug_name = "Wodle event"
 
@@ -130,8 +134,14 @@ class DockerListener:
             print(json_msg)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg).encode())
+
+            encoded_msg = "{header}{msg}".format(header=self.msg_header,
+                                                 msg=json_msg).encode()
+            # Logs warning if event is bigger than max size
+            if len(encoded_msg) > MAX_EVENT_SIZE:
+                sys.stderr.write(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+
+            s.send(encoded_msg)
             s.close()
         except socket.error as e:
             if e.errno == 111:

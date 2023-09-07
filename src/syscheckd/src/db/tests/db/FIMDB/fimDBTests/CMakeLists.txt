@@ -14,7 +14,6 @@ include_directories(${SRC_FOLDER}/config/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/src/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/shared/)
-include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/)
 
 file(GLOB FIMDB_UNIT_TEST_SRC

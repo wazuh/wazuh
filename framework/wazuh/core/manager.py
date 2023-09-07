@@ -21,6 +21,8 @@ from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
+OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
+
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -111,7 +113,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
     logs = []
 
     log_format = get_wazuh_active_logging_format()
-    if log_format == LoggingFormat.plain and exists(common.WAZUH_LOG_JSON):
+    if log_format == LoggingFormat.plain and exists(common.WAZUH_LOG):
         wazuh_log_content = tail(common.WAZUH_LOG, limit)
     elif log_format == LoggingFormat.json and exists(common.WAZUH_LOG_JSON):
         wazuh_log_content = tail(common.WAZUH_LOG_JSON, limit)

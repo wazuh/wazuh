@@ -13,7 +13,7 @@
 policy:
   id: "cis_mysql_enterprise"
   file: "cis_mysql5-6_enterprise.yml"
-  name: "CIS Benchmark for Oracle MySQL Enterprise 5.6"
+  name: "CIS Oracle MySQL Enterprise Edition 5.6 Benchmark v1.1.0"
   description: "This document, CIS Oracle MySQL Enterprise Edition 5.6 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for MySQL Enterprise Edition 5.6. The tests were carried out against MySQL Enterprise Edition 5.6 running on Ubuntu Linux 14.04, but applies to other linux distributions as well."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

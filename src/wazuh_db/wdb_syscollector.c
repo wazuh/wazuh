@@ -123,19 +123,19 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_DONE:
             return OS_SUCCESS;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
                 return OS_SUCCESS;
             } else {
-                merror("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("SQLite: %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
         default:
-            merror("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("SQLite: %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
 }
@@ -201,19 +201,19 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
     sqlite3_bind_text(stmt, 7, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 8, item_id, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_DONE:
             return OS_SUCCESS;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
                 return OS_SUCCESS;
             } else {
-                merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("SQLite: %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
         default:
-            merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("SQLite: %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
 }
@@ -274,10 +274,10 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
     sqlite3_bind_text(stmt, 7, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 8, item_id, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_netaddr_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -301,7 +301,7 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     stmt = wdb->stmt[WDB_STMT_NETINFO_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_netiface' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -315,7 +315,7 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     stmt = wdb->stmt[WDB_STMT_PROTO_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_netproto' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -329,7 +329,7 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     stmt = wdb->stmt[WDB_STMT_ADDR_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_netaddr' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -342,7 +342,7 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
     sqlite3_stmt *stmt = NULL;
 
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_hotfix_delete(): cannot begin transaction");
         return -1;
     }
@@ -356,7 +356,7 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_hotfixes' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -403,7 +403,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     stmt_del = wdb->stmt[WDB_STMT_OSINFO_DEL];
 
-    if (sqlite3_step(stmt_del) != SQLITE_DONE) {
+    if (wdb_step(stmt_del) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
         os_free(reference);
         return -1;
@@ -492,10 +492,10 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 19, hexdigest, -1, NULL);
     sqlite3_bind_int(stmt, 20, triaged);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
@@ -569,7 +569,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, format, -1, NULL);
+    sqlite3_bind_text(stmt, 3, NULL != format ? format : "", -1, NULL); // Avoid bind NULL for agents older than 4.5.2
     sqlite3_bind_text(stmt, 4, name, -1, NULL);
     sqlite3_bind_text(stmt, 5, priority, -1, NULL);
     sqlite3_bind_text(stmt, 6, section, -1, NULL);
@@ -585,24 +585,24 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 12, multiarch, -1, NULL);
     sqlite3_bind_text(stmt, 13, source, -1, NULL);
     sqlite3_bind_text(stmt, 14, description, -1, NULL);
-    sqlite3_bind_text(stmt, 15, location, -1, NULL);
+    sqlite3_bind_text(stmt, 15, NULL != location ? location : "", -1, NULL); // Avoid bind NULL for agents older than 4.5.2
     sqlite3_bind_int(stmt, 16, triaged);
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_DONE:
             return OS_SUCCESS;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
                 return OS_SUCCESS;
             } else {
-                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("SQLite: %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
         default:
-            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("SQLite: %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
 }
@@ -627,10 +627,10 @@ int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 3, hotfix, -1, NULL);
     sqlite3_bind_text(stmt, 4, checksum, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_hotfix_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -653,7 +653,7 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt_get, 1, scan_id, -1, NULL);
 
     int result;
-    while (result = sqlite3_step(stmt_get), result == SQLITE_ROW) {
+    while (result = wdb_step(stmt_get), result == SQLITE_ROW) {
         const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
         const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
         const int triaged = sqlite3_column_int(stmt_get, 2);
@@ -680,7 +680,7 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
         sqlite3_bind_text(stmt_update, 8, version, -1, NULL);
         sqlite3_bind_text(stmt_update, 9, arch, -1, NULL);
 
-        if (sqlite3_step(stmt_update) != SQLITE_DONE) {
+        if (wdb_step(stmt_update) != SQLITE_DONE) {
             goto error;
         }
     }
@@ -714,7 +714,7 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -740,7 +740,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
     stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_hwinfo' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -804,17 +804,17 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
         sqlite3_bind_null(stmt, 8);
     }
 
-    if (ram_usage > 0) {
+    if (ram_usage > 0 && ram_usage <= 100) {
         sqlite3_bind_int(stmt, 9, ram_usage);
     } else {
         sqlite3_bind_null(stmt, 9);
     }
     sqlite3_bind_text(stmt, 10, checksum, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -915,10 +915,10 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     sqlite3_bind_text(stmt, 14, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 15, item_id, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_port_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -942,7 +942,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_ports' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -1095,10 +1095,10 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 
     sqlite3_bind_text(stmt, 31, checksum, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_process_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -1122,7 +1122,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_processes' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }

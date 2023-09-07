@@ -13,7 +13,7 @@
 policy:
   id: "cis_rhel6_linux"
   file: "cis_rhel6_linux.yml"
-  name: "CIS Benchmark for Red Hat Enterprise Linux 6"
+  name: "CIS Red Hat Enterprise Linux 6 Benchmark v2.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 6 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 6.9."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

@@ -11,8 +11,8 @@
 #ifndef AGENT_OP_H
 #define AGENT_OP_H
 
-#include "external/cJSON/cJSON.h"
-#include "config/authd-config.h"
+#include <cJSON.h>
+#include "../config/authd-config.h"
 
 /* Attempts to send a message through the cluster */
 #define CLUSTER_SEND_MESSAGE_ATTEMPTS   10

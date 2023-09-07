@@ -15,7 +15,7 @@
 #include <shared.h>
 #include <pthread.h>
 #include <openssl/evp.h>
-#include "external/sqlite/sqlite3.h"
+#include "../external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
 #include "wazuhdb_op.h"
@@ -429,6 +429,8 @@ extern char *schema_upgrade_v8_sql;
 extern char *schema_upgrade_v9_sql;
 extern char *schema_upgrade_v10_sql;
 extern char *schema_upgrade_v11_sql;
+extern char *schema_upgrade_v12_sql;
+extern char *schema_upgrade_v13_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
@@ -509,6 +511,12 @@ struct kv_list {
     struct kv current;
     const struct kv_list *next;
 };
+
+
+/**
+ * @brief pointer to function for any transaction
+ */
+typedef int (*wdb_ptr_any_txn_t)(wdb_t *);
 
 /**
  * @brief Opens global database and stores it in DB pool.
@@ -688,9 +696,6 @@ int wdb_create_agent_db2(const char * agent_id);
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
 
-/* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
-int wdb_metadata_fill_version(sqlite3 *db);
-
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
@@ -717,12 +722,26 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
 int wdb_step(sqlite3_stmt *stmt);
 
 /* Begin transaction */
-int wdb_begin(sqlite3 *db);
+int wdb_begin(wdb_t * wdb);
 int wdb_begin2(wdb_t * wdb);
 
 /* Commit transaction */
-int wdb_commit(sqlite3 *db);
+int wdb_commit(wdb_t * wdb);
 int wdb_commit2(wdb_t * wdb);
+
+/**
+ * @brief Rollback transaction
+ * @param[in] wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_rollback(wdb_t * wdb);
+
+/**
+ * @brief Rollback transaction and write status
+ * @param[in] wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -738,11 +757,10 @@ int wdb_rootcheck_delete(wdb_t * wdb);
 
 /**
  * @brief Rebuild database.
- *
- * @param[in] db Database to query for the table existence.
+ * @param[in] wdb Database to query for the table existence.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_vacuum(sqlite3 *db);
+int wdb_vacuum(wdb_t * wdb);
 
 /**
  * @brief Calculate the fragmentation state of a db.
@@ -932,6 +950,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
  *        The result of each step will be placed in returned result while fits.
  *
  * @param [in] stmt The SQL statement to be executed.
+ * @param [in] max_size Maximum size of the response.
  * @param [out] status The status code of the statement execution.
  *                     SQLITE_DONE means the statement is completed.
  *                     SQLITE_ROW means the statement has pending elements.

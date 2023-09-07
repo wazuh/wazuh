@@ -8,11 +8,11 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Apple macOS 12.0 Monterey Benchmark v1.1.0 - 07-18-2022
+# Center for Internet Security Apple macOS 12.0 Monterey Benchmark v1.1.0 - 06-20-2022
 policy:
   id: "cis_apple_macos_12.x"
   file: "cis_apple_macOS_12.0.yml"
-  name: "CIS Apple macOS 12.0 Monterey Benchmark"
+  name: "CIS Apple macOS 12.0 Monterey Benchmark v1.1.0"
   description: "This document, CIS Apple macOS 12.0 Monterey Benchmark provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 12.0 Monterey. This guide was tested against Apple macOS 12.0 Monterey."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

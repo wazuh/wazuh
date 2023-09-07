@@ -1,0 +1,71 @@
+- name: INFO_JSON
+  description: Log level `info` and format `json`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: json
+  metadata:
+    expected_code: 200
+
+- name: ERROR_JSON
+  description: Log level `error` and format `json`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 0
+    LEVEL: error
+    FORMAT: json
+  metadata:
+    expected_code: 500
+
+- name: INFO_PLAIN
+  description: Log level `info` and format `plain`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: plain
+  metadata:
+    expected_code: 200
+
+- name: ERROR_PLAIN
+  description: Log level `error` and format `plain`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 0
+    LEVEL: error
+    FORMAT: plain
+  metadata:
+    expected_code: 500
+
+- name: INFO_JSON_PLAIN
+  description: Log level `info` and format `json,plain`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: json,plain
+  metadata:
+    expected_code: 200
+
+- name: ERROR_JSON_PLAIN
+  description: Log level `error` and format `json,plain`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 0
+    LEVEL: error
+    FORMAT: json,plain
+  metadata:
+    expected_code: 500
+
+- name: INFO_PLAIN_JSON
+  description: Log level `info` and format `plain,json`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: plain,json
+  metadata:
+    expected_code: 200
+
+- name: ERROR_PLAIN_JSON
+  description: Log level `error` and format `plain,json`
+  configuration_parameters:
+    REQUEST_TIMEOUT: 0
+    LEVEL: error
+    FORMAT: plain,json
+  metadata:
+    expected_code: 500

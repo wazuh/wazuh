@@ -11,7 +11,7 @@
 #ifndef REMOTED_OP_WRAPPERS_H
 #define REMOTED_OP_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../../../../wazuh_db/wdb.h"
 
 int __wrap_parse_agent_update_msg(char *msg, __attribute__((unused)) agent_info_data *agent_data);
 

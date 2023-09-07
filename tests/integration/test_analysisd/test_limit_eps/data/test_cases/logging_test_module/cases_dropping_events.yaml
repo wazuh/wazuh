@@ -1,0 +1,15 @@
+- name: started_stopped_dropping_events
+  description: Check events are being dropped due to there are no analysis credits log and the opposite one.
+  configuration_parameters:
+    PORT: 514
+    PROTOCOL: tcp
+    MAXIMUM: '100'
+    TIMEFRAME: '10'
+  metadata:
+    maximum: 100
+    timeframe: 10
+    address: localhost
+    port: 514
+    protocol: tcp
+    messages_number: 50000
+    eps: 5000

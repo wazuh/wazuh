@@ -13,7 +13,7 @@
  */
 #include "shared.h"
 #include "syscheck.h"
-#include "rootcheck/rootcheck.h"
+#include "../rootcheck/rootcheck.h"
 #include "db.h"
 
 #ifndef WIN32

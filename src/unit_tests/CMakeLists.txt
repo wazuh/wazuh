@@ -19,7 +19,6 @@ include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER}/shared_modules/common)
-include_directories(${SRC_FOLDER})
 add_definitions(-DWAZUH_UNIT_TESTING)
 
 # Wazuh libraries

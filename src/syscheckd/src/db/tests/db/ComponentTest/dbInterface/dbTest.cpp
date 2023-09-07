@@ -14,17 +14,17 @@
 
 
 const auto insertFileStatement = R"({
-        "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2456, "gid":0, "group_name":"root",
+        "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2456, "gid":"0", "group_name":"root",
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083, "last_event":1596489275,
         "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
-        "uid":0, "user_name":"fakeUser"
+        "uid":"0", "user_name":"fakeUser"
     }
 )"_json;
 const auto insertRegistryKeyStatement = R"({
-        "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
+        "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_name":"root", "arch":1,
         "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
-        "scanned":1, "uid":0, "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880", "user_name":"fakeUser"
+        "scanned":1, "uid":"0", "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880", "user_name":"fakeUser"
     }
 )"_json;
 
@@ -46,14 +46,14 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
     auto expectedValue = R"([{
         "arch": "[x64]",
         "checksum": "a2fbef8f81af27155dcee5e3927ff6243593b91a",
-        "gid":  0,
+        "gid":  "0",
         "group_name":   "root",
         "last_event":   1596489275,
         "mtime":    1578075431,
         "path": "HKEY_LOCAL_MACHINE\\SOFTWARE",
         "perm": "-rw-rw-r--",
         "scanned":  1,
-        "uid":  0,
+        "uid":  "0",
         "user_name":    "fakeUser"
     }])"_json;
 const cJSON* dbsync_event = NULL;
@@ -237,7 +237,9 @@ TEST(DBTest, TestInvalidFimLimit)
                     -1,
                     true,
                     0,
-                    0)
+                    0,
+                    nullptr,
+                    nullptr)
     };
     ASSERT_EQ(result, FIMDB_ERR);
 
@@ -262,7 +264,9 @@ TEST(DBTest, TestValidFimLimit)
                     100000,
                     true,
                     0,
-                    0)
+                    0,
+                    nullptr,
+                    nullptr)
     };
     ASSERT_EQ(result, FIMDB_OK);
 

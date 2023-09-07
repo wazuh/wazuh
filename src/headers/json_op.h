@@ -12,25 +12,25 @@
 #ifndef JSON_OP_H
 #define JSON_OP_H
 
-#define JSON_MAX_FSIZE 536870912
+#define JSON_MAX_FSIZE 2147483648
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 
 /**
  * @brief It temporarily saves in memory the content of the file located in path.
- * It also allows requesting and verifying that the JSON has a null termination 
+ * It also allows requesting and verifying that the JSON has a null termination
  * and recovers the pointer to the last parsed byte.
- * 
+ *
  * @param path  location of the file to be read.
- * @param retry if set to 1, allows the operation to be retried if json parsing fails. It also removes C/C++ type comments. 
+ * @param retry if set to 1, allows the operation to be retried if json parsing fails. It also removes C/C++ type comments.
  * If it is set to 0, it does not perform the retry.
- * @return cJSON* 
+ * @return cJSON*
  */
 cJSON * json_fread(const char * path, char retry);
 
 /**
  * @brief Represent a cJSON entity in plain text for storage in the file located at path.
- * 
+ *
  * @param path location of the file to be write.
  * @param item json entity to be represented in text.
  * @return int stores the result of the write operation. If it returns -1 it indicates that the operation was not carried out correctly.
@@ -40,7 +40,7 @@ int json_fwrite(const char * path, const cJSON * item);
 
 /**
  * @brief Clear C/C++ style comments from a JSON string.
- * 
+ *
  * @param json json to which comment stripping is applied.
  */
 void json_strip(char * json);

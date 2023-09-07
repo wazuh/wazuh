@@ -14,7 +14,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "shared.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "../os_crypto/sha1/sha1_op.h"
 
 /* Defines to switch according to different OS_AddSocket or, failing that, the case of using UDP protocol */
 #define OS_ADDSOCKET_ERROR          0   ///< OSHash_Set_ex returns 0 on error (* see OS_AddSocket and OSHash_Set_ex)
@@ -41,7 +41,7 @@ typedef struct keystore_flags_t {
 
 /* Unique key for each agent */
 typedef struct _keyentry {
-    time_t rcvd;
+    _Atomic (time_t) rcvd;
     unsigned int local;
     unsigned int keyid;
     unsigned int global;
@@ -56,7 +56,7 @@ typedef struct _keyentry {
 
     os_ip *ip;
     int sock;                           ///< File descriptor of client's TCP socket
-    int net_protocol;                   ///< Client current protocol
+    _Atomic (int) net_protocol;         ///< Client current protocol
     time_t time_added;
     pthread_mutex_t mutex;
     struct sockaddr_storage peer_info;

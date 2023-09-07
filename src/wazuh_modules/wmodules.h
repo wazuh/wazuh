@@ -14,7 +14,7 @@
 
 #include "shared.h"
 #include <pthread.h>
-#include "config/config.h"
+#include "../config/config.h"
 #include "wmodules_def.h"
 
 #define WM_STATE_DIR    "var/wodles"               // Default directory for states.
@@ -23,7 +23,7 @@
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
 #define WM_BUFFER_MIN   1024                        // Starting JSON buffer length.
 #define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
-#define WM_MAX_WAIT     1                           // Max. wait between attempts.
+#define WM_MAX_WAIT     500                           // Max. wait between attempts in milliseconds.
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
@@ -40,6 +40,7 @@
 #define TASK_MANAGER_WM_NAME "task-manager"
 #define GITHUB_WM_NAME "github"
 #define OFFICE365_WM_NAME "office365"
+#define MS_GRAPH_WM_NAME "ms-graph"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -81,6 +82,7 @@ typedef enum crypto_type {
 #include "task_manager/wm_task_manager.h"
 #include "wm_github.h"
 #include "wm_office365.h"
+#include "wm_ms_graph.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

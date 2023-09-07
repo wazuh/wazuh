@@ -127,7 +127,9 @@ FIMDBErrorCode fim_db_init(int storage,
                            int value_limit,
                            bool sync_registry_enabled,
                            int sync_thread_pool,
-                           unsigned int sync_queue_size)
+                           unsigned int sync_queue_size,
+                           log_fnc_t dbsync_log_function,
+                           log_fnc_t rsync_log_function)
 {
     auto retVal { FIMDBErrorCode::FIMDB_ERR };
 
@@ -160,11 +162,6 @@ FIMDBErrorCode fim_db_init(int storage,
                         json["data"]["attributes"].erase("options");
                         json["data"]["attributes"].erase("path");
                         json["data"]["attributes"].erase("scanned");
-                        // Type different from server.
-                        json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
-                                                                           .get<int>());
-                        json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
-                                                                           .get<int>());
 
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
@@ -206,10 +203,6 @@ FIMDBErrorCode fim_db_init(int storage,
                             }
 
                             json["data"]["attributes"]["type"] = "registry_key";
-                            json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
-                                                                               .get<uint32_t>());
-                            json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
-                                                                               .get<uint32_t>());
                         }
 
                         json["data"]["path"] = json["data"]["attributes"]["path"];
@@ -241,6 +234,17 @@ FIMDBErrorCode fim_db_init(int storage,
                 }
             }
         };
+
+        if (dbsync_log_function)
+        {
+            dbsync_initialize(dbsync_log_function);
+        }
+
+        if (rsync_log_function)
+        {
+            rsync_initialize(rsync_log_function);
+        }
+
         DB::instance().init(storage,
                             sync_interval,
                             sync_max_interval,

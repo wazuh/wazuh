@@ -180,6 +180,18 @@ def test_get_ossec_conf():
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
     )['integration'][0]['node'] == 'wazuh-worker'
 
+    assert configuration.get_ossec_conf(
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
+        section='ruleset',
+        field='rule_dir',
+        distinct=False)['ruleset']['rule_dir'] == ['ruleset/rules', 'ruleset/rules', 'etc/rules']
+
+    assert configuration.get_ossec_conf(
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
+        section='ruleset',
+        field='rule_dir',
+        distinct=True)['ruleset']['rule_dir'] == ['ruleset/rules', 'etc/rules']
+
 
 def test_get_agent_conf():
     with pytest.raises(WazuhError, match=".* 1710 .*"):
@@ -352,7 +364,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
-    ('000', 'agent', 'agent', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
+    ('000', 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'agentless', 'agentless', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
     ('000', 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),

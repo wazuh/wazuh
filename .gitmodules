@@ -1,0 +1,3 @@
+[submodule "src/shared_modules/http-request"]
+	path = src/shared_modules/http-request
+	url = https://github.com/wazuh/wazuh-http-request.git

@@ -182,13 +182,26 @@ void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_system_darwin_ok(void **state)
+void test_wm_agent_upgrade_validate_system_darwin_x64_ok(void **state)
 {
     (void) state;
     char *platform = "darwin";
     char *os_major = "10";
     char *os_minor = "15";
     char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_system_darwin_arm_ok(void **state)
+{
+    (void) state;
+    char *platform = "darwin";
+    char *os_major = "10";
+    char *os_minor = "15";
+    char *arch = "arm64";
 
     int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
 
@@ -1217,7 +1230,8 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_windows_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rhel_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_ubuntu_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_x64_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_arm_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_suse),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),

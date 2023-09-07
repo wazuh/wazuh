@@ -5,9 +5,4 @@ if [ $1 == "standalone" ]; then
   sed -i -E '/wazuh-worker1|wazuh-worker2/d' /etc/nginx/nginx.conf;
 fi
 
-until service nginx start; do
-  echo "nginx couldn´t start - sleeping for 1 second"
-  sleep 1
-done
-
-tail -f /var/log/nginx/error.log
+ exec nginx -g 'daemon off;' 

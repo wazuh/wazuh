@@ -12,7 +12,7 @@
 #ifndef WDB_STATE_WRAPPERS_H
 #define WDB_STATE_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 cJSON* __wrap_wdb_create_state_json();
 

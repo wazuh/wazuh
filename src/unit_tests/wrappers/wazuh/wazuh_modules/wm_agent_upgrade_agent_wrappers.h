@@ -10,9 +10,9 @@
 #ifndef WM_AGENT_UPGRADE_AGENT_WRAPPERS_H
 #define WM_AGENT_UPGRADE_AGENT_WRAPPERS_H
 
-#include "headers/shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
+#include "../../../../headers/shared.h"
+#include "../../../../wazuh_modules/wmodules.h"
+#include "../../../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 
 void __wrap_wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled);
 

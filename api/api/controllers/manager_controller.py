@@ -85,7 +85,8 @@ async def get_info(request, pretty: bool = False, wait_for_complete: bool = Fals
 
 
 async def get_configuration(request, pretty: bool = False, wait_for_complete: bool = False, section: str = None,
-                            field: str = None, raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+                            field: str = None, raw: bool = False,
+                            distinct: bool = False) -> Union[web.Response, ConnexionResponse]:
     """Get manager's or local_node's configuration (ossec.conf)
 
     Parameters
@@ -101,6 +102,8 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
         Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -112,7 +115,8 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
     """
     f_kwargs = {'section': section,
                 'field': field,
-                'raw': raw}
+                'raw': raw,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -336,7 +340,7 @@ async def get_stats_remoted(request, pretty: bool = False, wait_for_complete: bo
 
 async def get_log(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                   sort: str = None, search: str = None, tag: str = None, level: str = None,
-                  q: str = None) -> web.Response:
+                  q: str = None, select: str = None, distinct: bool = False) -> web.Response:
     """Get manager's or local_node's last 2000 wazuh log entries.
 
     Parameters
@@ -361,6 +365,10 @@ async def get_log(request, pretty: bool = False, wait_for_complete: bool = False
         Filters by log level.
     q : str
         Query to filter agents by.
+    select : str
+        Select which fields to return (separated by comma).
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -375,7 +383,9 @@ async def get_log(request, pretty: bool = False, wait_for_complete: bool = False
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'tag': tag,
                 'level': level,
-                'q': q}
+                'q': q,
+                'select': select,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

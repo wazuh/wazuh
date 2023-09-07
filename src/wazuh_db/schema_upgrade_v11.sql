@@ -2,7 +2,7 @@
  * SQL Schema for upgrading databases
  * Copyright (C) 2015, Wazuh Inc.
  *
- * Jan 27, 2023
+ * Aug 14, 2023
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -11,7 +11,7 @@
 CREATE TABLE IF NOT EXISTS _sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk')),
+    format TEXT,
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -29,12 +29,17 @@ CREATE TABLE IF NOT EXISTS _sys_programs (
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    PRIMARY KEY (scan_id, name, version, architecture)
+    PRIMARY KEY (scan_id, name, version, architecture, format, location)
 );
 
-INSERT INTO _sys_programs SELECT scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, cpe, msu_name, CASE WHEN checksum <> '' THEN checksum ELSE 'legacy' END AS checksum, item_id FROM sys_programs;
+INSERT INTO _sys_programs
+    SELECT scan_id, scan_time, CASE WHEN format IS NOT NULL THEN format ELSE '' END AS format,
+                   name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description,
+                   CASE WHEN location IS NOT NULL THEN location ELSE '' END AS location, triaged, cpe, msu_name,
+                   CASE WHEN checksum <> '' THEN checksum ELSE 'legacy' END AS checksum, item_id FROM sys_programs;
 DROP TABLE IF EXISTS sys_programs;
 ALTER TABLE _sys_programs RENAME TO sys_programs;
+
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
 CREATE TRIGGER obsolete_vulnerabilities
