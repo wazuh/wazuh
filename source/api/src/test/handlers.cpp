@@ -134,62 +134,57 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
     {
         if (dataSync->m_history.empty())
         {
-            dataSync->m_trace.clear();
-            return base::Error {fmt::format(
-                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
+            dataSync->m_trace[dataSync->m_asset].clear();
         }
-
-        for (const auto& [asset, condition] : dataSync->m_history)
+        else
         {
-            if (dataSync->m_trace.find(asset) == dataSync->m_trace.end())
+            for (const auto& [asset, condition] : dataSync->m_history)
             {
-                dataSync->m_trace.clear();
-                return base::Error {
-                    fmt::format("Policy '{}' has not been configured for trace tracking and output subscription",
-                                dataSync->m_asset)};
+                if (dataSync->m_trace.find(asset) == dataSync->m_trace.end())
+                {
+                    dataSync->m_trace.clear();
+                    return base::Error {
+                        fmt::format("Policy '{}' has not been configured for trace tracking and output subscription",
+                                    dataSync->m_asset)};
+                }
+
+                std::set<std::string> uniqueTraces; // Set for warehouses single traces
+                for (const auto& traceStream : dataSync->m_trace[asset])
+                {
+                    uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
+                }
+
+                json::Json tmp;
+                tmp.setArray();
+                for (auto& info : uniqueTraces)
+                {
+                    tmp.appendString(info);
+                }
+
+                json.appendJson(tmp);
             }
 
-            std::set<std::string> uniqueTraces; // Set for warehouses single traces
-            for (const auto& traceStream : dataSync->m_trace[asset])
-            {
-                uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
-            }
-
-            json::Json tmp;
-            tmp.setArray();
-            for (auto& info : uniqueTraces)
-            {
-                tmp.appendString(info);
-            }
-
-            json.appendJson(tmp);
+            dataSync->m_trace.clear();
         }
-
-        dataSync->m_trace.clear();
     }
     else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
     {
         if (dataSync->m_history.empty())
         {
             dataSync->m_trace[dataSync->m_asset].clear();
-            return base::Error {fmt::format(
-                "Policy '{}' has not been configured for trace tracking and output subscription", dataSync->m_asset)};
         }
-        for (const auto& [asset, condition] : dataSync->m_history)
+        else
         {
-            const auto& info = asset + " " + condition;
-            json.appendString(info);
+            for (const auto& [asset, condition] : dataSync->m_history)
+            {
+                const auto& info = asset + " " + condition;
+                json.appendString(info);
+            }
+            dataSync->m_trace.clear();
         }
-        dataSync->m_trace.clear();
     }
 
     dataSync->m_trace.clear();
-    // TODO: Add a method to verify that a json is empty
-    if (json.str().empty())
-    {
-        dataSync->m_trace[dataSync->m_asset].clear();
-    }
-
     return std::make_tuple(dataSync->m_output, std::move(json));
 }
 
@@ -1020,7 +1015,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
             getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), assetsInNamespace, policyName, assetTraces);
         if (subscriptionError.has_value())
         {
-            router->unsubscribe(policyName);
+            dataSync->m_history.clear();
             return ::api::adapter::genericError<ResponseType>(subscriptionError.value().message);
         }
 

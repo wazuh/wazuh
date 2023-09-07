@@ -896,7 +896,7 @@ INSTANTIATE_TEST_SUITE_P(
                     })"),
         std::make_tuple(6, R"({"name":"dummy", "namespaceid":"system", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/not-exist/0"})", R"({"name":"dummy"})", R"({
                         "status": "ERROR",
-                        "error": "Asset 'decoder/not-exist/0' not found."
+                        "error": "Not all assets were found: decoder/not-exist/0"
                     })"),
         std::make_tuple(7, R"({"name":"dummy", "namespaceid":"wazuh", "event":"hello world!", "debug_mode":2, "asset_trace": "decoder/core-hostinfo/0"})", R"({"name":"dummy"})", R"({
                         "status": "ERROR",
