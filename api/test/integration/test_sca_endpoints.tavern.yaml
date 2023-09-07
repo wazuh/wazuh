@@ -539,7 +539,6 @@ stages:
               compliance: !anything
               rules: !anything
               condition: !anystr
-              reason: !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
