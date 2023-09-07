@@ -71,7 +71,7 @@ python-jose==3.1.0
 python-json-logger==2.0.2
 pytz==2020.1
 PyYAML==5.4.1
-requests==2.25.1
+requests==2.31.0
 rsa==4.7.2
 s3transfer==0.4.2
 secure==0.2.1
