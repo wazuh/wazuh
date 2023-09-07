@@ -436,7 +436,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled autofs -> enabled'
+      - "c: dpkg -s autofs -> r:package 'autofs' is not installed"
+      - "c: systemctl is-enabled autofs -> r:No such file or directory|disabled"
 
   # 1.1.24 Disable USB Storage (Automated)
   - id: 18525
