@@ -229,6 +229,7 @@ api::Handler sessionsGet(const std::shared_ptr<api::sessionManager::SessionManag
  *
  * @param sessionManager Session Manager instance.
  * @param router Router instance.
+ * @param store Store instance.
  *
  * @return api::Handler
  */

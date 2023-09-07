@@ -108,19 +108,35 @@ rx::composite_subscription Controller::listenOnAllTrace(rx::subscriber<std::stri
         }
     };
 
-    // Check if assetTrace is not empty and her value is present in assets
+    // Check if assetTrace is not empty and all its values are present in assets
     if (!assetTrace.empty())
     {
+        bool allAssetsFound = true;
+        std::string missingAssets; // Store missing assets
+
         for (const auto& assetT : assetTrace)
         {
             if (std::find(assets.begin(), assets.end(), assetT) == assets.end())
             {
-                throw std::runtime_error(fmt::format("Asset '{}' not found.", assetT));
+                allAssetsFound = false;
+                missingAssets += assetT + ", "; // Add the missing asset to the string
             }
-
-            subscribeToAsset(assetT);
         }
-        return cs;
+
+        if (allAssetsFound)
+        {
+            for (const auto& assetT : assetTrace)
+            {
+                subscribeToAsset(assetT);
+            }
+            return cs;
+        }
+        else
+        {
+            // Remove last comma and space from missing asset string
+            missingAssets = missingAssets.substr(0, missingAssets.length() - 2);
+            throw std::runtime_error("Not all assets were found: " + missingAssets);
+        }
     }
 
     // If assetTrace has not value or not is in assetsVec continue with others assets
