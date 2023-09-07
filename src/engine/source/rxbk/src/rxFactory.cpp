@@ -88,12 +88,11 @@ rx::composite_subscription Controller::listenOnTrace(const std::string& name, rx
 }
 
 rx::composite_subscription Controller::listenOnAllTrace(rx::subscriber<std::string> s,
-                                                        const std::vector<std::string>& assets,
-                                                        const std::vector<std::string>& assetTrace)
+                                                        const std::vector<std::string>& assets)
 {
     rx::composite_subscription cs;
 
-    // Function to subscribe to a certain asset
+    // Función para suscribirse a un activo específico
     auto subscribeToAsset = [&cs, &s, &tracers = m_tracers](const std::string& assetName)
     {
         auto it = tracers.find(assetName);
@@ -108,38 +107,6 @@ rx::composite_subscription Controller::listenOnAllTrace(rx::subscriber<std::stri
         }
     };
 
-    // Check if assetTrace is not empty and all its values are present in assets
-    if (!assetTrace.empty())
-    {
-        bool allAssetsFound = true;
-        std::string missingAssets; // Store missing assets
-
-        for (const auto& assetT : assetTrace)
-        {
-            if (std::find(assets.begin(), assets.end(), assetT) == assets.end())
-            {
-                allAssetsFound = false;
-                missingAssets += assetT + ", "; // Add the missing asset to the string
-            }
-        }
-
-        if (allAssetsFound)
-        {
-            for (const auto& assetT : assetTrace)
-            {
-                subscribeToAsset(assetT);
-            }
-            return cs;
-        }
-        else
-        {
-            // Remove last comma and space from missing asset string
-            missingAssets = missingAssets.substr(0, missingAssets.length() - 2);
-            throw std::runtime_error("Not all assets were found: " + missingAssets);
-        }
-    }
-
-    // If assetTrace has not value or not is in assetsVec continue with others assets
     for (const auto& asset : assets)
     {
         std::string assetName = asset;

@@ -410,16 +410,12 @@ void Router::clear()
 std::optional<base::Error> Router::subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
                                                             rxbk::SubscribeToTraceCallback traceCallback,
                                                             const std::vector<std::string>& assets,
-                                                            const std::string& policyName,
-                                                            const std::vector<std::string>& assetTrace)
+                                                            const std::string& policyName)
 {
-    for (std::size_t i = 0; i < m_numThreads; ++i)
+    auto data = m_policyManager->subscribeOutputAndTraces(outputCallback, traceCallback, assets, policyName);
+    if (data.has_value())
     {
-        auto data = m_policyManager->subscribeOutputAndTraces(outputCallback, traceCallback, assets, policyName, i, assetTrace);
-        if (data.has_value())
-        {
-            return data.value();
-        }
+        return data.value();
     }
 
     return std::nullopt;
@@ -427,25 +423,16 @@ std::optional<base::Error> Router::subscribeOutputAndTraces(rxbk::SubscribeToOut
 
 base::RespOrError<std::vector<std::string>> Router::getAssets(const std::string& policyName) const
 {
-    for (std::size_t i = 0; i < m_numThreads; ++i)
+    auto res = m_policyManager->getAssets(policyName);
+    if (!base::isError(res))
     {
-        auto res = m_policyManager->getAssets(policyName, i);
-        if (!base::isError(res))
-        {
-            auto assets = base::getResponse(res);
-            if (assets.empty())
-            {
-                continue;
-            }
-            return assets;
-        }
-        else
-        {
-            return base::getError(res);
-        }
+        auto assets = base::getResponse(res);
+        return assets;
     }
-
-    return base::Error {fmt::format("Assets not found for policy '{}'", policyName)};
+    else
+    {
+        return base::getError(res);
+    }
 }
 
 base::OptError Router::unsubscribe(const std::string& policyName)

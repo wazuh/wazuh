@@ -57,8 +57,7 @@ std::optional<base::Error> RuntimePolicy::subscribeToOutput(rxbk::SubscribeToOut
 }
 
 std::optional<base::Error> RuntimePolicy::listenAllTrace(rxbk::SubscribeToTraceCallback callback,
-                                                         const std::vector<std::string>& assets,
-                                                         const std::vector<std::string>& assetTrace)
+                                                         const std::vector<std::string>& assets)
 {
     if (!callback)
     {
@@ -69,7 +68,7 @@ std::optional<base::Error> RuntimePolicy::listenAllTrace(rxbk::SubscribeToTraceC
 
     try
     {
-        m_csTraces = m_controller->listenOnAllTrace(std::move(subscriber), assets, assetTrace);
+        m_csTraces = m_controller->listenOnAllTrace(std::move(subscriber), assets);
     }
     catch (const std::exception& e)
     {

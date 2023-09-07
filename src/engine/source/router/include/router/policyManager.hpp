@@ -116,7 +116,6 @@ public:
      * @param name Name of the policy for which output and trace are to be obtained.
      * @param instance Instance of the policy for which output and trace are to be obtained.
      * @param assets Vector of asset names to subscribe to.
-     * @param assetTrace Optional asset name for a specific Trace subscription.
      * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
@@ -124,8 +123,7 @@ public:
                                                         rxbk::SubscribeToTraceCallback traceCallback,
                                                         const std::vector<std::string>& assets,
                                                         const std::string& name,
-                                                        std::size_t instance,
-                                                        const std::vector<std::string>& assetTrace);
+                                                        std::size_t instance = 0);
 
     /**
      * @brief Get the Assets object
@@ -134,7 +132,7 @@ public:
      * @param instance
      * @return base::RespOrError<std::vector<std::string>>
      */
-    base::RespOrError<std::vector<std::string>> getAssets(const std::string& name, std::size_t instance);
+    base::RespOrError<std::vector<std::string>> getAssets(const std::string& name, std::size_t instance = 0);
 
     /**
      * @brief
