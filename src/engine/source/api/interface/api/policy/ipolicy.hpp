@@ -120,6 +120,15 @@ public:
      */
     virtual base::RespOrError<std::string> getHash(const base::Name& policyName) const = 0;
 
+    /**
+     * @brief Copy a existing policy to a new one
+     *
+     * @param policyName Policy name to copy
+     * @param newPolicyName New policy name
+     * @return base::OptError Error if cannot copy the policy
+     */
+    virtual base::OptError copy(const base::Name& policyName, const base::Name& newPolicyName) = 0;
+
 };
 } // namespace api::policy
 

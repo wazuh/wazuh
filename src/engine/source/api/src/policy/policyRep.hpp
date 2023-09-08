@@ -104,6 +104,14 @@ public:
     inline size_t hash() const { return m_hash; }
 
     /**
+     * @brief Set the Name of the policy
+     *
+     * @param name Policy name
+     * @warning This method dont validate the name, should be validated before
+     */
+    inline void setName(const base::Name& name) { m_name = name; }
+
+    /**
      * @brief Returns a list of namespaces in the policy
      *
      * @return std::list<store::NamespaceId>
