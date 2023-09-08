@@ -11,8 +11,24 @@ using namespace builder::mocks;
 namespace
 {
 const base::Name POLICY_NAME("policy/name/version");
+
 const store::Doc POLICY_DOC {R"({
     "name": "policy/name/version",
+    "hash": "4112711263806056918",
+    "assets": [
+        "decoder/system/0",
+        "decoder/wazuh/0",
+        "decoder/user/0"
+    ],
+    "default_parents": {
+        "user": "decoder/system/0"
+    }
+})"};
+
+const base::Name POLICY_NAME_2("policy/name/version2");
+
+const store::Doc POLICY_DOC_2 {R"({
+    "name": "policy/name/version2",
     "hash": "4112711263806056918",
     "assets": [
         "decoder/system/0",
@@ -59,6 +75,12 @@ assets:
 const std::string POLICY_YML_OTHER {R"(policy: policy/name/version
 hash: 4112711263806056918
 )"};
+
+// Avoid string comparison issues with json
+MATCHER_P(EqualsJson, expectedJson, "is not equal to expected JSON") {
+    return store::Doc{arg} == store::Doc{expectedJson};
+}
+
 
 void expectNsPolicy(std::shared_ptr<MockStore> store)
 {
@@ -1017,7 +1039,6 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
  ******************************************************************************/
 
 using GetHashT = std::tuple<base::Name, ExpectedFn<base::RespOrError<std::string>>>;
-
 using GetHash = PolicyTest<GetHashT>;
 
 TEST_P(GetHash, Get)
@@ -1064,3 +1085,92 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                               expectNsPolicy(store);
                                               return POLICY_DOC_HASH;
                                           }))));
+
+/*******************************************************************************
+ * Copy a policy
+ ******************************************************************************/
+using CopyT = std::tuple<base::Name, base::Name, ExpectedFn<>>;
+using Copy = PolicyTest<CopyT>;
+
+TEST_P(Copy, Copy)
+{
+    auto [policy, newPolicy, expectedFn] = GetParam();
+
+    auto expected = expectedFn(m_store, m_validator);
+    auto res = m_policyManager->copy(policy, newPolicy);
+    if (base::isError(expected))
+    {
+        ASSERT_TRUE(base::isError(res));
+    }
+    else
+    {
+        ASSERT_FALSE(base::isError(res)) << "Error: " << base::getError(res).message << std::endl;
+    }
+}
+
+
+INSTANTIATE_TEST_SUITE_P(PolicyTest,
+                         Copy,
+                         testing::Values(
+                             // Invalid policy names
+                             CopyT("invalidName", POLICY_NAME_2, failure()),
+                             CopyT("pol/icy", POLICY_NAME_2, failure()),
+                             CopyT("policy/noVersion", POLICY_NAME_2, failure()),
+                             CopyT("policy/name/version/extraPart", POLICY_NAME_2, failure()),
+                             CopyT("\n", POLICY_NAME_2, failure()),
+                             CopyT("poLICY/name/version", POLICY_NAME_2, failure()),
+                             // Invalid new policy names
+                             CopyT(POLICY_NAME, "invalidName", failure()),
+                             CopyT(POLICY_NAME, "pol/icy", failure()),
+                             CopyT(POLICY_NAME, "policy/noVersion", failure()),
+                             CopyT(POLICY_NAME, "policy/name/version/extraPart", failure()),
+                             CopyT(POLICY_NAME, "\n", failure()),
+                             CopyT(POLICY_NAME, "poLICY/name/version", failure()),
+                             // Store get policy error
+                             CopyT(POLICY_NAME,
+                                   POLICY_NAME_2,
+                                   failure(
+                                       [](auto store, auto) {
+                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                               .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+                                       })),
+                             // Validator error
+                             CopyT(POLICY_NAME,
+                                   POLICY_NAME_2,
+                                   failure(
+                                       [](auto store, auto validator)
+                                       {
+                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                                           expectNsPolicy(store);
+
+                                           EXPECT_CALL(*validator, validatePolicy(EqualsJson(POLICY_DOC_2)))
+                                               .WillOnce(::testing::Return(validateError()));
+                                       })),
+                             // Store upsert new policy error
+                             CopyT(POLICY_NAME,
+                                   POLICY_NAME_2,
+                                   failure(
+                                       [](auto store, auto validator)
+                                       {
+                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                                           expectNsPolicy(store);
+                                           EXPECT_CALL(*validator, validatePolicy(EqualsJson(POLICY_DOC_2)))
+                                         .WillOnce(::testing::Return(validateOk()));
+                                           EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
+                                               .WillOnce(::testing::Return(storeError()));
+                                       })),
+                             // Success
+                             CopyT(POLICY_NAME,
+                                      POLICY_NAME_2,
+                                      success(
+                                        [](auto store, auto validator)
+                                        {
+                                             EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                                             expectNsPolicy(store);
+                                             EXPECT_CALL(*validator, validatePolicy(POLICY_DOC)).WillOnce(::testing::Return(validateOk()));
+                                             EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
+                                                  .WillOnce(::testing::Return(storeOk()));
+                                        }))));
