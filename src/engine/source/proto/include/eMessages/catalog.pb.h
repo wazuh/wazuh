@@ -120,10 +120,9 @@ enum ResourceType : int {
   rule = 2,
   filter = 3,
   output = 4,
-  policy = 5,
-  schema = 6,
-  collection = 7,
-  integration = 8,
+  schema = 5,
+  collection = 6,
+  integration = 7,
   ResourceType_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   ResourceType_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };

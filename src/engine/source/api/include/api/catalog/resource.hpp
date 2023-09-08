@@ -56,7 +56,6 @@ public:
             case Type::rule: return "rule";
             case Type::filter: return "filter";
             case Type::output: return "output";
-            case Type::policy: return "policy";
             case Type::schema: return "schema";
             case Type::collection: return "collection";
             case Type::integration: return "integration";
@@ -87,10 +86,6 @@ public:
         else if (type == typeToStr(Type::output))
         {
             return Type::output;
-        }
-        else if (type == typeToStr(Type::policy))
-        {
-            return Type::policy;
         }
         else if (type == typeToStr(Type::schema))
         {
@@ -158,8 +153,8 @@ public:
                 throw std::runtime_error(fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
             }
 
-            // Assets, Policy, and Integration needs validation
-            if (Type::policy == m_type || Type::decoder == m_type || Type::rule == m_type || Type::filter == m_type
+            // Assets and Integration needs validation
+            if (Type::decoder == m_type || Type::rule == m_type || Type::filter == m_type
                 || Type::output == m_type || Type::integration == m_type)
             {
                 m_validation = true;

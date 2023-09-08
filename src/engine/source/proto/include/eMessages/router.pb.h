@@ -283,22 +283,22 @@ class Entry final :
   std::string* _internal_mutable_policy();
   public:
 
-  // optional string policySync = 5;
-  bool has_policysync() const;
+  // optional string policy_sync = 5;
+  bool has_policy_sync() const;
   private:
-  bool _internal_has_policysync() const;
+  bool _internal_has_policy_sync() const;
   public:
-  void clear_policysync();
-  const std::string& policysync() const;
+  void clear_policy_sync();
+  const std::string& policy_sync() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_policysync(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_policysync();
-  PROTOBUF_NODISCARD std::string* release_policysync();
-  void set_allocated_policysync(std::string* policysync);
+  void set_policy_sync(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_policy_sync();
+  PROTOBUF_NODISCARD std::string* release_policy_sync();
+  void set_allocated_policy_sync(std::string* policy_sync);
   private:
-  const std::string& _internal_policysync() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policysync(const std::string& value);
-  std::string* _internal_mutable_policysync();
+  const std::string& _internal_policy_sync() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_policy_sync(const std::string& value);
+  std::string* _internal_mutable_policy_sync();
   public:
 
   // optional int32 priority = 4;
@@ -327,7 +327,7 @@ class Entry final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr filter_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policysync_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_sync_;
     int32_t priority_;
   };
   union { Impl_ _impl_; };
@@ -1862,72 +1862,72 @@ inline void Entry::set_priority(int32_t value) {
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.priority)
 }
 
-// optional string policySync = 5;
-inline bool Entry::_internal_has_policysync() const {
+// optional string policy_sync = 5;
+inline bool Entry::_internal_has_policy_sync() const {
   bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
-inline bool Entry::has_policysync() const {
-  return _internal_has_policysync();
+inline bool Entry::has_policy_sync() const {
+  return _internal_has_policy_sync();
 }
-inline void Entry::clear_policysync() {
-  _impl_.policysync_.ClearToEmpty();
+inline void Entry::clear_policy_sync() {
+  _impl_.policy_sync_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000008u;
 }
-inline const std::string& Entry::policysync() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.policySync)
-  return _internal_policysync();
+inline const std::string& Entry::policy_sync() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.policy_sync)
+  return _internal_policy_sync();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void Entry::set_policysync(ArgT0&& arg0, ArgT... args) {
+void Entry::set_policy_sync(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000008u;
- _impl_.policysync_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.policySync)
+ _impl_.policy_sync_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.policy_sync)
 }
-inline std::string* Entry::mutable_policysync() {
-  std::string* _s = _internal_mutable_policysync();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.policySync)
+inline std::string* Entry::mutable_policy_sync() {
+  std::string* _s = _internal_mutable_policy_sync();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.policy_sync)
   return _s;
 }
-inline const std::string& Entry::_internal_policysync() const {
-  return _impl_.policysync_.Get();
+inline const std::string& Entry::_internal_policy_sync() const {
+  return _impl_.policy_sync_.Get();
 }
-inline void Entry::_internal_set_policysync(const std::string& value) {
+inline void Entry::_internal_set_policy_sync(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000008u;
-  _impl_.policysync_.Set(value, GetArenaForAllocation());
+  _impl_.policy_sync_.Set(value, GetArenaForAllocation());
 }
-inline std::string* Entry::_internal_mutable_policysync() {
+inline std::string* Entry::_internal_mutable_policy_sync() {
   _impl_._has_bits_[0] |= 0x00000008u;
-  return _impl_.policysync_.Mutable(GetArenaForAllocation());
+  return _impl_.policy_sync_.Mutable(GetArenaForAllocation());
 }
-inline std::string* Entry::release_policysync() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.policySync)
-  if (!_internal_has_policysync()) {
+inline std::string* Entry::release_policy_sync() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.policy_sync)
+  if (!_internal_has_policy_sync()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000008u;
-  auto* p = _impl_.policysync_.Release();
+  auto* p = _impl_.policy_sync_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.policysync_.IsDefault()) {
-    _impl_.policysync_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_sync_.IsDefault()) {
+    _impl_.policy_sync_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void Entry::set_allocated_policysync(std::string* policysync) {
-  if (policysync != nullptr) {
+inline void Entry::set_allocated_policy_sync(std::string* policy_sync) {
+  if (policy_sync != nullptr) {
     _impl_._has_bits_[0] |= 0x00000008u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000008u;
   }
-  _impl_.policysync_.SetAllocated(policysync, GetArenaForAllocation());
+  _impl_.policy_sync_.SetAllocated(policy_sync, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.policysync_.IsDefault()) {
-    _impl_.policysync_.Set("", GetArenaForAllocation());
+  if (_impl_.policy_sync_.IsDefault()) {
+    _impl_.policy_sync_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.policySync)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.policy_sync)
 }
 
 // -------------------------------------------------------------------
