@@ -93,10 +93,6 @@ int wm_config() {
         wm_add(module);
     }
 
-    if ((module = wm_vulnerability_scanner_read())) {
-        wm_add(module);
-    }
-
     // The database module won't be available on agents
     if ((module = wm_database_read()))
         wm_add(module);

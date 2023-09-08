@@ -122,6 +122,8 @@ int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
+int Read_Vulnerability_Detection(const OS_XML *xml, XML_NODE nodes, void *d1);
+int Read_Indexer(const OS_XML *xml, XML_NODE nodes);
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
 
