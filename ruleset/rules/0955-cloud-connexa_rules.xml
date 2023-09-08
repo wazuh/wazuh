@@ -14,17 +14,267 @@
     <rule id="93000" level="2">
       <decoded_as>json</decoded_as>
       <field name="CloudConnexaLogVersion">1</field>
-      <description>CloudConnexa $(cloudId) INFO: $(initiator) (publicIp:'$(publicIp)'') performed '$(eventName)' from category '$(category)' at $(timestamp)</description>
+      <description>CloudConnexa $(cloudId) INFO: $(initiator) (publicIp:'$(publicIp)') performed '$(eventName)' from category '$(category)' at $(timestamp)</description>
     </rule>
 ​
     <!-- 
       Test message - initiated form the confguration UI.
-      {"CloudConnexaLogVersion": 1, "timestamp": "2013-02-29T08:00:01.000001Z", "cloudId": "my-cloud-connexa", "traceId": "0123-4567-8901-2345-6789", "category": "Activity.Admin", "eventName": "test-message", "publicIp": "19.9.9.9", "initiator": "0123-4567-8901-2345-abcd", "source": "CloudConnexa", "aws": {"log_info": {"aws_account_alias": "", "log_file": "CloudConnexa/tenantname/idbbdfbeig-2023-07-06-13-01-abcf.jsonl.gz", "s3bucket": "log-streaming-2-wazuh"}, "source": "CloudConnexa"}}
+      {
+        "CloudConnexaLogVersion": 1, 
+        "timestamp": "2013-02-29T08:00:01.000001Z",
+        "cloudId": "my-cloud-connexa", 
+        "traceId": "0123-4567-8901-2345-6789", 
+        "category": "Activity.Admin", 
+        "eventName": "test-message", 
+        "publicIp": "19.9.9.9", 
+        "initiator": "0123-4567-8901-2345-abcd", 
+        "source": "CloudConnexa", 
+        "aws": {"log_info": {"aws_account_alias": "", "log_file": "CloudConnexa/tenantname/idbbdfbeig-2023-07-06-13-01-abcf.jsonl.gz", "s3bucket": "log-streaming-2-wazuh"}, "source": "CloudConnexa"}
+        }
     -->
-    <rule id="93001" level="2">
+    <rule id="93001" level="3">
       <if_sid>93000</if_sid>
       <field name="eventName">^test-message$</field>
-      <description>CloudConnexa $(cloudId) INFO: $(initiator) (publicIp:'$(publicIp)'') sent a Test message at $(timestamp)</description>
+      <description>CloudConnexa $(cloudId) INFO: $(initiator) (publicIp:'$(publicIp)') sent a Test message at $(timestamp)</description>
     </rule>
 ​
+
+<!--
+  Cyber Shield Traffic Blocked
+  {
+      "traceId": "e50e4fd0-ea72-4406-bd7c-5f1832c3c3a0",
+      "parentEntity": "user2",
+      "initiator": "0ad3e479-d1d4-4cc3-a466-d7020cdf518c",
+      "publicIp": "null",
+      "source": "CloudConnexa",
+      "service": "CloudConnexa",
+      "CloudConnexaLogVersion": "1",
+      "cloudId": "my-cloud-connexa",
+      "eventName": "traffic-blocked",
+      "category": "Security.CyberShieldBlockedTraffic",
+      "log": {
+        "destinationIp": "104.18.21.80",
+        "destinationPort": "80",
+        "protocol": "TCP",
+        "sourcePort": "53584",
+        "sourceIp": "100.96.1.114",
+        "signatureId": "1:99999912:1",
+        "eventName": "ET COINMINER OpenVPN generate automation event for category Cryptojacking 3",
+        "classification": "Attempted Information Leak",
+        "priority": "3",
+        "category": "Cryptojacking"
+      },
+      "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/idaiiffgab-2023-08-04-10-19-J3DU.jsonl.gz"},"source": "CloudConnexa"}
+    }
+  -->
+    <rule id="93002" level="8">
+      <if_sid>93000</if_sid>
+      <field name="eventName">^traffic-blocked$</field>
+      <description>CloudConnexa $(cloudId) BLOCKED: $(initiator) Cyber Shield Traffic Filtering blocked traffic to $(log.destinationIp):$(log.destinationPort) from $(log.sourceIp):$(log.sourcePort) over $(log.protocol) for categoty '$(log.category)' priority '$(log.priority)', classification '$(log.classification)' rule $(log.signatureId):$(log.eventName) </description>
+    </rule>
+
+  <!-- 
+    Cyber Shield Domain Filtering
+    {
+      "traceId": "e50b94a8-561b-449b-9099-8c4e8a4581e3",
+      "timestamp": "2023-07-24T14:57:45.000000Z"
+      "parentEntity": "new",
+      "initiator": "5d34eabe-f88d-4570-9954-818c03b90b4b",
+      "publicIp": "null",
+      "source": "CloudConnexa",
+      "service": "CloudConnexa",
+      "CloudConnexaLogVersion": "1",
+      "cloudId": "my-cloud-connexa",
+      "eventName": "domain-blocked",
+      "category": "Security.CyberShieldBlockedDomains",
+      "log": {
+        "protocol": "UDP",
+        "domain": "www.facebook.com",
+        "category": "timestealer-socialntw",
+        "queryType": "A"
+      },
+      "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/idajhijdba-2023-07-24-14-58-dxKH.jsonl.gz"},"source": "CloudConnexa"}
+    }
+  -->
+    <rule id="93003" level="8">
+      <if_sid>93000</if_sid>
+      <field name="eventName">^domain-blocked$</field>
+      <description>CloudConnexa $(cloudId) BLOCKED: $(initiator) Cyber Shield Domain Filtering blocked domain '$(log.domain)' from category '$(log.category)', resolved over $(log.protocol) with query type $(log.queryType)</description>
+    </rule>
+  <!-- 
+    Log stream started
+    {
+      "traceId": "a7105e2c-cbda-4f60-9692-3500c9d12a61",
+      "timestamp": "2023-08-28T14:27:03.149652Z",
+      "initiatorType": "Admin",
+      "parentEntity": "e7856d84-d6b6-4803-94e1-b14e1abe483c",
+      "initiator": "2cc6965a-267e-40b2-9b67-ef2a9ecc2fe6",
+      "publicIp": "100.96.3.11",
+      "parentEntityType": "UserGroup",
+      "source": "CloudConnexa",
+      "service": "CloudConnexa",
+      "CloudConnexaLogVersion": "1",
+      "cloudId": "my-cloud-connexa",
+      "eventName": "log-stream-started",
+      "category": "Audit.Admin",
+      "log": {
+        "aws-s3-bucket": "s3-bucket",
+        "aws-region": "eu-central-1"
+      },
+      "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/idaghghbhg-2023-08-28-14-27-yw7e.jsonl.gz"},"source": "CloudConnexa"}
+    }
+  -->
+  <rule id="93020" level="2">
+      <if_sid>93000</if_sid>
+      <field name="eventName">^log-stream-started$</field>
+      <description>CloudConnexa $(cloudId) AUDIT: $(initiator) (publicIp:'$(publicIp)') Log stream started for to write to aws s3 bucket '$(log.aws-s3-bucket)' in region '$(log.aws-region)'</description>
+    </rule>
+    <!-- 
+    Log stream paused
+    {
+      "traceId": "a7105e2c-cbda-4f60-9692-3500c9d12a61",
+      "timestamp": "2023-08-28T14:27:03.149652Z",
+      "initiatorType": "Admin",
+      "parentEntity": "e7856d84-d6b6-4803-94e1-b14e1abe483c",
+      "initiator": "2cc6965a-267e-40b2-9b67-ef2a9ecc2fe6",
+      "publicIp": "100.96.3.11",
+      "parentEntityType": "UserGroup",
+      "source": "CloudConnexa",
+      "service": "CloudConnexa",
+      "CloudConnexaLogVersion": "1",
+      "cloudId": "my-cloud-connexa",
+      "eventName": "log-stream-paused",
+      "category": "Audit.Admin",
+      "log": {
+        "aws-s3-bucket": "s3-bucket",
+        "aws-region": "eu-central-1"
+      },
+      "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/idaghghbhg-2023-08-28-14-27-yw7e.jsonl.gz"},"source": "CloudConnexa"}
+    }
+  -->
+  <rule id="93021" level="2">
+      <if_sid>93000</if_sid>
+      <field name="eventName">^log-stream-paused$</field>
+      <description>CloudConnexa $(cloudId) AUDIT: $(initiator) (publicIp:'$(publicIp)') Log stream paused for to write to aws s3 bucket '$(log.aws-s3-bucket)' in region '$(log.aws-region)'</description>
+    </rule>
+  <!-- 
+    Client connected 
+    {
+      "traceId": "9981df9a-221a-43e6-9d80-8d0186baff25",
+      "log": {
+        "clientUUID": "5275cf2f673acfa35906c90765ca51f6ee3ea4db25924fe699d396ad1d463ce3",
+        "protocol": "UDP",
+        "osVersion": "Ubuntu 20.04.4 LTS",
+        "tunnelIpV6": "::",
+        "tunnelIpV4": "0.0.0.0",
+        "osType": "Linux",
+        "sessionStartTime": "2023-08-01T12:04:18.000000Z",
+        "publicIp": "2600:1f1c:480:75cb:2d38:1e3b:4d56:c44c",
+        "region": "San Jose (CA)"
+      },
+      "parentEntity": "new",
+      "initiator": "4484f48a-9211-4f57-b042-f4d2b19a1c2b",
+      "publicIp": "2600:1f1c:480:75cb:2d38:1e3b:4d56:c44c",
+      "source": "CloudConnexa",
+      "service": "CloudConnexa",
+      "CloudConnexaLogVersion": "1",
+      "cloudId": "my-cloud-connexa",
+      "eventName": "client-connected",
+      "category": "Security.Logins",
+      "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/idajbaifch-2023-08-01-12-04-odBZ.jsonl.gz"},"source": "CloudConnexa"},"timestamp": "2023-08-01T12:04:18.000000Z"
+    }
+  -->
+  <rule id="93030" level="8">
+      <if_sid>93000</if_sid>
+      <field name="eventName">^client-connected$</field>
+      <description>CloudConnexa $(cloudId) CONNECTED: $(initiator) (publicIp:'$(publicIp)') Client connected to '$(log.region)' over $(log.protocol). Client details: $(log.osType):$(log.osVersion) with client UUID '$(log.clientUUID)'</description>
+      <group>authentication_success</group>
+    </rule>
+  <!--
+    Client disconnected
+    {
+      "traceId": "c01477f9-ccd9-4c7e-84aa-81f392099927",
+      "log": {
+        "sessionDurationSeconds": "141",
+        "tunnelIpV6": "fd:0:0:8107::2",
+        "sessionEndTime": "2023-08-04T12:07:51.000000Z",
+        "tunnelIpV4": "100.96.1.114",
+        "sessionStartTime": "2023-08-04T12:05:30.000000Z",
+        "publicIp": "2600:1f1c:480:75cb:456f:a183:7166:30d9",
+        "clientUUID": "47483912e4fcd84da9d8e11e9152990309745c8f0d407b9ac95ac5d45be823c0",
+        "disconnectReason": "User Disconnected",
+        "protocol": "UDP",
+        "osVersion": "Ubuntu 22.04.2 LTS",
+        "osType": "Linux",
+        "region": "San Jose (CA)",
+        "bytesIn": "24062",
+        "bytesOut": "18397"
+      },
+      "parentEntity": "user2",
+      "initiator": "0ad3e479-d1d4-4cc3-a466-d7020cdf518c",
+      "publicIp": "2600:1f1c:480:75cb:456f:a183:7166:30d9",
+      "source": "CloudConnexa",
+      "service": "CloudConnexa",
+      "CloudConnexaLogVersion": "1",
+      "cloudId": "my-cloud-connexa",
+      "eventName": "client-disconnected",
+      "category": "Security.Logins",
+      "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/idaiiejagj-2023-08-04-12-08-nmAD.jsonl.gz"}, "source": "CloudConnexa"
+      }
+  -->
+    <rule id="93031" level="8">
+      <if_sid>93000</if_sid>
+      <field name="eventName">^client-disconnected$</field>
+      <description>CloudConnexa $(cloudId) DISCONNECTED: $(initiator) (publicIp:'$(publicIp)') Client disconnected from '$(log.region)' after $(log.sessionDurationSeconds) seconds because of '$(log.disconnectReason)'. Client details: $(log.osType):$(log.osVersion) with client UUID '$(log.clientUUID)'</description>
+    </rule>
+
+    <!-- Rule to flag sessions that downloaded more than -->
+    <rule id="93050" level="3" >
+      <if_sid>93031</if_sid>
+      
+      <!-- 100Kb - 102,400 bytes --> 
+      <field name="log.bytesIn" type="pcre2">"^([1-9][0-9]{6,9999})|([2-9][0-9]{5})|([1-9][1-9][0-9]{4})|([1-9][0-9][3-9][0-9]{3})|([1-9][0-9][2-9][4-9][0-9]{2})$"</field>
+      
+      <!-- 100Mb - 104,857,600 bytes -->
+      <!-- <field name="log.bytesOut" type="pcre2">"^([1-9][0-9]{9,9999})|([2-9][0-9]{8})|(1[1-9][0-9]{7})|(1[0-9][5-9][0-9]{6})|(1[0-9][4-9][9][0-9]{5})|(1[0-9][4-9][8-9][6-9][0-9]{4})|(1[0-9][4-9][8-9][5-9][7-9][0-9]{3})|(1[0-9][4-9][8-9][5-9][6-9][6-9][0-9]{2})$</field> -->
+      
+      <!-- 500Mb - 524,288,000 bytes --> 
+      <!-- <field name="log.bytesOut" type="pcre2">"^([1-9][0-9]{9,9999})|([6-9][0-9]{8})|(5[3-9][0-9]{7})|(5[2-9][5-9][0-9]{6})|(5[2-9][4-9][3-9][0-9]{5})|(5[2-9][4-9][2-9]9[0-9]{4})|(5[2-9][4-9][2-9][8-9][8-9][0-9]{3})$</field> -->
+      
+      <description>CloudConnexa $(cloudId) WARN: $(initiator) (publicIp:'$(publicIp)') Client transferred more than 500Mb during his session and disconnected from '$(log.region)' after $(log.sessionDurationSeconds) seconds because of '$(log.disconnectReason)'. Client details $(log.osType):$(log.osVersion) with client UUID '$(log.clientUUID)'</description>
+    </rule>
+
+    <!-- Rule to flag sessions that uploaded more than -->
+    <rule id="93051" level="3">
+      <if_sid>93031</if_sid>
+      
+      <!-- 100Kb - 102,400 bytes --> 
+      <field name="log.bytesOut" type="pcre2">"^([1-9][0-9]{6,9999})|([2-9][0-9]{5})|([1-9][1-9][0-9]{4})|([1-9][0-9][3-9][0-9]{3})|([1-9][0-9][2-9][4-9][0-9]{2})$</field>
+      
+      <!-- 100Mb - 104,857,600 bytes -->
+      <!-- <field name="log.bytesOut" type="pcre2">"^([1-9][0-9]{9,9999})|([2-9][0-9]{8})|(1[1-9][0-9]{7})|(1[0-9][5-9][0-9]{6})|(1[0-9][4-9][9][0-9]{5})|(1[0-9][4-9][8-9][6-9][0-9]{4})|(1[0-9][4-9][8-9][5-9][7-9][0-9]{3})|(1[0-9][4-9][8-9][5-9][6-9][6-9][0-9]{2})$</field> -->
+      
+      <!-- 500Mb - 524,288,000 bytes -->
+      <!-- <field name="log.bytesOut" type="pcre2">"^([1-9][0-9]{9,9999})|([6-9][0-9]{8})|(5[3-9][0-9]{7})|(5[2-9][5-9][0-9]{6})|(5[2-9][4-9][3-9][0-9]{5})|(5[2-9][4-9][2-9]9[0-9]{4})|(5[2-9][4-9][2-9][8-9][8-9][0-9]{3})$</field> -->
+
+      <description>CloudConnexa $(cloudId) INFO: $(initiator) (publicIp:'$(publicIp)') Client transferred more than 500Mb during his session and disconnected from '$(log.region)' after $(log.sessionDurationSeconds) seconds because of '$(log.disconnectReason)'. Client details $(log.osType):$(log.osVersion) with client UUID '$(log.clientUUID)'</description>
+    </rule>
+
+    <!-- Frequently connecting client -->
+    <rule id="93052" level="10" frequency="10" timeframe="60">
+      <if_matched_sid>93030</if_matched_sid>
+      <same_field>initiator</same_field>
+      <description>CloudConnexa $(cloudId) WARN: $(initiator) Client conected more than 10 times during 60 seconds. Client UUID '$(log.clientUUID)'</description>
+    </rule>
+
+    <!-- Frequent IDS events with priority 1 -->
+    <rule id="93060" level="10" frequency="10" timeframe="60">
+      <if_matched_sid>93002</if_matched_sid>
+      <same_field>initiator</same_field>
+      <same_field>log.signatureId</same_field>
+      <field name="priority">1</field>
+      <description>CloudConnexa $(cloudId) WARN: $(initiator) Cyber Shield Traffic Filtering blocked traffic for 10 times during 60 seconds from $(log.sourceIp) for priority '$(log.priority)', classification '$(log.classification)' rule $(log.signatureId):$(log.eventName) </description>
+    </rule>
+
+  
 </group>
