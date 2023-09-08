@@ -254,4 +254,23 @@ base::RespOrError<std::string> Policy::getHash(const base::Name& policyName) con
     return policy.getHash();
 }
 
+base::OptError Policy::copy(const base::Name& policyName, const base::Name& newPolicyName)
+{
+    // Validate newPolicyName
+    if (auto error = vaidateNsName(newPolicyName); base::isError(error))
+    {
+        return error;
+    }
+
+    auto resp = read(policyName);
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(resp);
+    policy.setName(newPolicyName);
+    return upsert(policy);
+}
+
 } // namespace api::policy
