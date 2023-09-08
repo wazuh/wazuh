@@ -420,49 +420,71 @@ addTestFilterToCatalog(const std::shared_ptr<Catalog>& catalog, const std::strin
     return addAssetToCatalog(catalog, "filter", filterContent);
 }
 
-inline std::optional<base::Error> addTestPolicyToCatalog(const std::shared_ptr<Catalog>& catalog,
-                                                         const std::string& sessionName,
-                                                         const std::string& policyName)
+std::optional<base::Error> addTestPolicy(const std::weak_ptr<policy::IPolicy>& policyManager,
+                                                  const std::string& policySrcStr,
+                                                  const std::string& policyDstStr)
 {
-    std::optional<base::Error> addTestPolicyToCatalogError;
 
-    // Build target resource
-    Resource targetResource;
+    base::Name policySrc;
+    base::Name policyDst;
     try
     {
-        base::Name name {policyName};
-        targetResource = Resource {name, Resource::Format::json};
+        policySrc = base::Name {policySrcStr};
+        policyDst = base::Name {policyDstStr};
     }
     catch (const std::exception& e)
     {
-        addTestPolicyToCatalogError = std::optional<base::Error> {base::Error {e.what()}};
+        return std::optional<base::Error> {base::Error {e.what()}};
     }
 
-    if (!addTestPolicyToCatalogError.has_value())
+    // Copy the policy
+    auto policyManagerPtr = policyManager.lock();
+    if (!policyManagerPtr)
     {
-        // Get the original policy's content
-        const auto getResourceResult = catalog->getResource(targetResource);
-        if (std::holds_alternative<base::Error>(getResourceResult))
-        {
-            addTestPolicyToCatalogError = std::optional<base::Error> {std::get<base::Error>(getResourceResult)};
-        }
-        else
-        {
-            std::string policyContent {std::get<std::string>(getResourceResult)};
-
-            // Replace the policy's name
-            const auto oldJsonNameField = fmt::format(ASSET_NAME_FIELD_FORMAT, policyName);
-            const auto newPolicyName = fmt::format(TEST_POLICY_FULL_NAME_FORMAT, sessionName);
-            const auto newJsonNameField = fmt::format(ASSET_NAME_FIELD_FORMAT, newPolicyName);
-            const auto newPolicyContent =
-                policyContent.replace(policyContent.find(oldJsonNameField), oldJsonNameField.size(), newJsonNameField);
-
-            // Add the new policy to the catalog
-            addTestPolicyToCatalogError = addAssetToCatalog(catalog, "policy", newPolicyContent);
-        }
+        return std::optional<base::Error> {base::Error {"The policy has expired"}};
     }
 
-    return addTestPolicyToCatalogError;
+    auto error = policyManagerPtr->copy(policySrc, policyDst);
+    if (base::isError(error))
+    {
+        return base::Error {base::Error {fmt::format("The policy '{}' could not be copied", policySrcStr)}};
+    }
+
+    return std::nullopt;
+
+}
+
+
+std::optional<base::Error> delTestPolicy(const std::weak_ptr<policy::IPolicy>& policyManager,
+                                                  const std::string& policyStr)
+{
+
+    base::Name policy;
+    try
+    {
+        policy = base::Name {policyStr};
+    }
+    catch (const std::exception& e)
+    {
+        return std::optional<base::Error> {base::Error {e.what()}};
+    }
+
+    // Copy the policy
+    auto policyPtr = policyManager.lock();
+    if (!policyPtr)
+    {
+        return std::optional<base::Error> {base::Error {"The policy has expired"}};
+    }
+
+    auto error = policyPtr->del(policy);
+    if (base::isError(error))
+    {
+        return base::Error {
+            base::Error {fmt::format("The policy '{}' could not be deleted: {}", policyStr, error.value().message)}};
+    }
+
+    return std::nullopt;
+
 }
 
 inline std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<Catalog>& catalog,
@@ -516,6 +538,7 @@ inline std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<Ro
 inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<SessionManager>& sessionManager,
                                                       const std::shared_ptr<Router>& router,
                                                       const std::shared_ptr<Catalog>& catalog,
+                                                      const std::weak_ptr<policy::IPolicy>& policyManager,
                                                       const std::string& sessionName)
 {
     std::string errorMsg {};
@@ -542,14 +565,10 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Sess
         errorMsg += fmt::format(FILTER_NOT_REMOVED_MSG, session->getFilterName(), deleteFilterError.value().message);
     }
 
-    const auto deletePolicyError = deleteAssetFromCatalog(catalog, session->getPolicyName());
+    const auto deletePolicyError = delTestPolicy(policyManager, session->getPolicyName());
     if (deletePolicyError.has_value())
     {
-        if (!errorMsg.empty())
-        {
-            errorMsg += ". ";
-        }
-        errorMsg += fmt::format(POLICY_NOT_REMOVED_MSG, session->getPolicyName(), deletePolicyError.value().message);
+        errorMsg += std::string(". ") + deletePolicyError.value().message;
     }
 
     if (!sessionManager->deleteSession(sessionName))
@@ -568,9 +587,10 @@ inline std::optional<base::Error> handleDeleteSession(const std::shared_ptr<Sess
 api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                          const std::shared_ptr<Catalog>& catalog,
                          const std::shared_ptr<Router>& router,
-                         const std::shared_ptr<store::IStore>& store)
+                         const std::shared_ptr<store::IStore>& store,
+                         const std::weak_ptr<policy::IPolicy>& policyManager)
 {
-    return [sessionManager, catalog, router, store](const api::wpRequest& wRequest) -> api::wpResponse
+    return [sessionManager, catalog, router, store, policyManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionPost_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -613,15 +633,16 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
 
         // Set up the test session's policy
 
-        // If the policy is not set, use the default policy
-        const auto originalPolicyName = eRequest.has_policy() ? eRequest.policy() : DEFAULT_POLICY_FULL_NAME;
-
-        const auto addPolicyError = addTestPolicyToCatalog(catalog, sessionName, originalPolicyName);
-        if (addPolicyError.has_value())
+        // Create a policy for test session, using the original policy as a base
+        const auto sessionPolicyStr = fmt::format(TEST_POLICY_FULL_NAME_FORMAT, sessionName);
         {
-            return genericError<ResponseType>(addPolicyError.value().message);
+            const auto basePolicy = eRequest.has_policy() ? eRequest.policy() : DEFAULT_POLICY_FULL_NAME;
+            const auto err = addTestPolicy(policyManager, basePolicy, sessionPolicyStr);
+            if (err)
+            {
+                return genericError<ResponseType>(err.value().message);
+            }
         }
-        const auto policyName = fmt::format(TEST_POLICY_FULL_NAME_FORMAT, sessionName);
 
         // Set up the test session's filter
 
@@ -635,11 +656,11 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
         {
             std::string errorMsg {addFilterError.value().message};
 
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
-            if (deletePolicyError.has_value())
+            const auto error = delTestPolicy(policyManager, sessionPolicyStr);
+            if (error.has_value())
             {
-                errorMsg += std::string(". ")
-                            + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+                errorMsg += std::string(". ") + error.value().message;
+
             }
 
             return genericError<ResponseType>(errorMsg);
@@ -662,17 +683,17 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                             + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
             }
 
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            const auto deletePolicyError = delTestPolicy(policyManager, sessionPolicyStr);
             if (deletePolicyError.has_value())
             {
-                errorMsg += std::string(". ")
-                            + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+                errorMsg += std::string(". ") + deletePolicyError.value().message;
+
             }
 
             return genericError<ResponseType>(errorMsg);
         }
 
-        const auto addRouteError = router->addRoute(routeName, maxAvailablePriority, filterName, policyName);
+        const auto addRouteError = router->addRoute(routeName, maxAvailablePriority, filterName, sessionPolicyStr);
         if (addRouteError.has_value())
         {
             std::string errorMsg {addRouteError.value().message};
@@ -684,11 +705,11 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                             + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
             }
 
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            const auto deletePolicyError = delTestPolicy(policyManager, sessionPolicyStr);
             if (deletePolicyError.has_value())
             {
-                errorMsg += std::string(". ")
-                            + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+                errorMsg += std::string(". ") + deletePolicyError.value().message;
+
             }
 
             return genericError<ResponseType>(errorMsg);
@@ -702,7 +723,7 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
         const uint32_t lifespan {eRequest.has_lifespan() ? eRequest.lifespan() : 0};
 
         const auto createSessionError = sessionManager->createSession(
-            sessionName, policyName, filterName, routeName, sessionID, lifespan, description);
+            sessionName, sessionPolicyStr, filterName, routeName, sessionID, lifespan, description);
         if (createSessionError.has_value())
         {
             std::string errorMsg {createSessionError.value().message};
@@ -721,11 +742,11 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                             + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
             }
 
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            const auto deletePolicyError = delTestPolicy(policyManager, sessionPolicyStr);
             if (deletePolicyError.has_value())
             {
-                errorMsg += std::string(". ")
-                            + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+                errorMsg += std::string(". ") + deletePolicyError.value().message;
+
             }
 
             return genericError<ResponseType>(errorMsg);
@@ -756,11 +777,11 @@ api::Handler sessionPost(const std::shared_ptr<SessionManager>& sessionManager,
                             + fmt::format(FILTER_NOT_REMOVED_MSG, filterName, deleteFilterError.value().message);
             }
 
-            const auto deletePolicyError = deleteAssetFromCatalog(catalog, policyName);
+            const auto deletePolicyError = delTestPolicy(policyManager, sessionPolicyStr);
             if (deletePolicyError.has_value())
             {
-                errorMsg += std::string(". ")
-                            + fmt::format(POLICY_NOT_REMOVED_MSG, policyName, deletePolicyError.value().message);
+                errorMsg += std::string(". ") + deletePolicyError.value().message;
+
             }
 
             return genericError<ResponseType>(errorMsg);
@@ -850,9 +871,10 @@ api::Handler sessionsGet(const std::shared_ptr<SessionManager>& sessionManager)
 api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManager,
                             const std::shared_ptr<Catalog>& catalog,
                             const std::shared_ptr<Router>& router,
-                            const std::shared_ptr<store::IStore>& store)
+                            const std::shared_ptr<store::IStore>& store,
+                            const std::weak_ptr<policy::IPolicy>& policyManager)
 {
-    return [sessionManager, catalog, router, store](const api::wpRequest& wRequest) -> api::wpResponse
+    return [sessionManager, catalog, router, store, policyManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsDelete_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -879,7 +901,7 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
             std::string errorMsg {};
             for (auto& sessionName : sessionManager->getSessionsList())
             {
-                const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, sessionName);
+                const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, policyManager, sessionName);
                 if (deleteSessionError.has_value())
                 {
                     if (!errorMsg.empty())
@@ -896,7 +918,7 @@ api::Handler sessionsDelete(const std::shared_ptr<SessionManager>& sessionManage
         }
         else if (eRequest.has_name())
         {
-            const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, eRequest.name());
+            const auto deleteSessionError = handleDeleteSession(sessionManager, router, catalog, policyManager, eRequest.name());
             if (deleteSessionError.has_value())
             {
                 return genericError<ResponseType>(deleteSessionError.value().message);
@@ -1154,10 +1176,12 @@ void registerHandlers(const Config& config, std::shared_ptr<api::Api> api)
     try
     {
         api->registerHandler(TEST_GET_SESSION_DATA_API_CMD, sessionGet(config.sessionManager));
-        api->registerHandler(TEST_POST_SESSION_API_CMD,
-                             sessionPost(config.sessionManager, config.catalog, config.router, config.store));
-        api->registerHandler(TEST_DELETE_SESSIONS_API_CMD,
-                             sessionsDelete(config.sessionManager, config.catalog, config.router, config.store));
+        api->registerHandler(
+            TEST_POST_SESSION_API_CMD,
+            sessionPost(config.sessionManager, config.catalog, config.router, config.store, config.policyManager));
+        api->registerHandler(
+            TEST_DELETE_SESSIONS_API_CMD,
+            sessionsDelete(config.sessionManager, config.catalog, config.router, config.store, config.policyManager));
         api->registerHandler(TEST_GET_SESSIONS_LIST_API_CMD, sessionsGet(config.sessionManager));
         api->registerHandler(TEST_RUN_API_CMD, runPost(config.sessionManager, config.router, config.store));
     }

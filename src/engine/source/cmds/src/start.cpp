@@ -397,12 +397,6 @@ void runStart(ConfHandler confManager)
             api::catalog::handlers::registerHandlers(catalog, api);
             LOG_DEBUG("Catalog API registered.");
 
-            // Test
-            {
-                api::test::handlers::Config testConfig {sessionManager, router, catalog, store};
-                api::test::handlers::registerHandlers(testConfig, api);
-                LOG_DEBUG("Test API registered.");
-            }
 
             // Policy
             {
@@ -410,6 +404,13 @@ void runStart(ConfHandler confManager)
                 api::policy::handlers::registerHandlers(policyManager, api);
                 exitHandler.add([]() { LOG_DEBUG("Policy API terminated."); });
                 LOG_DEBUG("Policy API registered.");
+            }
+
+            // Test
+            {
+                api::test::handlers::Config testConfig {sessionManager, router, catalog, store, policyManager};
+                api::test::handlers::registerHandlers(testConfig, api);
+                LOG_DEBUG("Test API registered.");
             }
 
             // Router
