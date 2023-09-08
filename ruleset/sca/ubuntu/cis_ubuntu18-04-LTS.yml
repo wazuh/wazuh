@@ -457,7 +457,7 @@ checks:
       - "not c:lsmod -> r:usb-storage"
 
   # 1.2.1 Ensure package manager repositories are configured (Manual) - Not Implemented
-  # 1.2.2 Ensure GPG keys are configured (Manual) - Not Implemented
+  # 1.2.2 Ensure GPG keys are configured (Manual) - Not Implemente
 
   # 1.3.1 Ensure AIDE is installed (Automated)
   - id: 18529
