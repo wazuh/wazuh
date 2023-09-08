@@ -134,7 +134,6 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
         - r'pending'
         - r'connected'
     '''
-    import pdb; pdb.set_trace()
 
     # Stop service
     control_service('stop')
@@ -150,6 +149,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
 
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
+        import pdb; pdb.set_trace()
         check_fields(expected_output, remoted_server)
     
     if remoted_server:
@@ -178,7 +178,7 @@ def parse_state_file():
     return state
 
 
-def remoted_get_state(remoted_server):
+def remoted_get_state(expected_output, remoted_server):
     """Get state via remoted
 
     Send getstate request to agent (via RemotedSimulator) and return state info as dict.
@@ -186,10 +186,10 @@ def remoted_get_state(remoted_server):
     Returns:
         state info
     """
-    remoted_server.send_custom_message('agent getstate')
+    remoted_server.send_custom_message(expected_output['fields']['status'])
     sleep(2)
-    response = json.loads(remoted_server.custom_message)
-    return response['data']
+    response = remoted_server.custom_message
+    return response
 
 
 def check_fields(expected_output, remoted_server):
@@ -208,7 +208,7 @@ def check_fields(expected_output, remoted_server):
     if expected_output['type'] == 'file':
         get_state = parse_state_file
     else:
-        get_state = remoted_get_state(remoted_server)
+        get_state = remoted_get_state(expected_output, remoted_server)
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
