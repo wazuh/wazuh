@@ -309,11 +309,7 @@ void runStart(ConfHandler confManager)
 
         // Catalog
         {
-            api::catalog::Config catalogConfig {
-                store,
-                builder,
-                fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
-                fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)};
+            api::catalog::Config catalogConfig {store, builder};
 
             catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
             LOG_INFO("Catalog initialized.");

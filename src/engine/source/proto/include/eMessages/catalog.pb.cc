@@ -258,18 +258,17 @@ const char descriptor_table_protodef_catalog_2eproto[] PROTOBUF_SECTION_VARIABLE
   "\022\024\n\007content\030\003 \001(\tH\002\210\001\001\022\030\n\013namespaceid\030\004 "
   "\001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_formatB\n\n\010_content"
   "B\016\n\014_namespaceid*1\n\016ResourceFormat\022\010\n\004js"
-  "on\020\000\022\010\n\004yaml\020\001\022\007\n\003yml\020\001\032\002\020\001*\203\001\n\014Resource"
-  "Type\022\013\n\007UNKNOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002"
-  "\022\n\n\006filter\020\003\022\n\n\006output\020\004\022\n\n\006policy\020\005\022\n\n\006"
-  "schema\020\006\022\016\n\ncollection\020\007\022\017\n\013integration\020"
-  "\010b\006proto3"
+  "on\020\000\022\010\n\004yaml\020\001\022\007\n\003yml\020\001\032\002\020\001*w\n\014ResourceT"
+  "ype\022\013\n\007UNKNOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022"
+  "\n\n\006filter\020\003\022\n\n\006output\020\004\022\n\n\006schema\020\005\022\016\n\nc"
+  "ollection\020\006\022\017\n\013integration\020\007b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_catalog_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_catalog_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_catalog_2eproto = {
-    false, false, 1329, descriptor_table_protodef_catalog_2eproto,
+    false, false, 1316, descriptor_table_protodef_catalog_2eproto,
     "catalog.proto",
     &descriptor_table_catalog_2eproto_once, descriptor_table_catalog_2eproto_deps, 1, 6,
     schemas, file_default_instances, TableStruct_catalog_2eproto::offsets,
@@ -315,7 +314,6 @@ bool ResourceType_IsValid(int value) {
     case 5:
     case 6:
     case 7:
-    case 8:
       return true;
     default:
       return false;

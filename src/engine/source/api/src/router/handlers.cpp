@@ -99,7 +99,7 @@ api::Handler routeGet(std::shared_ptr<::router::Router> router, std::weak_ptr<ap
         eResponse.mutable_route()->set_priority(static_cast<int32_t>(priority));
 
         auto hashStatus = getHashStatus(policyApi, envName, hash); // Get policy hash from the store
-        eResponse.mutable_route()->set_policysync(hashStatus);
+        eResponse.mutable_route()->set_policy_sync(hashStatus);
 
         // Adapt the response to wazuh api
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
@@ -266,7 +266,7 @@ api::Handler tableGet(std::shared_ptr<::router::Router> router, std::weak_ptr<ap
             eEntry.set_priority(static_cast<int32_t>(priority));
 
             auto hashStatus = getHashStatus(policyApi, policy, hash); // Get policy hash from the store
-            eEntry.set_policysync(hashStatus);
+            eEntry.set_policy_sync(hashStatus);
 
             eTable->Add(std::move(eEntry));
         }
