@@ -23,6 +23,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+// Time values for conversion
+#define W_WEEK_SECONDS      604800
+#define W_DAY_SECONDS       86400
+#define W_HOUR_SECONDS      3600
+#define W_MINUTE_SECONDS    60
+
 namespace Utils
 {
     static void ISO8859ToUTF8(std::string& data)
@@ -333,6 +339,54 @@ namespace Utils
         while (it != str.end() && std::isdigit(*it)) ++it;
 
         return !str.empty() && it == str.end();
+    }
+
+    static int parseStrToBool(const std::string& str)
+    {
+        return (str.compare("yes") == 0) ? 1 : (str.compare("no") == 0) ? 0 : -1;
+    }
+
+    static long parseStrToTime(const std::string str)
+    {
+        std::size_t pos;
+        try
+        {
+            auto seconds{std::stoll(str, &pos)};
+
+            if (seconds < 0)
+            {
+                return -1;
+            }
+
+            switch (str.at(++pos))
+            {
+            case '\0':
+                break;
+            case 'w':
+                seconds *= W_WEEK_SECONDS;
+                break;
+            case 'd':
+                seconds *= W_DAY_SECONDS;
+                break;
+            case 'h':
+                seconds *= W_HOUR_SECONDS;
+                break;
+            case 'm':
+                seconds *= W_MINUTE_SECONDS;
+                break;
+            case 's':
+                break;
+            default:
+                return -1;
+            }
+
+            return seconds;
+        }
+        catch(const std::exception& e)
+        {
+            return -1;
+        }
+
     }
 }
 
