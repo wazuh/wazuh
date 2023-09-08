@@ -19,14 +19,6 @@ void Config::validate() const
     {
         throw std::runtime_error("Assets, environments and schemas Validator is not set");
     }
-    if (assetSchema.empty())
-    {
-        throw std::runtime_error("Assets Schema is not set");
-    }
-    if (environmentSchema.empty())
-    {
-        throw std::runtime_error("Environments Schema is not set");
-    }
 }
 
 Catalog::Catalog(const Config& config)
@@ -37,8 +29,7 @@ Catalog::Catalog(const Config& config)
 
     LOG_DEBUG("Engine catalog: '{}' method: Asset schema name: '{}'. Environment schema name: '{}'.",
               __func__,
-              config.assetSchema,
-              config.environmentSchema);
+              config.assetSchema);
 
     // Json handling
     m_outFormat[Resource::Format::json] = [](const json::Json& json)
@@ -46,7 +37,6 @@ Catalog::Catalog(const Config& config)
         return json.str();
     };
 
-    // TODO: what is str?
     m_inFormat[Resource::Format::json] = [](const std::string& str)
     {
         std::variant<json::Json, base::Error> result;
@@ -69,7 +59,6 @@ Catalog::Catalog(const Config& config)
         std::variant<std::string, base::Error> result;
         try
         {
-            // TODO: Expose internals on json::Json ??
             rapidjson::Document doc;
             doc.Parse(json.str().c_str());
             auto yaml = yml::Converter::jsonToYaml(doc);
@@ -101,53 +90,6 @@ Catalog::Catalog(const Config& config)
 
         return result;
     };
-
-    // Get schemas
-    base::Name assetSchemaName;
-    base::Name environmentSchemaName;
-
-    try
-    {
-        assetSchemaName = base::Name {config.assetSchema};
-    }
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("Error while parsing the asset schema: {}", e.what()));
-    }
-    try
-    {
-        environmentSchemaName = base::Name {config.environmentSchema};
-    }
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("Error while parsing the environment schema name: {}", e.what()));
-    }
-
-    // Asset schema
-    {
-        const auto assetSchemaJson = m_store->readInternalDoc(assetSchemaName);
-        if (std::holds_alternative<base::Error>(assetSchemaJson))
-        {
-            throw std::runtime_error(fmt::format("Error while getting the asset schema: {}",
-                                                 std::get<base::Error>(assetSchemaJson).message));
-        }
-
-        m_schemas[Resource::Type::decoder] = json::Json {std::get<json::Json>(assetSchemaJson)};
-        m_schemas[Resource::Type::rule] = json::Json {std::get<json::Json>(assetSchemaJson)};
-        m_schemas[Resource::Type::output] = json::Json {std::get<json::Json>(assetSchemaJson)};
-        m_schemas[Resource::Type::filter] = json::Json {std::get<json::Json>(assetSchemaJson)};
-    }
-
-    // Environment schema
-    {
-        auto environmentSchemaJson = m_store->readInternalDoc(environmentSchemaName);
-        if (std::holds_alternative<base::Error>(environmentSchemaJson))
-        {
-            throw std::runtime_error(fmt::format("Error while getting the environment schema: {}",
-                                                 std::get<base::Error>(environmentSchemaJson).message));
-        }
-        m_schemas[Resource::Type::policy] = std::move(std::get<json::Json>(environmentSchemaJson));
-    }
 }
 
 std::optional<base::Error>
@@ -271,9 +213,8 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
 {
     LOG_DEBUG("Engine catalog: '{}' method: Item name: '{}'.", __func__, item.m_name.fullName());
 
-    // Specified resource must be a Environment, Schema or Asset
-    if (Resource::Type::policy != item.m_type && Resource::Type::schema != item.m_type
-        && Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
+    // Specified resource must be an Asset
+    if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
         && Resource::Type::filter != item.m_type && Resource::Type::output != item.m_type
         && Resource::Type::integration != item.m_type)
     {
@@ -371,7 +312,7 @@ base::RespOrError<store::Col> Catalog::getCol(const Resource& resource, const st
 }
 
 base::RespOrError<std::string> Catalog::getResource(const Resource& resource,
-                                                            const std::vector<std::string>& namespaceIds) const
+                                                    const std::vector<std::string>& namespaceIds) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
     using Format = ::com::wazuh::api::engine::catalog::ResourceFormat;
@@ -463,8 +404,7 @@ base::OptError Catalog::delCol(const Resource& resource, const std::string& name
     return m_store->deleteCol(resource.m_name, store::NamespaceId {namespaceId});
 }
 
-base::OptError Catalog::deleteResource(const Resource& resource,
-                                                   const std::vector<std::string>& namespaceIds)
+base::OptError Catalog::deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds)
 {
     if (Resource::Type::collection == resource.m_type)
     {
@@ -502,30 +442,10 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
     // Assert resource type is Asset, Policy or Integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
         && Resource::Type::filter != item.m_type && Resource::Type::output != item.m_type
-        && Resource::Type::policy != item.m_type && Resource::Type::integration != item.m_type)
+        && Resource::Type::integration != item.m_type)
     {
         return base::Error {fmt::format("Invalid resource type '{}'", Resource::typeToStr(item.m_type))};
     }
-
-    // Validate against the schema first
-    // TODO: Implement when we support a v7+ validator
-    // auto schemaIt = m_schemas.find(item.m_type);
-
-    // if (schemaIt == m_schemas.end())
-    // {
-    //     return base::Error {
-    //         fmt::format("[Catalog] Schema validator not found for type [{}]",
-    //                     Resource::typeToStr(item.m_type))};
-    // }
-
-    // auto validationError = content.validate(schemaIt->second);
-    // if (validationError)
-    // {
-    //     return base::Error {fmt::format("[Catalog] Schema validation failed for [{}],
-    //     {}",
-    //                                     item.m_name.fullName(),
-    //                                     validationError.value().message)};
-    // }
 
     // Builder validator
     std::optional<base::Error> validationError;
@@ -533,10 +453,6 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
         || item.m_type == Resource::Type::filter || item.m_type == Resource::Type::output)
     {
         validationError = m_validator->validateAsset(content);
-    }
-    else if (item.m_type == Resource::Type::policy)
-    {
-        validationError = m_validator->validatePolicy(content);
     }
     else if (item.m_type == Resource::Type::integration)
     {
@@ -560,7 +476,7 @@ std::optional<base::Error> Catalog::validateResource(const Resource& item, const
     // Assert resource is asset, policy or integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
         && Resource::Type::filter != item.m_type && Resource::Type::output != item.m_type
-        && Resource::Type::policy != item.m_type && Resource::Type::integration != item.m_type)
+        && Resource::Type::integration != item.m_type)
     {
         return base::Error {
             fmt::format("Invalid resource type '{}' for VALIDATE operation", Resource::typeToStr(item.m_type))};

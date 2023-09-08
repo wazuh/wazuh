@@ -83,10 +83,6 @@ eCatalog::ResourceType toResourceType(const std::string& type)
     {
         return eCatalog::ResourceType::output;
     }
-    else if (type == "policy")
-    {
-        return eCatalog::ResourceType::policy;
-    }
     else if (type == "schema")
     {
         return eCatalog::ResourceType::schema;

@@ -64,8 +64,6 @@ private:
     std::unordered_map<Resource::Format, std::function<std::variant<json::Json, base::Error>(const std::string&)>>
         m_inFormat;
 
-    std::unordered_map<Resource::Type, json::Json> m_schemas;
-
     std::optional<base::Error> validate(const Resource& item, const json::Json& content) const;
 
     /**
@@ -166,11 +164,11 @@ public:
     base::OptError deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {});
 
     /**
-     * @brief Validate an Asset or Environment.
+     * @brief Validate an Asset
      *
      * Performs schema validation and builder validation
      *
-     * @param item Resource identifying an Asset or Environment
+     * @param item Resource identifying an Asset
      * @param content Content of the Asset or Environment
      * @return std::optional<base::Error> Error if the operation failed
      */

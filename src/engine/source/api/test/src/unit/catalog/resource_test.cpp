@@ -9,7 +9,6 @@ TEST(CatalogResourceTest, BuildsCollections)
     auto nameRule = base::Name(Resource::typeToStr(Resource::Type::rule));
     auto nameOuput = base::Name(Resource::typeToStr(Resource::Type::output));
     auto nameFilter = base::Name(Resource::typeToStr(Resource::Type::filter));
-    auto namePolicy = base::Name(Resource::typeToStr(Resource::Type::policy));
     auto nameSchema = base::Name(Resource::typeToStr(Resource::Type::schema));
     auto nameIntegration = base::Name(Resource::typeToStr(Resource::Type::integration));
 
@@ -35,12 +34,6 @@ TEST(CatalogResourceTest, BuildsCollections)
 
     ASSERT_NO_THROW(resource = Resource(nameFilter, Resource::Format::json));
     ASSERT_EQ(resource.m_name, nameFilter);
-    ASSERT_EQ(resource.m_format, Resource::Format::json);
-    ASSERT_EQ(resource.m_type, Resource::Type::collection);
-    ASSERT_FALSE(resource.m_validation);
-
-    ASSERT_NO_THROW(resource = Resource(namePolicy, Resource::Format::json));
-    ASSERT_EQ(resource.m_name, namePolicy);
     ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::collection);
     ASSERT_FALSE(resource.m_validation);
@@ -99,12 +92,6 @@ TEST(CatalogResourceTest, BuildsAssetsPolicy)
     ASSERT_EQ(resource.m_name, nameFilter);
     ASSERT_EQ(resource.m_format, Resource::Format::json);
     ASSERT_EQ(resource.m_type, Resource::Type::filter);
-    ASSERT_TRUE(resource.m_validation);
-
-    ASSERT_NO_THROW(resource = Resource(namePolicy, Resource::Format::json));
-    ASSERT_EQ(resource.m_name, namePolicy);
-    ASSERT_EQ(resource.m_format, Resource::Format::json);
-    ASSERT_EQ(resource.m_type, Resource::Type::policy);
     ASSERT_TRUE(resource.m_validation);
 
     ASSERT_NO_THROW(resource = Resource(nameIntegration, Resource::Format::json));
