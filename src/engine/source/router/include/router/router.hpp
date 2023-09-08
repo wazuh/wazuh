@@ -203,8 +203,8 @@ public:
      *
      * @param outputCallback The callback function to be invoked with the generated output data.
      * @param traceCallback The callback function to be invoked with the generated trace data.
-     * @param name Name of the policy for which output and trace are to be obtained.
      * @param assets Vector of asset names to subscribe to.
+     * @param policyName Name of the policy for which output and trace are to be obtained.
      * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
