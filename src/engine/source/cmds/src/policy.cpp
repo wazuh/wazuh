@@ -1,14 +1,16 @@
 #include <cmds/policy.hpp>
 
 #include <vector>
+#include <utility>
 
 #include <eMessages/policy.pb.h>
+#include <utils/stringUtils.hpp>
+#include <logging/logging.hpp>
+#include <ymlFormat.hpp>
+
 
 #include <cmds/apiExcept.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <logging/logging.hpp>
-#include <utils/stringUtils.hpp>
-#include <ymlFormat.hpp>
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
@@ -28,25 +30,51 @@ struct Options
     std::string parentAssetName;
     std::vector<std::string> namespaceIds;
     std::string serverApiSock;
-    unsigned int clientTimeout;
+    unsigned int clientTimeout {0};
+    bool forceEmpty {false};
 };
-} // namespace
 
-void runAddPolicy(std::shared_ptr<apiclnt::Client> client, const std::string& policyName)
+// Default assets
+const std::vector<std::pair<std::string, std::string>> DEFAULT_ASSETS = {{"integration/wazuh-core/0", "system"},
+                                                                         {"integration/syslog/0", "wazuh"},
+                                                                         {"integration/system/0", "wazuh"},
+                                                                         {"integration/windows/0", "wazuh"},
+                                                                         {"integration/apache-http/0", "wazuh"},
+                                                                         {"integration/suricata/0", "wazuh"}};
+// Default namespaces parent
+const std::vector<std::pair<std::string, std::string>> DEFAULT_PARENTS = {{"user", "decoder/integrations/0"},
+                                                                          {"wazuh", "decoder/integrations/0"}};
+
+#include <memory>  // for std::unique_ptr
+
+std::vector<std::pair<std::string, std::unique_ptr<google::protobuf::Message>>>
+getDefaultConfigRequest(const std::string& policyName)
 {
-    using RequestType = ePolicy::StorePost_Request;
-    using ResponseType = eEngine::GenericStatus_Response;
-    const std::string command = "policy.store/post";
+    std::vector<std::pair<std::string, std::unique_ptr<google::protobuf::Message>>> defaultConfigPolicy;
 
-    // Prepare request
-    RequestType eRequest;
-    eRequest.set_policy(policyName);
+    for (const auto& parent : DEFAULT_PARENTS)
+    {
+        auto eParent = std::make_unique<ePolicy::DefaultParentPost_Request>();
+        eParent->set_policy(policyName);
+        eParent->set_namespace_(parent.first);
+        eParent->set_parent(parent.second);
+        defaultConfigPolicy.push_back({"policy.defaultParent/post", std::move(eParent)});
+    }
 
-    // Call API, any exception will be thrown
-    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
-    const auto response = client->send(request);
-    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+    for (const auto& asset : DEFAULT_ASSETS)
+    {
+        auto eAsset = std::make_unique<ePolicy::AssetPost_Request>();
+        eAsset->set_policy(policyName);
+        eAsset->set_namespace_(asset.second);
+        eAsset->set_asset(asset.first);
+        defaultConfigPolicy.push_back({"policy.asset/post", std::move(eAsset)});
+    }
+
+    return defaultConfigPolicy;
 }
+
+
+} // namespace
 
 void runRemovePolicy(std::shared_ptr<apiclnt::Client> client, const std::string& policyName)
 {
@@ -63,6 +91,47 @@ void runRemovePolicy(std::shared_ptr<apiclnt::Client> client, const std::string&
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 };
+
+void runAddPolicy(std::shared_ptr<apiclnt::Client> client, const std::string& policyName, bool forceEmpty)
+{
+    using RequestType = ePolicy::StorePost_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "policy.store/post";
+
+    // Prepare request
+    RequestType eRequest;
+    eRequest.set_policy(policyName);
+
+    // Call API, any exception will be thrown
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // If forceEmpty is false, add default assets and parents
+    if (!forceEmpty)
+    {
+        try
+        {
+            auto defaultRequests = getDefaultConfigRequest(policyName);
+            for (auto& [configCommand, configRequest] : defaultRequests)
+            {
+                const auto req = utils::apiAdapter::toWazuhRequest(configCommand, details::ORIGIN_NAME, *configRequest);
+                const auto responseStr = client->send(req);
+                const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(responseStr);
+            }
+        }
+        catch (const cmd::ClientException& e)
+        {
+            // Clean up if any error related to adding default assets and parents
+            if (e.getErrorType() == cmd::ClientException::Type::EMESSAGE_ERROR)
+            {
+                std::cerr << "Error adding default assets and parents to policy '" << policyName << "': " << e.what();
+                runRemovePolicy(client, policyName);
+            }
+            throw;
+        }
+    }
+}
 
 void runGetPolicy(std::shared_ptr<apiclnt::Client> client,
                   const std::string& policyName,
@@ -278,12 +347,14 @@ void configure(CLI::App_p app)
     auto addPolicySubcommand = policyApp->add_subcommand("add", "Create a new, empty policy");
     addPolicySubcommand->add_option("-p, --policy", options->policyName, "Specify the name of the policy to create")
         ->required();
+    addPolicySubcommand->add_option("-f, --force", options->forceEmpty, "Force creation of an empty policy")
+        ->default_val(false);
 
     addPolicySubcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runAddPolicy(client, options->policyName);
+            runAddPolicy(client, options->policyName, options->forceEmpty);
         });
 
     // Remove policy
