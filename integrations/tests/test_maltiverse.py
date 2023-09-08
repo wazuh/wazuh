@@ -469,4 +469,4 @@ def test_debug():
             patch('maltiverse.LOG_FILE', return_value='integrations.log') as log_file:
         maltiverse.debug(example_msg)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{maltiverse.now}: {example_msg}\n")
+        open_mock().write.assert_called_with(f"{example_msg}\n")
