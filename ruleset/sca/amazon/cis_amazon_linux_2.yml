@@ -2806,8 +2806,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.daily/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 18820
@@ -2826,8 +2827,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.weekly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 18821
@@ -2846,8 +2848,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.monthly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 18822
@@ -2866,8 +2869,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.d/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
   - id: 18823
@@ -2885,8 +2889,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/cron.deny"
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 18824
@@ -2904,8 +2910,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/at.deny"
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/at.allow -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.2.1 Ensure sudo is installed. (Automated)
   - id: 18825
@@ -2922,8 +2930,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q sudo -> r:sudo-"
 
   # 5.2.2 Ensure sudo commands use pty. (Automated)
   - id: 18826
@@ -2940,8 +2949,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 18827
@@ -2960,8 +2971,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   # 5.3.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 18828
@@ -2980,8 +2993,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/sshd_config" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.3.2 Ensure permissions on SSH private host key files are configured. (Automated)
   - id: 18829
@@ -3000,8 +3014,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_rsa_key" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_ecdsa_key" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_ed25519_key" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_dsa_key" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.3.3 Ensure permissions on SSH public host key files are configured. (Automated)
   - id: 18830
@@ -3020,8 +3038,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_rsa_key.pub" -> r:644\s*\t*-rw-r--r-- && r:0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_ecdsa_key.pub" -> r:644\s*\t*-rw-r--r-- && r:0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_ed25519_key.pub" -> r:644\s*\t*-rw-r--r-- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.3.4 Ensure SSH access is limited. (Automated)
   - id: 18831
@@ -3040,8 +3061,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
   # 5.3.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 18832
@@ -3062,8 +3085,11 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s*VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
+      - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 18833
@@ -3081,8 +3107,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
 
   # 5.3.7 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
   - id: 18834
@@ -3099,8 +3127,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'not f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s*\t*(\d+) compare > 4'
 
   # 5.3.8 Ensure SSH IgnoreRhosts is enabled. (Automated)
   - id: 18835
@@ -3118,8 +3148,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*IgnoreRhosts\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*IgnoreRhosts\s+no'
 
   # 5.3.9 Ensure SSH HostbasedAuthentication is disabled. (Automated)
   - id: 18836
@@ -3136,8 +3168,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*HostbasedAuthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
 
   # 5.3.10 Ensure SSH root login is disabled. (Automated)
   - id: 18837
@@ -3154,8 +3188,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*PermitRootLogin\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
 
   # 5.3.11 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
   - id: 18838
@@ -3172,14 +3208,16 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*PermitEmptyPasswords\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+yes'
 
   # 5.3.12 Ensure SSH PermitUserEnvironment is disabled. (Automated)
   - id: 18839
     title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
-    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing a Trojan’s programs)."
+    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing a Trojan's programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
     compliance:
       - cis: ["5.3.12"]
@@ -3191,8 +3229,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
 
   # 5.3.13 Ensure only strong Ciphers are used. (Automated)
   - id: 18840
@@ -3207,8 +3247,6 @@ checks:
       - "https://www.openssh.com/txt/cbc.adv"
       - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
       - "https://nvd.nist.gov/vuln/detail/CVE-2013-4548"
-      - "https://www.kb.cert.org/vuls/id/565052"
-      - "https://www.openssh.com/txt/cbc.adv"
     compliance:
       - cis: ["5.3.13"]
       - cis_csc_v8: ["3.10"]
@@ -3219,8 +3257,10 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - "not c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "not f:/etc/ssh/sshd_config -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
   # 5.3.14 Ensure only strong MAC algorithms are used. (Automated)
   - id: 18841
@@ -3240,8 +3280,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "not c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "not f:/etc/ssh/sshd_config -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.3.15 Ensure only strong Key Exchange algorithms are used. (Automated)
   - id: 18842
@@ -3259,8 +3301,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "not c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - "not f:/etc/ssh/sshd_config -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.3.16 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 18843
@@ -3281,8 +3325,14 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 900'
+      - 'c:sshd -T -> r:clientalivecountmax\s*\t*0'
+      - 'not f:/etc/ssh/sshd_config -> r:^ClientAliveInterval\s*\t*0'
+      - 'not f:/etc/ssh/sshd_config -> n:^ClientAliveInterval\s*\t*(\d+) > 900'
+      - 'not f:/etc/ssh/sshd_config -> n:^clientalivecountmax\s*\t*(\d+) > 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 18844
@@ -3300,8 +3350,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> r:\s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
 
   # 5.3.18 Ensure SSH warning banner is configured. (Automated)
   - id: 18845
@@ -3319,13 +3371,14 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
 
   # 5.3.19 Ensure SSH PAM is enabled. (Automated)
   - id: 18846
     title: "Ensure SSH PAM is enabled."
-    description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
+    description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd(5) as a non-root user."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
@@ -3339,8 +3392,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*usepam\s+no'
 
   # 5.3.20 Ensure SSH AllowTcpForwarding is disabled. (Automated)
   - id: 18847
@@ -3361,8 +3416,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.3.21 Ensure SSH MaxStartups is configured. (Automated)
   - id: 18848
@@ -3380,8 +3437,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*maxstartups\s+(((1[1-9]|[1-9][0-9][0-9]+):([0-9]+):([0-9]+))|(([0-9]+):(3[1-9]|[4-9][0-9]|[1-9][0-9][0-9]+):([0-9]+))|(([0-9]+):([0-9]+):(6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+)))'
 
   # 5.3.22 Ensure SSH MaxSessions is limited. (Automated)
   - id: 18849
@@ -3399,8 +3458,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
 
   # 5.4.1 Ensure password creation requirements are configured. (Automated)
   - id: 18850
