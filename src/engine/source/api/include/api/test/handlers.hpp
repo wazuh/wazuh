@@ -1,11 +1,14 @@
 #ifndef _API_TEST_HANDLERS_HPP
 #define _API_TEST_HANDLERS_HPP
 
+#include <router/router.hpp>
+#include <store/drivers/fileDriver.hpp>
+
+
 #include <api/api.hpp>
 #include <api/catalog/catalog.hpp>
 #include <api/test/sessionManager.hpp>
-#include <router/router.hpp>
-#include <store/drivers/fileDriver.hpp>
+#include <api/policy/ipolicy.hpp>
 
 namespace api::test::handlers
 {
@@ -43,6 +46,7 @@ struct Config
     std::shared_ptr<::router::Router> router;
     std::shared_ptr<catalog::Catalog> catalog;
     std::shared_ptr<store::IStore> store;
+    std::weak_ptr<policy::IPolicy> policyManager;
 };
 
 /**
@@ -130,15 +134,15 @@ std::optional<base::Error> addTestFilterToCatalog(const std::shared_ptr<catalog:
 /**
  * @brief Add the test's policy to the catalog.
  *
- * @param catalog Catalog instance.
- * @param sessionName Session name.
- * @param policyName Policy name.
+ * @param policyManager Policy Manager instance.
+ * @param policySrc Policy source.
+ * @param policyDst Policy destination.
  *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-std::optional<base::Error> addTestPolicyToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
-                                                  const std::string& sessionName,
-                                                  const std::string& policyName);
+std::optional<base::Error> addTestPolicy(const std::weak_ptr<policy::IPolicy>& policyManager,
+                                                  const std::string& policySrc,
+                                                  const std::string& policyDst);
 
 /**
  * @brief Delete a route from the router.
@@ -172,9 +176,11 @@ std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog:
  *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
+// TODO: CHECK IF THIS METODO EXIST!
 std::optional<base::Error> deleteSession(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
                                          const std::shared_ptr<::router::Router>& router,
                                          const std::shared_ptr<catalog::Catalog>& catalog,
+                                         const std::weak_ptr<policy::IPolicy>& policy,
                                          const std::string& sessionName);
 
 /**
@@ -199,7 +205,8 @@ api::Handler sessionGet(const std::shared_ptr<api::sessionManager::SessionManage
 api::Handler sessionPost(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
                          const std::shared_ptr<catalog::Catalog>& catalog,
                          const std::shared_ptr<::router::Router>& router,
-                         const std::shared_ptr<store::IStore>& store);
+                         const std::shared_ptr<store::IStore>& store,
+                         const std::weak_ptr<policy::IPolicy>& policy);
 
 /**
  * @brief API command handler to delete a session or all the sessions.
@@ -214,7 +221,8 @@ api::Handler sessionPost(const std::shared_ptr<api::sessionManager::SessionManag
 api::Handler sessionsDelete(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
                             const std::shared_ptr<catalog::Catalog>& catalog,
                             const std::shared_ptr<::router::Router>& router,
-                            const std::shared_ptr<store::IStore>& store);
+                            const std::shared_ptr<store::IStore>& store,
+                            const std::weak_ptr<policy::IPolicy>& policy);
 
 /**
  * @brief API command handler to get the list of active sessions.
