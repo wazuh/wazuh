@@ -190,8 +190,11 @@ bool UbuntuOsParser::parseFile(std::istream& in, nlohmann::json& output)
 bool CentosOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
     constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
-    output["os_name"] = "Centos Linux";
-    output["os_platform"] = "centos";
+
+    if (!output.contains("os_name")) output["os_name"] = "Centos Linux";
+
+    if (!output.contains("os_platform")) output["os_platform"] = "centos";
+
     return findVersionInStream(in, output, PATTERN_MATCH);
 }
 

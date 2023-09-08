@@ -115,8 +115,6 @@ TEST_F(SysInfoParsersTest, UnixArch)
     EXPECT_EQ("arch", output["os_platform"]);
 }
 
-
-
 TEST_F(SysInfoParsersTest, Ubuntu)
 {
     constexpr auto UBUNTU_RELEASE_FILE
@@ -155,6 +153,79 @@ TEST_F(SysInfoParsersTest, Centos)
     EXPECT_EQ("8", output["os_major"]);
     EXPECT_EQ("2", output["os_minor"]);
     EXPECT_EQ("2004", output["os_patch"]);
+}
+
+TEST_F(SysInfoParsersTest, CentosStream)
+{
+    constexpr auto CENTOS_STREAM_RELEASE_FILE
+    {
+        "NAME=\"CentOS Stream\"\n"
+        "VERSION=\"9\"\n"
+        "ID=\"centos\"\n"
+        "ID_LIKE=\"rhel fedora\"\n"
+        "VERSION_ID=\"9\"\n"
+        "PLATFORM_ID=\"platform:el9\"\n"
+        "PRETTY_NAME=\"CentOS Stream 9\"\n"
+        "ANSI_COLOR=\"0;31\"\n"
+        "LOGO=\"fedora-logo-icon\"\n"
+        "CPE_NAME=\"cpe:/o:centos:centos:9\"\n"
+        "HOME_URL=\"https://centos.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 9\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{CENTOS_STREAM_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << CENTOS_STREAM_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_FALSE(spParser2->parseFile(info, output));
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("CentOS Stream", output["os_name"]);
+    EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("9", output["os_version"]);
+}
+
+TEST_F(SysInfoParsersTest, CentosBased)
+{
+    constexpr auto ROCKY_LINUX_RELEASE_FILE
+    {
+        "NAME=\"Rocky Linux\"\n"
+        "VERSION=\"8.8 (Green Obsidian)\"\n"
+        "ID=\"rocky\"\n"
+        "ID_LIKE=\"rhel centos fedora\"\n"
+        "VERSION_ID=\"8.8\"\n"
+        "PLATFORM_ID=\"platform:el8\"\n"
+        "PRETTY_NAME=\"Rocky Linux 8.8 (Green Obsidian)\"\n"
+        "ANSI_COLOR=\"0;32\"\n"
+        "LOGO=\"fedora-logo-icon\"\n"
+        "CPE_NAME=\"cpe:/o:rocky:rocky:8:GA\"\n"
+        "HOME_URL=\"https://rockylinux.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
+        "SUPPORT_END=\"2029-05-31\"\n"
+        "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-8\"\n"
+        "ROCKY_SUPPORT_PRODUCT_VERSION=\"8.8\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"8.8\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{ROCKY_LINUX_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << ROCKY_LINUX_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_TRUE(spParser2->parseFile(info, output));
+    EXPECT_EQ("Green Obsidian", output["os_codename"]);
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("8", output["os_minor"]);
+    EXPECT_EQ("Rocky Linux", output["os_name"]);
+    EXPECT_EQ("rocky", output["os_platform"]);
+    EXPECT_EQ("8.8", output["os_version"]);
 }
 
 TEST_F(SysInfoParsersTest, BSDFreeBSD)
@@ -224,7 +295,6 @@ TEST_F(SysInfoParsersTest, RedHatFedora)
     EXPECT_EQ("22", output["os_major"]);
 }
 
-
 TEST_F(SysInfoParsersTest, RedHatServer)
 {
     constexpr auto REDHAT_RELEASE_FILE
@@ -259,7 +329,6 @@ TEST_F(SysInfoParsersTest, RedHatLinux)
     EXPECT_EQ("Taroon Update 4", output["os_codename"]);
     EXPECT_EQ("3", output["os_major"]);
 }
-
 
 TEST_F(SysInfoParsersTest, Debian)
 {
