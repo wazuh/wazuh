@@ -1,0 +1,11 @@
+- name: TCP protocol
+  description: Check connection via TCP
+  configuration_parameters:
+    PROTOCOL: 'tcp'
+  metadata:
+
+- name: UDP protocol
+  description: Check connection via UDP
+  configuration_parameters:
+    PROTOCOL: 'udp'
+  metadata:
