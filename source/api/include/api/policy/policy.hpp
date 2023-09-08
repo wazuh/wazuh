@@ -120,6 +120,11 @@ public:
      * @copydoc IPolicy::getHash
      */
     base::RespOrError<std::string> getHash(const base::Name& policyName) const override;
+
+    /**
+     * @copydoc IPolicy::copy
+     */
+    base::OptError copy(const base::Name& policyName, const base::Name& newPolicyName) override;
 };
 } // namespace api::policy
 
