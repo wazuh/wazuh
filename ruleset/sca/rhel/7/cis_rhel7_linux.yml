@@ -3008,7 +3008,6 @@ checks:
       - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S mount -F auid>=1000 -F auid!=4294967295 -k mounts"
       - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S mount-F auid>=1000 -F auid!=4294967295 -k mounts"
       - "c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S mount -F auid>=1000 -F auid!=4294967295 -k mounts"
-      - "c:auditctl -l -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S mount -F auid>=1000 -F auid!=4294967295 -k mounts"
 
   # 4.1.13 Ensure file deletion events by users are collected. (Automated)
   - id: 4631
@@ -3075,7 +3074,6 @@ checks:
       - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
       - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
       - "c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
-      - "c:auditctl -l -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
 
   # 4.1.16 Ensure kernel module loading and unloading is collected. (Automated)
   - id: 4634
