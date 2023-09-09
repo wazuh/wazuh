@@ -42,7 +42,7 @@ private:
             outputFolder = context.spUpdaterBaseContext->contentsFolder;
         }
         // name of the file where the content will be saved
-        const auto fileName {context.spUpdaterBaseContext->configData.at("fileName").get<std::string>()};
+        const auto fileName {context.spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
         // full path where the content will be saved
         const std::string fullFilePath {outputFolder + "/" + fileName};
 
@@ -51,18 +51,15 @@ private:
             {
                 std::cout << "APIDownloader - Could not get response from API because: " << message << std::endl;
                 // Set the status of the stage
-                context.data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
+                context.data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "fail"})"_json);
                 throw std::runtime_error(message);
             }};
 
         // Run the request. Save the file on disk.
         HTTPRequest::instance().download(HttpURL(url), fullFilePath, onError);
 
-        // If applied, save the path of the downloaded content in the context
-        if (context.spUpdaterBaseContext->configData.at("compressionType").get<std::string>().compare("raw") == 0)
-        {
-            context.data.at("paths").push_back(fullFilePath);
-        }
+        // Save the path of the downloaded content in the context
+        context.data.at("paths").push_back(fullFilePath);
 
         // Set the status of the stage
         context.data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);

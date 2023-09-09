@@ -35,7 +35,8 @@ static const nlohmann::json CONFIG_PARAMETERS =
                 "url": "https://jsonplaceholder.typicode.com/todos/1",
                 "outputFolder": "/tmp/testProvider",
                 "dataFormat": "json",
-                "fileName": "example.json"
+                "contentFileName": "example.json",
+                "s3FileName": "content.filtered_little.1.xz"
             }
         }
         )"_json;

@@ -34,7 +34,7 @@ private:
     void decompress(UpdaterContext& context) const
     {
         const std::string outputFolder {context.spUpdaterBaseContext->outputFolder};
-        const auto fileName {context.spUpdaterBaseContext->configData.at("fileName").get<std::string>()};
+        const auto fileName {context.spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
 
         // TODO implement behavior
         // 1. Decompress the content (outputFolder + fileName)
