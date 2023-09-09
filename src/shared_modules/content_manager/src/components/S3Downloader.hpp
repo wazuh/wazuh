@@ -50,10 +50,10 @@ private:
         const auto onError {
             [&context](const std::string& message, const long /*statusCode*/)
             {
-                std::cout << "S3Downloader - Could not get response from S3 because: " << message << std::endl;
                 // Set the status of the stage
                 context.data.at("stageStatus").push_back(R"({"stage": "S3Downloader", "status": "fail"})"_json);
-                throw std::runtime_error(message);
+
+                throw std::runtime_error("S3Downloader - Could not get response from S3 because: " + message);
             }};
 
         // Run the request. Save the file on disk.

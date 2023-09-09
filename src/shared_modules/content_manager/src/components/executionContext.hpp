@@ -15,6 +15,7 @@
 #include "chainOfResponsability.hpp"
 #include "updaterContext.hpp"
 #include <filesystem>
+#include <iostream>
 
 const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_path() / "output_folder"};
 
@@ -60,11 +61,11 @@ private:
 
         // Create the folders.
         std::filesystem::create_directory(outputFolderPath);
-        std::filesystem::create_directory(outputFolderPath / "downloads");
-        std::filesystem::create_directory(outputFolderPath / "contents");
+        std::filesystem::create_directory(outputFolderPath / DOWNLOAD_FOLDER);
+        std::filesystem::create_directory(outputFolderPath / CONTENTS_FOLDER);
 
-        context.downloadsFolder = outputFolderPath / "downloads";
-        context.contentsFolder = outputFolderPath / "contents";
+        context.downloadsFolder = outputFolderPath / DOWNLOAD_FOLDER;
+        context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
 
         std::cout << "Output folders created." << std::endl;
     }

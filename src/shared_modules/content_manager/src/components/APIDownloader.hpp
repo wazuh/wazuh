@@ -49,10 +49,10 @@ private:
         const auto onError {
             [&context](const std::string& message, const long /*statusCode*/)
             {
-                std::cout << "APIDownloader - Could not get response from API because: " << message << std::endl;
                 // Set the status of the stage
                 context.data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "fail"})"_json);
-                throw std::runtime_error(message);
+
+                throw std::runtime_error("APIDownloader - Could not get response from API because: " + message);
             }};
 
         // Run the request. Save the file on disk.

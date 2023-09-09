@@ -16,6 +16,7 @@ target_link_libraries(${PROJECT_NAME}
     urlrequest
     router
     wazuhext
+    lzma
 )
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
