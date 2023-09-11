@@ -2980,10 +2980,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access"
-      - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access"
-      - "c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access"
-      - "c:auditctl -l -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access"
+      - 'd:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'd:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
+      - 'c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
 
   # 4.1.11 Ensure use of privileged commands is collected. (Automated) - Not Implemented
 
@@ -3030,7 +3030,6 @@ checks:
       - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete"
       - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete"
       - "c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete"
-      - "c:auditctl -l -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete"
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 4632
@@ -3071,9 +3070,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
-      - "d:/etc/audit/rules.d -> r:.+.rules$ -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
-      - "c:auditctl -l -> r:-a always,exit && r:-F arch=b32|-F arch=b64 && r:-C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F euid=0 && r:-F auid!=4294967295 && r:-k actions|key=actions'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F euid=0 && r:-k actions|key=actions"
 
   # 4.1.16 Ensure kernel module loading and unloading is collected. (Automated)
   - id: 4634
