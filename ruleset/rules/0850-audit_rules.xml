@@ -59,7 +59,7 @@
   <rule id="92605" level="6">
     <if_group>audit</if_group>
     <field name="audit.execve.a0" type="pcre2">ls</field>
-    <field name="audit.execve.a2" type="pcre2">^(?=.*a)(?=.*R)</field>
+    <field name="audit.execve.a2" type="pcre2">^-(?=.*a)(?=.*R)</field>
     <description>Executed recursive query of all files using ls command.</description>
     <mitre>
       <id>T1083</id>
