@@ -49,8 +49,8 @@ normalize:
   - check:
       - wazuh.source: logcollector
       - wazuh.message: starts_with({)
-    logpar:
-      - wazuh.message: <json_event/json>
+    parse|wazuh.message:
+      - <json_event/json>
     map:
       - event.original: rename($json_event.event.original)
       - event.module: rename($json_event.event.module)

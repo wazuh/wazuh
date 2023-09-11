@@ -16,7 +16,7 @@ namespace builder::internals::builders
 namespace
 {
 const std::unordered_map<std::string, std::string> allowedBlocks = {
-    {"map", "stage.map"}, {"check", "stage.check"}, {"logpar", "parser.logpar"}};
+    {"map", "stage.map"}, {"check", "stage.check"}};
 }
 
 Builder getStageNormalizeBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
@@ -68,7 +68,30 @@ Builder getStageNormalizeBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
                                [registry, definitions](auto& tuple)
                                {
                                    auto& [key, value] = tuple;
-                                   if (allowedBlocks.count(key) == 0)
+                                   json::Json stageParseValue;
+                                   stageParseValue.setArray();
+                                   auto pos = key.find("parse|");
+                                   if (pos != std::string::npos)
+                                   {
+                                       auto field = key.substr(pos + 6);
+                                       field.erase(std::remove_if(field.begin(), field.end(), ::isspace), field.end());
+                                       key = "parse";
+                                       if (value.isArray())
+                                       {
+                                           json::Json tmp;
+                                           tmp.setArray();
+                                           auto arr = value.getArray().value();
+                                           for (size_t i = 0; i < arr.size(); i++)
+                                           {
+                                                auto val = arr[i].getString().value();
+                                                tmp.appendString(val);
+                                                tmp.appendString(field);
+                                                stageParseValue.appendJson(tmp);
+                                                tmp.erase();
+                                           }
+                                       }
+                                   }
+                                   else if (allowedBlocks.count(key) == 0)
                                    {
                                        throw std::runtime_error(fmt::format("[builders::stageNormalizeBuilder(json)] "
                                                                             "Invalid block name: [{}]",
@@ -77,6 +100,11 @@ Builder getStageNormalizeBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
 
                                    try
                                    {
+                                       if (key == "parse")
+                                       {
+                                           return registry->getBuilder("parser.logpar")(stageParseValue,
+                                                                                              definitions);
+                                       }
                                        return registry->getBuilder(allowedBlocks.at(key))(value, definitions);
                                    }
                                    catch (const std::exception& e)

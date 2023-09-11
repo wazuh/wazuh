@@ -25,8 +25,8 @@ normalize:
    - windows.EventData.2: replace(\t, )
    - windows.EventData.2: replace(\   , \  )
    - windows.EventData.2: replace(\  ,\,)
- - logpar:
-    - windows.EventData.2: <temp.event_data/kv/=/,/'/'>
+ - parse|windows.EventData.2:
+    - <temp.event_data/kv/=/,/'/'>
 
  - map:
    - wazuh.decoders: array_append(windows-powershell)

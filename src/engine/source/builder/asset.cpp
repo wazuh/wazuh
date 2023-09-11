@@ -154,11 +154,42 @@ Asset::Asset(const json::Json& jsonDefinition,
     // Get stages
     m_stages = base::Chain::create("stages", {});
     auto asOp = m_stages->getPtr<base::Operation>();
+    json::Json definition;
+    definition.setObject();
     for (auto& tuple : objectDefinition)
     {
-        auto stageName = "stage." + std::get<0>(tuple);
+        std::string stageName;
+        base::Expression stageExpression;
+
         auto stageDefinition = std::get<1>(tuple);
-        auto stageExpression = registry->getBuilder(stageName)({stageDefinition}, definitions);
+        auto pos = std::get<0>(tuple).find("parse|");
+
+        if (pos != std::string::npos)
+        {
+            auto key = std::get<0>(tuple).substr(pos + 6);
+            key.erase(std::remove_if(key.begin(), key.end(), ::isspace), key.end());
+            if (stageDefinition.isArray())
+            {
+                json::Json tmp;
+                tmp.setArray();
+                auto arr = stageDefinition.getArray().value();
+                for (size_t i = 0; i < arr.size(); i++)
+                {
+                    auto val = arr[i].getString().value();
+                    tmp.appendString(val);
+                    tmp.appendString(key);
+                    definition.appendJson(tmp, "/logpar");
+                    tmp.erase();
+                }
+            }
+            stageExpression = registry->getBuilder("stage.parse")({definition}, definitions);
+        }
+        else
+        {
+            auto stageName = "stage." + std::get<0>(tuple);
+            stageExpression = registry->getBuilder(stageName)({stageDefinition}, definitions);
+        }
+
         asOp->getOperands().push_back(stageExpression);
     }
 
