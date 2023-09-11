@@ -83,69 +83,11 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
-log_monitor_paths = []
-
-receiver_sockets_params = []
-
-monitored_sockets_params = []
-
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
-
-authd_server = AuthdSimulator(params[0]['SERVER_ADDRESS'], key_path=SERVER_KEY_PATH, cert_path=SERVER_CERT_PATH)
-
-# fixtures
-@pytest.fixture(scope="function")
-def configure_authd_server(request):
-    """Initialize a simulated authd connection."""
-    authd_server.start()
-    global monitored_sockets
-    monitored_sockets = QueueMonitor(authd_server.queue)
-    authd_server.clear()
-    yield
-    authd_server.shutdown()
-
-
-def start_authd():
-    """Enable authd to accept connections and perform enrollments."""
-    authd_server.set_mode("ACCEPT")
-    authd_server.clear()
-
-
-def stop_authd():
-    """Disable authd to accept connections and perform enrollments."""
-    authd_server.set_mode("REJECT")
-
-
-def set_authd_id():
-    """Set agent id to 101 in the authd simulated connection."""
-    authd_server.agent_id = 101
-
-
-def clean_keys():
-    """Clear the agent's client.keys file."""
-    truncate_file(CLIENT_KEYS_PATH)
-    sleep(1)
-
-
-def delete_keys():
-    """Remove the agent's client.keys file."""
-    os.remove(CLIENT_KEYS_PATH)
-    sleep(1)
-
-
-def set_keys():
-    """Write to client.keys file the agent's enrollment details."""
-    with open(CLIENT_KEYS_PATH, 'w+') as f:
-        f.write("100 ubuntu-agent any TopSecret")
-    sleep(1)
-
-
 def wait_notify(line):
     """Callback function to wait for agent checkins to the manager."""
     if 'Sending keep alive:' in line:
         return line
     return None
-
 
 def wait_enrollment(line):
     """Callback function to wait for enrollment."""
@@ -153,13 +95,11 @@ def wait_enrollment(line):
         return line
     return None
 
-
 def wait_enrollment_try(line):
     """Callback function to wait for enrollment attempt."""
     if 'Requesting a key' in line:
         return line
     return None
-
 
 def search_error_messages():
     """Retrieve the line of the log file where first error is found.
@@ -174,16 +114,14 @@ def search_error_messages():
                 return line
     return None
 
-
 # Tests
 """
 This test covers the scenario of Agent starting with keys,
 when misses communication with Remoted and a new enrollment is sent to Authd.
 """
 
-
-def test_agentd_reconection_enrollment_with_keys(configure_authd_server, configure_environment,
-                                                 get_configuration, teardown):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check how the agent behaves when losing communication with
                  the 'wazuh-remoted' daemon and a new enrollment is sent to
@@ -224,13 +162,13 @@ def test_agentd_reconection_enrollment_with_keys(configure_authd_server, configu
         - ssl
         - keys
     '''
-    global remoted_server
-
-    remoted_server = RemotedSimulator(protocol=get_configuration['metadata']['PROTOCOL'], mode='CONTROLLED_ACK',
-                                      client_keys=CLIENT_KEYS_PATH)
-
     # Stop target Agent
     control_service('stop')
+
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Prepare test
     start_authd()
     set_authd_id()
@@ -313,15 +251,13 @@ def test_agentd_reconection_enrollment_no_keys_file(configure_authd_server, conf
         - ssl
         - keys
     '''
-    global remoted_server
-
-    remoted_server = RemotedSimulator(protocol=get_configuration['metadata']['PROTOCOL'], mode='CONTROLLED_ACK',
-                                      client_keys=CLIENT_KEYS_PATH)
-
     # Stop target Agent
     control_service('stop')
-    # Clean logs
-    truncate_file(LOG_FILE_PATH)
+
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Prepare test
     start_authd()
     set_authd_id()
@@ -405,15 +341,13 @@ def test_agentd_reconection_enrollment_no_keys(configure_authd_server, configure
         - ssl
         - keys
     '''
-    global remoted_server
-
-    remoted_server = RemotedSimulator(protocol=get_configuration['metadata']['PROTOCOL'], mode='CONTROLLED_ACK',
-                                      client_keys=CLIENT_KEYS_PATH)
-
     # Stop target Agent
     control_service('stop')
-    # Clean logs
-    truncate_file(LOG_FILE_PATH)
+
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Prepare test
     start_authd()
     set_authd_id()
@@ -498,15 +432,13 @@ def test_agentd_initial_enrollment_retries(configure_authd_server, configure_env
         - ssl
         - keys
     '''
-    global remoted_server
-
-    remoted_server = RemotedSimulator(protocol=get_configuration['metadata']['PROTOCOL'], mode='CONTROLLED_ACK',
-                                      client_keys=CLIENT_KEYS_PATH)
-
     # Stop target Agent
     control_service('stop')
-    # Clean logs
-    truncate_file(LOG_FILE_PATH)
+
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Preapre test
     stop_authd()
     set_authd_id()
@@ -594,16 +526,15 @@ def test_agentd_connection_retries_pre_enrollment(configure_authd_server, config
         - ssl
         - keys
     '''
-    global remoted_server
     REMOTED_KEYS_SYNC_TIME = 10
 
-    # Start Remoted mock
-    remoted_server = RemotedSimulator(protocol=get_configuration['metadata']['PROTOCOL'], mode='CONTROLLED_ACK',
-                                      client_keys=CLIENT_KEYS_PATH)
     # Stop target Agent
     control_service('stop')
-    # Clean logs
-    truncate_file(LOG_FILE_PATH)
+
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Prepare test
     stop_authd()
     set_keys()
