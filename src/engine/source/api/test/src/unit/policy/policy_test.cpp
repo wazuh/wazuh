@@ -32,8 +32,8 @@ const store::Doc POLICY_DOC_2 {R"({
     "hash": "4112711263806056918",
     "assets": [
         "decoder/system/0",
-        "decoder/wazuh/0",
-        "decoder/user/0"
+        "decoder/user/0",
+        "decoder/wazuh/0"
     ],
     "default_parents": {
         "user": "decoder/system/0"
@@ -1144,7 +1144,7 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                                .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                            expectNsPolicy(store);
 
-                                           EXPECT_CALL(*validator, validatePolicy(EqualsJson(POLICY_DOC_2)))
+                                           EXPECT_CALL(*validator, validatePolicy(POLICY_DOC_2))
                                                .WillOnce(::testing::Return(validateError()));
                                        })),
                              // Store upsert new policy error
@@ -1170,7 +1170,7 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                                   .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                              expectNsPolicy(store);
-                                             EXPECT_CALL(*validator, validatePolicy(POLICY_DOC)).WillOnce(::testing::Return(validateOk()));
+                                             EXPECT_CALL(*validator, validatePolicy(POLICY_DOC_2)).WillOnce(::testing::Return(validateOk()));
                                              EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
                                                   .WillOnce(::testing::Return(storeOk()));
                                         }))));
