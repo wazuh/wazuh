@@ -27,7 +27,7 @@ void RouterInterfaceTest::TearDown()
 
 TEST_F(RouterInterfaceTest, TestCreateProviderSubscriberSimple)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
 
     // Simulate call from specific provider in the same process
     EXPECT_NO_THROW({ provider->start(); });
@@ -37,9 +37,24 @@ TEST_F(RouterInterfaceTest, TestCreateProviderSubscriberSimple)
     });
 }
 
+TEST_F(RouterInterfaceTest, TestStopLocalProviderWithoutStart)
+{
+    auto provider {std::make_unique<RouterProvider>("test")};
+
+    EXPECT_THROW(provider->stop(), std::runtime_error);
+}
+
+TEST_F(RouterInterfaceTest, TestCreateSubscriberWithoutProvider)
+{
+    EXPECT_NO_THROW({
+        auto subscriber = std::make_unique<RouterSubscriber>("test", "subscriberTest");
+        subscriber->subscribe([](const std::vector<char>&) {});
+    });
+}
+
 TEST_F(RouterInterfaceTest, TestDoubleProviderInit)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
 
     EXPECT_NO_THROW({ provider->start(); });
     EXPECT_NO_THROW({ provider->start(); });
@@ -51,7 +66,7 @@ TEST_F(RouterInterfaceTest, TestDoubleProviderInit)
  */
 TEST_F(RouterInterfaceTest, TestDoubleSubscriberInit)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
 
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
@@ -69,7 +84,7 @@ TEST_F(RouterInterfaceTest, TestDoubleSubscriberInit)
 
 TEST_F(RouterInterfaceTest, TestSendMessage)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
     static std::atomic<int> count = 0;
@@ -106,7 +121,7 @@ TEST_F(RouterInterfaceTest, TestSendMessage)
 
 TEST_F(RouterInterfaceTest, TestSendMessageAfterSubscribeRemove)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
     static std::atomic<int> count = 0;
@@ -141,7 +156,7 @@ TEST_F(RouterInterfaceTest, TestSendMessageAfterSubscribeRemove)
 
 TEST_F(RouterInterfaceTest, TestSendMessageAfterProviderShutdown)
 {
-    auto provider = std::make_unique<RouterProvider>("test");
+    auto provider {std::make_unique<RouterProvider>("test")};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
     static std::atomic<int> count = 0;
@@ -177,7 +192,7 @@ TEST_F(RouterInterfaceTest, TestSendMessageAfterProviderShutdown)
 
 TEST_F(RouterInterfaceTest, TestRemoteCreateProviderSubscriberSimple)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
 
     EXPECT_NO_THROW({
@@ -187,16 +202,23 @@ TEST_F(RouterInterfaceTest, TestRemoteCreateProviderSubscriberSimple)
     });
 }
 
+TEST_F(RouterInterfaceTest, TestStopRemoteProviderWithoutStart)
+{
+    auto provider {std::make_unique<RouterProvider>("test", false)};
+
+    EXPECT_THROW(provider->stop(), std::runtime_error);
+}
+
 TEST_F(RouterInterfaceTest, TestRemoteDoubleProviderInit)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
     EXPECT_NO_THROW({ provider->start(); });
     EXPECT_THROW({ provider->start(); }, std::runtime_error);
 }
 
 TEST_F(RouterInterfaceTest, TestRemoteDoubleSubscriberInit)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
 
     EXPECT_NO_THROW({
@@ -210,7 +232,7 @@ TEST_F(RouterInterfaceTest, TestRemoteDoubleSubscriberInit)
 
 TEST_F(RouterInterfaceTest, TestRemoteSendMessage)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
 
     static std::atomic<int> count = 0;
@@ -245,7 +267,7 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessage)
 
 TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterSubscribeRemove)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
     static std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
@@ -277,7 +299,7 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterSubscribeRemove)
 
 TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterProviderShutdown)
 {
-    auto provider = std::make_unique<RouterProvider>("test", false);
+    auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
     static std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
