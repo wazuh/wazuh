@@ -35,9 +35,9 @@
   <parent>windows-date-format</parent>
   <type>firewall</type>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^OPEN|^CLOSE|^DROP</prematch>
+  <prematch offset="after_parent">^OPEN|^CLOSE|^DROP|^ALLOW</prematch>
   <regex offset="after_parent">^(\w+) (\w+) </regex>
-  <regex>(\S+) (\S+) (\d+) (\d+) </regex>
+  <regex>(\S+) (\S+) (\S+) (\S+) </regex>
   <order>action, protocol, srcip, dstip, srcport, dstport</order>
 </decoder>
 
