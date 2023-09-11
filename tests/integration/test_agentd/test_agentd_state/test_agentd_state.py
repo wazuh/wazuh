@@ -46,7 +46,6 @@ tags:
     - stats_file
 '''
 
-import json
 import pytest
 from pathlib import Path
 import sys
@@ -62,12 +61,7 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
 from wazuh_testing.utils import file, callbacks
-from wazuh_testing.utils.services import check_if_process_is_running, control_service
-
-from . import CONFIGS_PATH, TEST_CASES_PATH
-
-# Marks
-pytestmark = pytest.mark.tier(level=0)
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -104,7 +98,7 @@ def add_custom_key() -> None:
         client_keys.write("100 ubuntu-agent any TopSecret")
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration,remove_state_file, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check that the statistics file 'wazuh-agentd.state' is created automatically
                  and verify that the content of its fields is correct.
@@ -178,7 +172,7 @@ def parse_state_file():
     return state
 
 
-def remoted_get_state(expected_output, remoted_server):
+def remoted_get_state(remoted_server):
     """Get state via remoted
 
     Send getstate request to agent (via RemotedSimulator) and return state info as dict.
@@ -186,7 +180,7 @@ def remoted_get_state(expected_output, remoted_server):
     Returns:
         state info
     """
-    remoted_server.send_custom_message(expected_output['fields']['status'])
+    remoted_server.send_custom_message('agent getstate')
     sleep(2)
     response = remoted_server.custom_message
     return response
@@ -208,7 +202,7 @@ def check_fields(expected_output, remoted_server):
     if expected_output['type'] == 'file':
         get_state = parse_state_file
     else:
-        get_state = remoted_get_state(expected_output, remoted_server)
+        get_state = remoted_get_state(remoted_server)
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
