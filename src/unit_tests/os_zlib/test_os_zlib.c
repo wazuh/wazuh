@@ -135,6 +135,27 @@ void test_fail_uncompress_no_dest_size(void **state) {
     assert_int_equal(i2, 0);
 }
 
+void test_fail_compress_smaller_bound_dst_buffer(void ** state) {
+    char src[40] = "This is a test string to be compressed.";
+    char dst[52];
+
+    assert_int_equal(0, os_zlib_compress(src, dst, 40, 52));
+}
+
+void test_success_compress_equal_bound_dst_buffer(void ** state) {
+    char src[40] = "This is a test string to be compressed.";
+    char dst[53];
+
+    assert_int_equal(46, os_zlib_compress(src, dst, 40, 53));
+}
+
+void test_success_compress_bigger_bound_dst_buffer(void ** state) {
+    char src[40] = "This is a test string to be compressed.";
+    char dst[54];
+
+    assert_int_equal(46, os_zlib_compress(src, dst, 40, 54));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_success_compress_string),
@@ -142,6 +163,9 @@ int main(void) {
         cmocka_unit_test(test_fail_compress_null_src),
         cmocka_unit_test(test_fail_compress_no_dest),
         cmocka_unit_test(test_fail_compress_no_dest_size),
+        cmocka_unit_test(test_fail_compress_smaller_bound_dst_buffer),
+        cmocka_unit_test(test_success_compress_equal_bound_dst_buffer),
+        cmocka_unit_test(test_success_compress_bigger_bound_dst_buffer),
         cmocka_unit_test_setup_teardown(test_success_uncompress, setup_uncompress_string1, teardown_uncompress),
         cmocka_unit_test_setup_teardown(test_success_uncompress_special_string, setup_uncompress_string2, teardown_uncompress),
         cmocka_unit_test_setup_teardown(test_fail_uncompress_null_src, setup_uncompress_string1, teardown_uncompress),
