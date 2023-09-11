@@ -84,6 +84,11 @@
             }
         }
     ],
+    "patternProperties": {
+        "parse|*": {
+            "$ref": "#/definitions/_parse"
+        }
+    },
     "properties": {
         "name": {
             "type": "string",
@@ -190,9 +195,6 @@
             "type": "object",
             "description": "Variable definitions, used to define variables that can be reused in other parts of the item",
             "minProperties": 1
-        },
-        "parse": {
-            "$ref": "#/definitions/_parse"
         }
     },
     "definitions": {
