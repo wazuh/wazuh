@@ -347,8 +347,7 @@ void configure(CLI::App_p app)
     auto addPolicySubcommand = policyApp->add_subcommand("add", "Create a new, empty policy");
     addPolicySubcommand->add_option("-p, --policy", options->policyName, "Specify the name of the policy to create")
         ->required();
-    addPolicySubcommand->add_option("-f, --force", options->forceEmpty, "Force creation of an empty policy")
-        ->default_val(false);
+    addPolicySubcommand->add_flag("-f, --force", options->forceEmpty, "Force creation of an empty policy");
 
     addPolicySubcommand->callback(
         [options]()

@@ -33,7 +33,7 @@ normalize:
       - wazuh.decoders: array_append(fim-event)
       - _do_save: false
 
-  - check: json_event.data.type == added || json_event.data.type == modified
+  - check: $json_event.data.type == added OR $json_event.data.type == modified
     map:
       - _do_save: true
 
