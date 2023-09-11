@@ -754,7 +754,9 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
         }
 
         /* Mv to original name */
-        rename_ex(tmp_file, final_name);
+        if (rename_ex(tmp_file, final_name) != 0) {
+            ret = 0;
+        }
 
         if (unmerged_files != NULL) {
             /* Removes path from file name */
