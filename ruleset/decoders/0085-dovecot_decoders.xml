@@ -15,6 +15,7 @@
   - Jun 17 10:15:24 hostname dovecot: Fatal: Auth process died too early - shutting down
   - dovecot: Jun 23 15:04:05 Info: imap-login: Login: user=<username>, method=PLAIN, rip=1.2.3.4, lip=1.2.3.5 Authentication Failure:
   - Jan 11 03:42:09 hostname dovecot: auth-worker(default): sql(user@example.com,1.2.3.4): Password mismatch
+  - Aug 26 01:06:11 mail dovecot[48879]: auth: passwd-file(purchasing,1.1.1.1): unknown user
   - dovecot: Jan 07 14:46:28 Warn: auth(default): userdb(username,::ffff:127.0.0.1): user not found from userdb
   - dovecot: Mar 13 15:25:07 Info: auth(default): pam(user@example.com,::ffff:1.2.3.4): pam_authenticate() failed: User not known to the underlying authentication module
   - dovecot: Mar 13 15:25:07 Info: auth(default): passwd-file(user@example.com,::ffff:1.2.3.4): unknown user
@@ -31,6 +32,16 @@
   - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<i8uMIAZEDrdtycjJ>, secured
   - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, secured
   - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203
+  - Aug 25 08:08:34 mail dovecot[1234]: imap-login: Login: user=<test@test.com>, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, mpid=12345, TLS, session=<sdfoSHa1Cmqh8z>
+  - Aug 25 08:08:34 mail dovecot[1234]: imap-login: Login: user=<test>, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, mpid=12345, TLS, session=<sdfoSHa1Cmqh8z>
+  - Aug 25 08:08:34 mail dovecot[1234]: imap-login: Login: user=test@test.com, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, mpid=12345, TLS, session=<sdfoSHa1Cmqh8z>
+  - Aug 25 08:08:34 mail dovecot[1234]: imap-login: Login: user=test, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, mpid=12345, TLS, session=<sdfoSHa1Cmqh8z>
+  - Aug 25 08:17:03 mail dovecot[48879]: imap-login: Disconnected (auth failed, 1 attempts in 2 secs): user=<user>, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, TLS, session=<mu6OKsAv/BCD>
+  - Aug 25 08:17:03 mail dovecot[48879]: imap-login: Disconnected (auth failed, 1 attempts in 2 secs): user=<user@test.com>, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, TLS, session=<mu6OKsAv/BCD>
+  - Aug 25 08:17:03 mail dovecot[48879]: imap-login: Disconnected (auth failed, 1 attempts in 2 secs): user=user, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, TLS, session=<mu6OKsAv/BCD>
+  - Aug 25 08:17:03 mail dovecot[48879]: imap-login: Disconnected (auth failed, 1 attempts in 2 secs): user=user@test.com, method=CRAM-MD5, rip=1.1.1.1, lip=2.2.2.2, TLS, session=<mu6OKsAv/BCD>
+  - Aug 24 17:18:23 mail dovecot[48879]: imap-login: Disconnected: Inactivity (no auth attempts in 180 secs): user=<>, rip=1.1.1.1, lip=2.2.2.2, TLS, session=<R7uAFKNKWMmH>
+  - Aug 24 17:18:23 mail dovecot[48879]: imap-login: Disconnected: Inactivity (no auth attempts in 180 secs): user=, rip=1.1.1.1, lip=2.2.2.2, TLS, session=<R7uAFKNKWMmH>
 -->
 
 <decoder name="dovecot">
@@ -40,8 +51,14 @@
 <decoder name="dovecot-success">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Login: </prematch>
-  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), mpid=\S+, (\S*)$</regex>
+  <regex offset="after_prematch" type="pcre2">^user=(?:\<)?(\w*(?:\W\w+)*)(?:\>)?, method=\S+, rip=(\S+), lip=(\S+), mpid=\S+, (\w*)(?:,)?</regex>
   <order>user, srcip, dstip, protocol</order>
+</decoder>
+
+<decoder name="dovecot-success">
+  <parent>dovecot</parent>
+  <regex offset="after_regex">session=\p(\S+\S)></regex>
+  <order>session</order>
 </decoder>
 
 <decoder name="dovecot-aborted">
@@ -83,17 +100,17 @@
 
 <decoder name="dovecot-fail">
   <parent>dovecot</parent>
-  <prematch offset="after_parent">^auth\(default\)|auth-worker\(default\)</prematch>
+  <prematch offset="after_parent">^auth\(default\)|auth-worker\(default\)|auth</prematch>
   <regex offset="after_prematch">^: \S+\((\S+),(\S+)\)</regex>
   <order>user, srcip</order>
 </decoder>
 
- <decoder name="dovecot-disconnect-user">
+<decoder name="dovecot-disconnect-user">
    <parent>dovecot</parent>
    <prematch offset="after_parent">^\w\w\w\w-login: Disconnected\.+user=</prematch>
-   <regex offset="after_parent">user=(\S+), method=\S+, rip=(\S+), lip=(\S+),</regex>
-   <order>srcuser, srcip, dstip</order>
- </decoder>
+   <regex offset="after_parent" type="pcre2">user=(?:\<)?(\w*(?:\W\w+)*)(?:\>)?,(?: method=\S+,)? rip=(\S+), lip=(\S+),</regex>
+   <order>user, srcip, dstip</order>
+</decoder>
 
 <decoder name="dovecot-disconnect">
   <parent>dovecot</parent>
