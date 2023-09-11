@@ -47,48 +47,41 @@ references:
 tags:
     - enrollment
 '''
-import os
-import platform
+import pytest
+from pathlib import Path
+import sys
 from time import sleep
 
-import pytest
-from datetime import datetime, timedelta
-from wazuh_testing.agent import CLIENT_KEYS_PATH, SERVER_CERT_PATH, SERVER_KEY_PATH
-from wazuh_testing.tools import WAZUH_PATH, LOG_FILE_PATH
-from wazuh_testing.tools.authd_sim import AuthdSimulator
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import truncate_file
-from wazuh_testing.tools.monitoring import QueueMonitor, FileMonitor
-from wazuh_testing.tools.remoted_sim import RemotedSimulator
-from wazuh_testing.tools.services import control_service
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.variables import AGENTD_STATE
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
+from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
+from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
+from wazuh_testing.utils import file, callbacks
+from wazuh_testing.utils.services import check_if_process_is_running, control_service
+
+from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
+pytestmark = pytest.mark.tier(level=0)
 
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0), pytest.mark.agent]
+# Configuration and cases data.
+configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_reconnection_protocol.yaml')
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_conf.yaml')
+# Test configurations.
+config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
+test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
-params = [
-    {
-        'SERVER_ADDRESS': '127.0.0.1',
-        'REMOTED_PORT': 1514,
-        'PROTOCOL': 'tcp',
-    },
-    {
-        'SERVER_ADDRESS': '127.0.0.1',
-        'REMOTED_PORT': 1514,
-        'PROTOCOL': 'udp',
-    }
-]
-metadata = [
-    {'PROTOCOL': 'tcp'},
-    {'PROTOCOL': 'udp'}
-]
-
-config_ids = ['tcp', 'udp']
-
-configurations = load_wazuh_configurations(configurations_path, __name__, params=params, metadata=metadata)
+if sys.platform == WINDOWS:
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+else:
+    local_internal_options = {AGENTD_DEBUG: '2'}
+local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 log_monitor_paths = []
 
@@ -100,46 +93,7 @@ receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in t
 
 authd_server = AuthdSimulator(params[0]['SERVER_ADDRESS'], key_path=SERVER_KEY_PATH, cert_path=SERVER_CERT_PATH)
 
-global remoted_server
-remoted_server = None
-
-
-@pytest.fixture
-def teardown():
-    yield
-    global remoted_server
-    if remoted_server is not None:
-        remoted_server.stop()
-
-
-def set_debug_mode():
-    """Set debug2 for agentd in local internal options file."""
-    if platform.system() == 'win32' or platform.system() == 'Windows':
-        local_int_conf_path = os.path.join(WAZUH_PATH, 'local_internal_options.conf')
-        debug_line = 'windows.debug=2\nagent.recv_timeout=5\n'
-    else:
-        local_int_conf_path = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
-        debug_line = 'agent.debug=2\nagent.recv_timeout=5\n'
-
-    with open(local_int_conf_path, 'r') as local_file_read:
-        lines = local_file_read.readlines()
-        for line in lines:
-            if line == debug_line:
-                return
-    with open(local_int_conf_path, 'a') as local_file_write:
-        local_file_write.write('\n' + debug_line)
-
-
-set_debug_mode()
-
-
 # fixtures
-@pytest.fixture(scope="module", params=configurations, ids=config_ids)
-def get_configuration(request):
-    """Get configurations from the module"""
-    return request.param
-
-
 @pytest.fixture(scope="function")
 def configure_authd_server(request):
     """Initialize a simulated authd connection."""
