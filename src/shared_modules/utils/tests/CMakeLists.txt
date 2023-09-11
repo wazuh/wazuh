@@ -30,6 +30,7 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "socketWrapper_test.cpp"
     "socket_test.cpp"
     "rocksDBSafeQueue_test.cpp"
+    "rocksDBWrapper_test.cpp"
     "threadEventDispatcher_test.cpp"
     "xzHelper_test.cpp"
 )
