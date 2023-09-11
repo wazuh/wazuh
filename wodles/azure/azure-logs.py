@@ -707,12 +707,15 @@ def get_blobs(
         for blob in blobs:
             # Skip if the blob is empty
             if blob.properties.content_length == 0:
+                logging.debug(f"Empty blob {blob.name}, skipping")
                 continue
-            # Skip the blob if nested under prefix but prefix is not setted
+            # Skip the blob if nested under prefix but prefix is not set
             if prefix is None and len(blob.name.split("/")) > 1:
+                logging.debug(f"Skipped blob {blob.name}, nested under prefix but prefix is not set")
                 continue
             # Skip the blob if its name has not the expected format
             if args.blobs and args.blobs not in blob.name:
+                logging.debug(f"Skipped blob, name {blob.name} does not match with {args.blob}")
                 continue
 
             # Skip the blob if already processed
