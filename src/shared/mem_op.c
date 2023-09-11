@@ -91,12 +91,20 @@ void os_FreeArray(char *ch1, char **ch2)
 char *os_LoadString(char *at, const char *str)
 {
     if (at == NULL) {
+        if (!str || !*str) {
+            return (NULL);
+        }
+
         at = strdup(str);
         if (!at) {
             merror(MEM_ERROR, errno, strerror(errno));
         }
         return (at);
     } else { /* at is not null. Need to reallocate its memory and copy str to it */
+        if (!str || !*str) {
+            return (at);
+        }
+
         char *newat;
         size_t strsize = strlen(str);
         size_t finalsize = strsize + strlen(at) + 1;
