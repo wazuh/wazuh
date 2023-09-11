@@ -43,20 +43,14 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar, size_
         std::vector<base::Expression> parsersExpressions {};
         for (const json::Json& item : logparArr)
         {
-            if (!item.isObject())
+            if (!item.isArray())
             {
                 throw std::runtime_error(
-                    fmt::format(R"(Invalid json item type: Expected an "object" but got "{}")", item.typeName()));
-            }
-            if (item.size() != 1)
-            {
-                throw std::runtime_error(
-                    fmt::format("Invalid json item size: Expected exactly one element but got {}", item.size()));
+                    fmt::format(R"(Invalid json item type: Expected an "array" but got "{}")", item.typeName()));
             }
 
-            auto itemObj = item.getObject().value();
-            auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
-            auto logparExpr = std::get<1>(itemObj[0]).getString().value();
+            auto field = json::Json::formatJsonPath(item.getArray().value()[1].getString().value());
+            auto logparExpr = item.getArray().value()[0].getString().value();
             logparExpr = definitions->replace(logparExpr);
 
             hlp::parser::Parser parser;

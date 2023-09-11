@@ -28,8 +28,8 @@ normalize:
 
   #### Full location ####
   #### Present when the event is procesed by remoted
-  - logpar:
-      - wazuh.location: $full_location
+  - parse|wazuh.location:
+      - $full_location
     map:
       - wazuh.origin: $_origin
       - wazuh.registered_ip: $_registered_ip

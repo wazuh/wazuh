@@ -26,9 +26,8 @@ check:
   # TODO: Once the events arrive tagged, uncommnet following line
   # - event.module=='sysmon-linux'
 
-parse:
-  logpar:
-    - message: "<_sysmon/xml/windows>"
+parse|message:
+  - "<_sysmon/xml/windows>"
 
 # Log level mapping
 definitions:

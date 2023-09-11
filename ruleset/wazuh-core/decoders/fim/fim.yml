@@ -27,9 +27,8 @@ parents:
 check:
   - event.original: starts_with({)
 
-parse:
-  logpar:
-    - event.original: <json_event/json>
+parse|event.original:
+  - <json_event/json>
 
 normalize:
   - map:
