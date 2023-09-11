@@ -26,9 +26,8 @@ parents:
 # {"command":"upgrade_update_status","parameters":{"error":0,"message":"Upgrade was successful","status":"Done"}}
 # {"command":"upgrade_update_status","parameters":{"error":2,"message":"Upgrade Failed","status":"Failed"}}
 
-parse:
-  logpar:
-    - event.original: <json_event/json>
+parse|event.original:
+  - <json_event/json>
 
 normalize:
   - map:
