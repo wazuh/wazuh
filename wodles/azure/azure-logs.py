@@ -49,7 +49,7 @@ DATETIME_MASK = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 # Logger parameters
 LOGGING_MSG_FORMAT = '%(asctime)s azure: %(levelname)s: %(message)s'
-LOGGING_DATE_FORMAT = '%Y/%m/%d %I:%M:%S'
+LOGGING_DATE_FORMAT = '%Y/%m/%d %H:%M:%S'
 LOG_LEVELS = {0: logging.WARNING,
               1: logging.INFO,
               2: logging.DEBUG}
@@ -709,13 +709,13 @@ def get_blobs(
             if blob.properties.content_length == 0:
                 logging.debug(f"Empty blob {blob.name}, skipping")
                 continue
-            # Skip the blob if nested under prefix but prefix is not set
-            if prefix is None and len(blob.name.split("/")) > 1:
-                logging.debug(f"Skipped blob {blob.name}, nested under prefix but prefix is not set")
+            # Skip the blob if nested under the set prefix
+            if prefix is not None and len(blob.name.split("/")) > 2:
+                logging.debug(f"Skipped blob {blob.name}, nested under set prefix {prefix}")
                 continue
             # Skip the blob if its name has not the expected format
             if args.blobs and args.blobs not in blob.name:
-                logging.debug(f"Skipped blob, name {blob.name} does not match with {args.blob}")
+                logging.debug(f"Skipped blob, name {blob.name} does not match with the format '{args.blobs}'")
                 continue
 
             # Skip the blob if already processed
