@@ -29,8 +29,8 @@ normalize:
     # Add categorization fields
     - rule.name: $windows.EventData.RuleName
     - event.hash: $windows.EventData.Hash
-    - temp.hashes: parse_key_value($windows.EventData.Hashes, =, ',', '\'', '\'')
-    - related.hash: $temp.hashes
+    - _hashes: parse_key_value($windows.EventData.Hashes, =, ',', '\'', '\'')
+    - related.hash: $_hashes
 
 
   ## Process fields
@@ -49,10 +49,10 @@ normalize:
     - process.parent.pid: $windows.EventData.ParentProcessId
     - process.parent.executable: $windows.EventData.ParentImage
     - process.parent.command_line: $windows.EventData.ParentCommandLine
-    - temp.file_data: parse_file($process.executable)
-    - process.name: $temp.file_data.name
-    - temp.file_data: parse_file($process.parent.executable)
-    - process.parent.name: $temp.file_data.name
+    - _file_data: parse_file($process.executable)
+    - process.name: $_file_data.name
+    - _file_data: parse_file($process.parent.executable)
+    - process.parent.name: $_file_data.name
     - process.args: split($process.command_line, \ )
     - process.parent.args: split($process.parent.command_line, \ )
 
@@ -64,10 +64,10 @@ normalize:
     - file.path: $windows.EventData.ImageLoaded
     - file.code_signature.subject_name: $windows.EventData.Signature
     - file.code_signature.status: $windows.EventData.SignatureStatus
-    - temp.file_data: parse_file($file.path)
-    - file.directory: $temp.file_data.path
-    - file.extension: $temp.file_data.ext
-    - file.name: $temp.file_data.name
+    - _file_data: parse_file($file.path)
+    - file.directory: $_file_data.path
+    - file.extension: $_file_data.ext
+    - file.name: $_file_data.name
 
   ## Network, Destination, and Source fields
     - network.transport: $windows.EventData.Protocol
@@ -83,9 +83,9 @@ normalize:
 
   ## User fields
     - user.id: $windows.System.Security.@UserID
-    - temp.user_parts: split($windows.EventData.User, \\)
-    - user.domain: $temp.user_parts.0
-    - user.name: $temp.user_parts.1
+    - _user_parts: split($windows.EventData.User, \\)
+    - user.domain: $_user_parts.0
+    - user.name: $_user_parts.1
 
   ## Related fields
     - related.user: array_append($user.name)
@@ -143,21 +143,21 @@ normalize:
 
  - check: $event.code=="1" OR $event.code=="23" OR $event.code=="24" OR $event.code=="25" OR $event.code=="26"
    map:
-    - process.hash: $temp.hashes
+    - process.hash: $_hashes
 
  - check: $event.code=="6" OR $event.code=="7" OR $event.code=="15"
    map:
-    - file.hash: $temp.hashes
+    - file.hash: $_hashes
     - file.pe.imphash: file.hash.imphash
 
   ## Registry fields
  - check: $event.code=="12" OR $event.code=="13" OR $event.code=="14"
    map:
     - registry.path: $windows.EventData.TargetObject
-    - temp.registry.array: split($registry.path, \\)
-    - registry.hive: $temp.registry.array.0
-    - temp.registry.array.0: delete()
-    - registry.key: join($temp.registry.array, \\)
+    - _registry.array: split($registry.path, \\)
+    - registry.hive: $_registry.array.0
+    - _registry.array.0: delete()
+    - registry.key: join($_registry.array, \\)
     - registry.value: regex_extract($registry.path, ^.*\\\\(.*)$)
 
  - check: ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND starts_with($windows.Event.EventData.Details,QWORD)
@@ -168,20 +168,19 @@ normalize:
  - check: ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND starts_with($windows.EventData.Details,DWORD)
    map:
     - registry.data.type: SZ_DWORD
-    - temp.value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
-    - registry.data.strings: hex_to_number($temp.value)
+    - _value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
+    - registry.data.strings: hex_to_number($_value)
 
  - check:
     - windows.EventData.Details: starts_with(Binary Data)
    map:
-    - temp.is_binary_data: true
+    - _is_binary_data: true
 
- - check:  ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND is_true($temp.is_binary_data)
+ - check:  ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND is_true($_is_binary_data)
    map:
     - registry.data.type: REG_BINARY
     - registry.data.strings: $windows.EventData.Details
 
 # Cleanup
  - map:
-   - temp: delete()
    - windows: delete()
