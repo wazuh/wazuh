@@ -279,7 +279,10 @@ def daemons_handler_module(request: pytest.FixtureRequest) -> None:
 
 @pytest.fixture(scope='module')
 def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:	
-    """Restart a Wazuh daemon
+    """Restart a Wazuh daemons and clears the wazuh log after the test module finishes execution.
+    
+    Args:
+        daemon (str): provide which daemon to restart. If None, all daemons will be restarted.
     """
     yield
     file.truncate_file(WAZUH_LOG_PATH)
