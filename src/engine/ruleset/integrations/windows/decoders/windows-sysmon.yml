@@ -160,12 +160,12 @@ normalize:
     - registry.key: join($temp.registry.array, \\)
     - registry.value: regex_extract($registry.path, ^.*\\\\(.*)$)
 
- - check: ( $event.code=="12" OR $event.code=="13" OR $event.code=="14" ) AND starts_with($windows.Event.EventData.Details,QWORD)
+ - check: ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND starts_with($windows.Event.EventData.Details,QWORD)
    map:
     - registry.data.type: SZ_QWORD
     - registry.data.strings: regex_extract($windows.EventData.Details, ^QWORD\\s*\\((0x[0-9A-F]+-0x[0-9A-F]+\)\\\))
 
- - check: ( $event.code=="12" OR $event.code=="13" OR $event.code=="14" ) AND starts_with($windows.EventData.Details,DWORD)
+ - check: ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND starts_with($windows.EventData.Details,DWORD)
    map:
     - registry.data.type: SZ_DWORD
     - temp.value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
@@ -176,7 +176,7 @@ normalize:
    map:
     - temp.is_binary_data: true
 
- - check:  ( $event.code=="12" OR $event.code=="13" OR $event.code=="14" ) AND is_true($temp.is_binary_data)
+ - check:  ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND is_true($temp.is_binary_data)
    map:
     - registry.data.type: REG_BINARY
     - registry.data.strings: $windows.EventData.Details
