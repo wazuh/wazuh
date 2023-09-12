@@ -1,7 +1,7 @@
 #!/bin/bash
 check_arguments() {
     if [ $# -lt 1 ]; then
-        echo "Usage: $0 <github_working_directory> [<config_file>]"
+        echo "Usage: $0 <github_working_directory> [<engine_source_dir>] [<configuration_file]"
         exit 1
     fi
 }
@@ -31,8 +31,8 @@ run_behave_tests() {
 main() {
     check_arguments "$@"
     local github_working_dir="$1"
-    local conf_file="${2:-general.conf}"
-    local engine_src_dir="$github_working_dir/src/engine"
+    local engine_src_dir="${2:-$github_working_dir/src/engine}"
+    local conf_file="${3:-general.conf}"
     local environment_dir="$github_working_dir/environment"
     local integration_tests_dir="$engine_src_dir/test/integration_tests"
     local serv_conf_file="$integration_tests_dir/configuration_files/$conf_file"
@@ -40,12 +40,12 @@ main() {
     # Replace occurrences of /var/ossec with the new path
     sed -i "s|github_workspace|$environment_dir|g" "$serv_conf_file"
     # Execute the binary with the argument "server start"
-    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l trace start &
+    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error start &
     # Capture the process ID of the binary
     local binary_pid=$!
     # Wait for the server to start
     sleep 2
-    run_behave_tests "$integration_tests_dir"
+    ENGINE_DIR=$engine_src_dir ENV_DIR=$github_working_dir run_behave_tests "$integration_tests_dir"
     local behave_exit_code=$?
     # Terminate the binary process
     kill $binary_pid

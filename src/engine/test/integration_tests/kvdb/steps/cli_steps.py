@@ -3,30 +3,13 @@ from behave import given, when, then, step
 import os
 import json
 
-def find_engine_directory(start_dir):
-    current_dir = os.path.abspath(start_dir)
+ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
+ENV_DIR = os.environ.get("ENV_DIR", "")
+SOCKET_PATH = ENV_DIR + "/environment/queue/sockets/engine-api"
+RULESET_DIR = ENGINE_DIR + "/ruleset"
+EXEC_PATH = ENGINE_DIR + "/build/main"
 
-    while current_dir != "/":  # Detenerse en la raíz del sistema de archivos
-        if os.path.basename(current_dir) == "engine":
-            return current_dir
-        current_dir = os.path.dirname(current_dir)
-
-    return None
-
-def get_executable():
-    engine_directory = find_engine_directory(os.path.dirname(os.path.abspath(__file__)))
-    build_directory = os.path.join(engine_directory, "build")
-    os.chdir(build_directory)
-    return os.path.join(os.getcwd(), "main")
-
-def socket_path():
-    engine_directory = find_engine_directory(os.path.dirname(os.path.abspath(__file__)))
-    os.chdir(os.path.dirname(os.path.dirname(engine_directory)))
-    environment_directory = os.path.join(os.getcwd(), "environment")
-    os.chdir(environment_directory)
-    return os.path.join(os.getcwd(), "queue/sockets/engine-api")
-
-CLI_KVDB = communication.CLIClient(get_executable(), socket_path())
+CLI_KVDB = communication.CLIClient(EXEC_PATH, SOCKET_PATH)
 
 # First Scenario
 @given('I have access to the KVDB CLI')
