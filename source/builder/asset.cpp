@@ -10,6 +10,8 @@
 
 namespace builder
 {
+const std::string PARSE_PREFIX {"parse|"};
+
 std::string Asset::typeToString(Asset::Type type)
 {
     switch (type)
@@ -128,13 +130,51 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Get parse if present
-    auto parsePos = std::find_if(
-        objectDefinition.begin(), objectDefinition.end(), [](auto tuple) { return std::get<0>(tuple) == "parse"; });
-    if (objectDefinition.end() != parsePos)
+    // TODO: Improve this. For now, two parses in a row are not allowed since if the first one worked and
+    // the second didn't, the first one would have matched and the decoder would have passed.
+    std::string parseKey;
+    bool hasParsePrefix = false;
+
+    auto parsePos = std::find_if(objectDefinition.begin(),
+                                 objectDefinition.end(),
+                                 [&](auto tuple)
+                                 {
+                                     auto pos = std::get<0>(tuple).find(PARSE_PREFIX);
+                                     if (pos != std::string::npos)
+                                     {
+                                         parseKey = std::get<0>(tuple).substr(pos + PARSE_PREFIX.size());
+                                         hasParsePrefix = true;
+                                         return true;
+                                     }
+                                     return false;
+                                 });
+
+    if (hasParsePrefix)
     {
+        json::Json stageParseDefinition;
+        stageParseDefinition.setArray();
+        auto stageDefinition = std::get<1>(*parsePos);
+        if (!stageDefinition.isArray())
+        {
+            throw std::runtime_error(
+                fmt::format("Invalid json definition type: expected array but got {}", jsonDefinition.typeName()));
+        }
+        else
+        {
+            auto arr = stageDefinition.getArray().value();
+            json::Json tmp;
+            tmp.setObject();
+            for (size_t i = 0; i < arr.size(); i++)
+            {
+                auto parseValue = arr[i].getString().value();
+                tmp.setString(parseValue, json::Json::formatJsonPath(parseKey, true));
+                stageParseDefinition.appendJson(tmp);
+            }
+        }
+
         try
         {
-            auto parseExpression = registry->getBuilder("stage.parse")({std::get<1>(*parsePos)}, definitions);
+            auto parseExpression = registry->getBuilder("parser.logpar")(stageParseDefinition, definitions);
             objectDefinition.erase(parsePos);
             if (m_check)
             {
@@ -154,42 +194,18 @@ Asset::Asset(const json::Json& jsonDefinition,
     // Get stages
     m_stages = base::Chain::create("stages", {});
     auto asOp = m_stages->getPtr<base::Operation>();
-    json::Json definition;
-    definition.setObject();
     for (auto& tuple : objectDefinition)
     {
-        std::string stageName;
-        base::Expression stageExpression;
+        // Check if PARSE_PREFIX was found before and if there is a new key containing PARSE_PREFIX
+        if (hasParsePrefix && std::get<0>(tuple).find(PARSE_PREFIX) != std::string::npos)
+        {
+            throw std::runtime_error(fmt::format(
+                "Parse stage: Building asset '{}' failed: More than one stage parse is not allowed.", assetName));
+        }
 
+        auto stageName = "stage." + std::get<0>(tuple);
         auto stageDefinition = std::get<1>(tuple);
-        auto pos = std::get<0>(tuple).find("parse|");
-
-        if (pos != std::string::npos)
-        {
-            auto key = std::get<0>(tuple).substr(pos + 6);
-            key.erase(std::remove_if(key.begin(), key.end(), ::isspace), key.end());
-            if (stageDefinition.isArray())
-            {
-                json::Json tmp;
-                tmp.setArray();
-                auto arr = stageDefinition.getArray().value();
-                for (size_t i = 0; i < arr.size(); i++)
-                {
-                    auto val = arr[i].getString().value();
-                    tmp.appendString(val);
-                    tmp.appendString(key);
-                    definition.appendJson(tmp, "/logpar");
-                    tmp.erase();
-                }
-            }
-            stageExpression = registry->getBuilder("stage.parse")({definition}, definitions);
-        }
-        else
-        {
-            auto stageName = "stage." + std::get<0>(tuple);
-            stageExpression = registry->getBuilder(stageName)({stageDefinition}, definitions);
-        }
-
+        auto stageExpression = registry->getBuilder(stageName)({stageDefinition}, definitions);
         asOp->getOperands().push_back(stageExpression);
     }
 
@@ -199,13 +215,12 @@ Asset::Asset(const json::Json& jsonDefinition,
         return !attr.empty() && attr[0] == internals::syntax::VARIABLE_ANCHOR;
     };
 
-    auto deleteVariables =
-        base::Term<base::EngineOp>::create("DeleteVariables",
-                                           [ifVar](auto e)
-                                           {
-                                               e->eraseIfKey(ifVar);
-                                               return base::result::makeSuccess(e, "");
-                                           });
+    auto deleteVariables = base::Term<base::EngineOp>::create("DeleteVariables",
+                                                              [ifVar](auto e)
+                                                              {
+                                                                  e->eraseIfKey(ifVar);
+                                                                  return base::result::makeSuccess(e, "");
+                                                              });
 
     asOp->getOperands().push_back(deleteVariables);
 }
