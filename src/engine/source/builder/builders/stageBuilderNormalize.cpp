@@ -19,6 +19,8 @@ const std::unordered_map<std::string, std::string> allowedBlocks = {
     {"map", "stage.map"}, {"check", "stage.check"}};
 }
 
+const std::string PARSE_PREFIX {"parse|"};
+
 Builder getStageNormalizeBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
 {
     return [weakRegistry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
@@ -70,25 +72,22 @@ Builder getStageNormalizeBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
                                    auto& [key, value] = tuple;
                                    json::Json stageParseValue;
                                    stageParseValue.setArray();
-                                   auto pos = key.find("parse|");
+                                   auto pos = key.find(PARSE_PREFIX);
                                    if (pos != std::string::npos)
                                    {
-                                       auto field = key.substr(pos + 6);
-                                       field.erase(std::remove_if(field.begin(), field.end(), ::isspace), field.end());
+                                       auto parseKey = key.substr(pos + PARSE_PREFIX.size());
                                        key = "parse";
                                        if (value.isArray())
                                        {
                                            json::Json tmp;
-                                           tmp.setArray();
+                                           tmp.setObject();
                                            auto arr = value.getArray().value();
-                                           for (size_t i = 0; i < arr.size(); i++)
-                                           {
-                                                auto val = arr[i].getString().value();
-                                                tmp.appendString(val);
-                                                tmp.appendString(field);
+                                            for (size_t i = 0; i < arr.size(); i++)
+                                            {
+                                                auto parseValue = arr[i].getString().value();
+                                                tmp.setString(parseValue, json::Json::formatJsonPath(parseKey, true));
                                                 stageParseValue.appendJson(tmp);
-                                                tmp.erase();
-                                           }
+                                            }
                                        }
                                    }
                                    else if (allowedBlocks.count(key) == 0)
