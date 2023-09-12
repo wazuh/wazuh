@@ -195,7 +195,7 @@ class ResourceHandler:
         return exec.RecoverableTask(do_task, undo_task, info)
 
     def get_update_catalog_task(self, path: str, type: str, name: str, content: str, namespace: str, format: Format = Format.YML) -> exec.RecoverableTask:
-        backup = self.get_catalog_file(path, type, name)['data']['content']
+        backup = self.get_catalog_file(path, type, name, namespace)['data']['content']
         if backup == content:
             return None
 
