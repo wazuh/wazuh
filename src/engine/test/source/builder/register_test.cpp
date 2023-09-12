@@ -62,7 +62,6 @@ TEST(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(registry->getBuilder("stage.map"));
     ASSERT_NO_THROW(registry->getBuilder("stage.normalize"));
 
-    ASSERT_NO_THROW(registry->getBuilder("stage.parse"));
     ASSERT_NO_THROW(registry->getBuilder("parser.logpar"));
 
     ASSERT_NO_THROW(registry->getBuilder("stage.outputs"));

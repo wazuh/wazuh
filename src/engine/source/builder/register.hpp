@@ -23,7 +23,6 @@
 #include "builders/stageBuilderMap.hpp"
 #include "builders/stageBuilderNormalize.hpp"
 #include "builders/stageBuilderOutputs.hpp"
-#include "builders/stageBuilderParse.hpp"
 #include "registry.hpp"
 
 namespace builder::internals
@@ -186,7 +185,6 @@ static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const 
     registry->registerBuilder(builders::getStageNormalizeBuilder(registry), "stage.normalize");
 
     // Parsers
-    registry->registerBuilder(builders::getStageBuilderParse(registry), "stage.parse");
     registry->registerBuilder(builders::getOpBuilderLogParser(dependencies.logpar, dependencies.logparDebugLvl),
                               "parser.logpar");
 
