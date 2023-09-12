@@ -1,6 +1,9 @@
 import socket
 import json
 import struct
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import Message
+
 
 class APIClient:
     def __init__(self, api_socket: str, component: str):
@@ -16,49 +19,48 @@ class APIClient:
             data += packet
         return data
 
-    def send_command(self, resource: str, action: str, params: dict):
-        try:
-            client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            client_socket.connect(self.api_socket)
+    def send_command(self, resource: str, action: str, message: Message):
+        # Convert the protobuf message to a dictionary
+        params = MessageToDict(message)
 
-            # Converts the JSON string to bytes using UTF-8 encoding
-            command = f'{self.component}.{resource}/{action}'
-            request = {
-                'version': 1,
-                'command': command,
-                'origin': {'name': 'engine-integration-test', 'module': 'engine-integration-test'},
-                'parameters': params
-            }
+        client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_socket.connect(self.api_socket)
 
-            request_raw = json.dumps(request)
-            payload = bytes(request_raw , 'utf-8')
+        # Converts the JSON string to bytes using UTF-8 encoding
+        command = f'{self.component}.{resource}/{action}'
+        request = {
+            'version': 1,
+            'command': command,
+            'origin': {'name': 'engine-integration-test', 'module': 'engine-integration-test'},
+            'parameters': params
+        }
 
-            # Pack the message with the length of the payload
-            sec_msg = bytearray()
-            sec_msg.extend(struct.pack('<i', len(payload)))
-            sec_msg.extend(payload)
+        request_raw = json.dumps(request)
+        payload = bytes(request_raw, 'utf-8')
 
-            # Send the message
-            client_socket.sendall(sec_msg)
+        # Pack the message with the length of the payload
+        sec_msg = bytearray()
+        sec_msg.extend(struct.pack('<i', len(payload)))
+        sec_msg.extend(payload)
 
-            # Receive the 4 bytes of message length
-            response_length_bytes = client_socket.recv(4)
+        # Send the message
+        client_socket.sendall(sec_msg)
 
-            # Unpack all 4 bytes to get the length of the response message
-            response_length = struct.unpack('<i', response_length_bytes)[0]
+        # Receive the 4 bytes of message length
+        response_length_bytes = client_socket.recv(4)
 
-            # Receive the complete response using the receive_al function
-            response = self.receive_all(client_socket, response_length)
+        # Unpack all 4 bytes to get the length of the response message
+        response_length = struct.unpack('<i', response_length_bytes)[0]
 
-            # close client
-            client_socket.close()
+        # Receive the complete response using the receive_al function
+        response = self.receive_all(client_socket, response_length)
 
-            # Decode and convert the response to a readable string (if necessary)
-            response_str = response.decode("utf-8")
+        # close client
+        client_socket.close()
 
-            # Convert response to JSON
-            response_json = json.loads(response_str)
-            return response_json
-        except:
-            raise Exception(f'Could not parse response message "{response_json}".')
+        # Decode and convert the response to a readable string (if necessary)
+        response_str = response.decode("utf-8")
 
+        # Convert response to JSON
+        response_json = json.loads(response_str)
+        return response_json

@@ -31,11 +31,11 @@ setup_engine() {
 
 main() {
     if [ $# -lt 1 ]; then
-        echo "Usage: $0 <github_working_directory>"
+        echo "Usage: $0 <github_working_directory> [<engine_source_directory>]"
         exit 1
     fi
     GITHUB_WORKING_DIRECTORY="$1"
-    ENGINE_SRC_DIR="$GITHUB_WORKING_DIRECTORY/src/engine"
+    ENGINE_SRC_DIR="${2:-$GITHUB_WORKING_DIRECTORY/src/engine}"
     ENVIRONMENT_DIR="$GITHUB_WORKING_DIRECTORY/environment"
     ENGINE_DIR="$ENVIRONMENT_DIR/engine"
     setup_directories "$ENVIRONMENT_DIR" "$ENGINE_SRC_DIR"
