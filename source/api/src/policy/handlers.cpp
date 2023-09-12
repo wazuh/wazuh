@@ -130,6 +130,17 @@ std::variant<api::wpResponse, store::NamespaceId> getNamespace(const RequestT& r
     return namespaceId;
 }
 
+
+/**
+ * @brief This function retrieves the namespace and asset from a given request.
+ *
+ * @tparam RequestT The type of the request.
+ * @tparam ResponseT The type of the response.
+ * @param request The request object.
+ * @return A variant containing either a wpResponse or a pair of NamespaceId and Name.
+ *         If the asset name is missing or empty, a generic error response is returned.
+ *         If the asset name is invalid, an error response with a message is returned.
+ */
 template<typename RequestT, typename ResponseT>
 std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getNamespaceAndAsset(const RequestT& request)
 {
