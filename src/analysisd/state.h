@@ -104,6 +104,7 @@ typedef struct _written_t {
 } written_t;
 
 typedef struct _eps_state_t {
+    uint64_t available_credits_prev;
     uint64_t events_dropped;
     uint64_t events_dropped_not_eps;
     uint64_t seconds_over_limit;
@@ -490,6 +491,12 @@ void w_inc_eps_events_dropped_not_eps();
  * @brief Increment seconds over eps limit
  */
 void w_inc_eps_seconds_over_limit();
+
+/**
+ * @brief Set available credits from previous interval
+ * @param credits Credits from previous interval
+ */
+void w_set_available_credits_prev(unsigned int credits);
 
 /**
  * @brief Create a JSON object with all the analysisd state information

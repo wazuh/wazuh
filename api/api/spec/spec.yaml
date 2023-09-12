@@ -2473,6 +2473,10 @@ components:
                   type: integer
                   format: int32
                   description: "Available credits to process events in the current timeframe"
+                available_credits_prev:
+                  type: integer
+                  format: int32
+                  description: "Available credits to process events in the previous timeframe"
                 events_dropped:
                   type: integer
                   format: int32

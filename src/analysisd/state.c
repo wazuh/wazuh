@@ -1437,6 +1437,12 @@ void w_inc_eps_seconds_over_limit() {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_set_available_credits_prev(unsigned int credits) {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.eps_state_breakdown.available_credits_prev = credits;
+    w_mutex_unlock(&state_mutex);
+}
+
 cJSON* asys_create_state_json() {
     analysisd_state_t state_cpy;
     queue_status_t queue_cpy;
@@ -1475,6 +1481,7 @@ cJSON* asys_create_state_json() {
         limit_reached(analysisd_limits, &available_credits);
 
         cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
+        cJSON_AddNumberToObject(_eps, "available_credits_prev", state_cpy.eps_state_breakdown.available_credits_prev);
         cJSON_AddNumberToObject(_eps, "events_dropped", state_cpy.eps_state_breakdown.events_dropped);
         cJSON_AddNumberToObject(_eps, "events_dropped_not_eps", state_cpy.eps_state_breakdown.events_dropped_not_eps);
         cJSON_AddNumberToObject(_eps, "seconds_over_limit", state_cpy.eps_state_breakdown.seconds_over_limit);

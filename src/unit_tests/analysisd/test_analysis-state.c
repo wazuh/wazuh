@@ -108,6 +108,7 @@ static int test_setup(void ** state) {
     analysisd_state.eps_state_breakdown.events_dropped = 552;
     analysisd_state.eps_state_breakdown.events_dropped_not_eps = 120;
     analysisd_state.eps_state_breakdown.seconds_over_limit = 1254;
+    analysisd_state.eps_state_breakdown.available_credits_prev = 12;
 
     decode_queue_syscheck_input = queue_init(4096);
     decode_queue_syscollector_input = queue_init(4096);
@@ -322,6 +323,9 @@ void test_asys_create_state_json(void ** state) {
 
     assert_non_null(cJSON_GetObjectItem(eps, "available_credits"));
     assert_int_equal(cJSON_GetObjectItem(eps, "available_credits")->valueint, 31);
+
+    assert_non_null(cJSON_GetObjectItem(eps, "available_credits_prev"));
+    assert_int_equal(cJSON_GetObjectItem(eps, "available_credits_prev")->valueint, 12);
 
     assert_non_null(cJSON_GetObjectItem(eps, "events_dropped"));
     assert_int_equal(cJSON_GetObjectItem(eps, "events_dropped")->valueint, 552);
