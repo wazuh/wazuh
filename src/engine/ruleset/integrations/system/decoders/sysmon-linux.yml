@@ -27,7 +27,7 @@ check:
   # - event.module=='sysmon-linux'
 
 parse|message:
-  - "<_sysmon/xml/windows>"
+  - <_sysmon/xml/windows>
 
 # Log level mapping
 definitions:

@@ -52,7 +52,6 @@ add_library(builders OBJECT
   builders/stageBuilderMap.cpp
   builders/stageBuilderNormalize.cpp
   builders/stageBuilderOutputs.cpp
-  builders/stageBuilderParse.cpp
   policy.cpp
   registry.cpp
 )
