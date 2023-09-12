@@ -234,7 +234,8 @@ public:
     /**
      * @brief Get a hash of the policy
      *
-     * @return std::optional<std::string> Hash of the policy or nullopt if the policy does not exist
+     * @param policyName Name of the policy to get the hash
+     * @return std::optional<std::string> Hash of the policy or nullopt if the policy does not exist or is invalid name
      */
     std::optional<std::string> getPolicyHash(const std::string& policyName) const;
 };

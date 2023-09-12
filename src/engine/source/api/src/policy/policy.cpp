@@ -2,22 +2,30 @@
 
 #include "policyRep.hpp"
 
-namespace {
-    base::OptError vaidateNsName(const base::Name& policyName) {
-        // Check if policyName is valid
-        if (policyName.parts().size() != 3)
-        {
-            return base::Error {fmt::format("Invalid policy name: {}, expected 3 parts", policyName.fullName())};
-        }
-        else if (policyName.parts()[0] != "policy")
-        {
-            return base::Error {
-                fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
-        }
-
-        return std::nullopt;
+namespace
+{
+/**
+ * @brief Validates the namespace name of a policy.
+ *
+ * @param policyName The name of the policy to validate.
+ * @return An optional error if the policy name is invalid, otherwise std::nullopt.
+ */
+base::OptError vaidateNsName(const base::Name& policyName)
+{
+    // Check if policyName is valid
+    if (policyName.parts().size() != 3)
+    {
+        return base::Error {fmt::format("Invalid policy name: {}, expected 3 parts", policyName.fullName())};
     }
+    else if (policyName.parts()[0] != "policy")
+    {
+        return base::Error {
+            fmt::format("Invalid policy name: {}, expected 'policy' as first part", policyName.fullName())};
+    }
+
+    return std::nullopt;
 }
+} // namespace
 
 namespace api::policy
 {
@@ -83,7 +91,7 @@ base::OptError Policy::del(const base::Name& policyName)
 }
 
 base::RespOrError<std::string> Policy::get(const base::Name& policyName,
-                                                const std::vector<store::NamespaceId>& namespaceIds) const
+                                           const std::vector<store::NamespaceId>& namespaceIds) const
 {
     auto resp = read(policyName);
     if (base::isError(resp))
@@ -134,7 +142,7 @@ Policy::addAsset(const base::Name& policyName, const store::NamespaceId& namespa
     auto policy = base::getResponse<PolicyRep>(resp);
 
     auto assetNamespace = m_store->getNamespace(assetName);
-    if ( assetNamespace.has_value() && assetNamespace.value() != namespaceId)
+    if (assetNamespace.has_value() && assetNamespace.value() != namespaceId)
     {
         return base::Error {fmt::format("Asset {} does not belong to namespace {}", assetName, namespaceId.name())};
     }
@@ -231,7 +239,8 @@ base::OptError Policy::delDefaultParent(const base::Name& policyName, const stor
     return upsert(policy);
 }
 
-base::RespOrError<std::list<store::NamespaceId>> Policy::listNamespaces(const base::Name& policyName) const {
+base::RespOrError<std::list<store::NamespaceId>> Policy::listNamespaces(const base::Name& policyName) const
+{
     auto resp = read(policyName);
     if (base::isError(resp))
     {

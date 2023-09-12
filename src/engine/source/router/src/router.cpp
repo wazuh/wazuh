@@ -198,7 +198,7 @@ std::vector<Router::Entry> Router::getRouteTable()
             const auto& priority = std::get<0>(route.second);
             const auto& filterName = std::get<1>(route.second);
             const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
-            const auto& hash = m_policyManager->getPolicyHash(policyName).value_or("");
+            const auto& hash = m_policyManager->getPolicyHash(policyName).value_or("UNKNOWN");
             table.emplace_back(name, priority, filterName, policyName, hash);
         }
     }
