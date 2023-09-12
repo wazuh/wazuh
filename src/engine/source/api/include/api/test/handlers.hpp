@@ -176,7 +176,6 @@ std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog:
  *
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-// TODO: CHECK IF THIS METODO EXIST!
 std::optional<base::Error> deleteSession(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
                                          const std::shared_ptr<::router::Router>& router,
                                          const std::shared_ptr<catalog::Catalog>& catalog,
