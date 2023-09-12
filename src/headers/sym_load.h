@@ -22,7 +22,8 @@ void* so_get_module_handle_on_path(const char *path, const char *so);
 void* so_get_module_handle(const char *so);
 /**
  * @brief Check if a module/library is already loaded. Must call a corresponding so_free_library()
- * if not used in WIN32.
+ * if not used in WIN32. If RTLD_NOLOAD isn't found in the system,
+ * the behavior is the same than so_get_module_handle().
  *
  * @param so The name of the module/library to check.
  * @return void* A handle to module if it is already loaded, NULL otherwise.
