@@ -1931,7 +1931,7 @@ remoted_c := $(wildcard remoted/*.c)
 remoted_o := $(remoted_c:.c=.o)
 
 remoted/%.o: remoted/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 wazuh-remoted: ${remoted_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
