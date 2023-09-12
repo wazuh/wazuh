@@ -83,6 +83,9 @@ public:
     /**
      * @brief Get the namespace default parent from a policy
      *
+     * @param policyName Policy name to get the default parent from
+     * @param namespaceId Namespace of the default parent
+     * @return base::RespOrError<base::Name> Default parent or an error
      */
     virtual base::RespOrError<base::Name> getDefaultParent(const base::Name& policyName,
                                                            const store::NamespaceId& namespaceId) const = 0;
@@ -92,6 +95,8 @@ public:
      *
      * @param policyName Policy name to set the default parent to
      * @param namespaceId Namespace of the default parent
+     * @param parentName Default parent name
+     * @return base::OptError Error if cannot set the default parent to the policy
      */
     virtual base::OptError setDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId,
                                             const base::Name& parentName) = 0;
@@ -116,6 +121,7 @@ public:
     /**
      * @brief Get the hash of a policy
      *
+     * @param policyName Policy name to get the hash from
      * @return base::RespOrError<std::string> Hash of the policy or an error
      */
     virtual base::RespOrError<std::string> getHash(const base::Name& policyName) const = 0;
