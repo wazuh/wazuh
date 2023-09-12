@@ -24,6 +24,6 @@ check:
 
 normalize:
   - map:
-      - wazuh.decoders: array_append(dbsync-host-data)
+      - wazuh.decoders: array_append(kvdb-agent-update)
 
       - _kvdb_update_result: kvdb_set(agents_host_data, $agent.id, $host)

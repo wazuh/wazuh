@@ -26,7 +26,7 @@ normalize:
    - windows.EventData.2: replace(\   , \  )
    - windows.EventData.2: replace(\  ,\,)
  - parse|windows.EventData.2:
-    - <temp.event_data/kv/=/,/'/'>
+    - <_event_data/kv/=/,/'/'>
 
  - map:
    - wazuh.decoders: array_append(windows-powershell)
@@ -34,42 +34,42 @@ normalize:
    - event.kind: event
    - event.category: array_append(process)
    - event.type: array_append(info)
-   - event.sequence: $temp.event_data.SequenceNumber
+   - event.sequence: $_event_data.SequenceNumber
 
   ## Process fields.
-   - process.entity_id: $temp.event_data.HostId
-   - process.command_line: $temp.event_data.HostApplication
-   - process.title: $temp.event_data.HostName
-   - process.executable: $temp.event_data.ScriptName
+   - process.entity_id: $_event_data.HostId
+   - process.command_line: $_event_data.HostApplication
+   - process.title: $_event_data.HostName
+   - process.executable: $_event_data.ScriptName
 
   ## User fields.
-   - temp.user_parts: split($temp.event_data.UserId, \\)
-   - user.domain: $temp.user_parts.0
-   - user.name: $temp.user_parts.1
+   - _user_parts: split($_event_data.UserId, \\)
+   - user.domain: $_user_parts.0
+   - user.name: $_user_parts.1
    - related.user: array_append($user.name)
 
   ## PowerShell fields.
-   - powershell.engine.new_state: $temp.event_data.NewEngineState
-   - powershell.engine.previous_state: $temp.event_data.PreviousEngineState
-   - powershell.provider.new_state: $temp.event_data.NewProviderState
-   - powershell.provider.name: $temp.event_data.ProviderName
-   - powershell.total: $temp.event_data.DetailTotal
-   - powershell.sequence: $temp.event_data.DetailSequence
-   - powershell.engine.version: $temp.event_data.EngineVersion
-   - powershell.pipeline_id: $temp.event_data.PipelineId
-   - powershell.runspace_id: $temp.event_data.RunspaceId
-   - powershell.process.executable_version: $temp.event_data.HostVersion
-   - powershell.command.value: $temp.event_data.CommandLine
-   - powershell.command.path: $temp.event_data.CommandPath
-   - powershell.command.name: $temp.event_data.CommandName
-   - powershell.command.type: $temp.event_data.CommandType
+   - powershell.engine.new_state: $_event_data.NewEngineState
+   - powershell.engine.previous_state: $_event_data.PreviousEngineState
+   - powershell.provider.new_state: $_event_data.NewProviderState
+   - powershell.provider.name: $_event_data.ProviderName
+   - powershell.total: $_event_data.DetailTotal
+   - powershell.sequence: $_event_data.DetailSequence
+   - powershell.engine.version: $_event_data.EngineVersion
+   - powershell.pipeline_id: $_event_data.PipelineId
+   - powershell.runspace_id: $_event_data.RunspaceId
+   - powershell.process.executable_version: $_event_data.HostVersion
+   - powershell.command.value: $_event_data.CommandLine
+   - powershell.command.path: $_event_data.CommandPath
+   - powershell.command.name: $_event_data.CommandName
+   - powershell.command.type: $_event_data.CommandType
 
   # Add file information.
-   - file.path: $temp.event_data.ScriptName
-   - temp.file_data: parse_file($file.path)
-   - file.directory: $temp.file_data.path
-   - file.extension: $temp.file_data.ext
-   - file.name: $temp.file_data.name
+   - file.path: $_event_data.ScriptName
+   - _file_data: parse_file($file.path)
+   - file.directory: $_file_data.path
+   - file.extension: $_file_data.ext
+   - file.name: $_file_data.name
 
  - check: $event.code=="400"
    map:
@@ -81,5 +81,4 @@ normalize:
 
 # Cleanup
  - map:
-   - temp: delete()
    - windows: delete()

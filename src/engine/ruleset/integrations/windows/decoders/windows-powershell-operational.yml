@@ -28,13 +28,13 @@ normalize:
    - event.sequence: $windows.EventData.SequenceNumber
 
   # User fields
-   - temp.user_parts: split($windows.EventData.User, \\)
-   - destination.user.domain: $temp.user_parts.0
-   - destination.user.name: $temp.user_parts.1
+   - _user_parts: split($windows.EventData.User, \\)
+   - destination.user.domain: $_user_parts.0
+   - destination.user.name: $_user_parts.1
    - related.user: array_append(destination.user.name)
-   - temp.connected_user_parts: split($windows.EventData.ConnectedUser, \\)
-   - source.user.domain: $temp.connected_user_parts.0
-   - source.user.name: $temp.connected_user_parts.1
+   - _connected_user_parts: split($windows.EventData.ConnectedUser, \\)
+   - source.user.domain: $_connected_user_parts.0
+   - source.user.name: $_connected_user_parts.1
    - user.name: $source.user.name
    - user.domain: $source.user.domain
    - related.user: array_append($source.user.name)
@@ -58,10 +58,10 @@ normalize:
    # File fields
    - file.path: $windows.EventData.Path
    - file.path: $windows.EventData.ScriptName
-   - temp.file_data: parse_file($file.path)
-   - file.directory: $temp.file_data.path
-   - file.extension: $temp.file_data.ext
-   - file.name: $temp.file_data.name
+   - _file_data: parse_file($file.path)
+   - file.directory: $_file_data.path
+   - file.extension: $_file_data.ext
+   - file.name: $_file_data.name
 
   # Process fields
    - process.entity_id: $windows.EventData.HostID
@@ -79,5 +79,4 @@ normalize:
 
 # Cleanup
  - map:
-   - temp: delete()
    - windows: delete()
