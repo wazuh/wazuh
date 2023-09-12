@@ -2477,6 +2477,10 @@ components:
                   type: integer
                   format: int32
                   description: "Events discarded because the EPS limit was reached and queues were full"
+                events_dropped_not_eps:
+                  type: integer
+                  format: int32
+                  description: "Events discarded due to causes unrelated to EPS limit"
                 seconds_over_limit:
                   type: integer
                   format: int32

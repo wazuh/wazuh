@@ -1405,6 +1405,8 @@ void * ad_input_main(void * args) {
                             mdebug2("Queues are full and no EPS credits, dropping events.");
                         }
                         w_inc_eps_events_dropped();
+                    } else {
+                        w_inc_eps_events_dropped_not_eps();
                     }
                 } else {
                     w_inc_eps_events_dropped();

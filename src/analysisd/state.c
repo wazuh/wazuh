@@ -1425,6 +1425,12 @@ void w_inc_eps_events_dropped() {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_inc_eps_events_dropped_not_eps() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.eps_state_breakdown.events_dropped_not_eps++;
+    w_mutex_unlock(&state_mutex);
+}
+
 void w_inc_eps_seconds_over_limit() {
     w_mutex_lock(&state_mutex);
     analysisd_state.eps_state_breakdown.seconds_over_limit++;
@@ -1470,6 +1476,7 @@ cJSON* asys_create_state_json() {
 
         cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
         cJSON_AddNumberToObject(_eps, "events_dropped", state_cpy.eps_state_breakdown.events_dropped);
+        cJSON_AddNumberToObject(_eps, "events_dropped_not_eps", state_cpy.eps_state_breakdown.events_dropped_not_eps);
         cJSON_AddNumberToObject(_eps, "seconds_over_limit", state_cpy.eps_state_breakdown.seconds_over_limit);
     }
 

@@ -105,6 +105,7 @@ typedef struct _written_t {
 
 typedef struct _eps_state_t {
     uint64_t events_dropped;
+    uint64_t events_dropped_not_eps;
     uint64_t seconds_over_limit;
 } eps_state_t;
 
@@ -479,6 +480,11 @@ void w_inc_stats_written();
  * @brief Increment events dropped by eps
  */
 void w_inc_eps_events_dropped();
+
+/**
+ * @brief Increment events dropped by causes unrelated to eps
+ */
+void w_inc_eps_events_dropped_not_eps();
 
 /**
  * @brief Increment seconds over eps limit
