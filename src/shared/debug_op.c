@@ -15,21 +15,6 @@
 #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
-#define MAX_SIZE_STR_DEBUG     (10)
-#define MAX_SIZE_STR_INFO      (9)
-#define MAX_SIZE_STR_CRITICAL  (13)
-#define MAX_SIZE_STR_ERROR     (10)
-#define MAX_SIZE_STR_WARNING   (12)
-
-
-#define W_STR_DEBUG     "- DEBUG - "
-#define W_STR_INFO      "- INFO - "
-#define W_STR_CRITICAL  "- CRITICAL - "
-#define W_STR_ERROR     "- ERROR - "
-#define W_STR_WARNING   "- WARNING - "
-
-int msg_to_print_according_to_debugLevel (char *output, char * tokenized_line, char *str_level, char* service_title);
-
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;

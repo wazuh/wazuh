@@ -508,7 +508,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
     }
 
-    w_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, trail_title);
+    wm_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, trail_title);
 
     char *line;
     char *save_ptr = NULL;
@@ -653,7 +653,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
     }
 
-    w_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, service_title);
+    wm_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, service_title);
 
     char *line;
     char *save_ptr = NULL;
@@ -772,7 +772,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", subscriber_title, status);
     }
 
-    w_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, subscriber_title);
+    wm_parse_output(output, WM_AWS_LOGGING_TOKEN , WM_AWS_LOGTAG, subscriber_title);
 
     char *line;
     char *save_ptr = NULL;

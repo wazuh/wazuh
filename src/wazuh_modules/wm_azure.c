@@ -182,7 +182,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
             mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_request->tag, status);
         }
 
-        w_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
+        wm_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
 
@@ -267,7 +267,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
             mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_request->tag, status);
         }
 
-        w_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
+        wm_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for request '%s'.", curr_request->tag);
 
@@ -370,7 +370,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
             mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_container->name, status);
         }
 
-        w_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
+        wm_parse_output(output, WM_AZURE_LOGGING_TOKEN , WM_AZURE_LOGTAG, NULL);
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for container '%s'.", curr_container->name);
 
