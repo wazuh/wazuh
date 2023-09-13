@@ -1666,7 +1666,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
      *  MAP
      ***************************** */
     // If map is a definition/value, then build the map
-    std::map<std::size_t, json::Json> buildedMap;
+    std::map<uint32_t, json::Json> buildedMap;
     if (helper::base::Parameter::Type::VALUE == parameters[0].m_type)
     {
         json::Json jDefinition;
@@ -1690,15 +1690,41 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
         bool isTypeSet = false;
         for (auto& [key, value] : jMap)
         {
+            uint32_t index {0};
             // Create index for bitMap
-            std::size_t index;
+            if (key.empty())
+            {
+                throw std::runtime_error("Empty key provided");
+            }
+
+            if (key[0] == '-')
+            {
+                throw std::runtime_error(
+                    fmt::format("Expected positive number as decimal/hexa (0x)/binary (0b) as key, got {}", key));
+            }
+
+            size_t pos = 0;
+            int base = 10;
+
+            if (key.compare(0, 2, "0x") == 0)
+            {
+                pos = 2;
+                base = 16;
+            }
+            else if (key.compare(0, 2, "0b") == 0)
+            {
+                pos = 2;
+                base = 2;
+            }
+
             try
             {
-                index = std::stoul(key, nullptr, 10);
+                index = std::stoul(key.substr(pos), nullptr, base);
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error(fmt::format(throwTrace + "Expected number as key, got {}", key));
+                throw std::runtime_error(
+                    fmt::format("Expected number as decimal/hexa (0x)/binary (0b) as key, got {}", key));
             }
 
             // Che the type of value
@@ -1716,7 +1742,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
     }
 
     // Function that get the value from the builded map, returns nullopt if not found
-    auto getValueFromBuildedMap = [buildedMap](const std::size_t pos) -> std::optional<json::Json>
+    auto getValueFromBuildedMap = [buildedMap](const uint32_t pos) -> std::optional<json::Json>
     {
         auto it = buildedMap.find(pos);
         if (it != buildedMap.end())
@@ -1728,7 +1754,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
 
     // Function that get the value from the event map, returns nullopt if not found (Dont check types)
     auto getValueFromEventMap =
-        [](const base::Event& event, const std::size_t pos, const std::string& refMap) -> std::optional<json::Json>
+        [](const base::Event& event, const uint32_t pos, const std::string& refMap) -> std::optional<json::Json>
     {
         auto path = refMap + "/" + std::to_string(pos);
         const auto value = event->getJson(path);
@@ -1795,6 +1821,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
 
         return failureTrace3;
     };
+
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
@@ -1827,9 +1854,10 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
             json::Json::Type mapValueType {};
             bool isTypeSet = false;
             // Iterate over mask (isMSB or LSB)
-            for (std::size_t pos = 0; pos <= 31; ++pos)
+            for (uint32_t pos = 0; pos <= 31; ++pos)
             {
                 uint32_t bitPos;
+                uint32_t index = 0x1 << pos;
 
                 if (isMSB)
                 {
@@ -1842,10 +1870,10 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
 
                 if (bitPos & mask)
                 {
-                    // Get value from map
+                    // Get value from map [use post o bitPos?]
                     std::optional<json::Json> value = usePrebuildedMap
-                                                          ? getValueFromBuildedMap(pos)
-                                                          : getValueFromEventMap(event, pos, srcMap.m_value);
+                                                          ? getValueFromBuildedMap(index)
+                                                          : getValueFromEventMap(event, index, srcMap.m_value);
                     if (value.has_value())
                     {
                         if (!isTypeSet)
