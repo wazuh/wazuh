@@ -423,13 +423,23 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition.
  * @param definitions handler with definitions
+ * @param schema schema to validate fields
  * @return base::Expression The Lifter with the SHA1 hash.
  * @throw std::runtime_error if the parameter size is not one.
  */
 base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
                                          const std::string& rawName,
                                          const std::vector<std::string>& rawParameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions);
+                                         std::shared_ptr<defs::IDefinitions> definitions,
+                                         std::shared_ptr<schemf::ISchema> schema);
+
+/**
+ * @brief Get the 'bitmask_to_table' function helper builder
+ *
+ * @param schema schema to validate fields
+ * @return HelperBuilder The builder of the helper.
+ */
+HelperBuilder getOpBuilderHelperBitmaskToTable(std::shared_ptr<schemf::ISchema> schema);
 
 //*************************************************
 //*                  Definition                   *
