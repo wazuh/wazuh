@@ -1604,13 +1604,18 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 //*                  bit functions                *
 //*************************************************
 base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
-                                         const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions)
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions,
+                                               std::shared_ptr<schemf::ISchema> schema)
 {
-    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions, false);
 
-    // Assert expected minimun number of parameters
+    // base::Expression
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions, false);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+    const std::string throwTrace {"Engine bitmask32 to table builder: "};
+
+    // Verify parameters
     helper::base::checkParametersMinSize(rawName, parameters, 2);
     bool isMSB = false;
     if (parameters.size() == 3 && parameters[2].m_value != "LSB")
@@ -1622,41 +1627,139 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
         else
         {
             throw std::runtime_error(
-                fmt::format("Expected LSB or MSB as third parameter, got {}", parameters[2].m_value));
+                fmt::format(throwTrace + "Expected LSB or MSB as third parameter, got {}", parameters[2].m_value));
         }
     }
 
-    // Format name for the tracer
-    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+    // Verify the schema fields
+    // Target
+    if (schema->hasField(targetField) && schema->getType(targetField) != json::Json::Type::Array)
+    {
+        throw std::runtime_error(
+            throwTrace + "failed schema validation: Target field must be an array.");
+    }
+    // Map
+    if (parameters[0].m_type == helper::base::Parameter::Type::REFERENCE && schema->hasField(parameters[0].m_value)
+        && schema->getType(parameters[0].m_value) != json::Json::Type::Object)
+    {
+        throw std::runtime_error(
+            throwTrace + "failed schema validation: Map field must be an object.");
+    }
+    // Mask
+    if (parameters[1].m_type == helper::base::Parameter::Type::REFERENCE && schema->hasField(parameters[1].m_value)
+        && ((schema->getType(parameters[1].m_value) != json::Json::Type::String)
+            || (schema->getType(parameters[1].m_value) != json::Json::Type::Number)))
+    {
+        throw std::runtime_error(
+            throwTrace + "failed schema validation: Mask field must be a string or number.");
+    }
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-    //const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    //const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
-    //const std::string failureTrace3 {fmt::format("[{}] -> Failure: Couldn't create HASH from string", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Expected number as mask", name)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Expected same type for all values on the bit map", name)};
+    const std::string failureTrace3 {fmt::format(
+        "[{}] -> Failure: Reference  to mask '{}' not found or not a string or number", name, parameters[1].m_value)};
 
-
-    std::map<std::size_t, std::string> buildedMap;
+    /*****************************
+     *  MAP
+     ***************************** */
+    // If map is a definition/value, then build the map
+    std::map<std::size_t, json::Json> buildedMap;
     if (helper::base::Parameter::Type::VALUE == parameters[0].m_type)
     {
-        // TODO add try catch, expected json object
-        auto jDefinition = json::Json {parameters[0].m_value.c_str()};
-        if(!jDefinition.isObject()) {
-            throw std::runtime_error(fmt::format("Expected object as first parameter, got {}", parameters[0].m_value));
+        json::Json jDefinition;
+        try
+        {
+            jDefinition = json::Json {parameters[0].m_value.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format(throwTrace + "Expected object as first parameter, got {}", parameters[0].m_value));
+        }
+        if (!jDefinition.isObject())
+        {
+            throw std::runtime_error(
+                fmt::format(throwTrace + "Expected object as first parameter, got {}", parameters[0].m_value));
         }
 
         auto jMap = jDefinition.getObject().value();
-
-        // Validate types
+        json::Json::Type mapValueType {};
+        bool isTypeSet = false;
         for (auto& [key, value] : jMap)
         {
-            auto index = std::stoul(key, nullptr, 10); // Try - catch and rethrow
-            buildedMap[index] = value.getString().value(); // validate if is string
-        }
+            // Create index for bitMap
+            std::size_t index;
+            try
+            {
+                index = std::stoul(key, nullptr, 10);
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format(throwTrace + "Expected number as key, got {}", key));
+            }
 
+            // Che the type of value
+            if (!isTypeSet)
+            {
+                mapValueType = value.type();
+                isTypeSet = true;
+            }
+            else if (mapValueType != value.type())
+            {
+                throw std::runtime_error(throwTrace + "Expected same type for all values on the bit map");
+            }
+            buildedMap[index] = std::move(value);
+        }
     }
 
-    auto getMaskFromRef = [](const base::Event& event, const std::string& srcMask) -> std::variant<uint32_t, std::string>
+    // Function that get the value from the builded map, returns nullopt if not found
+    auto getValueFromBuildedMap = [buildedMap](const std::size_t pos) -> std::optional<json::Json>
+    {
+        auto it = buildedMap.find(pos);
+        if (it != buildedMap.end())
+        {
+            return it->second;
+        }
+        return std::nullopt;
+    };
+
+    // Function that get the value from the event map, returns nullopt if not found (Dont check types)
+    auto getValueFromEventMap =
+        [](const base::Event& event, const std::size_t pos, const std::string& refMap) -> std::optional<json::Json>
+    {
+        auto path = refMap + "/" + std::to_string(pos);
+        const auto value = event->getJson(path);
+        if (value.has_value())
+        {
+            return value.value();
+        }
+        return std::nullopt;
+    };
+
+    /*****************************
+     *  Mask
+     ***************************** */
+    // If mask is a definition/value, then get the mask
+    uint32_t paramMask = 0;
+    if (helper::base::Parameter::Type::VALUE == parameters[1].m_type)
+    {
+        try
+        {
+            paramMask = std::stoul(parameters[1].m_value, nullptr, 16) & 0x0000FFFF;
+        }
+        catch (const std::exception&)
+        {
+            throw std::runtime_error(
+                fmt::format(throwTrace + "Expected number as mask, got {}", parameters[1].m_value));
+        }
+    }
+    // If mask is a reference, then use the lambda to get the mask, if not found or not a number, return string failure
+    auto getMaskFromRef = [failureTrace1,
+                           failureTrace3](const base::Event& event,
+                                          const std::string& srcMask) -> std::variant<uint32_t, std::string>
     {
         uint32_t mask = 0;
         // If is a string
@@ -1670,7 +1773,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
             }
             catch (const std::exception&)
             {
-                return "trace fail parse";
+                return failureTrace1;
             }
         }
 
@@ -1690,31 +1793,8 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
             return mask;
         }
 
-        return "trace fail";
+        return failureTrace3;
     };
-
-    auto getValueFromBuildedMap = [buildedMap](const std::size_t pos) -> std::optional<std::string>
-    {
-        auto it = buildedMap.find(pos);
-        if (it != buildedMap.end())
-        {
-            return it->second;
-        }
-        return std::nullopt;
-    };
-
-    auto getValueFromEventMap = [](const base::Event& event, const std::size_t pos, const std::string& refMap)
-        ->std::optional<std::string>
-    {
-        auto path = refMap + "/" + std::to_string(pos);
-        const auto value = event->getString(path);
-        if (value.has_value())
-        {
-            return value.value();
-        }
-        return std::nullopt;
-    };
-
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
@@ -1722,13 +1802,15 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
          srcMap = std::move(parameters[0]),
          maskField = std::move(parameters[1]),
          isMSB,
+         paramMask,
          getMaskFromRef,
          getValueFromBuildedMap,
          getValueFromEventMap,
-         successTrace](const base::Event& event) -> base::result::Result<base::Event>
+         successTrace,
+         failureTrace2](const base::Event& event) -> base::result::Result<base::Event>
         {
-            uint32_t mask = 0;
             // Get mask in hexa or decimal
+            uint32_t mask = paramMask;
             if (helper::base::Parameter::Type::REFERENCE == maskField.m_type)
             {
                 auto res = getMaskFromRef(event, maskField.m_value);
@@ -1738,21 +1820,12 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
                 }
                 mask = std::get<uint32_t>(res);
             }
-            else
-            {
-                // Move to builder helper, but i think is not supported value
-                try
-                {
-                    mask = std::stoul(maskField.m_value, nullptr, 16) & 0x0000FFFF;
-                }
-                catch (const std::exception&)
-                {
-                    return base::result::makeFailure(event, "trace fail parse");
-                }
-            }
 
+            // Select the map to use
             bool usePrebuildedMap = helper::base::Parameter::Type::VALUE == srcMap.m_type;
-
+            // Map type
+            json::Json::Type mapValueType {};
+            bool isTypeSet = false;
             // Iterate over mask (isMSB or LSB)
             for (std::size_t pos = 0; pos <= 31; ++pos)
             {
@@ -1770,25 +1843,38 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
                 if (bitPos & mask)
                 {
                     // Get value from map
-                    std::optional<std::string> value;
-                    if (usePrebuildedMap)
-                    {
-                        value = getValueFromBuildedMap(pos);
-                    }
-                    else
-                    {
-                        value = getValueFromEventMap(event, pos, srcMap.m_value);
-                    }
-
+                    std::optional<json::Json> value = usePrebuildedMap
+                                                          ? getValueFromBuildedMap(pos)
+                                                          : getValueFromEventMap(event, pos, srcMap.m_value);
                     if (value.has_value())
                     {
-                        event->appendString(value.value(), targetField);
+                        if (!isTypeSet)
+                        {
+                            mapValueType = value.value().type();
+                            isTypeSet = true;
+                        }
+                        else if (mapValueType != value.value().type())
+                        {
+                            return base::result::makeFailure(event, failureTrace2);
+                        }
+                        event->appendJson(value.value(), targetField);
                     }
                 }
             }
 
             return base::result::makeSuccess(event, successTrace);
         });
+}
+
+HelperBuilder getOpBuilderHelperBitmaskToTable(std::shared_ptr<schemf::ISchema> schema)
+{
+    return [schema](const std::string& targetField,
+                    const std::string& rawName,
+                    const std::vector<std::string>& rawParameters,
+                    std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperBitmaskToTable(targetField, rawName, rawParameters, definitions, schema);
+    };
 }
 
 //*************************************************
