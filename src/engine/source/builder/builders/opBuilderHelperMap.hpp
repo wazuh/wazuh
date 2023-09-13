@@ -392,14 +392,23 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
  * @brief Builds helper BitmaskToTable, that maps a bitmask to a table of values.
  * <field>: +bitmask_to_table/[table_value1|$<table_reference1>]/[<bitmask_value1>|$<bitmask_reference1>]/MSB|LSB
  *
- * The table should be a object with the following format:
+ * The table should be a object with the following format { "value bit position in decimal": "value" }
  * {
- *  "0": "value1",
- *  "1": "value2",
- *  "2": "value3",
- *   ...
- *  "31": "value32"
- * }
+ *		"1": "value1",
+ *		"2": "value2",
+ *		"4": "value3",
+ *      "8": "value4",
+ *      "16": "value5",
+ *      "32": "value6",
+ *      "64": "value7",
+ *      "128": "value8",
+ *      "256": "value9",
+ *      "512": "value10",
+ *      .....
+ *      "536870912": "value30",
+ *      "1073741824": "value31",
+ *      "2147483648": "value32"
+ *	}
  * The key is the bit position and the value is the value to be mapped.
  * The value should be a string.
  * If is set the MSB flag, the bits will be read from the most significant bit to the least significant bit.
