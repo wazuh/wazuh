@@ -1610,48 +1610,40 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
                                                std::shared_ptr<schemf::ISchema> schema)
 {
 
-    // base::Expression
     const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions, false);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
     const std::string throwTrace {"Engine bitmask32 to table builder: "};
 
-    // Verify parameters
+    // Verify parameters size
     helper::base::checkParametersMinSize(rawName, parameters, 2);
-    bool isMSB = false;
-    if (parameters.size() == 3 && parameters[2].m_value != "LSB")
+
+    // Check isMSB
+    bool isMSB = (parameters.size() == 3 && parameters[2].m_value == "MSB");
+    if (parameters.size() == 3 && parameters[2].m_value != "LSB" && !isMSB)
     {
-        if (parameters[2].m_value == "MSB")
-        {
-            isMSB = true;
-        }
-        else
-        {
-            throw std::runtime_error(
-                fmt::format(throwTrace + "Expected LSB or MSB as third parameter, got {}", parameters[2].m_value));
-        }
+        throw std::runtime_error(
+            fmt::format(throwTrace + "Expected LSB or MSB as third parameter, got {}", parameters[2].m_value));
     }
 
     // Verify the schema fields
-    // Target
     if (schema->hasField(targetField) && schema->getType(targetField) != json::Json::Type::Array)
     {
-        throw std::runtime_error(
-            throwTrace + "failed schema validation: Target field must be an array.");
+        throw std::runtime_error(throwTrace + "failed schema validation: Target field must be an array.");
     }
-    // Map
+
     if (parameters[0].m_type == helper::base::Parameter::Type::REFERENCE && schema->hasField(parameters[0].m_value)
         && schema->getType(parameters[0].m_value) != json::Json::Type::Object)
     {
-        throw std::runtime_error(
-            throwTrace + "failed schema validation: Map field must be an object.");
+        throw std::runtime_error(throwTrace + "failed schema validation: Map field must be an object.");
     }
-    // Mask
-    if (parameters[1].m_type == helper::base::Parameter::Type::REFERENCE && schema->hasField(parameters[1].m_value)
-        && ((schema->getType(parameters[1].m_value) != json::Json::Type::String)
-            || (schema->getType(parameters[1].m_value) != json::Json::Type::Number)))
+
+    if (parameters[1].m_type == helper::base::Parameter::Type::REFERENCE && schema->hasField(parameters[1].m_value))
     {
-        throw std::runtime_error(
-            throwTrace + "failed schema validation: Mask field must be a string or number.");
+        auto type = schema->getType(parameters[1].m_value);
+        if (type != json::Json::Type::String && type != json::Json::Type::Number)
+        {
+            throw std::runtime_error(throwTrace + "failed schema validation: Mask field must be a string or number.");
+        }
     }
 
     // Tracing
@@ -1665,11 +1657,11 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
     /*****************************
      *  MAP
      ***************************** */
-    // If map is a definition/value, then build the map
     std::map<uint32_t, json::Json> buildedMap;
-    if (helper::base::Parameter::Type::VALUE == parameters[0].m_type)
+    if (parameters[0].m_type == helper::base::Parameter::Type::VALUE)
     {
         json::Json jDefinition;
+
         try
         {
             jDefinition = json::Json {parameters[0].m_value.c_str()};
@@ -1677,21 +1669,23 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
         catch (const std::exception& e)
         {
             throw std::runtime_error(
-                fmt::format(throwTrace + "Expected object as first parameter, got {}", parameters[0].m_value));
+                fmt::format("{}Expected object as first parameter, got {}", throwTrace, parameters[0].m_value));
         }
+
         if (!jDefinition.isObject())
         {
             throw std::runtime_error(
-                fmt::format(throwTrace + "Expected object as first parameter, got {}", parameters[0].m_value));
+                fmt::format("{}Expected object as first parameter, got {}", throwTrace, parameters[0].m_value));
         }
 
         auto jMap = jDefinition.getObject().value();
         json::Json::Type mapValueType {};
         bool isTypeSet = false;
+
         for (auto& [key, value] : jMap)
         {
-            uint32_t index {0};
-            // Create index for bitMap
+            uint32_t index = 0;
+
             if (key.empty())
             {
                 throw std::runtime_error("Empty key provided");
@@ -1699,23 +1693,14 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
 
             if (key[0] == '-')
             {
-                throw std::runtime_error(
-                    fmt::format("Expected positive number as decimal/hexa (0x)/binary (0b) as key, got {}", key));
+                throw std::runtime_error(fmt::format(
+                    "{}Expected positive number as decimal/hexa (0x)/binary (0b) as key, got {}", throwTrace, key));
             }
 
             size_t pos = 0;
-            int base = 10;
-
-            if (key.compare(0, 2, "0x") == 0)
-            {
-                pos = 2;
-                base = 16;
-            }
-            else if (key.compare(0, 2, "0b") == 0)
-            {
-                pos = 2;
-                base = 2;
-            }
+            int base = (key.compare(0, 2, "0x") == 0)   ? (pos = 2, 16)
+                       : (key.compare(0, 2, "0b") == 0) ? (pos = 2, 2)
+                                                        : 10;
 
             try
             {
@@ -1724,10 +1709,9 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
             catch (const std::exception& e)
             {
                 throw std::runtime_error(
-                    fmt::format("Expected number as decimal/hexa (0x)/binary (0b) as key, got {}", key));
+                    fmt::format("{}Expected number as decimal/hexa (0x)/binary (0b) as key, got {}", throwTrace, key));
             }
 
-            // Che the type of value
             if (!isTypeSet)
             {
                 mapValueType = value.type();
@@ -1735,8 +1719,9 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
             }
             else if (mapValueType != value.type())
             {
-                throw std::runtime_error(throwTrace + "Expected same type for all values on the bit map");
+                throw std::runtime_error(fmt::format("{}Expected same type for all values on the bit map", throwTrace));
             }
+
             buildedMap[index] = std::move(value);
         }
     }
@@ -1838,7 +1823,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
         {
             // Get mask in hexa or decimal
             uint32_t mask = paramMask;
-            if (helper::base::Parameter::Type::REFERENCE == maskField.m_type)
+            if (maskField.m_type == helper::base::Parameter::Type::REFERENCE)
             {
                 auto res = getMaskFromRef(event, maskField.m_value);
                 if (std::holds_alternative<std::string>(res))
@@ -1848,32 +1833,21 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
                 mask = std::get<uint32_t>(res);
             }
 
-            // Select the map to use
-            bool usePrebuildedMap = helper::base::Parameter::Type::VALUE == srcMap.m_type;
-            // Map type
-            json::Json::Type mapValueType {};
+            bool usePrebuildedMap = srcMap.m_type == helper::base::Parameter::Type::VALUE;
+
+            json::Json::Type mapValueType;
             bool isTypeSet = false;
-            // Iterate over mask (isMSB or LSB)
+
             for (uint32_t pos = 0; pos <= 31; ++pos)
             {
-                uint32_t bitPos;
-                uint32_t index = 0x1 << pos;
-
-                if (isMSB)
-                {
-                    bitPos = (0x1 << 31) >> pos;
-                }
-                else
-                {
-                    bitPos = 0x1 << pos;
-                }
+                uint32_t bitPos = isMSB ? (0x1 << 31) >> pos : 0x1 << pos;
 
                 if (bitPos & mask)
                 {
-                    // Get value from map [use post o bitPos?]
-                    std::optional<json::Json> value = usePrebuildedMap
-                                                          ? getValueFromBuildedMap(index)
-                                                          : getValueFromEventMap(event, index, srcMap.m_value);
+                    // Determine the appropriate map and get the value.
+                    auto value = usePrebuildedMap ? getValueFromBuildedMap(0x1 << pos)
+                                                  : getValueFromEventMap(event, 0x1 << pos, srcMap.m_value);
+
                     if (value.has_value())
                     {
                         if (!isTypeSet)
@@ -1885,7 +1859,7 @@ base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
                         {
                             return base::result::makeFailure(event, failureTrace2);
                         }
-                        event->appendJson(value.value(), targetField);
+                        event->appendJson(*value, targetField);
                     }
                 }
             }
