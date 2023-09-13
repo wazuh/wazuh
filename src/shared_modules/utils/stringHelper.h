@@ -366,7 +366,18 @@ namespace Utils
 
     static int parseStrToBool(const std::string& str)
     {
-        return (str.compare("yes") == 0) ? 1 : (str.compare("no") == 0) ? 0 : -1;
+        if (str.compare("yes") == 0)
+        {
+            return 1;
+        }
+        else if (str.compare("no") == 0)
+        {
+            return 0;
+        }
+        else
+        {
+            throw std::runtime_error("Invalid input.");
+        }
     }
 
     static long parseStrToTime(const std::string str)
@@ -374,14 +385,14 @@ namespace Utils
         std::size_t pos;
         try
         {
-            auto seconds {std::stoll(str, &pos)};
+            auto seconds {std::stol(str, &pos)};
 
             if (seconds < 0)
             {
                 return -1;
             }
 
-            switch (str.at(++pos))
+            switch (str.at(pos))
             {
                 case '\0': break;
                 case 'w': seconds *= W_WEEK_SECONDS; break;
