@@ -114,18 +114,9 @@ normalize:
     map:
       - windows.EventData.AccessListDescription: kvdb_get(windows_messages, $_access_list)
 
-  # - check: exists($_access_list) AND is_array($_access_list)
-  #   map:
-  #     - windows.EventData.AccessListDescription: kvdb_get_array(windows_messages, $_access_list)
-  #
-  # TODO: kvdb_get_array() is a function helper that takes an array of keys, queries the database for each key, and
-  # returns an array of corresponding values.
-  #
-  # The implementation of the HF implies the following restrictions:
-  # - Displacement: it may be that one or several keys are not obtained (it is not possible to match by position).
-  #   You can't fill the values ​​of the key not found with null because it could be a valid value.
-  # - Values ​​might not be of the same type (heterogeneous array): filebeat/opensearch constraint
-
+  - check: exists($_access_list) AND is_array($_access_list)
+    map:
+      - windows.EventData.AccessListDescription: kvdb_get_array(windows_messages, $_access_list)
 
   # TODO - Set Access Mask Descriptions (lines 2203 to 2234)
 
