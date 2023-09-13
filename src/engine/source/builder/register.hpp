@@ -135,6 +135,7 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_match");
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_not_match");
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_set");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetArray(dependencies.kvdbManager, dependencies.kvdbScopeName, dependencies.schema), "kvdb_get_array");
 
     // SCA decoder
     helperRegistry->registerBuilder(builders::getBuilderSCAdecoder(dependencies.wdbManager, dependencies.sockFactory),
