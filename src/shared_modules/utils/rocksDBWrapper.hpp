@@ -50,9 +50,9 @@ namespace Utils
          */
         void put(const std::string& key, const std::string& value)
         {
-            if (key.empty() || value.empty())
+            if (key.empty())
             {
-                throw std::invalid_argument("Key or value is empty");
+                throw std::invalid_argument("Key is empty");
             }
 
             const auto status {m_db->Put(rocksdb::WriteOptions(), key, value)};
@@ -66,19 +66,30 @@ namespace Utils
          * @brief Get a value from the database.
          *
          * @param key Key to get.
-         * @param value Value to get
+         * @param value Value to get.
+         *
+         * @return bool True if the operation was successful.
+         * @return bool False if the key was not found.
+         *
          */
-        void get(const std::string& key, std::string& value)
+        bool get(const std::string& key, std::string& value)
         {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+
             const auto status {m_db->Get(rocksdb::ReadOptions(), key, &value)};
             if (status.IsNotFound())
             {
-                throw std::invalid_argument("Key not found: " + key);
+                std::cerr << "Key not found: " << key << '\n';
+                return false;
             }
             else if (!status.ok())
             {
                 throw std::runtime_error("Error getting data: " + status.ToString());
             }
+            return true;
         }
 
         /**
@@ -88,6 +99,11 @@ namespace Utils
          */
         void delete_(const std::string& key) // NOLINT
         {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+
             const auto status {m_db->Delete(rocksdb::WriteOptions(), key)};
             if (!status.ok())
             {
@@ -99,19 +115,20 @@ namespace Utils
          * @brief Get the last key-value pair from the database.
          *
          * @return std::pair<std::string, std::string> Last key-value pair.
+         *
+         * @note The first element of the pair is the key, the second element is the value.
          */
         std::pair<std::string, std::string> getLastKeyValue()
         {
-            std::string lastKey {};
-            std::string lastValue {};
             std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions()));
-            for (it->SeekToLast(); it->Valid(); it->Prev())
+
+            it->SeekToLast();
+            if (it->Valid())
             {
-                lastKey = it->key().ToString();
-                lastValue = it->value().ToString();
-                break;
+                return {it->key().ToString(), it->value().ToString()};
             }
-            return {lastKey, lastValue};
+
+            throw std::runtime_error {"Error getting last key-value pair"};
         }
 
         /**
@@ -125,6 +142,7 @@ namespace Utils
             {
                 batch.Delete(it->key());
             }
+
             const auto status {m_db->Write(rocksdb::WriteOptions(), &batch)};
             if (!status.ok())
             {

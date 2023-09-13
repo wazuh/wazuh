@@ -20,12 +20,19 @@ TEST_F(RocksDBWrapperTest, TestPut)
 }
 
 /**
- * @brief Tests the put function with an empty key or value
+ * @brief Tests the put function with an empty key
  */
-TEST_F(RocksDBWrapperTest, TestPutEmptyKeyOrValue)
+TEST_F(RocksDBWrapperTest, TestPutEmptyKey)
 {
     EXPECT_THROW(db_wrapper->put("", "value1"), std::invalid_argument);
-    EXPECT_THROW(db_wrapper->put("key2", ""), std::invalid_argument);
+}
+
+/**
+ * @brief Tests the put function with an empty value
+ */
+TEST_F(RocksDBWrapperTest, TestPutEmptyValue)
+{
+    EXPECT_NO_THROW(db_wrapper->put("key2", ""));
 }
 
 /**
@@ -62,7 +69,7 @@ TEST_F(RocksDBWrapperTest, TestGet)
 {
     db_wrapper->put("key2", "value2");
     std::string value {};
-    EXPECT_NO_THROW(db_wrapper->get("key2", value));
+    EXPECT_TRUE(db_wrapper->get("key2", value));
     EXPECT_EQ(value, "value2");
 }
 
@@ -72,7 +79,7 @@ TEST_F(RocksDBWrapperTest, TestGet)
 TEST_F(RocksDBWrapperTest, TestGetNonExistentKey)
 {
     std::string value {};
-    EXPECT_THROW(db_wrapper->get("non_existent_key", value), std::invalid_argument);
+    EXPECT_FALSE(db_wrapper->get("non_existent_key", value));
 }
 
 /**
@@ -91,7 +98,7 @@ TEST_F(RocksDBWrapperTest, TestGetEmptyDB)
 {
     Utils::RocksDBWrapper new_db_wrapper("new_test.db");
     std::string value {};
-    EXPECT_THROW(new_db_wrapper.get("key1", value), std::invalid_argument);
+    EXPECT_FALSE(new_db_wrapper.get("key1", value));
 }
 
 /**
@@ -102,7 +109,7 @@ TEST_F(RocksDBWrapperTest, TestDelete)
     db_wrapper->put("key3", "value3");
     EXPECT_NO_THROW(db_wrapper->delete_("key3"));
     std::string value {};
-    EXPECT_THROW(db_wrapper->get("key3", value), std::invalid_argument); // The key should have been deleted
+    EXPECT_FALSE(db_wrapper->get("key3", value)); // The key should have been deleted
 }
 
 /**
@@ -118,7 +125,7 @@ TEST_F(RocksDBWrapperTest, TestDeleteNonExistentKey)
  */
 TEST_F(RocksDBWrapperTest, TestDeleteEmptyKey)
 {
-    EXPECT_NO_THROW(db_wrapper->delete_(""));
+    EXPECT_THROW(db_wrapper->delete_(""), std::invalid_argument);
 }
 
 /**
@@ -149,9 +156,7 @@ TEST_F(RocksDBWrapperTest, TestGetLastKeyValue)
 TEST_F(RocksDBWrapperTest, TestGetLastKeyValueEmptyDB)
 {
     Utils::RocksDBWrapper new_db_wrapper("new_test.db");
-    const auto [lastKey, lastValue] = new_db_wrapper.getLastKeyValue();
-    EXPECT_EQ(lastKey, "");
-    EXPECT_EQ(lastValue, "");
+    EXPECT_THROW(new_db_wrapper.getLastKeyValue(), std::runtime_error);
 }
 
 /**
@@ -163,8 +168,8 @@ TEST_F(RocksDBWrapperTest, TestDeleteAll)
     db_wrapper->put("key7", "value7");
     EXPECT_NO_THROW(db_wrapper->deleteAll());
     std::string value {};
-    EXPECT_THROW(db_wrapper->get("key6", value), std::invalid_argument); // The key should have been deleted
-    EXPECT_THROW(db_wrapper->get("key7", value), std::invalid_argument); // The key should have been deleted
+    EXPECT_FALSE(db_wrapper->get("key6", value)); // The key should have been deleted
+    EXPECT_FALSE(db_wrapper->get("key7", value)); // The key should have been deleted
 }
 
 /**
