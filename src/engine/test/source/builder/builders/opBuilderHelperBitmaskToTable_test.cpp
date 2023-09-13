@@ -4,6 +4,7 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
+#include <schemf/mockSchema.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -27,7 +28,7 @@ constexpr auto defualtEvent = R"({
 		"30": "value30",
 		"31": "value31",
 		"32": "value32",
-      "33": "value33"
+        "33": "value33"
 	}
 })";
 
@@ -74,6 +75,19 @@ struct MakeTestEvent
 using TestParams = std::tuple<std::vector<std::string>, bool, std::shared_ptr<json::Json>, std::shared_ptr<json::Json>>;
 class OpBuilderHelperMapBitmaskToTable : public ::testing::TestWithParam<TestParams>
 {
+    protected:
+        std::shared_ptr<schemf::mocks::MockSchema> m_schema;
+        std::shared_ptr<defs::mocks::FailDef> m_failDef;
+        builder::internals::HelperBuilder m_builder;
+
+        void SetUp() override
+        {
+            auto m_schema = std::make_shared<schemf::mocks::MockSchema>();
+            // Expect m_schema->hasField return always false
+            EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+            m_failDef = std::make_shared<defs::mocks::FailDef>();
+            m_builder = bld::getOpBuilderHelperBitmaskToTable(m_schema);
+        }
 };
 
 TEST_P(OpBuilderHelperMapBitmaskToTable, testcases)
@@ -84,9 +98,9 @@ TEST_P(OpBuilderHelperMapBitmaskToTable, testcases)
     auto tuple = std::make_tuple(PATH_RES,
                                  std::string {"+bitmask32_to_table"},
                                  helperParams,
-                                 std::make_shared<defs::mocks::FailDef>());
+                                 m_failDef);
 
-    auto op = std::apply(bld::opBuilderHelperBitmaskToTable, tuple);
+    auto op = std::apply(m_builder, tuple);
 
     auto result = op->getPtr<Term<EngineOp>>()->getFn()(testEvent);
 
