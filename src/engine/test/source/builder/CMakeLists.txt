@@ -165,6 +165,7 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperTimeEpoch_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBGetArray_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 

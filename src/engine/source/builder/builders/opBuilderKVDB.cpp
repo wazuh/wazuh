@@ -446,4 +446,128 @@ HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, 
     };
 }
 
+// <field>: kvdb_get_array(<db>, <key_array>)
+HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager,
+                                       const std::string& kvdbScopeName,
+                                       std::shared_ptr<schemf::ISchema> schema)
+{
+    return [kvdbManager, kvdbScopeName, schema](const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        auto parameters = processParameters(rawName, rawParameters, definitions);
+        checkParametersSize(rawName, parameters, 2);
+        const auto name = formatHelperName(targetField, rawName, parameters);
+
+        const auto& dbName = parameters[0].m_value;
+
+        if (Parameter::Type::REFERENCE != parameters[1].m_type)
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", "Key array must be a reference"));
+        }
+
+        auto arrayRef = parameters[1].m_value;
+
+        // Check target field is an array
+        if (schema->hasField(targetField) && schema->getType(targetField) != json::Json::Type::Array)
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", "Target field must be an array"));
+        }
+
+        // Check array reference is an array
+        if (schema->hasField(arrayRef) && schema->getType(arrayRef) != json::Json::Type::Array)
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", "Array reference must be an array"));
+        }
+
+        // Get KVDB handler
+        auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            throw std::runtime_error(
+                fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+        }
+
+        // Trace messages
+        auto referenceNotFound = fmt::format("Reference '{}' not found or not array", arrayRef);
+        auto emptyArray = fmt::format("Empty array in reference '{}'", arrayRef);
+        auto notKeyStr = fmt::format("Found non-string key in reference '{}'", arrayRef);
+        auto heterogeneousTypes = fmt::format("Heterogeneous types when obtaining values from database '{}'", dbName);
+        auto malformedJson = fmt::format("Malformed JSON found in database '{}'", dbName);
+        auto emptyValueArray = fmt::format("No keys matched in database '{}'", dbName);
+
+        auto successTrace = fmt::format("[{}] -> Success", name);
+
+        // Return Expression
+        return base::Term<base::EngineOp>::create(
+            name,
+            [=, kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
+            {
+                // Resolve array of keys reference
+                auto keys = event->getArray(arrayRef);
+                if (!keys)
+                {
+                    return base::result::makeFailure(event, referenceNotFound);
+                }
+                if (keys.value().empty())
+                {
+                    return base::result::makeFailure(event, emptyArray);
+                }
+
+                // Get values from KVDB
+                bool first = true;
+                json::Json::Type type;
+                std::vector<json::Json> values;
+                for (auto& jKey : keys.value())
+                {
+                    if (!jKey.isString())
+                    {
+                        return base::result::makeFailure(event, notKeyStr);
+                    }
+
+                    auto resultValue = kvdbHandler->get(jKey.getString().value());
+                    if (!base::isError(resultValue))
+                    {
+                        json::Json jValue;
+                        try
+                        {
+                            jValue = json::Json {std::get<std::string>(resultValue).c_str()};
+                        }
+                        catch (...)
+                        {
+                            return base::result::makeFailure(event, malformedJson);
+                        }
+
+                        if (first)
+                        {
+                            type = jValue.type();
+                            first = false;
+                        }
+
+                        if (jValue.type() != type)
+                        {
+                            return base::result::makeFailure(event, heterogeneousTypes);
+                        }
+
+                        values.emplace_back(std::move(jValue));
+                    }
+                }
+
+                if (values.empty())
+                {
+                    return base::result::makeFailure(event, emptyValueArray);
+                }
+
+                // Append values to target field
+                for (auto& value : values)
+                {
+                    event->appendJson(value, targetField);
+                }
+
+                return base::result::makeSuccess(event, successTrace);
+            });
+    };
+}
+
 } // namespace builder::internals::builders
