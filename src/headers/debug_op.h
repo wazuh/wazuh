@@ -40,6 +40,19 @@
 
 #define _W_STRING_MAX   67108864  // Max. dynamic string size (64 MB).
 
+#define MAX_SIZE_STR_DEBUG     (10)
+#define MAX_SIZE_STR_INFO      (9)
+#define MAX_SIZE_STR_CRITICAL  (13)
+#define MAX_SIZE_STR_ERROR     (10)
+#define MAX_SIZE_STR_WARNING   (12)
+
+
+#define W_STR_DEBUG     "- DEBUG - "
+#define W_STR_INFO      "- INFO - "
+#define W_STR_CRITICAL  "- CRITICAL - "
+#define W_STR_ERROR     "- ERROR - "
+#define W_STR_WARNING   "- WARNING - "
+
 #define mdebug1(msg, ...) _mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define plain_mdebug1(msg, ...) _plain_mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtdebug1(tag, msg, ...) _mtdebug1(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
@@ -109,16 +122,6 @@ void nowChroot(void);
 void nowDaemon(void);
 
 int isChroot(void);
-
-/**
- * @brief Parse the output of the GCP/AWS/AZURE or any script and prints it depending on the debug
- *        level stated by the script
- * @param output Output returned by the call to the script
- * @param logger_name String to match with content of output
- * @param tag Tag that should be used when printing the messages
- * @param service_title String indicating which service is used
- */
-void w_parse_output(char *output, char *logger_name, char *tag, char* service_title);
 
 /* Debug analysisd */
 #ifdef DEBUGAD
