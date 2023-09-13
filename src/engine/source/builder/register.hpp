@@ -108,6 +108,8 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "system_epoch");
     helperRegistry->registerBuilder(builders::getOpBuilderHelperDateFromEpochTime(dependencies.schema),
                                     "date_from_epoch");
+    // Map helpers: bit functions
+    helperRegistry->registerBuilder(builders::opBuilderHelperBitmaskToTable, "bitmask32_to_table");
     // Map helpers: Definition functions
     helperRegistry->registerBuilder(builders::getOpBuilderHelperGetValue(dependencies.schema), "get_value");
     helperRegistry->registerBuilder(builders::getOpBuilderHelperMergeValue(dependencies.schema), "merge_value");
