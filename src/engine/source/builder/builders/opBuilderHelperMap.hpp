@@ -385,6 +385,53 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
                                          std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
+//*                  bit functions                *
+//*************************************************
+
+/**
+ * @brief Builds helper BitmaskToTable, that maps a bitmask to a table of values.
+ * <field>: +bitmask_to_table/[table_value1|$<table_reference1>]/[<bitmask_value1>|$<bitmask_reference1>]/MSB|LSB
+ *
+ * The table should be a object with the following format:
+ * {
+ *  "0": "value1",
+ *  "1": "value2",
+ *  "2": "value3",
+ *   ...
+ *  "31": "value32"
+ * }
+ * The key is the bit position and the value is the value to be mapped.
+ * The value should be a string.
+ * If is set the MSB flag, the bits will be read from the most significant bit to the least significant bit.
+ * then, the bit 0 will be the most significant bit and the bit 31 will be the least significant bit.
+ * example:
+ * bit 31 -> "value1"
+ * bit 30 -> "value2"
+ * bit 29 -> "value3"
+ *
+ * If is set the LSB flag, the bits will be read from the least significant bit to the most significant bit.
+ * then, the bit 0 will be the least significant bit and the bit 31 will be the most significant bit.
+ * example:
+ * bit 0 -> "value1"
+ * bit 1 -> "value2"
+ * bit 2 -> "value3"
+ *
+ * If the flag is not set, the default value is LSB.
+ * If the the the bit position is not in the range of 0 to 31, it will be ignored.
+ * If the bit position is not set, it will be ignored.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition.
+ * @param definitions handler with definitions
+ * @return base::Expression The Lifter with the SHA1 hash.
+ * @throw std::runtime_error if the parameter size is not one.
+ */
+base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions);
+
+//*************************************************
 //*                  Definition                   *
 //*************************************************
 

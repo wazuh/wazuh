@@ -1601,6 +1601,197 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 }
 
 //*************************************************
+//*                  bit functions                *
+//*************************************************
+base::Expression opBuilderHelperBitmaskToTable(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
+{
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions, false);
+
+    // Assert expected minimun number of parameters
+    helper::base::checkParametersMinSize(rawName, parameters, 2);
+    bool isMSB = false;
+    if (parameters.size() == 3 && parameters[2].m_value != "LSB")
+    {
+        if (parameters[2].m_value == "MSB")
+        {
+            isMSB = true;
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("Expected LSB or MSB as third parameter, got {}", parameters[2].m_value));
+        }
+    }
+
+    // Format name for the tracer
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // Tracing
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    //const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
+    //const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
+    //const std::string failureTrace3 {fmt::format("[{}] -> Failure: Couldn't create HASH from string", name)};
+
+
+    std::map<std::size_t, std::string> buildedMap;
+    if (helper::base::Parameter::Type::VALUE == parameters[0].m_type)
+    {
+        // TODO add try catch, expected json object
+        auto jDefinition = json::Json {parameters[0].m_value.c_str()};
+        if(!jDefinition.isObject()) {
+            throw std::runtime_error(fmt::format("Expected object as first parameter, got {}", parameters[0].m_value));
+        }
+
+        auto jMap = jDefinition.getObject().value();
+
+        // Validate types
+        for (auto& [key, value] : jMap)
+        {
+            auto index = std::stoul(key, nullptr, 10); // Try - catch and rethrow
+            buildedMap[index] = value.getString().value(); // validate if is string
+        }
+
+    }
+
+    auto getMaskFromRef = [](const base::Event& event, const std::string& srcMask) -> std::variant<uint32_t, std::string>
+    {
+        uint32_t mask = 0;
+        // If is a string
+        const auto maskStr = event->getString(srcMask);
+        if (maskStr.has_value())
+        {
+            try
+            {
+                mask = std::stoul(maskStr.value(), nullptr, 16) & 0x0000FFFF;
+                return mask;
+            }
+            catch (const std::exception&)
+            {
+                return "trace fail parse";
+            }
+        }
+
+        // If is a number 32 bits
+        const auto maskInt = event->getInt(srcMask);
+        if (maskInt.has_value())
+        {
+            mask = maskInt.value() & 0x0000FFFF;
+            return mask;
+        }
+
+        // If is a number 64 bits
+        const auto maskInt64 = event->getInt64(srcMask);
+        if (maskInt64.has_value())
+        {
+            mask = maskInt64.value() & 0x0000FFFF;
+            return mask;
+        }
+
+        return "trace fail";
+    };
+
+    auto getValueFromBuildedMap = [buildedMap](const std::size_t pos) -> std::optional<std::string>
+    {
+        auto it = buildedMap.find(pos);
+        if (it != buildedMap.end())
+        {
+            return it->second;
+        }
+        return std::nullopt;
+    };
+
+    auto getValueFromEventMap = [](const base::Event& event, const std::size_t pos, const std::string& refMap)
+        ->std::optional<std::string>
+    {
+        auto path = refMap + "/" + std::to_string(pos);
+        const auto value = event->getString(path);
+        if (value.has_value())
+        {
+            return value.value();
+        }
+        return std::nullopt;
+    };
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [targetField = std::move(targetField),
+         srcMap = std::move(parameters[0]),
+         maskField = std::move(parameters[1]),
+         isMSB,
+         getMaskFromRef,
+         getValueFromBuildedMap,
+         getValueFromEventMap,
+         successTrace](const base::Event& event) -> base::result::Result<base::Event>
+        {
+            uint32_t mask = 0;
+            // Get mask in hexa or decimal
+            if (helper::base::Parameter::Type::REFERENCE == maskField.m_type)
+            {
+                auto res = getMaskFromRef(event, maskField.m_value);
+                if (std::holds_alternative<std::string>(res))
+                {
+                    return base::result::makeFailure(event, std::move(std::get<std::string>(res)));
+                }
+                mask = std::get<uint32_t>(res);
+            }
+            else
+            {
+                // Move to builder helper, but i think is not supported value
+                try
+                {
+                    mask = std::stoul(maskField.m_value, nullptr, 16) & 0x0000FFFF;
+                }
+                catch (const std::exception&)
+                {
+                    return base::result::makeFailure(event, "trace fail parse");
+                }
+            }
+
+            bool usePrebuildedMap = helper::base::Parameter::Type::VALUE == srcMap.m_type;
+
+            // Iterate over mask (isMSB or LSB)
+            for (std::size_t pos = 0; pos <= 31; ++pos)
+            {
+                uint32_t bitPos;
+
+                if (isMSB)
+                {
+                    bitPos = (0x1 << 31) >> pos;
+                }
+                else
+                {
+                    bitPos = 0x1 << pos;
+                }
+
+                if (bitPos & mask)
+                {
+                    // Get value from map
+                    std::optional<std::string> value;
+                    if (usePrebuildedMap)
+                    {
+                        value = getValueFromBuildedMap(pos);
+                    }
+                    else
+                    {
+                        value = getValueFromEventMap(event, pos, srcMap.m_value);
+                    }
+
+                    if (value.has_value())
+                    {
+                        event->appendString(value.value(), targetField);
+                    }
+                }
+            }
+
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+//*************************************************
 //*                  Definition                   *
 //*************************************************
 
