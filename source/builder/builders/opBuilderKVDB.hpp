@@ -6,6 +6,7 @@
 
 #include <defs/idefinitions.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <schemf/ischema.hpp>
 
 #include "expression.hpp"
 #include "registry.hpp"
@@ -116,6 +117,19 @@ HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, con
  * @return Builder
  */
 HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+
+/**
+ * @brief Get the KVDB Get Array function helper builder
+ *
+ * @param kvdbScope KVDB Scope
+ * @param kvdbScopeName KVDB Scope Name
+ * @param schema Schema
+ * 
+ * @return Builder
+ */
+HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager,
+                                       const std::string& kvdbScopeName,
+                                       std::shared_ptr<schemf::ISchema> schema);
 
 } // namespace builder::internals::builders
 

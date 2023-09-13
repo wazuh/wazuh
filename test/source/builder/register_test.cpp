@@ -17,6 +17,7 @@ TEST(RegisterTest, AllHelperBuildersRegistered)
     ASSERT_NO_THROW(helperRegistry->getBuilder("kvdb_get_merge"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("kvdb_match"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("kvdb_not_match"));
+    ASSERT_NO_THROW(helperRegistry->getBuilder("kvdb_get_array"));
 
     ASSERT_NO_THROW(helperRegistry->getBuilder("exists"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("not_exists"));
