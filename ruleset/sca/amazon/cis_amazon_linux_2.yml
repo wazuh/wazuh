@@ -137,7 +137,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt -n /tmp -> r:\s/tmp\s && r:noexec'
+      - 'not c:findmnt -n /tmp -> r:\s/tmp\s && !r:noexec'
 
   # 1.1.4 Ensure nodev option set on /tmp partition. (Automated)
   - id: 20505
@@ -157,7 +157,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt -n /tmp -> r:\s/tmp\s && r:nodev'
+      - 'not c:findmnt -n /tmp -> r:\s/tmp\s && !r:nodev'
 
   # 1.1.5 Ensure nosuid option set on /tmp partition. (Automated)
   - id: 20506
@@ -178,7 +178,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt -n /tmp -> r:\s/tmp\s && r:nosuid'
+      - 'not c:findmnt -n /tmp -> r:\s/tmp\s && !r:nosuid'
 
   # 1.1.6 Ensure /dev/shm is configured. (Automated)
   - id: 20507
@@ -221,7 +221,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && r:noexec'
+      - 'not c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && !r:noexec'
 
   # 1.1.8 Ensure nodev option set on /dev/shm partition. (Automated)
   - id: 20509
@@ -242,7 +242,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && r:nodev'
+      - 'not c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && !r:nodev'
 
   # 1.1.9 Ensure nosuid option set on /dev/shm partition. (Automated)
   - id: 20510
@@ -263,7 +263,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && r:nosuid'
+      - 'not c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && !r:nosuid'
 
   # 1.1.10 Ensure separate partition exists for /var. (Automated)
   - id: 20511
@@ -329,7 +329,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt /var/tmp -> r:^\s*/var/tmp\s && r:noexec'
+      - 'not c:findmnt /var/tmp -> r:^\s*/var/tmp\s && !r:noexec'
 
   # 1.1.13 Ensure /var/tmp partition includes the nodev option. (Automated)
   - id: 20514
@@ -350,7 +350,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt /var/tmp -> r:^\s*/var/tmp\s && r:nodev'
+      - 'not c:findmnt /var/tmp -> r:^\s*/var/tmp\s && !r:nodev'
 
   # 1.1.14 Ensure /var/tmp partition includes the nosuid option. (Automated)
   - id: 20515
@@ -371,7 +371,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt /var/tmp -> r:^\s*/var/tmp\s && r:nosuid'
+      - 'not c:findmnt /var/tmp -> r:^\s*/var/tmp\s && !r:nosuid'
 
   # 1.1.15 Ensure separate partition exists for /var/log. (Automated)
   - id: 20516
@@ -458,7 +458,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:findmnt /home -> r:^\s*/home\s && r:nodev'
+      - 'not c:findmnt /home -> r:^\s*/home\s && !r:nodev'
 
   # 1.1.19 Ensure removable media partitions include noexec option. (Automated) - Not Implemented
   # 1.1.20 Ensure nodev option set on removable media partitions. (Automated)- Not Implemented
