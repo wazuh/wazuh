@@ -495,7 +495,7 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
         auto notKeyStr = fmt::format("Found non-string key in reference '{}'", arrayRef);
         auto heterogeneousTypes = fmt::format("Heterogeneous types when obtaining values from database '{}'", dbName);
         auto malformedJson = fmt::format("Malformed JSON found in database '{}'", dbName);
-        auto emptyValueArray = fmt::format("No keys matched in database '{}'", dbName);
+        auto keyNotMatched = fmt::format("Key not found in DB '{}'", dbName);
 
         auto successTrace = fmt::format("[{}] -> Success", name);
 
@@ -552,11 +552,10 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
 
                         values.emplace_back(std::move(jValue));
                     }
-                }
-
-                if (values.empty())
-                {
-                    return base::result::makeFailure(event, emptyValueArray);
+                    else
+                    {
+                        return base::result::makeFailure(event, keyNotMatched);
+                    }
                 }
 
                 // Append values to target field

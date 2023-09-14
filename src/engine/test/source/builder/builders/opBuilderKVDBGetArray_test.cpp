@@ -190,12 +190,13 @@ TEST_P(Operates, Params)
     if (shouldPass)
     {
         ASSERT_TRUE(res.success()) << res.trace();
-        ASSERT_EQ(*(res.payload()), oEvent);
     }
     else
     {
         ASSERT_TRUE(res.failure());
     }
+
+    ASSERT_EQ(*(res.payload()), oEvent);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -207,9 +208,9 @@ INSTANTIATE_TEST_SUITE_P(
                   R"({"ref": ["key1", "key2"]})",
                   R"({"ref": ["key1", "key2"], "field":[1, 2]})",
                   {{"key1", R"(1)"}, {"key2", R"(2)"}}),
-        OperatesT(true,
+        OperatesT(false,
                   R"({"ref": ["key1", "key2", "key3"]})",
-                  R"({"ref": ["key1", "key2", "key3"], "field":["1", "2"]})",
+                  R"({"ref": ["key1", "key2", "key3"]})",
                   {{"key1", R"("1")"}, {"key2", R"("2")"}}),
         OperatesT(false, "{}", "{}", {}),
         OperatesT(false, R"({"ref": [1]})", R"({"ref": [1]})", {{"key1", R"("1")"}, {"key2", R"("2")"}}),
