@@ -476,3 +476,52 @@ TEST_F(StringUtilsTest, stringIsNumberTrue)
     EXPECT_TRUE(Utils::isNumber("12345"));
 }
 
+TEST_F(StringUtilsTest, parseStrToBoolYes)
+{
+    EXPECT_EQ(Utils::parseStrToBool("yes"),1);
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolNo)
+{
+    EXPECT_EQ(Utils::parseStrToBool("no"),0);
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolSarasa)
+{
+    EXPECT_THROW(Utils::parseStrToBool("Sarasa"),std::runtime_error);
+}
+
+TEST_F(StringUtilsTest, parseStrToTimeEmpty)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1"),-1);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneSec)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1s"),1);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneMin)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1m"),60);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneHour)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1h"),3600);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneDay)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1d"),86400);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneWeek)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1w"),604800);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneSarasa)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1invalid"),-1);
+}
