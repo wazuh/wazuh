@@ -53,17 +53,19 @@ from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.agentd.patterns import * 
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor 
+from wazuh_testing.tools.monitors.queue_monitor import QueueMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils import file, callbacks
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
+from .. import wait_keepalive, wait_ack, wait_state_update, add_custom_key
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -91,11 +93,6 @@ def start_remoted_server(test_metadata) -> None:
     else:
         remoted_server = None
     return remoted_server
-
-def add_custom_key() -> None:
-    """Set test client.keys file"""
-    with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
-        client_keys.write("100 ubuntu-agent any TopSecret")
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options, truncate_monitored_files):
@@ -181,9 +178,10 @@ def remoted_get_state(remoted_server):
         state info
     """
     remoted_server.send_custom_message('agent getstate')
-    sleep(2)
-    response = remoted_server.custom_message
-    return response
+    sleep(20)
+    #queue_monitor = QueueMonitor(remoted_server.queue)
+    #queue_monitor.start(callback=callbacks.generate_callback(r'.*connected.*'))
+    return remoted_server.custom_message_response
 
 
 def check_fields(expected_output, remoted_server):
@@ -230,9 +228,8 @@ def check_last_ack(expected_value=None, get_state_callback=None):
         if expected_value == '':
             return expected_value == current_value
 
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
-    return(wazuh_log_monitor.callback_result != None)
+    wait_ack()
+    return True
 
 def check_last_keepalive(expected_value=None, get_state_callback=None):
     """Check `field` status
@@ -251,12 +248,11 @@ def check_last_keepalive(expected_value=None, get_state_callback=None):
         if expected_value == '':
             return expected_value == current_value
 
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE))
-    
+    wait_keepalive()
+
     wazuh_log_monitor_ = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor_.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION))
-    return(wazuh_log_monitor.callback_result != None or wazuh_log_monitor_.callback_result != None)
+    return(wazuh_log_monitor_.callback_result != None)
 
 
 def check_msg_count(expected_value=None, get_state_callback=None):
@@ -278,7 +274,7 @@ def check_msg_count(expected_value=None, get_state_callback=None):
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION))
-    return(wazuh_log_monitor.callback_result != None or wazuh_log_monitor.callback_result != None)
+    return(wazuh_log_monitor.callback_result != None)
 
     with open(WAZUH_LOG_PATH, 'r') as log:
         for line in log:
@@ -306,39 +302,3 @@ def check_status(expected_value=None, get_state_callback=None):
             wait_state_update()
     current_value = get_state_callback()['status']
     return expected_value == current_value
-
-
-def wait_connect():
-    """
-        Watch ossec.log until received "Connected to the server" message is found
-    """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
-    assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
-
-
-def wait_ack():
-    """
-        Watch ossec.log until received ack message is found
-    """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
-    assert (wazuh_log_monitor.callback_result != None), f'Received ack message not found'
-
-
-def wait_keepalive():
-    """
-        Watch ossec.log until "Sending keep alive" message is found
-    """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE))
-    assert (wazuh_log_monitor.callback_result != None), f'Sending keep alive not found'
-
-
-def wait_state_update():
-    """
-        Watch ossec.log until "Updating state file" message is found
-    """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UPDATING_STATE_FILE))
-    assert (wazuh_log_monitor.callback_result != None), f'State file update not found'

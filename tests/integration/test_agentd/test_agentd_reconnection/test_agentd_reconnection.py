@@ -53,18 +53,15 @@ import sys
 from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator, AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils import file, callbacks
-from wazuh_testing.utils.services import check_if_process_is_running, control_service
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
+from .. import wait_keepalive, wait_enrollment, wait_enrollment_try, add_custom_key
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -82,42 +79,6 @@ if sys.platform == WINDOWS:
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
-
-def add_custom_key() -> None:
-    """Set test client.keys file"""
-    with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
-        client_keys.write("100 ubuntu-agent any TopSecret")
-
-def wait_notify(line):
-    """Callback function to wait for agent checkins to the manager."""
-    if 'Sending keep alive:' in line:
-        return line
-    return None
-
-def wait_enrollment(line):
-    """Callback function to wait for enrollment."""
-    if 'Valid key received' in line:
-        return line
-    return None
-
-def wait_enrollment_try(line):
-    """Callback function to wait for enrollment attempt."""
-    if 'Requesting a key' in line:
-        return line
-    return None
-
-def search_error_messages():
-    """Retrieve the line of the log file where first error is found.
-
-    Returns:
-          str: String where the error is found or None if errors are not found.
-    """
-    with open(LOG_FILE_PATH, 'r') as log_file:
-        lines = log_file.readlines()
-        for line in lines:
-            if f"ERROR:" in line:
-                return line
-    return None
 
 # Tests
 """
@@ -181,26 +142,20 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     # Start target Agent
     control_service('start')
 
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # hearing on enrollment server
-    authd_server.clear()
-
     # Wait until Agent is notifying Manager
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_keepalive()
 
     # Start rejecting Agent
     remoted_server.set_mode('REJECT')
     # hearing on enrollment server
     authd_server.clear()
     # Wait until Agent asks a new key to enrollment
-    wazuh_log_monitor.start(timeout=180, callback=wait_enrollment,
-                      error_message="Agent never enrolled after rejecting connection!")
+    wait_enrollment()
 
     # Start responding to Agent
     remoted_server.set_mode('CONTROLLED_ACK')
     # Wait until Agent is notifying Manager
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_enrollment_try()    
     assert "aes" in remoted_server.last_message_ctx, "Incorrect Secure Message"
 
 
@@ -272,24 +227,19 @@ def test_agentd_reconection_enrollment_no_keys_file(test_configuration, test_met
     authd_server.clear()
 
     # Wait until Agent asks keys for the first time
-    wazuh_log_monitor.start(timeout=50, callback=wait_enrollment,
-                      error_message="Agent never enrolled for the first time.")
-
-    # Wait until Agent is notifing Manager
-    wazuh_log_monitor.start(timeout=50, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_enrollment()
 
     # Start rejecting Agent
     remoted_server.set_mode('REJECT')
     # hearing on enrollment server
     authd_server.clear()
     # Wait until Agent asks a new key to enrollment
-    wazuh_log_monitor.start(timeout=180, callback=wait_enrollment,
-                      error_message="Agent never enrolled after rejecting connection!")
+    wait_enrollment_try()
 
     # Start responding to Agent
     remoted_server.set_mode('CONTROLLED_ACK')
     # Wait until Agent is notifing Manager
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_keepalive()
     assert "aes" in remoted_server.last_message_ctx, "Incorrect Secure Message"
 
 
@@ -361,11 +311,10 @@ def test_agentd_reconection_enrollment_no_keys(test_configuration, test_metadata
     authd_server.clear()
 
     # Wait until Agent asks keys for the first time
-    wazuh_log_monitor.start(timeout=120, callback=wait_enrollment,
-                      error_message="Agent never enrolled for the first time rejecting connection!")
+    wait_enrollment()
 
     # Wait until Agent is notifying Manager
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_keepalive()    
     assert "aes" in remoted_server.last_message_ctx, "Incorrect Secure Message"
 
     # Start rejecting Agent
@@ -379,7 +328,7 @@ def test_agentd_reconection_enrollment_no_keys(test_configuration, test_metadata
     # Start responding to Agent
     remoted_server.set_mode('CONTROLLED_ACK')
     # Wait until Agent is notifying Manager
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_keepalive()    
     assert "aes" in remoted_server.last_message_ctx, "Incorrect Secure Message"
 
 
@@ -445,16 +394,12 @@ def test_agentd_initial_enrollment_retries(test_configuration, test_metadata, se
     # Start whole Agent service to check other daemons status after initialization
     control_service('start')
 
-    # Start hearing logs
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
     start_time = datetime.now()
     # Check for unsuccessful enrollment retries in Agentd initialization
     retries = 0
     while retries < 4:
         retries += 1
-        wazuh_log_monitor.start(timeout=retries * 5 + 20, callback=wait_enrollment_try,
-                          error_message="Enrollment retry was not sent!")
+        wait_enrollment_try()
     stop_time = datetime.now()
     expected_time = start_time + timedelta(seconds=retries * 5 - 2)
     # Check if delay was applied
@@ -465,11 +410,11 @@ def test_agentd_initial_enrollment_retries(test_configuration, test_metadata, se
     authd_server.set_mode("ACCEPT")
     # Wait successfully enrollment
     # Wait succesfull enrollment
-    wazuh_log_monitor.start(timeout=70, callback=wait_enrollment, error_message="No succesful enrollment after reties!")
-
+    wait_enrollment()
+    
     # Wait until Agent is notifying Manager
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
-
+    wait_keepalive()
+    
     # Check if no Wazuh module stopped due to Agentd Initialization
     with open(LOG_FILE_PATH) as log_file:
         log_lines = log_file.read().splitlines()
@@ -542,5 +487,4 @@ def test_agentd_connection_retries_pre_enrollment(test_configuration, test_metad
     control_service('start')
     
     # Start hearing logs
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(timeout=120, callback=wait_notify, error_message="Notify message from agent was never sent!")
+    wait_keepalive()
