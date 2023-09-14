@@ -7,6 +7,9 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Update apt-get
+      shell: bash
+      run: sudo apt-get update -y
     - name: Install tools and libraries
       shell: bash
       run: sudo apt-get install cppcheck astyle valgrind lcov clang-tools -y
