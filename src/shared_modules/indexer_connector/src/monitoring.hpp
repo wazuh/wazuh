@@ -142,7 +142,7 @@ public:
                                     }
                                     else
                                     {
-                                        value.second = false;
+                                        value.second = false; // LCOV_EXCL_LINE
                                     }
                                 },
                                 [&](const std::string& error, const long /*statusCode*/) { value.second = false; });
