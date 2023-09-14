@@ -4,11 +4,17 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
+#include <schemf/mockSchema.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
+
+namespace
+{
+    auto schema = std::make_shared<schemf::mocks::MockSchema>();
+}
 
 TEST(OpBuilderHelperAppend, Builds)
 {
@@ -17,7 +23,7 @@ TEST(OpBuilderHelperAppend, Builds)
                                  std::vector<std::string> {"1", "$ref", "3"},
                                  std::make_shared<defs::mocks::FailDef>());
 
-    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperAppend, tuple));
+    ASSERT_NO_THROW(std::apply(bld::getBuilderArrayAppend(false, schema), tuple));
 }
 
 TEST(OpBuilderHelperAppend, EmptyParameters)
@@ -26,19 +32,19 @@ TEST(OpBuilderHelperAppend, EmptyParameters)
                                  std::string {"+array_append"},
                                  std::vector<std::string> {},
                                  std::make_shared<defs::mocks::FailDef>());
-    ASSERT_THROW(std::apply(bld::opBuilderHelperAppend, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::getBuilderArrayAppend(false, schema), tuple), std::runtime_error);
 }
 
 TEST(OpBuilderHelperAppend, Exec_append_literals)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+array_append"},
-                                 std::vector<std::string> {"1", "2", "3"},
+                                 std::vector<std::string> {"\"1\"", "\"2\"", "\"3\""},
                                  std::make_shared<defs::mocks::FailDef>());
     auto event1 = std::make_shared<json::Json>(R"({"field": []})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2"})");
     auto event3 = std::make_shared<json::Json>(R"({"field": ["0"]})");
-    auto op = std::apply(bld::opBuilderHelperAppend, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderArrayAppend(false, schema), tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
@@ -47,7 +53,7 @@ TEST(OpBuilderHelperAppend, Exec_append_literals)
     ASSERT_TRUE(array.size() == 3);
     for (auto i = 1; i < 4; i++)
     {
-        ASSERT_TRUE(array[i - 1].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i - 1].getString().value() == std::to_string(i));
     }
 
     result = op(event2);
@@ -56,7 +62,7 @@ TEST(OpBuilderHelperAppend, Exec_append_literals)
     ASSERT_TRUE(array.size() == 3);
     for (auto i = 1; i < 4; i++)
     {
-        ASSERT_TRUE(array[i - 1].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i - 1].getString().value() == std::to_string(i));
     }
 
     result = op(event3);
@@ -65,7 +71,7 @@ TEST(OpBuilderHelperAppend, Exec_append_literals)
     ASSERT_TRUE(array.size() == 4);
     for (auto i = 0; i < 4; i++)
     {
-        ASSERT_TRUE(array[i].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i].getString().value() == std::to_string(i));
     }
 }
 
@@ -78,7 +84,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs)
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": "1", "ref2": "2", "ref3": "3"})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2", "ref1": "1", "ref2": "2", "ref3": "3"})");
     auto event3 = std::make_shared<json::Json>(R"({"field": ["0"], "ref1": "1", "ref2": "2", "ref3": "3"})");
-    auto op = std::apply(bld::opBuilderHelperAppend, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderArrayAppend(false, schema), tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
@@ -87,7 +93,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs)
     ASSERT_TRUE(array.size() == 3);
     for (auto i = 1; i < 4; i++)
     {
-        ASSERT_TRUE(array[i - 1].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i - 1].getString().value() == std::to_string(i));
     }
 
     result = op(event2);
@@ -96,7 +102,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs)
     ASSERT_TRUE(array.size() == 3);
     for (auto i = 1; i < 4; i++)
     {
-        ASSERT_TRUE(array[i - 1].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i - 1].getString().value() == std::to_string(i));
     }
 
     result = op(event3);
@@ -105,7 +111,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs)
     ASSERT_TRUE(array.size() == 4);
     for (auto i = 0; i < 4; i++)
     {
-        ASSERT_TRUE(array[i].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i].getString().value() == std::to_string(i));
     }
 }
 
@@ -113,12 +119,12 @@ TEST(OpBuilderHelperAppend, Exec_append_refs_literals)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"+array_append"},
-                                 std::vector<std::string> {"$ref1", "2", "$ref3"},
+                                 std::vector<std::string> {"$ref1", "\"2\"", "$ref3"},
                                  std::make_shared<defs::mocks::FailDef>());
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": "1", "ref3": "3"})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2", "ref1": "1", "ref3": "3"})");
     auto event3 = std::make_shared<json::Json>(R"({"field": ["0"], "ref1": "1", "ref3": "3"})");
-    auto op = std::apply(bld::opBuilderHelperAppend, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderArrayAppend(false, schema), tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
@@ -127,7 +133,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs_literals)
     ASSERT_TRUE(array.size() == 3);
     for (auto i = 1; i < 4; i++)
     {
-        ASSERT_TRUE(array[i - 1].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i - 1].getString().value() == std::to_string(i));
     }
 
     result = op(event2);
@@ -136,7 +142,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs_literals)
     ASSERT_TRUE(array.size() == 3);
     for (auto i = 1; i < 4; i++)
     {
-        ASSERT_TRUE(array[i - 1].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i - 1].getString().value() == std::to_string(i));
     }
 
     result = op(event3);
@@ -145,7 +151,7 @@ TEST(OpBuilderHelperAppend, Exec_append_refs_literals)
     ASSERT_TRUE(array.size() == 4);
     for (auto i = 0; i < 4; i++)
     {
-        ASSERT_TRUE(array[i].getString() == std::to_string(i));
+        ASSERT_TRUE(array[i].getString().value() == std::to_string(i));
     }
 }
 
@@ -158,12 +164,12 @@ TEST(OpBuilderHelperAppend, Exec_append_fail_refs)
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref11": "1", "ref3": "3"})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2", "$ref1": 1, "ref3": "3"})");
 
-    auto op = std::apply(bld::opBuilderHelperAppend, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderArrayAppend(false, schema), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_FALSE(result.success());
+    ASSERT_TRUE(result.success());
 
     result = op(event2);
-    ASSERT_FALSE(result.success());
+    ASSERT_TRUE(result.success());
 }
 
 TEST(OpBuilderHelperAppend, Exec_append_use_case)
@@ -174,7 +180,7 @@ TEST(OpBuilderHelperAppend, Exec_append_use_case)
                                  std::make_shared<defs::mocks::FailDef>());
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": [1], "ref2": {"a": 2}})");
 
-    auto op = std::apply(bld::opBuilderHelperAppend, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::getBuilderArrayAppend(false, schema), tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result.success());
 
@@ -187,4 +193,22 @@ TEST(OpBuilderHelperAppend, Exec_append_use_case)
     ASSERT_TRUE(field.value()[2].getObject().value().size() == 1);
     ASSERT_TRUE(std::get<0>(field.value()[2].getObject().value()[0]) == "a");
     ASSERT_TRUE(std::get<1>(field.value()[2].getObject().value()[0]).getInt().value() == 2);
+}
+
+TEST(OpBuilderHelperAppend, Exec_unique)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+array_append"},
+                                 std::vector<std::string> {"$ref1", "literal", "$ref2"},
+                                 std::make_shared<defs::mocks::FailDef>());
+    auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": "literal"})");
+
+    auto op = std::apply(bld::getBuilderArrayAppend(true, schema), tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result = op(event1);
+    ASSERT_TRUE(result.success());
+
+    auto field = result.payload()->getArray("/field");
+    ASSERT_TRUE(field.has_value());
+    ASSERT_TRUE(field.value().size() == 1);
+    ASSERT_TRUE(field.value()[0].getString().value() == "literal");
 }

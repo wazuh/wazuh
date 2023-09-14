@@ -44,6 +44,7 @@ TEST(RegisterTest, AllHelperBuildersRegistered)
     ASSERT_NO_THROW(helperRegistry->getBuilder("trim"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("regex_extract"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("array_append"));
+    ASSERT_NO_THROW(helperRegistry->getBuilder("array_append_unique"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("split"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("hex_to_number"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("merge"));
