@@ -364,15 +364,15 @@ namespace Utils
         return !str.empty() && it == str.end();
     }
 
-    static int parseStrToBool(const std::string& str)
+    static bool parseStrToBool(const std::string& str)
     {
         if (str.compare("yes") == 0)
         {
-            return 1;
+            return true;
         }
         else if (str.compare("no") == 0)
         {
-            return 0;
+            return false;
         }
         else
         {

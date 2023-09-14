@@ -478,12 +478,12 @@ TEST_F(StringUtilsTest, stringIsNumberTrue)
 
 TEST_F(StringUtilsTest, parseStrToBoolYes)
 {
-    EXPECT_EQ(Utils::parseStrToBool("yes"),1);
+    EXPECT_TRUE(Utils::parseStrToBool("yes"));
 }
 
 TEST_F(StringUtilsTest, parseStrToBoolNo)
 {
-    EXPECT_EQ(Utils::parseStrToBool("no"),0);
+    EXPECT_FALSE(Utils::parseStrToBool("no"));
 }
 
 TEST_F(StringUtilsTest, parseStrToBoolSarasa)
