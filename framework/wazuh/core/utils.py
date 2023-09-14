@@ -1071,7 +1071,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     # compile regular expression only one time when function is called
     # get elements in a clause
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./: ]+)')
+    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./: @]+)')
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
