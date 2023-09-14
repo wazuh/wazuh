@@ -53,7 +53,7 @@ def get_script_arguments():
         common.WPK_REPO_URL_4_X))
     parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
     parser.add_argument("-F", "--force", action="store_true",
-                        help="Allows reinstall same version and downgrade version.")
+                        help="Forces the agents to upgrade, ignoring version validations.")
     parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
     parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")

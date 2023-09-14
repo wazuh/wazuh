@@ -1144,7 +1144,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     version : str
         Version to upgrade to.
     force : bool
-        force the update even if it is a downgrade.
+        Forces the agents to upgrade, ignoring version validations.
     use_http : bool
         False for HTTPS protocol, True for HTTP protocol.
     file_path : str
