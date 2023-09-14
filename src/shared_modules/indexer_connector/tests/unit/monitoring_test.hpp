@@ -25,9 +25,11 @@
 class MonitoringTest : public ::testing::Test
 {
 protected:
-    inline static std::unique_ptr<FakeOpenSearchServer> m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
+    inline static std::unique_ptr<FakeOpenSearchServer>
+        m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
 
-    inline static std::unique_ptr<FakeOpenSearchServer> m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
+    inline static std::unique_ptr<FakeOpenSearchServer>
+        m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
 
     std::shared_ptr<Monitoring> m_monitoring; ///< pointer to Monitoring class
 

@@ -24,9 +24,11 @@
 class ServerSelectorTest : public ::testing::Test
 {
 protected:
-    inline static std::unique_ptr<FakeOpenSearchServer> m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
+    inline static std::unique_ptr<FakeOpenSearchServer>
+        m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
 
-    inline static std::unique_ptr<FakeOpenSearchServer> m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
+    inline static std::unique_ptr<FakeOpenSearchServer>
+        m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
 
     std::shared_ptr<ServerSelector> m_selector; ///< pointer to Selector class
 

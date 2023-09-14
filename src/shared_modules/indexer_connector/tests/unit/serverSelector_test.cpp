@@ -11,15 +11,15 @@
 
 #include "serverSelector_test.hpp"
 #include "serverSelector.hpp"
+#include <chrono>
 #include <memory>
 #include <string>
-#include <chrono>
 #include <thread>
 
 /**
  * @brief Test instantiation with valid servers.
- * 
-*/
+ *
+ */
 TEST_F(ServerSelectorTest, TestInstantiation)
 {
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
@@ -27,8 +27,8 @@ TEST_F(ServerSelectorTest, TestInstantiation)
 
 /**
  * @brief Test instantiation without servers.
- * 
-*/
+ *
+ */
 TEST_F(ServerSelectorTest, TestInstantiationWithoutServers)
 {
     m_servers.clear();
@@ -39,8 +39,8 @@ TEST_F(ServerSelectorTest, TestInstantiationWithoutServers)
 
 /**
  * @brief Test instantiation and getNext server before health check.
- * 
-*/
+ *
+ */
 TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 {
     const auto hostGreenServer {m_servers.at(0)};
@@ -62,8 +62,8 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 
 /**
  * @brief Test instantiation and getNext server before and after health check.
- * 
-*/
+ *
+ */
 TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 {
     const auto hostGreenServer {m_servers.at(0)};
@@ -96,8 +96,8 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 
 /**
  * @brief Test instantiation and getNext when there are no available servers.
- * 
-*/
+ *
+ */
 TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
 {
     const auto hostRedServer {m_servers.at(1)};

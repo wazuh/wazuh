@@ -17,8 +17,8 @@
 
 /**
  * @brief Test instantiation and check the availability of valid servers.
- * 
-*/
+ *
+ */
 TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 {
     const auto hostGreenServer {m_servers.at(0)};
@@ -42,8 +42,8 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 
 /**
  * @brief Test instantiation without servers.
- * 
-*/
+ *
+ */
 TEST_F(MonitoringTest, TestInstantiationWithoutServers)
 {
     m_servers.clear();
@@ -54,8 +54,8 @@ TEST_F(MonitoringTest, TestInstantiationWithoutServers)
 
 /**
  * @brief Test instantiation and check the availability of an invalid server.
- * 
-*/
+ *
+ */
 TEST_F(MonitoringTest, TestInvalidServer)
 {
     const auto invalidServer {"http://localhost:9400"};
@@ -77,8 +77,8 @@ TEST_F(MonitoringTest, TestInvalidServer)
 
 /**
  * @brief Test instantiation and check the availability of an unregustered server.
- * 
-*/
+ *
+ */
 TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 {
     const auto unregisteredServer {"http://localhost:9400"};
