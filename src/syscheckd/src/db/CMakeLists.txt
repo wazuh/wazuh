@@ -65,7 +65,6 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(fimdb dbsync rsync wazuhext)
 else()
-  set_target_properties(fimdb PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
   target_link_libraries(
     fimdb
     dbsync

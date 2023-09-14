@@ -552,7 +552,7 @@ WriteManager()
       cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
-    
+
 
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
@@ -853,21 +853,34 @@ InstallCommon()
         fi
     fi
 
-    if [ -f libstdc++.so.6 ]
+    if [ ${DIST_NAME} = 'AIX' ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
+        if [ -f libstdc++.a ]
+        then
+            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.a ${INSTALLDIR}/lib
         fi
-    fi
 
-    if [ -f libgcc_s.so.1 ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
+        if [ -f libgcc_s.a ]
+        then
+            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.a ${INSTALLDIR}/lib
+        fi
+    else
+        if [ -f libstdc++.so.6 ]
+        then
+            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
 
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
+            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
+            fi
+        fi
+
+        if [ -f libgcc_s.so.1 ]
+        then
+            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
+
+            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
+            fi
         fi
     fi
 
