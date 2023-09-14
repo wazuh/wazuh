@@ -16,6 +16,9 @@
 #include <string>
 #include <thread>
 
+// Healt check interval for the servers
+constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {INTERVAL};
+
 /**
  * @brief Test instantiation with valid servers.
  *
@@ -81,7 +84,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
     EXPECT_EQ(nextServer, hostRedServer);
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::seconds(SERVER_SELECTOR_HEALTH_CHECK_INTERVAL + 5));
 
     // next server will be the green because it's available
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
@@ -112,7 +115,7 @@ TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
     EXPECT_EQ(nextServer, hostRedServer);
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::seconds(SERVER_SELECTOR_HEALTH_CHECK_INTERVAL + 5));
 
     // It throws an exception because there are no available servers
     EXPECT_THROW(nextServer = m_selector->getNext(), std::runtime_error);

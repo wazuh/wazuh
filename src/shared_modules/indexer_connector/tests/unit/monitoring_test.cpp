@@ -15,6 +15,9 @@
 #include <memory>
 #include <thread>
 
+// Healt check interval for the servers
+constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {INTERVAL};
+
 /**
  * @brief Test instantiation and check the availability of valid servers.
  *
@@ -31,7 +34,7 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
     // It's true because the green server is available
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
@@ -69,7 +72,7 @@ TEST_F(MonitoringTest, TestInvalidServer)
     EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
     // It's false because the server isn't valid
     EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
@@ -92,7 +95,7 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
     EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
     // It's true because the green server is available
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
