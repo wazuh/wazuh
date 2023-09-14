@@ -508,39 +508,8 @@ checks:
     rules:
       - "not c:systemctl is-enabled autofs -> r:^enabled"
 
-  # 1.2.1 Ensure GPG keys are configured. (Manual)
-  - id: 21025
-    title: "Ensure GPG keys are configured."
-    description: "Most packages managers implement GPG key signing to verify package integrity during installation."
-    rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system."
-    remediation: "Update your package manager GPG keys in accordance with site policy."
-    compliance:
-      - cis: ["1.2.1"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
-
-  # 1.2.2 Ensure package manager repositories are configured. (Manual)
-  - id: 21026
-    title: "Ensure package manager repositories are configured."
-    description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
-    rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
-    remediation: "Configure your package manager repositories according to site policy."
-    compliance:
-      - cis: ["1.2.2"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
+  # 1.2.1 Ensure GPG keys are configured. (Manual) - Not Implemented
+  # 1.2.2 Ensure package manager repositories are configured. (Manual) - Not Implemented
 
   # 1.2.3 Ensure gpgcheck is globally activated. (Automated)
   - id: 21027
@@ -556,8 +525,10 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/zypp/zypp.conf -> r:^gpgcheck\s*\t*=\s*\t*1'
+      - 'not d:/etc/zypp/repos.d/ -> r:\.+.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare \!= 1'
 
   # 1.3.1 Ensure sudo is installed. (Automated)
   - id: 21028
@@ -574,8 +545,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q sudo -> r:sudo-"
 
   # 1.3.2 Ensure sudo commands use pty. (Automated)
   - id: 21029
@@ -592,8 +564,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 1.3.3 Ensure sudo log file exists. (Automated)
   - id: 21030
@@ -612,8 +586,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   # 1.4.1 Ensure AIDE is installed. (Automated)
   - id: 21031
@@ -632,8 +608,9 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q aide -> r:aide-"
 
   # 1.4.2 Ensure filesystem integrity is regularly checked. (Automated)
   - id: 21032
@@ -655,15 +632,18 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - "c:systemctl status aidecheck.timer -> r:enabled"
 
   # 1.5.1 Ensure bootloader password is set. (Automated)
   - id: 21033
     title: "Ensure bootloader password is set."
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters Notes: - This recommendation is designed around the grub2 bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace `/boot/grub2/grub.cfg with the appropriate grub configuration file for your environment - The information can be placed in any /etc/grub.d file as long as that file is incorporated into grub.cfg o The superuser/user information and password should not be contained in the /etc/grub.d/00_header file. o A custom file, such as /etc/grub.d/40_custom should be used so it is not overwritten should the Grub package be updated."
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
-    impact: '- - If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem - You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items.'
+    impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem - You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items.'
     remediation: 'create an encrypted password with grub2-mkpasswd-pbkdf2: # grub2-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> Your PBKDF2 is <encrypted-password> Add the following into /etc/grub.d/40_custom set superusers="<username>" password_pbkdf2 <username> <encrypted-password> Run the following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg.'
     references:
       - "https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-grub2.html"
@@ -677,8 +657,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*set superusers'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*password'
 
   # 1.5.2 Ensure permissions on bootloader config are configured. (Automated)
   - id: 21034
@@ -696,8 +678,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.5.3 Ensure authentication required for single user mode. (Automated)
   - id: 21035
@@ -715,8 +698,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/usr/lib/systemd/system/rescue.service -> r: systemd-sulogin-shell"
+      - "f:/usr/lib/systemd/system/emergency.service -> r: systemd-sulogin-shell"
 
   # 1.6.1 Ensure core dumps are restricted. (Automated)
   - id: 21036
@@ -734,8 +719,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/security/limits.conf -> !r:^# && r:*\s*\t*hard\s*\t*core\s*\t*0'
+      - "c:sysctl fs.suid_dumpable -> r:fs.suid_dumpable = 0"
+      - "c:systemctl is-enabled coredump.service -> r:^enabled"
 
   # 1.6.2 Ensure XD/NX support is enabled. (Automated)
   - id: 21037
@@ -750,8 +738,10 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - "c:journalctl -> r:protection: active && r:kernel: NX"
+      - 'not c:sh -c "[[ -n $(grep noexec[0-9]*=off /proc/cmdline) || -z $(grep -E -i \" (pae|nx) \" /proc/cpuinfo) || -n $(grep \"\\sNX\\s.*\\sprotection:\\s\" /var/log/dmesg | grep -v active) ]] && echo \"NX Protection is not active\"" -> r:^NX Protection is not active$'
 
   # 1.6.3 Ensure address space layout randomization (ASLR) is enabled. (Automated)
   - id: 21038
@@ -766,8 +756,11 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'd:/etc/sysctl.d/ -> r:\.+ -> r:^\s*kernel.randomize_va_space\s*=\s*2'
 
   # 1.6.4 Ensure prelink is disabled. (Automated)
   - id: 21039
@@ -788,8 +781,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q prelink -> r:package prelink is not installed"
 
   # 1.7.1.1 Ensure AppArmor is installed. (Automated)
   - id: 21040
@@ -808,8 +802,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q apparmor-docs -> r:apparmor-docs-"
+      - "c:rpm -q apparmor-parser -> r:apparmor-parser-"
+      - "c:rpm -q apparmor-profiles -> r:apparmor-profiles-"
+      - "c:rpm -q apparmor-utils -> r:apparmor-utils-"
 
   # 1.7.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
   - id: 21041
@@ -828,8 +826,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
 
   # 1.7.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
   - id: 21042
@@ -848,8 +848,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.7.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
   - id: 21043
@@ -868,8 +870,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.8.1.1 Ensure message of the day is configured properly. (Automated)
   - id: 21044
@@ -887,8 +893,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: any
     rules:
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s'
+      - "not f:/etc/motd"
 
   # 1.8.1.2 Ensure local login warning banner is configured properly. (Automated)
   - id: 21045
@@ -898,8 +906,9 @@ checks:
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
       - cis: ["1.8.1.2"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s'
 
   # 1.8.1.3 Ensure remote login warning banner is configured properly. (Automated)
   - id: 21046
@@ -917,8 +926,9 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
 
   # 1.8.1.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 21047
@@ -937,8 +947,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.8.1.5 Ensure permissions on /etc/issue are configured. (Automated)
   - id: 21048
@@ -957,8 +968,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.8.1.6 Ensure permissions on /etc/issue.net are configured. (Automated)
   - id: 21049
@@ -977,26 +989,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual)
-  - id: 21050
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality. Note: Site policy may mandate a testing period before install onto production systems for available updates."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available updates: # zypper update."
-    compliance:
-      - cis: ["1.9"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
-
+  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
   # 1.10 Ensure GDM is removed or login is configured. (Automated)
   - id: 21051
     title: "Ensure GDM is removed or login is configured."
@@ -1008,8 +1005,15 @@ checks:
       - "https://help.gnome.org/admin/system-admin-guide/stable"
     compliance:
       - cis: ["1.10"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q gdm -> r:package gdm is not installed"
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
 
   # 2.1.1 Ensure xinetd is not installed. (Automated)
   - id: 21052
@@ -1026,8 +1030,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q xinetd -> r:^package xinetd is not installed"
 
   # 2.2.1.1 Ensure time synchronization is in use. (Automated)
   - id: 21053
@@ -1045,8 +1050,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q chrony -> r:^chrony-"
+      - "c:systemctl is-enabled systemd-timesyncd -> r:^enabled"
 
   # 2.2.1.2 Ensure systemd-timesyncd is configured. (Manual)
   - id: 21054
@@ -1056,8 +1063,10 @@ checks:
     remediation: "Edit the file /etc/systemd/timesyncd.conf and add/modify the following lines: NTP=0.suse.pool.ntp.org 1.suse.pool.ntp.org #Servers listed should be In Accordance With Local Policy FallbackNTP=2.suse.pool.ntp.org 3.suse.pool.ntp.org #Servers listed should be In Accordance With Local Policy RootDistanceMax=1 #should be In Accordance With Local Policy Run the following commands to enable and start systemd-timesyncd: # systemctl --now enable systemd-timesyncd.service # timedatectl set-ntp true."
     compliance:
       - cis: ["2.2.1.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-timesyncd -> r:^enabled"
+      - "c:timedatectl status -> r:NTP enabled: yes"
 
   # 2.2.1.3 Ensure chrony is configured. (Automated)
   - id: 21055
