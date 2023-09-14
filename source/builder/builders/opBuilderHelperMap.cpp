@@ -986,62 +986,184 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
 //*           Array tranform                      *
 //*************************************************
 
-// field: +array_append/$field|literal...
-base::Expression opBuilderHelperAppend(const std::string& targetField,
-                                       const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters,
-                                       std::shared_ptr<defs::IDefinitions> definitions)
+// field: array_append_unique($ref|literal)
+// field: array_append($ref|literal)
+HelperBuilder getBuilderArrayAppend(bool unique, std::shared_ptr<schemf::ISchema> schema)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
+    return [=](const std::string& targetField,
+               const std::string& rawName,
+               const std::vector<std::string>& rawParameters,
+               std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
-    checkParametersMinSize(rawName, parameters, 1);
+        checkParametersMinSize(rawName, parameters, 1);
 
-    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+        const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
-    // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
-    const std::string failureSuffix1 {"Parameter '{}' reference not found"};
-    const std::string failureSuffix2 {"Parameter '{}' type is not a string"};
-    const std::string failureSuffix3 {"Parameter '{}' type unexpected"};
-
-    // Return result
-    return base::Term<base::EngineOp>::create(
-        name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        // Validate schema types and homogeneities
+        if (schema->hasField(targetField) && schema->getType(targetField) != json::Json::Type::Array)
         {
-            for (const auto& parameter : parameters)
-            {
-                switch (parameter.m_type)
-                {
-                    case helper::base::Parameter::Type::REFERENCE:
-                    {
-                        auto value = event->getJson(parameter.m_value);
-                        if (!value)
-                        {
-                            return base::result::makeFailure(
-                                event,
-                                failureTrace
-                                    + fmt::format((!event->exists(parameter.m_value)) ? failureSuffix1 : failureSuffix2,
-                                                  parameter.m_value));
-                        }
+            throw std::runtime_error(
+                fmt::format("\"{}\" function: Target field \"{}\" is not an array", name, targetField));
+        }
 
-                        event->appendJson(value.value(), targetField);
-                    }
-                    break;
-                    case helper::base::Parameter::Type::VALUE:
+        bool first = true;
+        json::Json::Type type;
+        for (auto& param : parameters)
+        {
+            if (first)
+            {
+                if (param.m_type == helper::base::Parameter::Type::REFERENCE)
+                {
+                    if (!schema->hasField(param.m_value))
                     {
-                        event->appendString(parameter.m_value, targetField);
+                        continue;
                     }
-                    break;
-                    default:
-                        return base::result::makeFailure(event,
-                                                         failureTrace + fmt::format(failureSuffix3, parameter.m_value));
+                    else
+                    {
+                        type = schema->getType(param.m_value);
+                        first = false;
+                    }
+                }
+                else
+                {
+                    json::Json value;
+                    try
+                    {
+                        value = json::Json(param.m_value.c_str());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        type = json::Json::Type::String;
+                        first = false;
+                        continue;
+                    }
+
+                    type = value.type();
+                    first = false;
                 }
             }
-            return base::result::makeSuccess(event, successTrace);
-        });
+
+            if (param.m_type == helper::base::Parameter::Type::REFERENCE)
+            {
+                if (!schema->hasField(param.m_value))
+                {
+                    continue;
+                }
+                else if (schema->getType(param.m_value) != type)
+                {
+                    throw std::runtime_error(
+                        fmt::format("\"{}\" function: Parameter \"{}\" type does not match the first parameter type",
+                                    name,
+                                    param.m_value));
+                }
+            }
+            else
+            {
+                json::Json value;
+                json::Json::Type valueType;
+                try
+                {
+                    value = json::Json(param.m_value.c_str());
+                }
+                catch (const std::exception& e)
+                {
+                    valueType = json::Json::Type::String;
+                    if (valueType != type)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "\"{}\" function: Parameter \"{}\" type does not match the first parameter type",
+                            name,
+                            param.m_value));
+                    }
+                    continue;
+                }
+
+                if (value.type() != type)
+                {
+                    throw std::runtime_error(
+                        fmt::format("\"{}\" function: Parameter \"{}\" type does not match the first parameter type",
+                                    name,
+                                    param.m_value));
+                }
+            }
+        }
+
+        // Tracing
+        const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+        const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
+        const std::string failureSuffix1 {"Parameter '{}' reference not found"};
+        const std::string failureSuffix2 {"Parameter '{}' type is not a string"};
+        const std::string failureSuffix3 {"Parameter '{}' type unexpected"};
+
+        // Return result
+        return base::Term<base::EngineOp>::create(
+            name,
+            [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+            {
+                // Get target array, needed for check uniqueness
+                std::vector<json::Json> targetArray {};
+                if (unique)
+                {
+                    auto array = event->getArray(targetField);
+                    if (array)
+                    {
+                        targetArray = std::move(array.value());
+                    }
+                }
+
+                // Append values
+                for (const auto& parameter : parameters)
+                {
+                    // Get value to append
+                    json::Json value;
+                    if (parameter.m_type == helper::base::Parameter::Type::VALUE)
+                    {
+                        try
+                        {
+                            value = json::Json(parameter.m_value.c_str());
+                        }
+                        catch (const std::exception& e)
+                        {
+                            value.setString(parameter.m_value);
+                        }
+                    }
+                    // REFERENCE
+                    else
+                    {
+                        // Best effort
+                        auto result = event->getJson(parameter.m_value);
+                        if (result)
+                        {
+                            value = std::move(result.value());
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Append value, we append on both arrays to check for uniqueness
+                    // TODO improve json so it exposes a contains method
+                    if (unique)
+                    {
+                        if (std::find(targetArray.begin(), targetArray.end(), value) == targetArray.end())
+                        {
+                            targetArray.emplace_back(value);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    event->appendJson(value, targetField);
+                }
+                return base::result::makeSuccess(event, successTrace);
+            });
+    };
 }
 
 // field: +merge_recursive/$field
@@ -1100,7 +1222,8 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
 }
 
 // event: +erase_custom_fields
-HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchema> schema) {
+HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchema> schema)
+{
     return [schema](const std::string& targetField,
                     const std::string& rawName,
                     const std::vector<std::string>& rawParameters,
@@ -1132,7 +1255,6 @@ HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchem
             });
     };
 }
-
 
 // field: +split/$field/[,| | ...]
 base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
@@ -1506,7 +1628,6 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
                     }
                     IntResolvedParameter = paramValue.value();
                 }
-
             }
             else
             {
@@ -2040,6 +2161,5 @@ HelperBuilder getOpBuilderHelperMergeValue(std::shared_ptr<schemf::ISchema> sche
         return opBuilderHelperGetValue(targetField, rawName, rawParameters, definitions, schema, true);
     };
 }
-
 
 } // namespace builder::internals::builders

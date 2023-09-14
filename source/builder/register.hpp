@@ -94,7 +94,8 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperHashSHA1, "sha1");
     // Map helpers: String functions
     helperRegistry->registerBuilder(builders::opBuilderHelperAppendSplitString, "split");
-    helperRegistry->registerBuilder(builders::opBuilderHelperAppend, "array_append");
+    helperRegistry->registerBuilder(builders::getBuilderArrayAppend(false, dependencies.schema), "array_append");
+    helperRegistry->registerBuilder(builders::getBuilderArrayAppend(true, dependencies.schema), "array_append_unique");
     helperRegistry->registerBuilder(builders::opBuilderHelperHexToNumber, "hex_to_number");
     helperRegistry->registerBuilder(builders::opBuilderHelperIPVersionFromIPStr, "ip_version");
     helperRegistry->registerBuilder(builders::opBuilderHelperStringConcat, "concat");
@@ -109,7 +110,8 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::getOpBuilderHelperDateFromEpochTime(dependencies.schema),
                                     "date_from_epoch");
     // Map helpers: bit functions
-    helperRegistry->registerBuilder(builders::getOpBuilderHelperBitmaskToTable(dependencies.schema), "bitmask32_to_table");
+    helperRegistry->registerBuilder(builders::getOpBuilderHelperBitmaskToTable(dependencies.schema),
+                                    "bitmask32_to_table");
     // Map helpers: Definition functions
     helperRegistry->registerBuilder(builders::getOpBuilderHelperGetValue(dependencies.schema), "get_value");
     helperRegistry->registerBuilder(builders::getOpBuilderHelperMergeValue(dependencies.schema), "merge_value");
@@ -129,13 +131,21 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::getBuilderWdbUpdate(dependencies.wdbManager), "wdb_update");
 
     // KVDB
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_delete");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_get");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_get_merge");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_match");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_not_match");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_set");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetArray(dependencies.kvdbManager, dependencies.kvdbScopeName, dependencies.schema), "kvdb_get_array");
+    helperRegistry->registerBuilder(
+        builders::getOpBuilderKVDBDelete(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_delete");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbManager, dependencies.kvdbScopeName),
+                                    "kvdb_get");
+    helperRegistry->registerBuilder(
+        builders::getOpBuilderKVDBGetMerge(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_get_merge");
+    helperRegistry->registerBuilder(
+        builders::getOpBuilderKVDBMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_match");
+    helperRegistry->registerBuilder(
+        builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_not_match");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager, dependencies.kvdbScopeName),
+                                    "kvdb_set");
+    helperRegistry->registerBuilder(
+        builders::getOpBuilderKVDBGetArray(dependencies.kvdbManager, dependencies.kvdbScopeName, dependencies.schema),
+        "kvdb_get_array");
 
     // SCA decoder
     helperRegistry->registerBuilder(builders::getBuilderSCAdecoder(dependencies.wdbManager, dependencies.sockFactory),

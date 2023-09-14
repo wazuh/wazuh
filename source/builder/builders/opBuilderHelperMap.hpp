@@ -284,28 +284,19 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
 //*************************************************
 //*           Array tranform                      *
 //*************************************************
-
 /**
- * @brief Append string to array field.
- * Accepts parameters with literals or references. If reference not exists or is not an
- * string it will fail.
- *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
- * @return base::Expression The lifter with the `append string to array` transformation.
- * @throw std::runtime_error if the parameters are empty.
+ * @brief Get the Builder Array Append object
+ * 
+ * @param unique Wetther the array should be unique or not
+ * @param schema schema to validate fields
+ * @return HelperBuilder 
  */
-base::Expression opBuilderHelperAppend(const std::string& targetField,
+HelperBuilder getBuilderArrayAppend(bool unique, std::shared_ptr<schemf::ISchema> schema);
+
+base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
                                        const std::string& rawName,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions);
-
-base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
-                                                  const std::string& rawName,
-                                                  const std::vector<std::string>& rawParameters,
-                                                  std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*              IP tranform                      *
