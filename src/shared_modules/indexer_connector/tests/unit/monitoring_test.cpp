@@ -76,7 +76,7 @@ TEST_F(MonitoringTest, TestInvalidServer)
 }
 
 /**
- * @brief Test instantiation and check the availability of an unregustered server.
+ * @brief Test instantiation and check the availability of an unregistered server.
  *
  */
 TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)

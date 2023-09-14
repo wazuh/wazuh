@@ -46,18 +46,17 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
 
-    std::string nextGreenServer;
-    std::string nextRedServer;
+    std::string nextServer;
 
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
 
-    // It doesn't thrown and exception because all servers are available before health check
-    EXPECT_NO_THROW(nextGreenServer = m_selector->getNext());
-    EXPECT_EQ(nextGreenServer, hostGreenServer);
+    // It doesn't thrown an exception because all servers are available before health check
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostGreenServer);
 
-    // It doesn't thrown and exception because all servers are available before health check
-    EXPECT_NO_THROW(nextRedServer = m_selector->getNext());
-    EXPECT_EQ(nextRedServer, hostRedServer);
+    // It doesn't thrown an exception because all servers are available before health check
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostRedServer);
 }
 
 /**
@@ -69,29 +68,28 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
 
-    std::string nextGreenServer;
-    std::string nextRedServer;
+    std::string nextServer;
 
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
 
-    // It doesn't thrown and exception because all servers are available before health check
-    EXPECT_NO_THROW(nextGreenServer = m_selector->getNext());
-    EXPECT_EQ(nextGreenServer, hostGreenServer);
+    // It doesn't thrown an exception because all servers are available before health check
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostGreenServer);
 
-    // It doesn't thrown and exception because all servers are available before health check
-    EXPECT_NO_THROW(nextRedServer = m_selector->getNext());
-    EXPECT_EQ(nextRedServer, hostRedServer);
+    // It doesn't thrown an exception because all servers are available before health check
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostRedServer);
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
 
     // next server will be the green because it's available
-    EXPECT_NO_THROW(nextGreenServer = m_selector->getNext());
-    EXPECT_EQ(nextGreenServer, hostGreenServer);
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostGreenServer);
 
     // next server will be the green because the red server isn't available
-    EXPECT_NO_THROW(nextGreenServer = m_selector->getNext());
-    EXPECT_EQ(nextGreenServer, hostGreenServer);
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostGreenServer);
 }
 
 /**
@@ -105,18 +103,17 @@ TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
     m_servers.clear();
     m_servers.emplace_back(hostRedServer);
 
-    std::string nextRedServer;
-    std::string nextGreenServer;
+    std::string nextServer;
 
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
 
-    // It doesn't thrown and exception because all servers are available before health check
-    EXPECT_NO_THROW(nextRedServer = m_selector->getNext());
-    EXPECT_EQ(nextRedServer, hostRedServer);
+    // It doesn't thrown an exception because all servers are available before health check
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, hostRedServer);
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(INTERVAL + 5));
 
     // It throws an exception because there are no available servers
-    EXPECT_THROW(nextRedServer = m_selector->getNext(), std::runtime_error);
+    EXPECT_THROW(nextServer = m_selector->getNext(), std::runtime_error);
 }
