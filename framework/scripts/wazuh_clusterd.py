@@ -141,6 +141,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
                                                          cluster_items=cluster_items)
+        # Spawn pool processes
         if my_client.task_pool is not None:
             my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
