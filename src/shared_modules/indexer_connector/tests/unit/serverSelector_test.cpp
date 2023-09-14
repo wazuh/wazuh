@@ -53,11 +53,11 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
 
-    // It doesn't thrown an exception because all servers are available before health check
+    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, hostGreenServer);
 
-    // It doesn't thrown an exception because all servers are available before health check
+    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, hostRedServer);
 }
@@ -75,11 +75,11 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
 
-    // It doesn't thrown an exception because all servers are available before health check
+    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, hostGreenServer);
 
-    // It doesn't thrown an exception because all servers are available before health check
+    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, hostRedServer);
 
@@ -110,7 +110,7 @@ TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
 
     EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
 
-    // It doesn't thrown an exception because all servers are available before health check
+    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, hostRedServer);
 
