@@ -37,7 +37,7 @@ import signal
 import socket
 import sqlite3
 import sys
-from typing import Optional
+from typing import Iterator, Optional
 
 try:
     import boto3
@@ -1206,7 +1206,19 @@ class AWSBucket(WazuhIntegration):
 
         debug(self.empty_bucket_message_template.format(**message_args), 1)
 
-    def _filter_bucket_files(self, bucket_files, **kwargs):
+    def _filter_bucket_files(self, bucket_files: list, **kwargs) -> Iterator[dict]:
+        """Apply filters over a list of bucket files.
+
+        Parameters
+        ----------
+        bucket_files : list
+            Bucket files to filter.
+
+        Yields
+        ------
+        Iterator[str]
+            A bucket file that matches the filters.
+        """
         for bucket_file in bucket_files:
             if not bucket_file['Key']:
                 continue
@@ -1835,7 +1847,19 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
-    def _filter_bucket_files(self, bucket_files, **kwargs):
+    def _filter_bucket_files(self, bucket_files: list, **kwargs) -> Iterator[dict]:
+        """Filter bucket files that contain the flow_log_id in the filename.
+
+        Parameters
+        ----------
+        bucket_files : list
+            Bucket files to filter.
+
+        Yields
+        ------
+        Iterator[str]
+            A bucket file that matches the filter.
+        """
         flow_log_id = kwargs["flow_log_id"]
         for bucket_file in super()._filter_bucket_files(bucket_files, **kwargs):
             if flow_log_id in bucket_file["Key"]:
