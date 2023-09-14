@@ -19,6 +19,9 @@
 #include <thread>
 #include <utility>
 
+/**
+ * @brief This class is a simple HTTP server that provides a fake OpenSearch server.
+ */
 class FakeOpenSearchServer
 {
 private:
