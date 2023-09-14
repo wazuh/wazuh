@@ -80,7 +80,7 @@ std::shared_ptr<builder::Builder> inline fakeBuilder(std::shared_ptr<store::mock
     dependencies.helperRegistry = helperRegistry;
     dependencies.logparDebugLvl = 0;
     dependencies.schema = schemf::mocks::EmptySchema::create();
-    builder::internals::registerHelperBuilders(helperRegistry);
+    builder::internals::registerHelperBuilders(helperRegistry, dependencies);
     builder::internals::registerBuilders(registry, dependencies);
 
     helperRegistry->registerBuilder(coutOutputHelper, "coutOutputHelper_test");
