@@ -29,6 +29,13 @@ private:
     int m_port;
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param host host of the fake OpenSearch server.
+     * @param port port of the fake OpenSearch server
+     * @param health health status of the fake OpenSearch server.
+     */
     FakeOpenSearchServer(std::string host, int port, std::string health = "green")
         : m_thread(&FakeOpenSearchServer::run, this)
         , m_host(std::move(host))
