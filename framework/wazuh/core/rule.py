@@ -58,7 +58,8 @@ def set_groups(groups, general_groups, rule):
     groups.extend(general_groups)
     for group in groups:
         # These characters are the ones Core replaces when reading XML tags
-        group = re.sub('[\n\r ]+', '', group)
+        group = group.strip()
+        group = re.sub('[\n\r]+', '', group)
         for req in RULE_REQUIREMENTS:
             if group.startswith(req):
                 # We add the requirement to the rule
