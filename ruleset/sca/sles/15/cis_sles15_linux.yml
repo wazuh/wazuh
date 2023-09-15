@@ -1084,8 +1084,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/chrony.conf"
+      - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
   # 2.2.2 Ensure X11 Server components are not installed. (Automated)
   - id: 21056
@@ -1103,8 +1106,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:rpm -qa xorg-x11-server -> r:^xorg-x11-server-"
 
   # 2.2.3 Ensure Avahi Server is not installed. (Automated)
   - id: 21057
@@ -1121,8 +1125,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q avahi-autoipd -> r:^package avahi-autoipd is not installed"
+      - "c:rpm -q avahi -> r:^package avahi is not installed"
 
   # 2.2.4 Ensure CUPS is not installed. (Automated)
   - id: 21058
@@ -1142,8 +1148,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q cups -> r:package cups is not installed"
 
   # 2.2.5 Ensure DHCP Server is not installed. (Automated)
   - id: 21059
@@ -1160,8 +1167,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q dhcp -> r:^package dhcp is not installed"
 
   # 2.2.6 Ensure LDAP server is not installed. (Automated)
   - id: 21060
@@ -1180,8 +1188,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q openldap2 -> r:^package openldap2 is not installed"
 
   # 2.2.7 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 21061
@@ -1198,8 +1207,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q nfs-utils -> r:^package nfs-utils is not installed"
+      - "c:systemctl is-enabled nfs-server -> r:^masked"
 
   # 2.2.8 Ensure rpcbind is not installed or the rpcbind services are masked. (Automated)
   - id: 21062
@@ -1216,8 +1227,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q rpcbind -> r:^package rpcbind is not installed"
+      - "c:systemctl is-enabled rpcbind -> r:masked"
+      - "c:systemctl is-enabled rpcbind.socket -> r:masked"
 
   # 2.2.9 Ensure DNS Server is not installed. (Automated)
   - id: 21063
@@ -1234,8 +1248,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q bind -> r:^package bind is not installed"
 
   # 2.2.10 Ensure FTP Server is not installed. (Automated)
   - id: 21064
@@ -1252,8 +1267,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
   # 2.2.11 Ensure HTTP server is not installed. (Automated)
   - id: 21065
@@ -1270,8 +1286,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q apache2 -> r:^package apache2 is not installed"
 
   # 2.2.12 Ensure IMAP and POP3 server is not installed. (Automated)
   - id: 21066
@@ -1288,8 +1305,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q dovecot -> r:^package dovecot is not installed"
 
   # 2.2.13 Ensure Samba is not installed. (Automated)
   - id: 21067
@@ -1306,8 +1324,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q samba -> r:^package samba is not installed"
 
   # 2.2.14 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 21068
@@ -1324,8 +1343,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q squid -> r:^package squid is not installed"
 
   # 2.2.15 Ensure net-snmp is not installed. (Automated)
   - id: 21069
@@ -1342,8 +1362,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q net-snmp -> r:^package net-snmp is not installed"
 
   # 2.2.16 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 21070
@@ -1360,8 +1381,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'not c:ss -lntu -> r:\.*:25\s* && !r:127.0.0.1:25\.*|::1:25\.*'
 
   # 2.2.17 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
   - id: 21071
@@ -1379,8 +1401,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q rsync -> r:package rsync is not installed"
+      - "c:systemctl is-enabled rsyncd -> r:masked"
 
   # 2.2.18 Ensure NIS server is not installed. (Automated)
   - id: 21072
@@ -1397,8 +1421,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q ypserv -> r:^package ypserv is not installed"
 
   # 2.2.19 Ensure telnet-server is not installed. (Automated)
   - id: 21073
@@ -1415,8 +1440,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
 
   # 2.3.1 Ensure NIS Client is not installed. (Automated)
   - id: 21074
@@ -1434,8 +1460,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
 
   # 2.3.2 Ensure rsh client is not installed. (Automated)
   - id: 21075
@@ -1453,8 +1480,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q rsh -> r:^package rsh is not installed"
 
   # 2.3.3 Ensure talk client is not installed. (Automated)
   - id: 21076
@@ -1472,8 +1500,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q talk -> r:^package talk is not installed"
 
   # 2.3.4 Ensure telnet client is not installed. (Automated)
   - id: 21077
@@ -1491,8 +1520,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q telnet -> r:^package telnet is not installed"
 
   # 2.3.5 Ensure LDAP client is not installed. (Automated)
   - id: 21078
@@ -1510,95 +1540,16 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q openldap2-clients -> r:^package openldap2-clients is not installed"
 
-  # 2.4 Ensure nonessential services are removed or masked. (Manual)
-  - id: 21079
-    title: "Ensure nonessential services are removed or masked."
-    description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP. A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations."
-    rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
-    remediation: "Run the following command to remove the package containing the service: # zypper remove <package_name> OR If required packages have a dependency: Run the following command to stop and mask the service: # systemctl --now mask <service_name>."
-    compliance:
-      - cis: ["2.4"]
-    condition:
-    rules:
+  # 2.4 Ensure nonessential services are removed or masked. (Manual) - Not Implemented
 
-  # 3.1.1 Disable IPv6. (Automated)
-  - id: 21080
-    title: "Disable IPv6."
-    description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
-    rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
-    impact: "If IPv6 is disabled through sysctl config, SSH X11forwarding may no longer function as expected. We recommend that SSH X11forwarding be disabled, but if required, the following will allow for SSH X11forwarding with IPv6 disabled through sysctl config: Add the following line the /etc/ssh/sshd_config file: AddressFamily inet Run the following command to re-start the openSSH server: # systemctl restart sshd."
-    remediation: 'Use one of the two following methods to disable IPv6 on the system: To disable IPv6 through the GRUB2 config: Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Run the following command to update the grub2 configuration: # grub2-mkconfig –o /boot/grub2/grub.cfg OR To disable IPv6 through sysctl settings: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.disable_ipv6=1 # sysctl -w net.ipv6.conf.default.disable_ipv6=1 # sysctl -w net.ipv6.route.flush=1.'
-    compliance:
-      - cis: ["3.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.1.2 Ensure wireless interfaces are disabled. (Manual)
-  - id: 21081
-    title: "Ensure wireless interfaces are disabled."
-    description: "Wireless networking is used when wired networks are unavailable."
-    rationale: "If wireless is not to be used, wireless devices should be disabled to reduce the potential attack surface."
-    impact: "Many if not all laptop workstations and some desktop workstations will connect via wireless requiring these interfaces be enabled."
-    remediation: "Run the following command to disable any wireless interfaces: # ip link set <interface> down Disable any wireless interfaces in your network configuration."
-    compliance:
-      - cis: ["3.1.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["15.4", "15.5"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 3.2.1 Ensure IP forwarding is disabled. (Automated)
-  - id: 21082
-    title: "Ensure IP forwarding is disabled."
-    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
-    rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    remediation: "Run the following commands to restore the default parameters and set the active kernel parameters: # grep -Els \"^\\s*net\\.ipv4\\.ip_forward\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv4.ip_forward=0; sysctl -w net.ipv4.route.flush=1 # grep -Els \"^\\s*net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv6\\.conf\\.all\\.forwarding\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv6.conf.all.forwarding=0; sysctl -w net.ipv6.route.flush=1."
-    compliance:
-      - cis: ["3.2.1"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 3.2.2 Ensure packet redirect sending is disabled. (Automated)
-  - id: 21083
-    title: "Ensure packet redirect sending is disabled."
-    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
-    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1."
-    compliance:
-      - cis: ["3.2.2"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
+  # 3.1.1 Disable IPv6. (Automated) - Not Implemented
+  # 3.1.2 Ensure wireless interfaces are disabled. (Manual) - Not Implemented
+  # 3.2.1 Ensure IP forwarding is disabled. (Automated) - Not Implemented
+  # 3.2.2 Ensure packet redirect sending is disabled. (Automated) - Not Implemented
 
   # 3.3.1 Ensure source routed packets are not accepted. (Automated)
   - id: 21084
