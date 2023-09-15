@@ -25,10 +25,19 @@ LIBSTDCPP_NAME := libstdc++-6.dll
 libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
 LIBGCC_S_NAME := libgcc_s_dw2-1.dll
 else
+ifeq (${uname_S},AIX)
+libstdc++_path_temp := $(shell sh -c 'g++ --print-file-name=libstdc++.a 2>/dev/null || echo not')
+libgcc_s_path_temp := $(shell sh -c 'g++ --print-file-name=libgcc_s.a 2>/dev/null || echo not')
+libstdc++_path=$(subst libstdc++.a,pthread/libstdc++.a,$(libstdc++_path_temp))
+libgcc_s_path=$(subst libgcc_s.a,pthread/libgcc_s.a,$(libgcc_s_path_temp))
+LIBSTDCPP_NAME := libstdc++.a
+LIBGCC_S_NAME := libgcc_s.a
+else
 libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
 libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
 LIBSTDCPP_NAME := libstdc++.so.6
 LIBGCC_S_NAME := libgcc_s.so.1
+endif
 STRIP_TOOL := strip
 endif
 
@@ -752,11 +761,15 @@ endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
 	cp $< $@
+ifneq (${uname_S},AIX)
 	${STRIP_TOOL} -x $@
+endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 	cp $< $@
+ifneq (${uname_S},AIX)
 	${STRIP_TOOL} -x $@
+endif
 
 .PHONY: server local hybrid agent selinux
 
