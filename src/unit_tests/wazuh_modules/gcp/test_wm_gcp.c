@@ -781,6 +781,8 @@ static void test_wm_gcp_pubsub_run_logging_info_message_debug(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "This is an info message");
 
     wm_gcp_pubsub_run(gcp_config);
 }
@@ -2482,6 +2484,54 @@ static void test_wm_gcp_bucket_main_sleep_then_run(void **state) {
     assert_null(ret);
 }
 
+static void tmp_Dlevel0 (const char *logtag) {
+    expect_string(__wrap__mtinfo, tag, logtag);
+    expect_string(__wrap__mtinfo, formatted_msg, "Received and acknowledged 0 messages");
+
+    expect_string(__wrap__mterror, tag, logtag);
+    expect_string(__wrap__mterror, formatted_msg, "This is an Error");
+
+    expect_string(__wrap__mtwarn, tag, logtag);
+    expect_string(__wrap__mtwarn, formatted_msg, "This is a Warning");
+
+    expect_string(__wrap__mterror, tag, logtag);
+    expect_string(__wrap__mterror, formatted_msg, "This is a Critical");
+}
+
+static void test_wm_parse_output_gcloud_Dlevel0(void **state) {
+    char * output_gcloud = {
+        ":gcloud_wodle: - DEBUG - Setting 1 thread to pull 100 messages in total\n"
+        ":gcloud_wodle: - INFO - Received and acknowledged 0 messages\n"
+        ":gcloud_wodle: - ERROR - This is an Error\n"
+        ":gcloud_wodle: - WARNING - This is a Warning\n"
+        ":gcloud_wodle: - CRITICAL - This is a Critical\n"
+        };
+
+    will_return(__wrap_isDebug, 0);
+    tmp_Dlevel0(WM_GCP_PUBSUB_LOGTAG);
+
+    wm_parse_output(output_gcloud, WM_GCP_LOGGING_TOKEN, WM_GCP_PUBSUB_LOGTAG, NULL);
+
+}
+
+static void test_wm_parse_output_gcloud_Dlevel1(void **state) {
+    char * output_gcloud = {
+        ":gcloud_wodle: - DEBUG - Setting 1 thread to pull 100 messages in total\n"
+        ":gcloud_wodle: - INFO - Received and acknowledged 0 messages\n"
+        ":gcloud_wodle: - ERROR - This is an Error\n"
+        ":gcloud_wodle: - WARNING - This is a Warning\n"
+        ":gcloud_wodle: - CRITICAL - This is a Critical\n"
+        };
+
+    will_return(__wrap_isDebug, 1);
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Setting 1 thread to pull 100 messages in total");
+
+    tmp_Dlevel0(WM_GCP_PUBSUB_LOGTAG);
+
+    wm_parse_output(output_gcloud, WM_GCP_LOGGING_TOKEN, WM_GCP_PUBSUB_LOGTAG, NULL);
+
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2552,6 +2602,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_main_disabled, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_main_run_on_start, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_main_sleep_then_run, setup_group_bucket, teardown_group_bucket),
+
+        /*gcp wm_parser_output  */
+        cmocka_unit_test(test_wm_parse_output_gcloud_Dlevel0),
+        cmocka_unit_test(test_wm_parse_output_gcloud_Dlevel1)
     };
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
