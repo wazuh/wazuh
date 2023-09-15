@@ -32,8 +32,9 @@ std::optional<base::Error> KVDBHandler::set(const std::string& key, const std::s
             }
             else
             {
-                return base::Error {
-                    fmt::format("Can not save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
+                std::string_view error = status.getState() != nullptr ? status.getState() : "Unknown";
+                pRocksDB->Put(rocksdb::WriteOptions(), pCFhandle.get(), rocksdb::Slice(key), rocksdb::Slice(value));
+                return base::Error {fmt::format("Can not save value '{}' in key '{}'. Error: {}", value, key, error)};
             }
         }
         else
@@ -71,7 +72,8 @@ std::optional<base::Error> KVDBHandler::remove(const std::string& key)
             }
             else
             {
-                return base::Error {fmt::format("Can not remove key '{}'. Error: {}", key, status.getState())};
+                std::string_view error = status.getState() != nullptr ? status.getState() : "Unknown";
+                return base::Error {fmt::format("Can not remove key '{}'. Error: {}", key, error)};
             }
         }
         else
@@ -132,7 +134,11 @@ std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
             }
             else
             {
-                return base::Error {fmt::format("Can not get key '{}'. Error: {}", value, key, status.getState())};
+                bool isNotFound = status.IsNotFound() && value.empty();
+                std::string_view error = isNotFound                     ? "Key not found"
+                                         : status.getState() != nullptr ? status.getState()
+                                                                        : "Unknown";
+                return base::Error {fmt::format("Can not get key '{}'. Error: {}", key, error)};
             }
         }
         else
