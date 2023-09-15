@@ -1438,7 +1438,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfil
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('db_filter', [
+@pytest.mark.parametrize('value', [
     'all',
     'other_filter'
 ])
@@ -1448,7 +1448,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfil
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, mock_exists,
-                                            db_filter):
+                                            value):
     """Test utils.WazuhDBQuery._pass_filter function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': {'os.name'}},
@@ -1457,7 +1457,7 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data='data')
 
-    result = query._pass_filter(db_filter)
+    result = query._pass_filter('os.name', value)
 
     assert isinstance(result, bool)
     mock_conn_db.assert_called_once_with()
