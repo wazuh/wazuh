@@ -113,21 +113,27 @@ class WazuhLogger:
         else:
             self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
 
-    def setup_logger(self):
+    def setup_logger(self, handler: logging.Handler = None):
         """
         Prepares a logger with:
             * A rotating file handler
             * A stream handler (if foreground_mode is enabled)
             * An additional debug level.
+
+        :param handler: custom handler that can be set instead of the default one.
         """
         logger = logging.getLogger(self.logger_name)
         cf = CustomFilter('log') if self.log_path.endswith('.log') else CustomFilter('json')
         logger.propagate = False
         # configure logger
-        fh = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
-        fh.setFormatter(self.custom_formatter)
-        fh.addFilter(cf)
-        logger.addHandler(fh)
+        if handler:
+            custom_handler = handler
+        else:
+            custom_handler = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
+
+        custom_handler.setFormatter(self.custom_formatter)
+        custom_handler.addFilter(cf)
+        logger.addHandler(custom_handler)
 
         if self.foreground_mode:
             ch = logging.StreamHandler()
