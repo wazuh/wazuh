@@ -54,7 +54,7 @@ limits_t *init_limits(unsigned int eps, unsigned int timeframe) {
         limits->enabled = false;
         minfo("EPS limit disabled");
     }
-    
+
     return limits;
 }
 
