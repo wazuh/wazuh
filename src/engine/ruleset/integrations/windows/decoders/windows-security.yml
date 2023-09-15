@@ -35,7 +35,10 @@ normalize:
     map:
       - windows.logon.type: kvdb_get(windows_logon_type, $windows.EventData.LogonType)
 
-  # TODO - Set User Account Control (lines 833 to 893)
+  # TODO - Set User Account Control (lines 833 to 893) || Change the names of the fields  (windows.logon??)
+  - map:
+      - ~NewUacValueListDes: kvdb_decode_bitmask('windows_tables', 'uac', $windows.EventData.NewUacValue)
+      - ~OldUacValueListDes: kvdb_decode_bitmask('windows_tables', 'uac', $windows.EventData.OldUacValue)
 
   # TODO - Set Kerberos Ticket Options (lines 894 to 943)
 
