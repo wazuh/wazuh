@@ -1214,7 +1214,8 @@ GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
 DEPS_VERSION = 22
-RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
+RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
+RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
@@ -1323,6 +1324,39 @@ external/$(CPYTHON).tar.gz:
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+endif
+
+ifeq (${uname_S},HP-UX)
+# nlohmann library
+RESOURCES_URL_BASE_NLOHMANN=$(subst https://,http://,$(RESOURCES_URL_BASE))
+ifeq ($(findstring $(RESOURCES_URL_BASE_NLOHMANN),$(RESOURCES_URL)),$(RESOURCES_URL_BASE_NLOHMANN))
+DEPS_VERSION_NLOHMANN_REQUESTED=$(subst $(RESOURCES_URL_BASE_NLOHMANN),,$(RESOURCES_URL))
+DEPS_VERSION_NLOHMANN_MAX=21
+ifeq ($(shell test $(DEPS_VERSION_NLOHMANN_REQUESTED) -gt $(DEPS_VERSION_NLOHMANN_MAX); echo $$?),0)
+DEPS_VERSION_NLOHMANN=$(DEPS_VERSION_NLOHMANN_MAX)
+else
+DEPS_VERSION_NLOHMANN=$(DEPS_VERSION_NLOHMANN_REQUESTED)
+endif
+RESOURCES_URL_NLOHMANN=$(RESOURCES_URL_BASE_NLOHMANN)$(DEPS_VERSION_NLOHMANN)
+ifneq (,$(PRECOMPILED_RES))
+external/nlohmann.tar.gz: external-precompiled/nlohmann.tar.gz
+	test -d $(patsubst %.tar.gz,%,$@) ||\
+	($(CURL) $@ $(RESOURCES_URL_NLOHMANN)/libraries/sources/$(patsubst external/%,%,$@) &&\
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+
+external-precompiled/nlohmann.tar.gz:
+	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL_NLOHMANN)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%.gz,%,$@) && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
+	-test -e external/$(patsubst external-precompiled/%.gz,%,$@) && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
+else
+external/nlohmann.tar.gz:
+	$(CURL) $@ $(RESOURCES_URL_NLOHMANN)/libraries/sources/$(patsubst external/%,%,$@)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+endif
+endif
 endif
 
 # Remaining dependencies
