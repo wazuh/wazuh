@@ -296,8 +296,8 @@ class DistributedAPI:
                     data = await asyncio.wait_for(task, timeout=timeout)
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3021)
-                except OperationalError:
-                    raise exception.WazuhInternalError(2008)
+                except OperationalError as exc:
+                    raise exception.WazuhInternalError(2008, extra_message=str(exc.orig))
                 except process.BrokenProcessPool:
                     raise exception.WazuhInternalError(901)
             except json.decoder.JSONDecodeError:
