@@ -605,35 +605,33 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
             result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
-    else:
-        rbac_filters = dict()
 
-    with WazuhDBQueryGroup(**rbac_filters) as group_query:
-        query_data = group_query.run()
+        with WazuhDBQueryGroup(**rbac_filters) as group_query:
+            query_data = group_query.run()
 
-        for group in query_data['items']:
-            if group_list and group['name'] not in group_list:
-                continue
+            for group in query_data['items']:
+                if group_list and group['name'] not in group_list:
+                    continue
 
-            full_entry = path.join(common.SHARED_PATH, group['name'])
+                full_entry = path.join(common.SHARED_PATH, group['name'])
 
-            # merged.mg and agent.conf sum
-            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-            if merged_sum:
-                group['mergedSum'] = merged_sum
+                # merged.mg and agent.conf sum
+                merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+                if merged_sum:
+                    group['mergedSum'] = merged_sum
 
-            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
-            if conf_sum:
-                group['configSum'] = conf_sum
+                conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+                if conf_sum:
+                    group['configSum'] = conf_sum
 
-            affected_groups.append(group)
+                affected_groups.append(group)
 
-    data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
-                         sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
-                         complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
-                         select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+        data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
+                            sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
+                            complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
+                            select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
+        result.affected_items = data['items']
+        result.total_affected_items = data['totalItems']
 
     return result
 
