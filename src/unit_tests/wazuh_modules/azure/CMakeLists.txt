@@ -8,8 +8,8 @@
 # Tests list and flags
 list(APPEND tests_names "test_wm_azure")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
-                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER,--wrap=SendMSG \
-                         -Wl,--wrap=atexit")
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=_mtdebug1,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER,--wrap=SendMSG \
+                         -Wl,--wrap=atexit,--wrap,isDebug")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
