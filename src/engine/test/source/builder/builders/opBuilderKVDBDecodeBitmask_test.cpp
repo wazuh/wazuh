@@ -4,14 +4,14 @@
 
 #include <gtest/gtest.h>
 #include <json/json.hpp>
-
+#include <logging/logging.hpp>
 #include <baseTypes.hpp>
+
 #include <defs/mocks/failDef.hpp>
 #include <schemf/mockSchema.hpp>
 
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
-#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 
@@ -22,14 +22,26 @@ namespace
 using namespace base;
 using namespace builder::internals::builders;
 
+constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
+constexpr auto DB_NAME = "kvdb";
+constexpr auto DB_NAME_1 = "test_db";
+
+
+std::filesystem::path uniquePath()
+{
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid; // Unique path per thread and process
+    return std::filesystem::path("/tmp") / (ss.str() + "_kvdbTestSuitePath/");
+}
+
 template<typename T>
 class OpBuilderKVDBDecodeBitmask : public ::testing::TestWithParam<T>
 {
 
 protected:
-    static constexpr auto DB_NAME_1 = "test_db";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-    static constexpr auto DB_NAME = "kvdb";
+
 
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> m_kvdbManager;
@@ -40,10 +52,10 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/"; // TODO Change thread id to unique dir
+        kvdbPath = uniquePath().string();
         if (std::filesystem::exists(kvdbPath))
         {
             std::filesystem::remove_all(kvdbPath);
@@ -53,7 +65,7 @@ protected:
         kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
         m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
         m_kvdbManager->initialize();
-        ASSERT_FALSE(m_kvdbManager->createDB("test_db"));
+        ASSERT_FALSE(m_kvdbManager->createDB(DB_NAME_1));
 
         m_schema = std::make_shared<schemf::mocks::MockSchema>();
         EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
@@ -104,11 +116,11 @@ TEST_P(MapBuild, builds)
 
     if (shouldPass)
     {
-        ASSERT_NO_THROW(m_builder(dstFild, "name", {"test_db", keyMap, srcFild}, m_failDef));
+        ASSERT_NO_THROW(m_builder(dstFild, "name", {DB_NAME_1, keyMap, srcFild}, m_failDef));
     }
     else
     {
-        ASSERT_THROW(m_builder(dstFild, "name", {"test_db", keyMap, srcFild}, m_failDef), std::runtime_error);
+        ASSERT_THROW(m_builder(dstFild, "name", {DB_NAME_1, keyMap, srcFild}, m_failDef), std::runtime_error);
     }
 }
 
@@ -195,7 +207,7 @@ TEST_P(DecodeMask, decoding)
         expectedArray.push_back(json::Json {str.c_str()});
     }
 
-    auto op = m_builder(dstFieldPath, "name", {"test_db", m_keyMap, maskField}, m_failDef)
+    auto op = m_builder(dstFieldPath, "name", {DB_NAME_1, m_keyMap, maskField}, m_failDef)
                   ->getPtr<base::Term<base::EngineOp>>()
                   ->getFn();
 
@@ -269,23 +281,6 @@ INSTANTIATE_TEST_SUITE_P(
         // end
         ));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // Test of search map in DB [mask value, expected array result, should pass]
 using BuildParamsT = std::tuple<std::vector<std::string>, bool>;
 class BuildParams : public OpBuilderKVDBDecodeBitmask<BuildParamsT>
@@ -331,17 +326,17 @@ INSTANTIATE_TEST_SUITE_P(
     BuildParams,
     ::testing::Values(
         // Ok map
-        BuildParamsT({"test_db", "keyMap", "$mask"}, true),
+        BuildParamsT({DB_NAME_1, "keyMap", "$mask"}, true),
         // bad size
-        BuildParamsT({"test_db", "keyMap", "$mask", "test"}, false),
-        BuildParamsT({"test_db", "keyMap"}, false),
+        BuildParamsT({DB_NAME_1, "keyMap", "$mask", "test"}, false),
+        BuildParamsT({DB_NAME_1, "keyMap"}, false),
         // bad type
-        BuildParamsT({"test_db", "keyMap", "value"}, false),
-        BuildParamsT({"test_db", "$keyMap", "$mask"}, false),
+        BuildParamsT({DB_NAME_1, "keyMap", "value"}, false),
+        BuildParamsT({DB_NAME_1, "$keyMap", "$mask"}, false),
         BuildParamsT({"$test_db", "keyMap", "$mask"}, false),
         // Unknown db
         BuildParamsT({"test_db1", "keyMap", "$mask"}, false),
         // Unknown key
-        BuildParamsT({"test_db", "keyMap1", "$mask"}, false)
+        BuildParamsT({DB_NAME_1, "keyMap1", "$mask"}, false)
         // end
         ));
