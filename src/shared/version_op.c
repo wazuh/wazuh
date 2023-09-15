@@ -788,31 +788,31 @@ os_info *get_unix_version()
                     info->os_platform = strdup("sunos");
 
                     if (os_release = fopen("/etc/release", "r"), os_release) {
-                    if(fgets(buff, sizeof(buff) - 1, os_release) == NULL){
-                        merror("Cannot read from /etc/release.");
-                        fclose(os_release);
-                        pclose(cmd_output);
-                        goto free_os_info;
-                    } else {
-                        char *base;
-                        char tag[]  = "Solaris";
-                        char *found = strstr(buff, tag);
-                        if (found) {
-                            for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
-                            for (base = found; *found != '\0' && *found != ' '; found++);
-                            *found = '\0';
-                            os_strdup(base, info->os_version);
-                            fclose(os_release);
-                        } else {
-                            merror("Cannot get the Solaris version.");
+                        if (fgets(buff, sizeof(buff) - 1, os_release) == NULL) {
+                            merror("Cannot read from /etc/release.");
                             fclose(os_release);
                             pclose(cmd_output);
                             goto free_os_info;
+                        } else {
+                            char *base;
+                            char tag[]  = "Solaris";
+                            char *found = strstr(buff, tag);
+                            if (found) {
+                                for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
+                                for (base = found; *found != '\0' && *found != ' '; found++);
+                                *found = '\0';
+                                os_strdup(base, info->os_version);
+                                fclose(os_release);
+                            } else {
+                                merror("Cannot get the Solaris version.");
+                                fclose(os_release);
+                                pclose(cmd_output);
+                                goto free_os_info;
+                            }
                         }
-                    }
                     } else {
                         pclose(cmd_output);
-                    goto free_os_info;
+                        goto free_os_info;
                     }
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
                     info->os_name = strdup("HP-UX");

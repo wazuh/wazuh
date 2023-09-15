@@ -1587,7 +1587,11 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **st
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1601,6 +1605,7 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **st
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Solaris 10 1/13");
+
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -1687,7 +1692,11 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two(void **st
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, "/path/to/uname");
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 

@@ -11,8 +11,6 @@
 #ifndef BINARIES_OP_WRAPPERS_H
 #define BINARIES_OP_WRAPPERS_H
 
-#include "headers/shared.h"
-#include "headers/binaries_op.h"
 
 int __wrap_get_binary_path(const char *command, char *path);
 
