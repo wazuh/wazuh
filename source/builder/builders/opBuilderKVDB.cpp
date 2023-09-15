@@ -576,7 +576,9 @@ std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json
 {
     const std::string throwTrace {"Engine KBDB Decode bit mask: "};
 
-    std::map<uint32_t, json::Json> buildedMap;
+    std::vector<std::optional<json::Json>> buildedMap(std::numeric_limits<uint32_t>::digits);
+    // Fill the map with empty values
+    std::fill(buildedMap.begin(), buildedMap.end(), std::nullopt);
     {
         if (!jMap.isObject())
         {
@@ -639,10 +641,9 @@ std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json
     // Function that get the value from the builded map, returns nullopt if not found
     return [buildedMap](const uint32_t pos) -> std::optional<json::Json>
     {
-        auto it = buildedMap.find(pos);
-        if (it != buildedMap.end())
+        if (pos < buildedMap.size())
         {
-            return it->second;
+            return buildedMap[pos];
         }
         return std::nullopt;
     };

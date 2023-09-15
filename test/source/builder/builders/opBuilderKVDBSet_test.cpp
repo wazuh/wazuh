@@ -39,7 +39,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         // cleaning directory in order to start without garbage.
         kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
