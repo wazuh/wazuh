@@ -569,4 +569,234 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
     };
 }
 
+namespace
+{
+// TODO Change this to use an vector instead of a map
+std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json::Json& jMap)
+{
+    const std::string throwTrace {"Engine KBDB Decode bit mask: "};
+
+    std::map<uint32_t, json::Json> buildedMap;
+    {
+        if (!jMap.isObject())
+        {
+            throw std::runtime_error(throwTrace + "Expected object as map.");
+        }
+
+        auto jMapObj = jMap.getObject().value();
+        json::Json::Type mapValueType {};
+        bool isTypeSet = false;
+
+        if (jMapObj.empty())
+        {
+            throw std::runtime_error(throwTrace + "Malformed map (Empty map provided)");
+        }
+
+        for (auto& [key, value] : jMapObj)
+        {
+            uint32_t index = 0;
+            // Validate key
+            if (key.empty())
+            {
+                throw std::runtime_error(throwTrace + "Malformed map (Empty key on map provided)");
+            }
+            if (key[0] == '-')
+            {
+                throw std::runtime_error(throwTrace + "Malformed map (Negative number as key on map provided)");
+            }
+
+            try
+            {
+                index = std::stoul(key);
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(throwTrace + "Malformed map (Expected number as key on map provided)");
+            }
+            if (index >= std::numeric_limits<uint32_t>::digits)
+            {
+                throw std::runtime_error(fmt::format(throwTrace + "Malformed map (Key out of range {}-{}: {})",
+                                                     0,
+                                                     std::numeric_limits<uint32_t>::digits,
+                                                     index));
+            }
+
+            // Validate value
+            if (!isTypeSet)
+            {
+                mapValueType = value.type();
+                isTypeSet = true;
+            }
+            else if (mapValueType != value.type())
+            {
+                throw std::runtime_error(throwTrace + "Malformed map (Heterogeneous types on map)");
+            }
+
+            buildedMap[index] = std::move(value);
+        }
+    }
+
+    // Function that get the value from the builded map, returns nullopt if not found
+    return [buildedMap](const uint32_t pos) -> std::optional<json::Json>
+    {
+        auto it = buildedMap.find(pos);
+        if (it != buildedMap.end())
+        {
+            return it->second;
+        }
+        return std::nullopt;
+    };
+}
+} // namespace
+
+base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions,
+                                                  std::shared_ptr<IKVDBManager> kvdbManager,
+                                                  const std::string& kvdbScopeName,
+                                                  std::shared_ptr<schemf::ISchema> schema)
+{
+    // Identify references and build JSON pointer paths
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions, false);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // Tracing
+    const std::string throwTrace {"Engine KBDB Decode bit mask: "};
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Expected hexa number as mask", name)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Reference to mask not found", name)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: value of mask out of range", name)};
+    const std::string failureTrace4 {fmt::format("[{}] -> Failure: no value found for the mask", name)};
+
+    // Verify parameters size and types
+    helper::base::checkParametersSize(rawName, parameters, 3);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[2], helper::base::Parameter::Type::REFERENCE);
+
+    // Extract parameters
+    const auto& dbName = parameters[0].m_value;
+    const auto& keyMap = parameters[1].m_value;
+    const auto& maskRef = parameters[2].m_value;
+
+    // Verify the schema fields
+    if (schema->hasField(targetField) && schema->getType(targetField) != json::Json::Type::Array)
+    {
+        throw std::runtime_error(throwTrace + "failed schema validation: Target field must be an array.");
+    }
+    if (schema->hasField(maskRef) && schema->getType(maskRef) != json::Json::Type::String)
+    {
+        throw std::runtime_error(throwTrace + "failed schema validation: Mask reference must be a string.");
+    }
+
+    // Get the json map from KVDB
+    json::Json jMap {};
+    {
+        auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            throw std::runtime_error(fmt::format(throwTrace + "{}.", std::get<base::Error>(resultHandler).message));
+        }
+        auto kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler);
+
+        auto resultValue = kvdbHandler->get(keyMap);
+        if (std::holds_alternative<base::Error>(resultValue))
+        {
+            throw std::runtime_error(fmt::format(throwTrace + "{}.", std::get<base::Error>(resultValue).message));
+        }
+        try
+        {
+            jMap = json::Json {std::get<std::string>(resultValue).c_str()};
+        }
+        catch (...)
+        {
+            throw std::runtime_error(throwTrace + "Malformed JSON found in database.");
+        }
+    }
+
+    // Get the function to search in the map
+    auto getValueFn = getFnSearchMap(jMap);
+
+    // Get the function to get the value from the event
+    auto getMaskFn = [maskRef, failureTrace1, failureTrace2, failureTrace3](
+                         const base::Event& event) -> std::variant<uint32_t, std::string>
+    {
+        // If is a string, get the mask as hexa in range 0-0xFFFFFFFF
+        const auto maskStr = event->getString(maskRef);
+        if (maskStr.has_value())
+        {
+            try
+            {
+                auto rMask = std::stoul(maskStr.value(), nullptr, 16);
+                if (rMask <= std::numeric_limits<uint32_t>::max())
+                {
+                    return static_cast<uint32_t>(rMask);
+                }
+                return failureTrace3;
+            }
+            catch (const std::exception&)
+            {
+                return failureTrace1;
+            }
+        }
+        return failureTrace2;
+    };
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [targetField, getValueFn, getMaskFn, successTrace, failureTrace4](
+            const base::Event& event) -> base::result::Result<base::Event>
+        {
+            // Get mask in hexa
+            uint32_t mask {};
+            {
+                auto resultMask = getMaskFn(event);
+                if (std::holds_alternative<std::string>(resultMask))
+                {
+                    return base::result::makeFailure(event, std::move(std::get<std::string>(resultMask)));
+                }
+                mask = std::get<uint32_t>(resultMask);
+            }
+
+            // iterate over the bits of the mask
+            bool isResultEmpty {true};
+            for (uint32_t bitPos = 0; bitPos < std::numeric_limits<uint32_t>::digits; bitPos++)
+            {
+                auto flag = 0x1 << bitPos;
+                if (flag & mask)
+                {
+                    auto value = getValueFn(bitPos);
+
+                    if (value.has_value())
+                    {
+                        isResultEmpty = false;
+                        event->appendJson(*value, targetField);
+                    }
+                }
+            }
+            if (isResultEmpty)
+            {
+                return base::result::makeFailure(event, failureTrace4);
+            }
+
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+HelperBuilder getOpBuilderHelperKVDBDecodeBitmask(std::shared_ptr<IKVDBManager> kvdbManager,
+                                                  const std::string& kvdbScopeName,
+                                                  std::shared_ptr<schemf::ISchema> schema)
+{
+    return [kvdbManager, kvdbScopeName, schema](const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return OpBuilderHelperKVDBDecodeBitmask(
+            targetField, rawName, rawParameters, definitions, kvdbManager, kvdbScopeName, schema);
+    };
+}
+
 } // namespace builder::internals::builders
