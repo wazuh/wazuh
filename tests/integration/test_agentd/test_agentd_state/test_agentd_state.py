@@ -49,7 +49,7 @@ tags:
 import pytest
 from pathlib import Path
 import sys
-from time import sleep
+import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
@@ -140,7 +140,6 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
 
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
-        import pdb; pdb.set_trace()
         check_fields(expected_output, remoted_server)
     
     if remoted_server:
@@ -167,7 +166,21 @@ def parse_state_file():
             state[key] = value.strip("'")
 
     return state
+    
+def wait_for_custom_message_response(expected_response: str, remoted_server: RemotedSimulator, timeout: int = 20):
+    # Start count to set the timeout.
+    custom_message = f'#!-req {remoted_server.request_counter} agent getstate'
+    remoted_server.send_custom_message(custom_message)
+    start_time = time.time()
 
+    while time.time() - start_time < timeout:
+        if remoted_server.custom_message_sent:
+            if expected_response in remoted_server.last_message_ctx.get('message'):
+                import pdb; pdb.set_trace()
+                print(remoted_server.last_message_ctx)
+                return expected_response
+        time.sleep(0.05)
+    
 
 def remoted_get_state(remoted_server):
     """Get state via remoted
@@ -178,7 +191,7 @@ def remoted_get_state(remoted_server):
         state info
     """
     remoted_server.send_custom_message('agent getstate')
-    sleep(20)
+    time.sleep(20)
     #queue_monitor = QueueMonitor(remoted_server.queue)
     #queue_monitor.start(callback=callbacks.generate_callback(r'.*connected.*'))
     return remoted_server.custom_message_response
@@ -200,7 +213,7 @@ def check_fields(expected_output, remoted_server):
     if expected_output['type'] == 'file':
         get_state = parse_state_file
     else:
-        get_state = remoted_get_state(remoted_server)
+        get_state = wait_for_custom_message_response(expected_output['fields']['status'],remoted_server)
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
@@ -208,7 +221,7 @@ def check_fields(expected_output, remoted_server):
         if expected_value != '':
             for precondition in checks[field].get('precondition'):
                 precondition()
-        assert checks[field].get('handler')(expected_value, get_state_callback=get_state)
+        assert checks[field].get('handler')(expected_value, get_state)
 
 
 def check_last_ack(expected_value=None, get_state_callback=None):
