@@ -1246,8 +1246,8 @@ class WazuhDBQuery(object):
         #    id   > 5      ),
         #    group=webserver
         self.query_regex = re.compile(
-            # A ( character.
-            r"(\()?" +
+            # One or more ( characters.
+            r"(\(+)?" +
             # Field name: name of the field to look on DB.
             r"([\w.]+)" +
             # Operator: looks for '=', '!=', '<', '>' or '~'.
@@ -1256,12 +1256,11 @@ class WazuhDBQuery(object):
             r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*"
             r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]+)"
             r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*)+)"
-            # A ) character.
-            r"(\))?" +
+            # One or more ) characters.
+            r"(\)+)?" +
             # Separator: looks for ';', ',' or nothing.
             rf"([{''.join(self.query_separators.keys())}])?"
         )
-        self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
@@ -1372,9 +1371,9 @@ class WazuhDBQuery(object):
                                                                                  operator))
 
             if open_level:
-                level += 1
+                level += len(open_level)
             if close_level:
-                level -= 1
+                level -= len(close_level)
 
             if not self._pass_filter(value):
                 op_index = len(list(filter(lambda x: field in x['field'], self.query_filters)))
@@ -1444,18 +1443,30 @@ class WazuhDBQuery(object):
 
     def _add_filters_to_query(self):
         self._parse_filters()
+
         curr_level = 0
         for q_filter in self.query_filters:
             self._clean_filter(q_filter)
             field_name = q_filter['field'].split('$', 1)[0]
             field_filter = q_filter['field'].replace('.', '_')
+            level = q_filter['level']
 
-            self.query += '((' if curr_level < q_filter['level'] else '('
+            repeat_open = level + 1 - curr_level
+            if level == 0 or repeat_open == 0:
+                repeat_open = 1
+
+            self.query += '(' * repeat_open
 
             self._process_filter(field_name, field_filter, q_filter)
 
-            self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
-            curr_level = q_filter['level']
+            repeat_close = 1
+            if curr_level > level:
+                repeat_close += curr_level - level
+            
+            self.query += ')' * repeat_close
+            self.query += ' {} '.format(q_filter['separator'])
+            curr_level = level
+
         if self.distinct:
             self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
             self.query += ' AND '.join(
