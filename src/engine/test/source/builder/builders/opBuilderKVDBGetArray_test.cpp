@@ -40,7 +40,7 @@ protected:
         initLogging();
 
         // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
+        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/"; // Change unique dir to thread id
 
         if (std::filesystem::exists(kvdbPath))
         {
