@@ -41,7 +41,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], "Ended");
             cJSON_Delete(input_json);
             os_free(extra_args);
-            return OS_SUCCESS;
+            return OS_INVALID;
         }
     }
 
