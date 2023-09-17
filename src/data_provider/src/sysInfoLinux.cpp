@@ -306,6 +306,7 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
         {"debian",      "/etc/debian_version"   },
         {"slackware",   "/etc/slackware-version"},
         {"ubuntu",      "/etc/lsb-release"      },
+        {"alpine",      "/etc/alpine-release"   },
     };
     const auto parseFnc
     {
