@@ -434,7 +434,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
       - "c: dpkg -s autofs -> r:package 'autofs' is not installed"
       - "c: systemctl is-enabled autofs -> r:No such file or directory|disabled"
@@ -473,6 +473,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s aide -> r:install ok installed"
+      - "c:dpkg -s aide-common -> r:install ok installed"
 
   # 1.3.2 Ensure filesystem integrity is regularly checked (Automated)
   - id: 18530
@@ -490,8 +491,12 @@ checks:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
     condition: all
     rules:
-      - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:\.+'
-      - "c:crontab -u root -l -> r:aide"
+      - 'd:/var/spool/cron -> r:\. -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
+      - 'd:/etc -> r:cron.* -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
+      - 'f:/etc/crontab -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - "c:systemctl status aidecheck.timer -> r:Active: active"
 
   # 1.4.1 Ensure permissions on bootloader config are not overridden (Automated)
   - id: 18531
@@ -540,7 +545,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.4 Ensure authentication required for single user mode (Automated)
   - id: 18533
@@ -572,7 +577,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:NX \(Execute Disable\) protection: active'
+      - "c:journalctl -> r:protection: active && r:kernel: NX"
 
   # 1.5.2 Ensure address space layout randomization (ASLR) is enabled (Automated)
   - id: 18536
@@ -858,7 +863,7 @@ checks:
     rules:
       - "c:dpkg -s ntp -> r:install ok installed"
       - "c:dpkg -s chrony -> r:install ok installed"
-      - "c:systemctl is-enabled systemd-timescynd -> enabled"
+      - "c:systemctl is-enabled systemd-timescynd -> r:enabled"
 
   # 2.1.1.2 Ensure systemd-timesyncd is configured (Manual)
   - id: 18554
@@ -874,7 +879,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:systemctl is-enabled systemd-timesyncd.service -> enabled"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
+      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
+      - "c:dpkg -s chrony -> r:package 'chrony' is not installed"
 
   # 2.1.1.3 Ensure chrony is configured (Automated)
   - id: 18555
@@ -890,7 +897,11 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - "c:dpkg -s chrony -> r:^Status: install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:masked"
+      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
       - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
+      - "c:ps -ef -> r:^_chrony && r:/chronyd"
 
   # 2.1.1.4 Ensure ntp is configured (Automated)
   - id: 18556
@@ -908,24 +919,255 @@ checks:
       - http://www.ntp.org/
     condition: all
     rules:
+      - "c:dpkg -s ntp -> r:^Status: install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:masked"
+      - "c:dpkg -s chrony -> r:package 'chrony' is not installed"
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^server\.+|^pool\.+'
       - 'f:/etc/init.d/ntp -> r:^RUNASUSER\s*\t*=\s*\t*ntp'
 
-  # 2.1.2 Ensure X Window System is not installed (Automated) - Not Implemented
-  # 2.1.3 Ensure Avahi Server is not installed (Automated) Not Implemented
-  # 2.1.4 Ensure CUPS is not installed (Automated) Not Implemented
-  # 2.1.5 Ensure DHCP Server is not installed (Automated) Not Implemented
-  # 2.1.6 Ensure LDAP server is not installed (Automated) Not Implemented
-  # 2.1.7 Ensure NFS is not installed (Automated) Not Implemented
-  # 2.1.8 Ensure DNS Server is not installed (Automated) Not Implemented
-  # 2.1.9 Ensure FTP Server is not installed (Automated) Not Implemented
-  # 2.1.10 Ensure HTTP server is not installed (Automated) Not Implemented
+  # 2.1.2 Ensure X Window System is not installed (Automated)
+  - id: 19055
+    title: "Ensure the X Window system is not installed."
+    description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
+    rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
+    impact: 'Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime, if provided by your distribution.'
+    remediation: "Remove the X Windows System packages: apt purge xserver-xorg*."
+    compliance:
+      - cis: ["2.1.2"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
+      - nist_sp_800-53: ["CM-11"]
+    condition: none
+    rules:
+      - 'c:dpkg -l xserver-xorg* -> r:^\wi\s*xserver-xorg'
+
+  # 2.1.3 Ensure Avahi Server is not installed (Automated)
+  - id: 19056
+    title: "Ensure Avahi Server is not installed."
+    description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
+    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
+    remediation: "Run the following commands to remove avahi-daemon: # systemctl stop avahi-daaemon.service # systemctl stop avahi-daemon.socket # apt purge avahi-daemon."
+    compliance:
+      - cis: ["2.1.3"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
+
+  # 2.1.4 Ensure CUPS is not installed (Automated)
+  - id: 19057
+    title: "Ensure CUPS is not installed."
+    description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
+    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface."
+    impact: "Removing CUPS will prevent printing from the system, a common task for workstation systems."
+    remediation: "Run one of the following commands to remove cups: # apt purge cups."
+    references:
+      - https://www.cups.org
+    compliance:
+      - cis: ["2.1.4"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s cups -> r:package 'cups' is not installed"
+
+  # 2.1.5 Ensure DHCP Server is not installed (Automated)
+  - id: 19058
+    title: "Ensure DHCP Server is not installed."
+    description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
+    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove isc-dhcp-server: # apt purge isc-dhcp-server."
+    references:
+      - https://www.isc.org/dhcp/
+    compliance:
+      - cis: ["2.1.5"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s isc-dhcp-server -> r:package 'isc-dhcp-server' is not installed"
+
+  # 2.1.6 Ensure LDAP server is not installed (Automated)
+  - id: 19059
+    title: "Ensure LDAP server is not installed."
+    description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
+    rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
+    remediation: "Run one of the following commands to remove slapd: # apt purge slapd."
+    compliance:
+      - cis: ["2.1.6"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    references:
+      - https://www.openldap.org
+    condition: all
+    rules:
+      - "c:dpkg -s slapd -> r:package 'slapd' is not installed"
+
+  # 2.1.7 Ensure NFS is not installed (Automated)
+  - id: 19060
+    title: "Ensure NFS is not installed."
+    description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be removed to reduce the remote attack surface."
+    remediation: "Run the following command to remove nfs: # apt purge nfs-kernel-server."
+    compliance:
+      - cis: ["2.1.7"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s nfs-kernel-server -> r:package 'nfs-kernel-server' is not installed"
+
+  # 2.1.8 Ensure DNS Server is not installed (Automated)
+  - id: 19061
+    title: "Ensure DNS Server is not installed."
+    description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
+    rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
+    remediation: "Run the following commands to disable DNS server: # apt purge bind9."
+    compliance:
+      - cis: ["2.1.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s bind9 -> r:package 'bind9' is not installed"
+
+  # 2.1.9 Ensure FTP Server is not installed (Automated)
+  - id: 19062
+    title: "Ensure FTP Server is not installed."
+    description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
+    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
+    remediation: "Run the following command to remove vsftpd: # apt purge vsftpd."
+    compliance:
+      - cis: ["2.1.9"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s vsftpd -> r:package 'vsftpd' is not installed"
+
+  # 2.1.10 Ensure HTTP server is not installed (Automated)
+  - id: 19063
+    title: "Ensure HTTP Server is not installed."
+    description: "HTTP or web servers provide the ability to host web site content."
+    rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
+    remediation: "Run the following command to remove apache: # apt purge apache2."
+    compliance:
+      - cis: ["2.1.10"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s apache2 -> r:package 'apache2' is not installed"
+
   # 2.1.11 Ensure IMAP and POP3 server are not installed (Automated)
-  # 2.1.12 Ensure Samba is not installed (Automated) - Not Implemented
-  # 2.1.13 Ensure HTTP Proxy Server is not installed (Automated) Not Implemented
-  # 2.1.14 Ensure SNMP Server is not installed (Automated) - Not Implemented
+  - id: 19064
+    title: "Ensure IMAP and POP3 server are not installed."
+    description: "dovecot-imapd and dovecot-pop3d are an open source IMAP and POP3 server for Linux based systems."
+    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
+    remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d: # apt purge dovecot-imapd dovecot-pop3d."
+    compliance:
+      - cis: ["2.1.11"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s dovecot-imapd -> r:package 'dovecot-imapd' is not installed"
+      - "c:dpkg -s dovecot-pop3d -> r:package 'dovecot-pop3d' is not installed"
+
+  # 2.1.12 Ensure Samba is not installed (Automated)
+  - id: 19065
+    title: "Ensure Samba is not installed."
+    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Server Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
+    rationale: "If there is no need to mount directories and file systems to Windows systems, then this service should be deleted to reduce the potential attack surface."
+    remediation: "Run the following command to remove samba: # apt purge samba."
+    compliance:
+      - cis: ["2.1.12"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s samba -> r:package 'samba' is not installed"
+
+  # 2.1.13 Ensure HTTP Proxy Server is not installed (Automated)
+  - id: 19066
+    title: "Ensure HTTP Proxy Server is not installed."
+    description: "Squid is a standard proxy server used in many distributions and environments."
+    rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be deleted to reduce the potential attack surface."
+    remediation: "Run the following command to remove squid: # apt purge squid."
+    compliance:
+      - cis: ["2.1.13"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s squid -> r:package 'squid' is not installed"
+
+  # 2.1.14 Ensure SNMP Server is not installed (Automated)
+  - id: 19067
+    title: "Ensure SNMP Server is not installed."
+    description: 'Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the health and welfare of network equipment, computer equipment and devices like UPSs. Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157), SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and IPv6. Support for SNMPv2 classic (a.k.a. "SNMPv2 historic" - RFCs 1441-1452) was dropped with the 4.0 release of the UCD-snmp package. The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system.'
+    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. - If SNMP v2 is absolutely necessary, modify the community strings' values."
+    remediation: "Run the following command to remove snmpd: # apt purge snmpd."
+    compliance:
+      - cis: ["2.1.14"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s snmpd -> r:package 'snmpd' is not installed"
 
   # 2.1.15 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 18570
@@ -943,46 +1185,77 @@ checks:
     rules:
       - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
 
-  # 2.1.16 Ensure rsync service is not installed (Automated) Not Implemented
-
-  # 2.1.17 Ensure NIS Server is not installed (Automated) - Not Implemented
-  # 2.2.1 Ensure NIS Client is not installed (Automated)
-  - id: 18573
-    title: "Ensure NIS Client is not installed."
-    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files."
-    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Uninstall nis : apt purge nis."
+  # 2.1.16 Ensure rsync service is not installed (Automated)
+  - id: 19069
+    title: "Ensure rsync service is not installed."
+    description: "The rsync service can be used to synchronize files between systems over network links."
+    rationale: "The rsync service presents a security risk as it uses unencrypted protocols for communication. The rsync package should be removed to reduce the attack area of the system."
+    remediation: "Run the following command to remove rsync: # apt purge rsync."
     compliance:
-      - cis: ["2.3.1"]
-      - cis_csc: ["2.6"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cis: ["2.1.16"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
     rules:
-      - "c:dpkg -s nis -> r:install ok installed"
+      - "c:dpkg -s rsync -> r:package 'rsync' is not installed"
+
+  # 2.1.17 Ensure NIS Server is not installed (Automated)
+  - id: 19070
+    title: "Ensure NIS Server is not installed."
+    description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed and other, more secure services be used."
+    remediation: "Run the following command to remove nis: # apt purge nis."
+    compliance:
+      - cis: ["2.1.17"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s nis -> r:package 'nis' is not installed"
+
+  # 2.2.1 Ensure NIS Client is not installed (Automated)
+  - id: 19071
+    title: "Ensure NIS Client is not installed."
+    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client was used to bind a machine to an NIS server and receive the distributed configuration files."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall nis: # apt purge nis."
+    compliance:
+      - cis: ["2.2.1"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
+      - nist_sp_800-53: ["CM-11"]
+    condition: all
+    rules:
+      - "c:dpkg -s nis -> r:package 'nis' is not installed"
 
   # 2.2.2 Ensure rsh client is not installed (Automated)
-  - id: 18574
+  - id: 19072
     title: "Ensure rsh client is not installed."
     description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin."
-    remediation: "Uninstall rsh : apt remove rsh-client."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin."
+    impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall rsh: # apt purge rsh-client."
     compliance:
-      - cis: ["2.3.2"]
-      - cis_csc: ["4.5"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
+      - cis: ["2.2.2"]
+      - cis_csc_v7: ["4.5"]
+      - cmmc_v2.0: ["IA.3.083"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1098", "T1017", "T1110", "T1136", "T1530", "T1114", "T1133", "T1040", "T1076", "T1021", "T1539", "T1072", "T1078", "T1134", "T1067", "T1088", "T1175", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
+    condition: all
     rules:
-      - "c:dpkg -s rsh-client -> r:install ok installed"
+      - "c:dpkg -s rsh-client -> r:package 'rsh-client' is not installed"
 
   # 2.2.3 Ensure talk client is not installed (Automated)
   - id: 18575
@@ -999,9 +1272,9 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - "c:dpkg -s talk -> r:install ok installed"
+      - "c:dpkg -s talk -> r:package 'talk' is not installed"
 
   # 2.2.4 Ensure telnet client is not installed (Automated)
   - id: 18576
@@ -1018,9 +1291,9 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - "c:dpkg -s telnet -> r:install ok installed"
+      - "c:dpkg -s telnet -> r:package 'telnet' is not installed"
 
   # 2.2.5 Ensure LDAP client is not installed (Automated)
   - id: 18577
@@ -1037,11 +1310,28 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - "c:dpkg -s ldap-utils -> r:install ok installed"
+      - "c:dpkg -s ldap-utils -> r:package 'ldap-utils' is not installed"
 
-  # 2.2.6 Ensure RPC is not installed (Automated) - Not Installed
+  # 2.2.6 Ensure RPC is not installed (Automated)
+  - id: 19076
+    title: "Ensure RPC is not installed."
+    description: "Remote Procedure Call (RPC) is a method for creating low level client server applications across different system architectures. It requires an RPC compliant client listening on a network port. The supporting package is rpcbind."
+    rationale: "If RPC is not required, it is recommended that this services be removed to reduce the remote attack surface."
+    remediation: "Run the following command to remove rpcbind: # apt purge rpcbind."
+    compliance:
+      - cis: ["2.2.6"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s rpcbind -> r:package 'rpcbind' is not installed"
+
   # 2.3 Ensure nonessential services are removed or masked (Manual) Not Implemented
 
   ############################################################
@@ -1067,27 +1357,17 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.6", "CC5.2"]
-    condition: none
+    condition: any
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:ipv6.disable=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:ipv6.disable\s*=\s*1'
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6\s*=\s*1'
+      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6\s*=\s*1'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.all.disable_ipv6\s*=\s*1'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.default.disable_ipv6\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.all.disable_ipv6\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.default.disable_ipv6\s*=\s*1'
 
-  # 3.1.2 Ensure wireless interfaces are disabled (Automated)
-  - id: 18610
-    title: "Ensure wireless interfaces are disabled."
-    description: "Wireless networking is used when wired networks are unavailable. Ubuntu contains a wireless tool kit to allow system administrators to configure and use wireless networks."
-    rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable any wireless interfaces: # nmcli radio all off."
-    compliance:
-      - cis: ["3.6"]
-      - cis_csc: ["15.4", "15.5"]
-      - pci_dss: ["1.2.3"]
-      - tsc: ["CC6.6"]
-    references:
-      - nmcli(1) - Linux man page
-    condition: all
-    rules:
-      - "c:nmcli radio wifi -> r:^disabled"
-      - "c:nmcli radio wwan -> r:^disabled"
+  # 3.1.2 Ensure wireless interfaces are disabled (Automated) - Not Implemented
 
   #############################################################
   # 3.2 Network Parameters
@@ -1105,12 +1385,14 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:net.ipv4.conf.all.send_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:net.ipv4.conf.default.send_redirects\s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.all.send_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.default.send_redirects\s*=\s*0'
 
   # 3.2.2 Ensure IP forwarding is disabled (Automated)
   - id: 18579
@@ -1124,12 +1406,14 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
+      - 'c:sysctl net.ipv4.ip_forward -> r:net.ipv4.ip_forward\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:net.ipv6.conf.all.forwarding\s*=\s*0$'
+      - 'not f:/etc/sysctl.conf -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
+      - 'not f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
+      - 'not d:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
+      - 'not d:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
 
   # 3.3.1 Ensure source routed packets are not accepted (Automated)
   - id: 18580
@@ -1143,16 +1427,20 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.all.accept_source_route\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.default.accept_source_route\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:net.ipv6.conf.all.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:net.ipv6.conf.default.accept_source_route\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.all.accept_source_route\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.default.accept_source_route\s*=\s*0'
 
   # 3.3.2 Ensure ICMP redirects are not accepted (Automated)
   - id: 18581
@@ -1166,16 +1454,20 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.all.accept_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.default.accept_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:net.ipv6.conf.default.accept_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.all.accept_redirects \s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.default.accept_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\snet.ipv6.conf.all.accept_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\snet.ipv6.conf.default.accept_redirects\s*=\s*0'
 
   # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated)
   - id: 18582
@@ -1189,12 +1481,14 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.all.secure_redirects\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.default.secure_redirects\s*=\s*0'
 
   # 3.3.4 Ensure suspicious packets are logged (Automated)
   - id: 18583
@@ -1208,12 +1502,14 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:=\s*\t*1$'
-      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.default.log_martians\s*=\s*1'
 
   # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated)
   - id: 18584
@@ -1227,10 +1523,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored (Automated)
   - id: 18585
@@ -1244,10 +1541,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated)
   - id: 18586
@@ -1261,12 +1559,14 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:=\s*\t*1$'
-      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:net.ipv4.conf.all.rp_filter\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:net.ipv4.conf.default.rp_filter\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*1'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
 
   # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated)
   - id: 18587
@@ -1280,10 +1580,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*1'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*1'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated)
   - id: 18588
@@ -1300,12 +1601,14 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:net.ipv6.conf.all.accept_ra\s*=\s0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:net.ipv6.conf.default.accept_ra\s*=\s*0$'
+      - 'f:/etc/sysctl.conf -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
 
   #####################################################################
   # 3.4 Uncommon Network Protocols
@@ -1398,8 +1701,38 @@ checks:
   # 3.5.1 Ensure Firewall software is installed
   #################################################################
 
-  # 3.5.1.1 Ensure ufw is installed (Automated) - Not Implemented
-  # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated) - Not Implemented
+  # 3.5.1.1 Ensure ufw is installed (Automated)
+  - id: 19093
+    title: "Ensure ufw is installed."
+    description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
+    rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
+    remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw."
+    compliance:
+      - cis: ["3.5.1.1"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.1"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
+      - "c:dpkg -s iptables -> r:package 'iptables' is not installed"
+
+  # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated)
+  - id: 19094
+    title: "Ensure iptables-persistent is not installed with ufw."
+    description: "The iptables-persistent is a boot-time loader for netfilter rules, iptables plugin."
+    rationale: "Running both ufw and the services included in the iptables-persistent package may lead to conflict."
+    remediation: "Run the following command to remove the iptables-persistent package: # apt purge iptables-persistent."
+    compliance:
+      - cis: ["3.5.1.1"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.1"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - "not c:dpkg -s iptables-persistent -> r:Status: install ok installed"
 
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
   - id: 18599
@@ -1416,21 +1749,171 @@ checks:
       - "http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html"
     condition: all
     rules:
-      - "c:systemctl is-enabled ufw -> enabled"
-      - "c:ufw status -> Status: active"
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - "c:systemctl is-enabled ufw -> r:enabled"
+      - "c:ufw status -> r:Status: active"
 
-  # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated) - Not Implemented
+  # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
+  - id: 19096
+    title: "Ensure ufw loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo # ufw allow out on lo # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1."
+    compliance:
+      - cis: ["3.5.2.3"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.2.1"]
+      - tsc: ["CC8.1"]
+    condition: all
+    rules:
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - 'c:ufw status verbose -> r:Anywhere on lo\s*ALLOW IN\s*Anywhere'
+      - 'c:ufw status verbose -> r:Anywhere\s*DENY IN\s*127.0.0.0/8'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*ALLOW IN\s*Anywhere \(v6\)'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*DENY IN\s*::1'
+      - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*Anywhere on lo'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*ALLOW OUT\s*Anywhere \(v6\) on lo'
+
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not Implemented
   # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Manual) - Not Implemented
-  # 3.5.1.7 Ensure ufw default deny firewall policy (Automated) - Not Implemented
-  # 3.5.2.1 Ensure nftables is installed (Automated) - Not Implemented
-  # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated) - Not Implemented
-  # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not Implemented
-  # 3.5.2.4 Ensure a nftables table exists (Automated) - Not Implemented
-  # 3.5.2.5 Ensure nftables base chains exist (Automated) - Not Implemented
-  # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated) - Not Implemented
+  # 3.5.1.7 Ensure ufw default deny firewall policy (Automated)
+  - id: 19097
+    title: "Ensure ufw default deny firewall policy."
+    description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked."
+    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+    impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git ufw allow in http ufw allow in https ufw allow out 53 ufw logging on."
+    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed."
+    compliance:
+      - cis: ["3.5.3.3"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.2"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(incoming\)|reject\s+\(incoming\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)'
+      - 'c:ufw status verbose -> r:^Default: && r:deny\s+\(routed\)|reject\s+\(routed\)'
+
+  # 3.5.2.1 Ensure nftables is installed (Automated)
+  - id: 19098
+    title: "Ensure nftables is installed."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: - nftables is available in Linux kernel 3.13 and newer. - Only one firewall utility should be installed and configured. - Changing firewall settings while connected over the network can result in being locked out of the system."
+    rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
+    remediation: "Run the following command to install nftables: # apt install nftables."
+    compliance:
+      - cis: ["3.5.3.7"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.2"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+
+  # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
+  - id: 19099
+    title: "Ensure ufw is uninstalled or disabled with nftables."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
+    rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
+    remediation: "Run one of the following commands to either remove ufw or disable ufw Run the following command to remove ufw: # apt purge ufw Run the following command to disable ufw: # ufw disable."
+    compliance:
+      - cis: ["3.5.3.7"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.2"]
+      - tsc: ["CC6.6"]
+    condition: any
+    rules:
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
+      - 'c:ufw status -> r:Status:\s*inactive'
+
+  # 3.5.2.3 Ensure iptables are flushed with nftables (Manual)
+  - id: 19100
+    title: "Ensure iptables are flushed with nftables."
+    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
+    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
+    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F."
+    compliance:
+      - cis: ["3.5.3.7"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.2"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - "not c:iptables -L -> r:^ACCEPT|^DROP|^REJECT"
+      - "not c:ip6tables -L -> r:^ACCEPT|^DROP|^REJECT"
+
+  # 3.5.2.4 Ensure a nftables table exists (Automated)
+  - id: 19101
+    title: "Ensure a nftables table exists."
+    description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
+    rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
+    impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter."
+    compliance:
+      - cis: ["3.5.3.7"]
+      - cis_csc: ["9.4"]
+      - pci_dss: ["1.2"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - 'c:nft list tables -> r:\w+'
+
+  # 3.5.2.5 Ensure nftables base chains exist (Automated)
+  - id: 19102
+    title: "Ensure nftables base chains exist."
+    description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
+    rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
+    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }."
+    compliance:
+      - cis: ["3.5.2.5"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:nft list ruleset -> r:hook input"
+      - "c:nft list ruleset -> r:hook forward"
+      - "c:nft list ruleset -> r:hook output"
+
+  # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated)
+  - id: 19103
+    title: "Ensure nftables loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop."
+    compliance:
+      - cis: ["3.5.2.6"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: any
+    rules:
+      - 'c:nft list ruleset -> r:hook input && r:iif "lo" accept'
+      - "c:nft list ruleset -> r:hook input && r:ip saddr 127.0.0.0/8"
+      - "c:nft list ruleset -> r:hook input && r:ip6 saddr ::1 counter packets"
+
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not Implemented
-  # 3.5.2.8 Ensure nftables default deny firewall policy (Automated) - Not Implemented
+  # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
+  - id: 19104
+    title: "Ensure nftables default deny firewall policy."
+    description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
+    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
+    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; } Example: # nft chain inet filter input { policy drop \\; } # nft chain inet filter forward { policy drop \\; } # nft chain inet filter output { policy drop \\; }."
+    compliance:
+      - cis: ["3.5.2.8"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:nft list ruleset -> r:hook input && r:policy drop"
+      - "c:nft list ruleset -> r:hook forward && r:policy drop"
+      - "c:nft list ruleset -> r:hook output && r:policy drop"
 
   # 3.5.2.9 Ensure nftables service is enabled (Automated)
   - id: 18605
@@ -1445,18 +1928,135 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - "c:systemctl is-enabled nftables -> enabled"
+      - "c:systemctl is-enabled nftables -> r:enabled"
 
   # 3.5.2.10 Ensure nftables rules are permanent (Automated) - Not Implemented
-  # 3.5.3.1.1 Ensure iptables packages are installed (Automated) - Not Implemented
-  # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated) - Not Implemented
-  # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated) - NotImplemented
-  # 3.5.3.2.1 Ensure iptables default deny firewall policy (Automated) - NotImplemented
-  # 3.5.3.2.2 Ensure iptables loopback traffic is configured (Automated) - NotImplemented
+  # 3.5.3.1.1 Ensure iptables packages are installed (Automated)
+  - id: 19106
+    title: "Ensure iptables packages are installed."
+    description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
+    rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
+    remediation: "Run the following command to install iptables and iptables-persistent # apt install iptables iptables-persistent."
+    compliance:
+      - cis: ["3.5.3.1.1"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s iptables-persistent -> r:Status: install ok installed"
+
+  # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated)
+  - id: 19107
+    title: "Ensure nftables is not installed with iptables."
+    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables."
+    rationale: "Running both iptables and nftables may lead to conflict."
+    remediation: "Run the following command to remove nftables: # apt purge nftables."
+    compliance:
+      - cis: ["3.5.3.1.2"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:dpkg -s iptables -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
+
+  # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated)
+  - id: 19108
+    title: "Ensure ufw is uninstalled or disabled with iptables."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. - Uses a command-line interface consisting of a small number of simple commands. - Uses iptables for configuration."
+    rationale: "Running iptables.persistent with ufw enabled may lead to conflict and unexpected results."
+    remediation: "Run one of the following commands to either remove ufw or stop and mask ufw Run the following command to remove ufw: # apt purge ufw OR Run the following commands to disable ufw: # ufw disable."
+    compliance:
+      - cis: ["3.5.3.1.3"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: any
+    rules:
+      - "c:ufw status -> r:Status:\\s*inactive"
+      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
+      - "c:systemctl is-enabled ufw -> r:masked"
+
+  # 3.5.3.2.1 Ensure iptables default deny firewall policy (Automated)
+  - id: 19110
+    title: "Ensure iptables default deny firewall policy."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP."
+    compliance:
+      - cis: ["3.5.3.2.3"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)|Chain INPUT \(policy REJECT\)'
+      - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)|Chain FORWARD \(policy REJECT\)'
+      - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)|Chain OUTPUT \(policy REJECT\)'
+
+  # 3.5.3.2.2 Ensure iptables loopback traffic is configured (Automated)
+  - id: 19109
+    title: "Ensure iptables loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP."
+    compliance:
+      - cis: ["3.5.3.2.1"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+
   # 3.5.3.2.3 Ensure iptables outbound and established connections are configured (Manual) - NotImplemented
   # 3.5.3.2.4 Ensure iptables firewall rules exist for all open ports (Automated) - NotImplemented
-  # 3.5.3.3.1 Ensure ip6tables default deny firewall policy (Automated) - NotImplemented
-  # 3.5.3.3.2 Ensure ip6tables loopback traffic is configured (Automated) - NotImplemented
+  # 3.5.3.3.1 Ensure ip6tables default deny firewall policy (Automated)
+  - id: 19112
+    title: "Ensure ip6tables default deny firewall policy."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP."
+    compliance:
+      - cis: ["3.5.3.3.3"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain FORWARD && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain OUTPUT && r:policy DROP"
+
+  # 3.5.3.3.2 Ensure ip6tables loopback traffic is configured (Automated)
+  - id: 19111
+    title: "Ensure ip6tables loopback traffic is configured."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1). Note: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP."
+    compliance:
+      - cis: ["3.5.3.3.1"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
+    rules:
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
+
   # 3.5.3.3.3 Ensure ip6tables outbound and established connections are configured (Manual) - NotImplemented
   # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated) - NotImplemented
 
@@ -1497,7 +2097,7 @@ checks:
       - tsc: ["CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "c:systemctl is-enabled auditd -> enabled"
+      - "c:systemctl is-enabled auditd -> r:enabled"
 
   # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled (Automated)
   - id: 18614
@@ -1516,7 +2116,7 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1 && !r:/boot/memtest86+.bin'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient (Automated) - Not Implemented
 
@@ -1594,8 +2194,15 @@ checks:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S adjtimex && r:-S settimeofday && r:-k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:stime && r:-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday &&  r:-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change"
 
   # 4.1.4 Ensure events that modify user/group information are collected (Automated)
   - id: 18619
@@ -1621,6 +2228,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity"
 
   # 4.1.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 18620
@@ -1642,10 +2254,17 @@ checks:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r: -S && r:sethostname && r:setdomainname && r:-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r: -S && r:sethostname && r:setdomainname && r:-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale"
 
   # 4.1.6 Ensure events that modify the system's Mandatory Access Controls are collected (Automated)
   - id: 18621
@@ -1668,6 +2287,8 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy"
 
   # 4.1.7 Ensure login and logout events are collected (Automated)
   - id: 18622
@@ -1691,6 +2312,9 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins"
 
   # 4.1.8 Ensure session initiation information is collected (Automated)
   - id: 18623
@@ -1711,6 +2335,9 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k logins"
 
   # 4.1.9 Ensure discretionary access control permission modification events are collected (Automated)
   - id: 18624
@@ -1732,8 +2359,17 @@ checks:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chown && r:fchown && r:fchownat && r:lchown && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:fchownat && r:lchown && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=perm_mod"
 
   # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected (Automated)
   - id: 18625
@@ -1754,8 +2390,14 @@ checks:
     rules:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=-1 && r:-k access"
 
   # 4.1.11 Ensure use of privileged commands is collected (Automated) - Not Implemented
 
@@ -1779,6 +2421,9 @@ checks:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=mounts"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=mounts"
 
   # 4.1.13 Ensure file deletion events by users are collected (Automated)
   - id: 18627
@@ -1798,6 +2443,9 @@ checks:
       - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
+      - "c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete"
+      - "c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete"
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected (Automated)
   - id: 18628
@@ -1818,8 +2466,30 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
+      - "c: auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
+      - "c: auditctl -l -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope"
 
-  # 4.1.15 Ensure system administrator command executions (sudo) are collected (Automated) - Not Implemented
+  # 4.1.15 Ensure system administrator command executions (sudo) are collected (Automated)
+  - id: 19130
+    title: "Ensure system administrator command executions (sudo) are collected."
+    description: "sudo provides users with temporary elevated privileges to perform operations. Monitor the administrator with temporary elevated privileges and the operation(s) they performed. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
+    rationale: "Creating an audit log of administrators with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo logfile to verify if unauthorized commands have been executed."
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: `vi /etc/audit/rules.d/50-actions.rules Add the following line: -a exit,always -F arch=b32 -C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-actions.rules Add the following lines: -a always,exit -F arch=b64 -C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions -a always,exit -F arch=b32 -C euid!=uid -F euid=0 -F auid>=1000 -F auid!=4294967295 -S execve -k actions."
+    compliance:
+      - cis: ["4.1.14"]
+      - cis_csc: ["4.8"]
+      - pci_dss: ["10.5.5"]
+      - nist_800_53: ["AU.14"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["PI1.4", "PI1.5", "CC7.1", "CC7.2", "CC7.3", "CC8.1"]
+    condition: all
+    rules:
+      - "d:/etc/audit"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w|^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-C euid!=uid && r:-F euid=0 && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w|^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-C euid!=uid && r:-F euid=0 && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
+      - 'c:auditctl -l -> r:^-w|^-a \.+ && r:always,exit|exit,always && r:-F arch=b64 && r:-S execve && r:-C euid!=uid|-C uid!=euid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
+      - 'c:auditctl -l -> r:^-w|^-a \.+ && r:always,exit|exit,always && r:-F arch=b32 && r:-S execve && r:-C euid!=uid|-C uid!=euid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
 
   # 4.1.16 Ensure kernel module loading and unloading is collected (Automated)
   - id: 18630
@@ -1843,7 +2513,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S init_module && r:-S delete_module && r:-k modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S init_module && r:-S delete_module && r:-k modules'
+      - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-F key=modules"
 
   # 4.1.17 Ensure the audit configuration is immutable (Automated)
   - id: 18631
@@ -1862,6 +2536,9 @@ checks:
       - "d:/etc/audit"
       - "d:/etc/audit/rules.d -> r:^99-finalize.rules$"
       - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
+
+  # 4.2 Configure Logging
+  # 4.2.1 Configure rsyslog
 
   # 4.2.1.1 Ensure rsyslog is installed (Automated)
   - id: 18632
@@ -1895,7 +2572,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - "c:systemctl is-enabled rsyslog -> enabled"
+      - "c:systemctl is-enabled rsyslog -> r:enabled"
 
   # 4.2.1.3 Ensure logging is configured (Manual) - Not Implemented
 
@@ -1930,26 +2607,16 @@ checks:
       - tsc: ["CC5.2"]
     references:
       - rsyslog.conf(5) man page
-    condition: all
+    condition: any
     rules:
-      - 'c:grep -Rh ^*.* /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^*.* action\.+target='
+      - 'f:/etc/rsyslog.conf -> r:^\s*\w && r:action && r:target="\d|target="\w'
+      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\w && r:action && r:target="\d|target="\w'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\* && r:@\d|@\w'
+      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\* && r:@\d|@\w'
 
-  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual)
-  - id: 18636
-    title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
-    description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port."
-    rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
-    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un-comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514. For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514. Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
-    compliance:
-      - cis: ["4.2.1.6"]
-      - cis_csc: ["9.2"]
-      - pci_dss: ["10.5.1"]
-    references:
-      - rsyslog.conf(8) man page
-    condition: all
-    rules:
-      - 'c:grep -Rh ^\$ModLoad[[:space:]]*imtcp /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$ModLoad\s*\t*imtcp'
-      - 'c:grep -Rh ^\$InputTCPServerRun /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$InputTCPServerRun\s*\t*514'
+  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual) - Not Implemented
+
+  # 4.2.2 Configure journald
 
   # 4.2.2.1 Ensure journald is configured to send logs to rsyslog (Automated)
   - id: 18637
@@ -2044,7 +2711,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:systemctl is-enabled cron -> enabled"
+      - "c:systemctl is-enabled cron -> r:enabled"
+      - 'c:systemctl status cron -> r:Active: active \(running\)'
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 18642
@@ -2145,8 +2813,44 @@ checks:
     rules:
       - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-  # 5.1.8 Ensure cron is restricted to authorized users (Automated) - Not Implemented
-  # 5.1.9 Ensure at is restricted to authorized users (Automated) - Not Implemented
+  # 5.1.8 Ensure cron is restricted to authorized users (Automated)
+  - id: 19146
+    title: "Ensure cron is restricted to authorized users."
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy. - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow: # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow."
+    compliance:
+      - cis: ["5.1.7"]
+      - cis_csc: ["14.6"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "f:/etc/cron.allow"
+      - "not f:/etc/cron.deny"
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 5.1.9 Ensure at is restricted to authorized users (Automated)
+  - id: 19147
+    title: "Ensure at is restricted to authorized users."
+    description: "Configure /etc/at.allow to allow specific users to use this service. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in this file is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, at should be removed, and the alternate method should be secured in accordance with local site policy."
+    rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: "Run the following commands to remove /etc/at.deny: # rm /etc/at.deny Run the following command to create /etc/at.allow # touch /etc/at.allow Run the following commands to set permissions and ownership for /etc/at.allow:# chmod g-wx,o-rwx /etc/at.allow # chown root:root /etc/at.allow."
+    compliance:
+      - cis: ["5.1.7"]
+      - cis_csc: ["14.6"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "f:/etc/at.allow"
+      - "not f:/etc/at.deny"
+      - 'c:stat /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 5.2 Configure sudo
+
   # 5.2.1 Ensure sudo is installed (Automated)
   - id: 18526
     title: "Ensure sudo is installed."
@@ -2565,7 +3269,20 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
 
-  # 5.3.22 Ensure SSH MaxSessions is limited (Automated) - Not Implemented
+  # 5.3.22 Ensure SSH MaxSessions is limited (Automated)
+  - id: 19172
+    title: "Ensure SSH MaxSessions is limited."
+    description: "The MaxSessions parameter Specifies the maximum number of open sessions permitted per network connection."
+    rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
+    remediation: "Edit /etc/ssh/sshd_config ending in .conf to set the parameter as follows: MaxSessions 10."
+    compliance:
+      - cis: ["5.2.22"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10 && n:^maxsessions\s+(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+\d+:\d+:(\d+) compare == 0'
 
   ######################################################
   # 5.4 Configure PAM
