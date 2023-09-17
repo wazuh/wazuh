@@ -1,4 +1,5 @@
 import os
+from time import sleep
 import distro
 import pytest
 import re
@@ -53,7 +54,9 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     if not file.exists(path):
         file.create_folder(path)
 
-    [file.write_file(Path(path, f'test{i}.log')) for i in range(amount)]
+    for i in range(amount):
+        sleep(0.1)
+        file.write_file(Path(path, f'test{i}.log'))
 
     yield
 

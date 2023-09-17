@@ -125,3 +125,4 @@ def test_change_target(test_configuration, test_metadata, set_wazuh_configuratio
     file.remove_file(symlink_new_target.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
+    
