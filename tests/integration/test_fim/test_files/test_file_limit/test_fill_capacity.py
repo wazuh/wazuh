@@ -101,14 +101,14 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
     fill_percentage = test_metadata.get('fill_percentage')
     max_entries = test_metadata.get('max_files_entries')
 
-    log_monitor.start(generate_callback(FILE_LIMIT_AMOUNT))
+    log_monitor.start(generate_callback(FILE_LIMIT_AMOUNT), timeout=60)
     assert int(log_monitor.callback_result[0]) == max_entries
 
     files_amount = files_amount if files_amount <= max_entries else max_entries
-    log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
+    log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=60)
     assert int(log_monitor.callback_result[0]) == files_amount
 
-    log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE))
+    log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE), timeout=60)
     if fill_percentage >= 80:
         assert int(log_monitor.callback_result[0]) == fill_percentage
     else:
