@@ -28,24 +28,24 @@ normalize:
   - check:
       - json_event.type: starts_with(integrity_check_)
     map:
-      - _query: concat('agent ', $agent.id, ' ', $json_event.component, ' ', $json_event.type, ' ', $json_event.data)
+      - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', $json_event.type, ' ', $json_event.data)
       - _query_response: wdb_query($_query)
   - check:
       - _query_response: exists()
     map:
-      - _ar_query: concat('(msg_to_agent) [] N!S ', $agent.id, ' ', $json_event.component, ' dbsync ', $_query_response, ' ', $json_event.data)
+      - _ar_query: concat('(msg_to_agent) [] N!S ', $agent.id, ' ', $json_event.component, ' ', dbsync, ' ', $_query_response, ' ', $json_event.data)
       - _ar_result: active_response_send($_ar_query)
 
   - check:
       - json_event.type: string_equal(state)
     map:
-      - _query: concat('agent ', $agent.id, ' ', $json_event.component, ' save2 ', $json_event.data)
+      - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', save2, ' ', $json_event.data)
       - _query_status: wdb_update($_query)
 
   - check:
       - json_event.type: string_equal(integrity_clear)
     map:
-      - _query: concat('agent ', $agent.id, ' ', $json_event.component, ' integrity_clear ', $json_event.data)
+      - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', integrity_clear, ' ', $json_event.data)
       - _query_status: wdb_update($_query)
 
   - map:
