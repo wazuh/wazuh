@@ -52,6 +52,7 @@ add_library(builders OBJECT
   builders/stageBuilderMap.cpp
   builders/stageBuilderNormalize.cpp
   builders/stageBuilderOutputs.cpp
+  builders/windowsHelper.cpp
   policy.cpp
   registry.cpp
 )
