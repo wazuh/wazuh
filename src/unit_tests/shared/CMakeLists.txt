@@ -334,7 +334,7 @@ foreach(counter RANGE ${count})
     add_executable(${test_name} ${test_name}.c)
 
     if(${test_name} STREQUAL "test_flatcc_helpers")
-        add_definitions(${test_name} -DPORTABLE_UNALIGNED_ACCESS=0)
+        target_compile_definitions(${test_name} PRIVATE -DPORTABLE_UNALIGNED_ACCESS=0)
         find_library(FLATCC_LIBRARY flatccrt HINTS ${SRC_FOLDER}/external/flatcc/lib)
         target_link_libraries(
             ${test_name}
