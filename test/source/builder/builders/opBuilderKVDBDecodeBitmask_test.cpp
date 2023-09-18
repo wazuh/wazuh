@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
 #include <json/json.hpp>
 #include <logging/logging.hpp>
 #include <baseTypes.hpp>
