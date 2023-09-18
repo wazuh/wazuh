@@ -2027,7 +2027,7 @@ void test_router_message_forward_invalid_sync_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, NULL);
 
@@ -2049,7 +2049,7 @@ void test_router_message_forward_valid_integrity_check_global(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2074,7 +2074,7 @@ void test_router_message_forward_valid_integrity_check_left(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2099,7 +2099,7 @@ void test_router_message_forward_valid_integrity_check_right(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2122,7 +2122,7 @@ void test_router_message_forward_valid_integrity_clear(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_SyncMsg_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2167,7 +2167,7 @@ void test_router_message_forward_invalid_delta_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, NULL);
 
@@ -2192,7 +2192,7 @@ void test_router_message_forward_valid_delta_packages_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2220,7 +2220,7 @@ void test_router_message_forward_valid_delta_os_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2248,7 +2248,7 @@ void test_router_message_forward_valid_delta_netiface_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2274,7 +2274,7 @@ void test_router_message_forward_valid_delta_netproto_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2300,7 +2300,7 @@ void test_router_message_forward_valid_delta_netaddr_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2327,7 +2327,7 @@ void test_router_message_forward_valid_delta_hardware_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2353,7 +2353,7 @@ void test_router_message_forward_valid_delta_ports_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2379,7 +2379,7 @@ void test_router_message_forward_valid_delta_processes_json_message(void **state
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
@@ -2403,7 +2403,7 @@ void test_router_message_forward_valid_delta_hotfixes_json_message(void **state)
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
     expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, flatcc_json_parser_f_skip_unknown);
+    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
     expect_value(__wrap_w_flatcc_parse_json, parser, Syscollector_Delta_parse_json_table);
     will_return(__wrap_w_flatcc_parse_json, (void*)1);
 
