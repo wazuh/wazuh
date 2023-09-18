@@ -37,8 +37,8 @@ normalize:
 
   # TODO - Set User Account Control (lines 833 to 893) || Change the names of the fields  (windows.logon??)
   - map:
-      - ~NewUacValueListDes: kvdb_decode_bitmask('windows_tables', 'uac', $windows.EventData.NewUacValue)
-      - ~OldUacValueListDes: kvdb_decode_bitmask('windows_tables', 'uac', $windows.EventData.OldUacValue)
+      - windows.NewUacValueListDes: kvdb_decode_bitmask('windows_tables', 'uac', $windows.EventData.NewUacValue)
+      - windows.OldUacValueListDes: kvdb_decode_bitmask('windows_tables', 'uac', $windows.EventData.OldUacValue)
 
   # TODO - Set Kerberos Ticket Options (lines 894 to 943)
 
@@ -357,6 +357,8 @@ normalize:
       - related.user: array_append($windows.EventData.NewTargetUserName)
 
   # TODO - Object Policy Change and SidListDesc (lines 3093 to 3459)
+  - map:
+    - windows.sidListDescripion: windows_sid_list_desc(windows_sidlist_tables, $windows.EventData.SidList)
 
   # Set File fields for events 5140 and 5145
   - check: $event.id == '5140' OR $event.id == '5145'

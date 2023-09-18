@@ -23,6 +23,8 @@
 #include "builders/stageBuilderMap.hpp"
 #include "builders/stageBuilderNormalize.hpp"
 #include "builders/stageBuilderOutputs.hpp"
+#include "builders/windowsHelper.hpp"
+
 #include "registry.hpp"
 
 namespace builder::internals
@@ -147,6 +149,11 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::getOpBuilderHelperKVDBDecodeBitmask(
                                         dependencies.kvdbManager, dependencies.kvdbScopeName, dependencies.schema),
                                     "kvdb_decode_bitmask");
+    // KVDB - Windows speficic helper
+    helperRegistry->registerBuilder(builders::getWindowsSidListDescHelperBuilder(dependencies.kvdbManager,
+                                                                                dependencies.kvdbScopeName,
+                                                                                dependencies.schema),
+                                    "windows_sid_list_desc");
 
     // SCA decoder
     helperRegistry->registerBuilder(builders::getBuilderSCAdecoder(dependencies.wdbManager, dependencies.sockFactory),
