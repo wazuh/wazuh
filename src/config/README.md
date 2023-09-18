@@ -1,4 +1,4 @@
-# Wazuh configuration
+# Wazuh configurations
 
 Wazuh manager and agent configuration are managed and disposed to each module or system component in different ways.
 

@@ -192,9 +192,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #else
             mwarn("%s configuration is only set in the manager.", node[i]->element);
 #endif
-        } else if (
-            strcmp(node[i]->element, osvulndetection) == 0
-        ) {
+        } else if (strcmp(node[i]->element, osvulndetection) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
             if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1) < 0)) {
                 goto fail;
@@ -202,9 +200,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #else
             mwarn("%s configuration is only set in the manager.", node[i]->element);
 #endif
-        } else if (
-            strcmp(node[i]->element, osindexer) == 0
-        ) {
+        } else if (strcmp(node[i]->element, osindexer) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
             if ((modules & CWMODULE) && (Read_Indexer(xml, chld_node) < 0)) {
                 goto fail;
