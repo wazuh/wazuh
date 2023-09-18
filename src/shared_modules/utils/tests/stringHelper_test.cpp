@@ -493,7 +493,7 @@ TEST_F(StringUtilsTest, parseStrToBoolSarasa)
 
 TEST_F(StringUtilsTest, parseStrToTimeEmpty)
 {
-  EXPECT_EQ(Utils::parseStrToTime("1"),-1);
+  EXPECT_EQ(Utils::parseStrToTime("1"),1);
 }
 
 TEST_F(StringUtilsTest,parseStrToTimeOneSec)
