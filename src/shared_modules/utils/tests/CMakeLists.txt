@@ -29,7 +29,6 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "linuxInfoHelper_test.cpp"
     "socketWrapper_test.cpp"
     "socket_test.cpp"
-    "rocksDBIterator_test.cpp"
     "rocksDBSafeQueue_test.cpp"
     "rocksDBWrapper_test.cpp"
     "threadEventDispatcher_test.cpp"

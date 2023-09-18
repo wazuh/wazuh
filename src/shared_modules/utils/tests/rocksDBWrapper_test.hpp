@@ -14,6 +14,9 @@
 
 #include "rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
+#include <filesystem>
+
+static const std::string DATABASE_NAME {"test.db"};
 
 /**
  * @brief Tests the RocksDBWrapper class
@@ -38,7 +41,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        db_wrapper = Utils::RocksDBWrapper("test.db");
+        db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME);
     }
 
     /**
@@ -49,6 +52,7 @@ protected:
     void TearDown() override
     {
         db_wrapper->deleteAll();
+        std::filesystem::remove_all(DATABASE_NAME);
     }
 };
 

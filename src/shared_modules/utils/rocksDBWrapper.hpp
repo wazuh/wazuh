@@ -151,21 +151,13 @@ namespace Utils
         }
 
         /**
-         * @brief Get an iterator pointing to the key-value pair with the given key.
+         * @brief Get an iterator to the database.
          *
-         * @return std::unique_ptr<rocksdb::Iterator> Iterator pointing to the key-value pair with the given key.
+         * @return std::unique_ptr<rocksdb::Iterator> Iterator to the database.
          */
-        std::unique_ptr<rocksdb::Iterator> seek(const std::string& key)
+        std::unique_ptr<rocksdb::Iterator> getIterator()
         {
-            rocksdb::ReadOptions read_options;
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(read_options));
-            it->Seek(key);
-
-            if (it->Valid() && it->key().ToString() == key)
-            {
-                return it;
-            }
-            throw std::invalid_argument("Key not found: " + key);
+            return std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
         }
 
     private:

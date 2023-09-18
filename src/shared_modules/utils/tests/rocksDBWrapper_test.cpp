@@ -182,34 +182,37 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
 }
 
 /**
- * @brief Tests the seek function
+ * @brief Tests the getIterator function
  */
-TEST_F(RocksDBWrapperTest, TestSeek)
+TEST_F(RocksDBWrapperTest, TestIterator)
 {
-    db_wrapper->put("key9", "value9");
-    db_wrapper->put("key10", "value10");
-    db_wrapper->put("key11", "value11");
+    const std::array<std::pair<std::string, std::string>, 4> elements {std::make_pair("key1", "value1"),
+                                                                       std::make_pair("key2", "value2"),
+                                                                       std::make_pair("key3", "value3"),
+                                                                       std::make_pair("key4", "value4")};
 
-    std::string value {};
-    auto it = db_wrapper->seek("key10");
-    EXPECT_EQ(it->key().ToString(), "key10");
-    EXPECT_EQ(it->value().ToString(), "value10");
-}
+    for (const auto& [key, value] : elements)
+    {
+        db_wrapper->put(key, value);
+    }
 
-/**
- * @brief Tests the seek function with an empty database
- */
-TEST_F(RocksDBWrapperTest, TestSeekEmptyDB)
-{
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
-    EXPECT_THROW(new_db_wrapper.seek("key1"), std::invalid_argument);
-}
+    auto it {db_wrapper->getIterator()};
 
-/**
- * @brief Tests the seek function with a non-existent key
- */
-TEST_F(RocksDBWrapperTest, TestSeekNonExistentKey)
-{
-    db_wrapper->put("key12", "value12");
-    EXPECT_THROW(db_wrapper->seek("non_existent_key"), std::invalid_argument);
+    // Iterate through all the elements starting from the first one
+    auto counter {0};
+    for (it->SeekToFirst(); it->Valid(); it->Next())
+    {
+        EXPECT_EQ(it->key().ToString(), elements[counter].first);
+        EXPECT_EQ(it->value().ToString(), elements[counter].second);
+        ++counter;
+    }
+
+    // Start to iterate from the second element
+    counter = 2;
+    for (it->Seek(elements[counter].first); it->Valid(); it->Next())
+    {
+        EXPECT_EQ(it->key().ToString(), elements[counter].first);
+        EXPECT_EQ(it->value().ToString(), elements[counter].second);
+        ++counter;
+    }
 }
