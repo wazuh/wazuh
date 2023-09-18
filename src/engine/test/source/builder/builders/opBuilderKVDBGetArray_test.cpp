@@ -7,11 +7,11 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
+#include <logging/logging.hpp>
 #include <schemf/mockSchema.hpp>
 
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
-#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 
@@ -21,6 +21,15 @@ namespace
 {
 using namespace base;
 using namespace builder::internals::builders;
+
+std::filesystem::path uniquePath()
+{
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid; // Unique path per thread and process
+    return std::filesystem::path("/tmp") / (ss.str() + "_kvdbTestSuitePath/");
+}
 
 class opBuilderKVDBGetArrayTest : public ::testing::Test
 {
@@ -37,10 +46,10 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/"; // Change unique dir to thread id
+        kvdbPath = uniquePath().string();
 
         if (std::filesystem::exists(kvdbPath))
         {
@@ -92,10 +101,10 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
+        kvdbPath = uniquePath().string();
 
         if (std::filesystem::exists(kvdbPath))
         {
