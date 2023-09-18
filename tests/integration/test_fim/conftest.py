@@ -55,7 +55,7 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
         file.create_folder(path)
 
     for i in range(amount):
-        sleep(0.1)
+        sleep(0.001)
         file.write_file(Path(path, f'test{i}.log'))
 
     yield
