@@ -392,6 +392,11 @@ namespace Utils
                 return -1;
             }
 
+            if (isNumber(str))
+            {
+              return seconds;
+            }
+
             switch (str.at(pos))
             {
                 case '\0': break;
@@ -405,7 +410,7 @@ namespace Utils
 
             return seconds;
         }
-        catch (const std::exception& e)
+        catch (const std::invalid_argument& e)
         {
             return -1;
         }
