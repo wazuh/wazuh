@@ -120,7 +120,7 @@ def test_process_jsonl(content, expected):
     ({'example1': {'a': None, 'b': None}, 'example2': {'a': 1, 'b': None}},
      {'example1': {}, 'example2': {'a': 1}})
 ])
-def test_remove_none_fields(content, expected):
+def test_protected_remove_none_fields(content, expected):
     """Test the '_remove_none_fields' function of AWSSubscriberBucket class."""
     s3_log_handler.AWSSubscriberBucket._remove_none_fields(content)
     assert content == expected
@@ -128,7 +128,7 @@ def test_remove_none_fields(content, expected):
 @pytest.mark.parametrize("content, expected_calls", [
     (['{"event1": "data1"}', '{"event2": "data2"}'], [call('{"event1": "data1"}', dump_json=False), call('{"event2": "data2"}', dump_json=False)])
 ])
-def test_process_file(content, expected_calls):
+def test_protected_process_jsonl(content, expected_calls):
     """Test the 'process_file' function of AWSSubscriberBucket class."""
     aws_ssl_subscriber_bucket = utils.get_mocked_aws_sl_subscriber_bucket()
     message_body = {'bucket_path': 'example-bucket', 'log_path': 'example-log.parquet'}

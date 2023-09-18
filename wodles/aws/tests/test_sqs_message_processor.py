@@ -12,6 +12,7 @@ sys.path.append(
 )
 import sqs_message_processor as sqs
 
+
 @pytest.mark.parametrize(
     "msg, expected",
     [
@@ -33,6 +34,7 @@ def test_aws_s3_message_processor(msg, expected):
     processor = sqs.AWSS3MessageProcessor()
     assert processor.parse_message(msg) == expected
 
+
 @pytest.mark.parametrize(
     "msg, expected",
     [
@@ -50,6 +52,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
     processor = sqs.AWSSSecLakeMessageProcessor()
     assert processor.parse_message(msg) == expected
 
+
 @pytest.mark.parametrize(
     "sqs_processor, sqs_messages, expected",
     [
@@ -58,33 +61,29 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
-                    "Body": json.dumps(
-                        {
-                            "Records": [
-                                {
-                                    "s3": {
-                                        "object": {"key": "key1"},
-                                        "bucket": {"name": "name1"},
-                                    }
+                    "Body": {
+                        "Records": [
+                            {
+                                "s3": {
+                                    "object": {"key": "key1"},
+                                    "bucket": {"name": "name1"},
                                 }
-                            ]
-                        }
-                    ),
+                            }
+                        ]
+                    },
                 },
                 {
                     "ReceiptHandle": "h2",
-                    "Body": json.dumps(
-                        {
-                            "Records": [
-                                {
-                                    "s3": {
-                                        "object": {"key": "key2"},
-                                        "bucket": {"name": "name2"},
-                                    }
+                    "Body": {
+                        "Records": [
+                            {
+                                "s3": {
+                                    "object": {"key": "key2"},
+                                    "bucket": {"name": "name2"},
                                 }
-                            ]
-                        }
-                    ),
+                            }
+                        ]
+                    },
                 },
             ],
             [
@@ -97,16 +96,14 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
-                    "Body": json.dumps(
-                        {
-                            "detail": {
-                                "object": {"key": "key1"},
-                                "bucket": {"name": "name1"},
-                            }
+                    "Body": {
+                        "detail": {
+                            "object": {"key": "key1"},
+                            "bucket": {"name": "name1"},
                         }
-                    ),
+                    },
                 },
-                {"ReceiptHandle": "h2", "Body": json.dumps({"example": "some_value"})},
+                {"ReceiptHandle": "h2", "Body": {"example": "some_value"}},
             ],
             [
                 {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1"},
@@ -118,25 +115,21 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
-                    "Body": json.dumps(
-                        {
-                            "detail": {
-                                "object": {"key": "key1"},
-                                "bucket": {"name": "name1"},
-                            }
+                    "Body": {
+                        "detail": {
+                            "object": {"key": "key1"},
+                            "bucket": {"name": "name1"},
                         }
-                    ),
+                    },
                 },
                 {
                     "ReceiptHandle": "h2",
-                    "Body": json.dumps(
-                        {
-                            "detail": {
-                                "object": {"key": "key2"},
-                                "bucket": {"name": "name2"},
-                            }
+                    "Body": {
+                        "detail": {
+                            "object": {"key": "key2"},
+                            "bucket": {"name": "name2"},
                         }
-                    ),
+                    },
                 },
             ],
             [
@@ -149,20 +142,18 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
-                    "Body": json.dumps(
-                        {
-                            "Records": [
-                                {
-                                    "s3": {
-                                        "object": {"key": "key1"},
-                                        "bucket": {"name": "name1"},
-                                    }
+                    "Body": {
+                        "Records": [
+                            {
+                                "s3": {
+                                    "object": {"key": "key1"},
+                                    "bucket": {"name": "name1"},
                                 }
-                            ]
-                        }
-                    ),
+                            }
+                        ]
+                    },
                 },
-                {"ReceiptHandle": "h2", "Body": json.dumps({"example": "some_value"})},
+                {"ReceiptHandle": "h2", "Body": {"example": "some_value"}},
             ],
             [
                 {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1"},
@@ -176,5 +167,7 @@ def test_extract_message_info(sqs_processor, sqs_messages, expected):
     Test extract_message_info method of AWSQueueMessageProcessor subclasses.
     """
     processor = sqs_processor()
+    for i, message in enumerate(sqs_messages):
+        sqs_messages[i]["Body"] = json.dumps(message["Body"])
     result = processor.extract_message_info(sqs_messages)
     assert result == expected
