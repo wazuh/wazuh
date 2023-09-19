@@ -113,7 +113,7 @@ def previous_month(n: int = 1) -> datetime.date:
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
                   search_in_fields: list = None, select: list = None, sort_by: list = None,
-                  sort_ascending: bool = True, allowed_sort_fields: list = None, 
+                  sort_ascending: bool = True, allowed_sort_fields: list = None,
                   offset: int = 0, limit: int = None, q: str = '',
                   required_fields: list = None, allowed_select_fields: list = None,
                   filters: dict = None, distinct: bool = False) -> dict:
@@ -194,9 +194,6 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     sort={"order": 'asc' if sort_ascending else 'desc', 'fields': sort_by}
     default_sort_key = list(array[0].keys())[0]
     fields=dict(zip(list(array[0].keys()), list(array[0].keys())))
-                    # [f"'strftime('%k', {k})'" \
-                    #  if k in date_fields \
-                    #     else k for k in list(array[0].keys())]))
     array = [{k: parser.parse(v) \
                 if k in date_fields else v\
                 for k, v in d.items()} for d in array]
@@ -209,7 +206,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
             select=select, query=q, fields=fields, search=search,
             default_sort_field=default_sort_key, default_sort_order='ASC',
             date_fields=date_fields, count=False, get_data=True,
-            backend=backend, distinct=distinct, filters=filters)
+            backend=backend, distinct=bool(distinct), filters=filters)
     q_result = query.run()
     if q_result['items'] and len(q_result['items'].rows):
         result['items'] = [{q_result['items'].columns[i]: t[i].isoformat()
@@ -1688,14 +1685,13 @@ class WazuhDBQuery(object):
 
     def _add_search_to_query(self):
         if self.search:
+            fields = list(set(self.fields.values()) - set(self.date_fields))
             self.query += " AND NOT" if bool(
                 self.search['negation']) else ' AND'
             self.query += " (" + " OR ".join(
-                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
-                self.fields.values()) + ')'
+                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in fields) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "%{0}%".format(
-                re.sub(f"[{self.special_characters}]", '_', self.search['value']))
+            self.request['search'] = f"%{re.sub(f'[{self.special_characters}]', '_', self.search['value'])}%"
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
@@ -1856,16 +1852,25 @@ class WazuhDBQuery(object):
         raise NotImplementedError
 
     def _filter_date(self, date_filter, filter_db_name):
-        # date_filter['value'] can be either a timeframe or a date in formats %Y-%m-%d, %Y-%m-%d %H:%M:%S or %Y-%m-%dT%H:%M:%SZ
-        if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
-            query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
-            self.request[date_filter['field']] = get_timeframe_in_seconds(
-                date_filter['value'])
+        # date_filter['value'] can be either a timeframe 
+        # or a date in formats %Y-%m-%d, %Y-%m-%d %H:%M:%S or %Y-%m-%dT%H:%M:%SZ
+        if date_filter['operator'] == 'LIKE':
+            self.query += (f"{self.fields[filter_db_name]} IS NOT NULL AND "
+                           f"cast({self.fields[filter_db_name]} AS TEXT) LIKE "
+                           f":{date_filter['field']} ")
+            self.request[date_filter['field']] = date_filter['value']
+        elif date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
+            query_operator = '>' if date_filter['operator'] == '<' \
+                or date_filter['operator'] == '=' else '<'
             self.query += (f"{self.fields[filter_db_name]} IS NOT NULL "
                            f"AND {self.fields[filter_db_name]} {query_operator,} " 
                            f"strftime('%s', 'now') - :{date_filter['field']} ")
-        elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):
-            cast = 'date' if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_filter['value']) else 'datetime'
+            self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
+
+        elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?',
+                      date_filter['value']):
+            cast = 'date' if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_filter['value']) \
+                else 'datetime'
             self.query += (f"{self.fields[filter_db_name]} IS NOT NULL AND "
                            f"{self.fields[filter_db_name]} {date_filter['operator']} "
                            f"cast(:{date_filter['field']} as {cast}) ")

@@ -253,7 +253,7 @@ def test_cut_array_ko(limit, offset, expected_exception):
 
         ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
          None, None, 1, 'e_1', None, None, False,
-         [{'item': 'value_1'}], 2),
+         [{'item': 'value_1'}], 1),
 
         ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
          None, None, 2, 'e_1', None, None, False,
