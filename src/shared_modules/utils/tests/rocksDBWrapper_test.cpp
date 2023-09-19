@@ -216,3 +216,63 @@ TEST_F(RocksDBWrapperTest, TestIterator)
         ++counter;
     }
 }
+
+/**
+ * @brief Tests the range for loop
+ */
+TEST_F(RocksDBWrapperTest, TestRangeForLoop)
+{
+    constexpr auto NUM_ELEMENTS {4};
+    constexpr auto NUM_ELEMENTS_ONE_MATCH {1};
+    const std::array<std::pair<std::string, std::string>, NUM_ELEMENTS> elements {std::make_pair("key1", "value1"),
+                                                                                  std::make_pair("key2", "value2"),
+                                                                                  std::make_pair("key3", "value3"),
+                                                                                  std::make_pair("key4", "value4")};
+    for (const auto& [key, value] : elements)
+    {
+        db_wrapper->put(key, value);
+    }
+
+    auto counter {0};
+
+    for (const auto& [key, value] : db_wrapper->seek("k"))
+    {
+        EXPECT_EQ(key, elements[counter].first);
+        EXPECT_EQ(value, elements[counter].second);
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS);
+
+    counter = 0;
+
+    for (const auto& [key, value] : db_wrapper->seek("key2"))
+    {
+        EXPECT_EQ(key, elements[counter + NUM_ELEMENTS_ONE_MATCH].first);
+        ++counter;
+        EXPECT_EQ(value, elements[counter + NUM_ELEMENTS_ONE_MATCH].second);
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS_ONE_MATCH);
+
+    counter = 0;
+
+    for (const auto& [key, value] : db_wrapper->seek("key5"))
+    {
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, 0);
+
+    counter = 0;
+
+    for (const auto& [key, value] : *db_wrapper)
+    {
+        EXPECT_EQ(key, elements[counter].first);
+        EXPECT_EQ(value, elements[counter].second);
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS);
+}
+

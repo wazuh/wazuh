@@ -12,6 +12,7 @@
 #ifndef _ROCKS_DB_WRAPPER_HPP
 #define _ROCKS_DB_WRAPPER_HPP
 
+#include "rocksDBIterator.hpp"
 #include <iostream>
 #include <rocksdb/db.h>
 #include <string>
@@ -155,9 +156,30 @@ namespace Utils
          *
          * @return std::unique_ptr<rocksdb::Iterator> Iterator to the database.
          */
-        std::unique_ptr<rocksdb::Iterator> getIterator()
+        std::shared_ptr<rocksdb::Iterator> getIterator()
         {
-            return std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
+            return std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
+        }
+
+        /**
+         * @brief Seek to specific key.
+         * @param key Key to seek.
+         * @return RocksDBIterator Iterator to the database.
+         */
+        RocksDBIterator seek(const std::string& key)
+        {
+            return {getIterator(), key};
+        }
+
+        RocksDBIterator begin()
+        {
+            return RocksDBIterator {getIterator()};
+        }
+
+        const RocksDBIterator& end()
+        {
+            static const RocksDBIterator END_ITERATOR;
+            return END_ITERATOR;
         }
 
     private:

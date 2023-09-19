@@ -1,0 +1,76 @@
+/*
+ * Wazuh shared modules utils
+ * Copyright (C) 2015, Wazuh Inc.
+ * September 9, 2023.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _ROCKS_DB_ITERATOR_HPP
+#define _ROCKS_DB_ITERATOR_HPP
+
+#include "rocksdb/iterator.h"
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <utility>
+
+class RocksDBIterator
+{
+public:
+    // End iterator
+    RocksDBIterator()
+        : m_it(nullptr)
+    {
+    }
+
+    RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it, std::string prefix)
+        : m_it(std::move(it))
+        , m_prefix(std::move(prefix))
+    {
+    }
+
+    explicit RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it)
+        : m_it(std::move(it))
+    {
+        m_it->SeekToFirst();
+    }
+
+    RocksDBIterator& begin()
+    {
+        m_it->Seek(m_prefix);
+        return *this;
+    }
+
+    const RocksDBIterator& end()
+    {
+        static const RocksDBIterator END_ITERATOR;
+        return END_ITERATOR;
+    }
+
+    RocksDBIterator& operator++()
+    {
+        m_it->Next();
+        return *this;
+    }
+
+    bool operator!=(const RocksDBIterator& other)
+    {
+        return m_it->Valid() && m_it->key().starts_with(m_prefix);
+    }
+
+    std::pair<std::string, std::string> operator*()
+    {
+        return {m_it->key().ToString(), m_it->value().ToString()};
+    }
+
+private:
+    std::string m_prefix;
+    std::shared_ptr<rocksdb::Iterator> m_it;
+};
+
+#endif // _ROCKS_DB_ITERATOR_HPP
+
