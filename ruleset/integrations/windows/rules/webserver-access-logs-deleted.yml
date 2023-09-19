@@ -1,0 +1,39 @@
+name: rule/webserver-access-logs-deleted/0
+
+metadata:
+  module: Windows
+  title: Defense Evasion.
+  description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
+    evidence on a system.
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This rule has been tested on Wazuh version 4.3.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/09/15
+  references:
+    - "https://attack.mitre.org/tactics/TA0005/"
+
+check :
+  - event.type: array_contains(deletion)
+  - event.category: array_contains(file)
+  - file.path: contains('Apache24\logs\access.log')
+
+normalize:
+  - map:
+      - event.risk_score: 47
+
+      - rule.description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
+          evidence on a system.
+      - rule.id: 665e7a4f-c58e-4fc6-bc83-87a7572670ac
+      - rule.license: Wazuh Inc.
+      - rule.name: WebServer Access Logs Deleted
+
+      - threat.framework: MITRE ATT&CK
+      - threat.tactic.id: array_append(TA0005)
+      - threat.tactic.name: array_append(Defense Evasion)
+      - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0005/)
+      - threat.technique.id: array_append(T1070)
+      - threat.technique.name: array_append(Indicator Removal)
+      - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1070/)
+
+      - vulnerability.severity: medium

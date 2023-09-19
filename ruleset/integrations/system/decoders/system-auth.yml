@@ -111,7 +111,7 @@ normalize:
   - check:
       - message: contains(PAM)
     parse|message:
-      - "PAM <~> more authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
+      - PAM <~> more authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>
     map:
       - event.category: array_append(authentication, session)
 
@@ -139,7 +139,7 @@ normalize:
       - "new group: name=<group.name>, GID=<group.id>"
       - "new user: name=<user.name>, UID=<user.id>, GID=<group.id>, home=<_system.auth.useradd.home>, shell=<_system.auth.useradd.shell>(?,<~>)"
       - "group added to <file.name>: name=<group.name>(?, GID=<group.id>)"
-      - "<_system.auth.event.outcome> adding user '<user.name>'(?,<~>)"
+      - <_system.auth.event.outcome> adding user '<user.name>'(?,<~>)
 
   - check: $_system.auth.event.outcome=="failed" OR $_system.auth.pam.session.action=="failure"
     map:

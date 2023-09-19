@@ -1,7 +1,9 @@
 name: integration/windows/0
 decoders:
 - decoder/windows-security/0
-- decoder/windows-powershell-operational/0
-- decoder/windows-event/0
-- decoder/windows-powershell/0
 - decoder/windows-sysmon/0
+- decoder/windows-powershell/0
+- decoder/windows-event/0
+- decoder/windows-powershell-operational/0
+rules:
+- rule/webserver-access-logs-deleted/0
