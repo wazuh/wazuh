@@ -142,9 +142,6 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     for expected_output in test_metadata['output']:
         check_fields(expected_output, remoted_server)
     
-    if remoted_server:
-        remoted_server.clear()
-        remoted_server.shutdown()
     
 def parse_state_file():
     """Parse state file
@@ -167,7 +164,7 @@ def parse_state_file():
 
     return state
     
-def wait_for_custom_message_response(expected_response: str, remoted_server: RemotedSimulator, timeout: int = 20):
+def wait_for_custom_message_response(expected_response: str, remoted_server: RemotedSimulator, timeout: int = 60):
     # Start count to set the timeout.
     custom_message = f'#!-req {remoted_server.request_counter} agent getstate'
     remoted_server.send_custom_message(custom_message)
@@ -175,27 +172,14 @@ def wait_for_custom_message_response(expected_response: str, remoted_server: Rem
 
     while time.time() - start_time < timeout:
         if remoted_server.custom_message_sent:
-            if expected_response in remoted_server.last_message_ctx.get('message'):
+            if expected_response in (response := remoted_server.last_message_ctx.get('message')): 
+            #if expected_response in remoted_server.last_message_ctx.get('message'):
                 import pdb; pdb.set_trace()
-                print(remoted_server.last_message_ctx)
-                return expected_response
-        time.sleep(0.05)
+                #found_message = remoted_server.last_message_ctx
+                return response
+        time.sleep(0.005)
     
-
-def remoted_get_state(remoted_server):
-    """Get state via remoted
-
-    Send getstate request to agent (via RemotedSimulator) and return state info as dict.
-
-    Returns:
-        state info
-    """
-    remoted_server.send_custom_message('agent getstate')
-    time.sleep(20)
-    #queue_monitor = QueueMonitor(remoted_server.queue)
-    #queue_monitor.start(callback=callbacks.generate_callback(r'.*connected.*'))
-    return remoted_server.custom_message_response
-
+    return None
 
 def check_fields(expected_output, remoted_server):
     """Check every field agains expected data
@@ -213,16 +197,18 @@ def check_fields(expected_output, remoted_server):
     if expected_output['type'] == 'file':
         get_state = parse_state_file
     else:
-        get_state = wait_for_custom_message_response(expected_output['fields']['status'],remoted_server)
+        get_state = wait_for_custom_message_response
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
-
+        #import pdb; pdb.set_trace()
         if expected_value != '':
             for precondition in checks[field].get('precondition'):
                 precondition()
-        assert checks[field].get('handler')(expected_value, get_state)
-
+        if field == 'status':
+            assert checks[field].get('handler')(expected_value, get_state, expected_output['fields']['status'], remoted_server)
+        else:
+            assert checks[field].get('handler')(expected_value, get_state) 
 
 def check_last_ack(expected_value=None, get_state_callback=None):
     """Check `field` status
@@ -297,7 +283,7 @@ def check_msg_count(expected_value=None, get_state_callback=None):
     return sent_messages >= current_value
 
 
-def check_status(expected_value=None, get_state_callback=None):
+def check_status(expected_value=None, get_state_callback=None, expected_response: str=None, remoted_server: RemotedSimulator=None):
     """Check `field` status
 
     Args:
@@ -309,9 +295,18 @@ def check_status(expected_value=None, get_state_callback=None):
     Returns:
         boolean: `True` if check was successfull. `False` otherwise
     """
+    current_value = None
+
+    # Sleep while file is updated
     if expected_value != 'pending':
         wait_keepalive()
         if get_state_callback == parse_state_file:
+            time.sleep(5)
             wait_state_update()
-    current_value = get_state_callback()['status']
+            current_value = get_state_callback()['status']
+        else:
+            current_value = get_state_callback(expected_response, remoted_server)['status']
+    else:
+        current_value = get_state_callback()['status']
+
     return expected_value == current_value
