@@ -306,7 +306,7 @@ void wm_gcp_pubsub_run(const wm_gcp_pubsub *data) {
         mtwarn(WM_GCP_PUBSUB_LOGTAG, "Command returned exit code %d", status);
     }
 
-    wm_parse_output(output, WM_GCP_LOGGING_TOKEN , WM_GCP_PUBSUB_LOGTAG, NULL);
+    wm_parse_output(output, WM_GCP_LOGGING_TOKEN, WM_GCP_PUBSUB_LOGTAG, NULL);
     os_free(output);
 }
 
@@ -376,7 +376,7 @@ void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket) {
         mtwarn(WM_GCP_BUCKET_LOGTAG, "Command returned exit code %d", status);
     }
 
-    wm_parse_output(output, WM_GCP_LOGGING_TOKEN , WM_GCP_BUCKET_LOGTAG, NULL);
+    wm_parse_output(output, WM_GCP_LOGGING_TOKEN, WM_GCP_BUCKET_LOGTAG, NULL);
     os_free(output);
 }
 

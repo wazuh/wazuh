@@ -172,11 +172,9 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
 
         const int wm_exec_ret_code = wm_exec(command, &output, &status, timeout, NULL);
-        if (wm_exec_ret_code != 0){
+        if (wm_exec_ret_code != 0) {
             mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
-            if (wm_exec_ret_code > 0) {
-                os_free(output);
-            }
+            os_free(output);
             pthread_exit(NULL);
         } else if (status > 0) {
             mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_request->tag, status);
@@ -257,11 +255,9 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
 
         const int wm_exec_ret_code = wm_exec(command, &output, &status, timeout, NULL);
-        if (wm_exec_ret_code != 0){
+        if (wm_exec_ret_code != 0) {
             mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
-            if (wm_exec_ret_code > 0) {
-                os_free(output);
-            }
+            os_free(output);
             pthread_exit(NULL);
         } else if (status > 0) {
             mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_request->tag, status);
@@ -360,11 +356,9 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
 
         const int wm_exec_ret_code = wm_exec(command, &output, &status, timeout, NULL);
-        if (wm_exec_ret_code != 0){
+        if (wm_exec_ret_code != 0) {
             mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
-            if (wm_exec_ret_code > 0) {
-                os_free(output);
-            }
+            os_free(output);
             pthread_exit(NULL);
         } else if (status > 0) {
             mtwarn(WM_AZURE_LOGTAG, "%s: Command returned exit code %d", curr_container->name, status);
