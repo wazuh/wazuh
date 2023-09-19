@@ -15,11 +15,12 @@
 
 /**
  * @brief check if firewall is configured
+ * @param log_prog_name name of the program to be written to the logs
  * @param path path to firewall configuration file
  * @param table name of firewall table
  * @return 0 if configured, -1 otherwise
 */
-static int checking_if_its_configured(const char *path, const char *table);
+static int checking_if_its_configured(const char *log_prog_name, const char *path, const char *table);
 
 /**
  * @brief write to file path
@@ -122,7 +123,7 @@ int main (int argc, char **argv) {
                 return OS_SUCCESS;
             } else {
                 // Checking if wazuh table is configured in pf.conf
-                if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) != 0) {
+                if (checking_if_its_configured(argv[0], PFCTL_RULES, PFCTL_TABLE) != 0) {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
                     write_debug_file(argv[0], log_msg);
@@ -219,7 +220,7 @@ int main (int argc, char **argv) {
     return OS_SUCCESS;
 }
 
-static int checking_if_its_configured(const char *path, const char *table) {
+static int checking_if_its_configured(const char *log_prog_name, const char *path, const char *table) {
     char command[COMMANDSIZE_4096];
     char output_buf[OS_MAXSTR];
     char cat_path[PATH_MAX] = {0};
@@ -229,12 +230,12 @@ static int checking_if_its_configured(const char *path, const char *table) {
     if (get_binary_path("cat", cat_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Binary '%s' not found in default paths, the full path will not be used.", cat_path);
-        write_debug_file("active-response/bin/pf", log_msg);
+        write_debug_file(log_prog_name, log_msg);
     }
     if (get_binary_path("grep", grep_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Binary '%s' not found in default paths, the full path will not be used.", grep_path);
-        write_debug_file("active-response/bin/pf", log_msg);
+        write_debug_file(log_prog_name, log_msg);
     }
 
     snprintf(command, COMMANDSIZE_4096 -1, "%s %s | %s %s", cat_path, path, grep_path, table);

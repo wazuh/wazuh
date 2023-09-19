@@ -9,8 +9,6 @@
 
 #include "active_responses.h"
 
-#define CURL "curl"
-#define WGET "wget"
 
 /**
  * Get json with the data to share on slack from an alert. Example:

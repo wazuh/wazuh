@@ -38,7 +38,6 @@ int main (int argc, char **argv) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Python binary not found");
             write_debug_file(argv[0], log_msg);
-            write_debug_file(argv[0], "Ended");
             cJSON_Delete(input_json);
             os_free(extra_args);
             return OS_INVALID;

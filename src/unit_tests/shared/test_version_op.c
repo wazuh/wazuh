@@ -1231,10 +1231,6 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // uname -r
-    expect_string(__wrap_get_binary_path, command, "uname");
-    will_return(__wrap_get_binary_path, "/path/to/uname");
-    will_return(__wrap_get_binary_path, 0);
-
     expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
@@ -1386,10 +1382,6 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // uname -r
-    expect_string(__wrap_get_binary_path, command, "uname");
-    will_return(__wrap_get_binary_path, "/path/to/uname");
-    will_return(__wrap_get_binary_path, 0);
-
     expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
@@ -1807,10 +1799,6 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     will_return(__wrap_fgets, "HP-UX\n");
 
     // uname - r
-    expect_string(__wrap_get_binary_path, command, "uname");
-    will_return(__wrap_get_binary_path, "/path/to/uname");
-    will_return(__wrap_get_binary_path, 0);
-
     expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
@@ -1915,10 +1903,6 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     will_return(__wrap_fgets, "OpenBSD\n");
 
     // uname - r
-    expect_string(__wrap_get_binary_path, command, "uname");
-    will_return(__wrap_get_binary_path, "/path/to/uname");
-    will_return(__wrap_get_binary_path, 0);
-
     expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
@@ -2023,10 +2007,6 @@ void test_get_unix_version_zscaler(void **state)
     will_return(__wrap_fgets, "ZscalerOS\n");
 
     // uname - r
-    expect_string(__wrap_get_binary_path, command, "uname");
-    will_return(__wrap_get_binary_path, "/path/to/uname");
-    will_return(__wrap_get_binary_path, 0);
-
     expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);

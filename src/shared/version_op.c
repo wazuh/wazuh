@@ -690,19 +690,20 @@ os_info *get_unix_version()
             regfree(&regexCompiled);
             fclose(version_release);
         } else {
-            char cmd_path[PATH_MAX + 1] = {0};
+            char uname_path[PATH_MAX + 1] = {0};
 
-            if (get_binary_path("uname", cmd_path) < 0) {
-                mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+            if (get_binary_path("uname", uname_path) < 0) {
+                mdebug1("Binary '%s' not found in default paths, the full path will not be used.", uname_path);
             }
 
-            if (cmd_output = popen(cmd_path, "r"), cmd_output) {
+            if (cmd_output = popen(uname_path, "r"), cmd_output) {
                 char full_cmd[OS_MAXSTR] = {0};
 
                 if (fgets(buff,sizeof(buff) - 1, cmd_output) == NULL) {
                     mdebug1("Cannot read from command output (uname).");
                 // MacOSX
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0) {
+                    char cmd_path[PATH_MAX + 1] = {0};
                     info->os_platform = strdup("darwin");
 
                     memset(cmd_path, '\0', PATH_MAX);
@@ -763,13 +764,8 @@ os_info *get_unix_version()
                         pclose(cmd_output_ver);
                     }
 
-                    memset(cmd_path, '\0', PATH_MAX);
-                    if (get_binary_path("uname", cmd_path) < 0) {
-                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                    }
-
                     memset(full_cmd, '\0', OS_MAXSTR);
-                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
                     if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (uname -r).");
@@ -818,13 +814,8 @@ os_info *get_unix_version()
                     info->os_name = strdup("HP-UX");
                     info->os_platform = strdup("hp-ux");
 
-                    memset(cmd_path, '\0', PATH_MAX);
-                    if (get_binary_path("uname", cmd_path) < 0) {
-                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                    }
-
                     memset(full_cmd, '\0', OS_MAXSTR);
-                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
                     if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (uname -r).");
@@ -841,13 +832,8 @@ os_info *get_unix_version()
                     info->os_name = strdup("BSD");
                     info->os_platform = strdup("bsd");
 
-                    memset(cmd_path, '\0', PATH_MAX);
-                    if (get_binary_path("uname", cmd_path) < 0) {
-                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                    }
-
                     memset(full_cmd, '\0', OS_MAXSTR);
-                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
                     if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (uname -r).");
@@ -862,13 +848,8 @@ os_info *get_unix_version()
                     info->os_name = strdup("BSD");
                     info->os_platform = strdup("bsd");
 
-                    memset(cmd_path, '\0', PATH_MAX);
-                    if (get_binary_path("uname", cmd_path) < 0) {
-                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                    }
-
                     memset(full_cmd, '\0', OS_MAXSTR);
-                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-r");
+                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
                     if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
                         if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                             mdebug1("Cannot read from command output (uname -r).");
@@ -880,10 +861,11 @@ os_info *get_unix_version()
                         pclose(cmd_output_ver);
                     }
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
+                    char cmd_path[PATH_MAX + 1] = {0};
+
                     os_strdup("AIX", info->os_name);
                     os_strdup("aix", info->os_platform);
 
-                    memset(cmd_path, '\0', PATH_MAX);
                     if (get_binary_path("oslevel", cmd_path) < 0) {
                         mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
                     }
