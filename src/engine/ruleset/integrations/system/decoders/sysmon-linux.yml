@@ -241,7 +241,7 @@ normalize:
       - _file_data: parse_file($process.executable)
       - process.name: $_file_data.name
       # Link issue:
-      - process.args: split($process.command_line, \ )
+      - process.args: split($process.command_line, ' ')
 
   - check:
       - process.parent.executable: exists()
@@ -249,7 +249,7 @@ normalize:
       - _file_data: parse_file($process.parent.executable)
       - process.parent.name: $_file_data.name
       # Link issue:
-      - process.parent.args: split($process.parent.command_line, \ )
+      - process.parent.args: split($process.parent.command_line, ' ')
 
   #########################################################
   #                  Service fields

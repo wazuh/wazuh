@@ -1,5 +1,8 @@
 name: decoder/windows-event/0
 
+parents:
+  - decoder/core-windows/0
+
 metadata:
   module: Windows
   title: Base decoder for Windows events.
