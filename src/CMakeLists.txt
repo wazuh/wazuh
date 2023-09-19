@@ -74,6 +74,7 @@ link_directories(${SRC_FOLDER}/external/lzma/build/)
 add_subdirectory(external/benchmark EXCLUDE_FROM_ALL)
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 
+include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
 include_directories(${SRC_FOLDER}/shared_modules/content_manager/include)
