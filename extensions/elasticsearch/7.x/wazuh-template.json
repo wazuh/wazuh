@@ -187,6 +187,15 @@
       "data.office365.UserId",
       "data.office365.Operation",
       "data.office365.ClientIP",
+      "data.ms-graph.relationship",
+      "data.ms-graph.classification",
+      "data.ms-graph.detectionSource",
+      "data.ms-graph.determination",
+      "data.ms-graph.remediationStatus",
+      "data.ms-graph.roles",
+      "data.ms-graph.verdict",
+      "data.ms-graph.serviceSource",
+      "data.ms-graph.severity",
       "data.os.architecture",
       "data.os.build",
       "data.os.codename",
@@ -1144,6 +1153,37 @@
                 }
               },
               "repo": {
+                "type": "keyword"
+              }
+            }
+          },
+          "ms-graph": {
+            "properties": {
+              "relationship": {
+                "type": "keyword"
+              },
+              "classification": {
+                "type": "keyword"
+              },
+              "detectionSource": {
+                "type": "keyword"
+              },
+              "determination": {
+                "type": "keyword"
+              },
+              "remediationStatus": {
+                "type": "keyword"
+              },
+              "roles": {
+                "type": "keyword"
+              },
+              "verdict": {
+                "type": "keyword"
+              },
+              "serviceSource": {
+                "type": "keyword"
+              },
+              "severity": {
                 "type": "keyword"
               }
             }
