@@ -118,9 +118,11 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
-
-			os_calloc(1, sizeof(wm_ms_graph), ms_graph->auth_config[tenant]);
-			it = ms_graph->auth_config[tenant++];	
+		
+			os_realloc(ms_graph->auth_config, sizeof(wm_ms_graph_auth) * (tenant + 1), ms_graph->auth_config);	
+			os_calloc(1, sizeof(wm_ms_graph_auth), ms_graph->auth_config[tenant]);
+			it = ms_graph->auth_config[tenant];
+			tenant++;	
 
 			for (int j = 0; children[j]; j++) {							
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
@@ -262,7 +264,8 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
         return OS_INVALID;
     }
 	
-	for (e = 0, it = ms_graph->auth_config[0]; it; e++, it = ms_graph->auth_config[e]) {
+	for (e = 0; ms_graph->auth_config && ms_graph->auth_config[e]; e++) {
+		it = ms_graph->auth_config[e];
 		if (!it->client_id && !it->tenant_id && !it->secret_value) {
 			merror(XML_NO_ELEM, XML_API_AUTH);
 			return OS_NOTFOUND;

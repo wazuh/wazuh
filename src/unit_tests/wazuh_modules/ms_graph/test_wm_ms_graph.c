@@ -37,6 +37,7 @@
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #define TEST_MAX_DATES 5
+#define TEST_MAX_TENANT 3
 
 static wmodule *ms_graph_module;
 static OS_XML *lxml;
@@ -62,12 +63,14 @@ static void wmodule_cleanup(wmodule *module){
         }
         os_free(module_data->resources);
 
-        os_free(module_data->auth_config.tenant_id);
-        os_free(module_data->auth_config.client_id);
-        os_free(module_data->auth_config.secret_value);
-        os_free(module_data->auth_config.access_token);
-        os_free(module_data->auth_config.login_fqdn);
-        os_free(module_data->auth_config.query_fqdn);
+        for(int i = 0; module_data->auth_config[i]; i++) {
+            os_free(module_data->auth_config[i]->tenant_id);
+            os_free(module_data->auth_config[i]->client_id);
+            os_free(module_data->auth_config[i]->secret_value);
+            os_free(module_data->auth_config[i]->access_token);
+            os_free(module_data->auth_config[i]->login_fqdn);
+            os_free(module_data->auth_config[i]->query_fqdn);
+        }
 
         os_free(module_data);
     }
@@ -98,6 +101,11 @@ static int teardown_test_read(void **state) {
 static int setup_conf(void **state) {
     wm_ms_graph* init_data = NULL;
     os_calloc(1,sizeof(wm_ms_graph), init_data);
+    
+    os_calloc(TEST_MAX_TENANT, sizeof(wm_ms_graph_auth), init_data->auth_config); 
+    for(int i = 0; i < TEST_MAX_TENANT; i++) 
+        os_calloc(1, sizeof(wm_ms_graph_auth), init_data->auth_config[i]);
+
     test_mode = true;
     *state = init_data;
     return 0;
@@ -215,9 +223,11 @@ void test_enabled_no(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
+
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -291,9 +301,9 @@ void test_disabled_only_future_events(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -458,9 +468,9 @@ void test_disabled_run_on_start(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 0);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1095,9 +1105,78 @@ void test_normal_config(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
+}
+
+void test_multitenants_config(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>client_1</client_id>\n"
+        "  <tenant_id>tenant_1</tenant_id>\n"
+        "  <secret_value>secret_1</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<api_auth>\n"
+        "  <client_id>client_2</client_id>\n"
+        "  <tenant_id>tenant_2</tenant_id>\n"
+        "  <secret_value>secret_2</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<api_auth>\n"
+        "  <client_id>client_3</client_id>\n"
+        "  <tenant_id>tenant_3</tenant_id>\n"
+        "  <secret_value>secret_3</secret_value>\n"
+        "  <api_type>global</api_type>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 1);
+    assert_int_equal(module_data->only_future_events, 1);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_string_equal(module_data->version, "v1.0");
+
+    assert_string_equal(module_data->auth_config[0]->client_id, "client_1");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "tenant_1");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "secret_1");
+
+    assert_string_equal(module_data->auth_config[1]->client_id, "client_2");
+    assert_string_equal(module_data->auth_config[1]->tenant_id, "tenant_2");
+    assert_string_equal(module_data->auth_config[1]->secret_value, "secret_2");
+
+    assert_string_equal(module_data->auth_config[2]->client_id, "client_3");
+    assert_string_equal(module_data->auth_config[2]->tenant_id, "tenant_3");
+    assert_string_equal(module_data->auth_config[2]->secret_value, "secret_3");
+
+
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1141,11 +1220,11 @@ void test_normal_config_api_type_gcc(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
-    assert_string_equal(module_data->auth_config.login_fqdn, "login.microsoftonline.us");
-    assert_string_equal(module_data->auth_config.query_fqdn, "graph.microsoft.us");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->login_fqdn, "login.microsoftonline.us");
+    assert_string_equal(module_data->auth_config[0]->query_fqdn, "graph.microsoft.us");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1189,11 +1268,11 @@ void test_normal_config_api_type_dod(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
-    assert_string_equal(module_data->auth_config.login_fqdn, "login.microsoftonline.us");
-    assert_string_equal(module_data->auth_config.query_fqdn, "dod-graph.microsoft.us");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->login_fqdn, "login.microsoftonline.us");
+    assert_string_equal(module_data->auth_config[0]->query_fqdn, "dod-graph.microsoft.us");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1218,11 +1297,11 @@ void test_setup_complete(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     os_strdup("identityProtection", module_data->resources[1].name);
@@ -1263,11 +1342,11 @@ void test_main_token(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1314,7 +1393,7 @@ void test_main_token(void **state) {
     expect_string(__wrap__mtinfo, formatted_msg, "Obtaining access token.");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1340,11 +1419,11 @@ void test_main_relationships(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1354,8 +1433,8 @@ void test_main_relationships(void **state) {
     size_t max_size = OS_SIZE_8192;
     bool initial = true;
 
-    os_strdup("token", module_data->auth_config.access_token);
-    module_data->auth_config.token_expiration_time = 276447231;
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    module_data->auth_config[0]->token_expiration_time = 276447231;
 
     will_return(__wrap_FOREVER, 1);
 
@@ -1472,11 +1551,11 @@ void test_dump(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1515,11 +1594,11 @@ void test_dump_gcc_configuration(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = false;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     module_data->resources[0].name = NULL;
     module_data->num_resources = 1;
@@ -1558,11 +1637,11 @@ void test_dump_dod_configuration(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = false;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_DOD_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_DOD_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_DOD_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_DOD_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
 
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
@@ -1597,11 +1676,11 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1611,7 +1690,7 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     size_t max_size = OS_SIZE_8192;
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1626,7 +1705,7 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    assert_null(module_data->auth_config.access_token);
+    assert_null(module_data->auth_config[0]->access_token);
 
 }
 
@@ -1654,11 +1733,11 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1674,7 +1753,7 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1689,7 +1768,7 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    assert_null(module_data->auth_config.access_token);
+    assert_null(module_data->auth_config[0]->access_token);
 
 }
 
@@ -1717,11 +1796,11 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1738,7 +1817,7 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1753,7 +1832,7 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    assert_null(module_data->auth_config.access_token);
+    assert_null(module_data->auth_config[0]->access_token);
 
 }
 
@@ -1781,11 +1860,11 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1802,7 +1881,7 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1817,7 +1896,7 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    assert_null(module_data->auth_config.access_token);
+    assert_null(module_data->auth_config[0]->access_token);
 
 }
 
@@ -1845,11 +1924,11 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1867,7 +1946,7 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1879,11 +1958,11 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
 
     wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
 
-    assert_string_equal(module_data->auth_config.access_token, "token_value");
+    assert_string_equal(module_data->auth_config[0]->access_token, "token_value");
 #ifdef WIN32
     assert_int_equal(module_data->auth_config.token_expiration_time, 123);
 #else
-    assert_int_equal(module_data->auth_config.token_expiration_time, 223);
+    assert_int_equal(module_data->auth_config[0]->token_expiration_time, 223);
 #endif
 
 }
@@ -1912,11 +1991,11 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1933,7 +2012,7 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1974,11 +2053,11 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1995,7 +2074,7 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'http://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2037,11 +2116,11 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2104,11 +2183,11 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2164,12 +2243,12 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_strdup("token", module_data->auth_config.access_token);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    os_strdup("token", module_data->auth_config[0]->access_token);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2194,7 +2273,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2238,11 +2317,11 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2307,11 +2386,11 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2342,7 +2421,7 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2386,11 +2465,11 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2422,7 +2501,7 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2466,11 +2545,11 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2502,7 +2581,7 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2546,11 +2625,11 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2582,7 +2661,7 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2642,11 +2721,11 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2679,7 +2758,7 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2748,11 +2827,11 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2785,7 +2864,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2874,11 +2953,11 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     os_strdup("auditlogs", module_data->resources[1].name);
@@ -2915,7 +2994,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2974,7 +3053,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/auditlogs/signIns?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'http://graph.microsoft.com/v1.0/auditlogs/signIns?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3052,6 +3131,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_normal_config, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_normal_config_api_type_gcc, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_normal_config_api_type_dod, setup_test_read, teardown_test_read)
+        
     };
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_setup_complete, setup_conf, teardown_conf),
@@ -3080,7 +3160,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_no_logs, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_one_log, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_logs, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf)
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_multitenants_config, setup_conf, teardown_conf)
     };
     int result = 0;
     result = cmocka_run_group_tests(tests_without_startup, NULL, NULL);
