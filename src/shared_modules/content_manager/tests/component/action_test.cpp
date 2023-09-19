@@ -255,7 +255,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     EXPECT_NO_THROW(action->registerActionOnDemand());
 
     EXPECT_NO_THROW(action->runActionOnDemand());
-    
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(action->unregisterActionOnDemand());
