@@ -14,6 +14,9 @@
 
 #include <external/cpp-httplib/httplib.h>
 #include <external/nlohmann/json.hpp>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
@@ -27,7 +30,6 @@ private:
     httplib::Server m_server;
     std::thread m_thread;
     std::string m_host;
-    std::string m_health;
     int m_port;
 
 public:
