@@ -841,7 +841,7 @@ void router_message_forward(char* msg, const char* agent_id) {
     char* msg_to_send = NULL;
 
     char* msg_start = msg + message_header_size;
-    size_t msg_size = strnlen(msg_start, OS_MAXSTR);
+    size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
         j_msg = cJSON_Parse(msg_start);
         if(!j_msg) {
