@@ -106,7 +106,7 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
         {
             auto traceStream = std::make_shared<std::stringstream>();
             *traceStream << trace;
-            dataSync->m_trace[matchVerbose[1].str()].push_back(traceStream);
+            dataSync->m_trace.emplace_back(matchVerbose[1].str(), traceStream);
         }
     };
 }
@@ -134,29 +134,35 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
     {
         if (dataSync->m_history.empty())
         {
-            dataSync->m_trace[dataSync->m_asset].clear();
+            dataSync->m_trace.clear();
         }
         else
         {
             for (const auto& [asset, condition] : dataSync->m_history)
             {
-                if (dataSync->m_trace.find(asset) == dataSync->m_trace.end())
+                auto it = std::find_if(dataSync->m_trace.begin(), dataSync->m_trace.end(), [&](const auto& kvp) {
+                    return kvp.m_asset == asset;
+                });
+
+                if (it == dataSync->m_trace.end())
                 {
-                    dataSync->m_trace.clear();
                     return base::Error {
                         fmt::format("Policy '{}' has not been configured for trace tracking and output subscription",
                                     dataSync->m_asset)};
                 }
 
-                std::set<std::string> uniqueTraces; // Set for warehouses single traces
-                for (const auto& traceStream : dataSync->m_trace[asset])
+                std::list<std::string> traces;
+                for (const auto& traceStream : dataSync->m_trace)
                 {
-                    uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
+                    if (traceStream.m_asset == it->m_asset)
+                    {
+                        traces.push_back(traceStream.m_spCondition->str());
+                    }
                 }
 
                 json::Json tmp;
                 tmp.setArray();
-                for (auto& info : uniqueTraces)
+                for (auto& info : traces)
                 {
                     tmp.appendString(info);
                 }
@@ -171,7 +177,7 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
     {
         if (dataSync->m_history.empty())
         {
-            dataSync->m_trace[dataSync->m_asset].clear();
+            dataSync->m_trace.clear();
         }
         else
         {
