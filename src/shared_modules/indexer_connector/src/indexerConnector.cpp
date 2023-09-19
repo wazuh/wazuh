@@ -12,24 +12,47 @@
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
 #include "shared_modules/indexer_connector/src/serverSelector.hpp"
+#include <fstream>
 
 // TODO: remove the LCOV flags when the implementation of this class is completed
 // LCOV_EXCL_START
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
 constexpr auto DATABASE_WORKERS = 1;
+constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
-IndexerConnector::IndexerConnector(const nlohmann::json& config)
+IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::string& templatePath)
 {
     // Initialize publisher.
-    auto selector = std::make_shared<ServerSelector>(config.at("servers"));
+    auto selector = std::make_shared<ServerSelector>(config.at("indexer").at("hosts"));
+
+    // Read template file.
+    std::ifstream templateFile(templatePath);
+    if (!templateFile.is_open())
+    {
+        throw std::runtime_error("Could not open template file.");
+    }
+
+    nlohmann::json templateData;
+    templateFile >> templateData;
+
+    // Get index name.
+    auto indexName {config.at("indexer").at("name").get_ref<const std::string&>()};
+
+    // Initialize template.
+    HTTPRequest::instance().put(
+        HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
+        templateData,
+        [&](const std::string& response) {},
+        [&](const std::string& error, const long statusCode)
+        { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); });
+
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
-        [&, selector](std::queue<std::string>& dataQueue)
+        [selector, indexName](std::queue<std::string>& dataQueue)
         {
             try
             {
-                auto server = selector->getNext();
-                auto url = server;
-                nlohmann::json bulkData;
+                auto url = selector->getNext();
+                std::string bulkData;
                 url.append("/_bulk");
 
                 while (!dataQueue.empty())
@@ -37,17 +60,18 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config)
                     auto data = dataQueue.front();
                     dataQueue.pop();
                     auto parsedData = nlohmann::json::parse(data);
-                    auto index = parsedData.at("type");
                     auto id = parsedData.at("id").get_ref<const std::string&>();
 
                     if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                     {
-                        bulkData.push_back(nlohmann::json({{"delete", {{"_index", index}, {"_id", id}}}}));
+                        bulkData.append(nlohmann::json({{"delete", {{"_index", indexName}, {"_id", id}}}}).dump());
                     }
                     else
                     {
-                        bulkData.push_back(nlohmann::json({{"index", {{"_index", index}, {"_id", id}}}}));
-                        bulkData.push_back(parsedData.at("data"));
+                        bulkData.append(nlohmann::json({{"index", {{"_index", indexName}, {"_id", id}}}}).dump());
+                        bulkData.append("\n");
+                        bulkData.append(parsedData.at("data").dump());
+                        bulkData.append("\n");
                     }
                 }
 
@@ -55,7 +79,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config)
                 HTTPRequest::instance().post(
                     HttpURL(url),
                     bulkData,
-                    [&](const std::string& response) { std::cout << "Response: " << response << std::endl; },
+                    [&](const std::string& response) {},
                     [&](const std::string& error, const long statusCode)
                     { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; });
             }
@@ -64,7 +88,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config)
                 std::cout << "Error: " << e.what() << std::endl;
             }
         },
-        config.at("databasePath"),
+        DATABASE_BASE_PATH + indexName,
         DATABASE_WORKERS);
 }
 

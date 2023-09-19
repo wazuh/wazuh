@@ -1,0 +1,15 @@
+{
+  "indexer": {
+  "name": "vulnerability-state",
+  "enabled": "yes",
+  "hosts": ["http://192.168.1.7:9200"],
+  "username": "user",
+  "password": "pwd",
+  "api_key": "",
+  "ssl": {
+    "certificate_authorities": ["/var/ossec/"],
+    "certificate": "cert",
+    "key": ""
+  }
+ }
+}

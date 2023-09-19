@@ -36,7 +36,7 @@ public:
      *
      * @param config Indexer configuration, including database_path and servers.
      */
-    explicit IndexerConnector(const nlohmann::json& config);
+    explicit IndexerConnector(const nlohmann::json& config, const std::string& templatePath);
     ~IndexerConnector();
 
     /**
