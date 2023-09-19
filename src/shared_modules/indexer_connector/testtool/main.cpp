@@ -9,23 +9,27 @@ int main()
             "http://localhost:9200",
             "http://localhost:9300"
         ],
-        "database_path": "/tmp/indexerConnector"
+        "databasePath": "/tmp/indexerConnector"
     })"_json);
 
     indexerConnector.publish(R"(
     {
-        "type": "test",
+        "type": "test-index",
         "data": {
             "message": "Hello world!"
-        }
+        },
+        "id": "1",
+        "operation": ""
     })");
 
     indexerConnector.publish(R"(
     {
-        "type": "test",
+        "type": "test-index",
         "data": {
             "message": "World hello!"
-        }
+        },
+        "id": "3",
+        "operation": ""
     })");
 
     // \cond

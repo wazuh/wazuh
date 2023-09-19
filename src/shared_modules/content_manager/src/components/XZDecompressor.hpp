@@ -12,8 +12,11 @@
 #ifndef _XZ_DECOMPRESSOR_HPP
 #define _XZ_DECOMPRESSOR_HPP
 
+#include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include "utils/stringHelper.h"
+#include "utils/xzHelper.hpp"
 #include <iostream>
 #include <memory>
 
@@ -33,21 +36,33 @@ private:
      */
     void decompress(UpdaterContext& context) const
     {
-        const std::string outputFolder {context.spUpdaterBaseContext->outputFolder};
-        const auto fileName {context.spUpdaterBaseContext->configData.at("fileName").get<std::string>()};
-
-        // TODO implement behavior
-        // 1. Decompress the content (outputFolder + fileName)
-        // 2. Save the decompressed content in the context (context.data)
-        std::ignore = outputFolder;
-        std::ignore = fileName;
-
-        // Update the status of the stage
-        for (auto& element : context.data.at("stageStatus"))
+        for (auto& path : context.data.at("paths"))
         {
-            if (element.at("stage").get<std::string>() == "XZDecompressor")
-                element.at("status") = "ok";
+            std::filesystem::path inputPath {path};
+            try
+            {
+                // Update the output folder and file name, and update the path in the context.
+                // Ex: assumings compressionType = xz and dataFormat = json
+                // from: /tmp/output_folder/downloads/file.xz
+                // to: /tmp/output_folder/contents/file.json
+                Utils::replaceAll(path.get_ref<std::string&>(), DOWNLOAD_FOLDER, CONTENTS_FOLDER);
+                Utils::replaceAll(path.get_ref<std::string&>(),
+                                  context.spUpdaterBaseContext->configData.at("compressionType").get<std::string>(),
+                                  context.spUpdaterBaseContext->configData.at("dataFormat").get<std::string>());
+                std::filesystem::path outputPath {path};
+
+                Utils::XzHelper(inputPath, outputPath).decompress();
+            }
+            catch (const std::exception& e)
+            {
+                // Set the status of the stage
+                context.data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "fail"})"_json);
+
+                throw std::runtime_error("XZDecompressor - Could not decompress the file " + inputPath.string() +
+                                         " because: " + e.what());
+            }
         }
+        context.data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "ok"})"_json);
     }
 
 public:
@@ -59,9 +74,6 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-        // Pre-set the status of the stage to fail
-        context->data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "fail"})"_json);
-
         decompress(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);

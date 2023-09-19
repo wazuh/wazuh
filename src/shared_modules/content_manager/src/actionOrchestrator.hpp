@@ -15,6 +15,7 @@
 #include "components/executionContext.hpp"
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
+#include "routerProvider.hpp"
 #include <iostream>
 #include <memory>
 

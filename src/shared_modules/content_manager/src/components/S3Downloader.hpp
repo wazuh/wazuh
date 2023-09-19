@@ -12,6 +12,7 @@
 #ifndef _S3_DOWNLOADER_HPP
 #define _S3_DOWNLOADER_HPP
 
+#include "http-request/include/HTTPRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <iostream>
@@ -33,21 +34,38 @@ private:
      */
     void download(UpdaterContext& context) const
     {
+        // URL of the S3 bucket to connect to.
         const auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
-
-        // TODO implement behavior
-        // 1. Connect to the S3 bucket using the url
-        // 2. Download the content
-        // 2.1 If the content is compressed, save it in the output folder (context.spUpdaterBaseContext->outputFolder)
-        // 2.2 If the content is not compressed, save it in the context (context.data)
-        std::ignore = url;
-
-        // Update the status of the stage
-        for (auto& element : context.data.at("stageStatus"))
+        // output folder where the file will be saved
+        std::string outputFolder {context.spUpdaterBaseContext->downloadsFolder};
+        if (context.spUpdaterBaseContext->configData.at("compressionType").get<std::string>().compare("raw") == 0)
         {
-            if (element.at("stage").get<std::string>() == "S3Downloader")
-                element.at("status") = "ok";
+            outputFolder = context.spUpdaterBaseContext->contentsFolder;
         }
+        // name of the file where the content will be saved
+        const auto fileName {context.spUpdaterBaseContext->configData.at("s3FileName").get<std::string>()};
+        // full path where the content will be saved
+        const std::string fullFilePath {outputFolder + "/" + fileName};
+
+        const auto onError {
+            [&context](const std::string& message, const long /*statusCode*/)
+            {
+                // Set the status of the stage
+                context.data.at("stageStatus").push_back(R"({"stage": "S3Downloader", "status": "fail"})"_json);
+
+                throw std::runtime_error("S3Downloader - Could not get response from S3 because: " + message);
+            }};
+
+        // Run the request. Save the file on disk.
+        HTTPRequest::instance().download(HttpURL(url + fileName), fullFilePath, onError);
+
+        // Save the path of the downloaded content in the context
+        context.data.at("paths").push_back(fullFilePath);
+
+        // Set the status of the stage
+        context.data.at("stageStatus").push_back(R"({"stage": "S3Downloader", "status": "ok"})"_json);
+
+        std::cout << "S3Downloader - Download done successfully" << std::endl;
     }
 
 public:
@@ -59,9 +77,6 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-        // Pre-set the status of the stage to fail
-        context->data.at("stageStatus").push_back(R"({"stage": "S3Downloader", "status": "fail"})"_json);
-
         download(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);

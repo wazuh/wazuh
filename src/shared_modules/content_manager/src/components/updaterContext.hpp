@@ -13,10 +13,11 @@
 #define _UPDATER_CONTEXT_HPP
 
 #include "iRouterProvider.hpp"
-#include "routerProvider.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
-#include <vector>
+
+constexpr auto DOWNLOAD_FOLDER = "downloads";
+constexpr auto CONTENTS_FOLDER = "contents";
 
 /**
  * @brief Object handled on every step of the updater chain.
@@ -82,9 +83,8 @@ struct UpdaterContext final : private UpdaterBaseContext
      *  {
      *      "paths":
      *      [
-     *          {
-     *              "path": "/tmp/outputFolder/file1.json"
-     *          }
+     *          "/tmp/outputFolder/file1.json",
+     *          "/tmp/outputFolder/file2.json"
      *      ],
      *      "stageStatus":
      *      [

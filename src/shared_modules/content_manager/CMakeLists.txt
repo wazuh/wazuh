@@ -19,6 +19,7 @@ include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/curl/include/curl)
+include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
 
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
@@ -28,6 +29,7 @@ include_directories(${SHARED_MODULES}/content_manager/src/components)
 
 # Link directories
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/lzma/build/)
 link_directories(${SHARED_MODULES}/router/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 
@@ -39,7 +41,7 @@ add_library(content_manager SHARED
     ${CONTENT_DOWNLOAD_SRC}
     )
 
-target_link_libraries(content_manager router urlrequest gcc_s wazuhext)
+target_link_libraries(content_manager router urlrequest gcc_s wazuhext lzma)
 
 set_target_properties(content_manager PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE

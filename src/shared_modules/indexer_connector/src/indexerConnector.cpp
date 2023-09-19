@@ -13,6 +13,8 @@
 #include "HTTPRequest.hpp"
 #include "shared_modules/indexer_connector/src/serverSelector.hpp"
 
+// TODO: remove the LCOV flags when the implementation of this class is completed
+// LCOV_EXCL_START
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
 constexpr auto DATABASE_WORKERS = 1;
 
@@ -75,3 +77,4 @@ void IndexerConnector::publish(const std::string& message)
 {
     QUEUE_MAP[this]->push(message);
 }
+// LCOV_EXCL_STOP
