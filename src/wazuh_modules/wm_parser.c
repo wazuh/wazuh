@@ -71,14 +71,11 @@ void wm_parse_output(char *output, char *logger_name, char *tag, char* service_t
             if (debug_level >= 0) {
                 if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_INFO, service_title)) {
                     mtinfo(tag, "%s", buff);
-                }
-                if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_CRITICAL, service_title)) {
+                } else if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_CRITICAL, service_title)) {
                     mterror(tag, "%s", buff);
-                }
-                if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_ERROR, service_title)) {
+                } else if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_ERROR, service_title)) {
                     mterror(tag, "%s", buff);
-                }
-                if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_WARNING, service_title)) {
+                } else if (msg_to_print_according_to_debugLevel(buff, tokenized_line, W_STR_WARNING, service_title)) {
                     mtwarn(tag, "%s", buff);
                 }
             }

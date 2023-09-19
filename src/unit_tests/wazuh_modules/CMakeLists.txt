@@ -22,6 +22,7 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(task_manager)
   add_subdirectory(agent_upgrade)
   add_subdirectory(wmodules)
+  add_subdirectory(wmparser)
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")

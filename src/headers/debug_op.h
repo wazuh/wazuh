@@ -40,12 +40,6 @@
 
 #define _W_STRING_MAX   67108864  // Max. dynamic string size (64 MB).
 
-#define MAX_SIZE_STR_DEBUG     (10)
-#define MAX_SIZE_STR_INFO      (9)
-#define MAX_SIZE_STR_CRITICAL  (13)
-#define MAX_SIZE_STR_ERROR     (10)
-#define MAX_SIZE_STR_WARNING   (12)
-
 
 #define W_STR_DEBUG     "- DEBUG - "
 #define W_STR_INFO      "- INFO - "
