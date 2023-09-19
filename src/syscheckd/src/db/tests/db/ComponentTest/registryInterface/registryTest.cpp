@@ -15,9 +15,9 @@
 
 
 const auto insertRegistryKeyStatement1 = R"({
-        "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
+        "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_name":"root", "arch":1,
         "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE\\regtest1", "perm":"-rw-rw-r--",
-        "scanned":1, "uid":0, "user_name":"fakeUser", "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880"
+        "scanned":1, "uid":"0", "user_name":"fakeUser", "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880"
     }
 )"_json;
 
@@ -31,9 +31,9 @@ const auto insertRegistryValueStatement1 = R"({
 )"_json;
 
 const auto insertRegistryKeyStatement2 = R"({
-        "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
+        "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_name":"root", "arch":1,
         "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE\\regtest2", "perm":"-rw-rw-r--",
-        "scanned":1, "uid":0, "user_name":"fakeUser", "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880"
+        "scanned":1, "uid":"0", "user_name":"fakeUser", "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880"
     }
 )"_json;
 

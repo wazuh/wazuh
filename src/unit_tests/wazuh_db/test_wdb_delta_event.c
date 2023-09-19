@@ -607,6 +607,67 @@ void test_wdb_upsert_dbsync_default_regular_field_cannotbenull(void ** state) {
     assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
+
+void test_wdb_upsert_dbsync_packages_not_present_pk_field (void **state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs.
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        { .value = { FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, false}, .next = &TEST_FIELDS[2] },
+        // Regular field.
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"packages", "sys_programs", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_3\":1234}");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_upsert_dbsync_packages_null_pk_field (void **state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs.
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        { .value = { FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, false}, .next = &TEST_FIELDS[2] },
+        // Regular field.
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"packages", "sys_programs", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":null,\"test_3\":1234}");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    // Not PKs or Aux fields
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 1234);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
 //
 // wdb_delete_dbsync
 //
@@ -710,6 +771,56 @@ void test_wdb_delete_dbsync_ok(void ** state) {
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    assert_true(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_delete_dbsync_packages_not_present_pk_field (void **state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs.
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        { .value = { FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, false}, .next = &TEST_FIELDS[2] },
+        // Regular field.
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"packages", "sys_programs", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_3\":1234}");
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    assert_true(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_delete_dbsync_packages_null_pk_field (void **state) {
+    struct column_list const TEST_FIELDS[] = {
+        // PKs.
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        { .value = { FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, false}, .next = &TEST_FIELDS[2] },
+        // Regular field.
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"packages", "sys_programs", false, TEST_FIELDS};
+
+    cJSON * delta = cJSON_Parse("{\"test_1\":4321,\"test_2\":null,\"test_3\":1234}");
+    will_return(__wrap_wdb_get_cache_stmt, (sqlite3_stmt *) ANY_PTR_VALUE);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 4321);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
     assert_true(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
@@ -835,10 +946,15 @@ int main() {
         cmocka_unit_test(test_wdb_upsert_dbsync_ok),
         cmocka_unit_test(test_wdb_upsert_dbsync_default_regular_field_canbenull),
         cmocka_unit_test(test_wdb_upsert_dbsync_default_regular_field_cannotbenull),
+        cmocka_unit_test(test_wdb_upsert_dbsync_packages_not_present_pk_field),
+        cmocka_unit_test(test_wdb_upsert_dbsync_packages_null_pk_field),
         /* wdb_delete_dbsync */
         cmocka_unit_test(test_wdb_delete_dbsync_err), cmocka_unit_test(test_wdb_delete_dbsync_bad_cache),
         cmocka_unit_test(test_wdb_delete_dbsync_step_nok), cmocka_unit_test(test_wdb_delete_dbsync_ok),
-        cmocka_unit_test(test_wdb_delete_dbsync_stmt_nok)};
+        cmocka_unit_test(test_wdb_delete_dbsync_stmt_nok),
+        cmocka_unit_test(test_wdb_delete_dbsync_packages_not_present_pk_field),
+        cmocka_unit_test(test_wdb_delete_dbsync_packages_null_pk_field),
+        };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

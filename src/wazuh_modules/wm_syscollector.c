@@ -17,6 +17,7 @@
 #include "defs.h"
 #include "mq_op.h"
 #include "headers/logging_helper.h"
+#include "commonDefs.h"
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
@@ -133,6 +134,18 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
         syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
+
+        void* rsync_module = NULL;
+        if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
+            rsync_initialize_full_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_full_log_function");
+            if(rsync_initialize_log_function_ptr) {
+                rsync_initialize_log_function_ptr(_mtdebug2, _mtdebug1, _mtinfo, _mtwarn, _mterror);
+            }
+            // Even when the RTLD_NOLOAD flag was used for dlopen(), we need a matching call to dlclose()
+#ifndef WIN32
+            so_free_library(rsync_module);
+#endif
+        }
     } else {
 #ifdef __hpux
         mtinfo(WM_SYS_LOGTAG, "Not supported in HP-UX.");

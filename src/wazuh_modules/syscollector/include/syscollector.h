@@ -27,6 +27,7 @@
 #endif
 
 #include <stdbool.h>
+#include "commonDefs.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -83,5 +84,9 @@ typedef void(*syscollector_start_func)(const unsigned int inverval,
 typedef void(*syscollector_stop_func)();
 
 typedef int (*syscollector_sync_message_func)(const char* data);
+
+typedef void (*rsync_initialize_full_log_func)(full_log_fnc_t debug_verbose_func, full_log_fnc_t debug_func,
+                                               full_log_fnc_t info_func, full_log_fnc_t warning_func,
+                                               full_log_fnc_t error_func);
 
 #endif //_SYSCOLLECTOR_H

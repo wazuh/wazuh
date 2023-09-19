@@ -111,6 +111,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_link_libraries(test_audit_parse "${AUDIT_PARSE_FLAGS}")
     add_test(NAME test_audit_parse COMMAND test_audit_parse)
 else()
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
     set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG \
@@ -132,7 +133,7 @@ else()
                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                            -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
                            ${DEBUG_OP_WRAPPERS}")
-    target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS})
+    target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")
     add_test(NAME test_win_whodata COMMAND test_win_whodata)

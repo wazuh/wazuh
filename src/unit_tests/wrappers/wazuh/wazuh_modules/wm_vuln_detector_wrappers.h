@@ -36,7 +36,7 @@ int __wrap_wm_vuldet_linux_nvd_vulnerabilities(sqlite3 *db, scan_agent *agent, O
 
 int __wrap_wm_vuldet_win_nvd_vulnerabilities(sqlite3 *db, scan_agent *agent, wm_vuldet_flags *flags);
 
-int __wrap_wm_vuldet_json_nvd_parser(char *json_feed, wm_vuldet_db *parsed_vulnerabilities);
+int __wrap_wm_vuldet_json_nvd_parser(FILE * fp, wm_vuldet_db *parsed_vulnerabilities, bool* working);
 
 int __wrap_wm_vuldet_json_wcpe_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities);
 

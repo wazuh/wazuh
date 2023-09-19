@@ -33,6 +33,8 @@
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
 
+constexpr auto RSYNC_LOG_TAG { "rsync" };
+
 class EXPORTED RemoteSync
 {
     public:
@@ -42,6 +44,19 @@ class EXPORTED RemoteSync
         * @param logFunction Pointer to log function to be used by the rsync.
         */
         static void initialize(std::function<void(const std::string&)> logFunction);
+
+        /**
+         * @brief Initialize all the logs functions used by RSync with a full log function.
+         *
+         * @param debugVerboseFunction Function pointer to the debug verbose log function.
+         * @param debugFunction Function pointer to the debug log function.
+         * @param infoFunction Function pointer to the info log function.
+         * @param warningFunction Function pointer to the warning function.
+         * @param errorFunction Function pointer to the error function.
+         */
+        static void initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                              full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
+                                              full_log_fnc_t errorFunction);
 
         /**
          * @brief Remote sync initializes the instance.

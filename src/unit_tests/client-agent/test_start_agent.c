@@ -121,6 +121,7 @@ static int setup_test(void **state) {
     agt->buffer = 1;
     agt->buflength = 5000;
     agt->events_persec = 500;
+    agt->eps_timeframe = 1;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
     /* Connected sock */

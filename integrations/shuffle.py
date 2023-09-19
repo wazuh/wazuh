@@ -152,7 +152,7 @@ def debug(msg: str) -> None:
     if debug_enabled:
         print(msg)
         with open(LOG_FILE, "a") as f:
-            f.write(msg)
+            f.write(msg + '\n')
 
 
 # Skips container kills to stop self-recursion

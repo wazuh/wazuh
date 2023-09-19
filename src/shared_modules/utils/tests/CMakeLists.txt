@@ -22,6 +22,8 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "threadSafeQueue_test.cpp"
     "timeHelper_test.cpp"
     "filterMsgDispatcher_test.cpp"
+    "loggerHelper_test.cpp"
+    "globHelper_test.cpp"
     "main.cpp"
 )
 
@@ -46,6 +48,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_executable(utils_unit_test
       ${UTIL_CXX_UNITTEST_COMMON_SRC}
       ${UTIL_CXX_UNITTEST_WINDOWS_SRC}
+      ${UTIL_CXX_UNITTEST_CPP17_SRC}
     )
     add_definitions(-DWIN32=1
                     -D_WIN32_WINNT=0x600)
@@ -64,11 +67,13 @@ else()
     if (APPLE)
       add_executable(utils_unit_test
         ${UTIL_CXX_UNITTEST_COMMON_SRC}
+        ${UTIL_CXX_UNITTEST_CPP17_SRC}
       )
     else()
       add_executable(utils_unit_test
         ${UTIL_CXX_UNITTEST_COMMON_SRC}
         ${UTIL_CXX_UNITTEST_LINUX_SRC}
+        ${UTIL_CXX_UNITTEST_CPP17_SRC}
       )
     endif(APPLE)
 

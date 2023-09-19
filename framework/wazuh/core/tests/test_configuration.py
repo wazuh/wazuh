@@ -180,6 +180,18 @@ def test_get_ossec_conf():
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
     )['integration'][0]['node'] == 'wazuh-worker'
 
+    assert configuration.get_ossec_conf(
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
+        section='ruleset',
+        field='rule_dir',
+        distinct=False)['ruleset']['rule_dir'] == ['ruleset/rules', 'ruleset/rules', 'etc/rules']
+
+    assert configuration.get_ossec_conf(
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
+        section='ruleset',
+        field='rule_dir',
+        distinct=True)['ruleset']['rule_dir'] == ['ruleset/rules', 'etc/rules']
+
 
 def test_get_agent_conf():
     with pytest.raises(WazuhError, match=".* 1710 .*"):

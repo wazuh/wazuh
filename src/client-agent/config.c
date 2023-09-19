@@ -38,6 +38,7 @@ int ClientConf(const char *cfgfile)
     agt->buffer = 1;
     agt->buflength = 5000;
     agt->events_persec = 500;
+    agt->eps_timeframe = 1;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
     agt->notify_time = 0;
@@ -69,7 +70,7 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
+    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps && agt->events_persec > 0) {
         mwarn("Client buffer throughput too low: set to %d eps", min_eps);
         agt->events_persec = min_eps;
     }
@@ -167,6 +168,7 @@ cJSON *getBufferConfig(void) {
     if (agt->buffer) cJSON_AddStringToObject(buffer,"disabled","no"); else cJSON_AddStringToObject(buffer,"disabled","yes");
     cJSON_AddNumberToObject(buffer,"queue_size",agt->buflength);
     cJSON_AddNumberToObject(buffer,"events_per_second",agt->events_persec);
+    cJSON_AddNumberToObject(buffer,"eps_timeframe",agt->eps_timeframe);
 
     cJSON_AddItemToObject(root,"buffer",buffer);
 

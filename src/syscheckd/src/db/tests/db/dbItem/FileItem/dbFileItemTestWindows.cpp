@@ -45,7 +45,7 @@ void FileItemTest::SetUp()
         {"attributes", "10"},
         {"checksum", "a2fbef8f81af27155dcee5e3927ff6243593b91a"},
         {"dev", 2051},
-        {"gid", 0},
+        {"gid", "0"},
         {"group_name", "root"},
         {"hash_md5", "4b531524aa13c8a54614100b570b3dc7"},
         {"hash_sha1", "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b"},
@@ -59,7 +59,7 @@ void FileItemTest::SetUp()
         {"perm", "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"},
         {"scanned", 1},
         {"size", 4925},
-        {"uid", 0},
+        {"uid", "0"},
         {"user_name", "fakeUser"}
     };
 }

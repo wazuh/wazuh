@@ -82,14 +82,14 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     else
         sqlite3_bind_null(stmt, 10);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
+    if (wdb_step(stmt) == SQLITE_DONE){
         if (wdb_ciscat_del(wdb, scan_id) < 0) {
             return -1;
         }
         return 0;
     }
     else {
-        merror("at wdb_ciscat_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -107,7 +107,7 @@ int wdb_ciscat_del(wdb_t * wdb, const char * scan_id) {
     stmt = wdb->stmt[WDB_STMT_CISCAT_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE){
+    if (wdb_step(stmt) != SQLITE_DONE){
         merror("Deleting old information from 'ciscat_results' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }

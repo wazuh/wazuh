@@ -16,7 +16,6 @@
 #include "analysisd.h"
 #include "state.h"
 #include "config.h"
-#include "limits.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -137,6 +136,12 @@ static void w_inc_agents_modules_github_decoded_events(const char *agent_id);
  * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_agents_modules_office365_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules ms-graph decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_ms_graph_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules oscap decoded events counter for agents
@@ -679,6 +684,13 @@ static void w_inc_agents_modules_office365_decoded_events(const char *agent_id) 
     w_mutex_unlock(&agents_state_mutex);
 }
 
+static void w_inc_agents_modules_ms_graph_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.ms_graph++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
 static void w_inc_agents_modules_oscap_decoded_events(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     analysisd_agent_state_t *agent_node = get_node(agent_id);
@@ -831,6 +843,8 @@ void w_inc_decoded_by_component_events(const char *component, const char *agent_
             w_inc_modules_github_decoded_events(agent_id);
         } else if (!strcmp(component, "office365")) {
             w_inc_modules_office365_decoded_events(agent_id);
+        } else if (!strcmp(component, "ms-graph")) {
+            w_inc_modules_ms_graph_decoded_events(agent_id);
         } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
             w_inc_modules_oscap_decoded_events(agent_id);
         } else if (!strcmp(component, "osquery")) {
@@ -999,6 +1013,16 @@ void w_inc_modules_office365_decoded_events(const char *agent_id) {
     }
 }
 
+void w_inc_modules_ms_graph_decoded_events(const char *agent_id) {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_decoded_breakdown.modules.ms_graph++;
+    w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_ms_graph_decoded_events(agent_id);
+    }
+}
+
 void w_inc_modules_oscap_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.oscap++;
@@ -1147,6 +1171,8 @@ void w_inc_dropped_by_component_events(const char *component) {
             w_inc_modules_github_dropped_events();
         } else if (!strcmp(component, "office365")) {
             w_inc_modules_office365_dropped_events();
+        } else if (!strcmp(component, "ms-graph")) {
+            w_inc_modules_ms_graph_dropped_events();
         } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
             w_inc_modules_oscap_dropped_events();
         } else if (!strcmp(component, "osquery")) {
@@ -1260,6 +1286,12 @@ void w_inc_modules_github_dropped_events() {
 void w_inc_modules_office365_dropped_events() {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_dropped_breakdown.modules.office365++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_modules_ms_graph_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_dropped_breakdown.modules.ms_graph++;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -1393,9 +1425,21 @@ void w_inc_eps_events_dropped() {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_inc_eps_events_dropped_not_eps() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.eps_state_breakdown.events_dropped_not_eps++;
+    w_mutex_unlock(&state_mutex);
+}
+
 void w_inc_eps_seconds_over_limit() {
     w_mutex_lock(&state_mutex);
     analysisd_state.eps_state_breakdown.seconds_over_limit++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_set_available_credits_prev(unsigned int credits) {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.eps_state_breakdown.available_credits_prev = credits;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -1434,10 +1478,12 @@ cJSON* asys_create_state_json() {
         cJSON *_eps = cJSON_CreateObject();
         cJSON_AddItemToObject(_metrics, "eps", _eps);
 
-        limit_reached(&available_credits);
+        limit_reached(analysisd_limits, &available_credits);
 
         cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
+        cJSON_AddNumberToObject(_eps, "available_credits_prev", state_cpy.eps_state_breakdown.available_credits_prev);
         cJSON_AddNumberToObject(_eps, "events_dropped", state_cpy.eps_state_breakdown.events_dropped);
+        cJSON_AddNumberToObject(_eps, "events_dropped_not_eps", state_cpy.eps_state_breakdown.events_dropped_not_eps);
         cJSON_AddNumberToObject(_eps, "seconds_over_limit", state_cpy.eps_state_breakdown.seconds_over_limit);
     }
 
@@ -1483,6 +1529,7 @@ cJSON* asys_create_state_json() {
     cJSON_AddNumberToObject(_decoded_modules_logcollector, "others", state_cpy.events_decoded_breakdown.modules.logcollector.others);
 
     cJSON_AddNumberToObject(_decoded_modules, "office365", state_cpy.events_decoded_breakdown.modules.office365);
+    cJSON_AddNumberToObject(_decoded_modules, "ms-graph", state_cpy.events_decoded_breakdown.modules.ms_graph);
     cJSON_AddNumberToObject(_decoded_modules, "oscap", state_cpy.events_decoded_breakdown.modules.oscap);
     cJSON_AddNumberToObject(_decoded_modules, "osquery", state_cpy.events_decoded_breakdown.modules.osquery);
     cJSON_AddNumberToObject(_decoded_modules, "rootcheck", state_cpy.events_decoded_breakdown.modules.rootcheck);
@@ -1528,6 +1575,7 @@ cJSON* asys_create_state_json() {
     cJSON_AddNumberToObject(_dropped_modules_logcollector, "others", state_cpy.events_dropped_breakdown.modules.logcollector.others);
 
     cJSON_AddNumberToObject(_dropped_modules, "office365", state_cpy.events_dropped_breakdown.modules.office365);
+    cJSON_AddNumberToObject(_dropped_modules, "ms-graph", state_cpy.events_dropped_breakdown.modules.ms_graph);
     cJSON_AddNumberToObject(_dropped_modules, "oscap", state_cpy.events_dropped_breakdown.modules.oscap);
     cJSON_AddNumberToObject(_dropped_modules, "osquery", state_cpy.events_dropped_breakdown.modules.osquery);
     cJSON_AddNumberToObject(_dropped_modules, "rootcheck", state_cpy.events_dropped_breakdown.modules.rootcheck);
@@ -1711,6 +1759,7 @@ cJSON* asys_create_agents_state_json(int* agents_ids) {
                 cJSON_AddNumberToObject(_decoded_modules_logcollector, "others", agent_state->events_decoded_breakdown.modules.logcollector.others);
 
                 cJSON_AddNumberToObject(_decoded_modules, "office365", agent_state->events_decoded_breakdown.modules.office365);
+                cJSON_AddNumberToObject(_decoded_modules, "ms-graph", agent_state->events_decoded_breakdown.modules.ms_graph);
                 cJSON_AddNumberToObject(_decoded_modules, "oscap", agent_state->events_decoded_breakdown.modules.oscap);
                 cJSON_AddNumberToObject(_decoded_modules, "osquery", agent_state->events_decoded_breakdown.modules.osquery);
                 cJSON_AddNumberToObject(_decoded_modules, "rootcheck", agent_state->events_decoded_breakdown.modules.rootcheck);

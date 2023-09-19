@@ -132,7 +132,7 @@ def debug(msg: str) -> None:
     if debug_enabled:
         print(msg)
         with open(LOG_FILE, "a") as f:
-            f.write(msg)
+            f.write(msg + '\n')
 
 
 def generate_msg(alert: any, options: any, apikey: str) -> str:

@@ -1515,86 +1515,25 @@ int check_pattern_expand(int do_seek) {
         for (j = 0; globs[j].gpath; j++) {
 
             if (current_files >= maximum_files) {
+                mwarn(FILE_LIMIT, maximum_files);
                 break;
             }
 
-            char *global_path = NULL;
-            char *wildcard = NULL;
+            char** result = expand_win32_wildcards(globs[j].gpath);
+            
+            if (result) {
 
-            os_strdup(globs[j].gpath,global_path);
+                int file;
+                char *full_path = NULL;
 
-            wildcard = strrchr(global_path,'\\');
-
-            if ( wildcard ) {
-
-                DIR *dir = NULL;
-                struct dirent *dirent = NULL;
-
-                *wildcard = '\0';
-                wildcard++;
-
-                if (dir = opendir(global_path), !dir) {
-                    merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
-                    os_free(global_path);
-                    continue;
-                }
-
-                while (dirent = readdir(dir), dirent) {
-
-                    // Skip "." and ".."
-                    if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
-                        continue;
-                    }
+                for (file = 0; result[file] != NULL; file++) {
 
                     if (current_files >= maximum_files) {
                         mwarn(FILE_LIMIT, maximum_files);
                         break;
                     }
 
-                    char full_path[PATH_MAX] = {0};
-                    snprintf(full_path,PATH_MAX,"%s\\%s",global_path,dirent->d_name);
-
-                    /* Skip file if it is a directory */
-                    DIR *is_dir = NULL;
-
-                    if (is_dir = opendir(full_path), is_dir) {
-                        mdebug1("File %s is a directory. Skipping it.", full_path);
-                        closedir(is_dir);
-                        continue;
-                    }
-
-                    /* Match wildcard */
-                    char *regex = NULL;
-                    regex = wstr_replace(wildcard,".","\\p");
-                    os_free(regex);
-                    regex = wstr_replace(wildcard,"*","\\.*");
-
-                    /* Add the starting ^ regex */
-                    {
-                        char p[PATH_MAX] = {0};
-                        snprintf(p,PATH_MAX,"^%s",regex);
-                        os_free(regex);
-                        os_strdup(p,regex);
-                    }
-
-                    /* If wildcard is only ^\.* add another \.* */
-                    if (strlen(regex) == 4) {
-                        char *rgx = NULL;
-                        rgx = wstr_replace(regex,"\\.*","\\.*\\.*");
-                        os_free(regex);
-                        regex = rgx;
-                    }
-
-                    /* Add $ at the end of the regex */
-                    wm_strcat(&regex, "$", 0);
-
-                    if (!OS_Regex(regex,dirent->d_name)) {
-                        mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
-                        os_free(regex);
-                        continue;
-                    }
-
-                    os_free(regex);
+                    os_strdup(result[file], full_path);
 
                     found = 0;
                     for (i = 0; globs[j].gfiles[i].file; i++) {
@@ -1608,9 +1547,9 @@ int check_pattern_expand(int do_seek) {
                         retval = 1;
                         int added = 0;
 
-                        char *ex_file = OSHash_Get(excluded_files,full_path);
+                        char *ex_file = OSHash_Get(excluded_files, full_path);
 
-                        if(!ex_file) {
+                        if (!ex_file) {
 
                             /*  Because Windows cache's files, we need to check if the file
                                 exists. Deleted files can still appear due to caching */
@@ -1621,15 +1560,14 @@ int check_pattern_expand(int do_seek) {
                                             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
                             if (h1 == INVALID_HANDLE_VALUE) {
+                                os_free(full_path);
                                 continue;
                             }
 
                             CloseHandle(h1);
 
                             minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
-
-                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-
+                            os_realloc(globs[j].gfiles, (i + 2) * sizeof(logreader), globs[j].gfiles);
                             /* Copy the current item to the end mark as it should be a pattern */
                             memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
@@ -1642,7 +1580,8 @@ int check_pattern_expand(int do_seek) {
                             current_files++;
                             globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!globs[j].gfiles[i].read) {
+
+                            if (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
                                 handle_file(i, j, do_seek, 1);
@@ -1651,11 +1590,11 @@ int check_pattern_expand(int do_seek) {
                             added = 1;
                         }
 
-                        char *file_excluded_binary = OSHash_Get(excluded_binaries,full_path);
+                        char *file_excluded_binary = OSHash_Get(excluded_binaries, full_path);
 
                         /* This file could have to non binary file */
                         if (file_excluded_binary && !added) {
-                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                            os_realloc(globs[j].gfiles, (i + 2) * sizeof(logreader), globs[j].gfiles);
 
                             /* Copy the current item to the end mark as it should be a pattern */
                             memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
@@ -1669,24 +1608,22 @@ int check_pattern_expand(int do_seek) {
                             current_files++;
                             globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!globs[j].gfiles[i].read) {
+
+                            if (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
                                 handle_file(i, j, do_seek, 1);
                             }
                         }
                     }
+                    os_free(full_path);
                 }
-                closedir(dir);
             }
-            os_free(global_path);
         }
     }
-
     return retval;
 }
 #endif
-
 
 static IT_control remove_duplicates(logreader *current, int i, int j) {
     IT_control d_control = CONTINUE_IT;

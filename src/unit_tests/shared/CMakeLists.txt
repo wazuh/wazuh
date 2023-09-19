@@ -1,6 +1,10 @@
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
+
 # Tests list and flags
 list(APPEND shared_tests_names "test_list_op")
 set(LIST_OP_BASE_FLAGS "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
@@ -168,7 +172,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,syscom_dispa
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int")
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_connection,--wrap,send,--wrap,recv,--wrap,close \
+                                -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 
 list(APPEND shared_tests_names "test_custom_output_search_replace")
@@ -273,6 +278,16 @@ else()
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 endif()
 
+list(APPEND shared_tests_names "test_limits")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,syscom_dispatch \
+                                -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
+endif()
+
 list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt \
@@ -323,6 +338,9 @@ foreach(counter RANGE ${count})
             ${test_name}
             ${TEST_DEPS}
         )
+        if(${TARGET} STREQUAL "winagent")
+          target_link_libraries(${test_name} fimdb)
+        endif(${TARGET} STREQUAL "winagent")
     endif()
 
     if(NOT test_flags STREQUAL " ")

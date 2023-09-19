@@ -25,6 +25,7 @@ ERR_INVALID_JSON        = 7
 try:
     import requests
     from requests.auth import HTTPBasicAuth
+    from requests.exceptions import Timeout
 except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(ERR_NO_REQUEST_MODULE)
@@ -39,6 +40,8 @@ except Exception as e:
 
 # Global vars
 debug_enabled   = False
+timeout         = 10
+retries         = 3
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
 
@@ -49,22 +52,30 @@ SOCKET_ADDR     = f'{pwd}/queue/sockets/queue'
 # Constants
 ALERT_INDEX     = 1
 APIKEY_INDEX    = 2
+TIMEOUT_INDEX   = 6
+RETRIES_INDEX   = 7
 
 
 def main(args):
     global debug_enabled
+    global timeout
+    global retries
     try:
         # Read arguments
         bad_arguments: bool = False
         if len(args) >= 4:
-            msg = '{0} {1} {2} {3} {4}'.format(
+            msg = '{0} {1} {2} {3} {4} {5} {6}'.format(
                 args[1],
                 args[2],
                 args[3],
                 args[4] if len(args) > 4 else '',
-                args[5] if len(args) > 5 else ''
+                args[5] if len(args) > 5 else '',
+                args[TIMEOUT_INDEX] if len(args) > TIMEOUT_INDEX else timeout,
+                args[RETRIES_INDEX] if len(args) > RETRIES_INDEX else retries,
             )
             debug_enabled = (len(args) > 4 and args[4] == 'debug')
+            if len(args) > TIMEOUT_INDEX: timeout = int(args[TIMEOUT_INDEX])
+            if len(args) > RETRIES_INDEX: retries = int(args[RETRIES_INDEX])
         else:
             msg = '# Error: Wrong arguments'
             bad_arguments = True
@@ -127,7 +138,7 @@ def debug(msg: str) -> None:
     if debug_enabled:
         print(msg)
         with open(LOG_FILE, "a") as f:
-            f.write(msg)
+            f.write(msg + '\n')
 
 def request_virustotal_info(alert: any, apikey: str):
     """
@@ -143,7 +154,15 @@ def request_virustotal_info(alert: any, apikey: str):
         msg: str
             The JSON message to send
     """
-    alert_output = {}
+    request_ok                    = False
+    alert_output                  = {}
+    alert_output["virustotal"]    = {}
+    alert_output["integration"]   = "virustotal"
+
+    # If there is no syscheck block present in the alert. Exit.
+    if not "syscheck" in alert:
+        debug("# No syscheck block present in the alert")
+        return None
 
     # If there is no md5 checksum present in the alert. Exit.
     if not "md5_after" in alert["syscheck"]:
@@ -156,14 +175,25 @@ def request_virustotal_info(alert: any, apikey: str):
         return None
 
     # Request info using VirusTotal API
-    try:
-        vt_response_data = query_api(alert["syscheck"]["md5_after"], apikey)
-    except Exception as e:
-        debug(str(e))
+    for attempt in range(retries + 1):
+        try:
+            vt_response_data = query_api(alert["syscheck"]["md5_after"], apikey)
+            request_ok = True
+            break
+        except Timeout:
+            debug("# Error: Request timed out. Remaining retries: %s" % (retries - attempt))
+            continue
+        except Exception as e:
+            debug(str(e))
+            sys.exit(ERR_NO_RESPONSE_VT)
+
+    if not request_ok:
+        debug("# Error: Request timed out and maximum number of retries was exceeded")
+        alert_output["virustotal"]["error"]         = 408
+        alert_output["virustotal"]["description"]   = "Error: API request timed out"
+        send_msg(alert_output)
         sys.exit(ERR_NO_RESPONSE_VT)
 
-    alert_output["virustotal"]                           = {}
-    alert_output["integration"]                          = "virustotal"
     alert_output["virustotal"]["found"]                  = 0
     alert_output["virustotal"]["malicious"]              = 0
     alert_output["virustotal"]["source"]                 = {}
@@ -174,7 +204,7 @@ def request_virustotal_info(alert: any, apikey: str):
 
     # Check if VirusTotal has any info about the hash
     if in_database(vt_response_data, hash):
-      alert_output["virustotal"]["found"] = 1
+        alert_output["virustotal"]["found"] = 1
 
     # Info about the file found in VirusTotal
     if alert_output["virustotal"]["found"] == 1:
@@ -190,10 +220,10 @@ def request_virustotal_info(alert: any, apikey: str):
     return alert_output
 
 def in_database(data, hash):
-  result = data['response_code']
-  if result == 0:
-    return False
-  return True
+    result = data['response_code']
+    if result == 0:
+        return False
+    return True
 
 def query_api(hash: str, apikey: str) -> any:
     """
@@ -218,7 +248,9 @@ def query_api(hash: str, apikey: str) -> any:
     """
     params    = {'apikey': apikey, 'resource': hash}
     headers   = { "Accept-Encoding": "gzip, deflate", "User-Agent" : "gzip,  Python library-client-VirusTotal" }
-    response  = requests.get('https://www.virustotal.com/vtapi/v2/file/report',params=params, headers=headers)
+
+    debug("# Querying VirusTotal API")
+    response  = requests.get('https://www.virustotal.com/vtapi/v2/file/report',params=params, headers=headers, timeout=timeout)
 
     if response.status_code == 200:
         json_response = response.json()
@@ -230,20 +262,20 @@ def query_api(hash: str, apikey: str) -> any:
         alert_output["integration"]   = "virustotal"
 
         if response.status_code == 204:
-          alert_output["virustotal"]["error"]         = response.status_code
-          alert_output["virustotal"]["description"]   = "Error: Public API request rate limit reached"
-          send_msg(json.dumps(alert_output))
-          raise Exception("# Error: VirusTotal Public API request rate limit reached")
+            alert_output["virustotal"]["error"]         = response.status_code
+            alert_output["virustotal"]["description"]   = "Error: Public API request rate limit reached"
+            send_msg(alert_output)
+            raise Exception("# Error: VirusTotal Public API request rate limit reached")
         elif response.status_code == 403:
-          alert_output["virustotal"]["error"]         = response.status_code
-          alert_output["virustotal"]["description"]   = "Error: Check credentials"
-          send_msg(json.dumps(alert_output))
-          raise Exception("# Error: VirusTotal credentials, required privileges error")
+            alert_output["virustotal"]["error"]         = response.status_code
+            alert_output["virustotal"]["description"]   = "Error: Check credentials"
+            send_msg(alert_output)
+            raise Exception("# Error: VirusTotal credentials, required privileges error")
         else:
-          alert_output["virustotal"]["error"]         = response.status_code
-          alert_output["virustotal"]["description"]   = "Error: API request fail"
-          send_msg(json.dumps(alert_output))
-          raise Exception("# Error: VirusTotal credentials, required privileges error")
+            alert_output["virustotal"]["error"]         = response.status_code
+            alert_output["virustotal"]["description"]   = "Error: API request fail"
+            send_msg(alert_output)
+            raise Exception("# Error: VirusTotal credentials, required privileges error")
 
 def send_msg(msg: any, agent:any = None) -> None:
     if not agent or agent["id"] == "000":

@@ -26,6 +26,10 @@ set_target_properties(
 
 target_link_libraries(OS_REGEX_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
+
 # Generate os_regex tests
 list(APPEND os_regex_names "test_os_regex")
 if(${TARGET} STREQUAL "winagent")
@@ -75,6 +79,9 @@ foreach(counter RANGE ${count})
         OS_REGEX_O
         ${TEST_DEPS}
     )
+    if(${TARGET} STREQUAL "winagent")
+          target_link_libraries(${test_name} fimdb)
+    endif(${TARGET} STREQUAL "winagent")
 
     if(NOT test_macro STREQUAL " ")
     target_compile_definitions(

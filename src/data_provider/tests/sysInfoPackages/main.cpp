@@ -1,7 +1,7 @@
 /*
- * Wazuh Shared Configuration Manager
+ * Wazuh SysInfo
  * Copyright (C) 2015, Wazuh Inc.
- * Aug 24, 2022.
+ * July 16, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,11 +9,10 @@
  * Foundation.
  */
 
-#ifndef ASYS_LIMITS_WRAPPERS_H
-#define ASYS_LIMITS_WRAPPERS_H
+#include "gtest/gtest.h"
 
-#include <stdbool.h>
-
-bool __wrap_limit_reached(unsigned int *value);
-
-#endif /* ASYS_LIMITS_WRAPPERS_H */
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

@@ -42,7 +42,7 @@ def cleanAll():
                          stderr=subprocess.PIPE,
                          shell=True,
                          check=False,
-                         text=True)
+                         text=False)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanAll: PASSED]")
     else:
@@ -143,7 +143,7 @@ def cleanInternals():
                          stderr=subprocess.PIPE,
                          shell=True,
                          check=False,
-                         text=True)
+                         text=False)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanInternals: PASSED]")
     else:
@@ -172,7 +172,7 @@ def cleanWindows():
                          stderr=subprocess.PIPE,
                          shell=True,
                          check=False,
-                         text=True)
+                         text=False)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanWindows: PASSED]")
     else:

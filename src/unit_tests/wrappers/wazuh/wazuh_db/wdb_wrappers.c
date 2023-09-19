@@ -44,7 +44,7 @@ int __wrap_wdb_finalize() {
     return mock();
 }
 
-int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
+int __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
 
