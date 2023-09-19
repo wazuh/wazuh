@@ -7,7 +7,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
+#include <list>
 
 namespace api::sessionManager
 {
@@ -33,12 +33,26 @@ struct OutputTraceDataSync
     std::vector<std::pair<std::string, std::string>> m_history;
 
     /**
-     * @brief Trace map that associates each asset with its set of traces.
+     * @struct Trace
      *
-     * The map stores output traces associated with each asset in the form of a vector of shared pointers to
-     * stringstream. Each stringstream contains an output trace of the asset.
+     * @brief Structure representing a trace object.
      */
-    std::unordered_map<std::string, std::vector<std::shared_ptr<std::stringstream>>> m_trace;
+    struct Trace
+    {
+        /**
+         * @brief Constructor for the Trace structure.
+         *
+         * @param asset     The asset associated with the trace.
+         * @param condition The shared pointer to the condition stream.
+         */
+        Trace(const std::string& asset, const std::shared_ptr<std::stringstream>& condition)
+            : m_asset(asset), m_spCondition(condition) {}
+
+        std::string m_asset; ///< The asset associated with the trace.
+        std::shared_ptr<std::stringstream> m_spCondition; ///< The shared pointer to the condition stream.
+    };
+
+    std::list<Trace> m_trace; ///< Vector that stores Trace objects.
 
     // Synchronization
     std::mutex m_sync;                ///< Mutex for synchronizing access to the data in this struct.
