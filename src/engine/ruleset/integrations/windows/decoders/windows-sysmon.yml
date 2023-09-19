@@ -16,9 +16,163 @@ metadata:
     - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
+definitions:
+  idEvent_map:
+    "1":
+      category:
+        - process
+      type:
+        - start
+    "2":
+      category:
+        - file
+      type:
+        - change
+    "3":
+      category:
+        - network
+      type:
+        - start
+        - connection
+        - protocol
+    "4":
+      category:
+        - process
+      type:
+        - change
+    "5":
+      category:
+        - process
+      type:
+        - end
+    "6":
+      category:
+        - driver
+      type:
+        - start
+    "7":
+      category:
+        - process
+      type:
+        - change
+    "8":
+      category:
+        - process
+      type:
+        - change
+    "9":
+      category:
+        - process
+      type:
+        - access
+    "10":
+      category:
+        - process
+      type:
+        - access
+    "11":
+      category:
+        - file
+      type:
+        - creation
+    "12":
+      category:
+        - configuration
+        - registry
+      type:
+        - change
+    "13":
+      category:
+        - configuration
+        - registry
+      type:
+        - change
+    "14":
+      category:
+        - configuration
+        - registry
+      type:
+        - change
+    "15":
+      category:
+        - file
+      type:
+        - access
+    "16":
+      category:
+        - configuration
+      type:
+        - change
+    "17":
+      category:
+        - file
+      type:
+        - creation
+    "18":
+      category:
+        - file
+      type:
+        - access
+    "19":
+      category:
+        - process
+      type:
+        - creation
+    "20":
+      category:
+        - process
+      type:
+        - creation
+    "21":
+      category:
+        - process
+      type:
+        - access
+    "22":
+      category:
+        - network
+      type:
+        - connection
+        - protocol
+        - info
+    "23":
+      category:
+        - file
+      type:
+        - deletion
+    "24":
+      type:
+        - change
+    "25":
+      category:
+        - process
+      type:
+        - change
+    "26":
+      category:
+        - file
+      type:
+        - deletion
+    "27":
+      category:
+        - file
+      type:
+        - creation
+        - denied
+    "28":
+      category:
+        - file
+      type:
+        - deletion
+        - denied
+    "255":
+      category:
+        - process
+      type:
+        - error
+
 check:
   - windows.System.Provider.@Name: Microsoft-Windows-Sysmon
-
 
 normalize:
  - map:
@@ -91,6 +245,14 @@ normalize:
     - related.user: array_append($user.name)
     - related.ip: array_append($windows.EventData.NewTargetUserName)
 
+  ## Sysmon fields
+    - sysmon.dns.status: $windows.EventData.QueryStatus
+    - sysmon.file.archived: $windows.EventData.Archived
+    - sysmon.file.is_executable: $windows.EventData.IsExecutable
+
+ - check: $file.code_signature.status=="Valid"
+   map:
+     - file.code_signature.valid: True
 
  - check: $event.code=="255"
    map:
