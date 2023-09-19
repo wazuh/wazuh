@@ -769,8 +769,6 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
     key_unlock();
 
-
-
     /* If we can't send the message, try to connect to the
     * socket again. If it not exit.
     */
