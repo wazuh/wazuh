@@ -30,7 +30,7 @@ std::vector<std::string> parserListSID(const std::string& listSrt)
     {
         if (sid.size() > 3)
         {
-            // Remove the '%{' and '}'
+            // Remove header '%{' and tail '}'
             sid = sid.substr(2, sid.size() - 3);
         }
     }
