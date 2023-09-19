@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(content_manager_unit_tests)
 
+# Copy input files to the build directory
+file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 file(GLOB PROJECT_SOURCES
     *.cpp
     ${CMAKE_SOURCE_DIR}/content_manager/src/*[!main]*.cpp
