@@ -76,22 +76,3 @@ TEST_F(ContentProviderTest, TestInstantiationAndChangeSchedulerInterval)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
-
-/*
- * @brief Tests the instantiation of the ContentProvider class and start on demand action
- */
-TEST_F(ContentProviderTest, TestInstantiationAndStartOnDemandAction)
-{
-    // TODO
-    GTEST_SKIP();
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-
-    m_parameters["ondemand"] = true;
-
-    auto contentProvider {std::make_shared<ContentProvider>(topicName, m_parameters)};
-
-    EXPECT_NO_THROW(contentProvider->startOnDemandAction());
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-}

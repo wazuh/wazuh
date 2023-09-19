@@ -169,8 +169,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("fileName").get_ref<const std::string&>()};
-    const auto filePath {outputFolder + "/" + fileName};
+    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + fileName};
+    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + fileName};
 
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
@@ -183,7 +184,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
     EXPECT_NO_THROW(actionOrchestrator->run());
 
     // This file shouldn't exist because it's a test for raw data
-    EXPECT_FALSE(std::filesystem::exists(filePath));
+    EXPECT_FALSE(std::filesystem::exists(downloadPath));
+
+    EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -196,16 +199,18 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
  */
 TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionType)
 {
+    m_parameters["configData"]["url"] = "http://localhost:4444/xz";
+    m_parameters["configData"]["compressionType"] = "xz";
+
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("fileName").get_ref<const std::string&>()};
-    const auto filePath {outputFolder + "/" + fileName};
+    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + fileName};
+    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + fileName};
 
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
     EXPECT_NO_THROW(routerProvider->start());
-
-    m_parameters["configData"]["compressionType"] = "xz";
 
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters)};
 
@@ -214,7 +219,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     EXPECT_NO_THROW(actionOrchestrator->run());
 
     // This file should exist because deleteDownloadedContent is not enabled
-    EXPECT_TRUE(std::filesystem::exists(filePath));
+    EXPECT_TRUE(std::filesystem::exists(downloadPath));
+
+    EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -227,17 +234,19 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
  */
 TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTypeAndDeleteDownloadedContentEnabled)
 {
+    m_parameters["configData"]["url"] = "http://localhost:4444/xz";
+    m_parameters["configData"]["compressionType"] = "xz";
+    m_parameters["configData"]["deleteDownloadedContent"] = true;
+
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("fileName").get_ref<const std::string&>()};
-    const auto filePath {outputFolder + "/" + fileName};
+    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + fileName};
+    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + fileName};
 
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
     EXPECT_NO_THROW(routerProvider->start());
-
-    m_parameters["configData"]["compressionType"] = "xz";
-    m_parameters["configData"]["deleteDownloadedContent"] = true;
 
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters)};
 
@@ -246,7 +255,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     EXPECT_NO_THROW(actionOrchestrator->run());
 
     // This file shouldn't exist because deleteDownloadedContent is enabled
-    EXPECT_FALSE(std::filesystem::exists(filePath));
+    EXPECT_FALSE(std::filesystem::exists(downloadPath));
+
+    EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 

@@ -12,8 +12,10 @@
 #ifndef _CONTENT_REGISTER_TEST_HPP
 #define _CONTENT_REGISTER_TEST_HPP
 
+#include "fakeServer.hpp"
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
+#include <memory>
 
 /**
  * @brief Runs component tests for ContentRegister
@@ -25,6 +27,8 @@ protected:
     ~ContentRegisterTest() override = default;
 
     nlohmann::json m_parameters; ///< Parameters used to create the ContentRegister
+
+    inline static std::unique_ptr<FakeServer> fakeServer; ///< pointer to FakeServer class
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -42,13 +46,34 @@ protected:
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
-                    "url": "https://swapi.dev/api/people/1",
+                    "url": "http://localhost:4444/raw",
                     "outputFolder": "/tmp/content-register-tests",
                     "dataFormat": "json",
-                    "fileName": "sample1.json"
+                    "contentFileName": "sample.json"
                 }
             }
         )"_json;
+    }
+
+    /**
+     * @brief Creates the fakeServer for the runtime of the test suite
+     */
+    // cppcheck-suppress unusedFunction
+    static void SetUpTestSuite()
+    {
+        if (!fakeServer)
+        {
+            fakeServer = std::make_unique<FakeServer>("localhost", 4444);
+        }
+    }
+
+    /**
+     * @brief Resets fakeServer causing the shutdown of the test server.
+     */
+    // cppcheck-suppress unusedFunction
+    static void TearDownTestSuite()
+    {
+        fakeServer.reset();
     }
 };
 
