@@ -89,6 +89,14 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_rea
                                 -Wl,--wrap,w_macos_set_log_settings -Wl,--wrap,w_macos_set_last_log_timestamp \
                                 -Wl,--wrap,w_macos_set_is_valid_data")
 
+list(APPEND logcollector_names "test_read_multiline")
+list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
+                                -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
+                                -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
+                                -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
+                                -Wl,--wrap=w_fseek")
+
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
