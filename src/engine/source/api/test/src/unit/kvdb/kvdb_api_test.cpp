@@ -750,7 +750,8 @@ TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
     ASSERT_FALSE(kvdbManager->createDB("test_db"));
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test_db", "keyNotExists"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Can not get key ''. Error: keyNotExists"})"};
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"Can not get key 'keyNotExists'. Error: Key not found"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);

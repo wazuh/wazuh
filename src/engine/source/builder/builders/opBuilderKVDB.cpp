@@ -462,6 +462,11 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
 
         const auto& dbName = parameters[0].m_value;
 
+        if (Parameter::Type::VALUE != parameters[1].m_type)
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", "DB Name must be a value"));
+        }
+
         if (Parameter::Type::REFERENCE != parameters[1].m_type)
         {
             throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", "Key array must be a reference"));
