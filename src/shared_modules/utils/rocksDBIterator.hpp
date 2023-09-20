@@ -100,9 +100,9 @@ public:
         return m_it->Valid() && m_it->key().starts_with(m_prefix);
     }
 
-    std::pair<std::string, std::string> operator*()
+    std::pair<std::string, rocksdb::Slice> operator*()
     {
-        return {m_it->key().ToString(), m_it->value().ToString()};
+        return {m_it->key().ToString(), m_it->value()};
     }
 
 private:
