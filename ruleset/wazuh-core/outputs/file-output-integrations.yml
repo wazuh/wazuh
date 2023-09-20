@@ -9,8 +9,7 @@ metadata:
     name: Wazuh, Inc.
     date: 2022/11/08
 
-check:
-  - wazuh.decoders: array_contains(integrations)
+check: not_exists($wazuh.isInternal) OR $wazuh.isInternal == false
 
 outputs:
   - file:

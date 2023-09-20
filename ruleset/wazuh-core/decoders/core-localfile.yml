@@ -23,8 +23,6 @@ check:
   - wazuh.queue: 49
 
 normalize:
-  - map:
-      - wazuh.decoders: array_append(core-localfile)
 
   ### Wodles ###
   # Command
@@ -46,18 +44,15 @@ normalize:
       - wazuh.source: not_exists()
     map:
       - wazuh.source: logcollector
-  - check:
-      - wazuh.source: logcollector
-      - wazuh.message: starts_with({)
-    parse|wazuh.message:
-      - <json_event/json>
-    map:
-      - event.original: rename($json_event.event.original)
-      - event.module: rename($json_event.event.module)
-      - event.dataset: rename($json_event.event.dataset)
+  
+  # Disable json labeling for now, we dont replace the event.original with the json_event at this moment
+  #- check:
+  #    - wazuh.source: logcollector
+  #    - event.original: starts_with({)
+  #  parse|event.original:
+  #    - <_json_event/json>
+  #  map:
+  #    - event.original: rename($_json_event.event.original)
+  #    - event.module: rename($_json_event.event.module)
+  #    - event.dataset: rename($_json_event.event.dataset)
 
-  ### Applied to all ###
-  - check:
-      - event.original: not_exists()
-    map:
-      - event.original: $wazuh.message
