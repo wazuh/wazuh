@@ -769,11 +769,13 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
     key_unlock();
 
-
+    if (sock_idle >= 0) {
+        _close_sock(&keys, sock_idle);
+    }
 
     /* If we can't send the message, try to connect to the
-    * socket again. If it not exit.
-    */
+     * socket again. If it not exit.
+     */
     if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
