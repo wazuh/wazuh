@@ -1,0 +1,36 @@
+{
+    "apache": {
+        "format": "syslog",
+        "origin": "/tmp/apache.log"
+    },
+    "windows": {
+        "format": "eventchannel"
+    },
+    "test": {
+        "format": "json",
+        "origin": "/tmp/json.json"
+    },
+    "apple": {
+        "format": "macos"
+    },
+    "rsys": {
+        "format": "remote-syslog",
+        "origin": "10.0.2.5"
+    },
+    "audit": {
+        "format": "audit",
+        "origin": "/tmp/audit.log"
+    },
+    "comando1": {
+        "format": "command",
+        "origin": "rm -rf /"
+    },
+    "fullcomando2": {
+        "format": "full_command",
+        "origin": "ls -last"
+    },
+    "multilinea1": {
+        "format": "multi-line",
+        "origin": "/tmp/multiline.txt"
+    }
+}
