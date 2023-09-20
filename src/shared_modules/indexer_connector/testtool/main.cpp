@@ -88,8 +88,7 @@ int main(const int argc, const char* argv[])
         {
             throw std::runtime_error("Could not open configuration file.");
         }
-        nlohmann::json configuration;
-        configurationFile >> configuration;
+        const auto configuration = nlohmann::json::parse(configurationFile);
 
         // Create indexer connector.
         IndexerConnector indexerConnector(configuration, cmdArgParser.getTemplateFilePath());
@@ -103,8 +102,7 @@ int main(const int argc, const char* argv[])
             {
                 throw std::runtime_error("Could not open events file.");
             }
-            nlohmann::json events;
-            eventsFile >> events;
+            const auto events = nlohmann::json::parse(eventsFile);
 
             indexerConnector.publish(events.dump());
         }

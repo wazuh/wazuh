@@ -31,9 +31,8 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
     {
         throw std::runtime_error("Could not open template file.");
     }
-
-    nlohmann::json templateData;
-    templateFile >> templateData;
+    const auto templateData = nlohmann::json::parse(templateFile);
+    templateFile.close();
 
     // Get index name.
     auto indexName {config.at("indexer").at("name").get_ref<const std::string&>()};
