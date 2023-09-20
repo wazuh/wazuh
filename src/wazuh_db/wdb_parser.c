@@ -339,22 +339,32 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_agent_fim_registry_time(diff);
             }
         } else if (strcmp(query, "fim_registry_key") == 0) {
+            w_inc_agent_fim_registry_key();
             if (!next) {
                 mdebug1("DB(%s) Invalid FIM registry key query syntax.", sagent_id);
                 mdebug2("DB(%s) FIM registry key query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY_KEY, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_agent_fim_registry_key_time(diff);
             }
         } else if (strcmp(query, "fim_registry_value") == 0) {
+            w_inc_agent_fim_registry_value();
             if (!next) {
                 mdebug1("DB(%s) Invalid FIM registry value query syntax.", sagent_id);
                 mdebug2("DB(%s) FIM registry value query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY_VALUE, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_agent_fim_registry_value_time(diff);
             }
         } else if (strcmp(query, "sca") == 0) {
             w_inc_agent_sca();
