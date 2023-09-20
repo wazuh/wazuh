@@ -74,6 +74,22 @@ TEST_F(RocksDBWrapperTest, TestGet)
 }
 
 /**
+ * @brief Tests the get function with pinnable slice
+ */
+TEST_F(RocksDBWrapperTest, TestGetPinnableSlice)
+{
+    db_wrapper->put("key2", "value2");
+    rocksdb::PinnableSlice value;
+    EXPECT_TRUE(db_wrapper->get("key2", value));
+    EXPECT_EQ(value, "value2");
+
+    value.Reset();
+    EXPECT_TRUE(value.empty());
+    EXPECT_TRUE(db_wrapper->get("key2", value));
+    EXPECT_EQ(value.ToString(), "value2");
+}
+
+/**
  * @brief Tests the get function with a non-existent key
  */
 TEST_F(RocksDBWrapperTest, TestGetNonExistentKey)
@@ -234,6 +250,71 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoop)
     {
         EXPECT_EQ(key, elements[counter].first);
         EXPECT_EQ(value, elements[counter].second);
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS);
+}
+
+/**
+ * @brief Tests the range for loop with buffers
+ */
+TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
+{
+    constexpr auto NUM_ELEMENTS {4};
+    constexpr auto NUM_ELEMENTS_ONE_MATCH {1};
+    constexpr char BINARY_BUFFER[] {0x01, 0x02, 0x00, 0x04, 0x05};
+    constexpr auto BINARY_BUFFER_SIZE {sizeof(BINARY_BUFFER)};
+    const std::array<std::pair<std::string, const char*>, NUM_ELEMENTS> elements {
+        std::make_pair("key1", BINARY_BUFFER),
+        std::make_pair("key2", BINARY_BUFFER),
+        std::make_pair("key3", BINARY_BUFFER),
+        std::make_pair("key4", BINARY_BUFFER)};
+    for (const auto& [key, value] : elements)
+    {
+        db_wrapper->put(key, {value, BINARY_BUFFER_SIZE});
+    }
+
+    auto counter {0};
+
+    for (const auto& [key, value] : db_wrapper->seek("k"))
+    {
+        EXPECT_EQ(key, elements[counter].first);
+        EXPECT_EQ(value.size(), BINARY_BUFFER_SIZE);
+        EXPECT_EQ(std::memcmp(value.data(), elements[counter].second, BINARY_BUFFER_SIZE), 0);
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS);
+
+    counter = 0;
+
+    for (const auto& [key, value] : db_wrapper->seek("key2"))
+    {
+        EXPECT_EQ(key, elements[counter + NUM_ELEMENTS_ONE_MATCH].first);
+        EXPECT_EQ(value.size(), BINARY_BUFFER_SIZE);
+        EXPECT_EQ(std::memcmp(value.data(), elements[counter + NUM_ELEMENTS_ONE_MATCH].second, BINARY_BUFFER_SIZE), 0);
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS_ONE_MATCH);
+
+    counter = 0;
+
+    for (const auto& [key, value] : db_wrapper->seek("key5"))
+    {
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, 0);
+
+    counter = 0;
+
+    for (const auto& [key, value] : *db_wrapper)
+    {
+        EXPECT_EQ(key, elements[counter].first);
+        EXPECT_EQ(value.size(), BINARY_BUFFER_SIZE);
+        EXPECT_EQ(std::memcmp(value.data(), elements[counter].second, BINARY_BUFFER_SIZE), 0);
         ++counter;
     }
 

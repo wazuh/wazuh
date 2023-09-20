@@ -43,13 +43,11 @@ namespace Utils
 
         /**
          * @brief Put a key-value pair in the database.
-         *
          * @param key Key to put.
          * @param value Value to put.
-         *
          * @note If the key already exists, the value will be overwritten.
          */
-        void put(const std::string& key, const std::string& value)
+        void put(const std::string& key, const rocksdb::Slice& value)
         {
             if (key.empty())
             {
@@ -67,7 +65,7 @@ namespace Utils
          * @brief Get a value from the database.
          *
          * @param key Key to get.
-         * @param value Value to get.
+         * @param value Value to get (std::string).
          *
          * @return bool True if the operation was successful.
          * @return bool False if the key was not found.
@@ -81,6 +79,36 @@ namespace Utils
             }
 
             const auto status {m_db->Get(rocksdb::ReadOptions(), key, &value)};
+            if (status.IsNotFound())
+            {
+                std::cerr << "Key not found: " << key << '\n';
+                return false;
+            }
+            else if (!status.ok())
+            {
+                throw std::runtime_error("Error getting data: " + status.ToString());
+            }
+            return true;
+        }
+
+        /**
+         * @brief Get a value from the database.
+         *
+         * @param key Key to get.
+         * @param value Value to get (rocksdb::PinnableSlice).
+         *
+         * @return bool True if the operation was successful.
+         * @return bool False if the key was not found.
+         */
+
+        bool get(const std::string& key, rocksdb::PinnableSlice& value)
+        {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+
+            const auto status {m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), key, &value)};
             if (status.IsNotFound())
             {
                 std::cerr << "Key not found: " << key << '\n';
@@ -115,18 +143,18 @@ namespace Utils
         /**
          * @brief Get the last key-value pair from the database.
          *
-         * @return std::pair<std::string, std::string> Last key-value pair.
+         * @return std::pair<std::string, rocksdb::Slice> Last key-value pair.
          *
          * @note The first element of the pair is the key, the second element is the value.
          */
-        std::pair<std::string, std::string> getLastKeyValue()
+        std::pair<std::string, rocksdb::Slice> getLastKeyValue()
         {
             std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions()));
 
             it->SeekToLast();
             if (it->Valid())
             {
-                return {it->key().ToString(), it->value().ToString()};
+                return {it->key().ToString(), it->value()};
             }
 
             throw std::runtime_error {"Error getting last key-value pair"};
