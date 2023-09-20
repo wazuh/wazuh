@@ -23,17 +23,17 @@ For running tests in an AWS EC2 virtual environment, it will be needed to meet t
 
 | Environment                  | EC2                                       |
 |------------------------------|-------------------------------------------|
-|Basic_cluster                 |Ubuntu 22.04.2 LTS `C5`.`XLarge` `15GB` HD |
-|Big_cluster_40_agents         |Ubuntu 22.04.2 LTS T3.Large `60GB` HD      |
-|Agentless_cluster             |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
-|Four_manager_disconnected_node|Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
-|One_manager_agent             |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
-|Manager_agent                 |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
-|Enrollment_cluster            |Ubuntu 22.04.2 LTS T3.Large 30GB HD        | 
-| Basic_environment            |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
+|Basic_cluster                 |Ubuntu 22.04.2 LTS C5.XLarge 15GB SSD      |
+|Big_cluster_40_agents         |Ubuntu 22.04.2 LTS T3.Large 60GB SSD       |
+|Agentless_cluster             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Four_manager_disconnected_node|Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|One_manager_agent             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Manager_agent                 |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Enrollment_cluster            |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       | 
+|Basic_environment             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 
 
-These requirements should be requested from the @cicd-team.
+These requirements should be requested from the @wazuh/cicd.
 
 
 For its execution, the installation of various packages is required, which will be detailed below.
@@ -45,7 +45,7 @@ For its execution, the installation of various packages is required, which will 
 sudo apt update
 sudo apt upgrade
 
-### Installing git and cloning wazuh-qa project
+### Installing git and cloning wazuh-qa repository
 sudo apt install git
 git clone https://github.com/wazuh/wazuh-qa.git
 
@@ -81,7 +81,7 @@ cd /home/ubuntu/wazuh-qa/deps/wazuh_testing
 python3 -m pip install .
 ```
 
-For further information: check /wazuh-qa/tests/system/README.md
+For further information: check https://github.com/wazuh/wazuh-qa/tree/master/tests/system/README.md
 
 </details>
 
