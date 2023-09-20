@@ -23,5 +23,6 @@ check:
 
 normalize:
   - map:
-      - wazuh.decoders: array_append(core-rsyslog)
       - wazuh.source: remote
+      - client.ip: $wazuh.origin
+      - related.ip: array_append($wazuh.origin)

@@ -22,9 +22,7 @@ definitions:
 normalize:
   - map:
       - ecs.version: "8.8"
-      - wazuh.decoders: array_append(core-wazuh-message)
-
-      - event.original: $wazuh.message
+      - wazuh.isInternal: true
 
   #### Full location ####
   #### Present when the event is procesed by remoted

@@ -10,7 +10,7 @@ namespace base::parseEvent
 {
 constexpr char EVENT_QUEUE_ID[] {"/wazuh/queue"};
 constexpr char EVENT_LOCATION_ID[] {"/wazuh/location"};
-constexpr char EVENT_MESSAGE_ID[] {"/wazuh/message"};
+constexpr char EVENT_MESSAGE_ID[] {"/event/original"};
 
 /**
  * @brief Parse an Wazuh message and extract the queue, location and message
