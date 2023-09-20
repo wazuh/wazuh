@@ -403,13 +403,15 @@ Policy::Policy(const json::Json& jsonDefinition,
                 }();
 
                 auto asset = std::make_shared<Asset>(base::getResponse<store::Doc>(assetDef), type, registry);
-                // Add default parent
-                auto nsId = store->getNamespace(assetName);
-                if (nsId && asset->m_parents.empty() && defaultParents.find(nsId.value()) != defaultParents.end())
+                // Add default parent only for decoders
+                if (type == Asset::Type::DECODER && asset->m_parents.empty())
                 {
-                    asset->m_parents.emplace(defaultParents.at(nsId.value()));
+                    auto nsId = store->getNamespace(assetName);
+                    if (nsId && defaultParents.find(nsId.value()) != defaultParents.end())
+                    {
+                        asset->m_parents.emplace(defaultParents.at(nsId.value()));
+                    }
                 }
-
                 auto key = internals::syntax::getIntegrationSection(assetName);
 
                 // Keep track of the assets by type, to build the graphs
@@ -434,11 +436,14 @@ Policy::Policy(const json::Json& jsonDefinition,
         {
             for (auto& iasset : iassets)
             {
-                // Add default parent
-                auto nsId = store->getNamespace(iasset->m_name);
-                if (nsId && iasset->m_parents.empty() && defaultParents.find(nsId.value()) != defaultParents.end())
+                // Add default parent only for decoders
+                if (itype == Asset::Type::DECODER && iasset->m_parents.empty())
                 {
-                    iasset->m_parents.emplace(defaultParents.at(nsId.value()));
+                    auto nsId = store->getNamespace(iasset->m_name);
+                    if (nsId && defaultParents.find(nsId.value()) != defaultParents.end())
+                    {
+                        iasset->m_parents.emplace(defaultParents.at(nsId.value()));
+                    }
                 }
 
                 m_assets.insert(std::make_pair(iasset->m_name, iasset));
