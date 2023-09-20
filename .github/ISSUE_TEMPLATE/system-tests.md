@@ -19,32 +19,19 @@ The following issue aims to run all `system tests` for the current release candi
 | **Previous system tests issue**      |                                            |
 
 ## Instructions
-For running tests in an AWS EC2 virtual environment, you will need to meet the following requirements:
+For running tests in an AWS EC2 virtual environment, it will be needed to meet the following requirements:
 
-| Test | Environment | Notes|
-|-----|-----|-----|
-|Basic_cluster|Ubuntu 22.04.2 LTS `C5`.`XLarge` `15GB` HD|
-|Big_cluster_40_agents|Ubuntu 22.04.2 LTS T3.Large `60GB` HD |
-|Agentless_cluster|Ubuntu 22.04.2 LTS T3.Large 30GB HD|
-|Four_manager_disconnected_node|Ubuntu 22.04.2 LTS T3.Large 30GB HD |
-|One_manager_agent|Ubuntu 22.04.2 LTS T3.Large 30GB HD|
-|Manager_agent|Ubuntu 22.04.2 LTS T3.Large 30GB HD|
-|Enrollment_cluster|Ubuntu 22.04.2 LTS T3.Large 30GB HD|
-|Basic_environment|Ubuntu 22.04.2 LTS T3.Large 30GB HD| It should be run divided in 3 parts* |
+| Environment                  | EC2                                       |
+|------------------------------|-------------------------------------------|
+|Basic_cluster                 |Ubuntu 22.04.2 LTS `C5`.`XLarge` `15GB` HD |
+|Big_cluster_40_agents         |Ubuntu 22.04.2 LTS T3.Large `60GB` HD      |
+|Agentless_cluster             |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
+|Four_manager_disconnected_node|Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
+|One_manager_agent             |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
+|Manager_agent                 |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
+|Enrollment_cluster            |Ubuntu 22.04.2 LTS T3.Large 30GB HD        | 
+| Basic_environment            |Ubuntu 22.04.2 LTS T3.Large 30GB HD        |
 
------------
-* Basic_environment:
-  - part 1
-  test_cluster/test_agent_key_polling/test_agent_key_polling.py
-  test_multigroups/test_multigroups.py
-
-  - part 2
-  test_cluster/test_agent_files_deletion/test_agent_files_deletion.py
-  test_cluster/test_agent_groups/test_agent_groups_forced_change.py
-
-  - part 3
-  test_cluster/test_agent_info_sync/agent_info_sync
------------
 
 These requirements should be requested from the @cicd-team.
 
@@ -52,7 +39,6 @@ These requirements should be requested from the @cicd-team.
 For its execution, the installation of various packages is required, which will be detailed below.
 
 <details><summary>Steps</summary>
-
 
 ```
 ### Updating dependencies
@@ -93,23 +79,9 @@ sudo apt install python3-pip
 sudo apt install python3.10-venv
 cd /home/ubuntu/wazuh-qa/deps/wazuh_testing
 python3 -m pip install .
-
-### Provisioning and executing test (It should be in the expected git branch, in this case v4.6.0-alpha1)
-git checkout v4.6.0-alpha1
-cd /home/ubuntu/wazuh-qa/tests/system/provisioning
-
-### Deploy environment (in this case, four_manager_disconnected_node and branch v4.6.0-alpha1)
-cd /home/ubuntu/wazuh-qa/tests/system/provisioning/four_manager_disconnected_node
-sudo ansible-playbook -i inventory.yml playbook.yml --extra-vars='{"wazuh_branch":"v4.6.0-alpha1", "wazuh_qa_branch":"v4.6.0-alpha1"}'
-
-### Run the test (In this case four_manager_disconnected_node_env )
-cd /home/ubuntu/wazuh-qa/tests/system
-python3 -m pytest -m four_manager_disconnected_node_env --html=report_four_manager_disconnected_node_env.html
-
-### Destroy the environment for new tests
-sudo docker stop $(sudo docker ps -q -a) && sudo docker rm $(sudo docker ps -q -a) && sudo docker system prune -a -f
-
 ```
+
+For further information: check /wazuh-qa/tests/system/README.md
 
 </details>
 
