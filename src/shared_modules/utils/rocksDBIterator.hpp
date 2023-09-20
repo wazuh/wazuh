@@ -18,6 +18,12 @@
 #include <memory>
 #include <utility>
 
+/**
+ * @class RocksDBIterator
+ *
+ * @brief Class in charge of iterating over the RocksDB database.
+ *
+ */
 class RocksDBIterator
 {
 public:
@@ -63,12 +69,20 @@ public:
         return *this;
     }
 
+    /**
+     * @brief Get an iterator to the database with a specific prefix.
+     * @return RocksDBIterator Iterator to the database.
+     */
     RocksDBIterator& begin()
     {
         m_it->Seek(m_prefix);
         return *this;
     }
 
+    /**
+     * @brief Get an iterator to the end of the database.
+     * @return const RocksDBIterator Iterator to the end of the database.
+     */
     const RocksDBIterator& end()
     {
         static const RocksDBIterator END_ITERATOR {};
@@ -81,7 +95,7 @@ public:
         return *this;
     }
 
-    bool operator!=(const RocksDBIterator& other)
+    bool operator!=([[maybe_unused]] const RocksDBIterator& other)
     {
         return m_it->Valid() && m_it->key().starts_with(m_prefix);
     }
@@ -92,9 +106,8 @@ public:
     }
 
 private:
-    std::string m_prefix;
     std::shared_ptr<rocksdb::Iterator> m_it;
+    std::string m_prefix;
 };
 
 #endif // _ROCKS_DB_ITERATOR_HPP
-

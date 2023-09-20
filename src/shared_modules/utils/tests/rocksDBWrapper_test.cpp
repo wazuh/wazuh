@@ -239,4 +239,3 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoop)
 
     EXPECT_EQ(counter, NUM_ELEMENTS);
 }
-
