@@ -53,6 +53,8 @@ For its execution, the installation of various packages is required, which will 
 
 <details><summary>Steps</summary>
 
+
+```
 ### Updating dependencies
 sudo apt update
 sudo apt upgrade
@@ -106,6 +108,8 @@ python3 -m pytest -m four_manager_disconnected_node_env --html=report_four_manag
 
 ### Destroy the environment for new tests
 sudo docker stop $(sudo docker ps -q -a) && sudo docker rm $(sudo docker ps -q -a) && sudo docker system prune -a -f
+
+```
 
 </details>
 
