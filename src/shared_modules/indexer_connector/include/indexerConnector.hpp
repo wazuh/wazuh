@@ -35,8 +35,9 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
+     * @param templatePath Path to the template file.
      */
-    explicit IndexerConnector(const nlohmann::json& config);
+    explicit IndexerConnector(const nlohmann::json& config, const std::string& templatePath);
     ~IndexerConnector();
 
     /**
