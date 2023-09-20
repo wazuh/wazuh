@@ -52,6 +52,7 @@ These requirements should be requested from the @cicd-team.
 For its execution, the installation of various packages is required, which will be detailed below.
 
 <details><summary>Steps</summary>
+
 ### Updating dependencies
 sudo apt update
 sudo apt upgrade
