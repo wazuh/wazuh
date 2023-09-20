@@ -25,25 +25,26 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
     // Initialize publisher.
     auto selector = std::make_shared<ServerSelector>(config.at("indexer").at("hosts"));
 
-    // Read template file.
-    std::ifstream templateFile(templatePath);
-    if (!templateFile.is_open())
-    {
-        throw std::runtime_error("Could not open template file.");
-    }
-    const auto templateData = nlohmann::json::parse(templateFile);
-    templateFile.close();
-
     // Get index name.
     auto indexName {config.at("indexer").at("name").get_ref<const std::string&>()};
 
-    // Initialize template.
-    HTTPRequest::instance().put(
-        HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
-        templateData,
-        [&](const std::string& response) {},
-        [&](const std::string& error, const long statusCode)
-        { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); });
+    {
+        // Read template file.
+        std::ifstream templateFile(templatePath);
+        if (!templateFile.is_open())
+        {
+            throw std::runtime_error("Could not open template file.");
+        }
+        nlohmann::json templateData = nlohmann::json::parse(templateFile);
+
+        // Initialize template.
+        HTTPRequest::instance().put(
+            HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
+            templateData,
+            [&](const std::string& response) {},
+            [&](const std::string& error, const long statusCode)
+            { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); });
+    }
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
         [selector, indexName](std::queue<std::string>& dataQueue)
