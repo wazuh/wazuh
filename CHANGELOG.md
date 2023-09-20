@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added support for Amazon Linux 2023 in Vulnerability Detector. [#17617](https://github.com/wazuh/wazuh/issues/17617)
 - Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
 - Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
 - Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
