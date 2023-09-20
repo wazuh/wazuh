@@ -152,28 +152,18 @@ namespace Utils
         }
 
         /**
-         * @brief Get an iterator to the database.
-         *
-         * @return std::unique_ptr<rocksdb::Iterator> Iterator to the database.
-         */
-        std::shared_ptr<rocksdb::Iterator> getIterator()
-        {
-            return std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
-        }
-
-        /**
          * @brief Seek to specific key.
          * @param key Key to seek.
          * @return RocksDBIterator Iterator to the database.
          */
         RocksDBIterator seek(const std::string& key)
         {
-            return {getIterator(), key};
+            return {std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions())), key};
         }
 
         RocksDBIterator begin()
         {
-            return RocksDBIterator {getIterator()};
+            return RocksDBIterator {std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()))};
         }
 
         const RocksDBIterator& end()

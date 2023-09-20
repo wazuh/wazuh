@@ -21,10 +21,12 @@
 class RocksDBIterator
 {
 public:
-    // End iterator
-    RocksDBIterator()
-        : m_it(nullptr)
+    RocksDBIterator() = default;
+
+    explicit RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it)
+        : m_it(std::move(it))
     {
+        m_it->SeekToFirst();
     }
 
     RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it, std::string prefix)
@@ -33,10 +35,32 @@ public:
     {
     }
 
-    explicit RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it)
-        : m_it(std::move(it))
+    RocksDBIterator(const RocksDBIterator& other) = default;
+
+    RocksDBIterator(RocksDBIterator&& other) noexcept
+        : m_it(std::move(other.m_it))
+        , m_prefix(std::move(other.m_prefix))
     {
-        m_it->SeekToFirst();
+    }
+
+    RocksDBIterator& operator=(const RocksDBIterator& other)
+    {
+        if (this != &other)
+        {
+            m_it = other.m_it;
+            m_prefix = other.m_prefix;
+        }
+        return *this;
+    }
+
+    RocksDBIterator& operator=(RocksDBIterator&& other) noexcept
+    {
+        if (this != &other)
+        {
+            m_it = std::move(other.m_it);
+            m_prefix = std::move(other.m_prefix);
+        }
+        return *this;
     }
 
     RocksDBIterator& begin()
@@ -47,7 +71,7 @@ public:
 
     const RocksDBIterator& end()
     {
-        static const RocksDBIterator END_ITERATOR;
+        static const RocksDBIterator END_ITERATOR {};
         return END_ITERATOR;
     }
 

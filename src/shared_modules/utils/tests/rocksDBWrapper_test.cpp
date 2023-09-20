@@ -182,42 +182,6 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
 }
 
 /**
- * @brief Tests the getIterator function
- */
-TEST_F(RocksDBWrapperTest, TestIterator)
-{
-    const std::array<std::pair<std::string, std::string>, 4> elements {std::make_pair("key1", "value1"),
-                                                                       std::make_pair("key2", "value2"),
-                                                                       std::make_pair("key3", "value3"),
-                                                                       std::make_pair("key4", "value4")};
-
-    for (const auto& [key, value] : elements)
-    {
-        db_wrapper->put(key, value);
-    }
-
-    auto it {db_wrapper->getIterator()};
-
-    // Iterate through all the elements starting from the first one
-    auto counter {0};
-    for (it->SeekToFirst(); it->Valid(); it->Next())
-    {
-        EXPECT_EQ(it->key().ToString(), elements[counter].first);
-        EXPECT_EQ(it->value().ToString(), elements[counter].second);
-        ++counter;
-    }
-
-    // Start to iterate from the second element
-    counter = 2;
-    for (it->Seek(elements[counter].first); it->Valid(); it->Next())
-    {
-        EXPECT_EQ(it->key().ToString(), elements[counter].first);
-        EXPECT_EQ(it->value().ToString(), elements[counter].second);
-        ++counter;
-    }
-}
-
-/**
  * @brief Tests the range for loop
  */
 TEST_F(RocksDBWrapperTest, TestRangeForLoop)
@@ -249,8 +213,8 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoop)
     for (const auto& [key, value] : db_wrapper->seek("key2"))
     {
         EXPECT_EQ(key, elements[counter + NUM_ELEMENTS_ONE_MATCH].first);
-        ++counter;
         EXPECT_EQ(value, elements[counter + NUM_ELEMENTS_ONE_MATCH].second);
+        ++counter;
     }
 
     EXPECT_EQ(counter, NUM_ELEMENTS_ONE_MATCH);
