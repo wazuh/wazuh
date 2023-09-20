@@ -768,9 +768,6 @@ checks:
     description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
     remediation: "Run the following command to restore binaries to normal: # prelink -ua Run the following command to uninstall prelink: # zypper remove prelink."
-    references:
-      - "https://gitlab.com/apparmor/apparmor/-/wikis/Documentation"
-      - "https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-apparmor-start.html"
     compliance:
       - cis: ["1.6.4"]
       - cis_csc_v8: ["4.1"]
@@ -906,6 +903,14 @@ checks:
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
       - cis: ["1.8.1.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s'
@@ -1005,6 +1010,8 @@ checks:
       - "https://help.gnome.org/admin/system-admin-guide/stable"
     compliance:
       - cis: ["1.10"]
+      - cis_csc_v8: ["4.1", 4.8"]
+      - cis_csc_v7: ["2.6", "5.1"]
     condition: any
     rules:
       - "c:rpm -q gdm -> r:package gdm is not installed"
@@ -2350,7 +2357,7 @@ checks:
   # 4.1.8 Ensure session initiation information is collected. (Automated)
   - id: 21134
     title: "Ensure session initiation information is collected."
-    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins." Notes: - The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
+    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp. All audit records will be tagged with the identifier "logins." Notes: - The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/session.rules and add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins."
     compliance:
@@ -2363,65 +2370,19 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
 
-  # 4.1.9 Ensure discretionary access control permission modification events are collected. (Automated)
-  - id: 21135
-    title: "Ensure discretionary access control permission modification events are collected."
-    description: "Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 1000) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier \"perm_mod.\" Notes: - Systems may have been customized to change the default UID_MIN. To confirm the UID_MIN for your system, run the following command: - awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs - If your systems' UID_MIN is not 1000, replace audit>=1000 with audit>=<UID_MIN for your system> in the Audit and Remediation procedures. - Reloading the auditd config to set active settings may require a system reboot."
-    rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/perm_mod.rules and add the following lines: -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/perm_mod.rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod."
-    compliance:
-      - cis: ["4.1.9"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["5.5"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.1.2"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
-
-  # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected. (Automated)
-  - id: 21136
-    title: "Ensure unsuccessful unauthorized file access attempts are collected."
-    description: "Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation (creat), opening (open , openat) and truncation ( truncate , ftruncate) of files. An audit log record will only be written if the user is a non-privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier \"access.\" Notes: - Systems may have been customized to change the default UID_MIN. To confirm the UID_MIN for your system, run the following command: - # awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs - If your systems' UID_MIN is not 1000, replace audit>=1000 with audit>=<UID_MIN for your system> in the Audit and Remediation procedures. - Reloading the auditd config to set active settings may require a system reboot."
-    rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/access.rules and add the following lines: -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/access.rules and add the following lines: -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access."
-    compliance:
-      - cis: ["4.1.10"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["14.9"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.3"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
-
-  # 4.1.11 Ensure use of privileged commands is collected. (Automated)
-  - id: 21137
-    title: "Ensure use of privileged commands is collected."
-    description: "Monitor privileged programs (those that have the setuid and/or setgid bit set on execution) to determine if unprivileged users are running these commands. Notes: - Systems may have been customized to change the default UID_MIN. To confirm the UID_MIN for your system, run the following command: # awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs - If your systems' UID_MIN is not 1000, replace audit>=1000 with audit>=<UID_MIN for your system> in the Audit and Remediation procedures. - Reloading the auditd config to set active settings may require a system reboot."
-    rationale: "Execution of privileged commands by non-privileged users could be an indication of someone trying to gain unauthorized access to the system."
-    remediation: "To remediate this issue, the system administrator will have to execute a find command to locate all the privileged programs and then add an audit line for each one of them. The audit parameters associated with this are as follows: - - - - -F path=\" $1 \" - will populate each file name found through the find command and processed by awk. -F perm=x - will write an audit record if the file is executed. -F auid>=1000 - will write a record if the user executing the command is not a privileged user. -F auid!= 4294967295 - will ignore Daemon events All audit records should be tagged with the identifier \"privileged\". Run the following command replacing with a list of partitions where programs can be executed from on your system: # find <partition> -xdev \\( -perm -4000 -o -perm -2000 \\) -type f | awk '{print \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>='\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' -F auid!=4294967295 -k privileged\" }' Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add all resulting lines to the file. Example: # find / -xdev \\( -perm -4000 -o -perm -2000 \\) -type f | awk '{print \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>='\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' -F auid!=4294967295 -k privileged\" }' >> /etc/audit/rules.d/privileged.rules."
-    compliance:
-      - cis: ["4.1.11"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 4.1.9 Ensure discretionary access control permission modification events are collected. (Automated) - Not Implemented
+  # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected. (Automated) - Not Implemented
+  # 4.1.11 Ensure use of privileged commands is collected. (Automated) - Not Implemented
 
   # 4.1.12 Ensure successful file system mounts are collected. (Automated)
   - id: 21138
@@ -2439,8 +2400,11 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
   # 4.1.13 Ensure file deletion events by users are collected. (Automated)
   - id: 21139
@@ -2458,8 +2422,11 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 21140
@@ -2477,27 +2444,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
 
-  # 4.1.15 Ensure system administrator actions (sudolog) are collected. (Automated)
-  - id: 21141
-    title: "Ensure system administrator actions (sudolog) are collected."
-    description: "Monitor the sudo log file. The sudo log file is configured in /etc/sudoers or a file in /etc/sudoers.d. If the system has been properly configured to disable the use of the su command and force all administrators to have to log in first and then use sudo to execute privileged commands, then all administrator commands will be logged to to the sudo log file. Any time a command is executed, an audit event will be triggered as the sudo log file will be opened for write and the executed administration command will be written to the log. Notes: - The system must be configured with su disabled (See Item 5.6 Ensure access to the su command is restricted) to force all command execution through sudo. This will not be effective on the console, as administrators can log in as root. - Reloading the auditd config to set active settings may require a system reboot."
-    rationale: "Changes in /var/log/sudo.log indicate that an administrator has executed a command or the log file itself has been tampered with. Administrators will want to correlate the events written to the audit trail with the records written to /var/log/sudo.log to verify if unauthorized commands have been executed."
-    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following line: -w <Path to sudo logfile> -p wa -k actions Example: vi /etc/audit/rules.d/actions.rules and add the following line: -w /var/log/sudo.log -p wa -k actions."
-    compliance:
-      - cis: ["4.1.15"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["4.9"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.9.4.2"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 4.1.15 Ensure system administrator actions (sudolog) are collected. (Automated) - Not Implemented
 
   # 4.1.16 Ensure kernel module loading and unloading is collected. (Automated)
   - id: 21142
@@ -2515,13 +2471,22 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules"
 
   # 4.1.17 Ensure the audit configuration is immutable. (Automated)
   - id: 21143
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the following line at the end of the file: -e 2."
     compliance:
@@ -2535,8 +2500,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "grep -iEh ''^\s*\t*-e 2\s*$'' /etc/audit/rules.d/*.rules | tail -1" -> r:^\s*\t*-e 2\s*$'
 
   # 4.2.1.1 Ensure rsyslog is installed. (Automated)
   - id: 21144
@@ -2554,8 +2520,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q rsyslog -> r:^rsyslog-"
 
   # 4.2.1.2 Ensure rsyslog Service is enabled and running. (Automated)
   - id: 21145
@@ -2573,8 +2540,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
+      - "c:systemctl status rsyslog -> r:active && r:running"
 
   # 4.2.1.3 Ensure rsyslog default file permissions configured. (Automated)
   - id: 21146
@@ -2593,64 +2562,14 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
 
-  # 4.2.1.4 Ensure logging is configured. (Manual)
-  - id: 21147
-    title: "Ensure logging is configured."
-    description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
-    rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-    remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment: *.emerg :omusrmsg:* auth,authpriv.* /var/log/secure mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err news.crit -/var/log/news/news.crit news.err -/var/log/news/news.err news.notice -/var/log/news/news.notice *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
-    compliance:
-      - cis: ["4.2.1.4"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Automated)
-  - id: 21148
-    title: "Ensure rsyslog is configured to send logs to a remote log host."
-    description: 'The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead. Note: The double "at" sign (@@) directs rsyslog to use TCP to send log messages to the server, which is a more reliable transport mechanism than the default UDP protocol.'
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). *.* @@loghost.example.com Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
-    compliance:
-      - cis: ["4.2.1.5"]
-      - cis_csc_v8: ["8.9"]
-      - cis_csc_v7: ["6.6", "6.8"]
-      - nist_sp_800-53: ["AU-6(3)"]
-      - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
-      - pci_dss_v4.0: ["10.3.3"]
-      - soc_2: ["PL1.4"]
-    condition:
-    rules:
-
-  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual)
-  - id: 21149
-    title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
-    description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port. Note: The $ModLoad imtcp line can have the .so extension added to the end of the module, or use the full path to the module."
-    rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
-    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un- comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
-    compliance:
-      - cis: ["4.2.1.6"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.2.1.4 Ensure logging is configured. (Manual) - Not Implemented
+  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Automated) - Not Implemented
+  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual) - Not Implemented
 
   # 4.2.2.1 Ensure journald is configured to send logs to rsyslog. (Automated)
   - id: 21150
@@ -2659,7 +2578,7 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.1"]
       - cis_csc_v8: ["8.9"]
@@ -2668,8 +2587,9 @@ checks:
       - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.3.3"]
       - soc_2: ["PL1.4"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.2 Ensure journald is configured to compress large log files. (Automated)
   - id: 21151
@@ -2678,7 +2598,7 @@ checks:
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.2"]
       - cis_csc_v8: ["8.3"]
@@ -2686,8 +2606,9 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journald.conf -> r:^Compress=yes"
 
   # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk. (Automated)
   - id: 21152
@@ -2696,7 +2617,7 @@ checks:
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.3"]
       - cis_csc_v8: ["8.2"]
@@ -2707,44 +2628,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journald.conf -> r:^Storage=persistent"
 
-  # 4.2.3 Ensure permissions on all logfiles are configured. (Automated)
-  - id: 21153
-    title: "Ensure permissions on all logfiles are configured."
-    description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected. Other/world should not have the ability to view this information. Group should not have the ability to modify this information."
-    remediation: 'Run the following commands to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g- wx,o-rwx "{}" + Note: The configuration for your logging software or services may need to also be modified for any logs that had incorrect permissions, otherwise, the permissions may be reverted to the incorrect permissions.'
-    compliance:
-      - cis: ["4.2.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 4.2.4 Ensure logrotate is configured. (Manual)
-  - id: 21154
-    title: "Ensure logrotate is configured."
-    description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the log's size unmanageable. The file /etc/logrotate.d/syslog is the configuration file used to rotate log files created by syslog or rsyslog. Note: If no maxage setting is set for logrotate a situation can occur where logrotate is interrupted and fails to delete rotated logfiles. It is recommended to set this to a value greater than the longest any log file should exist on your system to ensure that any such logfile is removed but standard rotation settings are not overridden."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Edit /etc/logrotate.conf and /etc/logrotate.d/* to ensure logs are rotated according to site policy."
-    compliance:
-      - cis: ["4.2.4"]
-      - cis_csc_v8: ["8.3"]
-      - cis_csc_v7: ["6.4"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - pci_dss_v3.2.1: ["10.7"]
-      - soc_2: ["A1.1"]
-    condition:
-    rules:
+  # 4.2.3 Ensure permissions on all logfiles are configured. (Automated) - Not Implemented
+  # 4.2.4 Ensure logrotate is configured. (Manual) - Not Implemented
 
   # 5.1.1 Ensure cron daemon is enabled and running. (Automated)
   - id: 21155
@@ -2762,8 +2651,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled crond -> r:^enabled"
+      - "c:systemctl status crond -> r:active && r:running"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 21156
@@ -2782,8 +2673,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/crontab" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 21157
@@ -2802,8 +2694,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.hourly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 21158
@@ -2813,8 +2706,18 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily directory: # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily OR Run the following command to remove cron: # zypper remove cronie."
     compliance:
       - cis: ["5.1.4"]
-    condition:
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.daily/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 21159
@@ -2833,8 +2736,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.weekly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 21160
@@ -2853,8 +2757,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.monthly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 21161
@@ -2864,8 +2769,18 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.d directory: # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d OR Run the following command to remove cron: # zypper remove cronie."
     compliance:
       - cis: ["5.1.7"]
-    condition:
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
     rules:
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.d/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
   - id: 21162
@@ -2883,8 +2798,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/cron.deny"
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 21163
@@ -2902,8 +2819,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "not f:/etc/at.deny"
+      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/at.allow -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 21164
