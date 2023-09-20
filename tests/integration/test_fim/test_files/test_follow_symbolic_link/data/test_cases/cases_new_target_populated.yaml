@@ -1,4 +1,4 @@
-- name: Change symlink target - Real-time
+- name: New target is populated - Real-time
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -14,7 +14,7 @@
     symlink_new_target:  !!python/object/apply:os.path.join [/new_target]
     fim_mode: realtime
 
-- name: Change symlink target in nested folder - Real-time
+- name: New target is populated in nested folder - Real-time
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -30,7 +30,7 @@
     symlink_new_target:  !!python/object/apply:os.path.join [/target, new_target]
     fim_mode: realtime
 
-- name: Change symlink target - Who-data
+- name: New target is populated - Who-data
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -47,7 +47,7 @@
     symlink_new_target:  !!python/object/apply:os.path.join [/new_target]
     fim_mode: whodata
 
-- name: Change symlink target in nested folder - Who-data
+- name: New target is populated in nested folder - Who-data
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -63,7 +63,7 @@
     symlink_new_target:  !!python/object/apply:os.path.join [/target, new_target]
     fim_mode: whodata
 
-- name: Change symlink target - Schedule
+- name: New target is populated - Schedule
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -79,7 +79,7 @@
     symlink_new_target:  !!python/object/apply:os.path.join [/new_target]
     fim_mode: scheduled
 
-- name: Change symlink target in nested folder - scheduled
+- name: New target is populated in nested folder - scheduled
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
