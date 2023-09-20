@@ -35,7 +35,7 @@
   configuration_parameters:
   metadata:
     local_internal_options:
-      agent.state_interval: -1
+      agent.state_interval: 0
     remoted: true
     output:
     - type: "remote"
