@@ -105,7 +105,8 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                     'registerIP': mock_request.query.get('registerIP', None),
                     'group_config_status': None
                 },
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
@@ -750,9 +751,14 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     f_kwargs = {'offset': 0,
                 'limit': None,
                 'group_list': None,
-                'sort': None,
-                'search': None,
-                'hash_algorithm': hash_
+                'sort_by': ['name'],
+                'sort_ascending': True,
+                'search_text': None,
+                'complementary_search': None,
+                'hash_algorithm': hash_,
+                'q': None,
+                'select': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agent_groups,
                                       f_kwargs=mock_remove.return_value,
@@ -786,7 +792,8 @@ async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                 'filters': {
                     'status': None,
                 },
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agents_in_group,
                                       f_kwargs=mock_remove.return_value,
@@ -900,7 +907,10 @@ async def test_get_group_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'sort_ascending': True,
                 'search_text': None,
                 'complementary_search': None,
-                'hash_algorithm': hash_
+                'hash_algorithm': hash_,
+                'q': None,
+                'select': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=agent.get_group_files,
                                       f_kwargs=mock_remove.return_value,

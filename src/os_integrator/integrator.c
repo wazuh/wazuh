@@ -111,6 +111,23 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 continue;
             }
         }
+        else if(strcmp(integrator_config[s]->name, "maltiverse") == 0)
+        {
+            if(!integrator_config[s]->hookurl)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing hook URL.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+            if(!integrator_config[s]->apikey)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing API Key.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+        }
         else if(strncmp(integrator_config[s]->name, "custom-", 7) == 0)
         {
         }
@@ -412,19 +429,21 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             }
 
             int dbg_lvl = isDebug();
-            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s %s",
+            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s %s %d %d",
                 INTEGRATORDIR,
                 exec_tmp_file,
                 integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey,
                 integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl,
                 dbg_lvl <= 0 ? "" : "debug",
-                opt_file_created == 0 ? "" : opt_tmp_file);
+                opt_file_created == 0 ? "" : opt_tmp_file,
+                integrator_config[s]->timeout,
+                integrator_config[s]->retries);
 
             if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
             mdebug1("Running script with args: %s", exec_full_cmd);
 
-            char **cmd = OS_StrBreak(' ', exec_full_cmd, 7);
+            char **cmd = OS_StrBreak(' ', exec_full_cmd, 8);
 
             if (cmd) {
                 wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);

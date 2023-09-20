@@ -63,7 +63,8 @@ async def test_get_hotfix_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'search': None,
                 'filters': filters,
                 'element_type': 'hotfixes',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
@@ -101,7 +102,8 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
                 'search': None,
                 'filters': filters,
                 'element_type': 'netaddr',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
@@ -142,7 +144,8 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
                 'search': None,
                 'filters': filters,
                 'element_type': 'netiface',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
@@ -179,7 +182,8 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
                 'search': None,
                 'filters': filters,
                 'element_type': 'netproto',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
@@ -243,7 +247,8 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
                 'search': None,
                 'filters': filters,
                 'element_type': 'packages',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
@@ -284,7 +289,8 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'search': None,
                 'filters': filters,
                 'element_type': 'ports',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
@@ -331,7 +337,8 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'search': None,
                 'filters': filters,
                 'element_type': 'processes',
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,

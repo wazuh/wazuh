@@ -475,7 +475,6 @@ OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
 OSSEC_RANLIB  =${QUIET_RANLIB}${MING_BASE}ranlib
 OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
 
-
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
 	ifeq (${uname_S},FreeBSD)
@@ -512,6 +511,7 @@ ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
+	OSSEC_LDFLAGS+=-L${SYSCHECK}build/bin
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
@@ -828,7 +828,7 @@ endif
 winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_LIBS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust -lfimdb"
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
@@ -851,18 +851,6 @@ win32/sysinfo: $(WAZUHEXT_LIB)
 #### Syscollector ##
 win32/syscollector: win32/shared_modules win32/sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
-
-#### FIM ##
-
-syscheck_o := $(wildcard syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.obj)
-syscheck_o += $(wildcard syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/registry/*.obj)
-syscheck_o += $(wildcard syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/whodata/*.obj)
-syscheck_o += $(wildcard syscheckd/build/src/db/CMakeFiles/fimdb.dir/src/*obj)
-
-syscheck_eventchannel_o := $(wildcard syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj)
-syscheck_eventchannel_o += $(wildcard syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/registry/*.obj)
-syscheck_eventchannel_o += $(wildcard syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/whodata/*.obj)
-syscheck_eventchannel_o += $(wildcard syscheckd/build/src/db/CMakeFiles/fimdb.dir/src/*obj)
 
 win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
 	cd ${SYSCHECK} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
@@ -2312,12 +2300,12 @@ ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
 endif
 
 install_framework: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET} && rm -rf build/
+	cd ../framework && ${WPYTHON_DIR}/bin/python3 -m pip install . --use-pep517 --prefix=${WPYTHON_DIR} --config-settings="--wazuh-version=$(shell cat VERSION)" --config-settings="--install-type=${TARGET}" && rm -rf build/
 	chown -R root:${WAZUH_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}
 
 install_api: install_python
-	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} && rm -rf build/
+	cd ../api && ${WPYTHON_DIR}/bin/python3 -m pip install . --use-pep517 --prefix=${WPYTHON_DIR} && rm -rf build/
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
@@ -2483,11 +2471,11 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o $(filter-out syscheckd/main.o, ${syscheck_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o ${FIMDB_LIB}
-	${OSSEC_CXXBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} ${RSYNC_LIB} -lwazuh-syscheckd -o $@
+win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} ${RSYNC_LIB} -lwazuh-syscheckd -l:libfimdb.lib libwazuh.a -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o ${FIMDB_LIB}
-	${OSSEC_CXXBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} ${RSYNC_LIB} -lwazuh-syscheckd-event -o $@
+win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} ${RSYNC_LIB} -lwazuh-syscheckd-event -l:libfimdb.lib libwazuh.a -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -2503,6 +2491,7 @@ win32/setup-iis.exe: win32/setup-iis.o
 
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
+
 win32/auth_resource.o: win32/agent-auth.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
@@ -2520,7 +2509,6 @@ win32/route-null.exe: win32/route_null_resource.o active-response/active_respons
 
 win32/netsh.exe: win32/netsh_resource.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
-
 
 
 ####################

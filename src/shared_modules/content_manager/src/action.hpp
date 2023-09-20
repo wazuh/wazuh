@@ -81,9 +81,11 @@ public:
                         }
                         else
                         {
+                            // LCOV_EXCL_START
                             std::cerr << "Action: Request scheduling - Download in progress. "
                                          "The scheduling is ignored for "
                                       << m_topicName << std::endl;
+                            // LCOV_EXCL_STOP
                         }
                     }
                 }
@@ -125,6 +127,15 @@ public:
     }
 
     /**
+     * @brief Clear all endpoints.
+     *
+     */
+    void clearEndpoints()
+    {
+        OnDemandManager::instance().clearEndpoints();
+    }
+
+    /**
      * @brief Runs ondemand action.
      *
      */
@@ -138,7 +149,8 @@ public:
         }
         else
         {
-            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName << std::endl;
+            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName
+                      << std::endl; // LCOV_EXCL_LINE
         }
     }
 

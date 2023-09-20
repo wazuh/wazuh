@@ -115,6 +115,30 @@ TEST_F(SysInfoParsersTest, UnixArch)
     EXPECT_EQ("arch", output["os_platform"]);
 }
 
+TEST_F(SysInfoParsersTest, UnixAlpine)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Alpine Linux"
+        ID=alpine
+        VERSION_ID=3.17.1
+        PRETTY_NAME="Alpine Linux v3.17"
+        HOME_URL="https://alpinelinux.org/"
+        BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("3.17.1", output["os_version"]);
+    EXPECT_EQ("Alpine Linux", output["os_name"]);
+    EXPECT_EQ("alpine", output["os_platform"]);
+    EXPECT_EQ("3", output["os_major"]);
+    EXPECT_EQ("17", output["os_minor"]);
+    EXPECT_EQ("1", output["os_patch"]);
+}
 
 
 TEST_F(SysInfoParsersTest, Ubuntu)
@@ -424,6 +448,26 @@ TEST_F(SysInfoParsersTest, HPUX)
     EXPECT_EQ("hp-ux", output["os_platform"]);
     EXPECT_EQ("11", output["os_major"]);
     EXPECT_EQ("23", output["os_minor"]);
+}
+
+TEST_F(SysInfoParsersTest, Alpine)
+{
+    constexpr auto ALPINE_RELEASE_FILE
+    {
+        R"(
+        3.17.1
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{ALPINE_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("alpine")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("3.17.1", output["os_version"]);
+    EXPECT_EQ("Alpine Linux", output["os_name"]);
+    EXPECT_EQ("alpine", output["os_platform"]);
+    EXPECT_EQ("3", output["os_major"]);
+    EXPECT_EQ("17", output["os_minor"]);
+    EXPECT_EQ("1", output["os_patch"]);
 }
 
 TEST_F(SysInfoParsersTest, UknownPlatform)

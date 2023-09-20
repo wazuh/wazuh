@@ -42,9 +42,22 @@ int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore *keys, const char *id
     return mock();
 }
 
-int __wrap_OS_AddSocket(__attribute__((unused)) keystore *keys, unsigned int i, int sock) {
+keyentry * __wrap_OS_DupKeyEntry(const keyentry * key) {
+    check_expected(key);
+
+    return mock_type(keyentry *);
+}
+
+int __wrap_OS_AddSocket(keystore * keys, unsigned int i, int sock) {
+    check_expected(keys);
     check_expected(i);
     check_expected(sock);
 
     return mock();
+}
+
+void __wrap_OS_FreeKey(keyentry *key) {
+    check_expected(key);
+
+    return;
 }

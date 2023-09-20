@@ -15,17 +15,12 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version-file: ".github/workflows/.python-version"
-          architecture: x64
       # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |
           rm -rf src/VERSION
           make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2
+          make -C src build_syscollector TARGET=agent -j2
       - name: Install dependencies
         run: |
           pip install -r src/data_provider/qa/requirements.txt

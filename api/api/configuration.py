@@ -83,6 +83,11 @@ default_api_configuration = {
             "eps": {
                 "allow": True
             }
+        },
+        "agents": {
+            "allow_higher_versions": {
+                "allow": True
+            }
         }
     }
 }

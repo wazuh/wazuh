@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(unit_tests)
 
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${SRC_FOLDER}/shared_modules/utils)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -28,6 +31,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_subdirectory(sysInfoWin)
   add_subdirectory(sysInfoNetworkWindows)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_subdirectory(sysInfoPackages)
+endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")

@@ -34,6 +34,5 @@ void SolarisPackageImpl::buildPackageData(nlohmann::json& package)
     package["size"] = m_packageWrapper->size();
     package["vendor"] = m_packageWrapper->vendor();
     package["install_time"] = m_packageWrapper->install_time();
-    package["multiarch"] = m_packageWrapper->multiarch();
-
+    // The multiarch field won't have a default value
 }

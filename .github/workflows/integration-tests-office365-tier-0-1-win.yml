@@ -2,6 +2,11 @@ name: Integration tests for Office365 on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
   pull_request:
     paths:
         - ".github/workflows/integration-tests-office365-tier-0-1-win.yml"
@@ -42,6 +47,9 @@ jobs:
   # Execute the tests on windows.
   run-test:
     needs: build
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
     runs-on: windows-latest
     steps:
       - name: Checkout Repo
@@ -74,11 +82,14 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |
-          $BRANCH_NAME = "main"
-          if (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:GITHUB_HEAD_REF) {
-              $BRANCH_NAME = $env:GITHUB_HEAD_REF
+          if (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
+              $QA_BRANCH = $env:BRANCH_NAME
+          } elseif (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
+              $QA_BRANCH = $env:BRANCH_BASE
+          } else {
+              $QA_BRANCH = "main"
           }
-          git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
+          git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           rm qa-integration-framework/ -r -force
       # Run office365 integration tests.

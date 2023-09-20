@@ -48,6 +48,8 @@
                 analysisd -> state: dropped->modules->github++
             else Is office365 module
                 analysisd -> state: dropped->modules->office365++
+            else Is ms-graph module
+                analysisd -> state: dropped->modules->ms_graph++
             else Is open-scap OR wodle_open-scap module
                 analysisd -> state: dropped->modules->oscap++
             else Is osquery module
@@ -99,6 +101,8 @@
                     analysisd -> state: decoded->modules->github++
                 else Is office365 module
                     analysisd -> state: decoded->modules->office365++
+                else Is ms-graph module
+                    analysisd -> state: decoded->modules->ms_graph++
                 else Is open-scap OR wodle_open-scap module
                     analysisd -> state: decoded->modules->oscap++
                 else Is osquery module

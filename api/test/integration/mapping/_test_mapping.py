@@ -41,7 +41,7 @@ def calculate_test_mappings():
 
     # Create custom tag for basic tests
     for test in sorted(
-            [tests for tests in map(lambda x: test_mapping[x], ['agent', 'security', 'cluster', 'experimental'])]):
+            [tests for tests in map(lambda x: test_mapping[x], ['agent', 'cluster'])]):
         test_mapping['basic'].extend(test)
 
     return test_mapping

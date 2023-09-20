@@ -2574,18 +2574,6 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
 
-  - name: Try show groups with offset too large 9999999999999999999 (SQLite error)
-    request:
-      verify: False
-      <<: *get_agents_groups
-      params:
-        offset: 9999999999999999999
-    response:
-      status_code: 400 # /groups now uses WazuhDBQuery and SQLite cannot handle too large integers
-      json:
-        detail: !anystr
-        error: 2003
-
   - name: Try show groups with limit 0
     request:
       verify: False
@@ -2715,6 +2703,85 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
+
+  - name: Get groups using query parameter (name)
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        q: name=default
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'default'
+              count: 10
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get groups using the query parameter (count)
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        q: count=4
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'group3'
+              count: 4
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+    
+  - name: Try to get groups using an invalid query
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        q: name%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Get agents groups using select
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        select: 'count'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name,count' # required_fields={'name'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Get distinct agents groups
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /groups filter hash
@@ -3111,6 +3178,17 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
+
+  - name: Get distinct group agents
+    request:
+      verify: False
+      <<: *groups_id_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /groups/{group_id}/agents {sort,select}
@@ -3538,6 +3616,77 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
+
+  - name: Get files of a group using query parameter
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        q: filename=agent.conf
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - filename: agent.conf
+              hash: ab73af41699f13fdd81903b5f23d8d00
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Try to get files of a group using an invalid query
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        q: filename%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+  
+  - name: Get groups using valid select
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        select: 'hash'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'filename,hash' # required_fields={'filename'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to get groups using invalid select
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Get distinct group files
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /groups/{group_id}/files filter hash

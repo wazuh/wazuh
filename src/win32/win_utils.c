@@ -101,10 +101,6 @@ int local_start()
         merror_exit("WSAStartup() failed");
     }
 
-    /* Initialize error logging for shared modulesd */
-    dbsync_initialize(loggingErrorFunction);
-    rsync_initialize(loggingErrorFunction);
-
     /* Read agent config */
     mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {
@@ -207,11 +203,18 @@ int local_start()
     if (agt->buffer){
         buffer_init();
         w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
+                        0,
+                        update_limits_thread,
+                        NULL,
+                        0,
+                        (LPDWORD)&threadID);
+
+        w_create_thread(NULL,
+                        0,
+                        dispatch_buffer,
+                        NULL,
+                        0,
+                        (LPDWORD)&threadID);
     }else{
         minfo(DISABLED_BUFFER);
     }

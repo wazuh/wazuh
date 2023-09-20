@@ -270,7 +270,7 @@ static void test_wdbi_remove_by_pk_sqlite_step_fail(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(001) sqlite3_step(): ERROR");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(001) SQLite: ERROR");
 
     wdbi_remove_by_pk(data, component, pk_value);
 }
@@ -429,7 +429,7 @@ static void test_wdbi_delete_begin_null(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_begin_null");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_begin_null");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_begin_null");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -457,7 +457,7 @@ static void test_wdbi_delete_end_null(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_end_null");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_end_null");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_end_null");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -486,7 +486,7 @@ static void test_wdbi_delete_tail_null(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_tail_null");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_tail_null");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_tail_null");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -527,7 +527,7 @@ static void test_wdbi_delete_sql_no_done(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_sql_no_done");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -605,7 +605,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state) {
     will_return(__wrap_sqlite3_step, 1);
     will_return(__wrap_sqlite3_errmsg, "test_no_sql_done");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_no_sql_done");
 
     wdbi_update_attempt(data, WDB_FIM, 0, agent_checksum, manager_checksum, FALSE);
 }
@@ -685,7 +685,7 @@ static void test_wdbi_update_completion_no_sql_done(void **state) {
     will_return(__wrap_sqlite3_step, 1);
     will_return(__wrap_sqlite3_errmsg, "test_no_sql_done");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_no_sql_done");
 
     wdbi_update_completion(data, WDB_FIM, 0, agent_checksum, manager_checksum);
 }
@@ -784,7 +784,7 @@ void test_wdbi_query_clear_sql_step_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_error");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_error");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_error");
 
     ret = wdbi_query_clear(data, WDB_FIM, payload);
 
@@ -1574,7 +1574,7 @@ void test_wdbi_last_completion_step_fail(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): ERROR_MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: ERROR_MESSAGE");
 
     wdbi_set_last_completion(data, WDB_SYSCOLLECTOR_PACKAGES, timestamp);
 }

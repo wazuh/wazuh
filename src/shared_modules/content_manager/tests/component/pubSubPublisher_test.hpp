@@ -18,7 +18,7 @@
 #include <memory>
 
 /**
- * @brief Runs unit tests for PubSubPublisher
+ * @brief Runs component tests for PubSubPublisher
  */
 class PubSubPublisherTest : public ::testing::Test
 {

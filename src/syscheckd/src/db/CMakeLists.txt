@@ -31,7 +31,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DOS_TYPE=OSType::WINDOWS)
-  add_library(fimdb STATIC ${DB_SRC}
+  add_library(fimdb SHARED ${DB_SRC}
                            ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
                            ${CMAKE_SOURCE_DIR}/src/db/src/fimDBSpecializationWindows.cpp
                            )
@@ -46,7 +46,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
-    fimdb PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++")
+    fimdb PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -Wl,--output-def,libfimdb.def")
 elseif(UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
@@ -73,6 +73,18 @@ else()
     -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR}
   )
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  find_program(DLLTOOL i686-w64-mingw32-dlltool)
+if(NOT DLLTOOL)
+  message(FATAL_ERROR "DLL tool for delayed load libraries not found.")
+endif(NOT DLLTOOL)
+
+add_custom_command(TARGET fimdb POST_BUILD
+  COMMAND "${DLLTOOL}" -D "libfimdb.dll" --def "libfimdb.def" --output-delaylib "libfimdb.lib"
+  COMMAND cp "libfimdb.lib" "${CMAKE_BINARY_DIR}/bin/libfimdb.lib"
+  COMMENT "Creating delayed load library for fimdb.")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

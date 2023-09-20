@@ -19,6 +19,7 @@
 #include <alpm.h>
 #include <package.h>
 #include <handle.h>
+#include "sharedDefs.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -103,13 +104,13 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("curl", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ("", jsPackageInfo["install_time"]);
-    EXPECT_EQ("", jsPackageInfo["groups"]);
-    EXPECT_EQ("", jsPackageInfo["version"]);
-    EXPECT_EQ("", jsPackageInfo["architecture"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["install_time"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
-    EXPECT_EQ("", jsPackageInfo["vendor"]);
-    EXPECT_EQ("", jsPackageInfo["description"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["vendor"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["description"]);
 }
 
 
@@ -427,12 +428,12 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     EXPECT_EQ("", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
     EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
-    EXPECT_EQ("", jsPackageInfo["groups"]);
-    EXPECT_EQ("", jsPackageInfo["version"]);
-    EXPECT_EQ("", jsPackageInfo["architecture"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["format"]);
     EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
-    EXPECT_EQ("", jsPackageInfo["description"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["description"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parseApkNameKeyNotFound)

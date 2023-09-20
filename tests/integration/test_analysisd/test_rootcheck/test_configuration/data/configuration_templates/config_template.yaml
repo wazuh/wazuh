@@ -1,0 +1,5 @@
+- sections:
+  - section: rootcheck
+    elements:
+    - disabled:
+        value: 'no'

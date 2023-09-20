@@ -49,6 +49,7 @@ void ContentRegister::changeSchedulerInterval(const size_t newInterval)
     ContentModuleFacade::instance().changeSchedulerInterval(m_name, newInterval);
 }
 
+// LCOV_EXCL_START
 #ifdef __cplusplus
 extern "C"
 {
@@ -68,3 +69,4 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
+// LCOV_EXCL_STOP
