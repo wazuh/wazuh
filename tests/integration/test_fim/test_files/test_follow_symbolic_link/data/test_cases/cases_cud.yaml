@@ -1,4 +1,4 @@
-- name: Change symlink target - Real-time
+- name: Create update delete - Real-time
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -11,7 +11,7 @@
     symlink_target:  !!python/object/apply:os.path.join [/target]
     fim_mode: realtime
 
-- name: Change symlink target in nested folder - Real-time
+- name: Create update delete in nested folder - Real-time
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -24,7 +24,7 @@
     symlink_target:  !!python/object/apply:os.path.join [/target]
     fim_mode: realtime
 
-- name: Change symlink target - Who-data
+- name: Create update delete - Who-data
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -38,7 +38,7 @@
     symlink_target:  !!python/object/apply:os.path.join [/target]
     fim_mode: whodata
 
-- name: Change symlink target in nested folder - Who-data
+- name: Create update delete in nested folder - Who-data
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -51,7 +51,7 @@
     symlink_target:  !!python/object/apply:os.path.join [/target]
     fim_mode: whodata
 
-- name: Change symlink target - Schedule
+- name: Create update delete - Schedule
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
@@ -64,7 +64,7 @@
     symlink_target:  !!python/object/apply:os.path.join [/target]
     fim_mode: scheduled
 
-- name: Change symlink target in nested folder - scheduled
+- name: Create update delete in nested folder - scheduled
   description: When a real-time monitored directory es deleted
                or added FIM inmediately raises a log. 
   configuration_parameters:
