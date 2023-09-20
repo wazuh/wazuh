@@ -106,6 +106,8 @@ def start():
 
     # Add application signals
     app.app.on_response_prepare.append(modify_response_headers)
+    app.app.on_startup.append(start_background_tasks)
+    app.app.on_cleanup.append(cleanup_background_tasks)
 
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
@@ -247,7 +249,7 @@ if __name__ == '__main__':
     # noinspection PyUnresolvedReferences
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import security_middleware, response_postprocessing, request_logging, set_secure_headers
-    from api.signals import modify_response_headers
+    from api.signals import modify_response_headers, start_background_tasks, cleanup_background_tasks
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.rbac.orm import check_database_integrity
