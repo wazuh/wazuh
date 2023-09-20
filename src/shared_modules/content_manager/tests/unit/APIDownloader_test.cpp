@@ -32,7 +32,15 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
 {
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    const auto& outputFolder {m_spUpdaterContext->spUpdaterBaseContext->outputFolder};
+    const auto expectedStageStatus = R"(
+        [
+            {
+                "stage": "APIDownloader",
+                "status": "ok"
+            }
+        ]
+    )"_json;
+
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
     const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/" + fileName};
@@ -40,14 +48,11 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
 
     EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
 
-    EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
-
     EXPECT_EQ(m_spUpdaterContext->data.at("paths").at(0), contentPath);
 
-    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus").at(0);
+    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
-    EXPECT_EQ(stageStatus.at("stage"), "APIDownloader");
-    EXPECT_EQ(stageStatus.at("status"), "ok");
+    EXPECT_EQ(stageStatus, expectedStageStatus);
 
     // It's true because the compressionType is `raw`
     EXPECT_TRUE(std::filesystem::exists(contentPath));
@@ -66,7 +71,15 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    const auto& outputFolder {m_spUpdaterContext->spUpdaterBaseContext->outputFolder};
+    const auto expectedStageStatus = R"(
+        [
+            {
+                "stage": "APIDownloader",
+                "status": "ok"
+            }
+        ]
+    )"_json;
+
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
     const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/" + fileName};
@@ -76,10 +89,9 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 
     EXPECT_EQ(m_spUpdaterContext->data.at("paths").at(0), downloadPath);
 
-    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus").at(0);
+    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
-    EXPECT_EQ(stageStatus.at("stage"), "APIDownloader");
-    EXPECT_EQ(stageStatus.at("status"), "ok");
+    EXPECT_EQ(stageStatus, expectedStageStatus);
 
     // It's false because the compressionType isn't `raw`
     EXPECT_FALSE(std::filesystem::exists(contentPath));
@@ -102,14 +114,22 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutp
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
+    const auto expectedStageStatus = R"(
+        [
+            {
+                "stage": "APIDownloader",
+                "status": "fail"
+            }
+        ]
+    )"_json;
+
     EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
-    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus").at(0);
+    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
-    EXPECT_EQ(stageStatus.at("stage"), "APIDownloader");
-    EXPECT_EQ(stageStatus.at("status"), "fail");
+    EXPECT_EQ(stageStatus, expectedStageStatus);
 }
 
 /**
@@ -126,14 +146,22 @@ TEST_F(APIDownloaderTest, TestHandleAnEmptyUrl)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
+    const auto expectedStageStatus = R"(
+        [
+            {
+                "stage": "APIDownloader",
+                "status": "fail"
+            }
+        ]
+    )"_json;
+
     EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
-    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus").at(0);
+    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
-    EXPECT_EQ(stageStatus.at("stage"), "APIDownloader");
-    EXPECT_EQ(stageStatus.at("status"), "fail");
+    EXPECT_EQ(stageStatus, expectedStageStatus);
 }
 
 /**
@@ -150,12 +178,20 @@ TEST_F(APIDownloaderTest, TestHandleAnInvalidUrl)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
+    const auto expectedStageStatus = R"(
+        [
+            {
+                "stage": "APIDownloader",
+                "status": "fail"
+            }
+        ]
+    )"_json;
+
     EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
-    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus").at(0);
+    const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
-    EXPECT_EQ(stageStatus.at("stage"), "APIDownloader");
-    EXPECT_EQ(stageStatus.at("status"), "fail");
+    EXPECT_EQ(stageStatus, expectedStageStatus);
 }
