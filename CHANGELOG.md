@@ -3,6 +3,25 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.5.3]
 
+### RESTful API
+
+#### Added
+
+- Added support for the `$` symbol in query values. ([#18509](https://github.com/wazuh/wazuh/pull/18509))
+- Added support for the `@` symbol in query values. ([#18346](https://github.com/wazuh/wazuh/pull/18346))
+- Added support for nested queries in the `q` API parameter. ([#18493](https://github.com/wazuh/wazuh/pull/18493))
+
+#### Changed
+
+- Updated `force` flag message in the `agent_upgrade` CLI. ([#18432](https://github.com/wazuh/wazuh/pull/18432))
+
+#### Fixed
+
+- Removed undesired characters when listing rule group names in `GET /rules/groups`. ([#18362](https://github.com/wazuh/wazuh/pull/18362))
+- Fixed an error when using the query `condition=all` in `GET /sca/{agent_id}/checks/{policy_id}`. ([#18434](https://github.com/wazuh/wazuh/pull/18434))
+- Fixed an error in the API log mechanism where sometimes the requests would not be printed in the log file. ([#18733](https://github.com/wazuh/wazuh/pull/18733))
+
+
 ## [v4.5.2]
 
 ### Manager
