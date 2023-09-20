@@ -61,6 +61,7 @@ tags:
     - fim
 '''
 import sys
+import time
 import pytest
 
 from pathlib import Path
@@ -101,11 +102,13 @@ def test_change_target(test_configuration, test_metadata, set_wazuh_configuratio
     testfile_name = 'testie.txt'
 
     # Create in original target.
+    file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(symlink_target.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
 
     # Delete in original target.
+    file.truncate_file(WAZUH_LOG_PATH)
     file.remove_file(symlink_target.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
@@ -117,12 +120,13 @@ def test_change_target(test_configuration, test_metadata, set_wazuh_configuratio
     assert wazuh_log_monitor.callback_result
 
     # Create in new target.
+    file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(symlink_new_target.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
 
     # Delete in new target.
+    file.truncate_file(WAZUH_LOG_PATH)
     file.remove_file(symlink_new_target.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
-    

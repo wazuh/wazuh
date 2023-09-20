@@ -61,6 +61,7 @@ tags:
     - fim
 '''
 import sys
+import time
 import pytest
 
 from pathlib import Path
@@ -114,6 +115,7 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
         fim_data = get_fim_event_data(monitor.callback_result)
         assert fim_data['mode'] == fim_mode
         assert set(fim_data['attributes'].keys()) == checks
+        time.sleep(0.1)
 
     # Delete
     file.remove_file(file_to_monitor)
