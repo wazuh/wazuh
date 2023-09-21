@@ -14,7 +14,7 @@
 int main (int argc, char **argv) {
     (void)argc;
     char log_msg[OS_MAXSTR];
-    char python_path[COMMANDSIZE_4096 + 1] = {0};
+    char *python_path = NULL;
     char *extra_args = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -32,14 +32,15 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (get_binary_path("python", python_path) < 0) {
-        memset(python_path, '\0', COMMANDSIZE_4096 + 1);
-        if (get_binary_path("python3", python_path) < 0) {
+    if (get_binary_path("python", &python_path) < 0) {
+        os_free(python_path);
+        if (get_binary_path("python3", &python_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Python binary not found");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(extra_args);
+            os_free(python_path);
             return OS_INVALID;
         }
     }
@@ -52,6 +53,7 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         os_free(extra_args);
+        os_free(python_path);
         return OS_INVALID;
     }
     wpclose(wfd);
@@ -60,6 +62,7 @@ int main (int argc, char **argv) {
 
     cJSON_Delete(input_json);
     os_free(extra_args);
+    os_free(python_path);
 
     return OS_SUCCESS;
 }

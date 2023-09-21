@@ -85,14 +85,15 @@ int main (int argc, char **argv) {
 
     if (!strcmp("OpenBSD", uname_buffer.sysname) || !strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("Darwin", uname_buffer.sysname)) {
         wfd_t *wfd = NULL;
-        char pfctl_path[COMMANDSIZE_4096 + 1] = {0};
+        char *pfctl_path = NULL;
 
         // Checking if pfctl is present
-        if (get_binary_path("pfctl", pfctl_path) < 0) {
+        if (get_binary_path("pfctl", &pfctl_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The pfctl file '%s' is not accessible", pfctl_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(pfctl_path);
             return OS_SUCCESS;
         }
 
@@ -120,6 +121,7 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR - 1, "The file '%s' is not accessible", DEVPF);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                os_free(pfctl_path);
                 return OS_SUCCESS;
             } else {
                 // Checking if wazuh table is configured in pf.conf
@@ -136,6 +138,7 @@ int main (int argc, char **argv) {
                         snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", PFCTL_RULES, strerror(errno));
                         write_debug_file(argv[0], log_msg);
                         cJSON_Delete(input_json);
+                        os_free(pfctl_path);
                         return OS_INVALID;
                     }
 
@@ -146,6 +149,7 @@ int main (int argc, char **argv) {
                             snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
                             write_debug_file(argv[0], log_msg);
                             cJSON_Delete(input_json);
+                            os_free(pfctl_path);
                             return OS_INVALID;
                         }
                         wpclose(wfd);
@@ -157,6 +161,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, OS_MAXSTR - 1, "The pf rules file '%s' does not exist", PFCTL_RULES);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(pfctl_path);
             return OS_SUCCESS;
         }
 
@@ -169,6 +174,7 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                os_free(pfctl_path);
                 return OS_INVALID;
             }
             else {
@@ -192,6 +198,7 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                os_free(pfctl_path);
                 return OS_INVALID;
             }
             wpclose(wfd);
@@ -204,10 +211,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                os_free(pfctl_path);
                 return OS_INVALID;
             }
             wpclose(wfd);
         }
+        os_free(pfctl_path);
 
     } else {
         write_debug_file(argv[0], "Invalid system");
@@ -223,16 +232,16 @@ int main (int argc, char **argv) {
 static int checking_if_its_configured(const char *log_prog_name, const char *path, const char *table) {
     char command[COMMANDSIZE_4096];
     char output_buf[OS_MAXSTR];
-    char cat_path[PATH_MAX] = {0};
-    char grep_path[PATH_MAX] = {0};
+    char *cat_path = NULL;
+    char *grep_path = NULL;
     char log_msg[OS_MAXSTR];
 
-    if (get_binary_path("cat", cat_path) < 0) {
+    if (get_binary_path("cat", &cat_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Binary '%s' not found in default paths, the full path will not be used.", cat_path);
         write_debug_file(log_prog_name, log_msg);
     }
-    if (get_binary_path("grep", grep_path) < 0) {
+    if (get_binary_path("grep", &grep_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Binary '%s' not found in default paths, the full path will not be used.", grep_path);
         write_debug_file(log_prog_name, log_msg);
@@ -244,11 +253,17 @@ static int checking_if_its_configured(const char *log_prog_name, const char *pat
     if (fp) {
         while (fgets(output_buf, OS_MAXSTR, fp) != NULL) {
             pclose(fp);
+            os_free(cat_path);
+            os_free(grep_path);
             return OS_SUCCESS;
         }
         pclose(fp);
+        os_free(cat_path);
+        os_free(grep_path);
         return OS_INVALID;
     }
+    os_free(cat_path);
+    os_free(grep_path);
     return OS_INVALID;
 }
 

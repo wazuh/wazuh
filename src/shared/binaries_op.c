@@ -9,65 +9,65 @@
 
 #include "shared.h"
 
-const char *binary_path[] = {
-#if defined (__linux__)
-    [USR_LOCAL_SBIN] = "/usr/local/sbin",
-    [USR_LOCAL_BIN] = "/usr/local/bin",
-    [USR_SBIN] = "/usr/sbin",
-    [USR_BIN] = "/usr/bin",
-    [SBIN] = "/sbin",
-    [BIN] = "/bin",
-    [SNAP_BIN] = "/snap/bin",
-#elif defined (__MACH__)
-    [USR_LOCAL_BIN] = "/usr/local/bin",
-    [USR_BIN] = "/usr/bin",
-    [BIN] = "/bin",
-    [USR_SBIN] = "/usr/sbin",
-    [SBIN] = "/sbin",
-#elif defined (sun)
-    [USR_SBIN] = "/usr/sbin",
-    [USR_BIN] = "/usr/bin",
-    [OPT_CSW_GNU] = "/opt/csw/gnu",
-    [USR_SFW_BIN] = "/usr/sfw/bin",
-    [OPT_CSW_BIN] = "/opt/csw/bin",
-#elif defined(FreeBSD)
-    [SBIN] = "/sbin",
-    [BIN] = "/bin",
-    [USR_SBIN] = "/usr/sbin",
-    [USR_BIN] = "/usr/bin",
-    [USR_LOCAL_SBIN] = "/usr/local/sbin",
-    [USR_LOCAL_BIN] = "/usr/local/bin",
-    [ROOT_BIN] = "/root/bin",
-#elif defined(OpenBSD)
-    [USR_BIN] = "/usr/bin",
-    [BIN] = "/bin",
-    [USR_SBIN] = "/usr/sbin",
-    [SBIN] = "/sbin",
-    [USR_LOCAL_BIN] = "/usr/local/bin",
-    [USR_LOCAL_SBIN] = "/usr/local/sbin",
-#elif defined(NetBSD)
-    [SBIN] = "/sbin",
-    [BIN] = "/bin",
-    [USR_SBIN] = "/usr/sbin",
-    [USR_BIN] = "/usr/bin",
-    [USR_PKG_BIN] = "/usr/pkg/bin",
-    [USR_PKG_SBIN] = "/usr/pkg/sbin",
-    [USR_LOCAL_BIN] = "/usr/local/bin",
+int get_binary_path(const char *binary, char **validated_comm) {
+#ifdef WIN32
+    const char sep[2] = ";";
+#else
+    const char sep[2] = ":";
 #endif
-};
+    char *path;
+    char *full_path;
+    char *validated = NULL;
+    char *env_path = NULL;
+    char *save_ptr = NULL;
 
-int get_binary_path(const char *command, char *path) {
-    char tmp_full_path[PATH_MAX];
+#ifdef WIN32
+    if (IsFile(binary) == 0) {
+#else
+    if (binary[0] == '/') {
+        // Check binary full path
+        if (IsFile(binary) == -1) {
+            return OS_INVALID;
+        }
+#endif
+        validated = strdup(binary);
 
-    for (int i=INITIAL_KEY + 1; i<LAST_KEY; i++) {
-        memset(tmp_full_path, '\0', PATH_MAX);
-        snprintf(tmp_full_path, sizeof(tmp_full_path), "%s/%s", binary_path[i], command);
-        if (access(tmp_full_path, F_OK) == 0) {
-            strcpy(path, tmp_full_path);
-            return OS_SUCCESS;
+    } else {
+
+        env_path = getenv("PATH");
+        path = strtok_r(env_path, sep, &save_ptr);
+
+        while (path != NULL) {
+            os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
+#ifdef WIN32
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s\\%s", path, binary);
+#else
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s/%s", path, binary);
+#endif
+            if (IsFile(full_path) == 0) {
+                validated = strdup(full_path);
+                os_free(full_path);
+                break;
+            }
+            os_free(full_path);
+            path = strtok_r(NULL, sep, &save_ptr);
+        }
+
+        // Check binary found
+        if (validated == NULL) {
+            if (validated_comm) {
+                *validated_comm = strdup(binary);
+            }
+            os_free(env_path);
+            return OS_INVALID;
         }
     }
 
-    strcpy(path, command);
-    return OS_INVALID;
+    if (validated_comm) {
+        *validated_comm = strdup(validated);
+    }
+
+    os_free(validated);
+    os_free(env_path);
+    return OS_SUCCESS;
 }

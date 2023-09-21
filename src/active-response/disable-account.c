@@ -12,7 +12,7 @@
 int main (int argc, char **argv) {
     (void)argc;
     char args[COMMANDSIZE_4096];
-    char cmd_path[COMMANDSIZE_4096 + 1] = {0};
+    char *cmd_path = NULL;
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -70,11 +70,12 @@ int main (int argc, char **argv) {
 
     if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
         // Checking if passwd is present
-        if (get_binary_path("passwd", cmd_path) < 0) {
+        if (get_binary_path("passwd", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The passwd file '%s' is not accessible: %s (%d)", cmd_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(cmd_path);
             return OS_SUCCESS;
         }
 
@@ -87,11 +88,12 @@ int main (int argc, char **argv) {
 
     } else if (!strcmp("AIX", uname_buffer.sysname)) {
         // Checking if chuser is present
-        if (get_binary_path("chuser", cmd_path) < 0) {
+        if (get_binary_path("chuser", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The chuser file '%s' is not accessible: %s (%d)", cmd_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(cmd_path);
             return OS_SUCCESS;
         }
 
@@ -118,6 +120,7 @@ int main (int argc, char **argv) {
         snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", cmd_path, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
+        os_free(cmd_path);
         return OS_INVALID;
     }
     wpclose(wfd);
@@ -125,6 +128,7 @@ int main (int argc, char **argv) {
     write_debug_file(argv[0], "Ended");
 
     cJSON_Delete(input_json);
+    os_free(cmd_path);
 
     return OS_SUCCESS;
 }

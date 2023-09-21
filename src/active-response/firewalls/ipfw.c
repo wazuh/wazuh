@@ -66,14 +66,15 @@ int main (int argc, char **argv) {
     if (!strcmp("FreeBSD", uname_buffer.sysname)) {
         bool add_table = true;
         wfd_t *wfd = NULL;
-        char ipfw_path[COMMANDSIZE_4096 + 1] = {0};
+        char *ipfw_path = NULL;
 
         // Checking if ipfw is present
-        if (get_binary_path("ipfw", ipfw_path) < 0) {
+        if (get_binary_path("ipfw", &ipfw_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The ipfw file '%s' is not accessible: %s (%d)", ipfw_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(ipfw_path);
             return OS_SUCCESS;
         }
 
@@ -89,6 +90,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(ipfw_path);
             return OS_INVALID;
         }
 
@@ -111,6 +113,7 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                os_free(ipfw_path);
                 return OS_INVALID;
             }
             wpclose(wfd);
@@ -121,6 +124,7 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                os_free(ipfw_path);
                 return OS_INVALID;
             }
             wpclose(wfd);
@@ -135,9 +139,11 @@ int main (int argc, char **argv) {
             snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(ipfw_path);
             return OS_INVALID;
         }
         wpclose(wfd);
+        os_free(ipfw_path);
 
     } else {
         write_debug_file(argv[0], "Invalid system");

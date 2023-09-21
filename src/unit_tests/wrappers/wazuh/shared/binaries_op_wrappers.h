@@ -12,6 +12,6 @@
 #define BINARIES_OP_WRAPPERS_H
 
 
-int __wrap_get_binary_path(const char *command, char *path);
+int __wrap_get_binary_path(const char *command, char **path);
 
 #endif

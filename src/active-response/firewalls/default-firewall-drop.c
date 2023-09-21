@@ -17,7 +17,6 @@
 int main (int argc, char **argv) {
     (void)argc;
     char iptables_tmp[COMMANDSIZE_4096 - 5] = "";
-    char iptables[COMMANDSIZE_4096 + 1] = {0};
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -83,14 +82,16 @@ int main (int argc, char **argv) {
     if (!strcmp("Linux", uname_buffer.sysname)) {
         char lock_path[COMMANDSIZE_4096];
         char lock_pid_path[COMMANDSIZE_4096];
+        char *iptables = NULL;
         wfd_t *wfd = NULL;
 
         // Checking if iptables is present
-        if (get_binary_path(iptables_tmp, iptables) < 0) {
+        if (get_binary_path(iptables_tmp, &iptables) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "The iptables file '%s' is not accessible: %s (%d)", iptables, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(iptables);
             return OS_SUCCESS;
         }
 
@@ -112,6 +113,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, OS_MAXSTR -1, "Unable to take lock. End.");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(iptables);
             return OS_INVALID;
         }
 
@@ -155,20 +157,22 @@ int main (int argc, char **argv) {
             }
         }
         unlock(lock_path, argv[0]);
+        os_free(iptables);
 
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
         char arg1[COMMANDSIZE_4096];
         char arg2[COMMANDSIZE_4096];
         char ipfarg[COMMANDSIZE_4096];
-        char ipfilter_path[COMMANDSIZE_4096 + 1] = {0};
+        char *ipfilter_path = NULL;
         wfd_t *wfd = NULL;
 
         // Checking if ipfilter is present
-        if (get_binary_path("ipf", ipfilter_path) < 0) {
+        if (get_binary_path("ipf", &ipfilter_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The ipfilter file '%s' is not accessible: %s (%d)", ipfilter_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(ipfilter_path);
             return OS_SUCCESS;
         }
 
@@ -203,47 +207,58 @@ int main (int argc, char **argv) {
             fflush(wfd->file_in);
             wpclose(wfd);
         }
+        os_free(ipfilter_path);
 
     } else if (!strcmp("AIX", uname_buffer.sysname)) {
-        char genfilt_path[COMMANDSIZE_4096 + 1] = {0};
-        char lsfilt_path[COMMANDSIZE_4096 + 1] = {0};
-        char mkfilt_path[COMMANDSIZE_4096 + 1] = {0};
-        char rmfilt_path[COMMANDSIZE_4096 + 1] = {0};
+        char *genfilt_path = NULL;
+        char *lsfilt_path = NULL;
+        char *mkfilt_path = NULL;
+        char *rmfilt_path = NULL;
         wfd_t *wfd = NULL;
 
         // Checking if genfilt is present
-        if (get_binary_path("genfilt", genfilt_path) < 0) {
+        if (get_binary_path("genfilt", &genfilt_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(genfilt_path);
             return OS_SUCCESS;
         }
 
         // Checking if lsfilt is present
-        if (get_binary_path("lsfilt", lsfilt_path) < 0) {
+        if (get_binary_path("lsfilt", &lsfilt_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(genfilt_path);
+            os_free(lsfilt_path);
             return OS_SUCCESS;
         }
 
         // Checking if mkfilt is present
-        if (get_binary_path("mkfilt", mkfilt_path) < 0) {
+        if (get_binary_path("mkfilt", &mkfilt_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(genfilt_path);
+            os_free(lsfilt_path);
+            os_free(mkfilt_path);
             return OS_SUCCESS;
         }
 
         // Checking if rmfilt is present
-        if (get_binary_path("rmfilt", rmfilt_path) < 0) {
+        if (get_binary_path("rmfilt", &rmfilt_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(genfilt_path);
+            os_free(lsfilt_path);
+            os_free(mkfilt_path);
+            os_free(rmfilt_path);
             return OS_SUCCESS;
         }
 
@@ -300,6 +315,11 @@ int main (int argc, char **argv) {
         } else {
             wpclose(wfd);
         }
+
+        os_free(genfilt_path);
+        os_free(lsfilt_path);
+        os_free(mkfilt_path);
+        os_free(rmfilt_path);
 
     } else {
         write_debug_file(argv[0], "Invalid system");

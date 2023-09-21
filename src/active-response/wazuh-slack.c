@@ -41,7 +41,7 @@ int main (int argc, char **argv) {
     (void)argc;
     char *site_url = NULL;
     char *output_str = NULL;
-    char cmd_path[COMMANDSIZE_4096 + 1] = {0};
+    char *cmd_path = NULL;
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     int return_value = OS_INVALID;
@@ -76,7 +76,7 @@ int main (int argc, char **argv) {
 
     // Try with curl
     bool success_command = false;
-    if (get_binary_path("curl", cmd_path) < 0) {
+    if (get_binary_path("curl", &cmd_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
         write_debug_file(argv[0], log_msg);
@@ -101,8 +101,8 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Unable to run curl, trying with wget...");
 
         // Try with wget
-        memset(cmd_path, '\0', COMMANDSIZE_4096 + 1);
-        if (get_binary_path("wget", cmd_path) < 0) {
+        os_free(cmd_path);
+        if (get_binary_path("wget", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
             write_debug_file(argv[0], log_msg);
@@ -135,6 +135,7 @@ int main (int argc, char **argv) {
     cJSON_Delete(input_json);
     os_free(output_str);
     os_free(site_url);
+    os_free(cmd_path);
 
     return return_value;
 }

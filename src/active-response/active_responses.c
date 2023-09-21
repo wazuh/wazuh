@@ -549,14 +549,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         // by one and fail after MAX_ITERACTION
         if (i >= max_iteration) {
             bool kill = false;
-            char cmd_path[PATH_MAX + 1] = {0};
+            char *pgrep_path = NULL;
 
-            if (get_binary_path("pgrep", cmd_path) < 0) {
+            if (get_binary_path("pgrep", &pgrep_path) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", pgrep_path);
                 write_debug_file(log_path, log_msg);
             }
-            char *command_ex_1[4] = { cmd_path, "-f", (char *)proc_name, NULL };
+            char *command_ex_1[4] = { pgrep_path, "-f", (char *)proc_name, NULL };
 
             wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
             if (!wfd) {
@@ -567,16 +567,16 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                     int pid = atoi(output_buf);
                     if (pid == current_pid) {
                         char pid_str[10];
+                        char *kill_path = NULL;
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
 
-                        memset(cmd_path, '\0', PATH_MAX + 1);
-                        if (get_binary_path("kill", cmd_path) < 0) {
+                        if (get_binary_path("kill", &kill_path) < 0) {
                             memset(log_msg, '\0', OS_MAXSTR);
-                            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", kill_path);
                             write_debug_file(log_path, log_msg);
                         }
-                        char *command_ex_2[4] = { cmd_path, "-9", pid_str, NULL };
+                        char *command_ex_2[4] = { kill_path, "-9", pid_str, NULL };
 
                         wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
                         if (!wfd2) {
@@ -591,11 +591,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                             i = 0;
                             saved_pid = -1;
                         }
+                        os_free(kill_path);
                         break;
                     }
                 }
                 wpclose(wfd);
             }
+
+            os_free(pgrep_path);
 
             if (!kill) {
                 memset(log_msg, '\0', OS_MAXSTR);
@@ -655,27 +658,4 @@ int get_ip_version(const char *ip) {
     return OS_INVALID;
 }
 #else
-
-/* Check if dir exists */
-static int direxist(char *dir) {
-    DIR *dp;
-
-    /* Open dir */
-    dp = opendir(dir);
-    if (dp == NULL) {
-        return (0);
-    }
-
-    closedir(dp);
-    return (1);
-}
-
-/* Get Windows directory */
-void get_win_dir(char *file, int f_size) {
-    ExpandEnvironmentStrings("%WINDIR%", file, f_size);
-
-    if (!direxist(file)) {
-        strncpy(file, "C:\\WINDOWS", f_size);
-    }
-}
 #endif

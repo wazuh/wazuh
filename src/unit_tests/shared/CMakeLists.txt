@@ -184,6 +184,15 @@ else()
 list(APPEND shared_tests_flags " ")
 endif()
 
+list(APPEND shared_tests_names "test_binaries_op")
+set(BINARIES_OP_BASE_FLAGS "-Wl,--wrap,getenv -Wl,--wrap,IsFile ${DEBUG_OP_WRAPPERS}")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck")
+else()
+list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS}")
+endif()
+
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
@@ -256,8 +265,6 @@ list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
-list(APPEND shared_tests_names "test_binaries_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,access ${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(${TARGET} STREQUAL "server")

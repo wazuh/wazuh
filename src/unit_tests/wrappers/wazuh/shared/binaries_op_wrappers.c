@@ -8,14 +8,15 @@
  */
 
 #include "binaries_op_wrappers.h"
+#include <string.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_get_binary_path(const char *command, char *path) {
+int __wrap_get_binary_path(const char *command, char **path) {
     check_expected(command);
-    strcpy(path, mock_ptr_type(char*));
+    *path = (char*)mock_ptr_type(char*);
 
     return mock_type(int);
 }

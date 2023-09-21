@@ -690,9 +690,9 @@ os_info *get_unix_version()
             regfree(&regexCompiled);
             fclose(version_release);
         } else {
-            char uname_path[PATH_MAX + 1] = {0};
+            char *uname_path = NULL;
 
-            if (get_binary_path("uname", uname_path) < 0) {
+            if (get_binary_path("uname", &uname_path) < 0) {
                 mdebug1("Binary '%s' not found in default paths, the full path will not be used.", uname_path);
             }
 
@@ -703,11 +703,10 @@ os_info *get_unix_version()
                     mdebug1("Cannot read from command output (uname).");
                 // MacOSX
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0) {
-                    char cmd_path[PATH_MAX + 1] = {0};
+                    char *cmd_path = NULL;
                     info->os_platform = strdup("darwin");
 
-                    memset(cmd_path, '\0', PATH_MAX);
-                    if (get_binary_path("system_profiler", cmd_path) < 0) {
+                    if (get_binary_path("system_profiler", &cmd_path) < 0) {
                         mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
                     }
 
@@ -737,8 +736,8 @@ os_info *get_unix_version()
                         pclose(cmd_output_ver);
                     }
 
-                    memset(cmd_path, '\0', PATH_MAX);
-                    if (get_binary_path("sw_vers", cmd_path) < 0) {
+                    os_free(cmd_path);
+                    if (get_binary_path("sw_vers", &cmd_path) < 0) {
                         mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
                     }
 
@@ -779,6 +778,7 @@ os_info *get_unix_version()
                         }
                         pclose(cmd_output_ver);
                     }
+                    os_free(cmd_path);
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"SunOS") == 0){ // Sun OS
                     info->os_name = strdup("SunOS");
                     info->os_platform = strdup("sunos");
@@ -861,12 +861,12 @@ os_info *get_unix_version()
                         pclose(cmd_output_ver);
                     }
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
-                    char cmd_path[PATH_MAX + 1] = {0};
+                    char *cmd_path = NULL;
 
                     os_strdup("AIX", info->os_name);
                     os_strdup("aix", info->os_platform);
 
-                    if (get_binary_path("oslevel", cmd_path) < 0) {
+                    if (get_binary_path("oslevel", &cmd_path) < 0) {
                         mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
                     }
 
@@ -882,12 +882,14 @@ os_info *get_unix_version()
                         }
                         pclose(cmd_output_ver);
                     }
+                    os_free(cmd_path);
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
                     info->os_name = strdup("Linux");
                     info->os_platform = strdup("linux");
                 }
                 pclose(cmd_output);
             }
+            os_free(uname_path);
         }
     }
 

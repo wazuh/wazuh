@@ -242,8 +242,10 @@ static void test_audit_restart(void **state) {
     wfd_t * wfd = *state;
     wfd->file_out = (FILE*) 1234;
 
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
-    will_return(__wrap_get_binary_path, "/path/to/service");
+    will_return(__wrap_get_binary_path, service_path);
     will_return(__wrap_get_binary_path, 0);
 
     will_return(__wrap_wpopenv, wfd);
@@ -264,8 +266,10 @@ static void test_audit_restart(void **state) {
 }
 
 static void test_audit_restart_open_error(void **state) {
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
-    will_return(__wrap_get_binary_path, "/path/to/service");
+    will_return(__wrap_get_binary_path, service_path);
     will_return(__wrap_get_binary_path, 0);
 
     will_return(__wrap_wpopenv, NULL);
@@ -281,8 +285,10 @@ static void test_audit_restart_close_exec_error(void **state) {
     wfd_t * wfd = *state;
     wfd->file_out = (FILE*) 1234;
 
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
-    will_return(__wrap_get_binary_path, "/path/to/service");
+    will_return(__wrap_get_binary_path, service_path);
     will_return(__wrap_get_binary_path, 0);
 
     will_return(__wrap_wpopenv, wfd);
@@ -308,8 +314,10 @@ static void test_audit_restart_close_error(void **state) {
     wfd_t * wfd = *state;
     wfd->file_out = (FILE*) 1234;
 
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
-    will_return(__wrap_get_binary_path, "/path/to/service");
+    will_return(__wrap_get_binary_path, service_path);
     will_return(__wrap_get_binary_path, 0);
 
     will_return(__wrap_wpopenv, wfd);

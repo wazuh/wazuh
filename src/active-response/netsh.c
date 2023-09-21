@@ -13,8 +13,6 @@
 #include "dll_load_notify.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
-#define NETSH     "\\system32\\netsh.exe"
-#define REG       "\\system32\\reg.exe"
 
 #define PATH_FIREWALL_PROFILES_REG_DEFAULT "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\"
 #define FIREWALL_DATA_INITIALIZE { false, false, FIREWALL_DOMAIN }
@@ -111,14 +109,17 @@ int main (int argc, char **argv) {
     char description[OS_MAXSTR -1];
     char remoteip[OS_MAXSTR -1];
     wfd_t *wfd = NULL;
-    char netsh_path[OS_MAXSTR -1];
-    char win_dir[OS_MAXSTR -1];
-
-    get_win_dir(win_dir, sizeof(win_dir) - 1);
+    char *netsh_path = NULL;
 
     snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
     snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
-    snprintf(netsh_path, OS_MAXSTR -1, "%s%s", win_dir, NETSH);
+
+    // Checking if netsh.exe is present
+    if (get_binary_path("netsh.exe", &netsh_path) < 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", netsh_path);
+        write_debug_file(argv[0], log_msg);
+    }
 
     char *exec_args_add[11] = { netsh_path, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
     char *exec_args_delete[8] = { netsh_path, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
@@ -126,6 +127,7 @@ int main (int argc, char **argv) {
     if ((action == ADD_COMMAND)) {
         if (getAllProfilesStatus(argv[0]) == OS_INVALID) {
             cJSON_Delete(input_json);
+            os_free(netsh_path);
             return OS_INVALID;
         }
     }
@@ -200,6 +202,7 @@ int main (int argc, char **argv) {
     write_debug_file(argv[0], "Ended");
 
 	cJSON_Delete(input_json);
+    os_free(netsh_path);
 
     return OS_SUCCESS;
 }
@@ -215,11 +218,15 @@ static int getAllProfilesStatus(const char *argv) {
     const char *firewallProfileStr[FIREWALL_PROFILES_MAX + 1] = { "FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC", "FIREWALL_DEFAULT" };
     firewallData_t firewallData = FIREWALL_DATA_INITIALIZE;
     wfd_t *wfd = NULL;
-    char reg_path[OS_MAXSTR -1];
-    char win_dir[OS_MAXSTR -1];
+    char *reg_path = NULL;
 
-    get_win_dir(win_dir, sizeof(win_dir) - 1);
-    snprintf(reg_path, OS_MAXSTR -1, "%s%s", win_dir, REG);
+
+    // Checking if reg.exe is present
+    if (get_binary_path("reg.exe", &reg_path) < 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", reg_path);
+        write_debug_file(argv, log_msg);
+    }
 
     char *exec_args_show_profile[6] = { reg_path, "query", pathFirewallProfilesReg, "/v", "EnableFirewall", NULL };
     memset(aux_buf2, '\0', OS_MAXSTR);
@@ -237,6 +244,7 @@ static int getAllProfilesStatus(const char *argv) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s' : %s", reg_path, strerror(errno));
             write_debug_file(argv, log_msg);
+            os_free(reg_path);
             return OS_INVALID;
         } else {
             while (fgets(output_buf, OS_MAXSTR -1, wfd->file_out)) {
@@ -277,6 +285,7 @@ static int getAllProfilesStatus(const char *argv) {
         strcat(log_msg, aux_buf);
         write_debug_file(argv, log_msg);
     }
+    os_free(reg_path);
     return OS_SUCCESS;
 }
 
