@@ -106,6 +106,7 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
     checks = set(test_metadata.get('checks'))
 
     # Update
+    file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(file_to_monitor, "update")
     monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     if not checks:
@@ -118,6 +119,7 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
         time.sleep(0.1)
 
     # Delete
+    file.truncate_file(WAZUH_LOG_PATH)
     file.remove_file(file_to_monitor)
     monitor.start(generate_callback(EVENT_TYPE_DELETED))
     fim_data = get_fim_event_data(monitor.callback_result)
@@ -125,6 +127,7 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
     assert set(fim_data['attributes'].keys()) == checks
 
     # Create
+    file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(file_to_monitor)
     monitor.start(generate_callback(EVENT_TYPE_ADDED))
     fim_data = get_fim_event_data(monitor.callback_result)
