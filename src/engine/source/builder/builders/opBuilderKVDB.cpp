@@ -507,7 +507,8 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
         // Return Expression
         return base::Term<base::EngineOp>::create(
             name,
-            [=, kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](base::Event event)
+            [=, kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
+                const base::Event& event)
             {
                 // Resolve array of keys reference
                 auto keys = event->getArray(arrayRef);

@@ -21,17 +21,22 @@ const std::string DOM_SPC_SID_KEY = "domainSpecificSID";
  * @param listSrt String with the list of sids
  * @return std::vector<std::string>
  */
-std::vector<std::string> parserListSID(const std::string& listSrt)
+std::vector<std::string> parserListSID(const std::string& listStr)
 {
+    const char DELIMITER = ' ';
+    const std::string HEADER = "%{";
+    const std::string TAIL = "}";
+    const size_t HEADER_SIZE = HEADER.size();
+    const size_t TAIL_SIZE = TAIL.size();
 
-    std::vector<std::string> result = base::utils::string::split(listSrt, ' '); // TODO Check format
+    std::vector<std::string> result = base::utils::string::split(listStr, DELIMITER); // TODO Check format
 
     for (auto& sid : result)
     {
-        if (sid.size() > 3)
+        if (sid.size() > HEADER_SIZE + TAIL_SIZE)
         {
             // Remove header '%{' and tail '}'
-            sid = sid.substr(2, sid.size() - 3);
+            sid = sid.substr(HEADER_SIZE, sid.size() - HEADER_SIZE - TAIL_SIZE);
         }
     }
 
@@ -42,7 +47,7 @@ std::vector<std::string> parserListSID(const std::string& listSrt)
 
 namespace builder::internals::builders
 {
-HelperBuilder getWindowsSidListDescHelperBuilder(std::shared_ptr<kvdbManager::IKVDBManager> kvdb,
+HelperBuilder getWindowsSidListDescHelperBuilder(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
                                                  const std::string& kvdbScopeName,
                                                  std::shared_ptr<schemf::ISchema> schema)
 {
@@ -77,7 +82,7 @@ HelperBuilder getWindowsSidListDescHelperBuilder(std::shared_ptr<kvdbManager::IK
         }
 
         // Get the kvdb handler
-        auto kbdbRes = kvdb->getKVDBHandler(kvdbName, kvdbScopeName);
+        auto kbdbRes = kvdbManager->getKVDBHandler(kvdbName, kvdbScopeName);
         if (base::isError(kbdbRes))
         {
             throw std::runtime_error(
@@ -87,73 +92,46 @@ HelperBuilder getWindowsSidListDescHelperBuilder(std::shared_ptr<kvdbManager::IK
         auto kvdbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(kbdbRes);
 
         // Get the lists
-        // Account SID Description
-        std::map<std::string, std::string> asdMap;
+        auto parseDbJsonToMap = [&](const std::string& key,
+                                    const std::string& errorMsg) -> std::map<std::string, std::string>
         {
-            auto asd = kvdbHandler->get(ACC_SID_DESC_KEY);
-            if (base::isError(asd))
+            auto response = kvdbHandler->get(key);
+            if (base::isError(response))
             {
                 throw std::runtime_error(
-                    fmt::format("Error getting the accountSIDDescription from DB: {}", base::getError(asd).message));
-            }
-            auto jAsd = json::Json(base::getResponse<std::string>(asd).c_str());
-            auto jObjAsd = jAsd.getObject();
-            if (!jObjAsd)
-            {
-                throw std::runtime_error("Error parsing the accountSIDDescription from DB: Expected object");
+                    fmt::format("Error getting {} from DB: {}", errorMsg, base::getError(response).message));
             }
 
-            for (auto it = jObjAsd.value().begin(); it != jObjAsd.value().end(); ++it)
+            auto jsonObject = json::Json(base::getResponse<std::string>(response).c_str()).getObject();
+            if (!jsonObject)
             {
-                auto key = std::get<0>(*it);
-                auto jValue = std::get<1>(*it).getString();
-                if (!jValue)
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Error parsing the accountSIDDescription from DB: Expected string for key '{}'", key));
-                }
-
-                asdMap.emplace(key, jValue.value());
-            }
-            if (asdMap.empty())
-            {
-                throw std::runtime_error("Error parsing the accountSIDDescription from DB: Empty object");
-            }
-        }
-
-        // Domain Specific SID
-        std::map<std::string, std::string> dssMap;
-        {
-            auto dss = kvdbHandler->get(DOM_SPC_SID_KEY);
-            if (base::isError(dss))
-            {
-                throw std::runtime_error(
-                    fmt::format("Error getting the DomainSpecificSID from DB: {}", base::getError(dss).message));
-            }
-            auto jDss = json::Json(base::getResponse<std::string>(dss).c_str());
-            auto jObjDss = jDss.getObject();
-            if (!jObjDss)
-            {
-                throw std::runtime_error("Error parsing the DomainSpecificSID from DB: Expected object");
+                throw std::runtime_error(fmt::format("Error parsing {} from DB: Expected object", errorMsg));
             }
 
-            for (auto it = jObjDss.value().begin(); it != jObjDss.value().end(); ++it)
+            std::map<std::string, std::string> resultMap;
+            for (auto& [key, value] : jsonObject.value())
             {
-                auto key = std::get<0>(*it);
-                auto jValue = std::get<1>(*it).getString();
-                if (!jValue)
+                auto optValue = value.getString();
+                if (!optValue)
                 {
                     throw std::runtime_error(
-                        fmt::format("Error parsing the DomainSpecificSID from DB: Expected string for key '{}'", key));
+                        fmt::format("Error parsing {} from DB: Expected string for key '{}'", errorMsg, key));
                 }
+                resultMap.emplace(key, optValue.value());
+            }
 
-                dssMap.emplace(key, jValue.value());
-            }
-            if (dssMap.empty())
+            if (resultMap.empty())
             {
-                throw std::runtime_error("Error parsing the DomainSpecificSID from DB: Empty object");
+                throw std::runtime_error(fmt::format("Error parsing {} from DB: Empty object", errorMsg));
             }
-        }
+            return resultMap;
+        };
+
+        // Account SID Description
+        auto asdMap = parseDbJsonToMap(ACC_SID_DESC_KEY, "accountSIDDescription");
+        // Domain Specific SID
+        auto dssMap = parseDbJsonToMap(DOM_SPC_SID_KEY, "DomainSpecificSID");
+
         // Trace messages
         const std::string successTrace {fmt::format("[{}] -> Success", name)};
         const std::string referenceNotFoundTrace {

@@ -293,6 +293,15 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
  */
 HelperBuilder getBuilderArrayAppend(bool unique, std::shared_ptr<schemf::ISchema> schema);
 
+/**
+ * @brief Get the Builder Array Append Split
+ * 
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @return base::Expression 
+ */
 base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
                                        const std::string& rawName,
                                        const std::vector<std::string>& rawParameters,
@@ -374,10 +383,6 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
                                          const std::string& rawName,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions);
-
-//*************************************************
-//*                  bit functions                *
-//*************************************************
 
 //*************************************************
 //*                  Definition                   *
