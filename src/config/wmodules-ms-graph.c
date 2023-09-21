@@ -264,12 +264,9 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
         return OS_INVALID;
     }
 	
-	for (e = 0; ms_graph->auth_config && ms_graph->auth_config[e]; e++) {
-		it = ms_graph->auth_config[e];
-		if (!it->client_id && !it->tenant_id && !it->secret_value) {
-			merror(XML_NO_ELEM, XML_API_AUTH);
-			return OS_NOTFOUND;
-		}
+	if (tenant == 0) {
+		merror(XML_NO_ELEM, XML_API_AUTH);
+		return OS_NOTFOUND;
 	}
 
 	if (ms_graph->num_resources == 0) {
