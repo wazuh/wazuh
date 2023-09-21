@@ -33,7 +33,6 @@ std::optional<base::Error> KVDBHandler::set(const std::string& key, const std::s
             else
             {
                 std::string_view error = status.getState() != nullptr ? status.getState() : "Unknown";
-                pRocksDB->Put(rocksdb::WriteOptions(), pCFhandle.get(), rocksdb::Slice(key), rocksdb::Slice(value));
                 return base::Error {fmt::format("Can not save value '{}' in key '{}'. Error: {}", value, key, error)};
             }
         }
