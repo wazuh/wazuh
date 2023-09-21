@@ -9,7 +9,7 @@ include "package_synchronization.fbs";
 include "ports_synchronization.fbs";
 include "processes_synchronization.fbs";
 
-namespace Syscollector.SyncMessage;
+namespace Syscollector;
 
 union AttributesUnion
 {

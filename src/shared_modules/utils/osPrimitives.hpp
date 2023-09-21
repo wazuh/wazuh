@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 class OSPrimitives
 {
@@ -79,6 +80,14 @@ protected:
     inline int fcntl(int fd, int cmd, int arg)
     {
         return ::fcntl(fd, cmd, arg);
+    }
+
+    inline int fchmod(int fd, mode_t mode) {
+        return ::fchmod(fd, mode);
+    }
+
+    inline int chmod(const char* path, mode_t mode) {
+        return ::chmod(path, mode);
     }
 };
 

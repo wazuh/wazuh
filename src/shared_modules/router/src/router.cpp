@@ -121,6 +121,7 @@ extern "C"
         {
             RouterModule::initialize([callbackLog](const modules_log_level_t level, const std::string& msg)
                                      { callbackLog(level, msg.c_str(), ":router"); });
+            logMessage(modules_log_level_t::LOG_DEBUG, "Router initialized successfully.");
         }
         catch (...)
         {
@@ -135,6 +136,7 @@ extern "C"
         try
         {
             RouterModule::instance().start();
+            logMessage(modules_log_level_t::LOG_DEBUG, "Router started successfully.");
         }
         catch (...)
         {

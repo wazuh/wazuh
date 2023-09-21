@@ -15,6 +15,11 @@
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
+#include "flatcc_helpers.h"
+#include "syscollector_synchronization_builder.h"
+#include "syscollector_synchronization_json_parser.h"
+#include "syscollector_deltas_builder.h"
+#include "syscollector_deltas_json_parser.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -38,11 +43,25 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_provider_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+
+// Mutex for router provider handle
+static pthread_mutex_t router_rsync_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t router_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
+#define DBSYNC_SYSCOLLECTOR_HEADER "5:syscollector:"
+#define SYSCOLLECTOR_HEADER "d:syscollector:"
+#define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
+#define SYSCOLLECTOR_HEADER_SIZE 15
+
+// Router message forwarder
+void router_message_forward(char* msg, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -163,6 +182,9 @@ void HandleSecure()
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
 
     // Create message handler thread pool
     {
@@ -747,46 +769,125 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
     key_unlock();
 
-    // Print first letter of the message
-    if (tmp_msg[0] == SYSCOLLECTOR_MQ) {
-        if (!router_provider_handle) {
-            if (router_provider_handle = router_provider_create("syscollector"), !router_provider_handle)
-            {
-                os_free(agentid_str);
-                return;
-            }
-        }
+    if (sock_idle >= 0) {
+        _close_sock(&keys, sock_idle);
+    }
 
-        router_provider_send(router_provider_handle, tmp_msg, msg_length);
+    /* If we can't send the message, try to connect to the
+     * socket again. If it not exit.
+     */
+    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-    } else {
-        if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
-        }
+        // Try to reconnect infinitely
+        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-        /* If we can't send the message, try to connect to the
-        * socket again. If it not exit.
-        */
+        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
         if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+            // Something went wrong sending a message after an immediate reconnection...
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-            // Try to reconnect infinitely
-            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-            minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
-
-            if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-                // Something went wrong sending a message after an immediate reconnection...
-                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-            } else {
-                rem_inc_recv_evt(agentid_str);
-            }
         } else {
             rem_inc_recv_evt(agentid_str);
         }
+    } else {
+        rem_inc_recv_evt(agentid_str);
     }
 
+    router_message_forward(tmp_msg, keys.keyentries[agentid]->id);
+
     os_free(agentid_str);
+}
+
+void router_message_forward(char* msg, const char* agent_id) {
+    // Both syscollector delta and sync messages are sent to the router
+    ROUTER_PROVIDER_HANDLE router_handle = NULL;
+    int message_header_size = 0;
+    flatcc_json_parser_table_f *parser = NULL;
+
+    if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        w_mutex_lock(&router_syscollector_mutex);
+        if (!router_syscollector_handle) {
+            if (router_syscollector_handle = router_provider_create("syscollector"), !router_syscollector_handle) {
+                mdebug2("Failed to create router handle for 'syscollector'.");
+                w_mutex_unlock(&router_syscollector_mutex);
+                return;
+            }
+        }
+        router_handle = router_syscollector_handle;
+        message_header_size = SYSCOLLECTOR_HEADER_SIZE;
+        parser = Syscollector_Delta_parse_json_table;
+        w_mutex_unlock(&router_syscollector_mutex);
+    } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        w_mutex_lock(&router_rsync_mutex);
+        if (!router_rsync_handle) {
+            if (router_rsync_handle = router_provider_create("rsync"), !router_rsync_handle) {
+                mdebug2("Failed to create router handle for 'rsync'.");
+                w_mutex_unlock(&router_rsync_mutex);
+                return;
+            }
+        }
+        router_handle = router_rsync_handle;
+        message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        parser = Syscollector_SyncMsg_parse_json_table;
+        w_mutex_unlock(&router_rsync_mutex);
+    }
+
+    if (!router_handle) {
+        return;
+    }
+
+    cJSON* j_msg_to_send = NULL;
+    cJSON* j_agent_info = NULL;
+    cJSON* j_msg = NULL;
+    char* msg_to_send = NULL;
+
+    char* msg_start = msg + message_header_size;
+    size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
+    if ((msg_size + message_header_size) < OS_MAXSTR) {
+        j_msg = cJSON_Parse(msg_start);
+        if(!j_msg) {
+            goto clean_and_exit;
+        }
+
+        j_msg_to_send = cJSON_CreateObject();
+
+        j_agent_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
+        cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
+
+        if (parser == Syscollector_Delta_parse_json_table) {
+            cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_DetachItemFromObject(j_msg, "operation"));
+        } else if (parser == Syscollector_SyncMsg_parse_json_table) {
+            cJSON_AddItemToObject(cJSON_GetObjectItem(j_msg_to_send, "data"), "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
+        }
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+        if(!msg_to_send) {
+            goto clean_and_exit;
+        }
+
+        size_t msg_to_send_len = strlen(msg_to_send);
+        size_t flatbuffer_size;
+
+        void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, parser);
+
+        if (flatbuffer) {
+            router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+            w_flatcc_free_buffer(flatbuffer);
+        } else {
+            mdebug2("Unable to forward message for agent %s", agent_id);
+        }
+    }
+
+clean_and_exit:
+    cJSON_Delete(j_msg_to_send);
+    cJSON_Delete(j_msg);
+    cJSON_free(msg_to_send);
 }
 
 // Close and remove socket from keystore

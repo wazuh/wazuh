@@ -19,6 +19,8 @@ src/selinux/*.mod
 src/selinux/*.pp
 framework/wazuh/core/wazuh.json
 src/**/build/*
+src/generated_headers/*.h
+src/generated_headers/*.hpp
 
 # Compiled programs
 src/agent-auth
@@ -156,3 +158,4 @@ src/wazuh_modules/vulnerability_detector/msu.json.gz
 
 # Flatbuffers generated headers.
 src/shared_modules/utils/flatbuffers/include/
+src/wazuh_modules/syscollector/include/

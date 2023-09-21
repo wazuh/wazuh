@@ -46,7 +46,7 @@ void* wm_router_main()
 
         if (router_initialize_ptr)
         {
-            router_initialize_ptr(NULL);
+            router_initialize_ptr(taggedLogFunction);
         }
         else
         {

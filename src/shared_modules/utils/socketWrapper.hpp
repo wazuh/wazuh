@@ -486,17 +486,36 @@ public:
                 }
             }
 
-            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) == 0 && T::listen(m_sock, SOMAXCONN) == 0)
+            if (connectInfo.type == SocketType::UNIX)
             {
-                const uint32_t uiOpt {BUFFER_SIZE};
-                T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
-                T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
+                if (T::fchmod(m_sock, 0666 ) != 0) {
+                    closeSocket();
+                    throw std::runtime_error {"Failed to fchmod socket " + std::to_string(errno)};
+                }
             }
-            else
-            {
+
+            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0) {
                 closeSocket();
-                throw std::runtime_error {"Failed to bind/listen socket " + std::to_string(errno)};
+                throw std::runtime_error {"Failed to bind socket " + std::to_string(errno)};
             }
+
+            if (connectInfo.type == SocketType::UNIX)
+            {
+                auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
+                if (T::chmod(sunAddr->sun_path, 0666 ) != 0) {
+                    closeSocket();
+                    throw std::runtime_error {"Failed to chmod socket " + std::to_string(errno)};
+                }
+            }
+
+            if (T::listen(m_sock, SOMAXCONN) != 0) {
+                 closeSocket();
+                throw std::runtime_error {"Failed to listen socket " + std::to_string(errno)};
+            }
+
+            const uint32_t uiOpt {BUFFER_SIZE};
+            T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
+            T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
         }
         else
         {
