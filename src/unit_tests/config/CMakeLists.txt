@@ -32,6 +32,11 @@ list(APPEND config_flags "-Wl,--wrap,OS_GetHost -Wl,--wrap=Start_win32_Syscheck 
                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 
+if(${TARGET} STREQUAL "server")
+    list(APPEND config_names "test_indexer")
+    list(APPEND config_flags " ")
+endif()
+
 # Compiling tests
 list(LENGTH config_names count)
 math(EXPR count "${count} - 1")
