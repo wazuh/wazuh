@@ -25,7 +25,6 @@ def wait_connect():
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
     assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
 
-
 def wait_ack():
     """
         Watch ossec.log until received ack message is found
@@ -33,7 +32,6 @@ def wait_ack():
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
     assert (wazuh_log_monitor.callback_result != None), f'Received ack message not found'
-
 
 def wait_state_update():
     """
@@ -59,3 +57,10 @@ def wait_enrollment_try():
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY))
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
 
+def wait_agent_notification(current_value):
+    """
+        Watch ossec.log until "Sending agent notification" message is found current_value times
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION), accumulations = int(current_value))
+    return(wazuh_log_monitor.callback_result != None)

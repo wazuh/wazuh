@@ -46,6 +46,7 @@ tags:
     - stats_file
 '''
 
+import json
 import pytest
 from pathlib import Path
 import sys
@@ -65,7 +66,7 @@ from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_ack, wait_state_update, add_custom_key
+from .. import wait_keepalive, wait_ack, wait_state_update, add_custom_key, wait_agent_notification
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -141,6 +142,10 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
         check_fields(expected_output, remoted_server)
+
+    if remoted_server:
+        remoted_server.clear()
+        remoted_server.shutdown()
     
     
 def parse_state_file():
@@ -165,17 +170,31 @@ def parse_state_file():
     return state
     
 def wait_for_custom_message_response(expected_response: str, remoted_server: RemotedSimulator, timeout: int = 60):
-    # Start count to set the timeout.
+    """Request remoted_server the status of the agent
+
+    Args:
+        parameters:
+        - configure_environment:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - test_case:
+            type: list
+            brief: List of tests to be performed.
+            
+    Returns:
+        state info
+    """
     custom_message = f'#!-req {remoted_server.request_counter} agent getstate'
     remoted_server.send_custom_message(custom_message)
+    # Start count to set the timeout.
     start_time = time.time()
 
     while time.time() - start_time < timeout:
         if remoted_server.custom_message_sent:
             if expected_response in (response := remoted_server.last_message_ctx.get('message')): 
-            #if expected_response in remoted_server.last_message_ctx.get('message'):
-                import pdb; pdb.set_trace()
-                #found_message = remoted_server.last_message_ctx
+                response = response[response.find('{'):]
+                response = json.loads(response)
+                response = response['data']
                 return response
         time.sleep(0.005)
     
@@ -190,27 +209,23 @@ def check_fields(expected_output, remoted_server):
     checks = {
         'last_ack': {'handler': check_last_ack, 'precondition': [wait_ack]},
         'last_keepalive': {'handler': check_last_keepalive, 'precondition': [wait_keepalive]},
-        'msg_count': {'handler': check_last_keepalive, 'precondition': [wait_keepalive]},
+        'msg_count': {'handler': check_msg_count, 'precondition': [wait_keepalive]},
         'status': {'handler': check_status, 'precondition': []}
     }
 
     if expected_output['type'] == 'file':
-        get_state = parse_state_file
+        get_state_callback = parse_state_file
     else:
-        get_state = wait_for_custom_message_response
+        get_state_callback = wait_for_custom_message_response
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
-        #import pdb; pdb.set_trace()
         if expected_value != '':
             for precondition in checks[field].get('precondition'):
                 precondition()
-        if field == 'status':
-            assert checks[field].get('handler')(expected_value, get_state, expected_output['fields']['status'], remoted_server)
-        else:
-            assert checks[field].get('handler')(expected_value, get_state) 
+            assert checks[field].get('handler')(expected_value, get_state_callback, expected_output['fields']['status'], remoted_server) 
 
-def check_last_ack(expected_value=None, get_state_callback=None):
+def check_last_ack(expected_value=None, get_state_callback=None, expected_response: str=None, remoted_server: RemotedSimulator=None):
     """Check `field` status
 
     Args:
@@ -222,15 +237,17 @@ def check_last_ack(expected_value=None, get_state_callback=None):
     Returns:
         boolean: `True` if check was successfull. `False` otherwise
     """
-    if get_state_callback:
+    if get_state_callback == parse_state_file:
         current_value = get_state_callback()['last_ack']
-        if expected_value == '':
-            return expected_value == current_value
-
+    else:
+        current_value = get_state_callback(expected_response, remoted_server)['last_ack']
+    if expected_value == '':
+        return expected_value == current_value
+    
     wait_ack()
     return True
 
-def check_last_keepalive(expected_value=None, get_state_callback=None):
+def check_last_keepalive(expected_value=None, get_state_callback=None, expected_response: str=None, remoted_server: RemotedSimulator=None):
     """Check `field` status
 
     Args:
@@ -242,19 +259,18 @@ def check_last_keepalive(expected_value=None, get_state_callback=None):
     Returns:
         boolean: `True` if check was successfull. `False` otherwise
     """
-    if get_state_callback:
+    if get_state_callback == parse_state_file:
         current_value = get_state_callback()['last_keepalive']
-        if expected_value == '':
-            return expected_value == current_value
+    else:
+        current_value = get_state_callback(expected_response, remoted_server)['last_keepalive']
+    if expected_value == '':
+        return expected_value == current_value
 
     wait_keepalive()
-
-    wazuh_log_monitor_ = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor_.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION))
-    return(wazuh_log_monitor_.callback_result != None)
+    return True
 
 
-def check_msg_count(expected_value=None, get_state_callback=None):
+def check_msg_count(expected_value=None, get_state_callback=None, expected_response: str=None, remoted_server: RemotedSimulator=None):
     """Check `field` status
 
     Args:
@@ -266,21 +282,15 @@ def check_msg_count(expected_value=None, get_state_callback=None):
     Returns:
         boolean: `True` if check was successfull. `False` otherwise
     """
-    if get_state_callback:
+    if get_state_callback == parse_state_file:
         current_value = get_state_callback()['msg_count']
-        if expected_value == '':
-            return expected_value == current_value
+    else:
+        current_value = get_state_callback(expected_response, remoted_server)['msg_count']
+    if expected_value == '':
+        return expected_value == current_value
 
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION))
-    return(wazuh_log_monitor.callback_result != None)
-
-    with open(WAZUH_LOG_PATH, 'r') as log:
-        for line in log:
-            if 'Sending keep alive' in line:
-                sent_messages += 1
-
-    return sent_messages >= current_value
+    wait_agent_notification(current_value)
+    return True
 
 
 def check_status(expected_value=None, get_state_callback=None, expected_response: str=None, remoted_server: RemotedSimulator=None):
@@ -297,10 +307,10 @@ def check_status(expected_value=None, get_state_callback=None, expected_response
     """
     current_value = None
 
-    # Sleep while file is updated
     if expected_value != 'pending':
         wait_keepalive()
         if get_state_callback == parse_state_file:
+            # Sleep while file is updated
             time.sleep(5)
             wait_state_update()
             current_value = get_state_callback()['status']
