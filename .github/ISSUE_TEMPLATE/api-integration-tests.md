@@ -1,8 +1,9 @@
 ---
-name: Release Candidate - API integration tests 
+name: Release Candidate - API integration tests
 about: Report the results after running API integration tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - API integration tests'
-labels: 'API, qa'
+title: Release [WAZUH VERSION] - Release Candidate [RC VERSION] - API integration
+  tests
+labels: ''
 assignees: ''
 
 ---
@@ -59,4 +60,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ]
