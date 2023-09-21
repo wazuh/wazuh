@@ -33,7 +33,7 @@ For running tests in an AWS EC2 virtual environment, it will be needed to meet t
 |Basic_environment             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 
 
-These requirements should be requested from the @wazuh/cicd.
+These requirements should be requested from the @wazuh/cicd team.
 
 
 For its execution, the installation of various packages is required, which will be detailed below.
