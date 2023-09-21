@@ -16,6 +16,10 @@ metadata:
     - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
+#TODO: sysmon.dns.status
+# sysmon.file.archived
+#sysmon.file.is_executable
+#not found
 definitions:
   idEvent_map:
     "1":
