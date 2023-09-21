@@ -1,0 +1,41 @@
+name: rule/defense-evasion-timestomp-sysmon/0
+
+metadata:
+  module: Windows
+  title: File Creation Time Changed
+  description: Identifies modification of a file creation time. Adversaries may modify file time attributes to blend
+    malicious content with existing files. Timestomping is a technique that modifies the timestamps of
+    a file often to mimic files that are in trusted directories.
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This rule has been tested on Wazuh version 4.3.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/09/15
+
+check :
+  - event.category: array_contains(file)
+  - event.type: array_contains(change)
+
+normalize:
+  - map:
+      - event.risk_score: 47
+
+      - rule.description: Identifies modification of a file creation time. Adversaries may modify file time attributes to blend
+          malicious content with existing files. Timestomping is a technique that modifies the timestamps of
+          a file often to mimic files that are in trusted directories.
+      - rule.id: 4de76544-f0e5-486a-8f84-eae0b6063cdc
+      - rule.license: Wazuh Inc.
+      - rule.name: File Creation Time Changed
+
+      - threat.framework: MITRE ATT&CK
+      - threat.tactic.id: array_append(TA0005)
+      - threat.tactic.name: array_append(Defense Evasion)
+      - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0005/)
+      - threat.technique.id: array_append(T1070)
+      - threat.technique.name: array_append(Indicator Removal)
+      - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1070/)
+      - threat.technique.subtechnique.id: array_append(T1070.006)
+      - threat.technique.subtechnique.name: array_append(Timestomp)
+      - threat.technique.subtechnique.reference: array_append(https://attack.mitre.org/techniques/T1070/006/)
+
+      - vulnerability.severity: medium
