@@ -101,16 +101,19 @@ def test_cud(test_configuration, test_metadata, set_wazuh_configuration, truncat
     testfile_name = 'testie.txt'
 
     # Create
+    file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(symlink.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
 
     # Update
+    file.truncate_file(WAZUH_LOG_PATH)
     file.write_file(symlink.joinpath(testfile_name), 'new_text')
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     assert wazuh_log_monitor.callback_result
 
     # Remove
+    file.truncate_file(WAZUH_LOG_PATH)
     file.remove_file(symlink.joinpath(testfile_name))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
