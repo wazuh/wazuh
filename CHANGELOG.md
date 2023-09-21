@@ -3,6 +3,29 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.5.3]
 
+### Manager
+
+#### Changed
+
+- Vulnerability Detector now fetches the SUSE feeds in Gzip compressed format. ([#18783](https://github.com/wazuh/wazuh/pull/18783))
+
+#### Fixed
+
+- Fixed a bug that might cause wazuh-analysisd to crash if it receives a status API query during startup. ([#18737](https://github.com/wazuh/wazuh/pull/18737))
+- Fixed a bug that might cause wazuh-maild to crash when handling large alerts. ([#18976](https://github.com/wazuh/wazuh/pull/18976))
+
+### Agent
+
+#### Changed
+
+- Updated the agent to report the name of macOS 14 (Sonoma). ([#19041](https://github.com/wazuh/wazuh/pull/19041))
+
+#### Fixed
+
+- Fixed a bug in the memory handle at the agent's data provider helper. ([#18773](https://github.com/wazuh/wazuh/pull/18773))
+- Fixed a data mismatch in the OS name between the global and agents' databases. ([#18903](https://github.com/wazuh/wazuh/pull/18903))
+- Fixed an array limit check in wazuh-logcollector. ([#19069](https://github.com/wazuh/wazuh/pull/19069))
+
 ### RESTful API
 
 #### Added
@@ -22,7 +45,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an error in the API log mechanism where sometimes the requests would not be printed in the log file. ([#18733](https://github.com/wazuh/wazuh/pull/18733))
 
 
-## [v4.5.2]
+## [v4.5.2] - 2023-09-06
 
 ### Manager
 
