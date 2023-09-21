@@ -41,6 +41,7 @@ static int msg_to_print_according_to_debugLevel (char *buff_output, char * token
 void wm_parse_output(char *output, char *logger_name, char *tag, char* service_title) {
     char *line;
     char * parsing_output = output;
+    char * parsing_output_tmp = NULL;
     int debug_level = isDebug();
 
     if (output != NULL && logger_name != NULL) {
@@ -48,6 +49,8 @@ void wm_parse_output(char *output, char *logger_name, char *tag, char* service_t
             char * tokenized_line;
             os_calloc(_W_STRING_MAX, sizeof(char), tokenized_line);
             char * next_lines;
+
+            parsing_output_tmp = line;
 
             line += strlen(logger_name);
             next_lines = strstr(line, logger_name);
@@ -80,6 +83,7 @@ void wm_parse_output(char *output, char *logger_name, char *tag, char* service_t
                 }
             }
 
+            parsing_output = parsing_output_tmp;
             parsing_output += cp_length + strlen(logger_name) - 1;
 
             os_free(tokenized_line);
