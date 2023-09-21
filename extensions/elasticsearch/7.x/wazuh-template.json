@@ -201,19 +201,14 @@
       "data.ms-graph.assignedTo",
       "data.ms-graph.category",
       "data.ms-graph.comments",
-      "data.ms-graph.createdDateTime",
       "data.ms-graph.description",
       "data.ms-graph.detectorId",
       "data.ms-graph.evidence._comment",
-      "data.ms-graph.firstActivityDateTime",
       "data.ms-graph.id",
       "data.ms-graph.incidentId",
       "data.ms-graph.incidentWebUrl",
-      "data.ms-graph.lastActivityDateTime",
-      "data.ms-graph.lastUpdateDateTime",
       "data.ms-graph.mitreTechniques",
       "data.ms-graph.providerAlertId",
-      "data.ms-graph.resolvedDateTime",
       "data.ms-graph.resource",
       "data.ms-graph.status",
       "data.ms-graph.tenantId",
@@ -1250,7 +1245,7 @@
                 "type": "keyword"
               },
               "incidentId": {
-                "type": "long"
+                "type": "keyword"
               },
               "incidentWebUrl": {
                 "type": "keyword"
