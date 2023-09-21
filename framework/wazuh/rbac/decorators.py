@@ -66,8 +66,6 @@ def _expand_resource(resource: str) -> set:
             return expand_rules()
         elif resource_type == 'decoder:file':
             return expand_decoders()
-        # elif resource_type == 'list:file':
-        #     return expand_lists()
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless
