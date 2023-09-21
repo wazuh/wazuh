@@ -95,7 +95,6 @@ namespace Utils
         return ret;
     }
 
-<<<<<<< HEAD
     static std::string leftTrim(const std::string& str, const std::string& args = " ")
     {
         const auto pos{ str.find_first_not_of(args) };
@@ -127,9 +126,6 @@ namespace Utils
 
     static std::vector<std::string> split(const std::string& str,
                                           const char delimiter)
-=======
-    static std::vector<std::string> split(const std::string& str, const char delimiter)
->>>>>>> 42686f5f33 (Apply format using clang-format file and tool.)
     {
         std::vector<std::string> tokens;
         std::string token;
@@ -236,35 +232,6 @@ namespace Utils
 
         // LCOV_EXCL_STOP
         return ret;
-    }
-
-    static std::string leftTrim(const std::string& str, const std::string& args = " ")
-    {
-        const auto pos {str.find_first_not_of(args)};
-
-        if (pos != std::string::npos)
-        {
-            return str.substr(pos);
-        }
-
-        return str;
-    }
-
-    static std::string rightTrim(const std::string& str, const std::string& args = " ")
-    {
-        const auto pos {str.find_last_not_of(args)};
-
-        if (pos != std::string::npos)
-        {
-            return str.substr(0, pos + 1);
-        }
-
-        return str;
-    }
-
-    static std::string trim(const std::string& str, const std::string& args = " ")
-    {
-        return leftTrim(rightTrim(str, args), args);
     }
 
     static std::string toUpperCase(const std::string& str)
