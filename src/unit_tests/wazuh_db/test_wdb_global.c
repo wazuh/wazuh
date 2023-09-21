@@ -5562,11 +5562,14 @@ void test_wdb_global_delete_group_group_fail(void **state)
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
 
     //wdb_is_group_empty
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, sql_agents_id);
 
     will_return(__wrap_wdb_begin2, 1);
@@ -5593,8 +5596,7 @@ void test_wdb_global_delete_group_group_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "default");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, j_find_group_resp);
-    expect_function_call(__wrap_cJSON_Delete);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
@@ -5629,11 +5631,14 @@ void test_wdb_global_delete_group_db_fail(void **state)
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
 
     //wdb_is_group_empty
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, sql_agents_id);
 
     will_return(__wrap_wdb_begin2, 1);
