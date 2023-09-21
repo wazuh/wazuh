@@ -196,6 +196,31 @@
       "data.ms-graph.verdict",
       "data.ms-graph.serviceSource",
       "data.ms-graph.severity",
+      "data.ms-graph.actorDisplayName",
+      "data.ms-graph.alertWebUrl",
+      "data.ms-graph.assignedTo",
+      "data.ms-graph.category",
+      "data.ms-graph.comments",
+      "data.ms-graph.createdDateTime",
+      "data.ms-graph.description",
+      "data.ms-graph.detectorId",
+      "data.ms-graph.evidence._comment",
+      "data.ms-graph.firstActivityDateTime",
+      "data.ms-graph.id",
+      "data.ms-graph.incidentId",
+      "data.ms-graph.incidentWebUrl",
+      "data.ms-graph.lastActivityDateTime",
+      "data.ms-graph.lastUpdateDateTime",
+      "data.ms-graph.mitreTechniques",
+      "data.ms-graph.providerAlertId",
+      "data.ms-graph.resolvedDateTime",
+      "data.ms-graph.resource",
+      "data.ms-graph.status",
+      "data.ms-graph.tenantId",
+      "data.ms-graph.threatDisplayName",
+      "data.ms-graph.threatFamilyName",
+      "data.ms-graph.title",
+      "data.ms-graph.appliedConditionalAccessPolicies",
       "data.os.architecture",
       "data.os.build",
       "data.os.codename",
@@ -1184,6 +1209,86 @@
                 "type": "keyword"
               },
               "severity": {
+                "type": "keyword"
+              },
+              "actorDisplayName": {
+                "type": "keyword"
+              },
+              "alertWebUrl": {
+                "type": "keyword"
+              },
+              "assignedTo": {
+                "type": "keyword"
+              },
+              "category": {
+                "type": "keyword"
+              },
+              "comments": {
+                "type": "keyword"
+              },
+              "createdDateTime": {
+                "type": "date"
+              },
+              "description": {
+                "type": "text"
+              },
+              "detectorId": {
+                "type": "keyword"
+              },
+              "evidence": {
+                "type": "nested",
+                "properties": {
+                  "_comment": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "firstActivityDateTime": {
+                "type": "date"
+              },
+              "id": {
+                "type": "keyword"
+              },
+              "incidentId": {
+                "type": "long"
+              },
+              "incidentWebUrl": {
+                "type": "keyword"
+              },
+              "lastActivityDateTime": {
+                "type": "date"
+              },
+              "lastUpdateDateTime": {
+                "type": "date"
+              },
+              "mitreTechniques": {
+                "type": "keyword"
+              },
+              "providerAlertId": {
+                "type": "keyword"
+              },
+              "resolvedDateTime": {
+                "type": "date"
+              },
+              "resource": {
+                "type": "keyword"
+              },
+              "status": {
+                "type": "keyword"
+              },
+              "tenantId": {
+                "type": "keyword"
+              },
+              "threatDisplayName": {
+                "type": "keyword"
+              },
+              "threatFamilyName": {
+                "type": "keyword"
+              },
+              "title": {
+                "type": "keyword"
+              },
+              "appliedConditionalAccessPolicies": {
                 "type": "keyword"
               }
             }
