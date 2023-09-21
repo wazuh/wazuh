@@ -121,7 +121,7 @@ HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, 
 /**
  * @brief Get the KVDB Get Array function helper builder
  *
- * @param kvdbScope KVDB Scope
+ * @param kvdbManager KVDB Manager
  * @param kvdbScopeName KVDB Scope Name
  * @param schema Schema
  *
@@ -153,6 +153,8 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition.
  * @param definitions handler with definitions
+ * @param kvdbManager KVDB Manager
+ * @param kvdbScopeName KVDB Scope Name
  * @param schema schema to validate fields
  * @return base::Expression The Lifter with the SHA1 hash.
  * @throw std::runtime_error if the parameter size is not one.
@@ -169,7 +171,7 @@ base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField
  * @brief Get the 'kvdb_decode_bitmask' function helper builder
  *
  * @param kvdbManager KVDB Manager
- * @param kvdbScope KVDB Scope
+ * @param kvdbScopeName KVDB Scope
  * @param schema schema to validate fields
  * @return HelperBuilder The builder of the helper.
  */
