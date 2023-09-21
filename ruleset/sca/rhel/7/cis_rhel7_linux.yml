@@ -3610,7 +3610,7 @@ checks:
   # 5.3.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.3.4 Ensure SSH access is limited. (Automated)
-  - id: 4660
+  - id: 4658
     title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
@@ -3632,7 +3632,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
   # 5.3.5 Ensure SSH LogLevel is appropriate. (Automated)
-  - id: 4661
+  - id: 4659
     title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
@@ -3656,7 +3656,7 @@ checks:
       - 'f:/etc/ssh/sshd_config ->!r:^# && r:loglevel\s*(VERBOSE|INFO)'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
-  - id: 4662
+  - id: 4660
     title: "Ensure SSH X11 forwarding is disabled."
     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through an existing SSH shell session to enable remote graphic connections."
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
@@ -3677,7 +3677,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*x11forwarding\\s*\\t*yes"
 
   # 5.3.7 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
-  - id: 4663
+  - id: 4661
     title: "Ensure SSH MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
@@ -3697,7 +3697,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.3.8 Ensure SSH IgnoreRhosts is enabled. (Automated)
-  - id: 4664
+  - id: 4662
     title: "Ensure SSH IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
@@ -3718,7 +3718,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
 
   # 5.3.9 Ensure SSH HostbasedAuthentication is disabled. (Automated)
-  - id: 4665
+  - id: 4663
     title: "Ensure SSH HostbasedAuthentication is disabled."
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
@@ -3738,7 +3738,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.3.10 Ensure SSH root login is disabled. (Automated)
-  - id: 4666
+  - id: 4664
     title: "Ensure SSH root login is disabled."
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
@@ -3758,7 +3758,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
 
   # 5.3.11 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
-  - id: 4667
+  - id: 4665
     title: "Ensure SSH PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
@@ -3778,7 +3778,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.3.12 Ensure SSH PermitUserEnvironment is disabled. (Automated)
-  - id: 4668
+  - id: 4666
     title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing a Trojan's programs)."
@@ -3799,7 +3799,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.3.13 Ensure only strong Ciphers are used. (Automated)
-  - id: 4669
+  - id: 4667
     title: "Ensure only strong Ciphers are used."
     description: "This variable limits the ciphers that SSH can use during communication. Note: Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy."
     rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack - The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the "Bar Mitzvah" issue - The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors.'
@@ -3827,7 +3827,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
   # 5.3.14 Ensure only strong MAC algorithms are used. (Automated)
-  - id: 4670
+  - id: 4668
     title: "Ensure only strong MAC algorithms are used."
     description: "This variable Specifies the available MAC (message authentication code) algorithms. The MAC algorithm is used in protocol version 2 for data integrity protection. Multiple algorithms must be comma-separated. Note: Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy."
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
@@ -3850,7 +3850,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.3.15 Ensure only strong Key Exchange algorithms are used. (Automated)
-  - id: 4671
+  - id: 4669
     title: "Ensure only strong Key Exchange algorithms are used."
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Note: Some organizations may have stricter requirements for approved Key Exchange algorithms. Ensure that Key Exchange algorithms used are in compliance with site policy."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
@@ -3871,7 +3871,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.3.16 Ensure SSH Idle Timeout Interval is configured. (Automated)
-  - id: 4672
+  - id: 4670
     title: "Ensure SSH Idle Timeout Interval is configured."
     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. - ClientAliveInterval sets a timeout interval in seconds after which if no data has been received from the client, sshd will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax sets the number of client alive messages which may be sent without sshd receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. The default value is 3. o The client alive messages are sent through the encrypted channel o Setting ClientAliveCountMax to 0 disables connection termination Example: The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds."
     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value reduces this risk. - The recommended ClientAliveInterval setting is no greater than 900 seconds (15 minutes) - The recommended ClientAliveCountMax setting is 0 - At the 15 minute interval, if the ssh session is inactive, the session will be terminated."
@@ -3897,7 +3897,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
-  - id: 4673
+  - id: 4671
     title: "Ensure SSH LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
@@ -3918,7 +3918,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
 
   # 5.3.18 Ensure SSH warning banner is configured. (Automated)
-  - id: 4674
+  - id: 4672
     title: "Ensure SSH warning banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
@@ -3938,7 +3938,7 @@ checks:
       - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue.net'
 
   # 5.3.19 Ensure SSH PAM is enabled. (Automated)
-  - id: 4675
+  - id: 4673
     title: "Ensure SSH PAM is enabled."
     description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
@@ -3960,7 +3960,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*UsePAM\s+no'
 
   # 5.3.20 Ensure SSH AllowTcpForwarding is disabled. (Automated)
-  - id: 4676
+  - id: 4674
     title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
@@ -3984,7 +3984,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.3.21 Ensure SSH MaxStartups is configured. (Automated)
-  - id: 4677
+  - id: 4675
     title: "Ensure SSH MaxStartups is configured."
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -4009,7 +4009,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.3.22 Ensure SSH MaxSessions is limited. (Automated)
-  - id: 4678
+  - id: 4676
     title: "Ensure SSH MaxSessions is limited."
     description: "The MaxSessions parameter Specifies the maximum number of open sessions permitted per network connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -4034,7 +4034,7 @@ checks:
   ###############################################
 
   # 5.4.1 Ensure password creation requirements are configured. (Automated)
-  - id: 4679
+  - id: 4677
     title: "Ensure password creation requirements are configured."
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. The following options are set in the /etc/security/pwquality.conf file: Password Length: - minlen = 14 - password must be 14 characters or more Password complexity: - minclass = 4 - The minimum number of required classes of characters for the new password (digits, uppercase, lowercase, others) OR - dcredit = -1 - provide at least one digit - ucredit = -1 - provide at least one uppercase character - ocredit = -1 - provide at least one special character - lcredit = -1 - provide at least one lowercase character The following is set in the /etc/pam.d/password-auth and /etc/pam.d/system-auth files - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies. Notes: - Settings in /etc/security/pwquality.conf must use spaces around the = symbol. - Additional modules options may be set in the /etc/pam.d/password-auth and /etc/pam.d/system-auth files."
     rationale: "Strong passwords and limited attempts before locking an account protect systems from being hacked through brute force methods."
@@ -4054,7 +4054,7 @@ checks:
       - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured. (Automated)
-  - id: 4680
+  - id: 4678
     title: "Ensure lockout for failed password attempts is configured."
     description: 'Lock out users after n unsuccessful consecutive login attempts. These settings are commonly configured with the pam_faillock.so module. Some environments may continue using the pam_tally2.so module, where this older method may simplify automation in mixed environments. Set the lockout number in deny= to the policy in effect at your site. unlock_time=_n_ is the number of seconds the account remains locked after the number of attempts configured in deny=_n_ has been met. Notes: - Additional module options may be set, recommendation only covers those listed here. - When modifying authentication configuration using the authconfig utility, the system-auth and password-auth files are overwritten with the settings from the authconfig utility. This can be avoided by creating symbolic links in place of the configuration files, which authconfig recognizes and does not overwrite. These symbolic links are the default for Fedora 19 derived distributions. - Use of the "audit" keyword may log credentials in the case of user error during - authentication. This risk should be evaluated in the context of the site policies of your organization. If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_faillock.so or the pam_tally2.so module, the user can be unlocked by issuing following commands. This command sets the failed count to 0, effectively unlocking the user. If pam_faillock.so is used: o o # faillock --user <username> --reset o o # pam_tally2 -u <username> --reset If pam_tally2.so is used:.'
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
@@ -4077,7 +4077,7 @@ checks:
       - 'f:/etc/pam.d/system-auth -> r:^\s*auth\.+required\.+pam_faillock.so\.+ && n:deny=(\d+) compare <= 5 && n:unlock_time=(\d+) compare >= 900'
 
   # 5.4.3 Ensure password hashing algorithm is SHA-512. (Automated)
-  - id: 4681
+  - id: 4679
     title: "Ensure password hashing algorithm is SHA-512."
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm. Note: - These changes only apply to accounts configured on the local system. - Additional module options may be set, recommendation only covers those listed here."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords."
@@ -4099,7 +4099,7 @@ checks:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
 
   # 5.4.4 Ensure password reuse is limited. (Automated)
-  - id: 4682
+  - id: 4680
     title: "Ensure password reuse is limited."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords. Note: Additional module options may be set, recommendation only covers those listed here."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
@@ -4124,7 +4124,7 @@ checks:
   ###############################################
 
   # 5.5.1.1 Ensure password expiration is 365 days or less. (Automated)
-  - id: 4683
+  - id: 4681
     title: "Ensure password expiration is 365 days or less."
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days. Notes: - A value of -1 will disable password expiration. - The password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials via a brute force attack, using already compromised credentials, or gaining the credentials by other means, can be limited by the age of the password. Therefore, reducing the maximum age of a password can also reduce an attacker's window of opportunity. Requiring passwords to be changed helps to mitigate the risk posed by the poor security practice of passwords being used for multiple accounts, and poorly implemented off-boarding and change of responsibility policies. This should not be considered a replacement for proper implementation of these policies and practices. Note: If it is believed that a user's password may have been compromised, the user's account should be locked immediately. Local policy should be followed to ensure the secure update of their password."
@@ -4144,7 +4144,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
 
   # 5.5.1.2 Ensure minimum days between password changes is configured. (Automated)
-  - id: 4684
+  - id: 4682
     title: "Ensure minimum days between password changes is configured."
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
@@ -4164,7 +4164,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more. (Automated)
-  - id: 4685
+  - id: 4683
     title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -4184,7 +4184,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less. (Automated)
-  - id: 4686
+  - id: 4684
     title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled. Note: A value of -1 would disable this setting."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -4206,7 +4206,7 @@ checks:
   # 5.5.2 Ensure system accounts are secured. (Automated) - Not Implemented
 
   # 5.5.3 Ensure default group for the root account is GID 0. (Automated)
-  - id: 4687
+  - id: 4685
     title: "Ensure default group for the root account is GID 0."
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -4226,7 +4226,7 @@ checks:
       - 'f:/etc/passwd -> r:^root:\w:\w:0'
 
   # 5.5.4 Ensure default user shell timeout is configured. (Automated)
-  - id: 4688
+  - id: 4686
     title: "Ensure default user shell timeout is configured."
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT-Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. -export TMOUT -exports the TMOUT variable System Wide Shell Configuration Files: -/etc/profile -used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. -/etc/profile.d -/etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. -/etc/bashrc -System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
@@ -4249,7 +4249,7 @@ checks:
       - 'c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
 
   # 5.5.5 Ensure default user umask is configured. (Automated)
-  - id: 4689
+  - id: 4687
     title: "Ensure default user umask is configured."
     description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. The default umask can be set to use the pam_umask module or in a System Wide Shell Configuration File. The user creating the directories or files has the discretion of changing the permissions via the chmod command, or choosing a different default umask by adding the umask command into a User Shell Configuration File, (.bash_profile or .bashrc), in their home directory. Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the <primary group name> userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login."
     rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
@@ -4277,7 +4277,7 @@ checks:
   # 5.6 Ensure root login is restricted to system console. (Manual) - Not Implemented
 
   # 5.7 Ensure access to the su command is restricted. (Automated)
-  - id: 4690
+  - id: 4688
     title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
@@ -4307,7 +4307,7 @@ checks:
   ###############################################
 
   # 6.1.2 Ensure permissions on /etc/passwd are configured. (Automated)
-  - id: 4691
+  - id: 4689
     title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4328,7 +4328,7 @@ checks:
       - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured. (Automated)
-  - id: 4692
+  - id: 4690
     title: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4349,7 +4349,7 @@ checks:
       - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/shadow are configured. (Automated)
-  - id: 4693
+  - id: 4691
     title: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -4370,7 +4370,7 @@ checks:
       - 'c:stat -L /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
   # 6.1.5 Ensure permissions on /etc/shadow- are configured. (Automated)
-  - id: 4694
+  - id: 4692
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4391,7 +4391,7 @@ checks:
       - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
   # 6.1.6 Ensure permissions on /etc/gshadow- are configured. (Automated)
-  - id: 4695
+  - id: 4693
     title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4412,7 +4412,7 @@ checks:
       - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
-  - id: 4696
+  - id: 4694
     title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -4433,7 +4433,7 @@ checks:
       - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
   # 6.1.8 Ensure permissions on /etc/group are configured. (Automated)
-  - id: 4697
+  - id: 4695
     title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -4454,7 +4454,7 @@ checks:
       - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.9 Ensure permissions on /etc/group- are configured. (Automated)
-  - id: 4698
+  - id: 4696
     title: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -4481,7 +4481,7 @@ checks:
   # 6.1.14 Audit SGID executables. (Manual) - Not Implemented
 
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords. (Automated)
-  - id: 4699
+  - id: 4697
     title: "Ensure accounts in /etc/passwd use shadowed passwords."
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Notes: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -4502,7 +4502,7 @@ checks:
       - 'f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
-  - id: 4700
+  - id: 4698
     title: "Ensure /etc/shadow password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -4526,7 +4526,7 @@ checks:
   # 6.2.7 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
   # 6.2.8 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
   # 6.2.9 Ensure root is the only UID 0 account. (Automated)
-  - id: 4701
+  - id: 4699
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
