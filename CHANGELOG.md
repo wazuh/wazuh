@@ -62,7 +62,6 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the signature of the internal function `OSHash_GetIndex()`. ([#17040](https://github.com/wazuh/wazuh/pull/17040))
 
-
 ## [v4.6.0]
 
 ### Manager
