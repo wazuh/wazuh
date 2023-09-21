@@ -19,7 +19,7 @@ The following issue aims to run all `system tests` for the current release candi
 | **Previous system tests issue**      |                                            |
 
 ## Instructions
-For running tests in an AWS EC2 virtual environment, it will be needed to meet the following requirements:
+To run tests in an AWS EC2 virtual environment, the following requirements will need to be met:
 
 | Environment                  | EC2                                       |
 |------------------------------|-------------------------------------------|
