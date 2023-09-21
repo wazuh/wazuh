@@ -81,6 +81,30 @@ static void test_wm_parse_output_Dlevel1(void **state) {
 
 }
 
+static void test_wm_parse_output_with_error(void **state) {
+    char * output_module = {
+        ":azure_wodlxxxx: - DEBUG - Setting 1 thread to pull 100 messages in total\n"
+        ":azure_wodle: - INFO - Received and acknowledged 0 messages\n"
+        ":azure_wodle: - ERROR - This is an Error\n"
+        ":azure_wodlexx: - WARNING - This is a Warning\n"
+        ":azure_wodle: - CRITICAL - This is a Critical\n"
+        };
+
+    will_return(__wrap_isDebug, 1);
+
+    expect_string(__wrap__mtinfo, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Received and acknowledged 0 messages");
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is an Error\n:azure_wodlexx: - WARNING - This is a Warning");
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is a Critical");
+
+    wm_parse_output(output_module, WM_AZURE_LOGGING_TOKEN, WM_AZURE_LOGTAG, NULL);
+
+}
+
 static void test_wm_parse_output_all_with_error(void **state) {
     char * output_module = {
         ":azure_wodlxxxx: - DEBUG - Setting 1 thread to pull 100 messages in total\n"
@@ -134,7 +158,8 @@ int main(void) {
         cmocka_unit_test(test_wm_parse_output_Dlevel1),
         cmocka_unit_test(test_wm_parse_output_all_with_error),
         cmocka_unit_test(test_msg_to_print_according_to_debugLevel),
-        cmocka_unit_test(test_msg_to_print_according_to_debugLevel_error)
+        cmocka_unit_test(test_msg_to_print_according_to_debugLevel_error),
+        cmocka_unit_test(test_wm_parse_output_with_error)
     };
 
     int result;
