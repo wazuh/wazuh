@@ -3,13 +3,15 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import logging
+import os
 import ssl
 import uuid
 
 import aiohttp
 import certifi
-
 from wazuh.core.security import load_spec
+
+from api.constants import INSTALLATION_UID_PATH
 
 logger = logging.getLogger('wazuh-api')
 
@@ -34,12 +36,21 @@ def get_current_version():
 
 
 def get_installation_uid():
-    return str(uuid.uuid4())
+    with open(INSTALLATION_UID_PATH, 'r') as file:
+        return file.readline()
 
 
 async def modify_response_headers(request, response):
     # Delete 'Server' entry
     response.headers.pop('Server', None)
+
+
+@cancel_signal_handler
+async def check_installation_uid(app):
+    if not os.path.exists(INSTALLATION_UID_PATH):
+        logger.info("Populating installation UID")
+        with open(INSTALLATION_UID_PATH, 'w') as file:
+            file.write(str(uuid.uuid4()))
 
 
 @cancel_signal_handler
@@ -61,9 +72,13 @@ async def get_update_information(app):
 
 
 async def start_background_tasks(app):
-    app['get_update_information'] = asyncio.create_task(get_update_information(app))
+    app['check_installation_uid_task'] = asyncio.create_task(check_installation_uid(app))
+    app['get_update_information_task'] = asyncio.create_task(get_update_information(app))
 
 
 async def cleanup_background_tasks(app):
-    app['get_update_information'].cancel()
-    await app['get_update_information']
+    app['check_installation_uid_task'].cancel()
+    await app['check_installation_uid_task']
+
+    app['get_update_information_task'].cancel()
+    await app['get_update_information_task']
