@@ -17,26 +17,15 @@ from datetime import datetime
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 import aws_tools
+from buckets_s3.consts import (INVALID_CREDENTIALS_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_CODE,
+                    INVALID_CREDENTIALS_ERROR_MESSAGE, INVALID_REQUEST_TIME_ERROR_MESSAGE, THROTTLING_EXCEPTION_ERROR_MESSAGE )
 
 MAX_RECORD_RETENTION = 500
 PATH_DATE_FORMAT = "%Y/%m/%d"
 DB_DATE_FORMAT = "%Y%m%d"
 DEFAULT_DATABASE_NAME = "s3_cloudtrail"
 
-RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
-                          'considerations.html#Connection-configuration-for-retries'
-
-INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
-INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
-THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
-
 UNKNOWN_ERROR_MESSAGE = "Unexpected error: '{error}'."
-INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
-INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
-THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
-                                     "If the problem persists check the following link to learn how to use " \
-                                     f"the Retry configuration to avoid it: '{RETRY_CONFIGURATION_URL}'"
-
 AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
                            'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
 
@@ -490,6 +479,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
+        print('rock111: iter_bucket: commit')
         self.db_cursor.execute(self.sql_db_optimize)
         self.db_connector.close()
 
@@ -597,7 +587,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                         else:
                             aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
                             continue
+                    
 
+                    #TODO: filter out all the shit that are not matching the pattern
                     aws_tools.debug(f"++ Found new log: {bucket_file['Key']}", 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
