@@ -33,57 +33,9 @@ To run tests in an AWS EC2 virtual environment, the following requirements will 
 |Basic_environment             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 
 
-These requirements should be requested from the @wazuh/cicd team.
-
-
-For its execution, the installation of various packages is required, which will be detailed below.
-
-<details><summary>Steps</summary>
-
-```
-### Updating dependencies
-sudo apt update
-sudo apt upgrade
-
-### Installing git and cloning wazuh-qa repository
-sudo apt install git
-git clone https://github.com/wazuh/wazuh-qa.git
-
-### Installing docker
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io
-sudo systemctl start docker
-sudo systemctl enable docker
-
-### Installing ansible
-sudo apt install ansible
-
-### Installing ansible-docker libraries
-sudo pip3 install docker
-sudo apt install python3-pip
-pip install docker-py
-
-### Restarting docker
-sudo systemctl restart docker
-sudo docker system prune -a -f
-
-### Access as a root
-sudo su
-
-### Installing requirements and additional libraries
-python3 -m pip install -r /home/ubuntu/wazuh-qa/requirements.txt
-sudo apt install python3-pip
-sudo apt install python3.10-venv
-cd /home/ubuntu/wazuh-qa/deps/wazuh_testing
-python3 -m pip install .
-```
+These requirements should be requested to the @wazuh/cicd team via https://github.com/wazuh/internal-devel-requests.
 
 For further information: check https://github.com/wazuh/wazuh-qa/tree/master/tests/system/README.md
-
-</details>
 
 ## Test report procedure
 All individual test checks must be marked as:
