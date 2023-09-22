@@ -10,10 +10,10 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, \
     OSSEC_LOG_FIELDS
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources
 
@@ -393,3 +393,29 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
 
     result.total_affected_items = len(result.affected_items)
     return result
+
+
+def get_update_information(update_information: dict) -> WazuhResult:
+    """Process update information into a wazuh result.
+
+    Parameters
+    ----------
+    update_information : dict
+        Data to process.
+
+    Returns
+    -------
+    WazuhResult
+        Result with update information.
+    """
+
+    if not get_ossec_conf('global').get('update_check', 'yes') == 'yes':
+        raise WazuhResourceNotFound(1130)
+
+    if update_information['status_code'] != 200:
+        raise WazuhInternalError(2100, extra_message=update_information['message'])
+
+    update_information.pop('status_code')
+    update_information.pop('message')
+
+    return WazuhResult({'data': update_information})

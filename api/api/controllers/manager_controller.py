@@ -598,3 +598,18 @@ async def update_configuration(request, body: dict, pretty: bool = False,
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def check_available_version(request: web.Request, pretty: bool = False) -> web.Response:
+    dapi = DistributedAPI(
+        f=manager.get_update_information,
+        f_kwargs={
+            'update_information': request.app.get('update_information', {})
+        },
+        request_type='local_master',
+        is_async=False,
+        logger=logger
+    )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
