@@ -461,7 +461,7 @@ static std::string getSerialNumber()
                     {
                         PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
                         // Parse SMBIOS structures
-                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, size);
+                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
                     }
                 }
             }

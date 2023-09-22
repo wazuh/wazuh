@@ -165,28 +165,27 @@ class WazuhLogger:
             self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
         self.max_size = max_size
 
-    def setup_logger(self):
+    def setup_logger(self, handler: logging.Handler = None):
         """
         Prepare a logger with:
             * Two rotating file handlers (time | size).
             * A stream handler (if foreground_mode is enabled).
             * An additional debug level.
+
+        :param handler: custom handler that can be set instead of the default one.
         """
         logger = logging.getLogger(self.logger_name)
         cf = CustomFilter('log') if self.log_path.endswith('.log') else CustomFilter('json')
         logger.propagate = False
-
-        # Configure handler
-        custom_handler = TimeBasedFileRotatingHandler(filename=self.log_path, when='midnight') if self.max_size == 0 \
+        # configure logger
+        if handler:
+            custom_handler = handler
+        else:
+            custom_handler = TimeBasedFileRotatingHandler(filename=self.log_path, when='midnight') if self.max_size == 0 \
             else SizeBasedFileRotatingHandler(filename=self.log_path, maxBytes=self.max_size, backupCount=1)
 
-        # Set formatter
         custom_handler.setFormatter(self.custom_formatter)
-
-        # Add logging filters (logging mode)
         custom_handler.addFilter(cf)
-
-        # Add handler to logger
         logger.addHandler(custom_handler)
 
         if self.foreground_mode:
@@ -225,7 +224,7 @@ class WazuhLogger:
         ----------
         item : str
             Name of the attribute to return.
-        
+
         Returns
         -------
         object

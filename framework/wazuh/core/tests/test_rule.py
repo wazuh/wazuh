@@ -181,3 +181,17 @@ def test_set_groups(groups, general_groups):
     rule.set_groups(groups, general_groups, empty_rule)
 
     assert empty_rule == expected_result
+
+@pytest.mark.parametrize('groups, general_groups, expected_groups', [
+    (
+        ['\n syslog', 'firewall\r', 'azure\n log analytics '],
+        ['amazon   aws', '\n\r', ' gcp bucket '],
+        ['syslog', 'firewall', 'azure log analytics', 'amazon   aws', 'gcp bucket'],
+    )
+])
+def test_set_groups_names_format(groups, general_groups, expected_groups):
+    """Test set_groups names formatting."""
+    result = {'groups': []}
+    rule.set_groups(groups, general_groups, result)
+
+    assert result['groups'] == expected_groups

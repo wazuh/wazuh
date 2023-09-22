@@ -190,8 +190,11 @@ bool UbuntuOsParser::parseFile(std::istream& in, nlohmann::json& output)
 bool CentosOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
     constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
-    output["os_name"] = "Centos Linux";
-    output["os_platform"] = "centos";
+
+    if (!output.contains("os_name")) output["os_name"] = "Centos Linux";
+
+    if (!output.contains("os_platform")) output["os_platform"] = "centos";
+
     return findVersionInStream(in, output, PATTERN_MATCH);
 }
 
@@ -324,21 +327,21 @@ bool FedoraOsParser::parseFile(std::istream& in, nlohmann::json& output)
 
 bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
-    const std::string HEADER_STRING{"Oracle Solaris "};
+    const std::string HEADER_STRING{"Solaris "};
     output["os_name"] = "SunOS";
     output["os_platform"] = "sunos";
     std::string line;
-    bool ret{false};
+    size_t pos{std::string::npos};
 
-    while (!ret && std::getline(in, line))
+    while (pos == std::string::npos && std::getline(in, line))
     {
         line = Utils::trim(line);
-        ret = Utils::startsWith(line, HEADER_STRING);
+        pos = line.find(HEADER_STRING);
 
-        if (ret)
+        if (std::string::npos != pos)
         {
-            line = line.substr(HEADER_STRING.size());
-            const auto pos{line.find(" ")};
+            line = line.substr(pos + HEADER_STRING.size());
+            pos = line.find(" ");
 
             if (pos != std::string::npos)
             {
@@ -350,7 +353,7 @@ bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
         }
     }
 
-    return ret;
+    return std::string::npos == pos ? false : true;
 }
 
 bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
@@ -438,6 +441,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
         {"20", "Big Sur"},
         {"21", "Monterey"},
         {"22", "Ventura"},
+        {"23", "Sonoma"},
     };
     constexpr auto PATTERN_MATCH{"[0-9]+"};
     std::string match;
