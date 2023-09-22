@@ -9,6 +9,7 @@ import uuid
 
 import aiohttp
 import certifi
+from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.security import load_spec
 
 from api.constants import INSTALLATION_UID_PATH
@@ -38,6 +39,12 @@ def get_current_version():
 def get_installation_uid():
     with open(INSTALLATION_UID_PATH, 'r') as file:
         return file.readline()
+
+
+def is_running_in_master_node() -> bool:
+    cluster_config = read_cluster_config()
+
+    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
 
 
 async def modify_response_headers(request, response):
@@ -71,14 +78,15 @@ async def get_update_information(app):
             await asyncio.sleep(60*60*24)
 
 
-async def start_background_tasks(app):
-    app['check_installation_uid_task'] = asyncio.create_task(check_installation_uid(app))
-    app['get_update_information_task'] = asyncio.create_task(get_update_information(app))
+async def register_background_tasks(app):
+    tasks: list[asyncio.Task] = []
 
+    if is_running_in_master_node():
+        tasks.append(asyncio.create_task(check_installation_uid(app)))
+        tasks.append(asyncio.create_task(get_update_information(app)))
 
-async def cleanup_background_tasks(app):
-    app['check_installation_uid_task'].cancel()
-    await app['check_installation_uid_task']
+    yield
 
-    app['get_update_information_task'].cancel()
-    await app['get_update_information_task']
+    for task in tasks:
+        task.cancel()
+        await task
