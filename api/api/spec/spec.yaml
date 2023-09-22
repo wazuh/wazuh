@@ -13046,6 +13046,30 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /manager/version/check:
+    get:
+      tags:
+      - Manager
+      summary: "Check available version update"
+      description: "Return if there an available version update"
+      operationId: api.controllers.manager_controller.check_available_version
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Information about the available version"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /mitre/groups:
     get:
       tags:

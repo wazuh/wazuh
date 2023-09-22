@@ -17,7 +17,7 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deseri
 from api.validator import check_component_configuration_pair
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -598,3 +598,22 @@ async def update_configuration(request, body: dict, pretty: bool = False,
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def check_available_version(request: web.Request, pretty: bool = False) -> web.Response:
+    try:
+        update_information = request.app['update_information']
+
+        response_dict = {'last_check_date': update_information['last_check_date']}
+
+        if update_information['available_update']:
+            response_dict.update(update_information['available_update'])
+        else:
+            response_dict['message'] = update_information['message']
+
+        response = WazuhResult(response_dict)
+    except KeyError:
+        # In case that the check is disabled
+        response = WazuhResult({})
+
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)

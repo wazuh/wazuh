@@ -6,6 +6,7 @@ import logging
 import os
 import ssl
 import uuid
+from datetime import datetime
 
 import aiohttp
 import certifi
@@ -75,6 +76,57 @@ async def get_update_information(app):
             async with session.get('https://httpbin.org/get', headers=headers) as response:
                 logger.debug("Response status %s", response.status)
                 logger.debug("Response data: %s", await response.json())
+
+                response_data = {  # This is a sample and must be reaplced with the API response
+                    'data': {
+                        'minor': [
+                            {
+                                'tag': 'v4.6.0',
+                                'description': None,
+                                'title': 'Wazuh 4.6.0',
+                                'published_date': '2023-09-01T17:05:00Z',
+                                'semver': {
+                                    'minor': 6,
+                                    'patch': 0,
+                                    'mayor': 4
+                                }
+                            }
+                        ],
+                        'patch': [
+                            {
+                                'tag': 'v4.5.2',
+                                'description': None,
+                                'title': 'Wazuh 4.5.2',
+                                'published_date': '2023-09-10T17:24:00Z',
+                                'semver': {
+                                    'minor': 5,
+                                    'patch': 2,
+                                    'mayor': 4
+                                }
+                            }
+                        ],
+                        'mayor': []
+                    }
+                }
+
+                update_information = {
+                    'last_check_date': datetime.utcnow(),
+                    'status_code': response.status,
+                    'message': '',
+                    'available_update': {}
+                }
+
+                if response.status == 200:
+                    if len(response_data['data']['patch']):
+                        update_information['available_update'].update(**response_data['data']['patch'][0])
+                    elif len(response_data['data']['minor']):
+                        update_information['available_update'].update(**response_data['data']['minor'][0])
+                    elif len(response_data['data']['mayor']):
+                        update_information['available_update'].update(**response_data['data']['mayor'][0])
+                else:
+                    update_information['message'] = response_data['errors']['detail']
+
+                app['update_information'] = update_information
             await asyncio.sleep(60*60*24)
 
 
