@@ -36,7 +36,8 @@ static const nlohmann::json CONFIG_PARAMETERS =
                 "outputFolder": "/tmp/testProvider",
                 "dataFormat": "json",
                 "contentFileName": "example.json",
-                "s3FileName": "content.filtered_little.1.xz"
+                "s3FileName": "content.filtered_little.1.xz",
+                "databasePath": "/tmp/content_updater/rocksdb"
             }
         }
         )"_json;
