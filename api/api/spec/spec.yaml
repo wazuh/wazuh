@@ -13062,6 +13062,68 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /manager/version/check:
+    get:
+      tags:
+      - Manager
+      summary: "Check available version update"
+      description: "Return if there an available version update"
+      operationId: api.controllers.manager_controller.check_available_version
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Information about the available version"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  last_check_date: '2023-10-09T15:39:57.616301+00:00'
+                  current_version: v4.8.0
+                  last_available_major:
+                    tag: v5.0.0
+                    description:
+                    title: Wazuh 5.0.0
+                    published_date: '2023-10-05T12:48:00Z'
+                    semver:
+                      major: 5
+                      minor: 0
+                      patch: 0
+                  last_available_minor:
+                    tag: v4.9.1
+                    description:
+                    title: Wazuh 4.9.1
+                    published_date: '2023-10-05T12:47:00Z'
+                    semver:
+                      major: 4
+                      minor: 9
+                      patch: 1
+                  last_available_patch:
+                    tag: v4.8.2
+                    description:
+                    title: Wazuh 4.8.2
+                    published_date: '2023-10-05T12:46:00Z'
+                    semver:
+                      major: 4
+                      minor: 8
+                      patch: 2
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /mitre/groups:
     get:
       tags:
