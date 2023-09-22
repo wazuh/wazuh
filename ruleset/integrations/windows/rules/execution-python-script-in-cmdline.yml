@@ -14,7 +14,7 @@ metadata:
 check :
   - event.type: array_contains(start)
   - event.category: array_contains(process)
-  - process.pe.original_file_name: python.exe
+  - process.name: python.exe
   - process.args: array_contains(-c, import, sys)
 
 normalize:

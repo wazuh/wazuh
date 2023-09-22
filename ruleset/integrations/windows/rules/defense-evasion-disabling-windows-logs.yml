@@ -15,11 +15,15 @@ metadata:
     - https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/logman
     - https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63
 
-check :
-  - event.type: array_contains(start)
-  - event.category: array_contains(process)
-  - process.pe.original_file_name: Logman.exe
-  - process.args: array_contains(EventLog, stop)
+check: >-
+    array_contains($event.type,start) AND array_contains($event.category,process)
+    AND (((contains($process.executable,logman.exe) OR $process.pe.original_file_name==Logman.exe))
+    AND (array_contains($process.args, EventLog-) AND array_contains($process.args, stop, delete))
+    OR ((contains($process.name,pwsh.exe) OR contains($process.executable,powershell.exe)
+    OR contains($process.executable,powershell_ise.exe)) OR (contains($process.pe.original_file_name,pwsh.exe)
+    OR contains($process.pe.original_file_name,powershell.exe) OR contains($process.pe.original_file_name,powershell_ise.exe))
+    AND (array_contains($process.args,Set-Service) AND array_contains($process.args,EventLog) AND array_contains($process.args,Disabled)))
+    OR ((contains($process.name,auditpol.exe) OR contains($process.pe.original_file_name,AUDITPOL.EXE)) AND array_contains($process.args, '/success:disable')))
 
 normalize:
   - map:

@@ -1,4 +1,4 @@
-name: rule/webserver-access-logs-deleted/0
+name: rule/defense-evasion-deleting-websvr-access-logs/0
 
 metadata:
   module: Windows
@@ -14,9 +14,10 @@ metadata:
     - "https://attack.mitre.org/tactics/TA0005/"
 
 check :
-  - event.type: array_contains(deletion)
-  - event.category: array_contains(file)
-  - file.path: contains('Apache24\logs\access.log')
+    array_contains($event.type, deletion) AND array_contains($event.category, file) AND
+    (contains($file.path, "C:\\inetpub\\logs\\LogFiles\\*.log") OR contains($file.path, "/var/log/apache*/access.log") OR
+    contains($file.path, "/etc/httpd/logs/access_log") OR contains($file.path, /var/log/httpd/access_log) OR
+    contains($file.path, "/var/www/*/logs/access.log"))
 
 normalize:
   - map:
