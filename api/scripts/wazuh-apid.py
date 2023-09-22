@@ -10,7 +10,7 @@ import signal
 import sys
 
 from api.constants import API_LOG_PATH
-from wazuh.core.wlogging import CustomFileRotatingHandler
+from wazuh.core.wlogging import TimeBasedFileRotatingHandler, SizeBasedFileRotatingHandler
 from wazuh.core import pyDaemonModule
 
 API_MAIN_PROCESS = 'wazuh-apid'
@@ -197,13 +197,27 @@ if __name__ == '__main__':
 
 
     def set_logging(log_path=f'{API_LOG_PATH}.log', foreground_mode=False, debug_mode='info'):
-        custom_handler = CustomFileRotatingHandler(filename=log_path, when='midnight')
+        """Set up logging for the API.
+        
+        Parameters
+        ----------
+        log_path : str
+            Path of the log file.
+        foreground_mode : bool
+            If True, the log will be printed to stdout.
+        debug_mode : str
+            Debug level. Possible values: disabled, info, warning, error, debug, debug2.
+        """
+        if not api_conf['logs']['max_size']['enabled']:
+            custom_handler = TimeBasedFileRotatingHandler(filename=log_path, when='midnight')
+        else:
+            max_size = APILoggerSize(api_conf['logs']['max_size']['size']).size
+            custom_handler = SizeBasedFileRotatingHandler(filename=log_path, maxBytes=max_size, backupCount=1)
+
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
                 log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
-                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode,
-                max_size=APILoggerSize(api_conf['logs']['max_size']['size']).size
-                if api_conf['logs']['max_size']['enabled'] else 0
+                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
             )
             api_logger.setup_logger(custom_handler)
         if os.path.exists(log_path):

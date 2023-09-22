@@ -94,7 +94,6 @@ class AccessLogger(AbstractAccessLogger):
         time : float
             Time taken by the API to respond to the request.
         """
-        self.check_stream()
         query = dict(request.query)
         body = request.get("body", dict())
         if 'password' in query:
