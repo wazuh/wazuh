@@ -42,3 +42,22 @@ TEST_F(TimeUtilsTest, CheckTimestampInvalidFormat)
     EXPECT_FALSE(std::regex_match(currentTimestamp, std::regex(DATE_FORMAT_REGEX_STR)));
     EXPECT_FALSE(std::regex_match(timestamp, std::regex(DATE_FORMAT_REGEX_STR)));
 }
+
+TEST_F(TimeUtilsTest, CheckCompactTimestampValidFormat)
+{
+    constexpr auto DATE_FORMAT_REGEX_STR { "[0-9]{4}/([0-9]|1[0-2]){2}/(([0-9]|1[0-2]){2}) (([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2})" };
+    constexpr auto COMPACT_FORMAT_REGEX_STR { "[0-9]{4}([0-9]|1[0-2]){2}(([0-9]|1[0-2]){2})(([0-9]|1[0-2]){2})(([0-9]|1[0-2]){2})(([0-9]|1[0-2]){2})" };
+    const auto currentTimestamp { Utils::getCurrentTimestamp() };
+    const auto timestamp { Utils::getCompactTimestamp(std::time(nullptr)) };
+    EXPECT_TRUE(std::regex_match(currentTimestamp, std::regex(DATE_FORMAT_REGEX_STR))) << timestamp;
+    EXPECT_TRUE(std::regex_match(timestamp, std::regex(COMPACT_FORMAT_REGEX_STR)));
+}
+
+TEST_F(TimeUtilsTest, CheckCompactTimestampInvalidFormat)
+{
+    constexpr auto DATE_FORMAT_REGEX_STR { "[0-9]{4}/([1-9]|1[0-2])/([1-9]|[1-2][0-9]|3[0-1])(2[0-3]|1[0-9]|[0-9]):([0-9]|[1-5][0-9]):([1-5][0-9]|[0-9])" };
+    const auto currentTimestamp { Utils::getCurrentTimestamp() };
+    const auto timestamp { Utils::getCompactTimestamp(std::time(nullptr)) };
+    EXPECT_FALSE(std::regex_match(currentTimestamp, std::regex(DATE_FORMAT_REGEX_STR)));
+    EXPECT_FALSE(std::regex_match(timestamp, std::regex(DATE_FORMAT_REGEX_STR)));
+}

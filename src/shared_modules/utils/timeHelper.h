@@ -43,12 +43,34 @@ namespace Utils
         ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
         return ss.str();
     }
-
     static std::string getCurrentTimestamp()
     {
         return getTimestamp(std::time(nullptr));
     }
-};
+
+    /**
+     * @brief Get a compact timestamp.
+     *
+     * @param time Time to convert.
+     * @param utc If true, the time will be expressed as a UTC time.
+     * @return std::string Compact timestamp. Format: "YYYYMMDDhhmmss".
+     */
+    static std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
+    {
+        std::stringstream ss;
+        // gmtime: result expressed as a UTC time
+        tm const* localTime { utc ? gmtime(&time) : localtime(&time)};
+        // Date
+        ss << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mon + 1);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mday);
+        // Time
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_hour);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_min);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
+        return ss.str();
+    }
+}
 
 #pragma GCC diagnostic pop
 
