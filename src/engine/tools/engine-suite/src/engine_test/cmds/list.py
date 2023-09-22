@@ -1,7 +1,8 @@
-from engine_test.integration import Integration
+from engine_test.crud_integration import CrudIntegration
 
 def run(args):
-    integrations = Integration.get_integrations()
+    integration = CrudIntegration()
+    integrations = integration.get_integrations()
     for item in integrations:
         print(item)
 

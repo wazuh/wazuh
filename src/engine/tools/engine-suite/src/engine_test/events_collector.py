@@ -1,10 +1,6 @@
 from enum import Enum
 import sys
 
-class CollectorType(Enum):
-    ONE_EVENT = 1
-    ANY_EVENTS = 2
-
 class EventsCollector:
     def collect() -> []:
         print("Enter any events (CTRL+D to finish):\n")
