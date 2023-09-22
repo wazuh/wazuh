@@ -510,12 +510,12 @@ void test_wazuhdb_create_state_json(void ** state) {
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 25550);
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 25996);
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "agent"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "agent")->valueint, 17979);
+    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "agent")->valueint, 18425);
 
     cJSON* agent_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "agent_breakdown");
 
@@ -545,7 +545,7 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry"));
     assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry")->valueint, 221);
     assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_key"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_value")->valueint, 222);
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_value")->valueint, 223);
     assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_key"));
     assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_value")->valueint, 223);
 
