@@ -3405,8 +3405,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:(\d+): compare < 1'
 
   # 5.4.1.4 Ensure password expiration warning days is 7 or more. (Automated)
   - id: 21192
@@ -3424,8 +3426,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:\d+:(\d+): compare < 7'
 
   # 5.4.1.5 Ensure inactive password lock is 30 days or less. (Automated)
   - id: 21193
@@ -3442,44 +3446,15 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - "not c:useradd -D -> r:^INACTIVE=-1"
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
+      - 'not f:/etc/shadow -> n:^\w+:\w+:\w+:\w+:\w+:\w+:(\d+): compare > 30'
+      - 'not f:/etc/shadow -> r:^\w+:\w+:\w+:\w+:\w+:\w+:-1:'
 
-  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated)
-  - id: 21194
-    title: "Ensure all users last password change date is in the past."
-    description: "All users should have a password change date in the past."
-    rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
-    compliance:
-      - cis: ["5.4.1.6"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
-    condition:
-    rules:
-
-  # 5.4.2 Ensure system accounts are secured. (Automated)
-  - id: 21195
-    title: "Ensure system accounts are secured."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands. Note: The root, sync, shutdown, and halt users are exempted from requiring a non-login shell."
-    remediation: "Run the commands appropriate for your distribution: Set the shell for any accounts returned by the audit to nologin: # usermod -s $(which nologin) <user> Lock any non root accounts returned by the audit: # usermod -L <user> The following command will set all system accounts to a non login shell: # awk -F: '($1!=\"root\" && $1!=\"sync\" && $1!=\"shutdown\" && $1!=\"halt\" && $1!~/^\\+/ && $3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' && $7!=\"'\"$(which nologin)\"'\" && $7!=\"/bin/false\" && $7!=\"/usr/bin/false\") {print $1}' /etc/passwd | while read -r user; do usermod -s \"$(which nologin)\" \"$user\"; done The following command will automatically lock not root system accounts: # awk -F: '($1!=\"root\" && $1!~/^\\+/ && $3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"') {print $1}' /etc/passwd | xargs -I '{}' passwd -S '{}' | awk '($2!=\"L\" && $2!=\"LK\") {print $1}' | while read -r user; do usermod -L \"$user\"; done."
-    compliance:
-      - cis: ["5.4.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
+  # 5.4.2 Ensure system accounts are secured. (Automated) - Not Implemented
 
   # 5.4.3 Ensure default group for the root account is GID 0. (Automated)
   - id: 21196
@@ -3497,66 +3472,13 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/passwd -> !r:^\s*\t*# && r:root:\w+:\w+:0:'
 
-  # 5.4.4 Ensure default user shell timeout is configured. (Automated)
-  - id: 21197
-    title: "Ensure default user shell timeout is configured."
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session. Notes: - The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files are also checked. Other methods of setting a timeout exist for other shells not covered here. - The TMOUT option applies to the active shell only. In case a user switches from one shell to another, it needs another full cycle to close the remaining shell. - /etc/profile may get updated by YaST2 Online Update - Ensure that the timeout conforms to your local policy."
-    remediation: "Review /etc/bash.bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in a file ending in .sh in the /etc/profile.d/ directory. TMOUT configuration examples: - As multiple lines: TMOUT=900 readonly TMOUT export TMOUT - As a single line: readonly TMOUT=900 ; export TMOUT."
-    compliance:
-      - cis: ["5.4.4"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
-  # 5.4.5 Ensure default user umask is configured. (Automated)
-  - id: 21198
-    title: "Ensure default user umask is configured."
-    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. - The user creating the directories or files has the discretion of changing the permissions by: Issuing the chmod command o o Choosing a different default umask o Adding the umask command into a User Shell Configuration File, ( .bash_profile or .bashrc), in their home directory - The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. - umask can be set with either octal or Symbolic values: o Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. o Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bash.bashrc - System wide version of .bashrc. etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non- interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login."
-    rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users. Notes: - The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. - Other methods of setting a default user umask exist. - If other methods are in use in your environment they should be audited and the shell configs should be verified to not override."
-    remediation: "Configure umask in one of the following locations: - /etc/login.defs - Recommended - A file ending in .sh in the /etc/profile.d/ directory - /etc/default/login - - /etc/profile.local /etc/profile - This is not recommended, may be updated/overwritten by YaST2 Online Update Example: edit /etc/login.defs and add or modify the UMASK line. UMASK 027 Review files ending in .sh in the /etc/profile.d/ directory, and the files; /etc/bash.bashrc, /etc/profile, and /etc/profile.local. Remove or edit all umask entries to follow local site policy. Any remaining entries should be: umask 027, umask u=rwx,g=rx,o= or more restrictive."
-    compliance:
-      - cis: ["5.4.5"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1", "13"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.5 Ensure root login is restricted to system console. (Manual)
-  - id: 21199
-    title: "Ensure root login is restricted to system console."
-    description: "The file /etc/securetty contains a list of valid terminals that may be logged in directly as root."
-    rationale: "Since the system console has special properties to handle emergency situations, it is important to ensure that the console is in a physically secure location and that unauthorized consoles have not been defined."
-    remediation: "Remove entries for any consoles that are not in a physically secure location."
-    compliance:
-      - cis: ["5.5"]
-      - cis_csc_v8: ["4.1", "4.6"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "SC.L2-3.13.15"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC5.2", "CC7.1", "CC8.1"]
-    condition:
-    rules:
+  # 5.4.4 Ensure default user shell timeout is configured. (Automated) - Not Implemented
+  # 5.4.5 Ensure default user umask is configured. (Automated) - Not Implemented
+  # 5.5 Ensure root login is restricted to system console. (Manual) - Not Implemented
 
   # 5.6 Ensure access to the su command is restricted. (Automated)
   - id: 21200
@@ -3575,30 +3497,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/su -> !r:^\s*\t*# && r:auth && r:required && r:pam_wheel.so && r:use_uid && r:group=\w+'
 
-  # 6.1.1 Audit system file permissions. (Manual)
-  - id: 21201
-    title: "Audit system file permissions."
-    description: "The RPM package manager has a number of useful options. One of these, the -V option, can be used to verify that system packages are correctly installed. The V option can be used to verify a particular package or to verify all system packages. If no output is returned, the package is installed correctly. The following table describes the meaning of output from the verify option: Code Meaning S File size differs. M File mode differs (includes permissions and file type). 5 The MD5 checksum differs. D The major and minor version numbers differ on a device file. L A mismatch occurs in a link. U The file ownership differs. G The file group owner differs. T The file time (mtime) differs. The rpm -qf command can be used to determine which package a particular file belongs to. For example the following commands determines which package the /etc/ssh/sshd_config file belongs to: # rpm -qf /etc/ssh/sshd_config openssh-7.9p1-6.14.1.x86_64 To verify the settings for the package that controls the /etc/ssh/sshd_config file, run the following: # rpm -V openssh-7.9p1-6.14.1.x86_64 S.5....T. c /etc/ssh/sshd_config Note: You can feed the output of the rpm -qf command to the rpm -V command: # rpm -V $(rpm -qf /etc/ssh/sshd_config) S.5....T. c /etc/ssh/sshd_config Notes: - Since packages and important files may change with new updates and releases, it is recommended to verify everything, not just a finite list of files. This can be a time consuming task and results may depend on site policy therefore it is not a scorable benchmark item, but is provided for those interested in additional security measures. - Some of the recommendations of this benchmark alter the state of files audited by this recommendation. The audit command will alert for all changes to a file permissions even if the new state is more secure than the default."
-    rationale: "It is important to confirm that packaged system files and directories are maintained with the permissions they were intended to have from the OS distributor or in accordance with local site policy."
-    remediation: "Investigate the results to ensure any discrepancies found are understood and support proper secure operation of the system."
-    references:
-      - "https://docs.fedoraproject.org/en-US/fedora/rawhide/system-administrators-"
-    compliance:
-      - cis: ["6.1.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.1.1 Audit system file permissions. (Manual) - Not Implemented
 
   # 6.1.2 Ensure permissions on /etc/passwd are configured. (Automated)
   - id: 21202
@@ -3617,8 +3520,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.3 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 21203
@@ -3637,8 +3541,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root (\d+) shadow && r:644|640|604|600|400|500'
 
   # 6.1.4 Ensure permissions on /etc/group are configured. (Automated)
   - id: 21204
@@ -3657,8 +3562,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.5 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 21205
@@ -3677,8 +3583,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 21206
@@ -3697,8 +3604,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root (\d+) shadow && r:644|640|604|600|400|500'
 
   # 6.1.7 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 21207
@@ -3717,102 +3625,15 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.8 Ensure no world writable files exist. (Automated)
-  - id: 21208
-    title: "Ensure no world writable files exist."
-    description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
-    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
-    remediation: 'Removing write access for the "other" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file.'
-    compliance:
-      - cis: ["6.1.8"]
-      - cis_csc_v8: ["3.3", "4.1"]
-      - cis_csc_v7: ["5.1", "13"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.1.9 Ensure no unowned files or directories exist. (Automated)
-  - id: 21209
-    title: "Ensure no unowned files or directories exist."
-    description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
-    rationale: 'A new user who is assigned the deleted user''s user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.'
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    compliance:
-      - cis: ["6.1.9"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["13.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.1.10 Ensure no ungrouped files or directories exist. (Automated)
-  - id: 21210
-    title: "Ensure no ungrouped files or directories exist."
-    description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
-    rationale: 'A new user who is assigned the deleted user''s user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.'
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    compliance:
-      - cis: ["6.1.10"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["13.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.1.11 Audit SUID executables. (Manual)
-  - id: 21211
-    title: "Audit SUID executables."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
-    remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    compliance:
-      - cis: ["6.1.11"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.1.12 Audit SGID executables. (Manual)
-  - id: 21212
-    title: "Audit SGID executables."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
-    remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    compliance:
-      - cis: ["6.1.12"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
+  # 6.1.8 Ensure no world writable files exist. (Automated) - Not Implemented
+  # 6.1.9 Ensure no unowned files or directories exist. (Automated) - Not Implemented
+  # 6.1.10 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
+  # 6.1.11 Audit SUID executables. (Manual) - Not Implemented
+  # 6.1.12 Audit SGID executables. (Manual) - Not Implemented
 
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords. (Automated)
   - id: 21213
@@ -3831,8 +3652,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 21214
@@ -3848,8 +3670,9 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/shadow -> r:^\w+::'
 
   # 6.2.3 Ensure root is the only UID 0 account. (Automated)
   - id: 21215
@@ -3867,271 +3690,24 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/passwd -> !r:^\s*\t*# && !r:^root: && r:^\w+:\w+:0:'
 
-  # 6.2.4 Ensure root PATH Integrity. (Automated)
-  - id: 21216
-    title: "Ensure root PATH Integrity."
-    description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
-    rationale: "Including the current working directory (.) or other writable directory in root 's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
-    remediation: "Correct or justify any items discovered in the Audit step."
-    compliance:
-      - cis: ["6.2.4"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.5 Ensure all users' home directories exist. (Automated)
-  - id: 21217
-    title: "Ensure all users' home directories exist."
-    description: "Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
-    rationale: 'If the user''s home directory does not exist or is unassigned, the user will be placed in "/" and will not be able to write any files or have local environment variables set.'
-    remediation: "If any users' home directories do not exist, create them and make sure the respective user owns the directory. Users without an assigned home directory should be removed or assigned a home directory as appropriate."
-    compliance:
-      - cis: ["6.2.5"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.6 Ensure users' home directories permissions are 750 or more restrictive. (Automated)
-  - id: 21218
-    title: "Ensure users' home directories permissions are 750 or more restrictive."
-    description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
-    rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to user home directories without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user file permissions and determine the action to be taken in accordance with site policy."
-    compliance:
-      - cis: ["6.2.6"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.7 Ensure users own their home directories. (Automated)
-  - id: 21219
-    title: "Ensure users own their home directories."
-    description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
-    rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
-    remediation: "Change the ownership of any home directories that are not owned by the defined user to the correct user."
-    compliance:
-      - cis: ["6.2.7"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.8 Ensure users' dot files are not group or world writable. (Automated)
-  - id: 21220
-    title: "Ensure users' dot files are not group or world writable."
-    description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
-    rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy."
-    compliance:
-      - cis: ["6.2.8"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.9 Ensure no users have .forward files. (Automated)
-  - id: 21221
-    title: "Ensure no users have .forward files."
-    description: "The .forward file specifies an email address to forward the user's mail to."
-    rationale: "Use of the .forward file poses a security risk in that sensitive data may be inadvertently transferred outside the organization. The .forward file also poses a risk as it can be used to execute commands that may perform unintended actions."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .forward files and determine the action to be taken in accordance with site policy."
-    compliance:
-      - cis: ["6.2.9"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.10 Ensure no users have .netrc files. (Automated)
-  - id: 21222
-    title: "Ensure no users have .netrc files."
-    description: "The .netrc file contains data for logging into a remote host for file transfers via FTP."
-    rationale: "The .netrc file presents a significant security risk since it stores passwords in unencrypted form. Even if FTP is disabled, user accounts may have brought over .netrc files from other systems which could pose a risk to those systems."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc files and determine the action to be taken in accordance with site policy."
-    compliance:
-      - cis: ["6.2.10"]
-      - cis_csc_v8: ["4.6"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["SC.L2-3.13.15"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - soc_2: ["CC5.2"]
-    condition:
-    rules:
-
-  # 6.2.11 Ensure users' .netrc Files are not group or world accessible. (Automated)
-  - id: 21223
-    title: "Ensure users' .netrc Files are not group or world accessible."
-    description: "While the system administrator can establish secure permissions for users' .netrc files, the users can easily override these."
-    rationale: ".netrc files may contain unencrypted passwords that may be used to attack other systems. Note: While the complete removal of .netrc files is recommended if any are required on the system secure permissions must be applied."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc file permissions and determine the action to be taken in accordance with site policy."
-    compliance:
-      - cis: ["6.2.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.12 Ensure no users have .rhosts files. (Automated)
-  - id: 21224
-    title: "Ensure no users have .rhosts files."
-    description: "While no .rhosts files are shipped by default, users can easily create them."
-    rationale: "This action is only meaningful if .rhosts support is permitted in the file /etc/pam.conf . Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf , they may have been brought over from other systems and could contain information useful to an attacker for those other systems."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .rhosts files and determine the action to be taken in accordance with site policy."
-    compliance:
-      - cis: ["6.2.12"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.13 Ensure all groups in /etc/passwd exist in /etc/group. (Automated)
-  - id: 21225
-    title: "Ensure all groups in /etc/passwd exist in /etc/group."
-    description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
-    rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
-    remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
-    compliance:
-      - cis: ["6.2.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.14 Ensure no duplicate UIDs exist. (Automated)
-  - id: 21226
-    title: "Ensure no duplicate UIDs exist."
-    description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
-    rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique UIDs and review all files owned by the shared UIDs to determine which UID they are supposed to belong to."
-    compliance:
-      - cis: ["6.2.14"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.15 Ensure no duplicate GIDs exist. (Automated)
-  - id: 21227
-    title: "Ensure no duplicate GIDs exist."
-    description: "Although the groupadd program will not let you create a duplicate Group ID (GID), it is possible for an administrator to manually edit the /etc/group file and change the GID field. Note: You can also use the grpck command to check for other inconsistencies in the /etc/group file."
-    rationale: "User groups must be assigned unique GIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to."
-    compliance:
-      - cis: ["6.2.15"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.16 Ensure no duplicate user names exist. (Automated)
-  - id: 21228
-    title: "Ensure no duplicate user names exist."
-    description: "Although the useradd program will not let you create a duplicate user name, it is possible for an administrator to manually edit the /etc/passwd file and change the user name."
-    rationale: 'If a user is assigned a duplicate user name, it will create and have access to files with the first UID for that username in /etc/passwd . Example: If "test4" has a UID of 1000 and a subsequent "test4" entry has a UID of 2000, logging in as "test4" will use UID 1000. Effectively, the UID is shared, which is a security problem.'
-    remediation: "Based on the results of the audit script, establish unique user names for the users. File ownerships will automatically reflect the change as long as the users have unique UIDs."
-    compliance:
-      - cis: ["6.2.16"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
+  # 6.2.4 Ensure root PATH Integrity. (Automated) - Not Implemented
+  # 6.2.5 Ensure all users' home directories exist. (Automated) - Not Implemented
+  # 6.2.6 Ensure users' home directories permissions are 750 or more restrictive. (Automated) - Not Implemented
+  # 6.2.7 Ensure users own their home directories. (Automated) - Not Implemented
+  # 6.2.8 Ensure users' dot files are not group or world writable. (Automated) - Not Implemented
+  # 6.2.9 Ensure no users have .forward files. (Automated) - Not Implemented
+  # 6.2.10 Ensure no users have .netrc files. (Automated) - Not Implemented
+  # 6.2.11 Ensure users' .netrc Files are not group or world accessible. (Automated) - Not Implemented
+  # 6.2.12 Ensure no users have .rhosts files. (Automated) - Not Implemented
+  # 6.2.13 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
+  # 6.2.14 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
+  # 6.2.15 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
+  # 6.2.16 Ensure no duplicate user names exist. (Automated) - Not Implemented
   # 6.2.17 Ensure no duplicate group names exist. (Automated)
-  - id: 21229
-    title: "Ensure no duplicate group names exist."
-    description: "Although the groupadd program will not let you create a duplicate group name, it is possible for an administrator to manually edit the /etc/group file and change the group name."
-    rationale: "If a group is assigned a duplicate group name, it will create and have access to files with the first GID for that group in /etc/group . Effectively, the GID is shared, which is a security problem."
-    remediation: "Based on the results of the audit script, establish unique names for the user groups. File group ownerships will automatically reflect the change as long as the groups have unique GIDs."
-    compliance:
-      - cis: ["6.2.17"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
 
   # 6.2.18 Ensure shadow group is empty. (Automated)
   - id: 21230
@@ -4149,5 +3725,6 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/group -> r:shadow:\w*:\d+:$'
