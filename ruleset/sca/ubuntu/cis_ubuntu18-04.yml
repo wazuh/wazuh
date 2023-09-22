@@ -231,13 +231,13 @@ checks:
     impact: "Since the /dev/shm directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. /dev/shm utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
     remediation: "For specific configuration requirements of the /dev/shm mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /dev/shm defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 tmpfs."
     compliance:
-      - cis: ["1.1.6"]
-      - cis_csc_v7: ["5.1, 13"]
-      - cmmc_v2.0: ["AC.1.002", "AC.4.023", "AM.3.036", "CM.2.061", "SC.3.180"]
-      - iso_27001-2013: ["A.8.1.3", "A.8.2.1", "A.14.2.5"]
+      - cis: ["1.1.4"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
       - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-      - pci_dss_v3.2.1: ["1.1.2", "1.1.3", "2.2", "3.4", "9.6.1"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s'
@@ -2493,9 +2493,6 @@ checks:
     compliance:
       - cis: ["4.1.12"]
       - cis_csc_v7: ["13"]
-      - cmmc_v2.0: ["AC.4.023", "AM.3.036"]
-      - iso_27001-2013: ["A.8.2.1"]
-      - pci_dss_v3.2.1: ["1.1.2", "1.1.3", "3.4", "9.6.1"]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -2513,11 +2510,11 @@ checks:
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete | -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.13"]
-      - cis_csc_v7: ["6.2", "13"]
-      - cmmc_v2.0: ["AU.2.042", "AU.5.055", "AC.4.023", "AM.3.036"]
-      - iso_27001-2013: ["A.8.2.1", "A.12.4.1"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
+      - iso_27001-2013: ["A.12.4.1"]
       - nist_sp_800-53: ["AU-12", "AU-3"]
-      - pci_dss_v3.2.1: ["1.1.2", "1.1.3", "3.4", "9.6.1", "10.2", "10.3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
       - "d:/etc/audit"
@@ -2789,10 +2786,6 @@ checks:
     compliance:
       - cis: ["5.1.1"]
       - cis_csc_v7: ["6"]
-      - cmmc_v2.0: ["AU.2.043"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - nist_sp_800-53: ["AU-8"]
-      - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> r:enabled"
@@ -3290,6 +3283,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 300 ClientAliveCountMax 0."
     compliance:
       - cis: ["5.3.16"]
+      - cis_csc_v7: ["16.11"]
       - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086"]
       - iso_27001-2013: ["A.8.1.3"]
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
@@ -3461,7 +3455,6 @@ checks:
     compliance:
       - cis: ["5.4.3"]
       - cis_csc_v7: ["16"]
-      - iso_27001-2013: ["A.8.1.1"]
     condition: none
     rules:
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
@@ -3492,9 +3485,9 @@ checks:
     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7. Modify user parameters for all users with a password set to match: # chage --mindays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
     compliance:
       - cis: ["5.5.1.1"]
-      - cis_csc_v7: ["4.4", "16"]
+      - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
-      - iso_27001-2013: ["A.9.4.3", "A.8.1.1"]
+      - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
       - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
@@ -3544,9 +3537,9 @@ checks:
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30. Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>. Notes: You can also check this setting in /etc/shadow directly. The 7th field should be 30 or less for all users with a password. A value of -1 would disable this setting."
     compliance:
       - cis: ["5.4.1.4"]
-      - cis_csc_v7: ["4.4", "16"]
+      - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
-      - iso_27001-2013: ["A.9.4.3", "A.8.1.1"]
+      - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
       - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
