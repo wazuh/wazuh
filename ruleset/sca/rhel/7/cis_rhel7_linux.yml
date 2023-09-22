@@ -3100,7 +3100,7 @@ checks:
   # 4.1.17 Ensure the audit configuration is immutable. (Automated)
   - id: 4635
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl .Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the following line at the end of the file: -e 2."
     compliance:
@@ -3215,7 +3215,7 @@ checks:
     title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
     description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port. Note: The $ModLoad imtcp line can have the .so extension added to the end of the module, or use the full path to the module."
     rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
-    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
+    remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and uncomment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
     compliance:
       - cis: ["4.2.1.6"]
       - cis_csc_v8: ["3.3"]
