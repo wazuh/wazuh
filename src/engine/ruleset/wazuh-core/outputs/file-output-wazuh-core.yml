@@ -14,4 +14,4 @@ check:
 
 outputs:
   - file:
-      path: /var/ossec/logs/alerts/alerts-wazuh.json
+      path: /var/ossec/logs/alerts/alerts-ECS.json

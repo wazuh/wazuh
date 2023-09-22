@@ -6,7 +6,7 @@ decoders:
 - decoder/windows-event/0
 - decoder/windows-powershell-operational/0
 rules:
-- rule/defense-evasion-disabling-windows-logs/0
 - rule/execution-python-script-in-cmdline/0
+- rule/defense-evasion-disabling-windows-logs/0
 - rule/defense-evasion-timestomp-sysmon/0
-- rule/webserver-access-logs-deleted/0
+- rule/defense-evasion-deleting-websvr-access-logs/0
