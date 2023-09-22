@@ -186,7 +186,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c:findmnt -n /tmp -> r:\s*/tmp\s && r:nodev'
+      - 'c:findmnt -n /tmp -> r:\s*/tmp\s && !r:nodev'
 
   # 1.1.4 Ensure nosuid option set on /tmp partition. (Automated)
   - id: 18510
@@ -204,7 +204,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c:findmnt -n /tmp -> r:\s*/tmp\s && r:nosuid'
+      - 'c:findmnt -n /tmp -> r:\s*/tmp\s && !r:nosuid'
 
   # 1.1.5 Ensure noexec option set on /tmp partition. (Automated)
   - id: 18511
@@ -221,7 +221,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: none
     rules:
-      - 'c:findmnt -n /tmp -> r:\s*/tmp\s && r:noexec'
+      - 'c:findmnt -n /tmp -> r:\s*/tmp\s && !r:noexec'
 
   # 1.1.6 Ensure /dev/shm is configured. (Automated)
   - id: 32524
@@ -258,7 +258,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s && r:nodev'
+      - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s && !r:nodev'
 
   # 1.1.8 Ensure nosuid option set on /dev/shm partition. (Automated)
   - id: 18522
@@ -276,7 +276,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s && r:nosuid'
+      - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s && !r:nosuid'
 
   # 1.1.9 Ensure noexec option set on /dev/shm partition. (Automated)
   - id: 18523
@@ -293,7 +293,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: none
     rules:
-      - 'c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && r:noexec'
+      - 'c:findmnt -n /dev/shm  -> r:\s*/dev/shm\s && !r:noexec'
 
   # 1.1.10 Ensure separate partition exists for /var. (Automated)
   - id: 18512
@@ -351,7 +351,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c: findmnt -n /var/tmp -> r:\s*/var/tmp\s && r:nodev'
+      - 'c: findmnt -n /var/tmp -> r:\s*/var/tmp\s && !r:nodev'
 
   # 1.1.13 Ensure /var/tmp partition includes the nosuid option (Automated)
   - id: 18515
@@ -369,7 +369,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c:findmnt -n /var/tmp -> r:\s*/var/tmp\s && r:nosuid'
+      - 'c:findmnt -n /var/tmp -> r:\s*/var/tmp\s && !r:nosuid'
 
   # 1.1.14 Ensure /var/tmp partition includes the noexec option (Automated)
   - id: 18516
@@ -386,7 +386,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: none
     rules:
-      - 'c:findmnt -n /var/tmp -> r:\s*/var/tmp\s && r:noexec'
+      - 'c:findmnt -n /var/tmp -> r:\s*/var/tmp\s && !r:noexec'
 
   # 1.1.15 Ensure separate partition exists for /var/log (Automated)
   - id: 18517
@@ -460,7 +460,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
-      - 'c:findmnt -n /home -> r:\s*/home\s && r:nodev'
+      - 'c:findmnt -n /home -> r:\s*/home\s && !r:nodev'
 
   # 1.1.19 Ensure nodev option set on removable media partitions (Manual) - Not Implemented
   # 1.1.20 Ensure nosuid option set on removable media partitions (Manual) - Not Implemented
