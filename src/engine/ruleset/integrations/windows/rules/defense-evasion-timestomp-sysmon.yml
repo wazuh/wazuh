@@ -12,12 +12,25 @@ metadata:
     name: Wazuh, Inc.
     date: 2023/09/15
 
-check :
-  - event.category: array_contains(file)
-  - event.type: array_contains(change)
+check: >-
+    array_contains($event.category, file) AND array_contains($event.type, change) AND $event.id == "2"
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Program Files\\\\([A-Z]:)?')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Program Files (x86)\\\\([A-Z]:)?')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Windows\\\\system32\\\\msiexec.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Windows\\\\syswow64\\\\msiexec.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Windows\\\\syswow64\\\\svchost.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\WINDOWS\\\\syswow64\\\\backgroundTaskHost.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\slack\\\\app-.*?\\\\slack.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-.*?\\\\GitHubDesktop.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\\\\Teams.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\OneDrive.exe')
+    AND NOT contains($file.extension, tmp) AND NOT contains($file.extension, ~tmp) AND NOT contains($file.extension, ~tmp)
+    AND NOT contains($user.name, SYSTEM) AND NOT contains($user.name, Local Service) AND NOT contains($user.name, Network Service)
 
 normalize:
   - map:
+      - file_extension_not_allowed: array_append(hola)
       - event.risk_score: 47
 
       - rule.description: Identifies modification of a file creation time. Adversaries may modify file time attributes to blend
