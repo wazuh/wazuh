@@ -18,6 +18,7 @@ target_link_libraries(${PROJECT_NAME}
     gmock
     urlrequest
     router
+    rocksdb
 )
 
 target_link_libraries(${PROJECT_NAME} content_manager)
