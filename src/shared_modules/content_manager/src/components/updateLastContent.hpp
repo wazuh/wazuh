@@ -14,6 +14,7 @@
 
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include "utils/timeHelper.h"
 #include <memory>
 
 /**
@@ -32,11 +33,17 @@ private:
      */
     void update(const UpdaterContext& context) const
     {
-        // TODO implement behavior
-        // 1. Get the database configuration from the context (context.spUpdaterBaseContext->configData.at("database"))
-        // 2. Connect to the database
-        // 3. Update the last content version processed
-        std::ignore = context;
+        try
+        {
+            context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                         std::to_string(context.currentOffset));
+        }
+        catch (const std::exception& e)
+        {
+            std::ostringstream errorMsg;
+            errorMsg << "UpdateLastContent - Error updating the content version: " << e.what();
+            throw std::runtime_error(errorMsg.str());
+        }
     }
 
 public:
