@@ -125,6 +125,10 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
+        1130: {'message': 'Update check is disabled',
+               'remediation': 'Update check can be enabled in WAZUH_PATH/etc/ossec.conf or '
+                              f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
+                              'reference.html#operation/api.controllers.manager_controller.update_configuration'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -158,13 +162,13 @@ class WazuhException(Exception):
         1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
                           'be declared in ossec.conf ruleset section.',
                'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/' 
+                              f'(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the rules'
         },
         1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
                'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/' 
+                              f'(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
                               ' to get more information about the rules'
         },
@@ -429,6 +433,9 @@ class WazuhException(Exception):
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
         2010: {'message': 'The requested read operation did not complete fully'},
+
+        # External services
+        2100: {'message': 'Error in CTI service request'},
 
         # Cluster
         3000: 'Cluster',
