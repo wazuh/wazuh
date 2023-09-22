@@ -54,7 +54,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	wm_ms_graph_auth *it;	
 	int tenant = 0;
 
-	os_calloc(1, sizeof(wm_ms_graph_auth), ms_graph->auth_config); 
+	os_calloc(1, sizeof(wm_ms_graph_auth*), ms_graph->auth_config); 
 	os_malloc(sizeof(wm_ms_graph_resource) * 2, ms_graph->resources);
 	ms_graph->num_resources = 0;
 
@@ -118,11 +118,12 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
-		
-			os_realloc(ms_graph->auth_config, sizeof(wm_ms_graph_auth) * (tenant + 1), ms_graph->auth_config);	
+
+			os_realloc(ms_graph->auth_config, sizeof(wm_ms_graph_auth*) * (tenant + 2), ms_graph->auth_config);
 			os_calloc(1, sizeof(wm_ms_graph_auth), ms_graph->auth_config[tenant]);
+			ms_graph->auth_config[tenant + 1] = NULL;
 			it = ms_graph->auth_config[tenant];
-			tenant++;	
+			tenant++;
 
 			for (int j = 0; children[j]; j++) {							
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
@@ -181,7 +182,6 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				}
 			}
 			OS_ClearNode(children);
-										
 
 			if (!it->client_id) {
 				merror(XML_NO_ELEM, XML_CLIENT_ID);

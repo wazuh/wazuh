@@ -157,7 +157,6 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config->query_fqdn, auth_config->client_id, auth_config->secret_value);
 
     response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    
     if (response) {
         if (response->status_code != 200) {
             char status_code[4];
@@ -323,9 +322,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                             start_time_str, it->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
                     }
                 }
-
                 os_free(headers[0]);
-            }//for(e
+            }
         }
     }
 }
@@ -343,8 +341,8 @@ void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 
     int e;
     wm_ms_graph_auth *it;
-
-    for (e = 0; ms_graph->auth_config[e]; e++) {        
+ 
+    for (e = 0; ms_graph->auth_config && ms_graph->auth_config[e]; e++) {        
         it = ms_graph->auth_config[e];
         
         os_free(it->tenant_id);
@@ -353,6 +351,8 @@ void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
         os_free(it->login_fqdn);
         os_free(it->query_fqdn);
         os_free(it->access_token);
+
+        os_free(it);
     }
 
     os_free(ms_graph->auth_config);
