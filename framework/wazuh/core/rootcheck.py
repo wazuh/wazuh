@@ -132,7 +132,7 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
             super()._process_filter(field_name, field_filter, q_filter)
 
     @staticmethod
-    def _pass_filter(db_filter):
+    def _pass_filter(field, value):
         return False
 
 

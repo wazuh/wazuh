@@ -194,6 +194,13 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
                                  search=search, count=True, get_data=True, select=[], default_query=self.DEFAULT_QUERY,
                                  fields=fields, default_sort_field='id', default_sort_order='ASC')
 
+    @staticmethod
+    def _pass_filter(field, value):
+        # Overwrite method to avoid skipping queries like 'condition=all'
+        if field == 'condition':
+            return False
+        return value == 'all'
+
 
 class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
     """Class used to get SCA rules or compliance items related to a given SCA checks IDs list."""

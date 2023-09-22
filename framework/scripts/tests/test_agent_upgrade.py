@@ -36,7 +36,7 @@ def test_get_script_arguments(mock_ArgumentParser):
         call('-a', '--agents', nargs='+', help='Agent IDs to upgrade.'),
         call('-r', '--repository', type=str, help='Specify a repository URL. [Default: packages.wazuh.com/4.x/wpk/]'),
         call('-v', '--version', type=str, help='Version to upgrade. [Default: latest Wazuh version]'),
-        call('-F', '--force', action='store_true', help='Allows reinstall same version and downgrade version.'),
+        call('-F', '--force', action='store_true', help='Forces the agents to upgrade, ignoring version validations.'),
         call('-s', '--silent', action='store_true', help='Do not show output.'),
         call('-l', '--list_outdated', action='store_true', help='Generates a list with all outdated agents.'),
         call('-f', '--file', type=str, help='Custom WPK filename.'),

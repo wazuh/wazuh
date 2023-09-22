@@ -65,7 +65,7 @@ input_array = [
     },
     {
         "count": 0,
-        "name": "test_nested2",
+        "name": "test@nested2",
         "mergedSum": {
             "nestedSum1": "value"
         },
@@ -1051,6 +1051,22 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
          {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
          {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
      ]),
+    # Nested queries
+    ('id!=000;(status=active;(group=default2,group=default3))',
+     [{'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+      {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
+      {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
+    ('((group=default2,group=default3);id!=000);status=active',
+     [{'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
+      {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+      {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}]),
+    ('(status=active,(id!=000;(group=default,group=default3)))',
+     [{'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'OR', 'level': 1},
+      {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
+      {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -1206,6 +1222,72 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
     query._add_filters_to_query()
 
     mock_conn_db.assert_called_once_with()
+
+@pytest.mark.parametrize('filters, expected_query', [
+    (
+        [
+            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE (id != :id$0 COLLATE NOCASE) AND ((status = :status$0 COLLATE ' + \
+        'NOCASE) AND ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE)))',
+    ),
+    (
+        [
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
+            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE (((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE ' + \
+        'NOCASE)) AND (id != :id$0 COLLATE NOCASE)) AND (status = :status$0 COLLATE NOCASE)',
+    ),
+    (
+        [
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'OR', 'level': 2},
+            {'value': '001', 'operator': '=', 'field': 'id$0', 'separator': 'OR', 'level': 1},
+            {'value': '000', 'operator': '!=', 'field': 'id$1', 'separator': 'AND', 'level': 0},
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE ((((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE ' + \
+        'NOCASE)) OR (id = :id$0 COLLATE NOCASE)) OR (id != :id$1 COLLATE NOCASE)) AND ' + \
+        '(status = :status$0 COLLATE NOCASE)',
+    ),
+    (
+        [
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 1},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0},
+        ],
+        'SELECT {0} FROM agent WHERE ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE))',
+    ),
+    (
+        [
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'OR', 'level': 1},
+            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
+            {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE ((status = :status$0 COLLATE NOCASE) OR ((id != :id$0 COLLATE NOCASE) ' \
+        'AND ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE))))',
+    ),
+])
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.utils.path.exists', return_value=True)
+def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, mock_file_exists,
+                                                                 filters, expected_query):
+    """Test WazuhDBQuery._add_filters_to_query final query."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'id': 'id', 'status': 'status', 'group': 'group'},
+                               default_sort_field=None, query='', backend=utils.WazuhDBBackend(agent_id=0),
+                               count=5, get_data=None)
+
+    query.query_filters = filters
+    query._add_filters_to_query()
+
+    assert query.query.rstrip(' ') == expected_query
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
@@ -1444,7 +1526,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfil
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('db_filter', [
+@pytest.mark.parametrize('value', [
     'all',
     'other_filter'
 ])
@@ -1454,7 +1536,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfil
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, mock_exists,
-                                            db_filter):
+                                            value):
     """Test utils.WazuhDBQuery._pass_filter function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': {'os.name'}},
@@ -1463,7 +1545,7 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data='data')
 
-    result = query._pass_filter(db_filter)
+    result = query._pass_filter('os.name', value)
 
     assert isinstance(result, bool)
     mock_conn_db.assert_called_once_with()
@@ -1696,7 +1778,8 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
     ('mergedSum.nestedSum1=value', 2),
     ('configSum.nestedSum1.nestedSum11=value', 1),
     ('configSum.nestedSum2.nestedSum21=value1', 1),
-    ('configSum.nestedSum2.nestedSum21=value2', 1)
+    ('configSum.nestedSum2.nestedSum21=value2', 1),
+    ('name=test@nested2', 1),
 ])
 def test_filter_array_by_query(q, return_length):
     """Test filter by query in an array."""

@@ -598,6 +598,25 @@ stages:
           expected_rules_command: data.affected_items[0].rules
           expected_condition_command: data.affected_items[0].condition
           expected_command_command: data.affected_items[0].command
+  
+  - name: Get items with the condition 'all'
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: condition=all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
   - name: Get item with the file field (q="rules.type=file")
     request:
