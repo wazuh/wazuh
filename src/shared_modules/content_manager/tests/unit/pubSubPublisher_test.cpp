@@ -61,6 +61,7 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
     m_spUpdaterBaseContext->spChannel->start();
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
+    m_spUpdaterContext->data.at("paths").push_back("/dummy/path");
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 
@@ -74,8 +75,6 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
  */
 TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheMockRouterProvider)
 {
-    std::string message {"Hello World!"};
-
     auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
     EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1).WillOnce([]() { throw std::runtime_error(""); });
     EXPECT_CALL(*mockRouterProvider, stop).Times(1).WillOnce([] { throw std::runtime_error(""); });
@@ -83,7 +82,7 @@ TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheMockRouterProvider
     m_spUpdaterBaseContext->spChannel = mockRouterProvider;
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = std::vector<char>(message.begin(), message.end());
+    m_spUpdaterContext->data = R"({ "paths": ["/dummy/path"], "stageStatus": [] })"_json;
 
     EXPECT_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext), std::runtime_error);
 
