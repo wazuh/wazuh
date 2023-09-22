@@ -97,8 +97,8 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 base_checks = [configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE]
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_move(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-              truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
+def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                  truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     '''
     '''
     monitor = FileMonitor(WAZUH_LOG_PATH)
