@@ -70,6 +70,7 @@ All notable changes to this project will be documented in this file.
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547]https://github.com/wazuh/wazuh/pull/16547)
 
 #### Changed
 
