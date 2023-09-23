@@ -674,7 +674,7 @@ checks:
       - soc_2: ["CC6.8"]
     condition: any
     rules:
-      - "c:journalctl -> r:protection: active"
+      - "c:journalctl -> r:protection: active && r:kernel: NX"
       - 'not c:sh -c "[[ -n $(grep noexec[0-9]*=off /proc/cmdline) || -z $(grep -E -i \" (pae|nx) \" /proc/cpuinfo) || -n $(grep \"\\sNX\\s.*\\sprotection:\\s\" /var/log/dmesg | grep -v active) ]] && echo \"NX Protection is not active\"" -> r:^NX Protection is not active$'
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Automated)
@@ -2593,7 +2593,7 @@ checks:
   # 4.1.17 Ensure the audit configuration is immutable. (Automated) - Not Implemented
 
   # 4.2.1.1 Ensure rsyslog is installed. (Automated)
-  - id: 20618
+  - id: 20617
     title: "Ensure rsyslog is installed."
     description: "The rsyslog software is a recommended replacement to the original syslogd daemon. rsyslog provides improvements over syslogd, including: connection-oriented (i.e. TCP) transmission of logs - - The option to log to database formats - Encryption of log data en route to a central logging server."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
@@ -2613,7 +2613,7 @@ checks:
       - "c:rpm -q rsyslog -> r:^rsyslog-"
 
   # 4.2.1.2 Ensure rsyslog Service is enabled and running. (Automated)
-  - id: 20619
+  - id: 20618
     title: "Ensure rsyslog Service is enabled and running."
     description: "rsyslog needs to be enabled and running to perform logging."
     rationale: "If the rsyslog service is not activated the system may default to the syslogd service or lack logging instead."
@@ -2634,7 +2634,7 @@ checks:
       - "c:systemctl status rsyslog -> r:active && r:running"
 
   # 4.2.1.3 Ensure rsyslog default file permissions configured. (Automated)
-  - id: 20620
+  - id: 20619
     title: "Ensure rsyslog default file permissions configured."
     description: "rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files. The $FileCreateMode parameter specifies the file creation mode with which rsyslogd creates new files. If not specified, the value 0644 is used. Notes: - The value given must always be a 4-digit octal number, with the initial digit being zero. - This setting can be overridden by a less restrictive setting in any file ending in .conf in the /etc/rsyslog.d/ directory."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
@@ -2661,7 +2661,7 @@ checks:
   # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual) - Not Implemented'
 
   # 4.2.2.1 Ensure journald is configured to send logs to rsyslog. (Automated)
-  - id: 20621
+  - id: 20620
     title: "Ensure journald is configured to send logs to rsyslog."
     description: 'Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the rsyslog service provides a consistent means of log collection and export. Notes: - This recommendation assumes that recommendation 4.2.1.5, "Ensure rsyslog is configured to send logs to a remote log host" has been implemented. - The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters - As noted in the journald man pages: journald logs may be exported to rsyslog either through the process mentioned here, or through a facility like systemd-journald.service. There are trade-offs involved in each implementation, where ForwardToSyslog will immediately capture all events (and forward to an external log server, if properly configured), but may not capture all boot-up activities. Mechanisms such as systemd-journald.service, on the other hand, will record bootup events, but may delay sending the information to rsyslog, leading to the potential for log manipulation prior to export. Be aware of the limitations of all tools employed to secure a system.'
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
@@ -2681,7 +2681,7 @@ checks:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.2 Ensure journald is configured to compress large log files. (Automated)
-  - id: 20622
+  - id: 20621
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large. Note: The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
@@ -2700,7 +2700,7 @@ checks:
       - "f:/etc/systemd/journald.conf -> r:^Compress=yes"
 
   # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk. (Automated)
-  - id: 20623
+  - id: 20622
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss. Note: The main configuration file /etc/systemd/journald.conf is read before any of the custom *.conf files. If there are custom configs present, they override the main configuration parameters."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
@@ -2725,7 +2725,7 @@ checks:
   # 4.2.4 Ensure permissions on all logfiles are configured. (Manual) - Not Implemented
 
   # 5.1.1 Ensure cron daemon is enabled and running. (Automated)
-  - id: 20624
+  - id: 20623
     title: "Ensure cron daemon is enabled and running."
     description: "The cron daemon is used to execute batch jobs on the system."
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run. If another method for scheduling tasks is not being used, cron is used to execute them, and needs to be enabled and running."
@@ -2746,7 +2746,7 @@ checks:
       - "c:systemctl status crond -> r:active && r:running"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
-  - id: 20625
+  - id: 20624
     title: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
@@ -2767,7 +2767,7 @@ checks:
       - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/crontab" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
-  - id: 20626
+  - id: 20625
     title: "Ensure permissions on /etc/cron.hourly are configured."
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2788,7 +2788,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.hourly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
-  - id: 20627
+  - id: 20626
     title: "Ensure permissions on /etc/cron.daily are configured."
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2809,7 +2809,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.daily/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
-  - id: 20628
+  - id: 20627
     title: "Ensure permissions on /etc/cron.weekly are configured."
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2830,7 +2830,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.weekly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
-  - id: 20629
+  - id: 20628
     title: "Ensure permissions on /etc/cron.monthly are configured."
     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2851,7 +2851,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.monthly/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
-  - id: 20630
+  - id: 20629
     title: "Ensure permissions on /etc/cron.d are configured."
     description: "The /etc/cron.d/ directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab , but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2872,7 +2872,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.d/ -> r:700\s*\t*drwx------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
-  - id: 20631
+  - id: 20630
     title: "Ensure cron is restricted to authorized users."
     description: "If cron is installed in the system, configure /etc/cron.allow to allow specific users to use these services. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in those files is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
@@ -2893,7 +2893,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.1.9 Ensure at is restricted to authorized users. (Automated)
-  - id: 20632
+  - id: 20631
     title: "Ensure at is restricted to authorized users."
     description: "If at is installed in the system, configure /etc/at.allow to allow specific users to use these services. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in those files is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Even though a given user is not listed in at.allow, at jobs can still be run as that user. The at.allow file only controls administrative access to the at command for scheduling and modifying at jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
@@ -2914,7 +2914,7 @@ checks:
       - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/at.allow -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.2.1 Ensure sudo is installed. (Automated)
-  - id: 20633
+  - id: 20632
     title: "Ensure sudo is installed."
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
     rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
@@ -2933,7 +2933,7 @@ checks:
       - "c:rpm -q sudo -> r:sudo-"
 
   # 5.2.2 Ensure sudo commands use pty. (Automated)
-  - id: 20634
+  - id: 20633
     title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo-pty Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for parse errors. If the sudoers file is currently being edited you will receive a message to try again later. The -f option allows you to tell visudo which file to edit."
     rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing. This can be mitigated by configuring sudo to run other commands only from a pseudo-pty, whether I/O logging is turned on or not."
@@ -2953,7 +2953,7 @@ checks:
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
-  - id: 20635
+  - id: 20634
     title: "Ensure sudo log file exists."
     description: "sudo can use a custom log file Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for parse errors. If the sudoers file is currently being edited you will receive a message to try again later. The -f option allows you to tell visudo which file to edit."
     rationale: "A sudo log file simplifies auditing of sudo commands."
@@ -2975,7 +2975,7 @@ checks:
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   # 5.3.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
-  - id: 20636
+  - id: 20635
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
@@ -2996,7 +2996,7 @@ checks:
       - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/sshd_config" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.3.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 20637
+  - id: 20636
     title: "Ensure permissions on SSH private host key files are configured."
     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
@@ -3020,7 +3020,7 @@ checks:
       - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_dsa_key" -> r:600\s*\t*-rw------- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.3.3 Ensure permissions on SSH public host key files are configured. (Automated)
-  - id: 20638
+  - id: 20637
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
@@ -3043,7 +3043,7 @@ checks:
       - 'c:sh -c "stat -Lc ''%a %A %u %U  %g %G'' /etc/ssh/ssh_host_ed25519_key.pub" -> r:644\s*\t*-rw-r--r-- && r:0\s*\t*root\s*\t*0\s*\t*root'
 
   # 5.3.4 Ensure SSH access is limited. (Automated)
-  - id: 20639
+  - id: 20638
     title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
@@ -3065,7 +3065,7 @@ checks:
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
   # 5.3.5 Ensure SSH LogLevel is appropriate. (Automated)
-  - id: 20640
+  - id: 20639
     title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
@@ -3090,7 +3090,7 @@ checks:
       - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled. (Automated)
-  - id: 20641
+  - id: 20640
     title: "Ensure SSH X11 forwarding is disabled."
     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through an existing SSH shell session to enable remote graphic connections."
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
@@ -3111,7 +3111,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
 
   # 5.3.7 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
-  - id: 20642
+  - id: 20641
     title: "Ensure SSH MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
@@ -3131,7 +3131,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s*\t*(\d+) compare > 4'
 
   # 5.3.8 Ensure SSH IgnoreRhosts is enabled. (Automated)
-  - id: 20643
+  - id: 20642
     title: "Ensure SSH IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
@@ -3152,7 +3152,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*IgnoreRhosts\s+no'
 
   # 5.3.9 Ensure SSH HostbasedAuthentication is disabled. (Automated)
-  - id: 20644
+  - id: 20643
     title: "Ensure SSH HostbasedAuthentication is disabled."
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
@@ -3172,7 +3172,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
 
   # 5.3.10 Ensure SSH root login is disabled. (Automated)
-  - id: 20645
+  - id: 20644
     title: "Ensure SSH root login is disabled."
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
@@ -3192,7 +3192,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+yes'
 
   # 5.3.11 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
-  - id: 20646
+  - id: 20645
     title: "Ensure SSH PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
@@ -3212,7 +3212,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+yes'
 
   # 5.3.12 Ensure SSH PermitUserEnvironment is disabled. (Automated)
-  - id: 20647
+  - id: 20646
     title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing a Trojan's programs)."
@@ -3233,7 +3233,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
 
   # 5.3.13 Ensure only strong Ciphers are used. (Automated)
-  - id: 20648
+  - id: 20647
     title: "Ensure only strong Ciphers are used."
     description: "This variable limits the ciphers that SSH can use during communication. Note: Some organizations may have stricter requirements for approved ciphers. Ensure that ciphers used are in compliance with site policy."
     rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack - The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the "Bar Mitzvah" issue - The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors.'
@@ -3261,7 +3261,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
   # 5.3.14 Ensure only strong MAC algorithms are used. (Automated)
-  - id: 20649
+  - id: 20648
     title: "Ensure only strong MAC algorithms are used."
     description: "This variable Specifies the available MAC (message authentication code) algorithms. The MAC algorithm is used in protocol version 2 for data integrity protection. Multiple algorithms must be comma-separated. Note: Some organizations may have stricter requirements for approved MACs. Ensure that MACs used are in compliance with site policy."
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
@@ -3284,7 +3284,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.3.15 Ensure only strong Key Exchange algorithms are used. (Automated)
-  - id: 20650
+  - id: 20649
     title: "Ensure only strong Key Exchange algorithms are used."
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Note: Some organizations may have stricter requirements for approved Key Exchange algorithms. Ensure that Key Exchange algorithms used are in compliance with site policy."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
@@ -3305,7 +3305,7 @@ checks:
       - "not f:/etc/ssh/sshd_config -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.3.16 Ensure SSH Idle Timeout Interval is configured. (Automated)
-  - id: 20651
+  - id: 20650
     title: "Ensure SSH Idle Timeout Interval is configured."
     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. - ClientAliveInterval sets a timeout interval in seconds after which if no data has been received from the client, sshd will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax sets the number of client alive messages which may be sent without sshd receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. The default value is 3. o The client alive messages are sent through the encrypted channel o Setting ClientAliveCountMax to 0 disables connection termination Example: The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds."
     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value reduces this risk. - The recommended ClientAliveInterval setting is no greater than 900 seconds (15 minutes) - The recommended ClientAliveCountMax setting is 0 - At the 15 minute interval, if the ssh session is inactive, the session will be terminated."
@@ -3333,7 +3333,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> n:^clientalivecountmax\s*\t*(\d+) > 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
-  - id: 20652
+  - id: 20651
     title: "Ensure SSH LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
@@ -3354,7 +3354,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:\s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
 
   # 5.3.18 Ensure SSH warning banner is configured. (Automated)
-  - id: 20653
+  - id: 20652
     title: "Ensure SSH warning banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
@@ -3374,7 +3374,7 @@ checks:
       - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
 
   # 5.3.19 Ensure SSH PAM is enabled. (Automated)
-  - id: 20654
+  - id: 20653
     title: "Ensure SSH PAM is enabled."
     description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
@@ -3396,7 +3396,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*usepam\s+no'
 
   # 5.3.20 Ensure SSH AllowTcpForwarding is disabled. (Automated)
-  - id: 20655
+  - id: 20654
     title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
@@ -3420,7 +3420,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.3.21 Ensure SSH MaxStartups is configured. (Automated)
-  - id: 20656
+  - id: 20655
     title: "Ensure SSH MaxStartups is configured."
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -3441,7 +3441,7 @@ checks:
       - 'not f:/etc/ssh/sshd_config -> r:^\s*maxstartups\s+(((1[1-9]|[1-9][0-9][0-9]+):([0-9]+):([0-9]+))|(([0-9]+):(3[1-9]|[4-9][0-9]|[1-9][0-9][0-9]+):([0-9]+))|(([0-9]+):([0-9]+):(6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+)))'
 
   # 5.3.22 Ensure SSH MaxSessions is limited. (Automated)
-  - id: 20657
+  - id: 20656
     title: "Ensure SSH MaxSessions is limited."
     description: "The MaxSessions parameter Specifies the maximum number of open sessions permitted per network connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
@@ -3465,7 +3465,7 @@ checks:
   # 5.4.2 Ensure lockout for failed password attempts is configured. (Automated) - Not Implemented
 
   # 5.4.3 Ensure password hashing algorithm is SHA-512. (Automated)
-  - id: 20658
+  - id: 20657
     title: "Ensure password hashing algorithm is SHA-512."
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm. Note: - These changes only apply to accounts configured on the local system. - Additional module options may be set, recommendation only covers those listed here."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords."
@@ -3487,7 +3487,7 @@ checks:
       - 'f:/etc/pam.d/system-auth -> r:\s*password && r:requisite|required|sufficient && r:pam_unix.so && r:sha512'
 
   # 5.4.4 Ensure password reuse is limited. (Automated)
-  - id: 20659
+  - id: 20658
     title: "Ensure password reuse is limited."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords. Note: Additional module options may be set, recommendation only covers those listed here."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password."
@@ -3505,7 +3505,7 @@ checks:
       - 'f:/etc/pam.d/password-auth -> !r:^\s*\t*# && r:password\s*\t*required|password\s*\t*sufficient && r:pam_pwhistory.so|pam_unix.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
 
   # 5.5.1.1 Ensure password expiration is 365 days or less. (Automated)
-  - id: 20660
+  - id: 20659
     title: "Ensure password expiration is 365 days or less."
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days. Notes: - A value of -1 will disable password expiration. - The password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials via a brute force attack, using already compromised credentials, or gaining the credentials by other means, can be limited by the age of the password. Therefore, reducing the maximum age of a password can also reduce an attacker's window of opportunity. Requiring passwords to be changed helps to mitigate the risk posed by the poor security practice of passwords being used for multiple accounts, and poorly implemented off-boarding and change of responsibility policies. This should not be considered a replacement for proper implementation of these policies and practices. Note: If it is believed that a user's password may have been compromised, the user's account should be locked immediately. Local policy should be followed to ensure the secure update of their password."
@@ -3526,7 +3526,7 @@ checks:
       - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:(\d+): compare > 365'
 
   # 5.5.1.2 Ensure minimum days between password changes is configured. (Automated)
-  - id: 20661
+  - id: 20660
     title: "Ensure minimum days between password changes is configured."
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
@@ -3543,11 +3543,11 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
-      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:(\d+): compare < 7'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:(\d+): compare < 1'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more. (Automated)
-  - id: 20662
+  - id: 20661
     title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -3568,7 +3568,7 @@ checks:
       - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:\d+:(\d+): compare < 7'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less. (Automated)
-  - id: 20663
+  - id: 20662
     title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled. Note: A value of -1 would disable this setting."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -3593,7 +3593,7 @@ checks:
   # 5.5.2 Ensure system accounts are secured. (Automated) - NOt Implemented
 
   # 5.5.3 Ensure default group for the root account is GID 0. (Automated)
-  - id: 20664
+  - id: 20663
     title: "Ensure default group for the root account is GID 0."
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -3619,7 +3619,7 @@ checks:
   # 5.6 Ensure root login is restricted to system console. (Manual) - Not Implemented
 
   # 5.7 Ensure access to the su command is restricted. (Automated)
-  - id: 20665
+  - id: 20664
     title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
@@ -3642,7 +3642,7 @@ checks:
   # 6.1.1 Audit system file permissions. (Manual) - Not Implemented
 
   # 6.1.2 Ensure permissions on /etc/passwd are configured. (Automated)
-  - id: 20666
+  - id: 20665
     title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3663,7 +3663,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.3 Ensure permissions on /etc/passwd- are configured. (Automated)
-  - id: 20667
+  - id: 20666
     title: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3684,7 +3684,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.4 Ensure permissions on /etc/shadow are configured. (Automated)
-  - id: 20668
+  - id: 20667
     title: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -3705,7 +3705,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root 0 root && r:/etc/shadow 0'
 
   # 6.1.5 Ensure permissions on /etc/shadow- are configured. (Automated)
-  - id: 20669
+  - id: 20668
     title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3726,7 +3726,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:0 root 0 root && r:/etc/shadow- 0'
 
   # 6.1.6 Ensure permissions on /etc/gshadow- are configured. (Automated)
-  - id: 20670
+  - id: 20669
     title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3747,7 +3747,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root 0 root && r:/etc/gshadow- 0'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
-  - id: 20671
+  - id: 20670
     title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
@@ -3768,7 +3768,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root 0 root && r:/etc/gshadow 0'
 
   # 6.1.8 Ensure permissions on /etc/group are configured. (Automated)
-  - id: 20672
+  - id: 20671
     title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -3789,7 +3789,7 @@ checks:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.9 Ensure permissions on /etc/group- are configured. (Automated)
-  - id: 20673
+  - id: 20672
     title: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3816,7 +3816,7 @@ checks:
   # 6.1.14 Audit SGID executables. (Manual) - Not Implemented
 
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords. (Automated)
-  - id: 20674
+  - id: 20673
     title: "Ensure accounts in /etc/passwd use shadowed passwords."
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Notes: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
@@ -3837,7 +3837,7 @@ checks:
       - 'not f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
-  - id: 20675
+  - id: 20674
     title: "Ensure /etc/shadow password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -3857,7 +3857,7 @@ checks:
   # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
 
   # 6.2.4 Ensure shadow group is empty. (Automated)
-  - id: 20676
+  - id: 20675
     title: "Ensure shadow group is empty."
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
@@ -3882,7 +3882,7 @@ checks:
   # 6.2.8 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
 
   # 6.2.9 Ensure root is the only UID 0 account. (Automated)
-  - id: 20677
+  - id: 20676
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
