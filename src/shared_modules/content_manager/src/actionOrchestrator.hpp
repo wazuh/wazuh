@@ -99,11 +99,6 @@ private:
      * @brief Context used on the content updater orchestration.
      */
     std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
-
-    /**
-     * @brief RocksDB wrapper.
-     */
-    std::unique_ptr<Utils::RocksDBWrapper> m_spRocksDB;
 };
 
 #endif // _ACTION_ORCHESTRATOR_HPP

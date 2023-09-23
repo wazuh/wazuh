@@ -20,6 +20,7 @@ include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/curl/include/curl)
 include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
 
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
@@ -30,6 +31,7 @@ include_directories(${SHARED_MODULES}/content_manager/src/components)
 # Link directories
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/lzma/build/)
+link_directories(${SRC_FOLDER}/external/rocksdb/build/)
 link_directories(${SHARED_MODULES}/router/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 
