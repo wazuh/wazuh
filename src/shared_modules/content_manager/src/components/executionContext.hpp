@@ -14,6 +14,7 @@
 
 #include "chainOfResponsability.hpp"
 #include "updaterContext.hpp"
+#include "utils/timeHelper.h"
 #include <filesystem>
 #include <iostream>
 
@@ -28,6 +29,29 @@ const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_pa
 class ExecutionContext final : public AbstractHandler<std::shared_ptr<UpdaterBaseContext>>
 {
 private:
+    /**
+     * @brief Creates the RocksDB instance.
+     *
+     * @param context updater base context.
+     */
+    void createRocksDB(UpdaterBaseContext& context) const
+    {
+        // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
+        const auto databaseName {"/updater_" + context.topicName + "_metadata"};
+        const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
+
+        // check if the output folder exists.
+        if (!std::filesystem::exists(databasePath))
+        {
+            // Create the folders.
+            std::filesystem::create_directories(databasePath);
+        }
+
+        // Create a RocksDB instance
+        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
+        context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
+    }
+
     /**
      * @brief Creates the folder that are needed by the tool in order to be executed.
      *
@@ -79,6 +103,12 @@ public:
      */
     std::shared_ptr<UpdaterBaseContext> handleRequest(std::shared_ptr<UpdaterBaseContext> context) override
     {
+        // Check if the database path is given and not empty.
+        if (context->configData.contains("databasePath") &&
+            !context->configData.at("databasePath").get<std::string>().empty())
+        {
+            createRocksDB(*context);
+        }
 
         createOutputFolder(*context);
 

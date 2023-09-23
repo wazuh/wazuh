@@ -13,7 +13,7 @@
 #define _FACTORY_VERSION_UPDATER_HPP
 
 #include "skipStep.hpp"
-#include "updateLastContent.hpp"
+#include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <iostream>
@@ -40,10 +40,10 @@ public:
 
         auto const versionUpdaterType {config.at("versionedContent").get<std::string>()};
 
-        if (versionUpdaterType.compare("generic") == 0)
+        if (versionUpdaterType.compare("cti-api") == 0)
         {
             std::cout << "Creating '" << versionUpdaterType << "' version updater" << std::endl;
-            return std::make_shared<UpdateLastContent>();
+            return std::make_shared<UpdateCtiApiOffset>();
         }
         if (versionUpdaterType.compare("false") == 0)
         {

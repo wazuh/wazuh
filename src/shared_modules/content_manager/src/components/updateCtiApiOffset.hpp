@@ -9,20 +9,21 @@
  * Foundation.
  */
 
-#ifndef _UPDATE_LAST_CONTENT_HPP
-#define _UPDATE_LAST_CONTENT_HPP
+#ifndef _UPDATE_CTI_API_OFFSET_HPP
+#define _UPDATE_CTI_API_OFFSET_HPP
 
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include "utils/timeHelper.h"
 #include <memory>
 
 /**
- * @class UpdateLastContent
+ * @class UpdateCtiApiOffset
  *
  * @brief Class in charge of updating the content version as a step of a chain of responsibility.
  *
  */
-class UpdateLastContent final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
+class UpdateCtiApiOffset final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
     /**
@@ -32,11 +33,24 @@ private:
      */
     void update(const UpdaterContext& context) const
     {
-        // TODO implement behavior
-        // 1. Get the database configuration from the context (context.spUpdaterBaseContext->configData.at("database"))
-        // 2. Connect to the database
-        // 3. Update the last content version processed
-        std::ignore = context;
+        try
+        {
+            if (context.spUpdaterBaseContext->spRocksDB)
+            {
+                context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                             std::to_string(context.currentOffset));
+            }
+            else
+            {
+                throw std::runtime_error("RocksDB is not initialized");
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::ostringstream errorMsg;
+            errorMsg << "UpdateCtiApiOffset - Error updating the content version: " << e.what();
+            throw std::runtime_error(errorMsg.str());
+        }
     }
 
 public:
@@ -55,4 +69,4 @@ public:
     }
 };
 
-#endif // _UPDATE_LAST_CONTENT_HPP
+#endif // _UPDATE_CTI_API_OFFSET_HPP

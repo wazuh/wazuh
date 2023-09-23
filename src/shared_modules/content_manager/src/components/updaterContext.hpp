@@ -13,6 +13,7 @@
 #define _UPDATER_CONTEXT_HPP
 
 #include "iRouterProvider.hpp"
+#include "utils/rocksDBWrapper.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 
@@ -26,6 +27,12 @@ constexpr auto CONTENTS_FOLDER = "contents";
 struct UpdaterBaseContext
 {
     /**
+     * @brief Name of the topic where the data will be published.
+     *
+     */
+    std::string topicName;
+
+    /**
      * @brief Configurations for the current run.
      *
      */
@@ -36,6 +43,12 @@ struct UpdaterBaseContext
      *
      */
     std::shared_ptr<IRouterProvider> spChannel;
+
+    /**
+     * @brief Pointer to the RocksDB instance.
+     *
+     */
+    std::unique_ptr<Utils::RocksDBWrapper> spRocksDB {};
 
     /**
      * @brief Path to the output folder where the data will be stored.
@@ -97,6 +110,12 @@ struct UpdaterContext final : private UpdaterBaseContext
      *
      */
     nlohmann::json data = R"({ "paths": [], "stageStatus": [] })"_json;
+
+    /**
+     * @brief Represents the offset processed in the current run.
+     *
+     */
+    int currentOffset {0};
 };
 
 #endif // _UPDATER_CONTEXT_HPP

@@ -16,6 +16,7 @@
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "routerProvider.hpp"
+#include "utils/rocksDBWrapper.hpp"
 #include <iostream>
 #include <memory>
 
@@ -25,17 +26,6 @@
  */
 class ActionOrchestrator final
 {
-private:
-    /**
-     * @brief Content updater orchestration.
-     */
-    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> m_spUpdaterOrchestration;
-
-    /**
-     * @brief Context used on the content updater orchestration.
-     */
-    std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
-
 public:
     /**
      * @brief Creates a new instance of ActionOrchestrator.
@@ -51,6 +41,7 @@ public:
         {
             // Create a context
             m_spBaseContext = std::make_shared<UpdaterBaseContext>();
+            m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
             m_spBaseContext->spChannel = channel;
 
@@ -82,6 +73,13 @@ public:
             auto spUpdaterContext {std::make_shared<UpdaterContext>()};
             spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
 
+            // If the database exists, get the last offset
+            if (m_spBaseContext->spRocksDB)
+            {
+                const auto value = m_spBaseContext->spRocksDB->getLastKeyValue().second;
+                spUpdaterContext->currentOffset = value.empty() ? 0 : std::stoi(value.ToString());
+            }
+
             // Run the updater chain
             m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
         }
@@ -90,6 +88,17 @@ public:
             throw std::invalid_argument {"Orchestration run failed. " + std::string {e.what()}};
         }
     }
+
+private:
+    /**
+     * @brief Content updater orchestration.
+     */
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> m_spUpdaterOrchestration;
+
+    /**
+     * @brief Context used on the content updater orchestration.
+     */
+    std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
 };
 
 #endif // _ACTION_ORCHESTRATOR_HPP

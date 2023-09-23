@@ -34,7 +34,7 @@ private:
     void publish(const UpdaterContext& context) const
     {
         // If there is data to publish, send it
-        if (!context.data.empty())
+        if (context.data.contains("paths") && !context.data.at("paths").empty())
         {
             // serialize the JSON object
             const auto stringifyJson = context.data.dump();

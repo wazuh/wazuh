@@ -51,6 +51,7 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
     m_spUpdaterBaseContext->spChannel->start();
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
+    m_spUpdaterContext->data.at("paths").push_back("/dummy/path");
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 
@@ -64,12 +65,10 @@ TEST_F(PubSubPublisherTest, TestPublishValidData)
  */
 TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheRouterProvider)
 {
-    std::string message {"Hello World!"};
-
     m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = std::vector<char>(message.begin(), message.end());
+    m_spUpdaterContext->data = R"({ "paths": ["/dummy/path"], "stageStatus": [] })"_json;
 
     EXPECT_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext), std::runtime_error);
 

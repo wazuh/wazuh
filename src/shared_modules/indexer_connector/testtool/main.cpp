@@ -1,5 +1,6 @@
 #include "cmdArgParser.hpp"
 #include <indexerConnector.hpp>
+#include <iomanip>
 #include <iostream>
 
 std::string generateRandomString(size_t length)
