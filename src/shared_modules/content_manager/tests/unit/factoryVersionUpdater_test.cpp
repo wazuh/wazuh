@@ -12,7 +12,7 @@
 #include "factoryVersionUpdater_test.hpp"
 #include "factoryVersionUpdater.hpp"
 #include "skipStep.hpp"
-#include "updateLastContent.hpp"
+#include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"
 #include <memory>
 
@@ -22,14 +22,14 @@
 TEST_F(FactoryVersionUpdaterTest, CreateGenericVersionUpdater)
 {
     // Create the config
-    nlohmann::json config = {{"versionedContent", "generic"}};
+    nlohmann::json config = {{"versionedContent", "cti-api"}};
 
     // Create the content version updater
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spVersionUpdater {};
     EXPECT_NO_THROW(spVersionUpdater = FactoryVersionUpdater::create(config));
 
     // Check if the generic version updater is created
-    EXPECT_TRUE(std::dynamic_pointer_cast<UpdateLastContent>(spVersionUpdater));
+    EXPECT_TRUE(std::dynamic_pointer_cast<UpdateCtiApiOffset>(spVersionUpdater));
 }
 
 /*

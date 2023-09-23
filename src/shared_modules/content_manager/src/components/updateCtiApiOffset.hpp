@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _UPDATE_LAST_CONTENT_HPP
-#define _UPDATE_LAST_CONTENT_HPP
+#ifndef _UPDATE_CTI_API_OFFSET_HPP
+#define _UPDATE_CTI_API_OFFSET_HPP
 
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -18,12 +18,12 @@
 #include <memory>
 
 /**
- * @class UpdateLastContent
+ * @class UpdateCtiApiOffset
  *
  * @brief Class in charge of updating the content version as a step of a chain of responsibility.
  *
  */
-class UpdateLastContent final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
+class UpdateCtiApiOffset final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
     /**
@@ -35,13 +35,20 @@ private:
     {
         try
         {
-            context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
-                                                         std::to_string(context.currentOffset));
+            if (context.spUpdaterBaseContext->spRocksDB)
+            {
+                context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                             std::to_string(context.currentOffset));
+            }
+            else
+            {
+                throw std::runtime_error("RocksDB is not initialized");
+            }
         }
         catch (const std::exception& e)
         {
             std::ostringstream errorMsg;
-            errorMsg << "UpdateLastContent - Error updating the content version: " << e.what();
+            errorMsg << "UpdateCtiApiOffset - Error updating the content version: " << e.what();
             throw std::runtime_error(errorMsg.str());
         }
     }
@@ -62,4 +69,4 @@ public:
     }
 };
 
-#endif // _UPDATE_LAST_CONTENT_HPP
+#endif // _UPDATE_CTI_API_OFFSET_HPP
