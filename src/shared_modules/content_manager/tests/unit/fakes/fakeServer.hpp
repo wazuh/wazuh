@@ -69,6 +69,34 @@ public:
      */
     void run()
     {
+        m_server.Get("/raw",
+                     [](const httplib::Request& req, httplib::Response& res)
+                     {
+                         const auto response = R"(
+                         {
+                             "key": "value"
+                         })"_json;
+                         res.set_content(response.dump(), "text/plain");
+                     });
+        m_server.Get("/xz",
+                     [](const httplib::Request& req, httplib::Response& res)
+                     {
+                         const std::filesystem::path inputPath {std::filesystem::current_path() /
+                                                                "input_files/sample.xz"};
+                         std::ifstream in(inputPath, std::ios::in | std::ios::binary);
+                         if (in)
+                         {
+                             std::ostringstream response;
+                             response << in.rdbuf();
+                             in.close();
+                             res.set_content(response.str(), "application/octet-stream");
+                         }
+                         else
+                         {
+                             res.status = 404;
+                             res.set_content("File not found", "text/plain");
+                         }
+                     });
         m_server.Get("/xz/consumers",
                      [](const httplib::Request& req, httplib::Response& res)
                      {
