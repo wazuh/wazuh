@@ -36,6 +36,8 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.agent_breakdown.syscheck.syscheck_queries = 0;
     wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_file_queries = 6;
     wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_queries = 10;
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_queries = 11;
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_queries = 12;
     wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_queries = 8;
     wdb_state.queries_breakdown.agent_breakdown.sca.sca_queries = 2;
     wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_queries = 75;
@@ -79,6 +81,10 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_file_time.tv_usec = 35121;
     wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_time.tv_sec = 0;
     wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_time.tv_usec = 221548;
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_time.tv_sec = 0;
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_time.tv_usec = 222548;
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time.tv_sec = 0;
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time.tv_usec = 223548;
     wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time.tv_sec = 1;
     wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time.tv_usec = 146684;
     wdb_state.queries_breakdown.agent_breakdown.sca.sca_time.tv_sec = 2;
@@ -311,6 +317,10 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(agent_syscheck_queries, "fim_file")->valueint, 6);
     assert_non_null(cJSON_GetObjectItem(agent_syscheck_queries, "fim_registry"));
     assert_int_equal(cJSON_GetObjectItem(agent_syscheck_queries, "fim_registry")->valueint, 10);
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_queries, "fim_registry_key"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_queries, "fim_registry_key")->valueint, 11);
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_queries, "fim_registry_value"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_queries, "fim_registry_value")->valueint, 12);
 
     cJSON* agent_rootcheck_queries = cJSON_GetObjectItem(agent_queries_tables, "rootcheck");
     assert_non_null(cJSON_GetObjectItem(agent_rootcheck_queries, "rootcheck"));
@@ -500,12 +510,12 @@ void test_wazuhdb_create_state_json(void ** state) {
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 25550);
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 25996);
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "agent"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "agent")->valueint, 17979);
+    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "agent")->valueint, 18425);
 
     cJSON* agent_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "agent_breakdown");
 
@@ -534,6 +544,10 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_file")->valueint, 35);
     assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry"));
     assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry")->valueint, 221);
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_key"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_value")->valueint, 223);
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_key"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_value")->valueint, 223);
 
     cJSON* agent_rootcheck_time = cJSON_GetObjectItem(agent_time_tables, "rootcheck");
     assert_non_null(cJSON_GetObjectItem(agent_rootcheck_time, "rootcheck"));

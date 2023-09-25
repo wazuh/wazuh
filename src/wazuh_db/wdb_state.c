@@ -247,6 +247,30 @@ void w_inc_agent_fim_registry_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_agent_fim_registry_key() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_fim_registry_key_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_fim_registry_value() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_fim_registry_value_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_agent_syscollector_processes() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries++;
@@ -1040,6 +1064,8 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_agent_tables_syscheck, "fim_file", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_queries);
     cJSON_AddNumberToObject(_agent_tables_syscheck, "fim_registry", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscheck, "fim_registry_key", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscheck, "fim_registry_value", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_queries);
     cJSON_AddNumberToObject(_agent_tables_syscheck, "syscheck", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_queries);
 
     cJSON *_agent_tables_syscollector = cJSON_CreateObject();
@@ -1230,6 +1256,8 @@ cJSON* wdb_create_state_json() {
 
     cJSON_AddNumberToObject(_agent_tables_syscheck_t, "fim_file", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_time));
     cJSON_AddNumberToObject(_agent_tables_syscheck_t, "fim_registry", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_time));
+    cJSON_AddNumberToObject(_agent_tables_syscheck_t, "fim_registry_key", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_key_time));
+    cJSON_AddNumberToObject(_agent_tables_syscheck_t, "fim_registry_value", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time));
     cJSON_AddNumberToObject(_agent_tables_syscheck_t, "syscheck", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_time));
 
     cJSON *_agent_tables_syscollector_t = cJSON_CreateObject();
@@ -1383,6 +1411,8 @@ STATIC uint64_t get_agent_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.syscheck_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_file_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_registry_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_registry_key_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.rootcheck.rootcheck_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.sca.sca_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.ciscat.ciscat_time, &task_time);

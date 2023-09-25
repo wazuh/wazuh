@@ -12,6 +12,7 @@ from unittest.mock import call, MagicMock, patch
 import pytest
 from connexion import ProblemException
 from sqlalchemy.exc import OperationalError
+from sqlite3 import OperationalError as SQLiteOperationalError, DatabaseError, Error
 
 from wazuh.core import common
 
@@ -293,9 +294,18 @@ def test_DistributedAPI_local_request(mock_local_request):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3021)
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=OperationalError(statement=None, params=[], orig=None))):
+    orig_message = 'database or disk is full'
+    orig = SQLiteOperationalError(DatabaseError(Error(Exception(orig_message))))
+    with patch('asyncio.wait_for', new=AsyncMock(side_effect=OperationalError(statement=None, params=[], orig=orig))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=2008)
+
+        dapi = DistributedAPI(f=manager.status, logger=logger, debug=True)
+        try:
+            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        except WazuhInternalError as e:
+            assert e.code == 2008
+            assert str(e).endswith(orig_message)
 
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=WazuhInternalError(1001))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
