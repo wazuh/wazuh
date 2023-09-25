@@ -69,7 +69,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 os_free(timestamp);
                 w_sleep_until(next_scan_time);
             }
-            
+
             for (i = 0; ms_graph->auth_config[i]; i++) {
                 it = ms_graph->auth_config[i];
 
@@ -207,7 +207,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
 
             for (e = 0; ms_graph->auth_config[e]; e++) {
                 it = ms_graph->auth_config[e];
-            
+
                 snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
                     it->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
 
@@ -341,10 +341,9 @@ void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 
     int e;
     wm_ms_graph_auth *it;
- 
-    for (e = 0; ms_graph->auth_config && ms_graph->auth_config[e]; e++) {        
+
+    for (e = 0; ms_graph->auth_config && ms_graph->auth_config[e]; e++) {
         it = ms_graph->auth_config[e];
-        
         os_free(it->tenant_id);
         os_free(it->client_id);
         os_free(it->secret_value);

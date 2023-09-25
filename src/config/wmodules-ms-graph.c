@@ -33,7 +33,6 @@ static const char* XML_RESOURCE_RELATIONSHIP = "relationship";
 
 int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
-	int e;
 	wm_ms_graph* ms_graph;
 
 	if (!nodes) {
@@ -51,10 +50,10 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
-	wm_ms_graph_auth *it;	
+	wm_ms_graph_auth *it;
 	int tenant = 0;
 
-	os_calloc(1, sizeof(wm_ms_graph_auth*), ms_graph->auth_config); 
+	os_calloc(1, sizeof(wm_ms_graph_auth*), ms_graph->auth_config);
 	os_malloc(sizeof(wm_ms_graph_resource) * 2, ms_graph->resources);
 	ms_graph->num_resources = 0;
 
@@ -112,7 +111,6 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				return OS_CFGERR;
 			}
 		} else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
-
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				OS_ClearNode(children);
 				merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
@@ -125,7 +123,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			it = ms_graph->auth_config[tenant];
 			tenant++;
 
-			for (int j = 0; children[j]; j++) {							
+			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
 					if (strlen(children[j]->content) > 0 ) {
 						os_strdup(children[j]->content, it->client_id);
@@ -198,7 +196,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				merror(XML_NO_ELEM, XML_API_TYPE);
 				return OS_NOTFOUND;
 			}
-			
+
 		} else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				merror("Empty content for tag '%s' at module '%s'.", XML_RESOURCE, WM_MS_GRAPH_CONTEXT.name);
@@ -244,7 +242,6 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				}
 			}
 
-
 			OS_ClearNode(children);
 			if (!name_set) {
 				merror(XML_NO_ELEM, XML_RESOURCE_NAME);
@@ -263,7 +260,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		merror("Invalid content for tag '%s' at module '%s'.", XML_INTERVAL, WM_MS_GRAPH_CONTEXT.name);
         return OS_INVALID;
     }
-	
+
 	if (tenant == 0) {
 		merror(XML_NO_ELEM, XML_API_AUTH);
 		return OS_NOTFOUND;
