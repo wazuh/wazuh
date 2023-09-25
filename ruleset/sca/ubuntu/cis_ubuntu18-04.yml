@@ -2609,9 +2609,7 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: all
     rules:
-      - "d:/etc/audit"
-      - "d:/etc/audit/rules.d -> r:^99-finalize.rules$"
-      - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
+      - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-e 2'
 
   # 4.2 Configure Logging
   # 4.2.1 Configure rsyslog
@@ -2669,7 +2667,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
-      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
 
   # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host (Automated)
   - id: 18635
@@ -2687,9 +2685,9 @@ checks:
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\s*\w && r:action && r:target="\d|target="\w'
-      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\w && r:action && r:target="\d|target="\w'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\s*\w && r:action && r:target="\d|target="\w'
       - 'f:/etc/rsyslog.conf -> r:^\s*\* && r:@\d|@\w'
-      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\s*\* && r:@\d|@\w'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\s*\* && r:@\d|@\w'
 
   # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual) - Not Implemented
   # 4.2.2 Configure journald
