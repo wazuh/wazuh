@@ -12,7 +12,10 @@ import certifi
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.security import load_spec
 
+from api.configuration import api_conf
 from api.constants import INSTALLATION_UID_PATH
+
+RELEASE_UPDATES_URL = 'http://cti:4041'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -55,7 +58,7 @@ async def modify_response_headers(request, response):
 @cancel_signal_handler
 async def check_installation_uid(app):
     if not os.path.exists(INSTALLATION_UID_PATH):
-        logger.info("Populating installation UID")
+        logger.info("Populating installation UID...")
         with open(INSTALLATION_UID_PATH, 'w') as file:
             file.write(str(uuid.uuid4()))
 
@@ -66,15 +69,39 @@ async def get_update_information(app):
 
     headers = {
         'wazuh-uid': get_installation_uid(),
-        'wazuh-tag': get_current_version()
+        'wazuh-tag': f'v{get_current_version()}'
     }
+
+    updates_url = os.path.join(RELEASE_UPDATES_URL, 'api', 'v1', 'ping')
 
     async with aiohttp.ClientSession(connector=get_connector()) as session:
         while True:
-            logger.info('Getting updates information')
-            async with session.get('https://httpbin.org/get', headers=headers) as response:
+            logger.info('Getting updates information...')
+            logger.debug('Querying %s', updates_url)
+            async with session.get(updates_url, headers=headers) as response:
+                response_data = await response.json()
+
                 logger.debug("Response status %s", response.status)
-                logger.debug("Response data: %s", await response.json())
+                logger.debug("Response data: %s", response_data)
+
+                update_information = {
+                    'last_check_date': datetime.utcnow(),
+                    'status_code': response.status,
+                    'message': '',
+                    'available_update': {}
+                }
+
+                if response.status == 200:
+                    if len(response_data['data']['patch']):
+                        update_information['available_update'].update(**response_data['data']['patch'][0])
+                    elif len(response_data['data']['minor']):
+                        update_information['available_update'].update(**response_data['data']['minor'][0])
+                    elif len(response_data['data']['mayor']):
+                        update_information['available_update'].update(**response_data['data']['mayor'][0])
+                else:
+                    update_information['message'] = response_data['errors']['detail']
+
+                app['update_information'] = update_information
             await asyncio.sleep(60*60*24)
 
 
