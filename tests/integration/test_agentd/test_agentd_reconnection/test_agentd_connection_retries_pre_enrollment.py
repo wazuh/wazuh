@@ -50,23 +50,17 @@ tags:
 import pytest
 from pathlib import Path
 import sys
-from time import sleep
+import time
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.modules.agentd.patterns import * 
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
-from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils import callbacks
-from wazuh_testing.utils.services import check_if_process_is_running, control_service
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, wait_enrollment_try, add_custom_key
+from .. import wait_keepalive, add_custom_key
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -85,8 +79,11 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+print(test_metadata)
+
 # Tests
-def test_agentd_connection_retries_pre_enrollment(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check how the agent behaves when the 'wazuh-remoted' daemon is not available
                  and performs multiple connection attempts to it. For this, the agent starts
@@ -102,18 +99,18 @@ def test_agentd_connection_retries_pre_enrollment(test_configuration, test_metad
     tier: 0
 
     parameters:
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated 'wazuh-authd' connection.
-        - configure_environment:
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - teardown:
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
             type: fixture
-            brief: Stop the Remoted server
+            brief: Reset the 'ossec.log' file and start a new monitor.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -133,19 +130,21 @@ def test_agentd_connection_retries_pre_enrollment(test_configuration, test_metad
     # Stop target Agent
     control_service('stop')
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator()
-    remoted_server.start()
-
-    # Start AuthdSimulator
-    authd_server = AuthdSimulator()
-    authd_server.start()
-    
     # Add dummy key in order to communicate with RemotedSimulator
     add_custom_key()
     
     # Start service
     control_service('start')
+
+    time.sleep(5)
+
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
+    remoted_server.start()
     
     # Start hearing logs
     wait_keepalive()
+
+    if remoted_server:
+        remoted_server.clear()
+        remoted_server.shutdown()
