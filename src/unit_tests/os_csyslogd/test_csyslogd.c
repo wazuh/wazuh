@@ -44,14 +44,17 @@ int __wrap_OS_Alert_SendSyslog(__attribute__((unused))alert_data *al_data, __att
     return mock_type(int);
 }
 
-alert_data *__wrap_Read_FileMon(__attribute__((unused))file_queue *fileq, __attribute__((unused))const struct tm *p, __attribute__((unused))unsigned int timeout)
-{
+alert_data *__wrap_Read_FileMon(__attribute__((unused))file_queue *fileq, __attribute__((unused))const struct tm *p, __attribute__((unused))unsigned int timeout) {
     return mock_type(alert_data*);
 }
 
-int __wrap_Init_FileQueue(__attribute__((unused))file_queue *fileq, __attribute__((unused))const struct tm *p, __attribute__((unused))int flags)
-{
+int __wrap_Init_FileQueue(__attribute__((unused))file_queue *fileq, __attribute__((unused))const struct tm *p, __attribute__((unused))int flags) {
     return mock_type(int);
+}
+
+void __wrap_sleep(__attribute__((unused))unsigned int seconds) {
+    check_expected(seconds);
+    return;
 }
 
 static SyslogConfig *makeSyslogConfig(unsigned int format) {
@@ -236,9 +239,10 @@ static void test_csyslogd_log_CSyslogD_max_tries(void **state) {
     makeAlertData(al_data); 
 
     will_return(__wrap_time, 62168472000);
-
-    for (int tries = 0; tries < OS_CSYSLOGD_MAX_TRIES; tries++) { 
+        
+    for (int tries = 0; tries < OS_CSYSLOGD_MAX_TRIES; tries++) {         
         will_return(__wrap_Init_FileQueue, -1);
+        expect_value(__wrap_sleep, seconds, 1);
     }
     
     char strMaxTries[128];
@@ -265,6 +269,7 @@ static void test_csyslogd_json_CSyslogD_max_tries(void **state) {
 
     for (int tries = 1; tries < OS_CSYSLOGD_MAX_TRIES; tries++) {
         will_return(__wrap_jqueue_open, -1);
+        expect_value(__wrap_sleep, seconds, 1);
     }
     
     char strMaxTries[128];
@@ -354,6 +359,7 @@ static void test_csyslogd_json_log_no_dataCSyslogD(void **state) {
         will_return(__wrap_time, 62168472000);
         expect_string(__wrap__mdebug2, formatted_msg, "jqueue_next()");
         will_return(__wrap_jqueue_next, NULL);
+        expect_value(__wrap_sleep, seconds, 1);
         will_return(__wrap_FOREVER, 1);
     }
     
