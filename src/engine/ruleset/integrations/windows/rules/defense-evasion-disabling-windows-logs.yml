@@ -18,7 +18,7 @@ metadata:
 check: >-
     array_contains($event.type,start) AND array_contains($event.category,process)
     AND (((contains($process.executable,logman.exe) OR $process.pe.original_file_name==Logman.exe))
-    AND (array_contains($process.args, EventLog-) AND array_contains($process.args, stop, delete))
+    AND (array_contains($process.args, EventLog) AND array_contains($process.args, stop, delete))
     OR ((contains($process.name,pwsh.exe) OR contains($process.executable,powershell.exe)
     OR contains($process.executable,powershell_ise.exe)) OR (contains($process.pe.original_file_name,pwsh.exe)
     OR contains($process.pe.original_file_name,powershell.exe) OR contains($process.pe.original_file_name,powershell_ise.exe))
