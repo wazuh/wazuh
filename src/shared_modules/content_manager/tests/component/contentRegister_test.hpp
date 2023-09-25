@@ -12,7 +12,7 @@
 #ifndef _CONTENT_REGISTER_TEST_HPP
 #define _CONTENT_REGISTER_TEST_HPP
 
-#include "fakeServer.hpp"
+#include "fakes/fakeServer.hpp"
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
 #include <memory>
@@ -28,7 +28,7 @@ protected:
 
     nlohmann::json m_parameters; ///< Parameters used to create the ContentRegister
 
-    inline static std::unique_ptr<FakeServer> fakeServer; ///< pointer to FakeServer class
+    inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -42,11 +42,11 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
-                    "contentSource": "api",
+                    "contentSource": "cti-api",
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
-                    "url": "http://localhost:4444/raw",
+                    "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/content-register-tests",
                     "dataFormat": "json",
                     "contentFileName": "sample.json"
@@ -61,9 +61,9 @@ protected:
     // cppcheck-suppress unusedFunction
     static void SetUpTestSuite()
     {
-        if (!fakeServer)
+        if (!m_spFakeServer)
         {
-            fakeServer = std::make_unique<FakeServer>("localhost", 4444);
+            m_spFakeServer = std::make_unique<FakeServer>("localhost", 4444);
         }
     }
 
@@ -73,7 +73,7 @@ protected:
     // cppcheck-suppress unusedFunction
     static void TearDownTestSuite()
     {
-        fakeServer.reset();
+        m_spFakeServer.reset();
     }
 };
 

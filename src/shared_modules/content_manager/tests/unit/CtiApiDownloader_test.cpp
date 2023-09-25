@@ -9,33 +9,22 @@
  * Foundation.
  */
 
-#include "APIDownloader_test.hpp"
-#include "APIDownloader.hpp"
+#include "CtiApiDownloader_test.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 
-/*
- * @brief Tests the instantiation of the APIDownloader class
- */
-TEST_F(APIDownloaderTest, TestInstantiation)
-{
-    m_spAPIDownloader.reset();
-    // Check that the APIDownloader class can be instantiated
-    EXPECT_NO_THROW(m_spAPIDownloader = std::make_shared<APIDownloader>());
-}
-
 /**
  * @brief Tests handle a valid request with raw data.
  */
-TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
+TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithRawData)
 {
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
     const auto expectedStageStatus = R"(
         [
             {
-                "stage": "APIDownloader",
+                "stage": "CtiApiDownloader",
                 "status": "ok"
             }
         ]
@@ -43,10 +32,10 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
 
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
-    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/" + fileName};
-    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/" + fileName};
+    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/3-" + fileName};
+    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/3-" + fileName};
 
-    EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
+    EXPECT_NO_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext));
 
     EXPECT_EQ(m_spUpdaterContext->data.at("paths").at(0), contentPath);
 
@@ -64,9 +53,9 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
 /**
  * @brief Tests handle a valid request with compressed data.
  */
-TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
+TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedData)
 {
-    m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz";
+    m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz/consumers";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
@@ -74,7 +63,7 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
     const auto expectedStageStatus = R"(
         [
             {
-                "stage": "APIDownloader",
+                "stage": "CtiApiDownloader",
                 "status": "ok"
             }
         ]
@@ -82,10 +71,10 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
-    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/" + fileName};
-    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/" + fileName};
+    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/3-" + fileName};
+    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/3-" + fileName};
 
-    EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
+    EXPECT_NO_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext));
 
     EXPECT_EQ(m_spUpdaterContext->data.at("paths").at(0), downloadPath);
 
@@ -103,7 +92,7 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 /**
  * @brief Tests handle a valid request with compressed data and invalid output folder.
  */
-TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutputFolder)
+TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutputFolder)
 {
     m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -117,13 +106,13 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutp
     const auto expectedStageStatus = R"(
         [
             {
-                "stage": "APIDownloader",
+                "stage": "CtiApiDownloader",
                 "status": "fail"
             }
         ]
     )"_json;
 
-    EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
@@ -135,7 +124,7 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutp
 /**
  * @brief Tests handle an empty url.
  */
-TEST_F(APIDownloaderTest, TestHandleAnEmptyUrl)
+TEST_F(CtiApiDownloaderTest, TestHandleAnEmptyUrl)
 {
     m_spUpdaterBaseContext->configData["url"] = "";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -149,13 +138,13 @@ TEST_F(APIDownloaderTest, TestHandleAnEmptyUrl)
     const auto expectedStageStatus = R"(
         [
             {
-                "stage": "APIDownloader",
+                "stage": "CtiApiDownloader",
                 "status": "fail"
             }
         ]
     )"_json;
 
-    EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
@@ -167,7 +156,7 @@ TEST_F(APIDownloaderTest, TestHandleAnEmptyUrl)
 /**
  * @brief Tests handle an invalid url.
  */
-TEST_F(APIDownloaderTest, TestHandleAnInvalidUrl)
+TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
 {
     m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/invalid-url";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -181,13 +170,13 @@ TEST_F(APIDownloaderTest, TestHandleAnInvalidUrl)
     const auto expectedStageStatus = R"(
         [
             {
-                "stage": "APIDownloader",
+                "stage": "CtiApiDownloader",
                 "status": "fail"
             }
         ]
     )"_json;
 
-    EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 

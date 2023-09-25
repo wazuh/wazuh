@@ -170,8 +170,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + fileName};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + fileName};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
+    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
@@ -199,14 +199,14 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
  */
 TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionType)
 {
-    m_parameters["configData"]["url"] = "http://localhost:4444/xz";
+    m_parameters["configData"]["url"] = "http://localhost:4444/xz/consumers";
     m_parameters["configData"]["compressionType"] = "xz";
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + fileName};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + fileName};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
+    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
@@ -234,15 +234,15 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
  */
 TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTypeAndDeleteDownloadedContentEnabled)
 {
-    m_parameters["configData"]["url"] = "http://localhost:4444/xz";
+    m_parameters["configData"]["url"] = "http://localhost:4444/xz/consumers";
     m_parameters["configData"]["compressionType"] = "xz";
     m_parameters["configData"]["deleteDownloadedContent"] = true;
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + fileName};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + fileName};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
+    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
