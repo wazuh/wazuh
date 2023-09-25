@@ -13,11 +13,13 @@ metadata:
   references:
     - "https://attack.mitre.org/tactics/TA0005/"
 
-check :
+check : >-
     array_contains($event.type, deletion) AND array_contains($event.category, file) AND
-    (contains($file.path, "C:\\inetpub\\logs\\LogFiles\\*.log") OR contains($file.path, "/var/log/apache*/access.log") OR
-    contains($file.path, "/etc/httpd/logs/access_log") OR contains($file.path, /var/log/httpd/access_log) OR
-    contains($file.path, "/var/www/*/logs/access.log"))
+    (regex_match($file.path, 'C:\\\\inetpub\\\\logs\\\\LogFiles\\\\[A-Za-z]+.log') OR
+    regex_match($file.path, '////var////log////apache[A-Za-z]+////access.log') OR
+    contains($file.path, /etc/httpd/logs/access_log) OR
+    contains($file.path, /var/log/httpd/access_log) OR
+    regex_match($file.path, '////var////www////[A-Za-z]+////logs////access.log'))
 
 normalize:
   - map:

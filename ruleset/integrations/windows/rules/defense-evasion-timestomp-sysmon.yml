@@ -14,17 +14,17 @@ metadata:
 
 check: >-
     array_contains($event.category, file) AND array_contains($event.type, change) AND $event.id == "2"
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Program Files\\\\([A-Z]:)?')
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Program Files (x86)\\\\([A-Z]:)?')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Program Files\\\\([A-Za-z])')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Program Files (x86)\\\\([A-Za-z])')
     AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Windows\\\\system32\\\\msiexec.exe')
     AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Windows\\\\syswow64\\\\msiexec.exe')
     AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Windows\\\\syswow64\\\\svchost.exe')
     AND NOT regex_match($process.executable, '([A-Z]:)?\\\\WINDOWS\\\\syswow64\\\\backgroundTaskHost.exe')
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe')
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\slack\\\\app-.*?\\\\slack.exe')
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-.*?\\\\GitHubDesktop.exe')
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\\\\Teams.exe')
-    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\.*?\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\OneDrive.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\[A-Za-z]+\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\[A-Za-z]+\\\\AppData\\\\Local\\\\slack\\\\app-[A-Za-z]+\\\\slack.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\[A-Za-z]+\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-[A-Za-z]+\\\\GitHubDesktop.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\[A-Za-z]+\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\\\\Teams.exe')
+    AND NOT regex_match($process.executable, '([A-Z]:)?\\\\Users\\\\[A-Za-z]+\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\OneDrive.exe')
     AND NOT contains($file.extension, tmp) AND NOT contains($file.extension, ~tmp) AND NOT contains($file.extension, ~tmp)
     AND NOT contains($user.name, SYSTEM) AND NOT contains($user.name, Local Service) AND NOT contains($user.name, Network Service)
 
