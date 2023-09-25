@@ -25,3 +25,14 @@ class FullCommandFormat(EventFormat):
         header = Parser.get_header_ossec_format(queue, agent_id, agent_name, agent_ip, origin)
         header = "{}:ossec: output: '{}':\n".format(header, origin)
         return '{}{}'.format(header, '\n'.join([line for line in event]))
+
+    def format_event(self, event):
+        return '\n'.join([line for line in event])
+
+    def get_events(self, events):
+        events_multiline = []
+        events_multiline.append(events)
+        return events_multiline
+
+    def format_event(self, event):
+        return "ossec: output: '{}':".format(event)

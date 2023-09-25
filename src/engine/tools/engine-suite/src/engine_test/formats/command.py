@@ -7,7 +7,6 @@ class CommandFormat(EventFormat):
         self.config['queue'] = Formats.COMMAND.value['queue']
 
     def parse_events(self, events, config):
-        # TODO: parse multiples events of command
         return self.parse_event(events, config)
 
     def parse_event(self, event, config):
@@ -26,3 +25,6 @@ class CommandFormat(EventFormat):
         header = Parser.get_header_ossec_format(queue, agent_id, agent_name, agent_ip, origin)
         header = "{}:ossec: output: '{}':".format(header, origin)
         return "{} {}".format(header, '{} '.format(header).join([line + '\n' for line in event]))
+
+    def format_event(self, event):
+        return "ossec: output: '{}':".format(event)

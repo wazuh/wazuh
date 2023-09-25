@@ -8,9 +8,9 @@ class JsonFormat(EventFormat):
         self.config['queue'] = Formats.JSON.value['queue']
 
     def parse_event(self, event, config):
-        event = self.parse_json_format(event)
+        event = self.format_event(event)
         return Parser.get_event_ossec_format(event, config)
 
-    def parse_json_format(self, event):
+    def format_event(self, event):
         json_object = json.loads(event)
         return json.dumps(json_object, separators=(',',':'))

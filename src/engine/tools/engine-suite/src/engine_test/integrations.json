@@ -1,36 +1,41 @@
 {
-    "apache": {
+    "integration_1": {
         "format": "syslog",
-        "origin": "/tmp/apache.log"
+        "origin": "/tmp/syslog.log"
     },
-    "windows": {
+    "integration_2": {
         "format": "eventchannel"
     },
-    "test": {
+    "integration_3": {
         "format": "json",
         "origin": "/tmp/json.json"
     },
-    "apple": {
+    "integration_4": {
         "format": "macos"
     },
-    "rsys": {
+    "integration_5": {
         "format": "remote-syslog",
         "origin": "10.0.2.5"
     },
-    "audit": {
+    "integration_5_1": {
+        "format": "remote-syslog",
+        "origin": "2001:db8:3333:4444:5555:6666:7777:8888"
+    },
+    "integration_6": {
         "format": "audit",
         "origin": "/tmp/audit.log"
     },
-    "comando1": {
+    "integration_7": {
         "format": "command",
         "origin": "rm -rf /"
     },
-    "fullcomando2": {
+    "integration_8": {
         "format": "full_command",
         "origin": "ls -last"
     },
-    "multilinea1": {
+    "integration_9": {
         "format": "multi-line",
-        "origin": "/tmp/multiline.txt"
+        "origin": "/tmp/multiline.txt",
+        "lines": 5
     }
 }
