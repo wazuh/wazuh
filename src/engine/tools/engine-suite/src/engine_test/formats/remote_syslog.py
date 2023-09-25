@@ -11,3 +11,10 @@ class RemoteSyslogFormat(EventFormat):
         origin = Parser.get_origin(config['origin'])
         header = "{}:{}".format(queue, origin)
         return "{}:{}".format(header, Parser.parse_syslog_format(event))
+
+    def format_event(self, event):
+        return Parser.parse_syslog_format(event)
+
+    def get_full_location(self, args):
+        origin = Parser.get_origin(args['origin'])
+        return "{}".format(origin)

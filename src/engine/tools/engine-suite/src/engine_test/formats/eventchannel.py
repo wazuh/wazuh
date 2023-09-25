@@ -8,7 +8,6 @@ class EventChannelFormat(EventFormat):
         self.config['origin'] = Formats.EVENTCHANNEL.value['origin']
 
     def parse_events(self, events, config):
-        # TODO: parse multiples events of windows
         return self.parse_event(events, config)
 
     def parse_event(self, event, config):
@@ -52,3 +51,11 @@ class EventChannelFormat(EventFormat):
             if line.startswith("</Event>"):
                 break
         return '{{"Message":"{}","Event":"{}"}}'.format(message, eventXML.replace("\"", "'"))
+
+    def format_event(self, event):
+        return self.parse_eventchannel_format(event)
+
+    def get_events(self, events):
+        events_multiline = []
+        events_multiline.append(events)
+        return events_multiline

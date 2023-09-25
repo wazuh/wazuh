@@ -7,5 +7,8 @@ class SyslogFormat(EventFormat):
         self.config['queue'] = Formats.SYSLOG.value['queue']
 
     def parse_event(self, event, config):
-        event = Parser.parse_syslog_format(event)
+        event = self.format_event(event)
         return Parser.get_event_ossec_format(event, self.config)
+
+    def format_event(self, event):
+        return Parser.parse_syslog_format(event)

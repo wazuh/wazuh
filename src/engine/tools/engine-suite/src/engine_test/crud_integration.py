@@ -1,19 +1,5 @@
 import json
-from os import path
 from importlib.metadata import files
-from engine_test.events_collector import EventsCollector
-from engine_test.formats.syslog import SyslogFormat
-from engine_test.formats.json import JsonFormat
-from engine_test.formats.eventchannel import EventChannelFormat
-from engine_test.formats.macos import MacosFormat
-from engine_test.formats.remote_syslog import RemoteSyslogFormat
-from engine_test.formats.audit import AuditFormat
-from engine_test.formats.command import CommandFormat
-from engine_test.formats.full_command import FullCommandFormat
-from engine_test.formats.multi_line import MultilineFormat
-from engine_test.event_format import Formats
-
-from engine_test.api_connector import ApiConnector
 
 class CrudIntegration:
     def __init__(self):
