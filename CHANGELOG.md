@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
 - Added unit tests for the manage_agents tool. ([#15999](https://github.com/wazuh/wazuh/pull/15999))
 - Added an option to customize the Slack integration. ([#16090](https://github.com/wazuh/wazuh/pull/16090))
+- Added support for Amazon Linux 2023 in Vulnerability Detector. ([#17617](https://github.com/wazuh/wazuh/issue/17617))
 
 #### Changed
 
