@@ -1982,11 +1982,10 @@ checks:
       - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
       - pci_dss_v3.2.1: ["1.4"]
-    condition: any
+    condition: all
     rules:
-      - 'c:nft list ruleset -> r:hook input && r:iif "lo" accept'
-      - "c:nft list ruleset -> r:hook input && r:ip saddr 127.0.0.0/8"
-      - "c:nft list ruleset -> r:hook input && r:ip6 saddr ::1 counter packets"
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr|ip6 saddr'
 
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not Implemented
   # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
