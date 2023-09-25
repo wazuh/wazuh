@@ -13,6 +13,7 @@
 #define _FACTORY_DOWNLOADER_HPP
 
 #include "APIDownloader.hpp"
+#include "HTTPRequest.hpp"
 #include "S3Downloader.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -42,7 +43,7 @@ public:
 
         if (downloaderType.compare("api") == 0)
         {
-            return std::make_shared<APIDownloader>();
+            return std::make_shared<APIDownloader>(HTTPRequest::instance());
         }
         if (downloaderType.compare("s3") == 0)
         {

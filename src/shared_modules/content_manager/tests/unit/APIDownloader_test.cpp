@@ -15,16 +15,6 @@
 #include "gtest/gtest.h"
 #include <filesystem>
 
-/*
- * @brief Tests the instantiation of the APIDownloader class
- */
-TEST_F(APIDownloaderTest, TestInstantiation)
-{
-    m_spAPIDownloader.reset();
-    // Check that the APIDownloader class can be instantiated
-    EXPECT_NO_THROW(m_spAPIDownloader = std::make_shared<APIDownloader>());
-}
-
 /**
  * @brief Tests handle a valid request with raw data.
  */
@@ -43,8 +33,8 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
 
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
-    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/" + fileName};
-    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/" + fileName};
+    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/3-" + fileName};
+    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/3-" + fileName};
 
     EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
 
@@ -66,7 +56,7 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
  */
 TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 {
-    m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz";
+    m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz/consumers";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
@@ -82,8 +72,8 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
-    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/" + fileName};
-    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/" + fileName};
+    const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/3-" + fileName};
+    const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/3-" + fileName};
 
     EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
 

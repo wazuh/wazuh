@@ -13,7 +13,8 @@
 #define _API_DOWNLOADER_TEST_HPP
 
 #include "APIDownloader.hpp"
-#include "fakeServer.hpp"
+#include "HTTPRequest.hpp"
+#include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
 #include <memory>
@@ -33,7 +34,7 @@ protected:
 
     std::shared_ptr<APIDownloader> m_spAPIDownloader; ///< APIDownloader used to download the content.
 
-    inline static std::unique_ptr<FakeServer> fakeServer; ///< pointer to FakeServer class
+    inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -42,7 +43,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        m_spAPIDownloader = std::make_shared<APIDownloader>();
+        m_spAPIDownloader = std::make_shared<APIDownloader>(HTTPRequest::instance());
         // Create a updater base context
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";
@@ -54,7 +55,7 @@ protected:
                 "compressionType": "raw",
                 "versionedContent": "false",
                 "deleteDownloadedContent": false,
-                "url": "http://localhost:4444/raw",
+                "url": "http://localhost:4444/raw/consumers",
                 "outputFolder": "/tmp/api-downloader-tests",
                 "dataFormat": "json",
                 "contentFileName": "sample.json"
@@ -62,6 +63,7 @@ protected:
         )"_json;
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
+        m_spUpdaterContext->currentOffset = 0;
         // Create folders
         std::filesystem::create_directory(m_spUpdaterBaseContext->outputFolder);
         std::filesystem::create_directory(m_spUpdaterBaseContext->downloadsFolder);
@@ -91,9 +93,9 @@ protected:
     // cppcheck-suppress unusedFunction
     static void SetUpTestSuite()
     {
-        if (!fakeServer)
+        if (!m_spFakeServer)
         {
-            fakeServer = std::make_unique<FakeServer>("localhost", 4444);
+            m_spFakeServer = std::make_unique<FakeServer>("localhost", 4444);
         }
     }
 
@@ -103,7 +105,7 @@ protected:
     // cppcheck-suppress unusedFunction
     static void TearDownTestSuite()
     {
-        fakeServer.reset();
+        m_spFakeServer.reset();
     }
 };
 
