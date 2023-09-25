@@ -28,6 +28,9 @@ class EventFormat:
             events_parsed.append(self.parse_event(event, config))
         return events_parsed
 
+    def get_full_location(self, args):
+        return Parser.get_full_location(args['agent_id'], args['agent_name'], args['agent_ip'], args['origin'])
+
     def parse_event(self, event, config):
         return Parser.get_event_ossec_format(event, self.config)
 
@@ -35,3 +38,9 @@ class EventFormat:
         if args['origin'] == None and 'origin' in integration:
             args['origin'] = integration['origin']
         return args
+
+    def format_event(self, event):
+        return event
+
+    def get_events(self, events):
+        return events

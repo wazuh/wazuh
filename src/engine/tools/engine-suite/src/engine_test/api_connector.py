@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from api_communication import communication
 from api_communication import test_pb2
@@ -8,45 +9,96 @@ class ApiConfig(Enum):
     Socket = "/var/ossec/queue/sockets/engine-api"
     Component = "test"
     SessionName = "engine_test"
-    Policy = ""
     Lifespan = 0
     Description = ""
 
 class ApiConnector:
-    def __init__(self):
-        self.api_client = communication.APIClient(ApiConfig.Socket.value, ApiConfig.Component.value)
+    def __init__(self, config):
+        try:
+            self.api_client = communication.APIClient(ApiConfig.Socket.value, ApiConfig.Component.value)
+            self.session_name = ApiConfig.SessionName.value
+        except Exception as ex:
+            print('Could not establish communication with the API. Error: {}'.format(ex))
+            exit(1)
+
+        self.config = config
         self.create_session()
 
-    def send_event(self, event, config):
-        # Create test request
-        request = test_pb2.RunPost_Request()
-        request.name = ApiConfig.SessionName.value
-        request.protocol_queue = chr(config['queue'])
-        request.protocol_location = config['origin']
-        request.event.string_value = event
-        request.namespaces.extend("system")
-        request.namespaces.extend("wazuh")
-        request.namespaces.extend("user") # default
+    def send_event(self, event):
+        try:
+            # Create test request
+            request = test_pb2.RunPost_Request()
+            request.name = self.session_name
+            request.protocol_queue = chr(self.config['queue'])
+            request.protocol_location = self.config['origin']
+            request.event.string_value = event
 
-        # agregar namespace en los parametros
-        response = self.api_client.send_command("run", "post", request)
-        return response
+            request.namespaces.extend(self.config['namespaces'])
+
+            if (self.config['full_verbose'] == True):
+                request.debug_mode = 2
+            else:
+                if (self.config['verbose'] == True):
+                    request.debug_mode = 1
+
+            if self.config['assets']:
+                request.asset_trace.extend(self.config['assets'])
+
+            print("\nSent: \n{}".format(request))
+            response = self.api_client.send_command("run", "post", request)
+            print("Received: \n{}".format(response))
+            return response
+        except Exception as ex:
+            print('Could not send event to TEST api. Error: {}'.format(ex))
+            exit(2)
 
     def create_session(self):
-        # Validate session exists
-        request_get = test_pb2.SessionGet_Request()
-        request_get.name = ApiConfig.SessionName.value
-        response = self.api_client.send_command("session", "get", request_get)
-        data = response['data']
+        try:
+            if self.config['session_name']:
+                # Connect to TEST with an existing session
+                self.session_name = self.config['session_name']
+                request_get = test_pb2.SessionGet_Request()
+                request_get.name = self.session_name
+                response = self.api_client.send_command("session", "get", request_get)
+                data = response['data']
 
-        if data['status'] != "OK":
-            request_post = test_pb2.SessionPost_Request()
-            request_post.name = ApiConfig.SessionName.value
-            request_post.policy = ApiConfig.Policy.value
-            request_post.lifespan = ApiConfig.Lifespan.value
-            request_post.description = ApiConfig.Description.value
-            response = self.api_client.send_command("session", "post", request_post)
+                if data['status'] == "ERROR":
+                    print("Session error: {}".format(response))
+                    exit(1)
+                else:
+                    print("Session {} established successfully.".format(self.session_name))
+            else:
+                # Connect to TEST with a temporal session with parametrized policy
+                request_post = test_pb2.SessionPost_Request()
+                self.session_name = self.get_session_name()
+                request_post.name = self.session_name
+                request_post.policy = self.config['policy']
+                request_post.lifespan = ApiConfig.Lifespan.value
+                request_post.description = ApiConfig.Description.value
+                response = self.api_client.send_command("session", "post", request_post)
+                data = response['data']
+                if data['status'] == 'ERROR':
+                    print("Session error: {}".format(response))
+                    exit(1)
+                else:
+                    print("Session {} created with policy {} was established successfully.".format(self.session_name, self.config['policy']))
+        except Exception as ex:
+            print('The session could not be created. Error: {}'.format(ex))
+            exit(3)
+
+    def delete_session(self):
+        if not self.config['session_name']:
+            request_delete = test_pb2.SessionsDelete_Request()
+            request_delete.name = self.session_name
+            response = self.api_client.send_command("sessions", "delete", request_delete)
             data = response['data']
+            print(data)
             if data['status'] == 'ERROR':
                 print("Session error: {}".format(response))
                 exit(1)
+            else:
+                print("\nSession {} deleted successfully.".format(self.session_name))
+
+    def get_session_name(self):
+        now = datetime.now()
+        return '{}_{}'.format(self.session_name, now.strftime("%Y%m%d%H%M%S%f"))
