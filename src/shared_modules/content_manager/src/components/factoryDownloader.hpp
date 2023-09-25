@@ -12,6 +12,7 @@
 #ifndef _FACTORY_DOWNLOADER_HPP
 #define _FACTORY_DOWNLOADER_HPP
 
+#include "APIDownloader.hpp"
 #include "CtiApiDownloader.hpp"
 #include "HTTPRequest.hpp"
 #include "S3Downloader.hpp"
@@ -41,6 +42,10 @@ public:
         auto const downloaderType {config.at("contentSource").get<std::string>()};
         std::cout << "Creating '" << downloaderType << "' downloader" << std::endl;
 
+        if (downloaderType.compare("api") == 0)
+        {
+            return std::make_shared<APIDownloader>(HTTPRequest::instance());
+        }
         if (downloaderType.compare("cti-api") == 0)
         {
             return std::make_shared<CtiApiDownloader>(HTTPRequest::instance());

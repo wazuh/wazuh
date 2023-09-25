@@ -28,7 +28,7 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "ondemand": true,
             "configData":
             {
-                "contentSource": "cti-api",
+                "contentSource": "api",
                 "compressionType": "raw",
                 "versionedContent": "false",
                 "deleteDownloadedContent": true,
