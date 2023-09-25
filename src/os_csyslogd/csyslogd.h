@@ -44,7 +44,6 @@ void OS_CSyslogD(SyslogConfig **syslog_config);
 void OS_CSyslogD(SyslogConfig **syslog_config) __attribute__((noreturn));
 #endif
 
-
 /* Conditional Field Formatting */
 int field_add_int(char *dest, size_t size, const char *format, const int value );
 int field_add_string(char *dest, size_t size, const char *format, const char *value );
