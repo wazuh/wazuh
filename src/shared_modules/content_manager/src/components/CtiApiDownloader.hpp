@@ -8,8 +8,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef _API_DOWNLOADER_HPP
-#define _API_DOWNLOADER_HPP
+#ifndef _CTI_API_DOWNLOADER_HPP
+#define _CTI_API_DOWNLOADER_HPP
 
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
@@ -18,12 +18,12 @@
 #include <memory>
 
 /**
- * @class APIDownloader
+ * @class CtiApiDownloader
  *
  * @brief Class in charge of downloading the content from the API as a step of a chain of responsibility.
  *
  */
-class APIDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
+class CtiApiDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
     /**
@@ -33,7 +33,7 @@ private:
      */
     void download()
     {
-        std::cout << "APIDownloader - Starting" << std::endl;
+        std::cout << "CtiApiDownloader - Starting" << std::endl;
         // Get the parameters needed to download the content.
         getParameters();
 
@@ -62,8 +62,8 @@ private:
         }
 
         // Set the status of the stage.
-        m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
-        std::cout << "APIDownloader - Finishing" << std::endl;
+        m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "ok"})"_json);
+        std::cout << "CtiApiDownloader - Finishing" << std::endl;
     }
 
     /**
@@ -97,16 +97,16 @@ private:
                               {
                                   const auto dataBlobObj = nlohmann::json::parse(data);
                                   m_consumerLastOffset = dataBlobObj.at("data").at("last_offset").get<int>();
-                                  std::cout << "APIDownloader - Request processed successfully.\n";
+                                  std::cout << "CtiApiDownloader - Request processed successfully.\n";
                               }};
 
         const auto onError {
             [this](const std::string& message, [[maybe_unused]] const long statusCode)
             {
                 // Set the status of the stage
-                m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "fail"})"_json);
+                m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "fail"})"_json);
 
-                throw std::runtime_error("APIDownloader - Could not get response from API because: " + message);
+                throw std::runtime_error("CtiApiDownloader - Could not get response from API because: " + message);
             }};
 
         // Make a get request to the API to get the consumer offset.
@@ -123,16 +123,16 @@ private:
     {
         const auto onSuccess {[]([[maybe_unused]] const std::string& data)
                               {
-                                  std::cout << "APIDownloader - Request processed successfully.\n";
+                                  std::cout << "CtiApiDownloader - Request processed successfully.\n";
                               }};
 
         const auto onError {
             [this](const std::string& message, [[maybe_unused]] const long statusCode)
             {
                 // Set the status of the stage
-                m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "fail"})"_json);
+                m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "fail"})"_json);
 
-                throw std::runtime_error("APIDownloader - Could not get response from API because: " + message);
+                throw std::runtime_error("CtiApiDownloader - Could not get response from API because: " + message);
             }};
 
         const auto fromOffset = m_context->currentOffset;
@@ -154,7 +154,7 @@ private:
 
 public:
     // LCOV_EXCL_START
-    ~APIDownloader() override = default;
+    ~CtiApiDownloader() override = default;
     // LCOV_EXCL_STOP
 
     /**
@@ -162,7 +162,7 @@ public:
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
      */
-    explicit APIDownloader(IURLRequest& urlRequest)
+    explicit CtiApiDownloader(IURLRequest& urlRequest)
         : m_urlRequest(urlRequest)
     {
     }
@@ -182,4 +182,4 @@ public:
     }
 };
 
-#endif // _API_DOWNLOADER_HPP
+#endif // _CTI_API_DOWNLOADER_HPP

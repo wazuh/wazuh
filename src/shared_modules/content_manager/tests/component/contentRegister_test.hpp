@@ -42,7 +42,7 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
-                    "contentSource": "api",
+                    "contentSource": "cti-api",
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,

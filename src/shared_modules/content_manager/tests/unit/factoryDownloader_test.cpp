@@ -10,26 +10,26 @@
  */
 
 #include "factoryDownloader_test.hpp"
-#include "APIDownloader.hpp"
+#include "CtiApiDownloader.hpp"
 #include "S3Downloader.hpp"
 #include "factoryDownloader.hpp"
 #include "updaterContext.hpp"
 #include <memory>
 
 /*
- * @brief Check the creation of an APIDownloader.
+ * @brief Check the creation of a CtiApiDownloader.
  */
-TEST_F(FactoryDownloaderTest, CreateAPIDownloader)
+TEST_F(FactoryDownloaderTest, CreateCtiApiDownloader)
 {
     // Create the config
-    nlohmann::json config = {{"contentSource", "api"}};
+    nlohmann::json config = {{"contentSource", "cti-api"}};
 
     // Create the downloader
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
     EXPECT_NO_THROW(spDownloader = FactoryDownloader::create(config));
 
-    // Check if the downloader is an APIDownloader
-    EXPECT_TRUE(std::dynamic_pointer_cast<APIDownloader>(spDownloader));
+    // Check if the downloader is a CtiApiDownloader
+    EXPECT_TRUE(std::dynamic_pointer_cast<CtiApiDownloader>(spDownloader));
 }
 
 /*

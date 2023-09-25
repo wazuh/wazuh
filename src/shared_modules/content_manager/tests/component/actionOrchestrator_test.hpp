@@ -44,7 +44,7 @@ protected:
                 "interval": 1,
                 "ondemand": true,
                 "configData": {
-                    "contentSource": "api",
+                    "contentSource": "cti-api",
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
