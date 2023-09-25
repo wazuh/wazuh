@@ -141,7 +141,7 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
         if not overwrite and exists(full_path):
             raise WazuhError(1905)
         # If file with same name already exists in subdirectory.
-        elif get_filenames_paths([filename])[0] != full_path:
+        elif not overwrite and get_filenames_paths([filename])[0] != full_path:
             raise WazuhError(1805)
         # Create backup and delete original CDB list.
         elif overwrite and exists(full_path):
