@@ -13,7 +13,10 @@ import certifi
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.security import load_spec
 
+from api.configuration import api_conf
 from api.constants import INSTALLATION_UID_PATH
+
+RELEASE_UPDATES_URL = 'http://cti:4041'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -56,7 +59,7 @@ async def modify_response_headers(request, response):
 @cancel_signal_handler
 async def check_installation_uid(app):
     if not os.path.exists(INSTALLATION_UID_PATH):
-        logger.info("Populating installation UID")
+        logger.info("Populating installation UID...")
         with open(INSTALLATION_UID_PATH, 'w') as file:
             file.write(str(uuid.uuid4()))
 
@@ -67,47 +70,20 @@ async def get_update_information(app):
 
     headers = {
         'wazuh-uid': get_installation_uid(),
-        'wazuh-tag': get_current_version()
+        'wazuh-tag': f'v{get_current_version()}'
     }
+
+    updates_url = os.path.join(RELEASE_UPDATES_URL, 'api', 'v1', 'ping')
 
     async with aiohttp.ClientSession(connector=get_connector()) as session:
         while True:
-            logger.info('Getting updates information')
-            async with session.get('https://httpbin.org/get', headers=headers) as response:
-                logger.debug("Response status %s", response.status)
-                logger.debug("Response data: %s", await response.json())
+            logger.info('Getting updates information...')
+            logger.debug('Querying %s', updates_url)
+            async with session.get(updates_url, headers=headers) as response:
+                response_data = await response.json()
 
-                response_data = {  # This is a sample and must be reaplced with the API response
-                    'data': {
-                        'minor': [
-                            {
-                                'tag': 'v4.6.0',
-                                'description': None,
-                                'title': 'Wazuh 4.6.0',
-                                'published_date': '2023-09-01T17:05:00Z',
-                                'semver': {
-                                    'minor': 6,
-                                    'patch': 0,
-                                    'mayor': 4
-                                }
-                            }
-                        ],
-                        'patch': [
-                            {
-                                'tag': 'v4.5.2',
-                                'description': None,
-                                'title': 'Wazuh 4.5.2',
-                                'published_date': '2023-09-10T17:24:00Z',
-                                'semver': {
-                                    'minor': 5,
-                                    'patch': 2,
-                                    'mayor': 4
-                                }
-                            }
-                        ],
-                        'mayor': []
-                    }
-                }
+                logger.debug("Response status %s", response.status)
+                logger.debug("Response data: %s", response_data)
 
                 update_information = {
                     'last_check_date': datetime.utcnow(),
