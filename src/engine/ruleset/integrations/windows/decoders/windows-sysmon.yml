@@ -251,15 +251,15 @@ normalize:
     - sysmon.file.archived: $windows.EventData.Archived
     - sysmon.file.is_executable: $windows.EventData.IsExecutable
 
- - check: $file.code_signature.status=="Valid"
+ - check: $file.code_signature.status == "Valid"
    map:
      - file.code_signature.valid: True
 
- - check: $event.code=="255"
+ - check: $event.code == "255"
    map:
     - error.code: $event.code
 
- - check: $event.code=="25"
+ - check: $event.code == "25"
    map:
     - message: $windows.EventData.Type
 
@@ -271,7 +271,7 @@ normalize:
    - process.pe.file_version: $windows.EventData.FileVersion
    - process.pe.product: $windows.EventData.Product
 
- - check: $event.code=="7"
+ - check: $event.code == "7"
    map:
     - file.pe.original_file_name: $windows.EventData.OriginalFileName
     - file.pe.company: $windows.EventData.Company
@@ -280,41 +280,41 @@ normalize:
     - file.pe.product: $windows.EventData.Product
 
   # DNS event
- - check: $event.code=="22"
+ - check: $event.code == "22"
    map:
     - network.protocol: dns
 
- - check: $windows.EventData.SignatureStatus==Valid
+ - check: $windows.EventData.SignatureStatus == Valid
    map:
     - file.code_signature.valid: True
 
- - check: $windows.EventData.Initiated==True
+ - check: $windows.EventData.Initiated == True
    map:
     - network.direction: egress
 
- - check: $windows.EventData.Initiated==false
+ - check: $windows.EventData.Initiated == false
    map:
     - network.direction: ingress
 
- - check: $windows.EventData.SourceIsIpv6==true
+ - check: $windows.EventData.SourceIsIpv6 == true
    map:
     - network.type: ipv6
 
- - check: $windows.EventData.SourceIsIpv6==false
+ - check: $windows.EventData.SourceIsIpv6 == false
    map:
     - network.type: ipv4
 
- - check: $event.code=="1" OR $event.code=="23" OR $event.code=="24" OR $event.code=="25" OR $event.code=="26"
+ - check: $event.code == "1" OR $event.code == "23" OR $event.code == "24" OR $event.code == "25" OR $event.code == "26"
    map:
     - process.hash: $_hashes
 
- - check: $event.code=="6" OR $event.code=="7" OR $event.code=="15"
+ - check: $event.code == "6" OR $event.code == "7" OR $event.code == "15"
    map:
     - file.hash: $_hashes
     - file.pe.imphash: file.hash.imphash
 
   ## Registry fields
- - check: $event.code=="12" OR $event.code=="13" OR $event.code=="14"
+ - check: $event.code == "12" OR $event.code == "13" OR $event.code == "14"
    map:
     - registry.path: $windows.EventData.TargetObject
     - _registry.array: split($registry.path, \\)
@@ -323,12 +323,12 @@ normalize:
     - registry.key: join($_registry.array, \\)
     - registry.value: regex_extract($registry.path, ^.*\\\\(.*)$)
 
- - check: ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND starts_with($windows.Event.EventData.Details,QWORD)
+ - check: ($event.code == "12" OR $event.code == "13" OR $event.code == "14") AND starts_with($windows.Event.EventData.Details,QWORD)
    map:
     - registry.data.type: SZ_QWORD
     - registry.data.strings: regex_extract($windows.EventData.Details, ^QWORD\\s*\\((0x[0-9A-F]+-0x[0-9A-F]+\)\\\))
 
- - check: ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND starts_with($windows.EventData.Details,DWORD)
+ - check: ($event.code == "12" OR $event.code == "13" OR $event.code == "14") AND starts_with($windows.EventData.Details,DWORD)
    map:
     - registry.data.type: SZ_DWORD
     - _value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
@@ -339,7 +339,7 @@ normalize:
    map:
     - _is_binary_data: true
 
- - check:  ($event.code=="12" OR $event.code=="13" OR $event.code=="14") AND is_true($_is_binary_data)
+ - check:  ($event.code == "12" OR $event.code == "13" OR $event.code == "14") AND is_true($_is_binary_data)
    map:
     - registry.data.type: REG_BINARY
     - registry.data.strings: $windows.EventData.Details
