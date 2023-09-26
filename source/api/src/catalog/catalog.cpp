@@ -43,6 +43,14 @@ Catalog::Catalog(const Config& config)
         try
         {
             result = json::Json {str.c_str()};
+            if (std::holds_alternative<json::Json>(result))
+            {
+                auto error = std::get<json::Json>(result).checkDuplicateKeys();
+                if (base::isError(error))
+                {
+                    result = base::getError(error);
+                }
+            }
         }
         catch (const std::exception& e)
         {
@@ -81,6 +89,14 @@ Catalog::Catalog(const Config& config)
         try
         {
             result = json::Json {yml::Converter::loadYMLfromString(content)};
+            if (std::holds_alternative<json::Json>(result))
+            {
+                auto error = std::get<json::Json>(result).checkDuplicateKeys();
+                if (base::isError(error))
+                {
+                    result = base::getError(error);
+                }
+            }
         }
         catch (const std::exception& e)
         {
