@@ -184,8 +184,7 @@ normalize:
     # Add categorization fields
     - rule.name: $windows.EventData.RuleName
     - event.hash: $windows.EventData.Hash
-    - _hashes: parse_key_value($windows.EventData.Hashes, =, ',', '\'', '\'')
-    - related.hash: $_hashes
+    - related.hash: $windows.EventData.Hashes
 
 
   ## Process fields

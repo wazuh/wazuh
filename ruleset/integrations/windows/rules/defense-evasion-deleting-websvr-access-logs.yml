@@ -6,7 +6,7 @@ metadata:
   description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
     evidence on a system.
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
-  compatibility: This rule has been tested on Wazuh version 4.3.
+  compatibility: This rule has been tested on Wazuh version 4.5.
   author:
     name: Wazuh, Inc.
     date: 2023/09/15
@@ -14,12 +14,12 @@ metadata:
     - "https://attack.mitre.org/tactics/TA0005/"
 
 check : >-
-    array_contains($event.type, deletion) AND array_contains($event.category, file) AND
-    (regex_match($file.path, 'C:\\\\inetpub\\\\logs\\\\LogFiles\\\\[A-Za-z]+.log') OR
-    regex_match($file.path, '////var////log////apache[A-Za-z]+////access.log') OR
-    contains($file.path, /etc/httpd/logs/access_log) OR
-    contains($file.path, /var/log/httpd/access_log) OR
-    regex_match($file.path, '////var////www////[A-Za-z]+////logs////access.log'))
+    array_contains($event.type, deletion) AND array_contains($event.category, file)
+    AND (regex_match($file.path, '^[A-Za-z]:\\\\inetpub\\\\logs\\\\LogFiles\\\\[A-Za-z]+\.log')
+        OR regex_match($file.path, '^/var\/log\/apache[A-Za-z]+\/access\.log')
+        OR $file.path == /etc/httpd/logs/access_log
+        OR $file.path == /var/log/httpd/access_log
+        OR regex_match($file.path, '^/var\/www\/[A-Za-z]+\/logs\/access\.log'))
 
 normalize:
   - map:
@@ -27,7 +27,6 @@ normalize:
 
       - rule.description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
           evidence on a system.
-      - rule.id: 665e7a4f-c58e-4fc6-bc83-87a7572670ac
       - rule.license: Wazuh Inc.
       - rule.name: WebServer Access Logs Deleted
 
