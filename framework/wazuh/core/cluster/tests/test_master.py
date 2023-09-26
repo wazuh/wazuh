@@ -1404,7 +1404,6 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
             """Auxiliary method."""
             self.cancel_called = True
 
-    tast_mock = TaskMock()
     master_handler.sync_tasks = {"key": PendingTaskMock()}
     master_handler.connection_lost(Exception())
 
