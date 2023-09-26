@@ -1104,40 +1104,24 @@ std::optional<base::Error> Json::validate(const Json& schema) const
 
 std::optional<base::Error> Json::checkDuplicateKeys() const
 {
-    // TODO: This should be checked by the library, or make a better validator.
-    // As stated in rapidjson docs, if an object contains duplicated memebers,
-    // equality comparator always returns false, for said member or for the whole
-    // object if it contains duplicated members.
-
-    // If equality between a member and itself is false, then it is a duplicate or
-    // contains duplicated members.
-
-    auto validateDuplicatedKeys = [](const rapidjson::Value& value, auto& recurRef) -> void
+    if (m_document.IsObject())
     {
-        if (value.IsObject())
+        std::unordered_set<std::string> keysSet;
+
+        for (auto it = m_document.MemberBegin(); it != m_document.MemberEnd(); ++it)
         {
-            for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
+            std::string key = it->name.GetString();
+
+            if (keysSet.count(key) > 0)
             {
-                if (value[it->name.GetString()] != value[it->name.GetString()])
-                {
-                    throw std::runtime_error(fmt::format("Unable to build json document because there is a duplicated "
+                return base::Error {fmt::format("Unable to build json document because there is a duplicated "
                                                          "key '{}', or a duplicated key inside object '{}'.",
                                                          it->name.GetString(),
-                                                         it->name.GetString()));
-                }
-
-                recurRef(it->value, recurRef);
+                                                         it->name.GetString())};
             }
-        }
-    };
 
-    try
-    {
-        validateDuplicatedKeys(m_document, validateDuplicatedKeys);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("{}", e.what())};
+            keysSet.insert(key);
+        }
     }
 
     return std::nullopt;

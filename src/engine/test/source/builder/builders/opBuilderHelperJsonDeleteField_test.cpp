@@ -125,7 +125,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_su
                                  std::vector<std::string> {},
                                  std::make_shared<defs::mocks::FailDef>());
 
-    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,"field2check": 20})");
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,"field1check": 20})");
 
     auto op = std::apply(bld::opBuilderHelperDeleteField, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -133,5 +133,5 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_su
 
     ASSERT_TRUE(result);
 
-    ASSERT_TRUE(result.payload()->exists("/field2check")); // Remove the first occurrence of the path
+    ASSERT_TRUE(result.payload()->exists("/field1check")); // Remove the first occurrence of the path
 }
