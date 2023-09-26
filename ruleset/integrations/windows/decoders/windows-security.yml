@@ -34,16 +34,16 @@ normalize:
       # Set Logon Type
       - windows.logon.type: kvdb_get(windows_logon_type, $windows.EventData.LogonType)
 
-      # Set User Account Control Description || TODO: Change field name
-      - windows.EventData.NewUacValueListDes: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.NewUacValue)
-      - windows.EventData.OldUacValueListDes: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.OldUacValue)
+      # Set User Account Control Description
+      - windows.EventData.NewUACList: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.NewUacValue)
+      - windows.EventData.OldUACList: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.OldUacValue)
 
       # Set Service Name and type
       - service.name: $windows.EventData.ServiceName
       - service.type: kvdb_get(windows_service_type, $windows.EventData.ServiceType)
 
-      # Set Kerberos Ticket Options || TODO: Change field name
-      - windows.EventData.TicketOptionsList: kvdb_decode_bitmask(windows_bitmask_tables, TicketOptions, $windows.EventData.TicketOptions)
+      # Set Kerberos Ticket Options
+      - windows.EventData.TicketOptionsDescription: kvdb_decode_bitmask(windows_bitmask_tables, TicketOptions, $windows.EventData.TicketOptions)
 
   # Set Kerberos Encryption Types - windows.EventData.TicketEncryptionTypeDescription
   - check: exists($windows.EventData.TicketEncryptionType)
@@ -330,10 +330,9 @@ normalize:
       - user.changes.name: $windows.EventData.NewTargetUserName
       - related.user: array_append_unique($windows.EventData.NewTargetUserName)
 
-  # TODO Object Policy Change 
   # SidListDesc
   - map:
-    - windows.sidListDescripion: windows_sid_list_desc(windows_sidlist_tables, $windows.EventData.SidList)
+    - windows.EventData.SidListDesc: windows_sid_list_desc(windows_sidlist_tables, $windows.EventData.SidList)
 
   # Set File fields for events 5140 and 5145
   - check: $event.id == '5140' OR $event.id == '5145'
