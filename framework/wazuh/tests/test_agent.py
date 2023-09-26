@@ -341,7 +341,7 @@ def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock
 
 
 @pytest.mark.parametrize('group, q, expected_q', [
-    ('default', '(name~wazuh,status~active)', 'group=default;(name~wazuh,status~active)'),
+    ('default', '(name~wazuh,status~active)', 'group=default;((name~wazuh,status~active))'),
     ('default', 'name~wazuh,status~active', 'group=default;(name~wazuh,status~active)')
 ])
 @patch('wazuh.agent.get_agents')
