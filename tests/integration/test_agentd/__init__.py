@@ -1,3 +1,6 @@
+import os
+import time
+
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import * 
@@ -63,4 +66,17 @@ def wait_agent_notification(current_value):
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION), accumulations = int(current_value))
-    return(wazuh_log_monitor.callback_result != None)
+    return(wazuh_log_monitor.callback_result != None), f'Sending agent notification message not found'
+
+def delete_keys_file():
+    """Remove the agent's client.keys file."""
+    os.remove(WAZUH_CLIENT_KEYS_PATH)
+    time.sleep(1)
+
+def check_module_stop():
+    """
+        Watch ossec.log until "Unable to access queue" message is found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_MODULE_STOPPED))
+    return(wazuh_log_monitor.callback_result == None), f'Unable to access queue message found'
