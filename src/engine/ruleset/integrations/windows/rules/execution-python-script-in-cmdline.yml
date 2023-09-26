@@ -6,7 +6,7 @@ metadata:
   description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use
     this method to execute malicious scripts and avoiding writing it to disk.
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
-  compatibility: This rule has been tested on Wazuh version 4.3.
+  compatibility: This rule has been tested on Wazuh version 4.5.
   author:
     name: Wazuh, Inc.
     date: 2023/09/15
@@ -23,7 +23,6 @@ normalize:
 
       - rule.description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use
           this method to execute malicious scripts and avoiding writing it to disk.
-      - rule.id: ee9f08dc-cf80-4124-94ae-08c405f059ae
       - rule.license: Wazuh Inc.
       - rule.name: Python Script Execution via Command Line
 
