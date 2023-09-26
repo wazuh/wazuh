@@ -397,9 +397,7 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
         raise WazuhResourceNotFound(1710)
 
     q_group = f'group={group_list[0]}'
-    if q and not (q.startswith('(') and q.endswith(')')):
-        q = f'({q})'
-    q = f'{q_group};{q}' if q else q_group
+    q = f'{q_group};({q})' if q else q_group
 
     return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q,
      distinct=distinct)
