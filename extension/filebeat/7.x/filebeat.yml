@@ -61,9 +61,10 @@ processors:
       when:
         equals:
           log.file.path: "/var/ossec/logs/alerts/alerts-ECS.json"
-      fields: ["log.offset", "log.file.path"]
+      fields: ["log.offset", "log.file"]
+        
   - drop_fields:
-      fields: ["agent.ephemeral_id", "agent.hostname", "agent.version", "input.type"]
+      fields: ["agent.ephemeral_id", "agent.hostname", "agent.version", "input"]
   - drop_fields:
       when:
         not:
