@@ -102,7 +102,6 @@ static int teardown_test_read(void **state) {
     return 0;
 }
 
-
 static int setup_conf(void **state) {
     wm_ms_graph* init_data = NULL;
     os_calloc(1,sizeof(wm_ms_graph), init_data);
@@ -228,7 +227,6 @@ void test_enabled_no(void **state) {
     assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
     assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
     assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
-
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1011,7 +1009,6 @@ void test_missing_relationship(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'relationship' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
-
 }
 
 void test_empty_relationship(void **state) {
