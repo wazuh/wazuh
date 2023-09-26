@@ -35,15 +35,15 @@ normalize:
       - windows.logon.type: kvdb_get(windows_logon_type, $windows.EventData.LogonType)
 
       # Set User Account Control Description || TODO: Change field name
-      - windows.EventData.NewUacValueListDes: kvdb_decode_bitmask('windows_bitmask_tables', 'uac', $windows.EventData.NewUacValue)
-      - windows.EventData.OldUacValueListDes: kvdb_decode_bitmask('windows_bitmask_tables', 'uac', $windows.EventData.OldUacValue)
+      - windows.EventData.NewUacValueListDes: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.NewUacValue)
+      - windows.EventData.OldUacValueListDes: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.OldUacValue)
 
       # Set Service Name and type
       - service.name: $windows.EventData.ServiceName
       - service.type: kvdb_get(windows_service_type, $windows.EventData.ServiceType)
 
       # Set Kerberos Ticket Options || TODO: Change field name
-      - windows.EventData.TicketOptionsList: kvdb_decode_bitmask('windows_bitmask_tables', 'TicketOptions', $windows.EventData.TicketOptions)
+      - windows.EventData.TicketOptionsList: kvdb_decode_bitmask(windows_bitmask_tables, TicketOptions, $windows.EventData.TicketOptions)
 
   # Set Kerberos Encryption Types - windows.EventData.TicketEncryptionTypeDescription
   - check: exists($windows.EventData.TicketEncryptionType)
@@ -63,8 +63,8 @@ normalize:
   - check: exists($windows.EventData.SubcategoryGuid)
     map:
       - _subcategory_guid: $windows.EventData.SubcategoryGuid
-      - _subcategory_guid: replace('{', '')
-      - _subcategory_guid: replace('}', '')
+      - _subcategory_guid: replace({, '')
+      - _subcategory_guid: replace(}, '')
       - _subcategory_guid: upcase($_subcategory_guid)
       - _audit_information_array: kvdb_get(windows_audit_information, $_subcategory_guid)
       - windows.EventData.Category: $_audit_information_array[1]
@@ -74,14 +74,14 @@ normalize:
   - check: exists($windows.EventData.FailureReason)
     map:
       - _failure_code : $windows.EventData.FailureReason
-      - _failure_code : replace('%%', '')
+      - _failure_code : replace(%%, '')
       - windows.logon.failure.reason: kvdb_get(windows_messages, $_failure_code )
 
   # Set Audit Policy Changes Descriptions
   - check: exists($windows.EventData.AuditPolicyChanges)
     map:
       - _policy_changes: $windows.EventData.AuditPolicyChanges
-      - _policy_changes: replace('%%', '')
+      - _policy_changes: replace(%%, '')
       - _policy_changes: replace(' ', '')
       - _policy_changes: split($_policy_changes, ',')
       # transform to array of string
@@ -93,7 +93,7 @@ normalize:
   - check: exists($windows.EventData.AccessList)
     map:
       - _access_list: $windows.EventData.AccessList
-      - _access_list: replace('%%', '')
+      - _access_list: replace(%%, '')
       - _access_list: replace(' ', '')
       - _access_list: split($_access_list, ',')
       - windows.EventData.AccessListDescription.0: kvdb_get(windows_messages, $_access_list)
@@ -101,7 +101,7 @@ normalize:
 
   # Set Access Mask Descriptions 
   - map:
-      - windows.EventData.AccessMaskList: kvdb_decode_bitmask('windows_bitmask_tables', 'access_mask', $windows.EventData.AccessMask)
+      - windows.EventData.AccessMaskList: kvdb_decode_bitmask(windows_bitmask_tables, access_mask, $windows.EventData.AccessMask)
 
   # Set Failure Status and SubStatus for events 4625 and 4776
   - check: $event.id == '4625' OR $event.id == '4776'
@@ -147,13 +147,13 @@ normalize:
   # Group: Target User 1 - Set Target User Name
   - check: >-
       array_contains($_ev_target_user_1, $event.id) AND not_exists($user.name) AND
-      string_not_equal($windows.EventData.TargetUserName, '-')
+      string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - user.name: $windows.EventData.TargetUserName
 
   - check: >-
       array_contains($_ev_target_user_1, $event.id) AND exists($user.name) AND
-      string_not_equal($windows.EventData.TargetUserName, '-')
+      string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - user.target.name: $windows.EventData.TargetUserName
 
@@ -178,10 +178,10 @@ normalize:
   - check: array_contains($_ev_member_name, $event.id) AND exists($windows.EventData.MemberName)
     map:
       - _member_name_parts: split($windows.EventData.MemberName, ',')
-      - _member_name_parts[0]: replace('CN=', '')
+      - _member_name_parts[0]: replace(CN=, '')
       - user.target.name: $_member_name_parts[0]
       - related.user: array_append_unique($_member_name_parts[0])
-      - _member_name_parts[3]: replace('DC=', '')
+      - _member_name_parts[3]: replace(DC=, '')
       - user.target.domain: $_member_name_parts[3]
 
   # Group: Member Name - Set Target User Sid, Target Sid, Target User Name, and Target Domain Name
@@ -197,7 +197,7 @@ normalize:
   - check: array_contains($_ev_member_name, $event.id) AND not_exists($group.domain)
     map:
       - _group_domain: $windows.EventData.TargetDomainName
-      - _group_domain: replace('DC=', '')
+      - _group_domain: replace(DC=, '')
       - group.domain: $_group_domain
 
   - check: array_contains($_ev_member_name, $event.id) AND exists($user.target)
@@ -237,12 +237,12 @@ normalize:
     map:
       - user.target.id: $windows.EventData.TargetSid
 
-  - check: array_contains($_ev_target_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, '-')
+  - check: array_contains($_ev_target_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - user.target.name: $windows.EventData.TargetUserName
       - related.user: array_append_unique($windows.EventData.TargetUserName)
 
-  - check: array_contains($_ev_target_user_2, $event.id) AND string_not_equal($windows.EventData.TargetDomainName, '-')
+  - check: array_contains($_ev_target_user_2, $event.id) AND string_not_equal($windows.EventData.TargetDomainName, -)
     map:
       - user.target.domain: $windows.EventData.TargetDomainName
 
@@ -251,12 +251,12 @@ normalize:
     map:
       - user.effective.id: $windows.EventData.TargetUserSid
 
-  - check: ($event.id == '4648' OR $event.id == '4688') AND string_not_equal($windows.EventData.TargetUserName, '-')
+  - check: ($event.id == '4648' OR $event.id == '4688') AND string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - user.effective.name: $windows.EventData.TargetUserName
       - related.user: array_append_unique($windows.EventData.TargetUserName)
 
-  - check: ($event.id == '4648' OR $event.id == '4688') AND string_not_equal($windows.EventData.TargetDomainName, '-')
+  - check: ($event.id == '4648' OR $event.id == '4688') AND string_not_equal($windows.EventData.TargetDomainName, -)
     map:
       - user.effective.domain: $windows.EventData.TargetDomainName
 
@@ -298,7 +298,7 @@ normalize:
       - process.command_line: $windows.EventData.CommandLine
       - process.args: split($windows.EventData.CommandLine, ' ')
 
-  - check: $event.id == '4688' AND string_not_equal($windows.EventData.TargetUserName, '-')
+  - check: $event.id == '4688' AND string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - related.user: array_append_unique($windows.EventData.TargetUserName)
 
@@ -306,7 +306,7 @@ normalize:
   - map:
       - _ev_related_user_1: kvdb_get(windows_events_arrays, related_user_1)
 
-  - check: array_contains($_ev_related_user_1, $event.id) AND string_not_equal($windows.EventData.SubjectUserName, '-')
+  - check: array_contains($_ev_related_user_1, $event.id) AND string_not_equal($windows.EventData.SubjectUserName, -)
     map:
       - related.user: array_append_unique($windows.EventData.SubjectUserName)
 
@@ -314,18 +314,18 @@ normalize:
   - map:
       - _ev_related_user_2: kvdb_get(windows_events_arrays, related_user_2)
 
-  - check: array_contains($_ev_related_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, '-')
+  - check: array_contains($_ev_related_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - related.user: array_append_unique($windows.EventData.TargetUserName)
 
   # Set Old Target User Name
-  - check: string_not_equal($windows.EventData.OldTargetUserName, '-')
+  - check: string_not_equal($windows.EventData.OldTargetUserName, -)
     map:
       - user.target.name: $windows.EventData.OldTargetUserName
       - related.user: array_append_unique($windows.EventData.OldTargetUserName)
 
   # Set New Target User Name
-  - check: string_not_equal($windows.EventData.NewTargetUserName, '-')
+  - check: string_not_equal($windows.EventData.NewTargetUserName, -)
     map:
       - user.changes.name: $windows.EventData.NewTargetUserName
       - related.user: array_append_unique($windows.EventData.NewTargetUserName)
