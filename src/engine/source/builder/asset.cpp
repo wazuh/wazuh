@@ -110,14 +110,10 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Get check
-    bool hasStageCheck = false;
     auto checkPos =
         std::find_if(objectDefinition.begin(),
                      objectDefinition.end(),
-                     [&hasStageCheck](auto tuple) {
-                        hasStageCheck = true;
-                        return std::get<0>(tuple) == "check" || std::get<0>(tuple) == "allow";
-                    });
+                     [](auto tuple) { return std::get<0>(tuple) == "check" || std::get<0>(tuple) == "allow"; });
     if (objectDefinition.end() != checkPos)
     {
         try
@@ -204,12 +200,7 @@ Asset::Asset(const json::Json& jsonDefinition,
         if (hasParsePrefix && std::get<0>(tuple).find(PARSE_PREFIX) != std::string::npos)
         {
             throw std::runtime_error(fmt::format(
-                "Parse stage: Building asset '{}' failed: More than one 'stage parse' is not allowed.", assetName));
-        }
-        else if (hasStageCheck && std::get<0>(tuple).find("check") != std::string::npos)
-        {
-            throw std::runtime_error(fmt::format(
-                "Parse stage: Building asset '{}' failed: More than one 'stage check' is not allowed.", assetName));
+                "Parse stage: Building asset '{}' failed: More than one stage parse is not allowed.", assetName));
         }
 
         auto stageName = "stage." + std::get<0>(tuple);
