@@ -100,7 +100,7 @@ DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
-CA_NAME?=DigiCert High Assurance EV Root CA
+CA_NAME?=DigiCert Assured ID Root CA
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
@@ -635,7 +635,7 @@ help: failtarget
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
-	@echo "   make CA_NAME="DigiCert High Assurance EV Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is "DigiCert High Assurance EV Root CA"."
+	@echo "   make CA_NAME="DigiCert Assured ID Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
