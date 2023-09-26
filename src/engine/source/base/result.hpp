@@ -131,6 +131,13 @@ public:
     std::string trace() const { return m_trace; }
 
     /**
+     * @brief Returns the event trace.
+     *
+     * @return std::string the event trace.
+     */
+    std::string popTrace() const { return std::move(m_trace); }
+
+    /**
      * @brief Get the payload object.
      *
      * @return Event the payload object.
