@@ -17,6 +17,7 @@ from api.constants import INSTALLATION_UID_PATH
 
 RELEASE_UPDATES_URL = 'http://cti:4041'
 ONE_DAY_SLEEP = 60*60*24
+INSTALLATION_UID_KEY = 'installation_uid'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -40,11 +41,6 @@ def get_current_version():
     return spec['info']['version']
 
 
-def get_installation_uid():
-    with open(INSTALLATION_UID_PATH, 'r') as file:
-        return file.readline()
-
-
 def is_running_in_master_node() -> bool:
     cluster_config = read_cluster_config()
 
@@ -58,16 +54,22 @@ async def modify_response_headers(request, response):
 
 @cancel_signal_handler
 async def check_installation_uid(app):
-    if not os.path.exists(INSTALLATION_UID_PATH):
+    if os.path.exists(INSTALLATION_UID_PATH):
+        logger.info("Getting installation UID...")
+        with open(INSTALLATION_UID_PATH, 'r') as file:
+            installation_uid = file.readline()
+    else:
         logger.info("Populating installation UID...")
+        installation_uid = str(uuid.uuid4())
         with open(INSTALLATION_UID_PATH, 'w') as file:
-            file.write(str(uuid.uuid4()))
+            file.write(installation_uid)
+    app[INSTALLATION_UID_KEY] = installation_uid
 
 
 @cancel_signal_handler
 async def get_update_information(app):
     headers = {
-        'wazuh-uid': get_installation_uid(),
+        'wazuh-uid': app[INSTALLATION_UID_KEY],
         'wazuh-tag': f'v{get_current_version()}'
     }
 
