@@ -102,7 +102,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         self.remove_extra_fields = remove_extra_fields
 
     def _set_group_field_select_value(self):
-        """Wraps the field value with the GROUP_CONCAT function to join all groups in the same text field."""
+        """Wrap the field value with the GROUP_CONCAT function to join all groups in the same text field."""
         group_field = 'group'
         if group_field in self.fields:
             self.fields[group_field] = 'GROUP_CONCAT(belongs.name_group)'
@@ -239,18 +239,23 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         WazuhError(1409)
             If the operator of the filter is not valid.
         """
-        if field_name == 'group' and q_filter['value'] is not None:
-            if q_filter['operator'] == '=' or q_filter['operator'] == 'LIKE':
-                self.query += 'id IN '
-            elif q_filter['operator'] == '!=':
-                self.query += 'belongs.name_group IS NOT NULL AND id NOT IN '
+        value = q_filter['value']
+        if field_name == 'group' and value is not None:
+            operator = q_filter['operator']
+            if operator == '=':
+                self.query += f"id IN (SELECT id_agent FROM belongs WHERE name_group = :{field_filter})"
+                self.request[field_filter] = value
+            elif operator == 'LIKE':
+                self.query += f"id IN (SELECT id_agent FROM belongs WHERE name_group LIKE :{field_filter})"
+                self.request[field_filter] = f"%{value}%"
+            elif operator == '!=':
+                self.query += 'belongs.name_group IS NOT NULL AND id NOT IN ' + \
+                    f"(SELECT id_agent FROM belongs WHERE name_group = :{field_filter})"
+                self.request[field_filter] = value
             else:
                 valid_group_operators = {'=', '!=', '~'}
                 raise WazuhError(1409, f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
-                                       f"Used operator: {q_filter['operator']}")
-
-            self.query += f"(SELECT id_agent FROM belongs WHERE name_group LIKE :{field_filter})"
-            self.request[field_filter] = f"%{q_filter['value']}%"
+                                       f"Used operator: {operator}")
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
