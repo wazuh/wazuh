@@ -1,0 +1,117 @@
+Output:
+  log:
+    level: Information
+  host:
+    id: 001
+    name: DESKTOP-22QKO5D
+  related:
+    hash:
+      - SHA1=5A0803FF099106C568D5CAE471E73593D5577238
+      - MD5=1CB437D2AF203F5E3D87D32B2351926C
+      - SHA256=FBE76828087D8FAF206C584E367804428A47910BBB856B4D1BA2FBF49F9AC854
+      - IMPHASH=468AE0E85185C7B62E8740F0B95D8D25
+    user:
+      - Positivo BGH
+  event:
+    code: 1
+    dataset: sysmon
+    start: 2023-09-21T00:08:55.0392191Z
+    risk_score: 21
+    category:
+      - process
+    id: 1
+    original: <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385f-c22a-43e0-bf4c-06f5698ffbd9}" /><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime="2023-09-21T00:08:55.0392191Z" /><EventRecordID>13272</EventRecordID><Correlation /><Execution ProcessID="4360" ThreadID="5336" /><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>DESKTOP-22QKO5D</Computer><Security UserID="S-1-5-18" /></System><EventData><Data Name="RuleName">-</Data><Data Name="UtcTime">2023-09-21 00:08:55.036</Data><Data Name="ProcessGuid">{23b237de-8997-650b-b207-000000002000}</Data><Data Name="ProcessId">5420</Data><Data Name="Image">C:\Windows\System32\logman.exe</Data><Data Name="FileVersion">10.0.19041.2193 (WinBuild.160101.0800)</Data><Data Name="Description">Performance Log Utility</Data><Data Name="Product">Microsoft® Windows® Operating System</Data><Data Name="Company">Microsoft Corporation</Data><Data Name="OriginalFileName">Logman.exe</Data><Data Name="CommandLine">"C:\WINDOWS\system32\logman.exe" stop EventLog</Data><Data Name="CurrentDirectory">C:\Users\Positivo BGH\Desktop\nahuel\</Data><Data Name="User">DESKTOP-22QKO5D\Positivo BGH</Data><Data Name="LogonGuid">{23b237de-625a-650b-3418-9b0000000000}</Data><Data Name="LogonId">0x9b1834</Data><Data Name="TerminalSessionId">2</Data><Data Name="IntegrityLevel">High</Data><Data Name="Hashes">SHA1=5A0803FF099106C568D5CAE471E73593D5577238,MD5=1CB437D2AF203F5E3D87D32B2351926C,SHA256=FBE76828087D8FAF206C584E367804428A47910BBB856B4D1BA2FBF49F9AC854,IMPHASH=468AE0E85185C7B62E8740F0B95D8D25</Data><Data Name="ParentProcessGuid">{23b237de-6cd1-650b-0006-000000002000}</Data><Data Name="ParentProcessId">7008</Data><Data Name="ParentImage">C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Data><Data Name="ParentCommandLine">"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"</Data><Data Name="ParentUser">DESKTOP-22QKO5D\Positivo BGH</Data></EventData></Event>
+    provider: Microsoft-Windows-Sysmon
+    kind: event
+    module: windows
+    type:
+      - start
+  vulnerability:
+    severity: low
+  agent:
+    name: WIN-8I36CR3738L
+    id: 001
+    type: wazuh-agent
+  process:
+    pe:
+      original_file_name: Logman.exe
+      description: Performance Log Utility
+      product: Microsoft® Windows® Operating System
+      company: Microsoft Corporation
+      file_version: 10.0.19041.2193 (WinBuild.160101.0800)
+    args:
+      - "\"C:\\WINDOWS\\system32\\logman.exe\""
+      - stop
+      - EventLog
+    command_line: "\"C:\\WINDOWS\\system32\\logman.exe\" stop EventLog"
+    parent:
+      name: powershell.exe
+      pid: 7008
+      command_line: "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
+      executable: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      entity_id: "{23b237de-6cd1-650b-0006-000000002000}"
+      args:
+        - "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
+    hash:
+      - SHA1=5A0803FF099106C568D5CAE471E73593D5577238
+      - MD5=1CB437D2AF203F5E3D87D32B2351926C
+      - SHA256=FBE76828087D8FAF206C584E367804428A47910BBB856B4D1BA2FBF49F9AC854
+      - IMPHASH=468AE0E85185C7B62E8740F0B95D8D25
+    name: logman.exe
+    working_directory: C:\Users\Positivo BGH\Desktop\nahuel\
+    executable: C:\Windows\System32\logman.exe
+    entity_id: "{23b237de-8997-650b-b207-000000002000}"
+    pid: 5420
+  threat:
+    framework: MITRE ATT&CK
+    tactic:
+      id:
+        - TA0005
+      reference:
+        - https://attack.mitre.org/tactics/TA0005/
+      name:
+        - Defense Evasion
+    technique:
+      id:
+        - T1070
+        - T1562
+      reference:
+        - https://attack.mitre.org/techniques/T1070/
+        - https://attack.mitre.org/techniques/T1562/
+      subtechnique:
+        name:
+          - Clear Windows Event Logs
+          - Indicator Blocking
+        reference:
+          - https://attack.mitre.org/techniques/T1070/001/
+          - https://attack.mitre.org/techniques/T1562/006/
+        id:
+          - T1070.001
+          - T1562.006
+      name:
+        - Indicator Removal
+        - Impair Defenses
+  TestSessionID: 1
+  file:
+    extension: exe
+    directory: C:\Windows\System32\WindowsPowerShell\v1.0
+    name: powershell.exe
+  wazuh:
+    origin: EventChannel
+    location: "[001] (WIN-8I36CR3738L) any->EventChannel"
+    decoders:
+      - windows-event
+      - windows-sysmon
+    queue: 102
+    registered_ip: any
+    source: logcollector
+  rule:
+    description: Identifies attempts to disable EventLog via the logman Windows utility, PowerShell, or auditpol. This is often done by attackers in an attempt to evade detection on a system.
+    license: Wazuh Inc.
+    name: Disable Windows Event and Security Logs Using Built-in Tools
+  ecs:
+    version: 8.8
+  user:
+    domain: DESKTOP-22QKO5D
+    name: Positivo BGH
+    id: S-1-5-18

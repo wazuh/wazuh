@@ -2519,30 +2519,54 @@ INSTANTIATE_TEST_SUITE_P(Json,
                                            isEmptyT(false, R"({"a":false})", "/a/0"),
                                            isEmptyT(false, R"({"a":null})", "/a/0")));
 
-TEST(JsonValid, CheckDuplicateKey)
+class JsonValidParamTest : public ::testing::TestWithParam<std::pair<bool, std::string>>
 {
-    auto json = R"({
-        "check": "$event.id == 2",
-        "check": "$event.id == 2"
-        })";
+};
 
-    rapidjson::Document document;
-    json::Json result;
-    document.Parse(json);
+TEST_P(JsonValidParamTest, CheckDuplicateKey)
+{
+    const auto& param = GetParam();
+    const auto& verify = param.first;
+    const auto& jsonInput = param.second;
 
-    try
+    if (verify)
     {
-        result = json::Json {std::move(document)};
+        ASSERT_NO_THROW(auto result = json::Json {jsonInput.c_str()});
     }
-    catch (const std::exception& e)
+    else
     {
-        std::cerr << e.what() << '\n';
+        ASSERT_ANY_THROW(auto result = json::Json {jsonInput.c_str()});
     }
-
-    auto error = result.checkDuplicateKeys();
-
-    ASSERT_TRUE(base::isError(error));
-    ASSERT_STREQ(base::getError(error).message.c_str(),
-                 "Unable to build json document because there is a duplicated key 'check', or a duplicated key inside "
-                 "object 'check'.");
 }
+
+INSTANTIATE_TEST_SUITE_P(CheckDuplicateKey,
+                         JsonValidParamTest,
+                         ::testing::Values(std::make_pair(true, R"({
+        "check": "$event.id == 2"
+        })"),
+                                           std::make_pair(false, R"({
+        "a": 1,
+        "b": 2,
+        "c": {
+            "c": 3,
+            "c": 4
+        }
+        })"),
+                                           std::make_pair(false, R"({
+        "a": 1,
+        "b": 3,
+        "a": 2
+        })"),
+                                           std::make_pair(false, R"({
+        "b": 1,
+        "a": 3,
+        "a": 2
+        })"),
+                                           std::make_pair(false, R"({
+        "a": 3,
+        "a": 2
+        })"),
+                                           std::make_pair(false, R"({
+        "check": "$event == 2",
+        "check": "$event.id == 2"
+        })")));
