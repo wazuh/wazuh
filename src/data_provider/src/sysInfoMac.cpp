@@ -37,6 +37,12 @@ constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
 
+//DEBUG
+int DEBUG_DirAnalizedTotalCounter = 0;
+int DEBUG_SubdirAnalizedTotalCounter = 0;
+int DEBUG_AppFoundCounter = 0;
+//DEBUG
+
 static const std::vector<int> s_validFDSock =
 {
     {
@@ -108,6 +114,8 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     {
         case PKG:
             {
+                DEBUG_DirAnalizedTotalCounter++; // DEBUG
+
                 std::function<void(const std::string&)> pkgAnalizeDirectory;
 
                 pkgAnalizeDirectory =
@@ -121,6 +129,8 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         {
                             continue;
                         }
+
+                        DEBUG_SubdirAnalizedTotalCounter++; // DEBUG
 
                         if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
                         {
@@ -136,6 +146,8 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                                         !jsPackage.at("format").get_ref<const std::string&>().empty()
                                    )
                                 {
+                                    DEBUG_AppFoundCounter++; // DEBUG
+
                                     // Only return valid content packages
                                     callback(jsPackage);
                                 }
@@ -516,6 +528,9 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
+    DEBUG_DirAnalizedTotalCounter = 0; // DEBUG
+    DEBUG_SubdirAnalizedTotalCounter = 0; //DEBUG
+    DEBUG_AppFoundCounter = 0; // DEBUG
     for (const auto& packageDirectory : s_mapPackagesDirectories)
     {
         const auto pkgDirectory { packageDirectory.first };
@@ -525,6 +540,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
         }
     }
+    std::cout << "DEBUG_DirAnalizedTotalCounter: " << DEBUG_DirAnalizedTotalCounter << ". DEBUG_SubdirAnalizedTotalCounter: " << DEBUG_SubdirAnalizedTotalCounter << ". DEBUG_AppFoundCounter: " << DEBUG_AppFoundCounter;      // DEBUG
 }
 
 nlohmann::json SysInfo::getHotfixes() const
