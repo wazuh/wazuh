@@ -9,27 +9,33 @@ CPMAddPackage(
 
 
 # Defs
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
-set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 
 ## Interface
-add_library(backend_ibackend INTERFACE)
-target_include_directories(backend_ibackend INTERFACE ${IFACE_DIR})
-target_link_libraries(backend_ibackend INTERFACE base) # Base for expression
-add_library(backend::ibackend ALIAS backend_ibackend)
+add_library(bk_ibk INTERFACE)
+target_include_directories(bk_ibk INTERFACE ${IFACE_DIR})
+target_link_libraries(bk_ibk INTERFACE base) # Base for expression
+add_library(bk::ibk ALIAS bk_ibk)
 
-## TaskFlow Backend
-add_library(tfbk STATIC
-    ${SRC_DIR}/tfbk.cpp
+# TaskFlow
+set(TASKF_SRC_DIR ${SRC_DIR}/taskf)
+
+add_library(bk_taskf STATIC
+    ${TASKF_SRC_DIR}/controller.cpp
 )
-target_include_directories(tfbk
+target_include_directories(bk_taskf
     PUBLIC
     ${INC_DIR}
     ${taskflow_SOURCE_DIR}
+
+    PRIVATE
+    ${TASKF_SRC_DIR}
+    ${INC_DIR}/bk/taskf
 )
-target_link_libraries(tfbk PUBLIC backend::ibackend)
-add_library(backend::tfbk ALIAS tfbk)
+target_link_libraries(bk_taskf PUBLIC bk::ibk)
+add_library(bk::taskf ALIAS bk_taskf)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -57,7 +63,7 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 add_executable(tfbk_utest
     ${UNIT_SRC_DIR}/tfbk_test.cpp
 )
-target_link_libraries(tfbk_utest gtest_main backend::tfbk)
+target_link_libraries(tfbk_utest gtest_main bk::taskf)
 gtest_discover_tests(tfbk_utest)
 
 endif(ENGINE_BUILD_TEST)
