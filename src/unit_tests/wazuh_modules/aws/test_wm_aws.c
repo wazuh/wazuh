@@ -39,6 +39,11 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
 }
 /****************************************************************/
 
+/* wraps */
+int __wrap_isDebug() {
+    return mock();
+}
+
 static void wmodule_cleanup(wmodule *module) {
     free( ((wm_aws*) module->data)->buckets->bucket);
     free( ((wm_aws*) module->data)->buckets->aws_profile);
@@ -266,6 +271,55 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
+static void tmp_Dlevel0 (const char *logtag) {
+    expect_string(__wrap__mtinfo, tag, logtag);
+    expect_string(__wrap__mtinfo, formatted_msg, "Received and acknowledged 0 messages");
+
+    expect_string(__wrap__mterror, tag, logtag);
+    expect_string(__wrap__mterror, formatted_msg, "This is an Error");
+
+    expect_string(__wrap__mtwarn, tag, logtag);
+    expect_string(__wrap__mtwarn, formatted_msg, "This is a Warning");
+
+    expect_string(__wrap__mterror, tag, logtag);
+    expect_string(__wrap__mterror, formatted_msg, "This is a Critical");
+}
+
+static void test_wm_parse_output_aws_Dlevel0(void **state) {
+    char * output_aws = {
+        ":aws_wodle: - DEBUG - Setting 1 thread to pull 100 messages in total\n"
+        ":aws_wodle: - INFO - Received and acknowledged 0 messages\n"
+        ":aws_wodle: - ERROR - This is an Error\n"
+        ":aws_wodle: - WARNING - This is a Warning\n"
+        ":aws_wodle: - CRITICAL - This is a Critical\n"
+        };
+
+    will_return(__wrap_isDebug, 0);
+    tmp_Dlevel0(WM_AWS_LOGTAG);
+
+    wm_parse_output(output_aws, WM_AWS_LOGGING_TOKEN, WM_AWS_LOGTAG, NULL);
+
+}
+
+static void test_wm_parse_output_aws_Dlevel1(void **state) {
+    char * output_aws = {
+        ":aws_wodle: - DEBUG - Setting 1 thread to pull 100 messages in total\n"
+        ":aws_wodle: - INFO - Received and acknowledged 0 messages\n"
+        ":aws_wodle: - ERROR - This is an Error\n"
+        ":aws_wodle: - WARNING - This is a Warning\n"
+        ":aws_wodle: - CRITICAL - This is a Critical\n"
+        };
+
+    will_return(__wrap_isDebug, 1);
+    expect_string(__wrap__mtdebug1, tag, WM_AWS_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Setting 1 thread to pull 100 messages in total");
+
+    tmp_Dlevel0(WM_AWS_LOGTAG);
+
+    wm_parse_output(output_aws, WM_AWS_LOGGING_TOKEN, WM_AWS_LOGTAG, NULL);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -277,8 +331,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
+
+    const struct CMUnitTest tests_parser_output[] = {
+        /*aws wm_parser_output  */
+        cmocka_unit_test(test_wm_parse_output_aws_Dlevel0),
+        cmocka_unit_test(test_wm_parse_output_aws_Dlevel1)
+    };
+
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_parser_output, NULL, NULL);
     return result;
 }

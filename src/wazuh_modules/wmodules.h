@@ -19,7 +19,7 @@
 
 #define WM_STATE_DIR    "var/wodles"               // Default directory for states.
 #define WM_DIR_WIN      "wodles"                    // Default directory for states (Windows)
-#define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
+#define WM_STRING_MAX   _W_STRING_MAX               // Max. dynamic string size (64 MB).
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
 #define WM_BUFFER_MIN   1024                        // Starting JSON buffer length.
 #define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
@@ -83,6 +83,7 @@ typedef enum crypto_type {
 #include "wm_github.h"
 #include "wm_office365.h"
 #include "wm_ms_graph.h"
+#include "wm_parser.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
