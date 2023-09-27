@@ -34,7 +34,7 @@ cluster_env_mode = 'cluster'
 
 
 def pytest_addoption(parser):
-    parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
+    parser.addoption('--nobuild', action='store_false', help='Do not run docker compose build.')
 
 
 def pytest_collection_modifyitems(items: list):
@@ -110,13 +110,15 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
     with open(docker_log_path, mode='w') as f_docker:
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
-                current_process = subprocess.Popen(
-                    ["docker-compose", "--profile", env_mode,
-                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg", f"ENV_MODE={env_mode}"],
+                current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
+                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", 
+                    "--build-arg", f"ENV_MODE={env_mode}",
+                    "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             current_process = subprocess.Popen(
-                ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
+                ["docker", "compose", "--profile", env_mode, "up", "-d"],
+                env=dict(os.environ, ENV_MODE=env_mode),
                 stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
 
@@ -135,7 +137,9 @@ def down_env():
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker-compose", "down", "-t0"], stdout=f_docker,
+        current_process = subprocess.Popen(["docker", "compose",
+                                            "down", "--remove-orphans", "-t0" ],
+                                           stdout=f_docker,
                                            stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
@@ -167,23 +171,25 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
         nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
         for node in nodes_to_check:
             health = subprocess.check_output(
-                f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+                f"docker inspect env-wazuh-{node}-1 -f '{{{{json .State.Health.Status}}}}'",
+                shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
-                f"docker inspect env_wazuh-agent{agent}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+                f"docker inspect env-wazuh-agent{agent}-1 -f '{{{{json .State.Health.Status}}}}'",
+                shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
     elif node_type == 'nginx-lb':
         health = subprocess.check_output(
-            f"docker inspect env_nginx-lb_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+            f"docker inspect env-nginx-lb-1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
         if not health.startswith(b'"healthy"'):
             return False
     else:
         raise ValueError(f"Invalid node_type value: '{node_type}'.")
-        
+
     return True
 
 
@@ -316,7 +322,7 @@ def save_logs(test_name: str):
         for log in logs:
             try:
                 subprocess.check_output(
-                    f"docker cp env_wazuh-{node}_1:{os.path.join(logs_path, log)} "
+                    f"docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} "
                     f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
                     shell=True)
             except subprocess.CalledProcessError:
@@ -326,16 +332,16 @@ def save_logs(test_name: str):
     for agent in agent_names:
         try:
             subprocess.check_output(
-                f"docker cp env_wazuh-{agent}_1:{os.path.join(logs_path, 'ossec.log')} "
+                f"docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, 'ossec.log')} "
                 f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
                 shell=True)
         except subprocess.CalledProcessError:
             continue
 
-    # Save nginx log
+    # Save nginx-lb log
     with open(os.path.join(test_logs_path, f'test_{test_name}-nginx-lb.log'), mode='w') as f_log:
         current_process = subprocess.Popen(
-                ["docker", "logs", "env_nginx-lb_1"],
+                ["docker", "logs", "env-nginx-lb-1"],
                 stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
 
@@ -395,7 +401,8 @@ def api_test(request: _pytest.fixtures.SubRequest):
         nginx_health = check_health(interval=values['interval'], node_type='nginx-lb')
         # Check if entrypoint was successful
         try:
-            error_message = subprocess.check_output(["docker", "exec", "-t", "env_wazuh-master_1", "sh", "-c",
+            error_message = subprocess.check_output(["docker", "exec", "-t",
+                                                     "env-wazuh-master-1", "sh", "-c",
                                                      "cat /entrypoint_error"]).decode().strip()
             pytest.fail(error_message)
         except subprocess.CalledProcessError:
@@ -418,7 +425,8 @@ def get_health():
     """
     health = "\nEnvironment final status\n"
     health += subprocess.check_output(
-        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}' --filter name=^env_wazuh",
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}'"
+        " --filter name=^env-wazuh",
         shell=True).decode()
     health += '\n'
 
