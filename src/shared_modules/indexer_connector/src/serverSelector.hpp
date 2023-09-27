@@ -34,10 +34,10 @@ public:
      *
      * @param values Servers to be selected.
      */
-    explicit ServerSelector(const std::vector<std::string>& values)
+    explicit ServerSelector(const std::vector<std::string>& values, const uint32_t timeout = INTERVAL)
         : RoundRobinSelector<std::string>(values)
     {
-        monitoring = std::make_shared<Monitoring>(values);
+        monitoring = std::make_shared<Monitoring>(values, timeout);
     }
 
     /**

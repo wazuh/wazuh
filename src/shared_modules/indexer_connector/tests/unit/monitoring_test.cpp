@@ -16,7 +16,7 @@
 #include <thread>
 
 // Healt check interval for the servers
-constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {INTERVAL};
+constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {5u};
 
 /**
  * @brief Test instantiation and check the availability of valid servers.
@@ -27,7 +27,7 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers));
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
     // All servers are available the first time.
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
@@ -52,7 +52,7 @@ TEST_F(MonitoringTest, TestInstantiationWithoutServers)
     m_servers.clear();
 
     // It doesn't throw an exception because the class Monitoring accepts vector without servers
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers));
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 }
 
 /**
@@ -66,7 +66,7 @@ TEST_F(MonitoringTest, TestInvalidServer)
     m_servers.clear();
     m_servers.emplace_back(invalidServer);
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers));
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
     // All servers are available the first time
     EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
@@ -88,7 +88,7 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers));
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
     // All servers are available the first time
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));

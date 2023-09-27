@@ -17,7 +17,7 @@
 #include <thread>
 
 // Healt check interval for the servers
-constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {INTERVAL};
+constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {5u};
 
 /**
  * @brief Test instantiation with valid servers.
@@ -25,7 +25,7 @@ constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {INTERVAL};
  */
 TEST_F(ServerSelectorTest, TestInstantiation)
 {
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
+    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
 }
 
 /**
@@ -37,7 +37,7 @@ TEST_F(ServerSelectorTest, TestInstantiationWithoutServers)
     m_servers.clear();
 
     // It doesn't throw an exception because the class ServerSelector accepts vector without servers
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
+    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
 }
 
 /**
@@ -51,7 +51,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 
     std::string nextServer;
 
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
+    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
 
     // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
@@ -73,7 +73,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 
     std::string nextServer;
 
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
+    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
 
     // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
@@ -108,7 +108,7 @@ TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
 
     std::string nextServer;
 
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers));
+    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
 
     // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());

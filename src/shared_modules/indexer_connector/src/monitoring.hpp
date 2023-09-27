@@ -24,7 +24,7 @@
 #include <thread>
 #include <vector>
 
-constexpr auto INTERVAL = 60;
+constexpr auto INTERVAL = 60u;
 
 namespace HealthCheckRows
 {
@@ -70,6 +70,7 @@ class Monitoring final
     std::mutex m_mutex;
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
+    uint32_t m_interval {INTERVAL};
 
 public:
     ~Monitoring()
@@ -87,7 +88,8 @@ public:
      *
      * @param values Servers to be monitored.
      */
-    explicit Monitoring(const std::vector<std::string>& values)
+    explicit Monitoring(const std::vector<std::string>& values, const uint32_t interval = INTERVAL)
+        : m_interval(interval)
     {
         // Initialize the map with the values, all servers are available.
         for (auto& value : values)
@@ -103,7 +105,7 @@ public:
                 {
                     std::unique_lock<std::mutex> lock(m_mutex);
                     // Wait for the interval.
-                    m_condition.wait_for(lock, std::chrono::seconds(INTERVAL), [this]() { return m_stop.load(); });
+                    m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
 
                     // If the thread is not stopped, check the health of the servers.
                     if (!m_stop)
