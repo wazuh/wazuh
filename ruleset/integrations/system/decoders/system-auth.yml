@@ -10,7 +10,7 @@ metadata:
   description: Decoder for system athenticated action logs.
   compatibility: This integration was tested with logs from OS like Ubuntu 20.04, Centos 7, and macOS Sierra.
   versions:
-    - "any"
+    - any
   author:
     name: Wazuh Inc.
     email: info@wazuh.com
@@ -20,28 +20,28 @@ metadata:
 
 definitions:
   isAuthProcess: >-
-    $process.name=="sshd"
-    OR $process.name=="sudo"
-    OR $process.name=="groupadd"
-    OR $process.name=="useradd"
-    OR $process.name=="groupdel"
-    OR $process.name=="groupmod"
-    OR $process.name=="userdel"
-    OR $process.name=="usermod"
-    OR $process.name=="CRON"
+    $process.name == sshd
+    OR $process.name == sudo
+    OR $process.name == groupadd
+    OR $process.name == useradd
+    OR $process.name == groupdel
+    OR $process.name == groupmod
+    OR $process.name == userdel
+    OR $process.name == usermod
+    OR $process.name == CRON
 
 #TODO: Once the events arrive tagged, uncommnet following line and comment previous
 #  isAuthProcess: >-
-#    (process.name=="sshd"
-#    OR process.name=="sudo"
-#    OR process.name=="groupadd"
-#    OR process.name=="useradd"
-#    OR process.name=="groupdel"
-#    OR process.name=="groupmod"
-#    OR process.name=="userdel"
-#    OR process.name=="usermod"
-#    OR process.name=="CRON")
-#    AND event.module=="system"
+#    (process.name == sshd
+#    OR process.name == sudo
+#    OR process.name == groupadd
+#    OR process.name == useradd
+#    OR process.name == groupdel
+#    OR process.name == groupmod
+#    OR process.name == userdel
+#    OR process.name == usermod
+#    OR process.name == CRON)
+#    AND event.module == system
 
 check: $isAuthProcess
 
@@ -53,35 +53,35 @@ normalize:
       - event.outcome: success
       - wazuh.decoders: array_append(system-auth)
 
-      - _empty: ""
+      - _empty: ''
 
   - check:
-      - process.name: "sshd"
+      - process.name: sshd
     parse|message:
       - <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.name> from <source.ip> port <source.port> ssh2(?:<~>)
       - <_system.auth.ssh.event> user <user.name> from <source.ip>(? port <source.port>)
       - Did not receive identification string from <source.ip>
       - subsystem request for <_system.auth.ssh.subsystem> by user <user.name>
-      - "<_system.auth.ssh.session.action>: Too many authentication <_system.auth.ssh.event> for <user.name> [preauth]"
+      - '<_system.auth.ssh.session.action>: Too many authentication <_system.auth.ssh.event> for <user.name> [preauth]'
       - "<user.name> [<~>][<~>]: <_system.auth.ssh.event>: <_system.auth.ssh.session.process_id> tty<~/literal/\\/>?<~/literal/s><_system.process.tty.char_device.major>"
-      - "<_system.auth.ssh.event>: Read from socket failed: Connection reset by peer [preauth]"
-      - "Received <_system.auth.ssh.event> from <source.ip>: <~>:  [<~>]"
+      - '<_system.auth.ssh.event>: Read from socket failed: Connection reset by peer [preauth]'
+      - 'Received <_system.auth.ssh.event> from <source.ip>: <~>:  [<~>]'
 
-  - check: $_system.auth.ssh.event=="Accepted" OR $_system.auth.ssh.event=="USER_PROCESS"
+  - check: $_system.auth.ssh.event == Accepted OR $_system.auth.ssh.event == USER_PROCESS
     map:
       - event.action: ssh_login
       - event.category: array_append(authentication, session)
       - event.outcome: success
       - event.type: array_append(access, allowed)
 
-  - check: $_system.auth.ssh.event=="DEAD_PROCESS" OR $_system.auth.ssh.event=="disconnect"
+  - check: $_system.auth.ssh.event == DEAD_PROCESS OR $_system.auth.ssh.event == disconnect
     map:
       - event.action: ssh_login
       - event.category: array_append(authentication, session)
       - event.outcome: success
       - event.type: array_append(end)
 
-  - check: $_system.auth.ssh.event=="Invalid" OR $_system.auth.ssh.event=="Failed" OR $_system.auth.ssh.event=="failures" OR $_system.auth.ssh.event=="fatal"
+  - check: $_system.auth.ssh.event == Invalid OR $_system.auth.ssh.event == Failed OR $_system.auth.ssh.event == failures OR $_system.auth.ssh.event == fatal
     map:
       - event.action: ssh_login
       - event.category: array_append(authentication, session)
@@ -126,46 +126,46 @@ normalize:
     map:
       - user.name: $_system.auth.pam.foruser.name
 
-  - check: $_system.auth.pam.session.action=="opened" OR $_system.auth.ssh.event=="USER_PROCESS"
+  - check: $_system.auth.pam.session.action == opened OR $_system.auth.ssh.event == USER_PROCESS
     map:
       - event.type: array_append(start)
 
-  - check: $_system.auth.pam.session.action=="closed"
+  - check: $_system.auth.pam.session.action == closed
     map:
       - event.type: array_append(end)
 
-  - check: $process.name=="groupadd" OR $process.name=="useradd"
+  - check: $process.name == groupadd OR $process.name == useradd
     parse|message:
-      - "new group: name=<group.name>, GID=<group.id>"
-      - "new user: name=<user.name>, UID=<user.id>, GID=<group.id>, home=<_system.auth.useradd.home>, shell=<_system.auth.useradd.shell>(?,<~>)"
-      - "group added to <file.name>: name=<group.name>(?, GID=<group.id>)"
+      - 'new group: name=<group.name>, GID=<group.id>'
+      - 'new user: name=<user.name>, UID=<user.id>, GID=<group.id>, home=<_system.auth.useradd.home>, shell=<_system.auth.useradd.shell>(?,<~>)'
+      - 'group added to <file.name>: name=<group.name>(?, GID=<group.id>)'
       - <_system.auth.event.outcome> adding user '<user.name>'(?,<~>)
 
-  - check: $_system.auth.event.outcome=="failed" OR $_system.auth.pam.session.action=="failure"
+  - check: $_system.auth.event.outcome == failed OR $_system.auth.pam.session.action == failure
     map:
       - event.outcome: failure
 
-  - check: $process.name=="groupadd" OR $process.name=="groupdel" OR $process.name=="groupmod" OR $process.name=="useradd" OR $process.name=="userdel" OR $process.name=="usermod"
+  - check: $process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod OR $process.name == useradd OR $process.name == userdel OR $process.name == usermod
     map:
       - event.category: array_append(iam)
 
-  - check: $process.name=="useradd" OR $process.name=="userdel" OR $process.name=="usermod"
+  - check: $process.name == useradd OR $process.name == userdel OR $process.name == usermod
     map:
       - event.type: array_append(user)
 
-  - check: $process.name=="groupadd" OR $process.name=="groupdel" OR $process.name=="groupmod"
+  - check: $process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod
     map:
       - event.type: array_append(group)
 
-  - check: $process.name=="groupadd" OR $process.name=="useradd"
+  - check: $process.name == groupadd OR $process.name == useradd
     map:
       - event.type: array_append(creation)
 
-  - check: $process.name=="groupdel" OR $process.name=="userdel"
+  - check: $process.name == groupdel OR $process.name == userdel
     map:
       - event.type: array_append(deletion)
 
-  - check: $process.name=="groupmod" OR $process.name=="usermod"
+  - check: $process.name == groupmod OR $process.name == usermod
     map:
       - event.type: array_append(change)
 

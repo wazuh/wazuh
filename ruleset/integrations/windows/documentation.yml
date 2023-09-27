@@ -20,12 +20,10 @@ configuration: >
           <log_format>eventchannel</log_format>
       </localfile>
   </ossec_config>
-  ```
-  To detect events with sysmon, the following command must be executed:
-  ```
-  Sysmon64.exe -i sysmon_config.xml
-  ```
-  This configuration file can be configured by following this documentation
+
+  To detect events with sysmon, it must be executed with the configuration file agent/sysmon_config.xml
+
+  For more information visit this:
   https://learn.microsoft.com/en-us/sysinternals/downloads/Sysmon
 
   The generated events can be found in the event viewer at this location: Microsoft-Windows-Sysmon/Operational

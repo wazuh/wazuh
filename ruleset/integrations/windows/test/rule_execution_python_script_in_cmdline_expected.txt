@@ -1,0 +1,117 @@
+Output:
+  ecs:
+    version: 8.8
+  user:
+    name: Positivo BGH
+    id: S-1-5-18
+    domain: DESKTOP-22QKO5D
+  related:
+    hash:
+      - SHA1=104605DE5514465D8334F0A27AB4F773ABF5BF3E
+      - MD5=3EC94A0EB1016971F8B073FDB6ECA966
+      - SHA256=90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88
+      - IMPHASH=2897A2A24664AE65557EDC80442FBEDE
+    user:
+      - Positivo BGH
+  file:
+    directory: C:\Windows\System32\WindowsPowerShell\v1.0
+    name: powershell.exe
+    extension: exe
+  event:
+    kind: event
+    id: 1
+    start: 2023-09-20T22:08:30.2988419Z
+    risk_score: 47
+    provider: Microsoft-Windows-Sysmon
+    module: windows
+    category:
+      - process
+    original: <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385f-c22a-43e0-bf4c-06f5698ffbd9}" /><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime="2023-09-20T22:08:30.2988419Z" /><EventRecordID>12809</EventRecordID><Correlation /><Execution ProcessID="4360" ThreadID="5336" /><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>DESKTOP-22QKO5D</Computer><Security UserID="S-1-5-18" /></System><EventData><Data Name="RuleName">-</Data><Data Name="UtcTime">2023-09-20 22:08:30.284</Data><Data Name="ProcessGuid">{23b237de-6d5e-650b-0506-000000002000}</Data><Data Name="ProcessId">9348</Data><Data Name="Image">C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.7_3.7.2544.0_x64__qbz5n2kfra8p0\python.exe</Data><Data Name="FileVersion">3.7.9</Data><Data Name="Description">Python</Data><Data Name="Product">Python</Data><Data Name="Company">Python Software Foundation</Data><Data Name="OriginalFileName">python.exe</Data><Data Name="CommandLine">"C:\Users\Positivo BGH\AppData\Local\Microsoft\WindowsApps\python.exe" -c "import sys; print('hello')"</Data><Data Name="CurrentDirectory">C:\Users\Positivo BGH\Desktop\nahuel\</Data><Data Name="User">DESKTOP-22QKO5D\Positivo BGH</Data><Data Name="LogonGuid">{23b237de-625a-650b-3418-9b0000000000}</Data><Data Name="LogonId">0x9b1834</Data><Data Name="TerminalSessionId">2</Data><Data Name="IntegrityLevel">High</Data><Data Name="Hashes">SHA1=104605DE5514465D8334F0A27AB4F773ABF5BF3E,MD5=3EC94A0EB1016971F8B073FDB6ECA966,SHA256=90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88,IMPHASH=2897A2A24664AE65557EDC80442FBEDE</Data><Data Name="ParentProcessGuid">{23b237de-6cd1-650b-0006-000000002000}</Data><Data Name="ParentProcessId">7008</Data><Data Name="ParentImage">C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Data><Data Name="ParentCommandLine">"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"</Data><Data Name="ParentUser">DESKTOP-22QKO5D\Positivo BGH</Data></EventData></Event>
+    dataset: sysmon
+    type:
+      - start
+    code: 1
+  log:
+    level: Information
+  threat:
+    tactic:
+      name:
+        - Execution
+      reference:
+        - https://attack.mitre.org/tactics/TA0002
+      id:
+        - TA0002
+    technique:
+      name:
+        - Command and Scripting Interpreter
+      id:
+        - T1059
+      reference:
+        - https://attack.mitre.org/techniques/T1059/
+      subtechnique:
+        name:
+          - Python
+          - Windows Command Shell
+        id:
+          - T1059.006
+          - T1059.003
+        reference:
+          - https://attack.mitre.org/techniques/T1059/003/
+          - https://attack.mitre.org/techniques/T1059/003/
+    framework: MITRE ATT&CK
+  host:
+    name: DESKTOP-22QKO5D
+    id: 001
+  TestSessionID: 1
+  agent:
+    name: WIN-8I36CR3738L
+    id: 001
+    type: wazuh-agent
+  wazuh:
+    queue: 102
+    source: logcollector
+    location: "[001] (WIN-8I36CR3738L) any->EventChannel"
+    origin: EventChannel
+    registered_ip: any
+    decoders:
+      - windows-event
+      - windows-sysmon
+  vulnerability:
+    severity: medium
+  process:
+    command_line: "\"C:\\Users\\Positivo BGH\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" -c \"import sys; print('hello')\""
+    pe:
+      company: Python Software Foundation
+      description: Python
+      product: Python
+      file_version: 3.7.9
+      original_file_name: python.exe
+    parent:
+      name: powershell.exe
+      command_line: "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
+      pid: 7008
+      executable: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      entity_id: "{23b237de-6cd1-650b-0006-000000002000}"
+      args:
+        - "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
+    args:
+      - "\"C:\\Users\\Positivo"
+      - BGH\AppData\Local\Microsoft\WindowsApps\python.exe"
+      - -c
+      - "\"import"
+      - sys;
+      - print('hello')"
+    executable: C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.7_3.7.2544.0_x64__qbz5n2kfra8p0\python.exe
+    name: python.exe
+    pid: 9348
+    hash:
+      - SHA1=104605DE5514465D8334F0A27AB4F773ABF5BF3E
+      - MD5=3EC94A0EB1016971F8B073FDB6ECA966
+      - SHA256=90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88
+      - IMPHASH=2897A2A24664AE65557EDC80442FBEDE
+    entity_id: "{23b237de-6d5e-650b-0506-000000002000}"
+    working_directory: C:\Users\Positivo BGH\Desktop\nahuel\
+  rule:
+    description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use this method to execute malicious scripts and avoiding writing it to disk.
+    name: Python Script Execution via Command Line
+    license: Wazuh Inc.
