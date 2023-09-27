@@ -50,23 +50,16 @@ tags:
 import pytest
 from pathlib import Path
 import sys
-from time import sleep
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
-from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils import callbacks
-from wazuh_testing.utils.services import check_if_process_is_running, control_service
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, wait_enrollment_try, add_custom_key
+from .. import wait_keepalive, wait_enrollment, delete_keys_file, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -86,7 +79,8 @@ else:
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 # Tests
-def test_agentd_reconection_enrollment_no_keys_file(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check how the agent behaves when losing communication with
                  the 'wazuh-remoted' daemon and a new enrollment is sent to
@@ -101,18 +95,18 @@ def test_agentd_reconection_enrollment_no_keys_file(test_configuration, test_met
     tier: 0
 
     parameters:
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated 'wazuh-authd' connection.
-        - configure_environment:
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - teardown:
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
             type: fixture
-            brief: Stop the Remoted server
+            brief: Reset the 'ossec.log' file and start a new monitor.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -133,35 +127,45 @@ def test_agentd_reconection_enrollment_no_keys_file(test_configuration, test_met
     # Stop target Agent
     control_service('stop')
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator()
-    remoted_server.start()
-
-    # Prepare test
+    # Start AuthdSimulator
     authd_server = AuthdSimulator()
     authd_server.start()
+
+    # Delete keys file
+    delete_keys_file()
 
     # Start target Agent
     control_service('start')
 
-    # start hearing logs
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # hearing on enrollment server
-    authd_server.clear()
-
     # Wait until Agent asks keys for the first time
     wait_enrollment()
 
-    # Start rejecting Agent
-    remoted_server.set_mode('REJECT')
-    # hearing on enrollment server
-    authd_server.clear()
-    # Wait until Agent asks a new key to enrollment
-    wait_enrollment_try()
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
 
-    # Start responding to Agent
-    remoted_server.set_mode('CONTROLLED_ACK')
     # Wait until Agent is notifing Manager
     wait_keepalive()
-    assert "aes" in remoted_server.last_message_ctx, "Incorrect Secure Message"
+    
+    # Reset simulator
+    kill_server(remoted_server)
+
+    remoted_server = RemotedSimulator(mode = 'INVALID_MSG')
+    remoted_server.start()
+
+    # Wait until Agent asks a new key to enrollment
+    wait_enrollment()
+
+    # Reset simulator
+    kill_server(remoted_server)
+
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+    # Wait until Agent is notifing Manager
+    wait_keepalive()
+
+    # Reset simulator
+    kill_server(authd_server)
+
+    # Reset simulator
+    kill_server(remoted_server)

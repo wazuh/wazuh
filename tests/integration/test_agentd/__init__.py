@@ -18,6 +18,7 @@ def wait_keepalive():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE))
+    truncate_wazuh_logs()
     assert (wazuh_log_monitor.callback_result != None), f'Sending keep alive not found'
 
 def wait_connect():
@@ -26,6 +27,7 @@ def wait_connect():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
+    truncate_wazuh_logs()
     assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
 
 def wait_ack():
@@ -34,6 +36,7 @@ def wait_ack():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
+    truncate_wazuh_logs()
     assert (wazuh_log_monitor.callback_result != None), f'Received ack message not found'
 
 def wait_state_update():
@@ -42,6 +45,7 @@ def wait_state_update():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UPDATING_STATE_FILE))
+    truncate_wazuh_logs()
     assert (wazuh_log_monitor.callback_result != None), f'State file update not found'
 
 def wait_enrollment():
@@ -50,6 +54,7 @@ def wait_enrollment():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_VALID_KEY))
+    truncate_wazuh_logs()
     assert (wazuh_log_monitor.callback_result != None), 'Agent never enrolled'
 
 def wait_enrollment_try():
@@ -58,6 +63,7 @@ def wait_enrollment_try():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY))
+    truncate_wazuh_logs()
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
 
 def wait_agent_notification(current_value):
@@ -66,6 +72,7 @@ def wait_agent_notification(current_value):
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION), accumulations = int(current_value))
+    truncate_wazuh_logs()
     return(wazuh_log_monitor.callback_result != None), f'Sending agent notification message not found'
 
 def delete_keys_file():
@@ -79,4 +86,20 @@ def check_module_stop():
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_MODULE_STOPPED))
+    truncate_wazuh_logs()
     return(wazuh_log_monitor.callback_result == None), f'Unable to access queue message found'
+
+def truncate_wazuh_logs():
+    """
+    Truncate a file to reset its content.
+
+    Args:
+        file_path (str): Path of the file to be truncated.
+    """
+    with open(WAZUH_LOG_PATH, 'w'):
+        pass
+
+def kill_server(server):
+    if server:
+        server.clear()
+        server.shutdown()
