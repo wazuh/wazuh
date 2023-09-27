@@ -10,19 +10,19 @@ metadata:
   description: Decoder for sysmon logs. Currently suport all events generate with id 1, 3, 4, 5, 9, 11, 16 and 23
   compatibility: This integration was tested on Ubuntu 22.04 (jammy), with sysmon version Sysmon v1.2.0
   versions:
-    - "1.2.x"
+    - 1.2.x
   author:
     name: Wazuh Inc.
     email: info@wazuh.com
     date: 2023-06-09
   references:
-    - "https://github.com/Sysinternals/SysmonForLinux"
-    - "https://github.com/OTRF/OSSEM-DD/tree/main/linux/sysmon"
-    - "https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon"
+    - https://github.com/Sysinternals/SysmonForLinux
+    - https://github.com/OTRF/OSSEM-DD/tree/main/linux/sysmon
+    - https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
 
 check:
   - process.name: sysmon
-  - message: "starts_with(<Event)"
+  - message: starts_with(<Event)
   # TODO: Once the events arrive tagged, uncommnet following line
   # - event.module=='sysmon-linux'
 
@@ -32,14 +32,14 @@ parse|message:
 # Log level mapping
 definitions:
   lvl_map:
-    "0": Audit
-    "1": Critical
-    "2": Error
-    "3": Warning
-    "4": Information
-    "5": Verbose
+    '0': Audit
+    '1': Critical
+    '2': Error
+    '3': Warning
+    '4': Information
+    '5': Verbose
   idEvent_map:
-    "1":
+    '1':
       category:
         - process
       type:
@@ -47,7 +47,7 @@ definitions:
       action: process_creation
       kind: event
       outcome: success
-    "3":
+    '3':
       category:
         - network
       type:
@@ -57,7 +57,7 @@ definitions:
       action: network_connection
       kind: event
       outcome: success
-    "4":
+    '4':
       category:
         - service
         - process
@@ -66,7 +66,7 @@ definitions:
       action: sysmon_service_state_changed
       kind: state
       outcome: unknown
-    "5":
+    '5':
       category:
         - process
       type:
@@ -74,7 +74,7 @@ definitions:
       action: process_terminated
       kind: event
       outcome: success
-    "9":
+    '9':
       category:
         - file
         - process
@@ -86,7 +86,7 @@ definitions:
       # although it can also be a sign of malicious behavior.
       kind: alert
       outcome: unknown
-    "11":
+    '11':
       category:
         - file
       type:
@@ -94,7 +94,7 @@ definitions:
       action: file_created
       kind: event
       outcome: success
-    "16":
+    '16':
       category:
         - configuration
       type:
@@ -102,7 +102,7 @@ definitions:
       action: configuration_chage
       kind: state
       outcome: unknown
-    "23":
+    '23':
       category:
         - file
       type:
@@ -120,7 +120,7 @@ normalize:
       - log.level: get_value($lvl_map, $_sysmon.Event.System.Level.#text)
       - event.start: $_sysmon.Event.System.TimeCreated.@SystemTime
       - host.name: $_sysmon.Event.System.Computer.#text
-      - event.kind: "event"
+      - event.kind: event
       - event.code: $_sysmon.Event.System.EventID.#text
 
       - event: merge_value($idEvent_map, $_sysmon.Event.System.EventID.#text)
@@ -184,9 +184,9 @@ normalize:
       - _sysmon.Event.EventData.ParentUser: delete()
 
   - check:
-      - event.code: "255"
+      - event.code: '255'
     map:
-      - error.code: "255"
+      - error.code: '255'
 
   - map:
       - rule.name: $_sysmon.Event.EventData.RuleName
@@ -228,8 +228,7 @@ normalize:
       - process.parent.executable: $_sysmon.Event.EventData.ParentImage
       - process.parent.command_line: $_sysmon.Event.EventData.ParentCommandLine
 
-  - check:
-      - event.code: string_not_equal(7)
+  - check: $event.code != '7'
     map:
       - process.pe.original_file_name: $_sysmon.Event.EventData.OriginalFileName
       - process.pe.company: $_sysmon.Event.EventData.Company
@@ -256,10 +255,10 @@ normalize:
   # Event id 4 == Sysmon service state changed
   #########################################################
   - check:
-      - event.code: string_equal(4)
+      - event.code: '4'
     map:
-      - event.action: "service_start"
-      - service.name: "sysmon"
+      - event.action: service_start
+      - service.name: sysmon
       - service.state: $_sysmon.Event.EventData.State
 
   #########################################################
@@ -267,9 +266,9 @@ normalize:
   # Event id 16 == ServiceConfigurationChange
   #########################################################
   - check:
-      - event.code: string_equal(16)
+      - event.code: '16'
     map:
-      - event.action: "configuration_chage"
+      - event.action: configuration_chage
       - file.path: $_sysmon.Event.EventData.Configuration
       # TODO Store the file hash, unimplemented in sysmon currently ($_sysmon.Event.EventData.ConfigurationFileHash)
 
@@ -295,7 +294,7 @@ normalize:
       - file.code_signature.status: $_sysmon.Event.EventData.SignatureStatus
 
   - check:
-      - event.code: string_equal(7)
+      - event.code: '7'
     map:
       - file.pe.original_file_name: $_sysmon.Event.EventData.OriginalFileName
       - file.pe.company: $_sysmon.Event.EventData.Company
@@ -335,17 +334,17 @@ normalize:
 
       - dns.question.name: $_sysmon.Event.EventData.QueryName
 
-  - check: $_sysmon.Event.EventData.Initiated=="true" # check true, True, "true", "True"
+  - check: $_sysmon.Event.EventData.Initiated == 'true'
     map:
       - network.direction: egress
-  - check: $_sysmon.Event.EventData.Initiated=="false"
+  - check: $_sysmon.Event.EventData.Initiated == 'false'
     map:
       - network.direction: ingress
 
-  - check: $_sysmon.Event.EventData.SourceIsIpv6=="true" # check true, True, "true", "True"
+  - check: $_sysmon.Event.EventData.SourceIsIpv6 == 'true'
     map:
       - network.type: ipv6
-  - check: $_sysmon.Event.EventData.SourceIsIpv6=="false"
+  - check: $_sysmon.Event.EventData.SourceIsIpv6 == 'false'
     map:
       - network.type: ipv4
 

@@ -6,8 +6,6 @@ metadata:
   description: Identifies attempts to disable EventLog via the logman Windows utility, PowerShell, or auditpol. This is often done by
     attackers in an attempt to evade detection on a system.
     this method to execute malicious scripts and avoiding writing it to disk.
-  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
-  compatibility: This rule has been tested on Wazuh version 4.5.
   author:
     name: Wazuh, Inc.
     date: 2023/09/15
@@ -27,11 +25,11 @@ check: >-
             OR $process.name == powershell.exe
             OR $process.name == powershell_ise.exe)
             OR ($process.pe.original_file_name == pwsh.exe
-            OR $process.pe.original_file_name == powershell.exe
-            OR $process.pe.original_file_name == powershell_ise.exe)
+              OR $process.pe.original_file_name == powershell.exe
+              OR $process.pe.original_file_name == powershell_ise.exe)
             AND (array_contains($process.args, Set-Service)
-            AND array_contains($process.args, EventLog)
-            AND array_contains($process.args, Disabled)))
+              AND array_contains($process.args, EventLog)
+              AND array_contains($process.args, Disabled)))
         OR (
             ($process.name == auditpol.exe
             OR $process.pe.original_file_name == AUDITPOL.EXE)

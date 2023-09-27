@@ -5,8 +5,6 @@ metadata:
   title: Python Script Execution via Command Line
   description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use
     this method to execute malicious scripts and avoiding writing it to disk.
-  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
-  compatibility: This rule has been tested on Wazuh version 4.5.
   author:
     name: Wazuh, Inc.
     date: 2023/09/15

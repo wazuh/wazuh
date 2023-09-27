@@ -1104,24 +1104,52 @@ std::optional<base::Error> Json::validate(const Json& schema) const
 
 std::optional<base::Error> Json::checkDuplicateKeys() const
 {
-    if (m_document.IsObject())
+    // TODO: This should be checked by the library, or make a better validator.
+    // As stated in rapidjson docs, if an object contains duplicated memebers,
+    // equality comparator always returns false, for said member or for the whole
+    // object if it contains duplicated members.
+
+    // If equality between a member and itself is false, then it is a duplicate or
+    // contains duplicated members.
+
+    // Exception is not throw when repeated keys have the same value. Check this operator == in
+    // https://miloyip.github.io/rapidjson/classrapidjson_1_1_generic_value.html#afbdbc9cbc3b59feb5a28d5bfee97dbb3
+
+    auto validateDuplicatedKeys = [](const rapidjson::Value& value, auto& recurRef) -> void
     {
-        std::unordered_set<std::string> keysSet;
-
-        for (auto it = m_document.MemberBegin(); it != m_document.MemberEnd(); ++it)
+        if (value.IsObject())
         {
-            std::string key = it->name.GetString();
-
-            if (keysSet.count(key) > 0)
+            for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
             {
-                return base::Error {fmt::format("Unable to build json document because there is a duplicated "
+                if (value[it->name.GetString()] != value[it->name.GetString()])
+                {
+                    throw std::runtime_error(fmt::format("Unable to build json document because there is a duplicated "
                                                          "key '{}', or a duplicated key inside object '{}'.",
                                                          it->name.GetString(),
-                                                         it->name.GetString())};
-            }
+                                                         it->name.GetString()));
+                }
 
-            keysSet.insert(key);
+                recurRef(it->value, recurRef);
+            }
         }
+    };
+
+    try
+    {
+        if (m_document.IsObject())
+        {
+            const rapidjson::Value& value = m_document;
+
+            if (value != value)
+            {
+                return base::Error {"Unable to build json document because there is a duplicated key"};
+            }
+            validateDuplicatedKeys(value, validateDuplicatedKeys);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("{}", e.what())};
     }
 
     return std::nullopt;

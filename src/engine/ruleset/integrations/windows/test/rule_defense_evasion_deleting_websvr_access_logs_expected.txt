@@ -1,0 +1,89 @@
+Output:
+  host:
+    id: 001
+    name: DESKTOP-8UVR214
+  process:
+    entity_id: "{7100ab27-350d-6506-912a-000000001200}"
+    executable: C:\Users\nahuel\Desktop\nahuel\Apache24\bin\httpd.exe
+    name: httpd.exe
+    hash:
+      - MD5=55BFEBE68443611320A8A70C7DFD5D56
+      - SHA256=5809ABFE5219B046AF113536279F8B16F9D6A5A3E63417BAE6E1202A3E958C33
+      - IMPHASH=00000000000000000000000000000000
+    pid: 10328
+    parent:
+      name: httpd.exe
+  rule:
+    license: Wazuh Inc.
+    name: WebServer Access Logs Deleted
+    description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic evidence on a system.
+  sysmon:
+    file:
+      is_executable: false
+      archived: true
+  wazuh:
+    queue: 102
+    registered_ip: any
+    source: logcollector
+    decoders:
+      - windows-event
+      - windows-sysmon
+    location: "[001] (WIN-8I36CR3738L) any->EventChannel"
+    origin: EventChannel
+  log:
+    level: Information
+  threat:
+    technique:
+      reference:
+        - https://attack.mitre.org/techniques/T1070/
+      name:
+        - Indicator Removal
+      id:
+        - T1070
+    tactic:
+      reference:
+        - https://attack.mitre.org/tactics/TA0005/
+      id:
+        - TA0005
+      name:
+        - Defense Evasion
+    framework: MITRE ATT&CK
+  user:
+    domain: DESKTOP-8UVR214
+    name: nahuel
+    id: S-1-5-18
+  agent:
+    id: 001
+    name: WIN-8I36CR3738L
+    type: wazuh-agent
+  event:
+    start: 2023-09-16T23:16:03.9863345Z
+    risk_score: 47
+    kind: event
+    original: <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385f-c22a-43e0-bf4c-06f5698ffbd9}" /><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime="2023-09-16T23:16:03.9863345Z" /><EventRecordID>2444</EventRecordID><Correlation /><Execution ProcessID="5236" ThreadID="5684" /><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>DESKTOP-8UVR214</Computer><Security UserID="S-1-5-18" /></System><EventData><Data Name="RuleName">-</Data><Data Name="UtcTime">2023-09-16 23:16:03.985</Data><Data Name="ProcessGuid">{7100ab27-350d-6506-912a-000000001200}</Data><Data Name="ProcessId">10328</Data><Data Name="User">DESKTOP-8UVR214\nahuel</Data><Data Name="Image">C:\Users\nahuel\Desktop\nahuel\Apache24\bin\httpd.exe</Data><Data Name="TargetFilename">C:\inetpub\logs\LogFiles\access.log</Data><Data Name="Hashes">MD5=55BFEBE68443611320A8A70C7DFD5D56,SHA256=5809ABFE5219B046AF113536279F8B16F9D6A5A3E63417BAE6E1202A3E958C33,IMPHASH=00000000000000000000000000000000</Data><Data Name="IsExecutable">false</Data><Data Name="Archived">true</Data></EventData></Event>
+    dataset: sysmon
+    type:
+      - deletion
+    id: 23
+    category:
+      - file
+    code: 23
+    module: windows
+    provider: Microsoft-Windows-Sysmon
+  ecs:
+    version: 8.8
+  file:
+    path: C:\inetpub\logs\LogFiles\access.log
+    extension: log
+    directory: C:\inetpub\logs\LogFiles
+    name: access.log
+  vulnerability:
+    severity: medium
+  related:
+    user:
+      - nahuel
+    hash:
+      - MD5=55BFEBE68443611320A8A70C7DFD5D56
+      - SHA256=5809ABFE5219B046AF113536279F8B16F9D6A5A3E63417BAE6E1202A3E958C33
+      - IMPHASH=00000000000000000000000000000000
+  TestSessionID: 1

@@ -133,5 +133,6 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_su
 
     ASSERT_TRUE(result);
 
-    ASSERT_TRUE(result.payload()->exists("/field1check")); // Remove the first occurrence of the path
+    ASSERT_TRUE(result.payload()->exists("/field1check"));
+    ASSERT_FALSE(result.payload()->exists("/field2check")); // Remove the first occurrence of the path
 }
