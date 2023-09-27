@@ -30,6 +30,8 @@ normalize:
       - event: kvdb_get_merge(windows_security_categories, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
 
+      - message: kvdb_get(windows_eventid_to_message, $event.id)
+
   - map:
       # Set Logon Type
       - windows.logon.type: kvdb_get(windows_logon_type, $windows.EventData.LogonType)
