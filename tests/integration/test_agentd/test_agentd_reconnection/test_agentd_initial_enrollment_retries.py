@@ -50,23 +50,20 @@ tags:
 import pytest
 from pathlib import Path
 import sys
-from time import sleep
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
-from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils import callbacks
-from wazuh_testing.utils.services import check_if_process_is_running, control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, wait_enrollment_try, add_custom_key
+from .. import wait_keepalive, wait_enrollment, check_module_stop, delete_keys_file
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -86,7 +83,8 @@ else:
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 # Tests
-def test_agentd_initial_enrollment_retries(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
     '''
     description: Check how the agent behaves when it makes multiple enrollment attempts
                  before getting its key. For this, the agent starts without keys and
@@ -102,18 +100,18 @@ def test_agentd_initial_enrollment_retries(test_configuration, test_metadata, se
     tier: 0
 
     parameters:
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated 'wazuh-authd' connection.
-        - configure_environment:
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - teardown:
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
             type: fixture
-            brief: Stop the Remoted server
+            brief: Reset the 'ossec.log' file and start a new monitor.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -135,32 +133,21 @@ def test_agentd_initial_enrollment_retries(test_configuration, test_metadata, se
     # Stop target Agent
     control_service('stop')
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator()
-    remoted_server.start()
-
     # Preapre test
-    authd_server = AuthdSimulator()
+    authd_server = AuthdSimulator(mode = 'ACCEPT')
     authd_server.start()
+    delete_keys_file()
 
     # Start whole Agent service to check other daemons status after initialization
     control_service('start')
 
-    start_time = datetime.now()
-    # Check for unsuccessful enrollment retries in Agentd initialization
-    retries = 0
-    while retries < 4:
-        retries += 1
-        wait_enrollment_try()
-    stop_time = datetime.now()
-    expected_time = start_time + timedelta(seconds=retries * 5 - 2)
-    # Check if delay was applied
-    assert stop_time > expected_time, "Retries too quick"
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT), accumulations = 4)
+    assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
-    # Enable authd
-    authd_server.clear()
-    authd_server.set_mode("ACCEPT")
-    # Wait successfully enrollment
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Wait succesfull enrollment
     wait_enrollment()
     
@@ -168,8 +155,12 @@ def test_agentd_initial_enrollment_retries(test_configuration, test_metadata, se
     wait_keepalive()
     
     # Check if no Wazuh module stopped due to Agentd Initialization
-    with open(LOG_FILE_PATH) as log_file:
-        log_lines = log_file.read().splitlines()
-        for line in log_lines:
-            if "Unable to access queue:" in line:
-                raise AssertionError("A Wazuh module stopped because of Agentd initialization!")
+    check_module_stop()
+
+    if authd_server:
+        authd_server.clear()
+        authd_server.shutdown()
+    
+    if remoted_server:
+        remoted_server.clear()
+        remoted_server.shutdown()

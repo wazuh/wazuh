@@ -46,7 +46,7 @@ def wait_state_update():
 
 def wait_enrollment():
     """
-        Watch ossec.log until "Updating state file" message is found
+        Watch ossec.log until "Valid key received" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_RECEIVED_VALID_KEY))
