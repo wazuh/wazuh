@@ -210,9 +210,6 @@ if __name__ == '__main__':
     plain_log = 'plain' in api_conf['logs']['format']
     json_log = 'json' in api_conf['logs']['format']
 
-    log_path = f'{API_LOG_PATH}.log'
-    foreground_mode = args.foreground
-
     if plain_log:
         set_logging(log_path=f'{API_LOG_PATH}.log', debug_mode=api_conf['logs']['level'],
                     foreground_mode=args.foreground)
@@ -220,7 +217,6 @@ if __name__ == '__main__':
         set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
                     foreground_mode=args.foreground and not plain_log)
 
-    set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground_mode)
 
     logger = logging.getLogger('wazuh-api')
 
