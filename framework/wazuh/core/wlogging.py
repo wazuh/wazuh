@@ -53,7 +53,7 @@ class TimeBasedFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         if not os.path.exists(log_path):
             utils.mkdir_with_mode(log_path, 0o750)
 
-        return os.path.join(log_path, f"{os.path.basename(self.baseFilename)}-{day}.gz")
+        return f'{log_path}/{os.path.basename(self.baseFilename).replace(".log", "")}-{day}.log.gz'
 
 
 class SizeBasedFileRotatingHandler(logging.handlers.RotatingFileHandler):
