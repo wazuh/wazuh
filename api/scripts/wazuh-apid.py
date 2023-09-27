@@ -217,7 +217,6 @@ if __name__ == '__main__':
         set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
                     foreground_mode=args.foreground and not plain_log)
 
-
     logger = logging.getLogger('wazuh-api')
 
     import asyncio
