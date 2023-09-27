@@ -252,10 +252,6 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     q_filter : dict
         Query to filter in database.
     """
-    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
-    not_equal_regex = f"NOT {equal_regex}"
-    like_regex = r"[\w`]+ LIKE :\w+"
-
     query_agent = WazuhDBQueryAgents()
     try:
         query_agent._process_filter(field_name, field_filter, q_filter)
@@ -264,12 +260,17 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
         return
 
     if field_name == 'group':
-        if q_filter['operator'] == '=':
-            assert re.search(equal_regex, query_agent.query)
-        elif q_filter['operator'] == '!=':
-            assert re.search(not_equal_regex, query_agent.query)
-        elif q_filter['operator'] == 'LIKE':
-            assert re.search(like_regex, query_agent.query)
+        operator = q_filter['operator']
+        value = q_filter['value']
+        if operator == '=':
+            assert re.search(r"id IN \(.* name_group = :\w+", query_agent.query)
+            assert query_agent.request[field_filter] == value
+        elif operator == '!=':
+            assert re.search(r"id NOT IN \(.* name_group = :\w+", query_agent.query)
+            assert query_agent.request[field_filter] == value
+        elif operator == 'LIKE':
+            assert re.search(r"id IN \(.* name_group LIKE :\w+", query_agent.query)
+            assert query_agent.request[field_filter] == f"%{value}%"
         else:
             pytest.fail('Unexpected operator')
     else:
