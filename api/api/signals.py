@@ -6,16 +6,17 @@ import logging
 import os
 import ssl
 import uuid
+from datetime import datetime
 
 import aiohttp
 import certifi
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.security import load_spec
 
-from api.configuration import api_conf
 from api.constants import INSTALLATION_UID_PATH
 
 RELEASE_UPDATES_URL = 'http://cti:4041'
+ONE_DAY_SLEEP = 60*60*24
 
 logger = logging.getLogger('wazuh-api')
 
@@ -65,8 +66,6 @@ async def check_installation_uid(app):
 
 @cancel_signal_handler
 async def get_update_information(app):
-    # Validate if api is on master node or not
-
     headers = {
         'wazuh-uid': get_installation_uid(),
         'wazuh-tag': f'v{get_current_version()}'
@@ -78,31 +77,37 @@ async def get_update_information(app):
         while True:
             logger.info('Getting updates information...')
             logger.debug('Querying %s', updates_url)
-            async with session.get(updates_url, headers=headers) as response:
-                response_data = await response.json()
+            try:
+                async with session.get(updates_url, headers=headers) as response:
+                    response_data = await response.json()
 
-                logger.debug("Response status %s", response.status)
-                logger.debug("Response data: %s", response_data)
+                    logger.debug("Response status: %s", response.status)
+                    logger.debug("Response data: %s", response_data)
 
-                update_information = {
-                    'last_check_date': datetime.utcnow(),
-                    'status_code': response.status,
-                    'message': '',
-                    'available_update': {}
-                }
+                    update_information = {
+                        'last_check_date': datetime.utcnow(),
+                        'status_code': response.status,
+                        'message': '',
+                        'available_update': {}
+                    }
 
-                if response.status == 200:
-                    if len(response_data['data']['patch']):
-                        update_information['available_update'].update(**response_data['data']['patch'][0])
-                    elif len(response_data['data']['minor']):
-                        update_information['available_update'].update(**response_data['data']['minor'][0])
-                    elif len(response_data['data']['mayor']):
-                        update_information['available_update'].update(**response_data['data']['mayor'][0])
-                else:
-                    update_information['message'] = response_data['errors']['detail']
+                    if response.status == 200:
+                        if len(response_data['data']['patch']):
+                            update_information['available_update'].update(**response_data['data']['patch'][0])
+                        elif len(response_data['data']['minor']):
+                            update_information['available_update'].update(**response_data['data']['minor'][0])
+                        elif len(response_data['data']['mayor']):
+                            update_information['available_update'].update(**response_data['data']['mayor'][0])
+                    else:
+                        update_information['message'] = response_data['errors']['detail']
 
-                app['update_information'] = update_information
-            await asyncio.sleep(60*60*24)
+                    app['update_information'] = update_information
+            except aiohttp.ClientError as err:
+                logger.error("Something was wrong querying the update check service.", exc_info=err)
+            except Exception as err:
+                logger.error("An unknown error occurs trying to get updates information.", exc_info=err)
+            finally:
+                await asyncio.sleep(ONE_DAY_SLEEP)
 
 
 async def register_background_tasks(app):
