@@ -302,9 +302,10 @@ else
 		# The workaround is to remove the __declspec(dllimport) from the function declaration in the executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=14339)
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		OSSEC_CFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		OSSEC_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		AR_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
+		# We link against a patched libwinpthread.a library that no contains version.o (version.rc) to avoid including the resource in the executables due to the "--whole-archive" flag
+		OSSEC_CFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
+		OSSEC_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
+		AR_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
 		PRECOMPILED_OS:=windows
 endif # winagent
 
@@ -447,14 +448,23 @@ ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll)
 endif
 endif
 
+ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread.a))
+	WIN_PTHREAD_STATIC_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread.a
+else
+ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread.a))
+	WIN_PTHREAD_STATIC_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread.a
+endif
+endif
+
 endif #winagent
 
-OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
-OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
-OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
-OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
-OSSEC_RANLIB  =${QUIET_RANLIB}${MING_BASE}ranlib
-OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
+OSSEC_CC      		=${QUIET_CC}${MING_BASE}${CC}
+OSSEC_CCBIN   		=${QUIET_CCBIN}${MING_BASE}${CC}
+OSSEC_SHARED  		=${QUIET_CCBIN}${MING_BASE}${CC} -shared
+OSSEC_LINK    		=${QUIET_LINK}${MING_BASE}ar -crus
+OSSEC_REMOVE_OBJECT =${QUIET_LINK}${MING_BASE}ar -d
+OSSEC_RANLIB  		=${QUIET_RANLIB}${MING_BASE}ranlib
+OSSEC_WINDRES 		=${QUIET_CCBIN}${MING_BASE}windres
 
 
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
@@ -795,7 +805,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
+winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -827,6 +837,10 @@ win32/syscollector: win32/shared_modules win32/sysinfo
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
+
+win32/libwinpthreadpatched.a: ${WIN_PTHREAD_STATIC_LIB}
+	cp $< $@
+	${OSSEC_REMOVE_OBJECT} $@ version.o
 
 ####################
 #### External ######
