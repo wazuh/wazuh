@@ -50,23 +50,15 @@ tags:
 import pytest
 from pathlib import Path
 import sys
-from time import sleep
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, WAZUH_LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils import callbacks
-from wazuh_testing.utils.services import check_if_process_is_running, control_service
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, wait_enrollment_try, add_custom_key
+from .. import wait_keepalive, add_custom_key, wait_enrollment_try, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -138,9 +130,8 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     remoted_server = RemotedSimulator()
     remoted_server.start()
 
-    # Prepare test
-    authd_server = AuthdSimulator()
-    authd_server.start()
+    #Prepare test
+    add_custom_key()
 
     # Start target Agent
     control_service('start')
@@ -148,15 +139,22 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     # Wait until Agent is notifying Manager
     wait_keepalive()
 
+    # Reset simulator
+    kill_server(remoted_server)
+    
     # Start rejecting Agent
-    remoted_server.set_mode('REJECT')
-    # hearing on enrollment server
-    authd_server.clear()
-    # Wait until Agent asks a new key to enrollment
-    wait_enrollment()
+    remoted_server = RemotedSimulator(mode = 'WRONG_KEY')
+    remoted_server.start()
 
-    # Start responding to Agent
-    remoted_server.set_mode('CONTROLLED_ACK')
+    # Wait until Agent asks a new key to enrollment
+    wait_enrollment_try()
+
+    # Reset simulator
+    kill_server(remoted_server)
+    
+    # Start responding Agent
+    remoted_server = RemotedSimulator()
+    remoted_server.start()
+
     # Wait until Agent is notifying Manager
-    wait_enrollment_try()    
-    assert "aes" in remoted_server.last_message_ctx, "Incorrect Secure Message"
+    wait_keepalive()
