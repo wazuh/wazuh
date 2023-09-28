@@ -27,14 +27,14 @@ normalize:
       - wazuh.decoders: array_append(windows-security)
       - event.dataset: security
       - event.code: $event.id
-      - event: kvdb_get_merge(windows_security_categories, $event.id)
+      - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
 
       - message: kvdb_get(windows_eventid_to_message, $event.id)
 
   - map:
       # Set Logon Type
-      - windows.logon.type: kvdb_get(windows_logon_type, $windows.EventData.LogonType)
+      - windows.logon.type: kvdb_get(windows_logon_type_to_title, $windows.EventData.LogonType)
 
       # Set User Account Control Description
       - windows.EventData.NewUACList: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.NewUacValue)
@@ -42,7 +42,7 @@ normalize:
 
       # Set Service Name and type
       - service.name: $windows.EventData.ServiceName
-      - service.type: kvdb_get(windows_service_type, $windows.EventData.ServiceType)
+      - service.type: kvdb_get(windows_service_value_to_service_type, $windows.EventData.ServiceType)
 
       # Set Kerberos Ticket Options
       - windows.EventData.TicketOptionsDescription: kvdb_decode_bitmask(windows_bitmask_tables, TicketOptions, $windows.EventData.TicketOptions)
@@ -50,16 +50,16 @@ normalize:
   # Set Kerberos Encryption Types - windows.EventData.TicketEncryptionTypeDescription
   - check: exists($windows.EventData.TicketEncryptionType)
     map:
-      - _kerberos_encryption: kvdb_get(windows_kerberos_encryption, $windows.EventData.TicketEncryptionType)
+      - _kerberos_encryption: kvdb_get(windows_kerberos_encryption_type_to_description, $windows.EventData.TicketEncryptionType)
       - windows.EventData.TicketEncryptionTypeDescription: downcase($_kerberos_encryption)
 
   # Group: Kerberos Status - Set Kerberos Ticket Status Codes
   - map:
-      - _ev_kerberos_status: kvdb_get(windows_events_arrays, kerberos_status)
+      - _ev_kerberos_status: kvdb_get(windows_event_type_to_eventid_list, kerberos_status)
 
   - check: array_contains($_ev_kerberos_status, $event.id) AND exists($windows.EventData.Status)
     map:
-      - windows.EventData.StatusDescription: kvdb_get(windows_kerberos_status, $windows.EventData.Status)
+      - windows.EventData.StatusDescription: kvdb_get(windows_kerberos_status_code_to_code_name, $windows.EventData.Status)
 
   # Set Audit Information
   - check: exists($windows.EventData.SubcategoryGuid)
@@ -68,7 +68,7 @@ normalize:
       - _subcategory_guid: replace({, '')
       - _subcategory_guid: replace(}, '')
       - _subcategory_guid: upcase($_subcategory_guid)
-      - _audit_information_array: kvdb_get(windows_audit_information, $_subcategory_guid)
+      - _audit_information_array: kvdb_get(windows_audit_SubcategoryGUID_to_categories, $_subcategory_guid)
       - windows.EventData.Category: $_audit_information_array[1]
       - windows.EventData.Subcategory: $_audit_information_array[0]
 
@@ -77,7 +77,7 @@ normalize:
     map:
       - _failure_code : $windows.EventData.FailureReason
       - _failure_code : replace(%%, '')
-      - windows.logon.failure.reason: kvdb_get(windows_messages, $_failure_code )
+      - windows.logon.failure.reason: kvdb_get(windows_audit_access_id_to_description, $_failure_code )
 
   # Set Audit Policy Changes Descriptions
   - check: exists($windows.EventData.AuditPolicyChanges)
@@ -87,9 +87,9 @@ normalize:
       - _policy_changes: replace(' ', '')
       - _policy_changes: split($_policy_changes, ',')
       # transform to array of string
-      - windows.EventData.AuditPolicyChangesDescription.0: kvdb_get(windows_messages, $_policy_changes)
+      - windows.EventData.AuditPolicyChangesDescription.0: kvdb_get(windows_audit_access_id_to_description, $_policy_changes)
       # restult array
-      - windows.EventData.AuditPolicyChangesDescription: kvdb_get_array(windows_messages, $_policy_changes)
+      - windows.EventData.AuditPolicyChangesDescription: kvdb_get_array(windows_audit_access_id_to_description, $_policy_changes)
 
   # Set Access List Descripitions
   - check: exists($windows.EventData.AccessList)
@@ -98,8 +98,8 @@ normalize:
       - _access_list: replace(%%, '')
       - _access_list: replace(' ', '')
       - _access_list: split($_access_list, ',')
-      - windows.EventData.AccessListDescription.0: kvdb_get(windows_messages, $_access_list)
-      - windows.EventData.AccessListDescription: kvdb_get_array(windows_messages, $_access_list)
+      - windows.EventData.AccessListDescription.0: kvdb_get(windows_audit_access_id_to_description, $_access_list)
+      - windows.EventData.AccessListDescription: kvdb_get_array(windows_audit_access_id_to_description, $_access_list)
 
   # Set Access Mask Descriptions 
   - map:
@@ -114,11 +114,11 @@ normalize:
   # Set Trust
   - map:
       # Set Trust Type
-      - windows.trustType: kvdb_get(windows_trust_types, $windows.EventData.TdoType)
+      - windows.trustType: kvdb_get(windows_trust_type_value_to_attribute, $windows.EventData.TdoType)
       # Set Trust Direction
-      - windows.trustDirection: kvdb_get(windows_trust_directions, $windows.EventData.TdoDirection)
+      - windows.trustDirection: kvdb_get(windows_trust_direction_value_to_attribute, $windows.EventData.TdoDirection)
       # Set Trust Attributes
-      - windows.trustAttribute: kvdb_get(windows_trust_attributes, $windows.EventData.TdoAttributes)
+      - windows.trustAttribute: kvdb_get(windows_trust_attribute_value_to_attribute, $windows.EventData.TdoAttributes)
 
   # Add Session Events
   - check: $event.id == '4778' OR $event.id == '4779'
@@ -129,11 +129,11 @@ normalize:
       - source.ip: $windows.EventData.ClientAddress
       - related.ip: array_append_unique($windows.EventData.ClientAddress)
       - source.domain: $windows.EventData.ClientName
-      - logon.id: $windows.EventData.LogonID
+      - windows.logon.id: $windows.EventData.LogonID
 
   # Group: Target User 1 - Set Event IDs array for Target User 1
   - map:
-      - _ev_target_user_1: kvdb_get(windows_events_arrays, target_user_1)
+      - _ev_target_user_1: kvdb_get(windows_event_type_to_eventid_list, target_user_1)
 
   # Group: Target User 1 - Set Target User Id and Target Sid
   - check: array_contains($_ev_target_user_1, $event.id) AND not_exists($user.id)
@@ -174,7 +174,7 @@ normalize:
 
   # Group: Member Name - Set Event IDs array for Member Name
   - map:
-      - _ev_member_name: kvdb_get(windows_events_arrays, member_name)
+      - _ev_member_name: kvdb_get(windows_event_type_to_eventid_list, member_name)
 
   # Group: Member Name - Set Member Name
   - check: array_contains($_ev_member_name, $event.id) AND exists($windows.EventData.MemberName)
@@ -222,7 +222,7 @@ normalize:
 
   # Group: Subject User
   - map:
-      - _ev_subject_user: kvdb_get(windows_events_arrays, subject_user)
+      - _ev_subject_user: kvdb_get(windows_event_type_to_eventid_list, subject_user)
 
   - check: array_contains($_ev_subject_user, $event.id)
     map:
@@ -233,7 +233,7 @@ normalize:
 
   # Group: Target User 2
   - map:
-      - _ev_target_user_2: kvdb_get(windows_events_arrays, target_user_2)
+      - _ev_target_user_2: kvdb_get(windows_event_type_to_eventid_list, target_user_2)
 
   - check: array_contains($_ev_target_user_2, $event.id)
     map:
@@ -273,7 +273,7 @@ normalize:
 
   # Group: Auth Fields
   - map:
-      - _ev_auth_fields: kvdb_get(windows_events_arrays, auth_fields)
+      - _ev_auth_fields: kvdb_get(windows_event_type_to_eventid_list, auth_fields)
 
   - check: array_contains($_ev_auth_fields, $event.id)
     map:
@@ -306,7 +306,7 @@ normalize:
 
   # Group: Related User 1
   - map:
-      - _ev_related_user_1: kvdb_get(windows_events_arrays, related_user_1)
+      - _ev_related_user_1: kvdb_get(windows_event_type_to_eventid_list, related_user_1)
 
   - check: array_contains($_ev_related_user_1, $event.id) AND string_not_equal($windows.EventData.SubjectUserName, -)
     map:
@@ -314,7 +314,7 @@ normalize:
 
   # Group: Related User 2
   - map:
-      - _ev_related_user_2: kvdb_get(windows_events_arrays, related_user_2)
+      - _ev_related_user_2: kvdb_get(windows_event_type_to_eventid_list, related_user_2)
 
   - check: array_contains($_ev_related_user_2, $event.id) AND string_not_equal($windows.EventData.TargetUserName, -)
     map:
