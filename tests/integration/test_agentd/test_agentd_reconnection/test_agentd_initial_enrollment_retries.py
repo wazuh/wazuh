@@ -54,7 +54,7 @@ import sys
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT
+from wazuh_testing.modules.agentd.patterns import AGENTD_REQUESTING_KEY
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
@@ -63,7 +63,7 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils import callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, check_module_stop, delete_keys_file
+from .. import wait_keepalive, wait_enrollment, check_module_stop, delete_keys_file, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -134,7 +134,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     control_service('stop')
 
     # Preapre test
-    authd_server = AuthdSimulator(mode = 'ACCEPT')
+    authd_server = AuthdSimulator()
     authd_server.start()
     delete_keys_file()
 
@@ -142,7 +142,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     control_service('start')
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT), accumulations = 4)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY), timeout = 300, accumulations = 4)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
     remoted_server = RemotedSimulator()
@@ -157,10 +157,9 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     # Check if no Wazuh module stopped due to Agentd Initialization
     check_module_stop()
 
-    if authd_server:
-        authd_server.clear()
-        authd_server.shutdown()
+    # Reset simulator
+    kill_server(authd_server)
+
+    # Reset simulator
+    kill_server(remoted_server)
     
-    if remoted_server:
-        remoted_server.clear()
-        remoted_server.shutdown()

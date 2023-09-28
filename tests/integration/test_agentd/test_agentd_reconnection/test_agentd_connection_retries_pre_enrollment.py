@@ -50,7 +50,6 @@ tags:
 import pytest
 from pathlib import Path
 import sys
-import time
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
@@ -60,7 +59,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, add_custom_key
+from .. import wait_keepalive, add_custom_key, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -136,8 +135,6 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
     # Start service
     control_service('start')
 
-    time.sleep(5)
-
     # Start RemotedSimulator
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
@@ -145,6 +142,6 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
     # Start hearing logs
     wait_keepalive()
 
-    if remoted_server:
-        remoted_server.clear()
-        remoted_server.shutdown()
+    # Reset simulator
+    kill_server(remoted_server)
+    
