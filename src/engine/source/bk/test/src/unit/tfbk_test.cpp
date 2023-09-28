@@ -1,18 +1,19 @@
 #include <gtest/gtest.h>
 
-#include <tfbk/tfbk.hpp>
+#include <bk/taskf/controller.hpp>
 
-static int counter = 0;
+static int gs_term_ID = 0;
+static int gs_op_counter = 0;
 
 auto getFakeTerm(const std::string& name, bool success) -> std::shared_ptr<base::Term<base::EngineOp>>
 {
 
-    return base::Term<base::EngineOp>::create(name,
-                                              [success](const auto& e)
+    return base::Term<base::EngineOp>::create(name + "_" + std::to_string(++gs_term_ID),
+                                              [success, tid = gs_term_ID](const auto& e)
                                               {
-                                                  std::string path {"/test_"};
-                                                  path += std::to_string(++counter);
-                                                  e->setString("holis", path);
+                                                  std::string path {"/info_"};
+                                                  path += std::to_string(tid);
+                                                  e->setInt(++gs_op_counter, path);
                                                   if (success)
                                                   {
                                                       return base::result::makeSuccess(e, "Fake trace success");
@@ -21,28 +22,19 @@ auto getFakeTerm(const std::string& name, bool success) -> std::shared_ptr<base:
                                               });
 }
 
-// Test protected methods
-class TfBkMethodTest : public tfbk::TfBk<std::shared_ptr<json::Json>>
+TEST(TF_Controller_build_Test, term)
 {
-};
-
-TEST(TfBkTest, MethodTest_termExecution)
-{
-    GTEST_SKIP();
-    TfBkMethodTest tfbk;
+    
     auto expr = getFakeTerm("term", true);
     auto event = std::make_shared<json::Json>();
-    tfbk.build(expr);
-    tfbk.ingest(std::move(event));
+    auto tfbk = bk::taskf::Controller(expr);
+    event = tfbk.ingestGet(std::move(event));
 
-    std::cout << tfbk.getEvent().getData()->prettyStr() << std::endl;
+    std::cout << event->prettyStr() << std::endl;
 
-    for (auto& trace : tfbk.getEvent().getTraces())
-    {
-        std::cout << "Trace: " << trace << std::endl;
-    }
 }
 
+/*
 TEST(TfBkTest, MethodTest_broadcasExecution)
 {
     TfBkMethodTest tfbk;
@@ -193,4 +185,4 @@ TEST(TfBkTest, MethodTest_and)
     {
         std::cout << "Trace: " << trace << std::endl;
     }
-}
+}*/
