@@ -2450,7 +2450,7 @@ checks:
     rationale: "iptables.service will load the iptables rules saved in the file /etc/sysconfig/iptables at boot, otherwise the iptables rules will be cleared during a re-boot of the system."
     remediation: "Run the following command to enable and start iptables: systemctl --now enable iptables."
     compliance:
-      - cis: ["3.4.3.2.7"]
+      - cis: ["3.4.3.2.6"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
