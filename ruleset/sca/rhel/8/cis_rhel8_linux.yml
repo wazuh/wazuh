@@ -2264,7 +2264,7 @@ checks:
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop. IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop."
     compliance:
-      - cis: ["3.4.2.6"]
+      - cis: ["3.4.2.7"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
@@ -2449,7 +2449,7 @@ checks:
     rationale: "iptables.service will load the iptables rules saved in the file /etc/sysconfig/iptables at boot, otherwise the iptables rules will be cleared during a re-boot of the system."
     remediation: "Run the following command to enable and start iptables: systemctl --now enable iptables."
     compliance:
-      - cis: ["3.4.3.2.4"]
+      - cis: ["3.4.3.2.7"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
@@ -3290,7 +3290,7 @@ checks:
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
     remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why."
     compliance:
-      - cis: ["4.2.2.3"]
+      - cis: ["4.2.2.2"]
       - cis_csc_v8: ["8.2", "8.3"]
       - cis_csc_v7: ["6.2", "6.3", "6.4"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
