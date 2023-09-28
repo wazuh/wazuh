@@ -2772,7 +2772,7 @@ checks:
   # 5 Access, Authentication and Authorization
   ############################################################
   ############################################################
-  # 5.1 Configure cron
+  # 5.1 Configure time-based job schedulers
   ############################################################
   # 5.1.1 Ensure cron daemon is enabled and running (Automated)
   - id: 18641
@@ -2995,7 +2995,7 @@ checks:
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   ######################################################
-  # 5.2 SSH Server Configuration
+  # 5.3  Configure SSH Server
   ######################################################
   # 5.3.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
   - id: 18649
@@ -3034,6 +3034,7 @@ checks:
       - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_dsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access: \(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
   # 5.3.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 18651
@@ -3070,7 +3071,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:AllowUsers\s+\w+|AllowGroups\s+\w+|DenyUsers\s+\w+|DenyGroups\s+\w+'
+      - 'c:sshd -T -C user=root -> r:AllowUsers\s+\w+|AllowGroups\s+\w+|DenyUsers\s+\w+|DenyGroups\s+\w+'
 
   # 5.3.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 18653
@@ -3089,7 +3090,8 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:LogLevel\s+INFO|LogLevel\s+VERBOSE'
+      - "c:sshd -T -C user=root -> r:^loglevel VERBOSE|^loglevel INFO"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE|^\\s*\\t*loglevel\\s*\\t*INFO"
 
   # 5.3.6 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 18654
@@ -3107,7 +3109,8 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:X11Forwarding\s+no'
+      - "c:sshd -T -C user=root -> r:^x11forwarding no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*x11forwarding\\s*\\t*yes"
 
   # 5.3.7 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 18655
@@ -3122,7 +3125,8 @@ checks:
       - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - "c:sshd -T -C user=root -> n:^maxauthtries\\s+(\\d+) compare <= 4"
+      - "not f:/etc/ssh/sshd_config -> n:^\\s*\\t*maxauthtries\\s+(\\d+) compare > 4"
 
   # 5.3.8 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 18656
@@ -3140,7 +3144,8 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:IgnoreRhosts\s+yes'
+      - "c:sshd -T -C user=root -> r:^ignorerhosts yes"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*IgnoreRhosts\\s*\\t*no"
 
   # 5.3.9 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 18657
@@ -3156,7 +3161,8 @@ checks:
       - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:HostbasedAuthentication\s+no'
+      - "c:sshd -T -C user=root -> r:^hostbasedauthentication no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*HostBasedAuthentication\\s*\\t*yes"
 
   # 5.3.10 Ensure SSH root login is disabled (Automated)
   - id: 18658
@@ -3173,7 +3179,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitRootLogin\s+no'
+      - "c:sshd -T -C user=root -> r:^permitrootlogin no"
+      - "f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitRootLogin\\s*\\t*no"
 
   # 5.3.11 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 18659
@@ -3189,7 +3196,8 @@ checks:
       - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitEmptyPasswords\s+no'
+      - "c:sshd -T -C user=root -> r:^permitemptypasswords no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitEmptyPasswords\\s*\\t*yes"
 
   # 5.3.12 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 18660
@@ -3207,7 +3215,8 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:PermitUserEnvironment\s+no'
+      - "c:sshd -T -C user=root -> r:^permituserenvironment no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitUserEnvironment\\s*\\t*yes"
 
   # 5.3.13 Ensure only strong Ciphers are used (Automated)
   - id: 18661
@@ -3287,8 +3296,8 @@ checks:
       - pci_dss_v3.2.1: ["8.1.8", "10.2.5"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
-      - 'c:sshd -T -> n:ClientAliveCountMax\s*\t*(\d+) compare <= 3'
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 900 && n:ClientAliveInterval\s*\t*(\d+) compare >= 1'
+      - 'c:sshd -T -> n:ClientAliveCountMax\s*\t*(\d+) compare == 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 18665
