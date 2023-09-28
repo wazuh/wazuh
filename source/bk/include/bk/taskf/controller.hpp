@@ -85,13 +85,24 @@ private:
         return result.success() ? SUCCESS : FAILURE;
     }
 
+    static void setWorkSuccess(tf::Task& task, const std::string& name)
+    {
+        task.name(name).work([name]() { return SUCCESS; });
+    }
+
+    static void setWorkFailure(tf::Task& task, const std::string& name)
+    {
+        task.name(name).work([name]() { return FAILURE; });
+    }
+
     using RetWork = std::function<size_t()>;
     using Work = std::function<void()>;
 
-    Work getWork(base::EngineOp&& job, void* event, Trace::Publisher publisher)
+    Work getWork(base::EngineOp&& job, void* eventPtr, Trace::Publisher publisher)
     {
-        return [job = std::move(job), event = *static_cast<base::Event*>(event), publisher]()
+        return [job = std::move(job), eventPtr, publisher]()
         {
+            auto& event = *static_cast<base::Event*>(eventPtr);
             auto res = job(event);
             if (publisher != nullptr)
             {
@@ -100,10 +111,11 @@ private:
         };
     }
 
-    RetWork getRetWork(base::EngineOp&& job, void* event, Trace::Publisher publisher)
+    RetWork getRetWork(base::EngineOp&& job, void* eventPtr, Trace::Publisher publisher)
     {
-        return [job = std::move(job), event = *static_cast<base::Event*>(event), publisher]() -> size_t
+        return [job = std::move(job), eventPtr, publisher]() -> size_t
         {
+            auto& event = *static_cast<base::Event*>(eventPtr);
             auto res = job(event);
             if (publisher != nullptr)
             {
@@ -128,11 +140,13 @@ private:
         auto traceIt = m_traceables.find(expression->getName());
         if (traceIt != m_traceables.end())
         {
+            // TODO The name of expression can be repeated in the chain
             if (m_traces.find(expression->getName()) != m_traces.end())
             {
                 throw std::runtime_error {"Trace already exists"};
             }
             m_traces.emplace(expression->getName(), std::make_unique<Trace>());
+            // TODO publisher of the parameter is always replaced by the trace publisher?
             publisher = m_traces[expression->getName()]->publisher();
         }
 
@@ -145,14 +159,14 @@ private:
             auto term = expression->getPtr<base::Term<base::EngineOp>>();
 
             // Create task
-            task.name(term->getName()).data(&m_event);
+            task.name(term->getName());
             if (needResult)
             {
-                task.work(getRetWork(term->getFn(), task.data(), publisher));
+                task.work(getRetWork(term->getFn(), &m_event, publisher));
             }
             else
             {
-                task.work(getWork(term->getFn(), task.data(), publisher));
+                task.work(getWork(term->getFn(), &m_event, publisher));
             }
 
             // If not root, add dependency
@@ -161,19 +175,193 @@ private:
                 task.succeed(parent);
             }
         }
+        // Operation
+        else if (expression->isOperation())
+        {
+            auto checkOpSize =
+                [](const auto& op, const std::string& name, const size_t size = 1, bool isMinSize = true) -> void
+            {
+                if (isMinSize && op.size() < size)
+                {
+                    throw std::runtime_error(fmt::format("Operation '{}' must have at least {} operands", name, size));
+                }
+                else if (!isMinSize && op.size() != size)
+                {
+                    throw std::runtime_error(fmt::format("Operation '{}' must have {} operands", name, size));
+                }
+            };
+            // Broadcast
+            if (expression->isBroadcast())
+            {
+                setWorkSuccess(task, "Broadcast");
+
+                auto operands = expression->getPtr<base::Broadcast>()->getOperands();
+                checkOpSize(operands, "Broadcast");
+
+                for (auto& operand : operands)
+                {
+                    auto subTask = build(operand, parent, true, publisher);
+                    task.succeed(subTask);
+                }
+            }
+            // Chain
+            else if (expression->isChain())
+            {
+                setWorkSuccess(task, "chain");
+
+                auto operands = expression->getPtr<base::Chain>()->getOperands();
+                checkOpSize(operands, "Chain");
+
+                auto prevTask = parent;
+                for (auto& operand : operands)
+                {
+                    prevTask = build(operand, prevTask, true, publisher);
+                }
+                task.succeed(prevTask);
+            }
+            // Implication
+            else if (expression->isImplication())
+            {
+                auto operands = expression->getPtr<base::Implication>()->getOperands();
+                checkOpSize(operands, "Implication", 2);
+
+                if (!hasParent)
+                {
+                    parent = m_tf.emplace([]() {}).name("root implication");
+                }
+
+                std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(SUCCESS);
+
+                auto condTask = build(operands[0], parent, false, publisher).name("cond implication");
+                auto eTask = tf::Task();
+                auto successTask = build(operands[1], eTask, false, publisher).name("success implication");
+                auto failTask = m_tf.emplace(
+                                        [result]()
+                                        {
+                                            result->store(FAILURE);
+                                            return SUCCESS;
+                                        })
+                                    .name("fail implication");
+
+                condTask.precede(successTask, failTask);
+
+                task.name("implication output");
+                task.succeed(failTask);
+                task.succeed(successTask, successTask);
+                task.work([result]() { return result->load(); });
+            }
+            else if (expression->isOr())
+            {
+                auto operands = expression->getPtr<base::Or>()->getOperands();
+                checkOpSize(operands, "Or");
+
+                if (!hasParent)
+                {
+                    parent = m_tf.emplace([]() { return FAILURE; }).name("root or");
+                }
+
+                std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(FAILURE);
+                auto successTask = m_tf.emplace(
+                                           [result]()
+                                           {
+                                               result->store(SUCCESS);
+                                               return SUCCESS;
+                                           })
+                                       .name("success or")
+                                       .precede(task);
+
+                auto lastTask = parent;
+                auto eTask = tf::Task();
+                for (auto& operand : operands)
+                {
+                    auto subTask = build(operand, eTask, false, publisher);
+                    lastTask.precede(successTask, subTask);
+                    lastTask = subTask;
+                }
+                lastTask.precede(successTask, task);
+
+                task.name("or output");
+                task.work([result]() { return result->load(); });
+            }
+            // And
+            else if (expression->isAnd())
+            {
+                auto operands = expression->getPtr<base::And>()->getOperands();
+                checkOpSize(operands, "And");
+
+                if (!hasParent)
+                {
+                    parent = m_tf.emplace([]() { return SUCCESS; }).name("root and");
+                }
+
+                std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(SUCCESS);
+                auto failTask = m_tf.emplace(
+                                        [result]()
+                                        {
+                                            result->store(FAILURE);
+                                            return FAILURE;
+                                        })
+                                    .name("fail and")
+                                    .precede(task);
+
+                auto lastTask = parent;
+                auto eTask = tf::Task();
+                for (auto& operand : operands)
+                {
+                    auto subTask = build(operand, eTask, false, publisher);
+                    lastTask.precede(subTask, failTask);
+                    lastTask = subTask;
+                }
+                lastTask.precede(task, failTask);
+
+                task.name("and output");
+                task.work([result]() { return result->load(); });
+            }
+            else
+            {
+                throw std::runtime_error("Unsupported operation");
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Unsupported expression type");
+        }
+
+        if (!task.has_work())
+        {
+            throw std::runtime_error("Task has no work");
+        }
+
+        return task;
     }
 
 public:
     Controller() = delete;
     Controller(const Controller&) = delete;
 
-    Controller(const base::Expression& expression);
+    ~Controller() = default;
 
-    void ingest(base::Event&& event) override;
-    base::Event ingestGet(base::Event&& event) override;
+    Controller(const base::Expression& expression)
+        : m_tf()
+        , m_executor(1)
+        , m_event()
+    {
+        auto eTask = tf::Task();
+        build(expression, eTask);
+    }
 
-    void start() override;
-    void stop() override;
+    void ingest(base::Event&& event) override {
+        m_event = std::move(event);
+        m_executor.run(m_tf).wait();
+    }
+    
+    base::Event ingestGet(base::Event&& event) override {
+        ingest(std::move(event));
+        return std::move(m_event);
+    };
+
+    void start() override {};
+    void stop() override {};
 
     const std::unordered_set<std::string>& getTraceables() const override { return m_traceables; }
 
@@ -199,6 +387,8 @@ public:
 
         it->second->unsubscribe(subscription);
     }
+
+    std::string dump() const { return m_tf.dump(); }
 };
 
 } // namespace bk::taskf
