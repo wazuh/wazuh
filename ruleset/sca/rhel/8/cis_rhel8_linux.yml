@@ -1331,7 +1331,7 @@ checks:
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
     remediation: "Ensure that automatic mounting of media is disabled for all GNOME users."
     compliance:
-      - cis: ["1.8.4"]
+      - cis: ["1.8.5"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -3283,7 +3283,7 @@ checks:
     rules:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^masked"
 
-  # 4.2.2.2 Ensure journald service is enabled. (Automated) - Not Implemented
+  # 4.2.2.2 Ensure journald service is enabled. (Automated)
   - id: 5150
     title: "Ensure journald service is enabled."
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
@@ -3291,15 +3291,14 @@ checks:
     remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why."
     compliance:
       - cis: ["4.2.2.2"]
-      - cis_csc_v8: ["8.2", "8.3"]
-      - cis_csc_v7: ["6.2", "6.3", "6.4"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
       - iso_27001-2013: ["A.12.4.1"]
       - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-      - soc_2: ["A1.1"]
     condition: all
     rules:
       - "c:systemctl is-enabled systemd-journald.service -> r:^static"
