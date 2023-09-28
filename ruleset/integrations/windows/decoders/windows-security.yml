@@ -101,15 +101,15 @@ normalize:
       - windows.EventData.AccessListDescription.0: kvdb_get(windows_audit_access_id_to_description, $_access_list)
       - windows.EventData.AccessListDescription: kvdb_get_array(windows_audit_access_id_to_description, $_access_list)
 
-  # Set Access Mask Descriptions 
+  # Set Access Mask Descriptions
   - map:
       - windows.EventData.AccessMaskList: kvdb_decode_bitmask(windows_bitmask_tables, access_mask, $windows.EventData.AccessMask)
 
   # Set Failure Status and SubStatus for events 4625 and 4776
   - check: $event.id == '4625' OR $event.id == '4776'
     map:
-      - windows.logon.failure.status: $windows.EventData.Status
-      - windows.logon.failure.sub_status: $windows.EventData.SubStatus
+      - windows.logon.failure.status: kvdb_get(windows_logon_failure_status_to_description, $windows.EventData.Status)
+      - windows.logon.failure.sub_status: kvdb_get(windows_logon_failure_status_to_description, $windows.EventData.SubStatus)
 
   # Set Trust
   - map:
