@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 ## [v4.8.0]
 
 
+## [v4.7.1]
+
+
 ## [v4.7.0]
 
 ### Manager
@@ -15,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
 - Added unit tests for the manage_agents tool. ([#15999](https://github.com/wazuh/wazuh/pull/15999))
 - Added an option to customize the Slack integration. ([#16090](https://github.com/wazuh/wazuh/pull/16090))
+- Added support for Amazon Linux 2023 in Vulnerability Detector. ([#17617](https://github.com/wazuh/wazuh/issue/17617))
 
 #### Changed
 
@@ -64,7 +68,6 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the signature of the internal function `OSHash_GetIndex()`. ([#17040](https://github.com/wazuh/wazuh/pull/17040))
-
 
 ## [v4.6.0]
 
@@ -135,6 +138,7 @@ All notable changes to this project will be documented in this file.
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547]https://github.com/wazuh/wazuh/pull/16547)
 
 #### Changed
 
@@ -224,8 +228,49 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.5.3]
 
+### Manager
 
-## [v4.5.2]
+#### Changed
+
+- Vulnerability Detector now fetches the SUSE feeds in Gzip compressed format. ([#18783](https://github.com/wazuh/wazuh/pull/18783))
+
+#### Fixed
+
+- Fixed a bug that might cause wazuh-analysisd to crash if it receives a status API query during startup. ([#18737](https://github.com/wazuh/wazuh/pull/18737))
+- Fixed a bug that might cause wazuh-maild to crash when handling large alerts. ([#18976](https://github.com/wazuh/wazuh/pull/18976))
+
+### Agent
+
+#### Changed
+
+- Updated the agent to report the name of macOS 14 (Sonoma). ([#19041](https://github.com/wazuh/wazuh/pull/19041))
+
+#### Fixed
+
+- Fixed a bug in the memory handle at the agent's data provider helper. ([#18773](https://github.com/wazuh/wazuh/pull/18773))
+- Fixed a data mismatch in the OS name between the global and agents' databases. ([#18903](https://github.com/wazuh/wazuh/pull/18903))
+- Fixed an array limit check in wazuh-logcollector. ([#19069](https://github.com/wazuh/wazuh/pull/19069))
+
+### RESTful API
+
+#### Added
+
+- Added support for the `$` symbol in query values. ([#18509](https://github.com/wazuh/wazuh/pull/18509))
+- Added support for the `@` symbol in query values. ([#18346](https://github.com/wazuh/wazuh/pull/18346))
+- Added support for nested queries in the `q` API parameter. ([#18493](https://github.com/wazuh/wazuh/pull/18493))
+
+#### Changed
+
+- Updated `force` flag message in the `agent_upgrade` CLI. ([#18432](https://github.com/wazuh/wazuh/pull/18432))
+
+#### Fixed
+
+- Removed undesired characters when listing rule group names in `GET /rules/groups`. ([#18362](https://github.com/wazuh/wazuh/pull/18362))
+- Fixed an error when using the query `condition=all` in `GET /sca/{agent_id}/checks/{policy_id}`. ([#18434](https://github.com/wazuh/wazuh/pull/18434))
+- Fixed an error in the API log mechanism where sometimes the requests would not be printed in the log file. ([#18733](https://github.com/wazuh/wazuh/pull/18733))
+
+
+## [v4.5.2] - 2023-09-06
 
 ### Manager
 
