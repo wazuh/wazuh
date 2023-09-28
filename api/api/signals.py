@@ -6,7 +6,6 @@ import logging
 import os
 import ssl
 import uuid
-from datetime import datetime
 from functools import wraps
 from typing import AsyncGenerator, Callable
 
@@ -14,13 +13,16 @@ import aiohttp
 import certifi
 from aiohttp import web
 from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.security import load_spec
+from wazuh.core.utils import get_utc_now
 
 from api.constants import INSTALLATION_UID_PATH
 
 RELEASE_UPDATES_URL = 'http://cti:4041'
 ONE_DAY_SLEEP = 60*60*24
 INSTALLATION_UID_KEY = 'installation_uid'
+UPDATE_CHECK_OSSEC_FIELD = 'update_check'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -85,6 +87,19 @@ def _is_running_in_master_node() -> bool:
     return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
 
 
+def _update_check_is_enabled() -> bool:
+    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
+
+    Returns
+    -------
+    bool
+        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
+    """
+    global_configurations = get_ossec_conf(section='global')
+
+    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, 'yes') == 'yes'
+
+
 async def modify_response_headers(request, response):
     # Delete 'Server' entry
     response.headers.pop('Server', None)
@@ -139,7 +154,7 @@ async def get_update_information(app: web.Application) -> None:
                     logger.debug("Response data: %s", response_data)
 
                     update_information = {
-                        'last_check_date': datetime.utcnow(),
+                        'last_check_date': get_utc_now(),
                         'status_code': response.status,
                         'message': '',
                         'available_update': {}
@@ -174,7 +189,7 @@ async def register_background_tasks(app: web.Application) -> AsyncGenerator:
     """
     tasks: list[asyncio.Task] = []
 
-    if _is_running_in_master_node():
+    if _is_running_in_master_node() and _update_check_is_enabled():
         tasks.append(asyncio.create_task(check_installation_uid(app)))
         tasks.append(asyncio.create_task(get_update_information(app)))
 
