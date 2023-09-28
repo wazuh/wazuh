@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed a bug that might cause wazuh-analysisd to crash if it receives a status API query during startup. ([#18737](https://github.com/wazuh/wazuh/pull/18737))
 - Fixed a bug that might cause wazuh-maild to crash when handling large alerts. ([#18976](https://github.com/wazuh/wazuh/pull/18976))
+- Fixed an issue in Vulnerability Detector fetching the SLES 15 feed. ([#19217](https://github.com/wazuh/wazuh/pull/19217))
 
 ### Agent
 
@@ -25,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in the memory handle at the agent's data provider helper. ([#18773](https://github.com/wazuh/wazuh/pull/18773))
 - Fixed a data mismatch in the OS name between the global and agents' databases. ([#18903](https://github.com/wazuh/wazuh/pull/18903))
 - Fixed an array limit check in wazuh-logcollector. ([#19069](https://github.com/wazuh/wazuh/pull/19069))
+- Fixed wrong Windows agent binaries metadata. ([#19286](https://github.com/wazuh/wazuh/pull/19286))
 
 ### RESTful API
 
