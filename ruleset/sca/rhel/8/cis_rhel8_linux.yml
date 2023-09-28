@@ -1324,7 +1324,7 @@ checks:
     rules:
       - 'f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
 
-  # 1.8.5 Ensure automatic mounting of removable media is disabled. (Automated) Not Implemented
+  # 1.8.5 Ensure automatic mounting of removable media is disabled. (Automated)
   - id: 5060
     title: "Ensure automatic mounting of removable media is disabled."
     description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
