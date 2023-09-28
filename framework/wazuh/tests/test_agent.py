@@ -304,7 +304,7 @@ def test_agent_get_agents(socket_mock, send_mock, agent_list, expected_items):
 
 
 @pytest.mark.parametrize('group, group_exists, expected_agents', [
-    ('default', True, ['001', '002', '005']),
+    ('group-1', True, ['006', '008']),
     ('not_exists_group', False, None)
 ])
 @patch('wazuh.agent.get_agents')
@@ -324,12 +324,12 @@ def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock
     expected_agents : List of str
         List of agent ID's that belongs to a given group.
     """
-    mock_get_groups.return_value = ['default']
+    mock_get_groups.return_value = ['group-1']
     if group_exists:
         # Since the decorator is mocked, pass `group_list` using `call_args` from mock
         get_agents_in_group(group_list=[group], select=['id'])
         kwargs = mock_get_agents.call_args[1]
-        agents = get_agents(agent_list=short_agent_list, **kwargs)
+        agents = get_agents(agent_list=full_agent_list, **kwargs)
         assert agents.affected_items
         assert len(agents.affected_items) == len(expected_agents)
         for expected_agent, affected_agent in zip(expected_agents, agents.affected_items):
@@ -368,7 +368,7 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
 
 @pytest.mark.parametrize('agent_list, filters, q, error_code, expected_items', [
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s'}, None, None, full_agent_list[1:]),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-0'}, None, 1731, ['001', '002']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-0'}, None, 1731, []),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-1'}, None, 1731, ['006', '008']),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-2'}, None, 1731, ['007', '008']),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'registerIP': 'any'}, None, 1731,

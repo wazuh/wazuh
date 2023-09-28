@@ -83,14 +83,40 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         unify_wazuh_version_format(filters)
         if min_select_fields is None:
             min_select_fields = {'id'}
+
+        joins = {
+            'belongs': {
+                'type': 'left',
+                'conditions': ['id=belongs.id_agent']
+            },
+        }
+        group_by=['id']
+
         backend = WazuhDBBackend(query_format='global')
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
                               date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
-                              distinct=distinct, rbac_negate=rbac_negate)
+                              distinct=distinct, rbac_negate=rbac_negate, joins=joins, group_by=group_by)
         self.remove_extra_fields = remove_extra_fields
+
+    def _set_group_field_select_value(self):
+        """Wrap the field value with the GROUP_CONCAT function to join all groups in the same text field."""
+        group_field = 'group'
+        if group_field in self.fields:
+            self.fields[group_field] = 'GROUP_CONCAT(belongs.name_group)'
+
+    def _get_total_items(self):
+        self._set_group_field_select_value()
+        super()._get_total_items()
+
+    def _execute_data_query(self):
+        self._set_group_field_select_value()
+        super()._execute_data_query()
+
+    def _default_count_query(self):
+        return "SELECT COUNT(*) FROM ({0} GROUP BY id)"
 
     def _filter_date(self, date_filter: dict, filter_db_name: str):
         """Add date filter to the Wazuh query."""
@@ -213,21 +239,23 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         WazuhError(1409)
             If the operator of the filter is not valid.
         """
-        if field_name == 'group' and q_filter['value'] is not None:
-            valid_group_operators = {'=', '!=', '~'}
-
-            if q_filter['operator'] == '=':
-                self.query += f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
-            elif q_filter['operator'] == '!=':
-                self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
-            elif q_filter['operator'] == 'LIKE':
-                self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
-                self.request[field_filter] = f"%{q_filter['value']}%"
+        value = q_filter['value']
+        if field_name == 'group' and value is not None:
+            operator = q_filter['operator']
+            if operator == '=':
+                self.query += f"id IN (SELECT id_agent FROM belongs WHERE name_group = :{field_filter})"
+                self.request[field_filter] = value
+            elif operator == 'LIKE':
+                self.query += f"id IN (SELECT id_agent FROM belongs WHERE name_group LIKE :{field_filter})"
+                self.request[field_filter] = f"%{value}%"
+            elif operator == '!=':
+                self.query += 'belongs.name_group IS NOT NULL AND id NOT IN ' + \
+                    f"(SELECT id_agent FROM belongs WHERE name_group = :{field_filter})"
+                self.request[field_filter] = value
             else:
+                valid_group_operators = {'=', '!=', '~'}
                 raise WazuhError(1409, f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
-                                       f"Used operator: {q_filter['operator']}")
+                                       f"Used operator: {operator}")
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
@@ -285,7 +313,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
 
     def _add_sort_to_query(self):
         """Consider the option to sort by count."""
-        self.fields['count'] = 'count(id_group)'
+        self.fields['count'] = 'count(name_group)'
         super()._add_sort_to_query()
 
     def _add_search_to_query(self):
@@ -304,7 +332,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         str
             Default query.
         """
-        return "SELECT name, count(id_group) AS count from `group` LEFT JOIN `belongs` on id=id_group WHERE "
+        return "SELECT name, count(name_group) AS count from `group` LEFT JOIN `belongs` on name=name_group WHERE "
 
     def _get_total_items(self):
         """Get total items."""
@@ -383,8 +411,21 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
             Fields to filter by.
         """
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
+        joins = None
+        if not filter_fields or 'group' in filter_fields:
+            # Avoid joining the belongs table when it's not requested to not interfere with the count
+            joins = {
+                'belongs': {
+                    'type': 'left',
+                    'conditions': ['id=belongs.id_agent']
+                },
+            }
+        else:
+            # The belongs table is not joined, thus we can't use belongs.name_group (group field value)
+            self.fields.pop('group')
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
-                                     default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
+                                     default_sort_field=self.default_sort_field, backend=self.backend, joins=joins,
+                                     **kwargs)
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self) -> str:
@@ -400,6 +441,11 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
             for field in self.filter_fields['fields']:
                 if field not in result.keys():
                     result[field] = 'unknown'
+                    continue
+
+                if field == 'group':
+                    # Skip repeated group names
+                    result[field] = result[field].split(',')[0]
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
@@ -415,6 +461,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
             aux.append(aux_dict)
 
         self._data = aux
+        self.total_items = len(self._data)
         self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
         return WazuhDBQuery._format_data_into_dictionary(self)
@@ -469,7 +516,7 @@ class Agent:
     fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
-              'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
+              'group': 'belongs.name_group', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
@@ -1067,8 +1114,11 @@ class Agent:
         else:
             mode = 'append' if not override else 'override'
 
-        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq","data":[{{"id":{agent_id},' \
-                  f'"groups":["{group_id}"]}}]}}'
+        command = 'global set-agent-groups {' \
+                f'"mode":"{mode}","sync_status":"syncreq","data":' \
+                '[{' \
+                f'"id":{agent_id},"groups":["{group_id}"]' \
+                '}]}'
 
         wdb = WazuhDBConnection()
         try:

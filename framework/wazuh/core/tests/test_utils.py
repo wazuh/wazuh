@@ -1540,8 +1540,8 @@ def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn, mock_isf
     """Test utils.WazuhDBQueryDistinct._default_query function."""
     query = utils.WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
                                        query=None, select={'fields': ['name']},
-                                       fields={'name': '`group`'}, count=True,
-                                       get_data=True, default_sort_field='`group`',
+                                       fields={'name': 'group'}, count=True,
+                                       get_data=True, default_sort_field='group',
                                        backend=utils.WazuhDBBackend(agent_id=1),
                                        table='agent')
 
@@ -1562,8 +1562,8 @@ def test_WazuhDBQueryDistinct_protected_default_count_query(mock_socket_conn, mo
     """Test utils.WazuhDBQueryDistinct._default_count_query function."""
     query = utils.WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
                                        query=None, select={'name'},
-                                       fields={'name': '`group`'}, count=True,
-                                       get_data=True, default_sort_field='`group`',
+                                       fields={'name': 'group'}, count=True,
+                                       get_data=True, default_sort_field='group',
                                        backend=utils.WazuhDBBackend(agent_id=1),
                                        table='agent')
 
@@ -1585,8 +1585,8 @@ def test_WazuhDBQueryDistinct_protected_add_filters_to_query(mock_add, mock_sock
     """Test utils.WazuhDBQueryDistinct._add_filters_to_query function."""
     query = utils.WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
                                        query=None, select={'name'},
-                                       fields={'name': '`group`'}, count=True,
-                                       get_data=True, default_sort_field='`group`',
+                                       fields={'name': 'group'}, count=True,
+                                       get_data=True, default_sort_field='group',
                                        backend=utils.WazuhDBBackend(agent_id=1),
                                        table='agent')
 
@@ -1597,7 +1597,7 @@ def test_WazuhDBQueryDistinct_protected_add_filters_to_query(mock_add, mock_sock
 
 @pytest.mark.parametrize('select', [
     {'name'},
-    {'name', 'ip'}
+    {'name', 'group'}
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.glob.glob', return_value=True)
@@ -1610,10 +1610,10 @@ def test_WazuhDBQueryDistinct_protected_add_select_to_query(mock_add, mock_socke
     """Test utils.WazuhDBQueryDistinct._add_select_to_query function."""
     query = utils.WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
                                        query=None, select=select,
-                                       fields={'name': '`group`'},
+                                       fields={'name': 'group'},
                                        count=True, get_data=True,
                                        backend=utils.WazuhDBBackend(agent_id=1),
-                                       default_sort_field='`group`', table='agent')
+                                       default_sort_field='group', table='agent')
 
     if len(select) > 1:
         with pytest.raises(exception.WazuhException, match=".* 1410 .*"):
@@ -1634,10 +1634,10 @@ def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_
     """Test utils.WazuhDBQueryDistinct._format_data_into_dictionary function."""
     query = utils.WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
                                        query=None, select={'fields': ['name']},
-                                       fields={'name': '`group`'}, count=True,
+                                       fields={'name': 'group'}, count=True,
                                        get_data=True,
                                        backend=utils.WazuhDBBackend(agent_id=1),
-                                       default_sort_field='`group`',
+                                       default_sort_field='group',
                                        table='agent')
 
     query._data = []
@@ -1657,7 +1657,7 @@ def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_isfile, mock_conn_db
     """Tests utils.WazuhDBQueryGroupBy.__init__ function works"""
     utils.WazuhDBQueryGroupBy(filter_fields=None, offset=0, limit=1, table='agent',
                               sort=None, search=None, select={'fields': ['name']},
-                              filters=None, fields={'name': '`group`'},
+                              filters=None, fields={'name': 'group'},
                               default_sort_field=None, default_sort_order='ASC',
                               query=None, min_select_fields=None, count=True,
                               backend=utils.WazuhDBBackend(agent_id=0), get_data=None,
@@ -1679,7 +1679,7 @@ def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_c
     query = utils.WazuhDBQueryGroupBy(filter_fields={'fields': ['name']}, offset=0,
                                       limit=1, table='agent', sort=None, search=None,
                                       select={'name'}, filters=None,
-                                      fields={'name': '`group`'}, query=None,
+                                      fields={'name': 'group'}, query=None,
                                       default_sort_field=None, get_data=None,
                                       default_sort_order='ASC',
                                       min_select_fields=None, count=True,
@@ -1704,7 +1704,7 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
     query = utils.WazuhDBQueryGroupBy(filter_fields={'fields': ['name']}, offset=0,
                                       limit=1, table='agent', sort=None, search=None,
                                       select={'name'}, filters=None,
-                                      fields={'name': '`group`'}, query=None,
+                                      fields={'name': 'group'}, query=None,
                                       default_sort_field=None,
                                       default_sort_order='ASC',
                                       min_select_fields=None,
