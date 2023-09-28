@@ -1,0 +1,5 @@
+- name: check_default_values
+  description: Verify that the module starts using the default values
+  configuration_parameters: null
+  metadata:
+    default: null
