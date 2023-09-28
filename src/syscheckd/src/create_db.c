@@ -410,7 +410,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
                                             changed_attributes);
 
             if (cJSON_GetArraySize(changed_attributes) == 0) {
-                mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+                mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
                 goto end;
             }
         }
@@ -816,7 +816,7 @@ void fim_event_callback(void* data, void * ctx)
 
         cJSON *changed_attributes = cJSON_GetObjectItem(data_json, "changed_attributes");
         if (changed_attributes && cJSON_GetArraySize(changed_attributes) == 0) {
-            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
             return;
         }
 

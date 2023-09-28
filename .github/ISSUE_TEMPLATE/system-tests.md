@@ -18,6 +18,25 @@ The following issue aims to run all `system tests` for the current release candi
 | **Tag**                              |                                            |
 | **Previous system tests issue**      |                                            |
 
+## Instructions
+To run tests in an AWS EC2 virtual environment, the following requirements will need to be met:
+
+| Environment                  | EC2                                       |
+|------------------------------|-------------------------------------------|
+|Basic_cluster                 |Ubuntu 22.04.2 LTS C5.XLarge 15GB SSD      |
+|Big_cluster_40_agents         |Ubuntu 22.04.2 LTS T3.Large 60GB SSD       |
+|Agentless_cluster             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Four_manager_disconnected_node|Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|One_manager_agent             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Manager_agent                 |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Enrollment_cluster            |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       | 
+|Basic_environment             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+
+
+These requirements should be requested to the @wazuh/cicd team via https://github.com/wazuh/internal-devel-requests.
+
+For further information, check https://github.com/wazuh/wazuh-qa/tree/master/tests/system/README.md
+
 ## Test report procedure
 All individual test checks must be marked as:
 |                                  |                                            |
