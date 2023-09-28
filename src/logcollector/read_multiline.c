@@ -85,7 +85,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
         /* Add to buffer */
         buffer_size = strlen(buffer);
-        if (buffer[0] != '\0') {
+        if (buffer[0] != '\0' && buffer_size < sizeof(buffer) - 1) {
             buffer[buffer_size] = ' ';
             buffer_size++;
         }

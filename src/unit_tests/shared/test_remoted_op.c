@@ -128,7 +128,7 @@ void test_get_os_arch_armv7(void **state)
 
 // Tests parse_uname_string
 
-void test_parse_uname_string_windows(void **state)
+void test_parse_uname_string_windows1(void **state)
 {
     char *uname = NULL;
     os_strdup("Microsoft Windows 10 Enterprise [Ver: 10.0.14393]", uname);
@@ -147,6 +147,38 @@ void test_parse_uname_string_windows(void **state)
     assert_string_equal("windows", osd->os_platform);
     assert_null(osd->os_arch);
     assert_string_equal("Microsoft Windows 10 Enterprise", uname);
+
+    os_free(osd->os_name);
+    os_free(osd->os_major);
+    os_free(osd->os_minor);
+    os_free(osd->os_build);
+    os_free(osd->os_version);
+    os_free(osd->os_codename);
+    os_free(osd->os_platform);
+    os_free(osd->os_arch);
+    os_free(osd);
+    os_free(uname);
+}
+
+void test_parse_uname_string_windows2(void **state)
+{
+    char *uname = NULL;
+    os_strdup("Microsoft Windows Server 2019 Datacenter Evaluation [Ver: 10.0.17763.1935]", uname);
+
+    os_data *osd = NULL;
+    os_calloc(1, sizeof(os_data), osd);
+
+    parse_uname_string(uname, osd);
+
+    assert_string_equal("Microsoft Windows Server 2019 Datacenter Evaluation", osd->os_name);
+    assert_string_equal("10", osd->os_major);
+    assert_string_equal("0", osd->os_minor);
+    assert_string_equal("17763.1935", osd->os_build);
+    assert_string_equal("10.0.17763.1935", osd->os_version);
+    assert_null(osd->os_codename);
+    assert_string_equal("windows", osd->os_platform);
+    assert_null(osd->os_arch);
+    assert_string_equal("Microsoft Windows Server 2019 Datacenter Evaluation", uname);
 
     os_free(osd->os_name);
     os_free(osd->os_major);
@@ -532,7 +564,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_get_os_arch_armv6, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_get_os_arch_armv7, setup_remoted_op, teardown_remoted_op),
         // Tests parse_uname_string
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_windows, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_uname_string_windows1, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_uname_string_windows2, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_linux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_macos, setup_remoted_op, teardown_remoted_op),
         // Tests parse_agent_update_msg

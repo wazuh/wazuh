@@ -1525,6 +1525,23 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Filter search formatted name
+    request:
+      verify: False
+      <<: *groups_rules_request
+      params:
+        search: authentication_success
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - authentication_success
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Invalid filter
     request:
       verify: False

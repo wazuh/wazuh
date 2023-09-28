@@ -282,6 +282,12 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             upd->dist_tag_ref = FEED_ALAS2022;
             os_strdup(vu_feed_tag[FEED_ALAS2022], upd->version);
             upd->dist_ext = vu_feed_ext[FEED_ALAS2022];
+        // Amazon Linux 2023
+        } else if (!strcmp(version, "2023") || strcasestr(vu_feed_tag[FEED_ALAS2023], version)) {
+            os_index = CVE_ALAS2023;
+            upd->dist_tag_ref = FEED_ALAS2023;
+            os_strdup(vu_feed_tag[FEED_ALAS2023], upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALAS2023];
         } else {
             merror("Invalid Amazon Linux version '%s'", version);
             retval = OS_INVALID;

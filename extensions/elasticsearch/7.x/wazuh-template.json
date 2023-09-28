@@ -187,6 +187,35 @@
       "data.office365.UserId",
       "data.office365.Operation",
       "data.office365.ClientIP",
+      "data.ms-graph.relationship",
+      "data.ms-graph.classification",
+      "data.ms-graph.detectionSource",
+      "data.ms-graph.determination",
+      "data.ms-graph.remediationStatus",
+      "data.ms-graph.roles",
+      "data.ms-graph.verdict",
+      "data.ms-graph.serviceSource",
+      "data.ms-graph.severity",
+      "data.ms-graph.actorDisplayName",
+      "data.ms-graph.alertWebUrl",
+      "data.ms-graph.assignedTo",
+      "data.ms-graph.category",
+      "data.ms-graph.comments",
+      "data.ms-graph.description",
+      "data.ms-graph.detectorId",
+      "data.ms-graph.evidence._comment",
+      "data.ms-graph.id",
+      "data.ms-graph.incidentId",
+      "data.ms-graph.incidentWebUrl",
+      "data.ms-graph.mitreTechniques",
+      "data.ms-graph.providerAlertId",
+      "data.ms-graph.resource",
+      "data.ms-graph.status",
+      "data.ms-graph.tenantId",
+      "data.ms-graph.threatDisplayName",
+      "data.ms-graph.threatFamilyName",
+      "data.ms-graph.title",
+      "data.ms-graph.appliedConditionalAccessPolicies",
       "data.os.architecture",
       "data.os.build",
       "data.os.codename",
@@ -1144,6 +1173,117 @@
                 }
               },
               "repo": {
+                "type": "keyword"
+              }
+            }
+          },
+          "ms-graph": {
+            "properties": {
+              "relationship": {
+                "type": "keyword"
+              },
+              "classification": {
+                "type": "keyword"
+              },
+              "detectionSource": {
+                "type": "keyword"
+              },
+              "determination": {
+                "type": "keyword"
+              },
+              "remediationStatus": {
+                "type": "keyword"
+              },
+              "roles": {
+                "type": "keyword"
+              },
+              "verdict": {
+                "type": "keyword"
+              },
+              "serviceSource": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "actorDisplayName": {
+                "type": "keyword"
+              },
+              "alertWebUrl": {
+                "type": "keyword"
+              },
+              "assignedTo": {
+                "type": "keyword"
+              },
+              "category": {
+                "type": "keyword"
+              },
+              "comments": {
+                "type": "keyword"
+              },
+              "createdDateTime": {
+                "type": "date"
+              },
+              "description": {
+                "type": "text"
+              },
+              "detectorId": {
+                "type": "keyword"
+              },
+              "evidence": {
+                "type": "nested",
+                "properties": {
+                  "_comment": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "firstActivityDateTime": {
+                "type": "date"
+              },
+              "id": {
+                "type": "keyword"
+              },
+              "incidentId": {
+                "type": "keyword"
+              },
+              "incidentWebUrl": {
+                "type": "keyword"
+              },
+              "lastActivityDateTime": {
+                "type": "date"
+              },
+              "lastUpdateDateTime": {
+                "type": "date"
+              },
+              "mitreTechniques": {
+                "type": "keyword"
+              },
+              "providerAlertId": {
+                "type": "keyword"
+              },
+              "resolvedDateTime": {
+                "type": "date"
+              },
+              "resource": {
+                "type": "keyword"
+              },
+              "status": {
+                "type": "keyword"
+              },
+              "tenantId": {
+                "type": "keyword"
+              },
+              "threatDisplayName": {
+                "type": "keyword"
+              },
+              "threatFamilyName": {
+                "type": "keyword"
+              },
+              "title": {
+                "type": "keyword"
+              },
+              "appliedConditionalAccessPolicies": {
                 "type": "keyword"
               }
             }
