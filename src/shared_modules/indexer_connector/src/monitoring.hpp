@@ -87,6 +87,7 @@ public:
      * @brief Class constructor. Initializes values map and check servers' health.
      *
      * @param values Servers to be monitored.
+     * @param interval Interval for monitoring.
      */
     explicit Monitoring(const std::vector<std::string>& values, const uint32_t interval = INTERVAL)
         : m_interval(interval)

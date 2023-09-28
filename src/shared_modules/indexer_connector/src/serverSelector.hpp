@@ -33,6 +33,7 @@ public:
      * @brief Class constructor. Initializes Round Robin selector and monitoring.
      *
      * @param values Servers to be selected.
+     * @param timeout Timeout for monitoring.
      */
     explicit ServerSelector(const std::vector<std::string>& values, const uint32_t timeout = INTERVAL)
         : RoundRobinSelector<std::string>(values)
