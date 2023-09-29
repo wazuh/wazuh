@@ -5,7 +5,7 @@ metadata:
   title: Decoder for Windows security events.
   description: This Windows decoder normalizes Windows security events.
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
-  compatibility: This decoder has been tested on Wazuh version 4.5.
+  compatibility: This decoder was tested on Windows Server 2019 and Windows 10, but should work on all versions of Windows Vista onwards.
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
@@ -29,8 +29,6 @@ normalize:
       - event.code: $event.id
       - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
-
-      - message: kvdb_get(windows_eventid_to_message, $event.id)
 
   - map:
       # Set Logon Type
