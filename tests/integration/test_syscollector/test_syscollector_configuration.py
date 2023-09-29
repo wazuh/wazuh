@@ -325,19 +325,20 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
         log_monitor.start(callback=callbacks.generate_callback(selected_callback), timeout=5)
         assert log_monitor.callback_result
 
+        log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=5)
         # Check that the module has started if the field is not critical
         if field in non_critical_fields:
-            log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=5)
             assert log_monitor.callback_result
+        else:
+            assert not log_monitor.callback_result
     else:
         callback = f"ERROR: Invalid content for attribute '{attribute}' at module 'syscollector'."
         callback =  fr'{patterns.WMODULES_PREFIX}{callback}'
         log_monitor.start(callback=callbacks.generate_callback(callback), timeout=5)
         assert log_monitor.callback_result
-
-    # Check that the module does not start if the field is critical
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=5)
-    assert not log_monitor.callback_result
+        # Check that the module does not start
+        log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=5)
+        assert not log_monitor.callback_result
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t4_configurations, t4_config_metadata), ids=t4_case_ids)
