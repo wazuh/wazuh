@@ -167,7 +167,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
     #endif
                 break;
             default:
-                merror("socket: %d, send fail", socket);
+                merror("Could not send data to socket %d: %s (%d)", socket, strerror(errno), errno);
             }
         }
 

@@ -42,7 +42,10 @@ namespace Log
             std::string m_tag;
 
         protected:
-            Logger() = default;
+            Logger()
+            {
+                m_logFunction = nullptr;
+            }
 
         public:
             ~Logger() = default;

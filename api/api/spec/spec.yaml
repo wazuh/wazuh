@@ -3035,6 +3035,12 @@ components:
                                 fim_registry:
                                   type: integer
                                   format: int32
+                                fim_registry_key:
+                                  type: integer
+                                  format: int32
+                                fim_registry_value:
+                                  type: integer
+                                  format: int32
                                 syscheck:
                                   type: integer
                                   format: int32
@@ -3359,6 +3365,12 @@ components:
                                   type: integer
                                   format: int32
                                 fim_registry:
+                                  type: integer
+                                  format: int32
+                                fim_registry_key:
+                                  type: integer
+                                  format: int32
+                                fim_registry_value:
                                   type: integer
                                   format: int32
                                 syscheck:
@@ -12018,6 +12030,8 @@ paths:
                               syscheck_queries: 2
                               fim_file_queries: 2
                               fim_registry_queries: 0
+                              fim_registry_key_queries: 0
+                              fim_registry_value_queries: 0
                             rootcheck_queries:
                               rootcheck_queries: 2
                             sca_queries:
@@ -12119,6 +12133,8 @@ paths:
                               syscheck_time: 49
                               fim_file_time: 30
                               fim_registry_time: 0
+                              fim_registry_key_time: 0
+                              fim_registry_value_time: 0
                             rootcheck_time:
                               rootcheck_time: 47
                             sca_time:

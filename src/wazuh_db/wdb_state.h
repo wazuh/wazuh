@@ -40,9 +40,13 @@ typedef struct _agent_sync_t {
 typedef struct _agent_syscheck_t {
     uint64_t fim_file_queries;
     uint64_t fim_registry_queries;
+    uint64_t fim_registry_key_queries;
+    uint64_t fim_registry_value_queries;
     uint64_t syscheck_queries;
     struct timeval fim_file_time;
     struct timeval fim_registry_time;
+    struct timeval fim_registry_key_time;
+    struct timeval fim_registry_value_time;
     struct timeval syscheck_time;
 } agent_syscheck_t;
 
@@ -482,6 +486,32 @@ void w_inc_agent_fim_registry();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_fim_registry_time(struct timeval time);
+
+/**
+ * @brief Increment fim registry key agent queries counter
+ *
+ */
+void w_inc_agent_fim_registry_key();
+
+/**
+ * @brief Increment fim registry key agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_fim_registry_key_time(struct timeval time);
+
+/**
+ * @brief Increment fim registry value agent queries counter
+ *
+ */
+void w_inc_agent_fim_registry_value();
+
+/**
+ * @brief Increment fim registry value agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_fim_registry_value_time(struct timeval time);
 
 /**
  * @brief Increment syscollector processes agent queries counter
