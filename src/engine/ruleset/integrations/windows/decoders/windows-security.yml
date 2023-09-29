@@ -5,7 +5,7 @@ metadata:
   title: Decoder for Windows security events.
   description: This Windows decoder normalizes Windows security events.
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
-  compatibility: This decoder has been tested on Wazuh version 4.3.
+  compatibility: This decoder has been tested on Wazuh version 4.5.
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
