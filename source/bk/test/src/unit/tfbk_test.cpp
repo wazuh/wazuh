@@ -24,21 +24,18 @@ auto getFakeTerm(const std::string& name, bool success) -> std::shared_ptr<base:
 
 TEST(TF_Controller_build_Test, term)
 {
-    
+
     auto expr = getFakeTerm("term", true);
     auto event = std::make_shared<json::Json>();
     auto tfbk = bk::taskf::Controller(expr);
     event = tfbk.ingestGet(std::move(event));
 
     std::cout << event->prettyStr() << std::endl;
-
 }
 
-/*
 TEST(TfBkTest, MethodTest_broadcasExecution)
 {
-    TfBkMethodTest tfbk;
-    //GTEST_SKIP();
+    // GTEST_SKIP();
 
     auto expr = base::Broadcast::create("broadcast", {});
     {
@@ -49,23 +46,18 @@ TEST(TfBkTest, MethodTest_broadcasExecution)
         broadcastExpr.emplace_back(getFakeTerm("term4", false));
         broadcastExpr.emplace_back(getFakeTerm("term5", true));
     }
+    bk::taskf::Controller controller {expr};
 
     auto event = std::make_shared<json::Json>();
-    tfbk.build(expr);
 
     std::cout << "Built taskflow" << std::endl;
-    std::cout << tfbk.print() << std::endl;
+    // std::cout << controller.print() << std::endl;
 
-    tfbk.ingest(std::move(event));
+    auto e = controller.ingestGet(std::move(event));
 
-    std::cout << tfbk.getEvent().getData()->prettyStr() << std::endl;
-
-    for (auto& trace : tfbk.getEvent().getTraces())
-    {
-        std::cout << "Trace: " << trace << std::endl;
-    }
+    std::cout << e->prettyStr() << std::endl;
 }
-
+/*
 TEST(TfBkTest, MethodTest_chainExecution)
 {
     //GTEST_SKIP();

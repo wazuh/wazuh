@@ -69,7 +69,7 @@ public:
 class Controller final : public IController
 {
 private:
-    std::unordered_map<std::string, std::unique_ptr<Trace>> m_traces; ///< Traces
+    std::unordered_map<std::string, std::shared_ptr<Trace>> m_traces; ///< Traces
     std::unordered_set<std::string> m_traceables;                     ///< Traceables
 
     tf::Taskflow m_tf;       ///< Taskflow
@@ -341,6 +341,8 @@ public:
 
     ~Controller() = default;
 
+    // TODO: Use builder interface, define it, don't use the actual builder interface
+    // We need the traceables to be defined before the expression is built
     Controller(const base::Expression& expression)
         : m_tf()
         , m_executor(1)
