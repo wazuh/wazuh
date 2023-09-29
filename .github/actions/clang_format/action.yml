@@ -1,5 +1,5 @@
-name: "Codding style check"
-description: "Validates the codding style of a given module"
+name: "Coding style check"
+description: "Validates the Coding style of a given module"
 
 inputs:
   path:
@@ -13,6 +13,14 @@ inputs:
 runs:
   using: "composite"
   steps:    
+      - name: Dependencies for local execution
+        if: env.ACT # Only run for local execution
+        shell: bash
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          echo "deb http://deb.debian.org/debian/ testing main" >>  /etc/apt/sources.conf
+          sudo apt update
+
       # Dependencies for testing:
       # - clang-format 
       - name: Install dependencies
@@ -21,13 +29,12 @@ runs:
           packages: clang-format 
           version: 1.0
 
-      - name: Check codding style
+      - name: Check Coding style
         shell: bash
         run: |
 
-          # Execute in dry-run and fail on warnings
+          # Don't apply changes, just check
           arguments="--dry-run "
-          #arguments+="-Werror "
 
           # Retrieve all the source files for the desired module
           sourceFiles=$(find ${{ inputs.path }} -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
