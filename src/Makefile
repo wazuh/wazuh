@@ -1689,7 +1689,7 @@ endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
-	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
@@ -2642,7 +2642,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(RSYNC)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
-	rm -rf $(wildcard $(VULNERABILITY_SCANNER)/include/*_generated.h)
+	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build
