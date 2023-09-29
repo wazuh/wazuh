@@ -33,7 +33,7 @@ TEST(TF_Controller_build_Test, term)
     std::cout << event->prettyStr() << std::endl;
 }
 
-TEST(TfBkTest, MethodTest_broadcasExecution)
+TEST(TF_Controller_build_Test, MethodTest_broadcasExecution)
 {
     // GTEST_SKIP();
 
@@ -50,20 +50,15 @@ TEST(TfBkTest, MethodTest_broadcasExecution)
 
     auto event = std::make_shared<json::Json>();
 
-    std::cout << "Built taskflow" << std::endl;
-    // std::cout << controller.print() << std::endl;
-
     auto e = controller.ingestGet(std::move(event));
 
     std::cout << e->prettyStr() << std::endl;
+
+    // std::cout << controller.print() << std::endl;
 }
-/*
-TEST(TfBkTest, MethodTest_chainExecution)
+
+TEST(TF_Controller_build_Test, MethodTest_chainExecution)
 {
-    //GTEST_SKIP();
-
-    TfBkMethodTest tfbk;
-
     auto expr = base::Chain::create("chain", {});
     {
         auto& broadcastExpr = expr->getOperands();
@@ -74,50 +69,38 @@ TEST(TfBkTest, MethodTest_chainExecution)
         broadcastExpr.emplace_back(getFakeTerm("term4", false));
         broadcastExpr.emplace_back(getFakeTerm("term5", true));
     }
+    bk::taskf::Controller controller {expr};
 
     auto event = std::make_shared<json::Json>();
-    tfbk.build(expr);
 
-    std::cout << "Built taskflow" << std::endl;
-    std::cout << tfbk.print() << std::endl;
+    auto e = controller.ingestGet(std::move(event));
 
-    tfbk.ingest(std::move(event));
+    std::cout << e->prettyStr() << std::endl;
+   // std::cout << controller.print() << std::endl;
 
-    std::cout << tfbk.getEvent().getData()->prettyStr() << std::endl;
-
-    for (auto& trace : tfbk.getEvent().getTraces())
-    {
-        std::cout << "Trace: " << trace << std::endl;
-    }
 }
 
 
-TEST(TfBkTest, MethodTest_implication)
+TEST(TF_Controller_build_Test, MethodTest_implication)
 {
 
-    TfBkMethodTest tfbk;
+    auto expr = base::Implication::create("implicationn", getFakeTerm("term0", true), getFakeTerm("term1", true));
 
-    auto expr = base::Implication::create("implicationn", getFakeTerm("term0", false), getFakeTerm("term1", true));
+    bk::taskf::Controller controller {expr};
 
     auto event = std::make_shared<json::Json>();
-    tfbk.build(expr);
 
-    std::cout << "Built taskflow" << std::endl;
-    std::cout << tfbk.print() << std::endl;
+    auto e = controller.ingestGet(std::move(event));
 
-    tfbk.ingest(std::move(event));
+    std::cout << e->prettyStr() << std::endl;
 
-    std::cout << tfbk.getEvent().getData()->prettyStr() << std::endl;
+    // std::cout << controller.print() << std::endl;
 
-    for (auto& trace : tfbk.getEvent().getTraces())
-    {
-        std::cout << "Trace: " << trace << std::endl;
-    }
 }
 
-TEST(TfBkTest, MethodTest_or)
+
+TEST(TF_Controller_build_Test, MethodTest_or)
 {
-    TfBkMethodTest tfbk;
 
     auto expr = base::Or::create("or", {});
 
@@ -131,26 +114,21 @@ TEST(TfBkTest, MethodTest_or)
         orExpr.emplace_back(getFakeTerm("term5", true));
     }
 
+      bk::taskf::Controller controller {expr};
+
     auto event = std::make_shared<json::Json>();
-    tfbk.build(expr);
 
-    std::cout << "Built taskflow" << std::endl;
-    std::cout << tfbk.print() << std::endl;
+    auto e = controller.ingestGet(std::move(event));
 
-    tfbk.ingest(std::move(event));
+    std::cout << e->prettyStr() << std::endl;
 
-    std::cout << tfbk.getEvent().getData()->prettyStr() << std::endl;
+    // std::cout << controller.print() << std::endl;
 
-    for (auto& trace : tfbk.getEvent().getTraces())
-    {
-        std::cout << "Trace: " << trace << std::endl;
-    }
 }
 
-TEST(TfBkTest, MethodTest_and)
-{
-    TfBkMethodTest tfbk;
 
+TEST(TF_Controller_build_Test, MethodTest_and)
+{
     auto expr = base::And::create("and", {});
 
     {
@@ -162,19 +140,15 @@ TEST(TfBkTest, MethodTest_and)
         andExpr.emplace_back(getFakeTerm("term4", false));
         andExpr.emplace_back(getFakeTerm("term5", true));
     }
+    bk::taskf::Controller controller {expr};
 
     auto event = std::make_shared<json::Json>();
-    tfbk.build(expr);
 
     std::cout << "Built taskflow" << std::endl;
-    std::cout << tfbk.print() << std::endl;
+   //  std::cout << controller.printGraph() << std::endl;
 
-    tfbk.ingest(std::move(event));
+    auto e = controller.ingestGet(std::move(event));
 
-    std::cout << tfbk.getEvent().getData()->prettyStr() << std::endl;
+    std::cout << e->prettyStr() << std::endl;
+}
 
-    for (auto& trace : tfbk.getEvent().getTraces())
-    {
-        std::cout << "Trace: " << trace << std::endl;
-    }
-}*/
