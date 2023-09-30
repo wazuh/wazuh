@@ -1,7 +1,10 @@
 #include <cmds/kvdb.hpp>
 
+#include <filesystem>
+
 #include <eMessages/kvdb.pb.h>
 
+#include "base/utils/stringUtils.hpp"
 #include "defaultSettings.hpp"
 #include "utils.hpp"
 #include <cmds/apiclnt/client.hpp>
@@ -67,9 +70,17 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
     // Prepare the request
     RequestType eRequest;
     eRequest.set_name(kvdbName);
+
     if (!kvdbInputFilePath.empty())
     {
-        eRequest.set_path(kvdbInputFilePath);
+        std::string kvdbPath = kvdbInputFilePath;
+        if (!base::utils::string::startsWith(kvdbInputFilePath, "/"))
+        {
+            std::filesystem::path path(kvdbInputFilePath);
+            kvdbPath = std::filesystem::absolute(path).string();
+        }
+
+        eRequest.set_path(kvdbPath);
     }
 
     // Call the API
