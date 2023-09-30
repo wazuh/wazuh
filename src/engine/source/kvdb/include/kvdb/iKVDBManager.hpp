@@ -41,32 +41,43 @@ public:
      * @brief Try to delete a DB if there are no references to it.
      *
      * @param name Name of the DB.
-     * @return std::variant<base::Error> If base::Error not exists the DB was deleted successfully. Specific error
+     * @return base::OptError If base::Error not exists the DB was deleted successfully. Specific error
      * otherwise.
      *
      */
-    virtual std::optional<base::Error> deleteDB(const std::string& name) = 0;
+    virtual base::OptError deleteDB(const std::string& name) = 0;
 
     /**
      * @brief Creates a DB with the provided name.
      *
      * @param name Name of the DB.
-     * @return std::variant<base::Error> If base::Error not exists the DB was created successfully. Specific error
+     * @return base::OptError If base::Error not exists the DB was created successfully. Specific error
      * otherwise.
      *
      */
-    virtual std::optional<base::Error> createDB(const std::string& name) = 0;
+    virtual base::OptError createDB(const std::string& name) = 0;
+
+    /**
+     * @brief Creates a DB with the provided name from a json file.
+     *
+     * @param name Name of the DB.
+     * @param path Path of the json file.
+     * @return base::OptError If base::Error not exists the DB was created successfully. Specific error
+     * otherwise.
+     *
+     */
+    virtual base::OptError createDB(const std::string& name, const std::string& path) = 0;
 
     /**
      * @brief Load a DB with the provided file path.
      *
      * @param name Name of the DB.
-     * @param path Path of file to load.
-     * @return std::variant<base::Error> If base::Error not exists the DB was created successfully. Specific error
+     * @param content Content to save
+     * @return base::OptError If base::Error not exists the DB was created successfully. Specific error
      * otherwise.
      *
      */
-    virtual std::optional<base::Error> loadDBFromFile(const std::string& name, const std::string& path) = 0;
+    virtual base::OptError loadDBFromJson(const std::string& name, const json::Json& content) = 0;
 
     /**
      * @brief Checks if a DB exists.
@@ -99,10 +110,10 @@ public:
      *
      * @param dbName Name of the DB.
      * @param scopeName Name of the Scope.
-     * @return std::variant<std::shared_ptr<IKVDBHandler>, base::Error> A KVDBHandler or specific error.
+     * @return base::RespOrError<std::shared_ptr<IKVDBHandler>> A KVDBHandler or specific error.
      */
-    virtual std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName,
-                                                                                    const std::string& scopeName) = 0;
+    virtual base::RespOrError<std::shared_ptr<IKVDBHandler>> getKVDBHandler(const std::string& dbName,
+                                                                            const std::string& scopeName) = 0;
 
     /**
      * @brief Returns count of handlers for a given database.

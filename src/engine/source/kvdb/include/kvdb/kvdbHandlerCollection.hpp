@@ -87,8 +87,7 @@ public:
      * @param scopeName Name of the Scope.
      *
      */
-    void addKVDBHandler(const std::string& dbName,
-                        const std::string& scopeName) override;
+    void addKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
      * @brief Removes a KVDB Handler given the provided DB name and scope name.
@@ -98,8 +97,7 @@ public:
      * @param scopeName Name of the Scope.
      *
      */
-    void removeKVDBHandler(const std::string& dbName,
-                           const std::string& scopeName) override;
+    void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
      * @brief Returns all the registered Database names.
