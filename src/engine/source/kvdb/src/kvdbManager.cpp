@@ -122,8 +122,8 @@ void KVDBManager::finalizeMainDB()
     m_pRocksDB.reset();
 }
 
-std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHandler(const std::string& dbName,
-                                                                                     const std::string& scopeName)
+base::RespOrError<std::shared_ptr<IKVDBHandler>> KVDBManager::getKVDBHandler(const std::string& dbName,
+                                                                             const std::string& scopeName)
 {
     std::shared_ptr<rocksdb::ColumnFamilyHandle> cfHandle;
 
@@ -156,7 +156,7 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
     return spaces;
 }
 
-std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
+base::OptError KVDBManager::deleteDB(const std::string& name)
 {
     const auto refCount = getKVDBHandlersCount(name);
 
@@ -195,7 +195,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     return std::nullopt;
 }
 
-std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, const std::string& path)
+base::OptError KVDBManager::loadDBFromJson(const std::string& name, const json::Json& content)
 {
     std::vector<std::tuple<std::string, json::Json>> entries {};
     std::shared_ptr<rocksdb::ColumnFamilyHandle> cfHandle;
@@ -210,47 +210,7 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
         return base::Error {fmt::format("The DB '{}' does not exists.", name)};
     }
 
-    // TODO: to improve
-    if (path.empty())
-    {
-        return base::Error {"The path is empty."};
-    }
-
-    // Open file and read content
-    std::string contents;
-    // TODO: No check the size, the location, the type of file, the permissions it's a
-    // security issue. The API should be changed to receive a stream instead of a path
-    std::ifstream in(path, std::ios::in | std::ios::binary);
-    if (in)
-    {
-        in.seekg(0, std::ios::end);
-        contents.resize(in.tellg());
-        in.seekg(0, std::ios::beg);
-        in.read(&contents[0], static_cast<std::streamsize>(contents.size()));
-        in.close();
-    }
-    else
-    {
-        return base::Error {fmt::format("An error occurred while opening the file '{}'", path.c_str())};
-    }
-
-    json::Json fileContentsJson;
-    try
-    {
-        fileContentsJson = json::Json {contents.c_str()};
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("An error occurred while parsing the JSON file '{}'", path.c_str())};
-    }
-
-    if (!fileContentsJson.isObject())
-    {
-        return base::Error {
-            fmt::format("An error occurred while parsing the JSON file '{}': JSON is not an object", path.c_str())};
-    }
-
-    entries = fileContentsJson.getObject().value();
+    entries = content.getObject().value();
 
     for (const auto& [key, value] : entries)
     {
@@ -265,7 +225,39 @@ std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, 
     return std::nullopt;
 }
 
-std::optional<base::Error> KVDBManager::createDB(const std::string& name)
+base::OptError KVDBManager::createDB(const std::string& name, const std::string& path)
+{
+    auto result = getContentFromJsonFile(path);
+
+    if (std::holds_alternative<base::Error>(result))
+    {
+        return std::get<base::Error>(result);
+    }
+
+    auto content = std::get<json::Json>(result);
+    auto errorCreate = createDB(name);
+
+    if (errorCreate)
+    {
+        return errorCreate;
+    }
+
+    auto errorLoad = loadDBFromJson(name, content);
+
+    if (errorLoad)
+    {
+        auto errorDelete = deleteDB(name);
+
+        if (errorDelete)
+        {
+            return errorDelete;
+        }
+    }
+
+    return std::nullopt;
+}
+
+base::OptError KVDBManager::createDB(const std::string& name)
 {
     if (existsDB(name))
     {
@@ -349,7 +341,7 @@ uint32_t KVDBManager::getKVDBHandlersCount(const std::string& dbName) const
     return retValue;
 }
 
-std::optional<base::Error> KVDBManager::createColumnFamily(const std::string& name)
+base::OptError KVDBManager::createColumnFamily(const std::string& name)
 {
     rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
     rocksdb::Status s {m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle)};
@@ -376,6 +368,54 @@ std::shared_ptr<rocksdb::ColumnFamilyHandle> KVDBManager::createSharedCFHandle(r
                     fmt::format("An error occurred while trying to destroy CF: {}", opStatus.ToString()));
             }
         });
+}
+
+base::RespOrError<json::Json> KVDBManager::getContentFromJsonFile(const std::string& path)
+{
+    std::vector<std::tuple<std::string, json::Json>> entries {};
+
+    // TODO: to improve
+    if (path.empty())
+    {
+        return base::Error {"The path is empty."};
+    }
+
+    // Open file and read content
+    std::string contents;
+    // TODO: No check the size, the location, the type of file, the permissions it's a
+    // security issue. The API should be changed to receive a stream instead of a path
+    std::ifstream in(path, std::ios::in | std::ios::binary);
+    if (in)
+    {
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], static_cast<std::streamsize>(contents.size()));
+        in.close();
+    }
+    else
+    {
+        return base::Error {fmt::format("An error occurred while opening the file '{}'", path.c_str())};
+    }
+
+    json::Json fileContentsJson;
+
+    try
+    {
+        fileContentsJson = json::Json {contents.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("An error occurred while parsing the JSON file '{}'", path.c_str())};
+    }
+
+    if (!fileContentsJson.isObject())
+    {
+        return base::Error {
+            fmt::format("An error occurred while parsing the JSON file '{}': JSON is not an object", path.c_str())};
+    }
+
+    return fileContentsJson;
 }
 
 } // namespace kvdbManager
