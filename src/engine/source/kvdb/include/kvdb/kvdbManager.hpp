@@ -89,8 +89,8 @@ public:
      * @copydoc IKVDBManager::getKVDBHandler
      *
      */
-    std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName,
-                                                                            const std::string& scopeName) override;
+    base::RespOrError<std::shared_ptr<IKVDBHandler>> getKVDBHandler(const std::string& dbName,
+                                                                    const std::string& scopeName) override;
 
     /**
      * @copydoc IKVDBManager::listDBs
@@ -102,19 +102,25 @@ public:
      * @copydoc IKVDBManager::deleteDB
      *
      */
-    std::optional<base::Error> deleteDB(const std::string& name) override;
+    base::OptError deleteDB(const std::string& name) override;
 
     /**
      * @copydoc IKVDBManager::createDB
      *
      */
-    std::optional<base::Error> createDB(const std::string& name) override;
+    base::OptError createDB(const std::string& name) override;
 
     /**
-     * @copydoc IKVDBManager::loadDBFromFile
+     * @copydoc IKVDBManager::createDB
      *
      */
-    std::optional<base::Error> loadDBFromFile(const std::string& name, const std::string& path) override;
+    base::OptError createDB(const std::string& name, const std::string& path) override;
+
+    /**
+     * @copydoc IKVDBManager::loadDBFromJson
+     *
+     */
+    base::OptError loadDBFromJson(const std::string& name, const json::Json& content) override;
 
     /**
      * @copydoc IKVDBManager::existsDB
@@ -142,6 +148,14 @@ private:
     void finalizeMainDB();
 
     /**
+     * @brief Get the content of a json file
+     *
+     * @param path Path of the json file.
+     * @return base::RespOrError<json::Json> A json document or specific error.
+     */
+    base::RespOrError<json::Json> getContentFromJsonFile(const std::string& path);
+
+    /**
      * @brief Create a Shared Column Family Shared Pointer with custom delete function.
      *
      * @param cfRawPtr Raw pointer to the Column Family Handle.
@@ -165,9 +179,9 @@ private:
      * @brief Create a Column Family object and store in map.
      *
      * @param name Name of the DB -> mapped to Column Family.
-     * @return std::optional<base::Error> Specific error.
+     * @return base::OptError Specific error.
      */
-    std::optional<base::Error> createColumnFamily(const std::string& name);
+    base::OptError createColumnFamily(const std::string& name);
 
     /**
      * @brief Options the Manager was built with.

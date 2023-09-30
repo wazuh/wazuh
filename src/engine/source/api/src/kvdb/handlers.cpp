@@ -85,23 +85,22 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>("The Database already exists.");
         }
 
-        const auto resultCreate = kvdbManager->createDB(eRequest.name());
-
-        if (resultCreate)
-        {
-            return ::api::adapter::genericError<ResponseType>(resultCreate.value().message);
-        }
+        base::OptError resultCreate;
 
         if (eRequest.has_path())
         {
-            const auto resultLoad = kvdbManager->loadDBFromFile(eRequest.name(), eRequest.path());
+            resultCreate = kvdbManager->createDB(eRequest.name(), eRequest.path());
+        }
+        else
+        {
+            resultCreate = kvdbManager->createDB(eRequest.name());
+        }
 
-            if (resultLoad)
-            {
-                const std::string message =
-                    fmt::format("The DB was created but loading data returned: {}", resultLoad.value().message);
-                return ::api::adapter::genericError<ResponseType>(message);
-            }
+        if (resultCreate)
+        {
+            const auto message =
+                fmt::format("The database could not be created. Error: {}", resultCreate.value().message);
+            return ::api::adapter::genericError<ResponseType>(message);
         }
 
         // Adapt the response to wazuh api
