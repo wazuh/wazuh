@@ -217,31 +217,17 @@ def test_syscollector_all_scans_disabled(test_configuration, test_metadata, set_
         - The `configuration_syscollector_scans_disabled.yaml` file provides the module configuration for this test.
         - The `case_test_all_scans_disabled.yaml` file provides the test cases.
     '''
-
-
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_HARDWARE_SCAN_STARTED), timeout=5)
-    assert not log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_OS_SCAN_STARTED), timeout=5)
-    assert not log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_NETWORK_SCAN_STARTED), timeout=5)
-    assert not log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_PACKAGES_SCAN_STARTED), timeout=5)
-    assert not log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_PORTS_SCAN_STARTED), timeout=5)
-    assert not log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_PROCESSES_SCAN_STARTED), timeout=5)
-    assert not log_monitor.callback_result
-
+    check_callbacks = [patterns.CB_HARDWARE_SCAN_STARTED, patterns.CB_OS_SCAN_STARTED,
+                       patterns.CB_NETWORK_SCAN_STARTED, patterns.CB_PACKAGES_SCAN_STARTED,
+                       patterns.CB_PORTS_SCAN_STARTED, patterns.CB_PROCESSES_SCAN_STARTED]
     # Add the hotfixes check if the platform is Windows.
     if sys.platform == 'win32':
-        log_monitor.start(callback=callbacks.generate_callback(patterns.CB_HOTFIXES_SCAN_STARTED), timeout=5)
+        check_callbacks.append(patterns.CB_HOTFIXES_SCAN_STARTED)
+
+    # Check that no scan is triggered.
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    for callback in check_callbacks:
+        log_monitor.start(callback=callbacks.generate_callback(callback), timeout=5)
         assert not log_monitor.callback_result
 
 
@@ -472,26 +458,15 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
     assert log_monitor.callback_result
 
     # Check that each scan was accomplished
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_HARDWARE_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_OS_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_NETWORK_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_PACKAGES_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_PORTS_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_PROCESSES_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-
+    check_callbacks = [patterns.CB_HARDWARE_SCAN_FINISHED, patterns.CB_OS_SCAN_FINISHED,
+                    patterns.CB_NETWORK_SCAN_FINISHED, patterns.CB_PACKAGES_SCAN_FINISHED,
+                    patterns.CB_PORTS_SCAN_FINISHED, patterns.CB_PROCESSES_SCAN_STARTED]
     if sys.platform == 'win32':
-        log_monitor.start(callback=callbacks.generate_callback(patterns.CB_HOTFIXES_SCAN_FINISHED), timeout=10)
+        check_callbacks.append(patterns.CB_HOTFIXES_SCAN_FINISHED)
+
+    for callback in check_callbacks:
+        # Run check
+        log_monitor.start(callback=callbacks.generate_callback(callback), timeout=10)
         assert log_monitor.callback_result
 
     # Check general scan has finished
