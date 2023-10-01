@@ -2991,8 +2991,8 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.3"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'f:/etc/sudoers -> r:^\s*\tDefaults\s\tlogfile=\S+'
+      - 'd:/etc/sudoers.d -> r:. -> r:^\s*\tDefaults\s\t*logfile=\S+'
 
   ######################################################
   # 5.3  Configure SSH Server
@@ -3431,6 +3431,7 @@ checks:
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
       - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/security/pwquality.conf -> n:^\s*minclass\s+\t*=\s+\t*(\d+) compare >= 4'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 18673
