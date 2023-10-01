@@ -9,7 +9,7 @@ class JsonFormat(EventFormat):
 
     def parse_event(self, event, config):
         event = self.format_event(event)
-        return Parser.get_event_ossec_format(event, config)
+        return self.parser.get_event_ossec_format(event, config)
 
     def format_event(self, event):
         json_object = json.loads(event)

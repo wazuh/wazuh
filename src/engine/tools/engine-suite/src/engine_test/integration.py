@@ -18,7 +18,12 @@ class Integration(CrudIntegration):
         self.args = args
 
         # Get the integration
-        integration_name = self.args['integration-name']
+        try:
+            integration_name = self.args['integration-name']
+        except KeyError as ex:
+            print("Integration name not foud. Error: {}".format(ex))
+            exit(1)
+
         self.integration = self.get_integration(integration_name)
         if not self.integration:
             print("Integration not found!")
@@ -29,7 +34,7 @@ class Integration(CrudIntegration):
         self.format = self.get_format(self.integration)
         if not self.format:
             print("Format of integration not found!")
-            exit(2)
+            exit(1)
         else:
             self.args['origin'] = self.format.get_full_location(self.args)
 
@@ -54,7 +59,7 @@ class Integration(CrudIntegration):
 
     def process_event(self, event, format):
         event = format.format_event(event)
-        response = self.api_client.send_event(event)
+        response = self.api_client.test_run(event)
         return response
 
     def write_output_file(self, events_parsed):

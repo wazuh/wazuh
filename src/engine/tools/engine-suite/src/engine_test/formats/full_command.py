@@ -7,7 +7,6 @@ class FullCommandFormat(EventFormat):
         self.config['queue'] = Formats.FULL_COMMAND.value['queue']
 
     def parse_events(self, events, config):
-        # TODO: parse multiples events of command
         return self.parse_event(events, config)
 
     def parse_event(self, event, config):
@@ -17,12 +16,12 @@ class FullCommandFormat(EventFormat):
         return event_parsed
 
     def parse_fullcommand(self, event, config):
-        agent_id = Parser.get_agent_id(config['agent_id'])
-        agent_name = Parser.get_agent_name(config['agent_name'])
-        agent_ip = Parser.get_agent_ip(config['agent_ip'])
-        origin = Parser.get_origin(config['origin'])
-        queue = Parser.get_queue(config['queue'])
-        header = Parser.get_header_ossec_format(queue, agent_id, agent_name, agent_ip, origin)
+        agent_id = self.parser.get_agent_id(config['agent_id'])
+        agent_name = self.parser.get_agent_name(config['agent_name'])
+        agent_ip = self.parser.get_agent_ip(config['agent_ip'])
+        origin = self.parser.get_origin(config['origin'])
+        queue = self.parser.get_queue(config['queue'])
+        header = self.parser.get_header_ossec_format(queue, agent_id, agent_name, agent_ip, origin)
         header = "{}:ossec: output: '{}':\n".format(header, origin)
         return '{}{}'.format(header, '\n'.join([line for line in event]))
 
