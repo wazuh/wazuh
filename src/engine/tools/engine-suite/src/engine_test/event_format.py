@@ -20,6 +20,7 @@ class Formats(Enum):
 
 class EventFormat:
     def __init__(self, integration, args):
+        self.parser = Parser()
         self.config = self.update_args(integration, args)
 
     def parse_events(self, events, config):
@@ -29,10 +30,10 @@ class EventFormat:
         return events_parsed
 
     def get_full_location(self, args):
-        return Parser.get_full_location(args['agent_id'], args['agent_name'], args['agent_ip'], args['origin'])
+        return self.parser.get_full_location(args['agent_id'], args['agent_name'], args['agent_ip'], args['origin'])
 
     def parse_event(self, event, config):
-        return Parser.get_event_ossec_format(event, self.config)
+        return self.parser.get_event_ossec_format(event, self.config)
 
     def update_args(self, integration, args):
         if args['origin'] == None and 'origin' in integration:

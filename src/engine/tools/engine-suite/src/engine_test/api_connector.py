@@ -24,7 +24,7 @@ class ApiConnector:
         self.config = config
         self.create_session()
 
-    def send_event(self, event):
+    def test_run(self, event):
         try:
             # Create test request
             request = test_pb2.RunPost_Request()

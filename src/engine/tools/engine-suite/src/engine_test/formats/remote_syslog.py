@@ -1,4 +1,3 @@
-from engine_test.parser import Parser
 from engine_test.event_format import EventFormat, Formats
 
 class RemoteSyslogFormat(EventFormat):
@@ -7,14 +6,14 @@ class RemoteSyslogFormat(EventFormat):
         self.config['queue'] = Formats.REMOTE_SYSLOG.value['queue']
 
     def parse_event(self, event, config):
-        queue = Parser.get_queue(config['queue'])
-        origin = Parser.get_origin(config['origin'])
+        queue = self.parser.get_queue(config['queue'])
+        origin = self.parser.get_origin(config['origin'])
         header = "{}:{}".format(queue, origin)
-        return "{}:{}".format(header, Parser.parse_syslog_format(event))
+        return "{}:{}".format(header, self.parser.parse_syslog_format(event))
 
     def format_event(self, event):
-        return Parser.parse_syslog_format(event)
+        return self.parser.parse_syslog_format(event)
 
     def get_full_location(self, args):
-        origin = Parser.get_origin(args['origin'])
+        origin = self.parser.get_origin(args['origin'])
         return "{}".format(origin)
