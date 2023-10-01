@@ -1,4 +1,3 @@
-from engine_test.parser import Parser
 from engine_test.event_format import EventFormat, Formats
 
 class SyslogFormat(EventFormat):
@@ -8,7 +7,7 @@ class SyslogFormat(EventFormat):
 
     def parse_event(self, event, config):
         event = self.format_event(event)
-        return Parser.get_event_ossec_format(event, self.config)
+        return self.parser.get_event_ossec_format(event, self.config)
 
     def format_event(self, event):
-        return Parser.parse_syslog_format(event)
+        return self.parser.parse_syslog_format(event)

@@ -1,4 +1,3 @@
-from engine_test.parser import Parser
 from engine_test.event_format import EventFormat, Formats
 
 class EventChannelFormat(EventFormat):
@@ -13,7 +12,7 @@ class EventChannelFormat(EventFormat):
     def parse_event(self, event, config):
         event_parsed = []
         event = self.parse_eventchannel_format(event)
-        event = Parser.get_event_ossec_format(event, config)
+        event = self.parser.get_event_ossec_format(event, config)
         event_parsed.append(event)
         return event_parsed
 

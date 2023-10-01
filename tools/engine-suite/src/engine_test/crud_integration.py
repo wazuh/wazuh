@@ -34,6 +34,10 @@ class CrudIntegration:
         with open('./integrations.json') as fp:
             listJson = json.load(fp)
 
+        if not format and not integration_name:
+            print('To save the integration, the integration-name and format parameters cannot be empty.')
+            return
+
         if origin and format:
             content = {
                 f'{integration_name}':

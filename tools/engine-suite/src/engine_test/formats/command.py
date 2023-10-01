@@ -1,4 +1,3 @@
-from engine_test.parser import Parser
 from engine_test.event_format import EventFormat, Formats
 
 class CommandFormat(EventFormat):
@@ -12,17 +11,17 @@ class CommandFormat(EventFormat):
     def parse_event(self, event, config):
         event_parsed = []
         event = self.parse_command(event, config)
-        event = Parser.get_event_ossec_format(event, config)
+        event = self.parser.get_event_ossec_format(event, config)
         event_parsed.append(event)
         return event_parsed
 
     def parse_command(self, event, config):
-        agent_id = Parser.get_agent_id(config['agent_id'])
-        agent_name = Parser.get_agent_name(config['agent_name'])
-        agent_ip = Parser.get_agent_ip(config['agent_ip'])
-        origin = Parser.get_origin(config['origin'])
-        queue = Parser.get_queue(config['queue'])
-        header = Parser.get_header_ossec_format(queue, agent_id, agent_name, agent_ip, origin)
+        agent_id = self.parser.get_agent_id(config['agent_id'])
+        agent_name = self.parser.get_agent_name(config['agent_name'])
+        agent_ip = self.parser.get_agent_ip(config['agent_ip'])
+        origin = self.parser.get_origin(config['origin'])
+        queue = self.parser.get_queue(config['queue'])
+        header = self.parser.get_header_ossec_format(queue, agent_id, agent_name, agent_ip, origin)
         header = "{}:ossec: output: '{}':".format(header, origin)
         return "{} {}".format(header, '{} '.format(header).join([line + '\n' for line in event]))
 
