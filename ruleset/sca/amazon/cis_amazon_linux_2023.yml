@@ -13,7 +13,7 @@
 policy:
   id: "cis_amazon_linux_2023"
   file: "cis_amazon_linux_2023.yml"
-  name: "CIS Benchmark for Amazon Linux 2023"
+  name: "CIS Benchmark for Amazon Linux 2023 Benchmark v1.0.0."
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Amazon Linux 2023 systems running on x86 and x64 platforms. This document was tested against Amazon Linux 2023."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
