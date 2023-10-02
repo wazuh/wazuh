@@ -5,6 +5,8 @@
 static int gs_term_ID = 0;
 static int gs_op_counter = 0;
 
+using namespace bk::taskf;
+
 auto getFakeTerm(const std::string& name, bool success) -> std::shared_ptr<base::Term<base::EngineOp>>
 {
 
@@ -27,7 +29,7 @@ TEST(TF_Controller_build_Test, term)
 
     auto expr = getFakeTerm("term", true);
     auto event = std::make_shared<json::Json>();
-    auto tfbk = bk::taskf::Controller(expr);
+    auto tfbk = bk::taskf::Controller(FakePolicy{expr, {}});
     event = tfbk.ingestGet(std::move(event));
 
     std::cout << event->prettyStr() << std::endl;
@@ -46,7 +48,7 @@ TEST(TF_Controller_build_Test, MethodTest_broadcasExecution)
         broadcastExpr.emplace_back(getFakeTerm("term4", false));
         broadcastExpr.emplace_back(getFakeTerm("term5", true));
     }
-    bk::taskf::Controller controller {expr};
+    bk::taskf::Controller controller {FakePolicy{expr, {}}};
 
     auto event = std::make_shared<json::Json>();
 
@@ -69,7 +71,7 @@ TEST(TF_Controller_build_Test, MethodTest_chainExecution)
         broadcastExpr.emplace_back(getFakeTerm("term4", false));
         broadcastExpr.emplace_back(getFakeTerm("term5", true));
     }
-    bk::taskf::Controller controller {expr};
+    bk::taskf::Controller controller {FakePolicy{expr, {}}};
 
     auto event = std::make_shared<json::Json>();
 
@@ -86,7 +88,7 @@ TEST(TF_Controller_build_Test, MethodTest_implication)
 
     auto expr = base::Implication::create("implicationn", getFakeTerm("term0", true), getFakeTerm("term1", true));
 
-    bk::taskf::Controller controller {expr};
+    bk::taskf::Controller controller {FakePolicy{expr, {}}};
 
     auto event = std::make_shared<json::Json>();
 
@@ -114,7 +116,7 @@ TEST(TF_Controller_build_Test, MethodTest_or)
         orExpr.emplace_back(getFakeTerm("term5", true));
     }
 
-      bk::taskf::Controller controller {expr};
+      bk::taskf::Controller controller {FakePolicy{expr, {}}};
 
     auto event = std::make_shared<json::Json>();
 
@@ -140,7 +142,7 @@ TEST(TF_Controller_build_Test, MethodTest_and)
         andExpr.emplace_back(getFakeTerm("term4", false));
         andExpr.emplace_back(getFakeTerm("term5", true));
     }
-    bk::taskf::Controller controller {expr};
+    bk::taskf::Controller controller {FakePolicy{expr, {}}};
 
     auto event = std::make_shared<json::Json>();
 

@@ -1,5 +1,5 @@
-#ifndef BK_ICONTROLLER_HPP
-#define BK_ICONTROLLER_HPP
+#ifndef _BK_ICONTROLLER_HPP
+#define _BK_ICONTROLLER_HPP
 
 #include <functional>
 #include <memory>
@@ -11,48 +11,9 @@
 
 namespace bk
 {
-/**
- * @brief Interface for the trace
- *
- * The trace is the way to get the data from each traceable expression when it is evaluated in the backend.
- */
-class ITrace
-{
-public:
-    using Subscriber = std::function<void(std::string_view)>; ///< Suscriber type.
-    using Subscription = std::size_t;                         ///< Identifier of the subscription.
-    using Publisher = std::function<void(std::string_view)>;  ///< Used to publish the trace to the subscribers.
-    virtual ~ITrace() = default;
 
-    /**
-     * @brief Get the name of the trace.
-     *
-     * @return const std::string& The name of the trace.
-     */
-    virtual const std::string& name() const = 0;
-
-    /**
-     * @brief Subscribe `subscriber` to the trace.
-     *
-     * @param subscriber The subscriber to subscribe.
-     * @return base::RespOrError<Subscription> The subscription identifier or error if the subscription failed.
-     */
-    virtual base::RespOrError<Subscription> subscribe(const Subscriber& subscriber) = 0;
-
-    /**
-     * @brief Unsubscribe a subscriber from the trace.
-     *
-     * @param subscription The subscription identifier to unsubscribe.
-     */
-    virtual void unsubscribe(Subscription subscription) = 0;
-
-    /**
-     * @brief Get the publisher of the trace.
-     *
-     * @return Publisher
-     */
-    virtual Publisher publisher() = 0;
-};
+using Subscriber = std::function<void(std::string_view)>; ///< Suscriber type for traces.
+using Subscription = std::size_t;                         ///< Identifier of the subscription.
 
 /**
  * @brief Interface for the backend.
@@ -82,17 +43,6 @@ public:
      * @throw std::runtime_error if cannot ingest the data (e.g. the backend is not started, not thread-safe, etc.)
      */
     virtual base::Event ingestGet(base::Event&& event) = 0;
-
-    /**
-     * @brief Use the backend as a filter, evaluating the expression with the event and returning the last result of the
-     * evaluated term
-     *
-     * @param event
-     * @return true
-     * @return false
-     * @throw std::runtime_error if cannot ingest the data (e.g. the backend is not started, not thread-safe, etc.)
-     */
-    // virtual bool filter(const base::Event& event) = 0;
 
     /**
      * @brief Check if the backend is available to ingest data. i.e. if the backend is started and built correctly.
@@ -137,8 +87,7 @@ public:
      * @param subscriber the subscriber function to subscribe.
      * @return base::RespOrError<ITrace::Subscription>
      */
-    virtual base::RespOrError<ITrace::Subscription> subscribe(const std::string& traceable,
-                                                              const ITrace::Subscriber& subscriber) = 0;
+    virtual base::RespOrError<Subscription> subscribe(const std::string& traceable, const Subscriber& subscriber) = 0;
 
     /**
      * @brief Unsubscribe a subscriber from a traceable.
@@ -146,9 +95,9 @@ public:
      * @param traceable the traceable to unsubscribe from.
      * @param subscription the subscription identifier to unsubscribe.
      */
-    virtual void unsubscribe(const std::string& traceable, ITrace::Subscription subscription) = 0;
+    virtual void unsubscribe(const std::string& traceable, Subscription subscription) = 0;
 };
 
 } // namespace bk
 
-#endif // BK_ICONTROLLER_HPP
+#endif // _BK_ICONTROLLER_HPP
