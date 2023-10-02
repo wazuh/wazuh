@@ -6,11 +6,11 @@ constexpr int SUCCESS = 0; ///< Success return value (First index in task result
 constexpr int FAILURE = 1; ///< Failure return value (Second index in task result)
 
 using RetWork = std::function<int()>; ///< Definition of a taskflow work that is a conditional task (weak dependency)
-using Work = std::function<void()>;      ///< Definition of a taskflow work that is a task (String dependency)
+using Work = std::function<void()>;   ///< Definition of a taskflow work that is a task (String dependency)
 
 /**
  * @brief Convert a base::result::Result to a taskflow result
- * 
+ *
  */
 inline int toTfRes(const base::result::Result<base::Event>& result)
 {
@@ -19,7 +19,7 @@ inline int toTfRes(const base::result::Result<base::Event>& result)
 
 /**
  * @brief Set the work of a task to a success
- * 
+ *
  * @param task Task to set the work
  * @param name Name of the task
  */
@@ -30,7 +30,7 @@ void setWorkSuccess(tf::Task& task, const std::string& name)
 
 /**
  * @brief Set the work of a task to a failure
- * 
+ *
  * @param task Task to set the work
  * @param name Name of the task
  */
@@ -41,13 +41,13 @@ void setWorkFailure(tf::Task& task, const std::string& name)
 
 /**
  * @brief Create a contional work of a task from a base::EngineOp to a apply it to a base::Event
- * 
+ *
  * @param job the base::EngineOp to apply to the base::Event
  * @param eventPtr Pointer to the base::Event
  * @param publisher Publisher function to publish the trace
  * @return Work The work of the task
  */
-Work getWork(base::EngineOp&& job, void* eventPtr, bk::taskf::Trace::Publisher publisher)
+Work getWork(base::EngineOp&& job, void* eventPtr, bk::taskf::Controller::Publisher publisher)
 {
     return [job = std::move(job), eventPtr, publisher = std::move(publisher)]()
     {
@@ -62,13 +62,13 @@ Work getWork(base::EngineOp&& job, void* eventPtr, bk::taskf::Trace::Publisher p
 
 /**
  * @brief Create a non-conditional work of a task from a base::EngineOp to a apply it to a base::Event
- * 
+ *
  * @param job the base::EngineOp to apply to the base::Event
  * @param eventPtr Pointer to the base::Event
  * @param publisher Publisher function to publish the trace
  * @return Work The work of the task
  */
-RetWork getRetWork(base::EngineOp&& job, void* eventPtr,  bk::taskf::Trace::Publisher publisher)
+RetWork getRetWork(base::EngineOp&& job, void* eventPtr, bk::taskf::Controller::Publisher publisher)
 {
     return [job = std::move(job), eventPtr, publisher = std::move(publisher)]() -> size_t
     {
@@ -86,8 +86,80 @@ RetWork getRetWork(base::EngineOp&& job, void* eventPtr,  bk::taskf::Trace::Publ
 namespace bk::taskf
 {
 
-tf::Task
-Controller::build(const base::Expression& expression, tf::Task& parent, bool needResult, Trace::Publisher publisher)
+/**
+ * @brief Interface for the trace
+ *
+ * The trace is the way to get the data from each traceable expression when it is evaluated in the backend.
+ */
+class Controller::TraceImpl final : public std::enable_shared_from_this<TraceImpl>
+{
+private:
+    std::string m_name;                                         ///< Name of the trace
+    std::unordered_map<Subscription, Subscriber> m_subscribers; ///< subscription id -> subscriber map
+
+    Subscription m_nextSubId {0};                      ///< Next subscription id
+    Subscription nextSubId() { return m_nextSubId++; } ///< Get the next subscription id
+
+    std::shared_mutex m_subscribersMutex; ///< Mutex for the subscribers
+
+public:
+    ~TraceImpl() = default;
+
+    /**
+     * @brief Get the name of the trace.
+     *
+     * @return const std::string& The name of the trace.
+     */
+    inline const std::string& name() const { return m_name; }
+
+    /**
+     * @brief Subscribe `subscriber` to the trace.
+     *
+     * @param subscriber The subscriber to subscribe.
+     * @return base::RespOrError<Subscription> The subscription identifier or error if the subscription failed.
+     */
+    inline base::RespOrError<Subscription> subscribe(const Subscriber& subscriber)
+    {
+        std::unique_lock lock {m_subscribersMutex};
+        auto id = nextSubId();
+        if (m_subscribers.find(id) != m_subscribers.end())
+        {
+            return base::Error {"Subscription already exists"};
+        }
+
+        m_subscribers.emplace(id, subscriber);
+        return id;
+    }
+
+    /**
+     * @brief Unsubscribe a subscriber from the trace.
+     *
+     * @param subscription The subscription identifier to unsubscribe.
+     */
+    inline void unsubscribe(Subscription subscription)
+    {
+        std::unique_lock lock {m_subscribersMutex};
+        m_subscribers.erase(subscription);
+    }
+
+    /**
+     * @copydoc bk::ITrace::publisher
+     */
+    Publisher publisher()
+    {
+        return [thisPtr = this->weak_from_this()](std::string_view message)
+        {
+            auto thisShared = thisPtr.lock();
+            std::shared_lock lock {thisShared->m_subscribersMutex};
+            for (const auto& [_, subscriber] : thisShared->m_subscribers)
+            {
+                subscriber(message);
+            }
+        };
+    }
+};
+
+tf::Task Controller::build(const base::Expression& expression, tf::Task& parent, bool needResult, Publisher publisher)
 {
     // Error if empty expression
     if (expression == nullptr)
@@ -101,9 +173,9 @@ Controller::build(const base::Expression& expression, tf::Task& parent, bool nee
     {
         if (m_traces.find(expression->getName()) != m_traces.end())
         {
-            throw std::runtime_error {"Trace already exists"};
+            throw std::runtime_error {"TraceImpl already exists"};
         }
-        m_traces.emplace(expression->getName(), std::make_unique<Trace>());
+        m_traces.emplace(expression->getName(), std::make_unique<TraceImpl>());
         publisher = m_traces[expression->getName()]->publisher();
     }
 
@@ -291,5 +363,27 @@ Controller::build(const base::Expression& expression, tf::Task& parent, bool nee
     }
 
     return task;
+}
+
+base::RespOrError<Subscription> Controller::subscribe(const std::string& traceable, const Subscriber& subscriber)
+{
+    auto it = m_traces.find(traceable);
+    if (it == m_traces.end())
+    {
+        return base::Error {"Traceable not found"};
+    }
+
+    return it->second->subscribe(subscriber);
+}
+
+void Controller::unsubscribe(const std::string& traceable, Subscription subscription)
+{
+    auto it = m_traces.find(traceable);
+    if (it == m_traces.end())
+    {
+        return;
+    }
+
+    it->second->unsubscribe(subscription);
 }
 } // namespace bk::taskf
