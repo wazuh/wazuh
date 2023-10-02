@@ -51,13 +51,23 @@ static const std::vector<int> s_validFDSock =
     }
 };
 
+typedef struct PKGInfoEntry
+{
+    std::string path;
+    int maxRecurrency;
+} PKGInfoEntry;
+
+static const std::vector<PKGInfoEntry> s_PKGInfoTable =
+{
+    { "/Applications", 2 },
+    { "/Library", 0 },
+    { "/System/Applications", 0 },
+    { "/System/Library", 0 },
+    { "/Users", 0 },
+};
+
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
-    { "/Applications", PKG },
-    { "/Library", PKG },
-    { "/System/Applications", PKG },
-    { "/System/Library", PKG },
-    { "/Users", PKG },
     { "/Library/Apple/System/Library/Receipts", RCP },
     { "/private/var/db/receipts", RCP },
     { "/usr/local/Cellar", BREW },
@@ -108,65 +118,79 @@ nlohmann::json SysInfo::getHardware() const
     return hardware;
 }
 
+static void getPKGPackagesFromPath(const std::string& path, const int maxRecurrency, std::function<void(nlohmann::json&)> callback)
+{
+    DEBUG_DirAnalizedTotalCounter++; // DEBUG
+
+    std::function<void(const std::string&)> pkgAnalizeDirectory;
+
+    pkgAnalizeDirectory =
+        [&](const std::string & directory, const int maxRecurrency)
+    {
+        const auto subDirectories { Utils::enumerateDirTypeDir(directory) };
+
+        for (const auto& subDirectory : subDirectories)
+        {
+            if ((subDirectory == ".") || (subDirectory == ".."))
+            {
+                continue;
+            }
+
+            DEBUG_SubdirAnalizedTotalCounter++; // DEBUG
+
+            int maxRecurrencySubDirectory = maxRecurrency;
+
+            if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
+            {
+                std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
+
+                try
+                {
+                    nlohmann::json jsPackage;
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
+
+                    if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                            !jsPackage.at("version").get_ref<const std::string&>().empty() &&
+                            !jsPackage.at("format").get_ref<const std::string&>().empty()
+                        )
+                    {
+                        DEBUG_AppFoundCounter++; // DEBUG
+
+                        // Only return valid content packages
+                        callback(jsPackage);
+
+                        maxRecurrencySubDirectory = -1;
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    std::cerr << e.what() << std::endl;
+                    maxRecurrencySubDirectory = 0;
+                }
+            }
+            else
+            {
+                if(maxRecurrency > 0)
+                {
+                    maxRecurrencySubDirectory = maxRecurrency - 1;
+                }
+            }
+
+            if(maxRecurrencySubDirectory)
+            {
+                std::string pathSubDirectory { directory + "/" + subDirectory };
+                pkgAnalizeDirectory(pathSubDirectory, maxRecurrencySubDirectory);
+            }
+        }
+    };
+
+    pkgAnalizeDirectory(path, maxRecurrency);
+}
+
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
     switch (pkgType)
     {
-        case PKG:
-            {
-                DEBUG_DirAnalizedTotalCounter++; // DEBUG
-
-                std::function<void(const std::string&)> pkgAnalizeDirectory;
-
-                pkgAnalizeDirectory =
-                    [&](const std::string & directory)
-                {
-                    const auto subDirectories { Utils::enumerateDirTypeDir(directory) };
-
-                    for (const auto& subDirectory : subDirectories)
-                    {
-                        if ((subDirectory == ".") || (subDirectory == ".."))
-                        {
-                            continue;
-                        }
-
-                        DEBUG_SubdirAnalizedTotalCounter++; // DEBUG
-
-                        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
-                        {
-                            std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
-
-                            try
-                            {
-                                nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
-
-                                if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
-                                        !jsPackage.at("version").get_ref<const std::string&>().empty() &&
-                                        !jsPackage.at("format").get_ref<const std::string&>().empty()
-                                   )
-                                {
-                                    DEBUG_AppFoundCounter++; // DEBUG
-
-                                    // Only return valid content packages
-                                    callback(jsPackage);
-                                }
-                            }
-                            catch (const std::exception& e)
-                            {
-                                std::cerr << e.what() << std::endl;
-                            }
-                        }
-
-                        std::string pathSubDirectory { directory + "/" + subDirectory };
-                        pkgAnalizeDirectory(pathSubDirectory);
-                    }
-                };
-
-                pkgAnalizeDirectory(pkgDirectory);
-                break;
-            }
-
         case RCP:
             {
                 static auto isInPKGDirectory
@@ -531,6 +555,15 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     DEBUG_DirAnalizedTotalCounter = 0; // DEBUG
     DEBUG_SubdirAnalizedTotalCounter = 0; //DEBUG
     DEBUG_AppFoundCounter = 0; // DEBUG
+
+    for (const auto& PKGInfoEntry : s_PKGInfoTable)
+    {
+        if (Utils::existsDir(PKGInfoEntry.path))
+        {
+            getPKGPackagesFromPath(PKGInfoEntry.path, PKGInfoEntry.maxRecurrency, callback);
+        }
+    }
+
     for (const auto& packageDirectory : s_mapPackagesDirectories)
     {
         const auto pkgDirectory { packageDirectory.first };
@@ -540,7 +573,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
         }
     }
-    std::cout << "DEBUG_DirAnalizedTotalCounter: " << DEBUG_DirAnalizedTotalCounter << ". DEBUG_SubdirAnalizedTotalCounter: " << DEBUG_SubdirAnalizedTotalCounter << ". DEBUG_AppFoundCounter: " << DEBUG_AppFoundCounter;      // DEBUG
+    std::cout << "DEBUG_DirAnalizedTotalCounter: " << DEBUG_DirAnalizedTotalCounter << ". DEBUG_SubdirAnalizedTotalCounter: " << DEBUG_SubdirAnalizedTotalCounter << ". DEBUG_AppFoundCounter: " << DEBUG_AppFoundCounter; // DEBUG
 }
 
 nlohmann::json SysInfo::getHotfixes() const
