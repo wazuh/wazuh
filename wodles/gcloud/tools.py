@@ -8,22 +8,14 @@
 
 """This module contains generic functions for this wodle."""
 
-# Module Imports
 import argparse
 from datetime import datetime
 from pytz import UTC
 
-########################################################################################################################
-# Constants
-########################################################################################################################
 
 MIN_NUM_THREADS = 1
 MIN_NUM_MESSAGES = 1
 VALID_TYPES = ['pubsub', 'access_logs']
-
-########################################################################################################################
-# Functions
-########################################################################################################################
 
 
 def get_script_arguments():
@@ -75,3 +67,27 @@ def get_script_arguments():
                         help='Parse the log, even if its been parsed before', default=False)
 
     return parser.parse_args()
+
+
+def arg_valid_date(arg_string: str) -> datetime:
+    """Validation function for only_logs_after dates.
+
+    Parameters
+    ----------
+    arg_string : str
+        The only_logs_after value in YYYY-MMM-DD format.
+
+    Returns
+    -------
+    datetime
+        The date corresponding to the string passed.
+
+    Raises
+    ------
+    ValueError
+        If the parameter passed is not in the expected format.
+    """
+    try:
+        return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=UTC)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Argument not a valid date in format YYYY-MMM-DD: '{arg_string}'.")

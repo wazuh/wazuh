@@ -17,7 +17,7 @@ from os.path import dirname, abspath
 path.insert(0, dirname(dirname(abspath(__file__))))
 import exceptions
 from utils import ANALYSISD, MAX_EVENT_SIZE
-
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 class WazuhGCloudIntegration:
     """Class for sending events from Google Cloud to Wazuh."""

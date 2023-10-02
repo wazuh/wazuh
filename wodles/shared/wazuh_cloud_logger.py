@@ -8,13 +8,9 @@
 
 """This module implements the strategy pattern to provide a flexible logging solution for Wazuh Cloud Modules."""
 
-from abc import ABC, abstractmethod
 import logging
 import sys
-
-################################################################################
-# Classes
-################################################################################
+from abc import ABC, abstractmethod
 
 
 class WazuhLogStrategy(ABC):

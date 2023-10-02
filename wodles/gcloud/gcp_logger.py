@@ -11,7 +11,7 @@
 import logging
 
 # Local Imports
-from wodles.shared.wazuh_cloud_logger import WazuhLogStrategy
+from shared.wazuh_cloud_logger import WazuhLogStrategy
 
 
 class GCPLogStrategy(WazuhLogStrategy):
