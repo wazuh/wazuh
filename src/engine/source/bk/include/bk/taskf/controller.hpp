@@ -76,7 +76,7 @@ public:
         , m_expression(policy.expression())
     {
         auto eTask = tf::Task();
-        build(m_expression, eTask);
+        build(m_expression, eTask, true);
     }
 
     /**

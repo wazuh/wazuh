@@ -39,6 +39,11 @@ void setWorkFailure(tf::Task& task, const std::string& name)
     task.name(name).work([name]() { return FAILURE; });
 }
 
+void setWork(tf::Task& task, const std::string& name)
+{
+    task.name(name).work([]() {});
+}
+
 /**
  * @brief Create a contional work of a task from a base::EngineOp to a apply it to a base::Event
  *
@@ -222,26 +227,53 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
         // Broadcast
         if (expression->isBroadcast())
         {
-            setWorkSuccess(task, "Broadcast");
-
             auto operands = expression->getPtr<base::Broadcast>()->getOperands();
             checkOpSize(operands, "Broadcast");
 
+            if (needResult)
+            {
+                setWorkSuccess(task, "Broadcast end");
+            }
+            else
+            {
+                setWork(task, "Broadcast end");
+            }
+
+            auto root = m_tf.emplace([]() {}).name("root broadcast");
+            if (hasParent)
+            {
+                root.succeed(parent);
+            }
+
             for (auto& operand : operands)
             {
-                auto subTask = build(operand, parent, true, publisher);
+                auto subTask = build(operand, root, false, publisher);
+                root.precede(subTask);
                 task.succeed(subTask);
             }
         }
         // Chain
         else if (expression->isChain())
         {
-            setWorkSuccess(task, "chain");
-
             auto operands = expression->getPtr<base::Chain>()->getOperands();
             checkOpSize(operands, "Chain");
 
-            auto prevTask = parent;
+            if (needResult)
+            {
+                setWorkSuccess(task, "chain end");
+            }
+            else
+            {
+                setWork(task, "chain end");
+            }
+
+            auto root = m_tf.emplace([]() {}).name("root chain");
+            if (hasParent)
+            {
+                root.succeed(parent);
+            }
+
+            auto prevTask = root;
             for (auto& operand : operands)
             {
                 prevTask = build(operand, prevTask, false, publisher);
@@ -255,14 +287,16 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             auto operands = expression->getPtr<base::Implication>()->getOperands();
             checkOpSize(operands, "Implication", 2);
 
-            if (!hasParent)
+            auto root = m_tf.emplace([]() {}).name("root implication");
+
+            if (hasParent)
             {
-                parent = m_tf.emplace([]() {}).name("root implication");
+                root.succeed(parent);
             }
 
             std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(SUCCESS);
 
-            auto condTask = build(operands[0], parent, true, publisher).name("cond implication");
+            auto condTask = build(operands[0], root, true, publisher).name("cond implication");
             auto eTask = tf::Task();
             auto successTask = build(operands[1], eTask, true, publisher).name("success implication");
             auto failTask = m_tf.emplace(
@@ -276,18 +310,26 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             condTask.precede(successTask, failTask);
 
             task.name("implication output");
+            if (needResult)
+            {
+                task.work([result]() { return result->load(); });
+            }
+            else
+            {
+                task.work([]() {});
+            }
             task.succeed(failTask);
             task.succeed(successTask, successTask);
-            task.work([result]() { return result->load(); });
         }
         else if (expression->isOr())
         {
             auto operands = expression->getPtr<base::Or>()->getOperands();
             checkOpSize(operands, "Or");
 
-            if (!hasParent)
+            auto root = m_tf.emplace([]() { return FAILURE; }).name("root or");
+            if (hasParent)
             {
-                parent = m_tf.emplace([]() { return FAILURE; }).name("root or");
+                root.succeed(parent);
             }
 
             std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(FAILURE);
@@ -300,7 +342,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
                                    .name("success or")
                                    .precede(task);
 
-            auto lastTask = parent;
+            auto lastTask = root;
             auto eTask = tf::Task();
             for (auto& operand : operands)
             {
@@ -311,7 +353,14 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             lastTask.precede(successTask, task);
 
             task.name("or output");
-            task.work([result]() { return result->load(); });
+            if (needResult)
+            {
+                task.work([result]() { return result->load(); });
+            }
+            else
+            {
+                task.work([]() {});
+            }
         }
         // And
         else if (expression->isAnd())
@@ -319,9 +368,10 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             auto operands = expression->getPtr<base::And>()->getOperands();
             checkOpSize(operands, "And");
 
-            if (!hasParent)
+            auto root = m_tf.emplace([]() { return SUCCESS; }).name("root and");
+            if (hasParent)
             {
-                parent = m_tf.emplace([]() { return SUCCESS; }).name("root and");
+                root.succeed(parent);
             }
 
             std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(SUCCESS);
@@ -334,7 +384,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
                                 .name("fail and")
                                 .precede(task);
 
-            auto lastTask = parent;
+            auto lastTask = root;
             auto eTask = tf::Task();
             for (auto& operand : operands)
             {
@@ -345,7 +395,14 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             lastTask.precede(task, failTask);
 
             task.name("and output");
-            task.work([result]() { return result->load(); });
+            if (needResult)
+            {
+                task.work([result]() { return result->load(); });
+            }
+            else
+            {
+                task.work([]() {});
+            }
         }
         else
         {
