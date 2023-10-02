@@ -55,52 +55,36 @@ references:
 tags:
     - enrollment
 '''
-from datetime import datetime, timedelta
-import os
-import platform
 import pytest
-from time import sleep
+from pathlib import Path
+import sys
 
-from wazuh_testing.tools import WAZUH_PATH, LOG_FILE_PATH
-from wazuh_testing.tools.authd_sim import AuthdSimulator
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import truncate_file
-from wazuh_testing.tools.monitoring import QueueMonitor, FileMonitor
-from wazuh_testing.tools.remoted_sim import RemotedSimulator
-from wazuh_testing.tools.services import control_service
-from wazuh_testing.agent import CLIENT_KEYS_PATH, SERVER_CERT_PATH, SERVER_KEY_PATH
+from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
+from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.services import control_service
+
+from . import CONFIGS_PATH, TEST_CASES_PATH
+from .. import wait_keepalive, add_custom_key, kill_server
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0), pytest.mark.agent]
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_conf.yaml')
+pytestmark = pytest.mark.tier(level=0)
 
-params = [
-    # Different parameters on UDP
-    {'PROTOCOL': 'udp', 'MAX_RETRIES': 1, 'RETRY_INTERVAL': 1, 'ENROLL': 'no'},
-    {'PROTOCOL': 'udp', 'MAX_RETRIES': 5, 'RETRY_INTERVAL': 5, 'ENROLL': 'no'},
-    {'PROTOCOL': 'udp', 'MAX_RETRIES': 10, 'RETRY_INTERVAL': 4, 'ENROLL': 'no'},
-    {'PROTOCOL': 'udp', 'MAX_RETRIES': 3, 'RETRY_INTERVAL': 12, 'ENROLL': 'no'},
-    # Different parameters on TCP
-    {'PROTOCOL': 'tcp', 'MAX_RETRIES': 3, 'RETRY_INTERVAL': 3, 'ENROLL': 'no'},
-    {'PROTOCOL': 'tcp', 'MAX_RETRIES': 5, 'RETRY_INTERVAL': 5, 'ENROLL': 'no'},
-    {'PROTOCOL': 'tcp', 'MAX_RETRIES': 10, 'RETRY_INTERVAL': 10, 'ENROLL': 'no'},
-    # Enrollment enabled
-    {'PROTOCOL': 'udp', 'MAX_RETRIES': 2, 'RETRY_INTERVAL': 2, 'ENROLL': 'yes'},
-    {'PROTOCOL': 'tcp', 'MAX_RETRIES': 5, 'RETRY_INTERVAL': 5, 'ENROLL': 'yes'},
-]
+# Configuration and cases data.
+configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_reconnection_protocol.yaml')
 
-case_ids = [f"{x['PROTOCOL']}_max-retry={x['MAX_RETRIES']}_interval={x['RETRY_INTERVAL']}_enroll={x['ENROLL']}".lower()
-            for x in params]
+# Test configurations.
+config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
+test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
-metadata = params
-configurations = load_wazuh_configurations(configurations_path, __name__, params=params, metadata=metadata)
-log_monitor_paths = []
-receiver_sockets_params = []
-monitored_sockets_params = []
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
-authd_server = AuthdSimulator('127.0.0.1', key_path=SERVER_KEY_PATH, cert_path=SERVER_CERT_PATH)
-remoted_server = None
+if sys.platform == WINDOWS:
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+else:
+    local_internal_options = {AGENTD_DEBUG: '2'}
+local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 # Tests
 """
@@ -111,6 +95,7 @@ This test covers different options of delays between server connection attempts:
 -Enrollment between retries
 """
 
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_parametrized_reconnections(configure_authd_server, start_authd, stop_agent, set_keys,
                                            configure_environment, get_configuration, teardown):
     '''

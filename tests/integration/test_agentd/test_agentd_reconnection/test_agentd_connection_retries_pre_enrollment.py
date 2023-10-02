@@ -78,8 +78,6 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
-print(test_metadata)
-
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
