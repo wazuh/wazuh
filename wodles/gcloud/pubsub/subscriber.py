@@ -25,7 +25,7 @@ except ImportError as e:
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 import exceptions
 from integration import WazuhGCloudIntegration
-from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 
 

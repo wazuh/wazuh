@@ -8,9 +8,7 @@
 
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
-import tools
 import exceptions
-from sys import exit
 from os import cpu_count
 from sys import path, exit
 from os.path import join, dirname, realpath
@@ -20,20 +18,17 @@ path.append(join(dirname(realpath(__file__)), '..', '..'))
 from buckets.access_logs import GCSAccessLogs
 from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
-from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 from tools import MIN_NUM_THREADS, MIN_NUM_MESSAGES, get_script_arguments
 from gcp_logger import GCPLogStrategy
 
-
 # Set GCP logger
 gcp_logger = WazuhCloudLogger(
-        strategy=GCPLogStrategy()
+    strategy=GCPLogStrategy()
 )
 
 
 def main():
-    logger = tools.get_stdout_logger(tools.logger_name)
-
     try:
         # Get script arguments
         arguments = get_script_arguments()
@@ -76,7 +71,7 @@ def main():
                 raise exceptions.GCloudError(1203)
 
             gcp_logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
-                         f" message{'s' if max_messages > 1 else ''} in total")
+                             f" message{'s' if max_messages > 1 else ''} in total")
 
             # Process messages
             with ThreadPoolExecutor() as executor:
@@ -131,7 +126,7 @@ def main():
 
     else:
         gcp_logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'
-                    f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
+                        f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
         exit(0)
 
 

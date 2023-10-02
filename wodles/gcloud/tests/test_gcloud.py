@@ -7,13 +7,19 @@
 
 import os
 import sys
-from argparse import Namespace
-from unittest.mock import patch
-
+from sys import path, exit
+from os.path import join, dirname, realpath
 import pytest
+import logging
+from argparse import Namespace
+from unittest.mock import patch, MagicMock
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
+# Local imports
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__))))  # noqa: E501
+#path_test = os.path.join(os.path.dirname(os.path.realpath(__file__)))
 import gcloud
+
+print('hola')
 
 
 def get_wodle_config(integration_type: str, credentials_file: str = None, log_level: int = 1,
@@ -65,12 +71,14 @@ def get_wodle_config(integration_type: str, credentials_file: str = None, log_le
 @patch('gcloud.GCSAccessLogs')
 @patch('gcloud.WazuhGCloudSubscriber')
 @patch('gcloud.ThreadPoolExecutor')
-@patch('gcloud.tools.get_stdout_logger')
 @patch('gcloud.cpu_count', side_effect=TypeError)
-def test_gcloud(mock_cpu_count, mock_logger, mock_threads, mock_subscriber, mock_access_logs, integration_type):
+@patch('gcloud.get_script_arguments')
+def test_gcloud(mock_get_script_arguments, mock_cpu_count, mock_logger,
+                mock_threads, mock_subscriber, integration_type):
     """Test gcloud module run and exits without errors using valid configurations."""
     kwargs = get_wodle_config(integration_type=integration_type)
-    with patch('tools.get_script_arguments', return_value=Namespace(**kwargs)), pytest.raises(SystemExit) as err:
+    mock_get_script_arguments.return_value = Namespace(**kwargs)
+    with pytest.raises(SystemExit) as err:
         gcloud.main()
     assert err.type == SystemExit
     assert err.value.code == 0
@@ -90,11 +98,15 @@ def test_gcloud(mock_cpu_count, mock_logger, mock_threads, mock_subscriber, mock
 @patch('pubsub.subscriber.WazuhGCloudSubscriber.process_messages')
 @patch('buckets.bucket.storage.client.Client.from_service_account_json')
 @patch('buckets.access_logs.GCSAccessLogs.process_data', return_value=0)
-@patch('gcloud.tools.get_stdout_logger')
-def test_gcloud_ko(mock_logger, mock_data, mock_json, mock_messages, mock_permissions, mock_file, parameters, errcode):
+@patch('gcloud.WazuhCloudLogger', return_value=MagicMock(spec=logging.Logger))
+@patch('gcloud.get_script_arguments')
+def test_gcloud_ko(mock_get_script_arguments, mock_logger, mock_data, mock_json, mock_messages, mock_permissions,
+                   mock_file, parameters, errcode):
     """Test gcloud module aborts its execution when called with invalid parameters."""
     kwargs = get_wodle_config(**parameters)
-    with patch('tools.get_script_arguments', return_value=Namespace(**kwargs)), pytest.raises(SystemExit) as err:
+    mock_get_script_arguments.return_value = Namespace(**kwargs)
+    with pytest.raises(SystemExit) as err:
         gcloud.main()
     assert err.type == SystemExit
     assert err.value.code == errcode
+
