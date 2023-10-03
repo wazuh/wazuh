@@ -636,8 +636,7 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
     sync_files_mock.assert_called_once_with(cmd=b"syn_m_c", logger=ANY, manager=ANY)
     sync_db_mock.assert_called_once_with(manager=ANY, logger=ANY, cmd=b"syn_g_m_w", data_retriever=ANY,
                                          set_data_command="global set-agent-groups",
-                                         set_payload={"mode": "override", "sync_status": "synced"},
-                                         loop=ANY)
+                                         set_payload={"mode": "override", "sync_status": "synced"})
 
     assert "Integrity check" in master_handler.task_loggers
     assert "Integrity sync" in master_handler.task_loggers

@@ -46,10 +46,11 @@ configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name
 def get_worker_handler(loop):
     """Return the needed WorkerHandler object. This is an auxiliary method."""
 
-    abstract_client = client.AbstractClientManager(configuration=configuration,
-                                                    cluster_items=cluster_items,
-                                                    enable_ssl=False, performance_test=False, logger=None,
-                                                    concurrency_test=False, file='None', string=20)
+    with patch('asyncio.get_running_loop', return_value=loop):
+        abstract_client = client.AbstractClientManager(configuration=configuration,
+                                                        cluster_items=cluster_items,
+                                                        enable_ssl=False, performance_test=False, logger=None,
+                                                        concurrency_test=False, file='None', string=20)
 
     return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0',
                                 loop=loop, on_con_lost=None, name='Testing',
@@ -396,13 +397,14 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
         process_request_mock.assert_called_once_with(b"random", b"data")
 
 
+@pytest.mark.asyncio
 @patch.object(logging.getLogger("wazuh"), "info")
 @patch("wazuh.core.cluster.worker.client.AbstractClient.connection_lost")
 @patch("wazuh.core.cluster.worker.cluster.clean_up") 
-def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
+async def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock, event_loop):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
 
-    worker_handler = get_worker_handler()  
+    worker_handler = get_worker_handler(event_loop)
     worker_handler.logger = logging.getLogger("wazuh")
 
     class PendingTaskMock:
