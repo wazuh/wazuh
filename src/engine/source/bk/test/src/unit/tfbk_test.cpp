@@ -36,6 +36,9 @@ auto getFakeTerm(const std::string& name, bool success) -> std::shared_ptr<base:
 const std::string PATH_NAME = "/name";
 const std::string PATH_RESULT = "/result";
 
+const std::string SUCCES_TRACE = "Fake trace success";
+const std::string FAILURE_TRACE = "Fake trace failure";
+
 class EasyExp
 {
 public:
@@ -54,9 +57,9 @@ public:
                                                       e->appendJson(result);
                                                       if (success)
                                                       {
-                                                          return base::result::makeSuccess(e, "Fake trace success");
+                                                          return base::result::makeSuccess(e, SUCCES_TRACE);
                                                       }
-                                                      return base::result::makeFailure(e, "Fake trace failure");
+                                                      return base::result::makeFailure(e, FAILURE_TRACE);
                                                   });
     }
 
@@ -152,10 +155,12 @@ TEST_P(BKTaskFlowControllerTest, buildAndIngest)
 
         ASSERT_EQ(jTermResult.getString(PATH_NAME).value(), name)
             << "The name is not the expected: " << jTermResult.prettyStr() << "\nFull order: " << event->prettyStr()
-            << "\nDot Graph:\n" << controller.printGraph() << "\n";
+            << "\nDot Graph:\n"
+            << controller.printGraph() << "\n";
         ASSERT_EQ(jTermResult.getBool(PATH_RESULT).value(), result)
             << "The result is not the expected: " << jTermResult.prettyStr() << "\nFull order: " << event->prettyStr()
-            << "\nDot Graph:\n" << controller.printGraph() << "\n";
+            << "\nDot Graph:\n"
+            << controller.printGraph() << "\n";
     }
 }
 
@@ -389,3 +394,74 @@ INSTANTIATE_TEST_SUITE_P(
 
         // End
         ));
+
+struct Subscriber
+{
+    std::vector<std::string> traces;
+    auto getSubscriber()
+    {
+        return [&](auto trace)
+        {
+            traces.emplace_back(trace);
+        };
+    }
+
+    void checkTraceActivation(Controller& controller,
+                              const std::vector<std::string>& expected)
+    {
+        auto event = std::make_shared<json::Json>();
+        ASSERT_NO_THROW(controller.ingest(std::move(event)));
+        ASSERT_EQ(traces, expected);
+    }
+};
+
+TEST(BKTaskFlowTraceTest, Subscribe)
+{
+    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Subscriber s;
+    auto subRes = c.subscribe("term", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
+    s.checkTraceActivation(c, {SUCCES_TRACE});
+}
+
+TEST(BKTaskFlowTraceTest, SubscribeTraceableNotFound)
+{
+    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Subscriber s;
+    auto subRes = c.subscribe("term2", s.getSubscriber());
+    ASSERT_TRUE(base::isError(subRes));
+    s.checkTraceActivation(c, {});
+}
+
+TEST(BKTaskFlowTraceTest, MultipleSubscribers)
+{
+    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Subscriber s;
+    auto subRes = c.subscribe("term", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
+    auto subRes2 = c.subscribe("term", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes2)) << "Error subscribing: " << base::getError(subRes2).message;
+    s.checkTraceActivation(c, {SUCCES_TRACE, SUCCES_TRACE});
+}
+
+TEST(BKTaskFlowTraceTest, Unsubscribe)
+{
+    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Subscriber s;
+    auto subRes = c.subscribe("term", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
+    ASSERT_NO_THROW(c.unsubscribe("term", base::getResponse<bk::Subscription>(subRes)));
+    s.checkTraceActivation(c, {});
+}
+
+TEST(BKTaskFlowTraceTest, UnsubscribeNotExists)
+{
+    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Subscriber s;
+    auto subRes = c.subscribe("term", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
+    ASSERT_NO_THROW(c.unsubscribe("term", base::getResponse<bk::Subscription>(subRes)));
+    ASSERT_NO_THROW(c.unsubscribe("term", base::getResponse<bk::Subscription>(subRes)));
+    ASSERT_NO_THROW(c.unsubscribe("other", base::getResponse<bk::Subscription>(subRes)));
+    s.checkTraceActivation(c, {});
+}
