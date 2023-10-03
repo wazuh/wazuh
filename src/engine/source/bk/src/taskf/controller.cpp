@@ -184,7 +184,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
         publisher = m_traces[expression->getName()]->publisher();
     }
 
-    auto task = m_tf.placeholder();
+    auto task = m_tf.placeholder(); // Change name output task
     bool hasParent = !parent.empty();
 
     // Term
@@ -248,7 +248,6 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             for (auto& operand : operands)
             {
                 auto subTask = build(operand, root, false, publisher);
-                root.precede(subTask);
                 task.succeed(subTask);
             }
         }
@@ -297,8 +296,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             std::shared_ptr<std::atomic<int>> result = std::make_shared<std::atomic<int>>(SUCCESS);
 
             auto condTask = build(operands[0], root, true, publisher).name("cond implication");
-            auto eTask = tf::Task();
-            auto successTask = build(operands[1], eTask, true, publisher).name("success implication");
+            auto successTask = build(operands[1], condTask, true, publisher).name("success implication");
             auto failTask = m_tf.emplace(
                                     [result]()
                                     {
@@ -307,7 +305,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
                                     })
                                 .name("fail implication");
             // If condTask has success, execute successTask and if is failure, execute failTask
-            condTask.precede(successTask, failTask);
+            condTask.precede(failTask);
 
             task.name("implication output");
             if (needResult)
