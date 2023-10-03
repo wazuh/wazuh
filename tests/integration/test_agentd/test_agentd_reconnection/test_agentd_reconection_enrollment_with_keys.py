@@ -127,7 +127,7 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     control_service('stop')
 
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator()
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
 
     #Prepare test
@@ -143,7 +143,7 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     kill_server(remoted_server)
     
     # Start rejecting Agent
-    remoted_server = RemotedSimulator(mode = 'WRONG_KEY')
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
     remoted_server.start()
 
     # Wait until Agent asks a new key to enrollment
@@ -153,7 +153,7 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     kill_server(remoted_server)
     
     # Start responding Agent
-    remoted_server = RemotedSimulator()
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
 
     # Wait until Agent is notifying Manager

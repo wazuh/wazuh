@@ -141,7 +141,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     wait_enrollment_try()
 
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator()
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
 
     # Wait until Agent is notifing Manager
@@ -150,7 +150,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     # Reset simulator
     kill_server(remoted_server)
 
-    remoted_server = RemotedSimulator(mode = 'WRONG_KEY')
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
     remoted_server.start()
 
     # Wait until Agent asks a new key to enrollment
@@ -159,7 +159,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     # Reset simulator
     kill_server(remoted_server)
 
-    remoted_server = RemotedSimulator()
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
     # Wait until Agent is notifing Manager
     wait_keepalive()
