@@ -1,4 +1,4 @@
-name: Testing that the expected files are replaced in the upgrade.
+name: Windows upgrade test
 
 on:
   pull_request:
@@ -17,13 +17,19 @@ jobs:
         run: make -C src deps TARGET=winagent -j2
       - name: make
         run: make -C src TARGET=winagent -j2
-      - name: Avoid signing files
-        run: sed -i 's+signtool+::signtool+g' src/win32/wazuh-installer-build-msi.bat
+      - name: Avoid signing files and pause
+        run: |
+          sed -i 's+signtool+::signtool+g' src/win32/wazuh-installer-build-msi.bat
+          sed -i 's+pause+::pause+g' src/win32/wazuh-installer-build-msi.bat
+      - name: Removing not required files
+        run: rm -rf src/external/* .git/
+      - name: Compress folder
+        run: 7z a win-agent-base.zip ./*
       - name: Upload base branch folder
         uses: actions/upload-artifact@v3
         with:
-          name: win-agent-base
-          path: src/**
+          name: win-agent-base.zip
+          path: win-agent-base.zip
 
   check_upgrade_result:
     strategy:
@@ -39,23 +45,26 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
-      - name: Download released .msi
-        run: |
-          mkdir C:\win-agent-released
-          python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released\
-      - name: Download base folder
-        uses: actions/download-artifact@v3
-        with:
-          name: win-agent-base
-          path: C:\win-agent-base\
-      - name: Create .msi package
-        run: |
-          cd C:\win-agent-base\
-          $VERSION = Get-Content .\VERSION -Raw
-          win32\wazuh-installer-build-msi.bat $VERSION 2
       - name: Install dependencies
         run: |
           pip install -r src/win32/qa/requirements.txt
+      - name: Download released .msi
+        run: |
+          mkdir C:\win-agent-released
+          python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released
+      - name: Download base folder
+        uses: actions/download-artifact@v3
+        with:
+          name: win-agent-base.zip
+          path: C:\win-agent-base
+      - name: Unzip base folder
+        run: 7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
+      - name: Create .msi package
+        run: |
+          cd C:\win-agent-base\src\win32
+          $VERSION = Get-Content ..\VERSION
+          .\wazuh-installer-build-msi.bat $VERSION 0
+          cp *.msi C:\win-agent-base\
       - name: Run tests
         run: |
           cd src/win32/qa

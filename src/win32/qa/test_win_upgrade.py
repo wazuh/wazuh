@@ -1,6 +1,6 @@
 import pathlib
 import os
-import subprocess
+import hashlib
 
 RELEASED_PATH = 'C:\\win-agent-released\\'
 BASE_PATH = 'C:\\win-agent-base\\'
@@ -12,10 +12,10 @@ def populate_dict(dict, files_list):
         # We skip this executable because the 'eventchannel' will be used instead
         if file.name.count('WAZUH_AGENT.EXE') > 0:
             continue
-        cmd = f'Get-FileHash -Path "{file}" -Algorithm SHA256 | Select-Object -ExpandProperty Hash'
-        result = subprocess.run(
-            ["powershell", "-Command", cmd], stdout=subprocess.PIPE, check=True)
-        file_hash = result.stdout.decode().strip()
+
+        with open(file, "rb") as f:
+            file_hash = hashlib.file_digest(f, "sha256").hexdigest()
+
         # It's required to normalize the name because the installation process changes it
         dict[file.name.lower().replace('-', '_').replace('c++', 'cpp').replace(
             '_dll', '.dll').replace('wazuh_agent_eventchannel.exe', 'wazuh_agent.exe')] = file_hash
@@ -34,18 +34,18 @@ def test_win_upgrade():
 
     # Install the released .msi
     os.system(
-        f"start /wait msiexec /i {str(released_msi.resolve())} /qn /l*v win-agent-released.log")
+        f"start /wait msiexec /i {str(released_msi.resolve())} /qn /l*v {RELEASED_PATH}win-agent-released.log")
 
     # Upgrade Wazuh agent
     os.system(
-        f"start /wait msiexec /i {str(base_msi.resolve())} /qn /l*v win-agent-base.log")
+        f"start /wait msiexec /i {str(base_msi.resolve())} /qn /l*v {BASE_PATH}win-agent-base.log")
 
     # Unzip base .msi to folder
     os.system(f'7z e {str(base_msi.resolve())} "-o{BASE_PATH}"')
 
     # List all .exe and .dll files in of the unzipped folder
-    exe_to_install = list(pathlib.Path(BASE_PATH).glob('**/*.exe'))
-    dll_to_install = list(pathlib.Path(BASE_PATH).glob('**/*dll*'))
+    exe_to_install = list(pathlib.Path(BASE_PATH).glob('*.exe'))
+    dll_to_install = list(pathlib.Path(BASE_PATH).glob('*dll'))
     files_to_install = exe_to_install + dll_to_install
     assert len(files_to_install) >= 1
 
@@ -63,7 +63,7 @@ def test_win_upgrade():
     installed_files_dict = {}
     populate_dict(installed_files_dict, installed_files)
 
-    assert len(installed_files_dict) == len(files_to_install_dict)
+    assert len(installed_files_dict) == len(files_to_install_dict), f"Installed files: '{installed_files_dict}'\nFiles to install: '{files_to_install_dict}'"
 
     success = True
     failed_keys = []
