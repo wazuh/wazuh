@@ -19,7 +19,9 @@ from wazuh.core.utils import get_utc_now
 import wazuh
 from api.constants import INSTALLATION_UID_PATH
 
-CTI_URL = 'http://cti:4041'
+CTI_URL = get_ossec_conf(
+    section='global'
+).get('cti_url', 'http://cti:4041')  # This default must be removed once we have the configuratoin in the ossec parser.
 RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60*60*24
 INSTALLATION_UID_KEY = 'installation_uid'
