@@ -88,6 +88,7 @@ SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
 SHARED_MODULES=shared_modules/
+WAZUH_MODULES=wazuh_modules/
 DBSYNC=${SHARED_MODULES}dbsync/
 RSYNC=${SHARED_MODULES}rsync/
 SYSCOLLECTOR=wazuh_modules/syscollector/
@@ -130,6 +131,7 @@ DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
 RSYNC_TEST=-DUNIT_TEST=ON #--coverage
 SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
 SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
+WAZUH_TEST=-DUNIT_TEST=ON #--coverage
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
@@ -1687,7 +1689,7 @@ endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
-	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} && ${MAKE}
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
@@ -2640,6 +2642,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(RSYNC)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
+	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build
