@@ -121,7 +121,7 @@ def main():
         exit(gcloud_exception.errcode)
 
     except Exception as e:
-        gcp_logger.critical(f'Unknown error: {e}', exc_info=True)
+        gcp_logger.critical(f'Unknown error: {e}')
         exit(exceptions.UNKNOWN_ERROR_ERRCODE)
 
     else:

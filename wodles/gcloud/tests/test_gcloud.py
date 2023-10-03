@@ -15,11 +15,8 @@ from argparse import Namespace
 from unittest.mock import patch, MagicMock
 
 # Local imports
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__))))  # noqa: E501
-#path_test = os.path.join(os.path.dirname(os.path.realpath(__file__)))
+sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 import gcloud
-
-print('hola')
 
 
 def get_wodle_config(integration_type: str, credentials_file: str = None, log_level: int = 1,

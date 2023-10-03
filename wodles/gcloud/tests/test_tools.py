@@ -1,13 +1,14 @@
 import argparse
 import logging
 import os
+from os.path import join, dirname, realpath
 import sys
 import pytest
 from unittest.mock import patch
 
 # Local imports
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-from gcloud.tools import get_script_arguments
+sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501 # noqa: E501
+from gcloud import get_script_arguments
 from gcp_logger import GCPLogStrategy
 
 
