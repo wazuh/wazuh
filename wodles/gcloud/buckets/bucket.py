@@ -9,7 +9,7 @@
 """This module contains the class for getting Google Cloud Storage Bucket logs."""
 
 import sqlite3
-from sys import exit, path
+from sys import path
 from datetime import datetime, timezone
 from json import dumps, JSONDecodeError
 from os.path import join, dirname, realpath
@@ -25,7 +25,6 @@ except ImportError as e:
 path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
 import utils
 import exceptions
-import tools
 from integration import WazuhGCloudIntegration
 from shared.wazuh_cloud_logger import WazuhCloudLogger
 
