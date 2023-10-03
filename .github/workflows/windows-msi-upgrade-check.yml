@@ -1,0 +1,74 @@
+name: Testing that the expected files are replaced in the upgrade.
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/windows-msi-upgrade-check.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install mingw
+        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - uses: actions/checkout@v3
+      - name: make deps
+        run: make -C src deps TARGET=winagent -j2
+      - name: make
+        run: make -C src TARGET=winagent -j2
+      - name: Avoid signing files
+        run: sed -i 's+signtool+::signtool+g' src/win32/wazuh-installer-build-msi.bat
+      - name: Upload base branch folder
+        uses: actions/upload-artifact@v3
+        with:
+          name: win-agent-base
+          path: src/**
+
+  check_upgrade_result:
+    strategy:
+          matrix:
+              wazuh_version: [4.5.2-1]
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: Download released .msi
+        run: |
+          mkdir C:\win-agent-released
+          python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released\
+      - name: Download base folder
+        uses: actions/download-artifact@v3
+        with:
+          name: win-agent-base
+          path: C:\win-agent-base\
+      - name: Create .msi package
+        run: |
+          cd C:\win-agent-base\
+          $VERSION = Get-Content .\VERSION -Raw
+          win32\wazuh-installer-build-msi.bat $VERSION 2
+      - name: Install dependencies
+        run: |
+          pip install -r src/win32/qa/requirements.txt
+      - name: Run tests
+        run: |
+          cd src/win32/qa
+          python -m pytest -vv ./test_win_upgrade.py
+      - name: Upload release installation log
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: release_log
+          path: C:\win-agent-released\win-agent-released.log
+      - name: Upload base installation log
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: base_log
+          path: C:\win-agent-base\win-agent-base.log
