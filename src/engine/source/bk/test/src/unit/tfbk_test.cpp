@@ -349,8 +349,7 @@ INSTANTIATE_TEST_SUITE_P(
         BKexpParams {base::Chain::create(
                          "chain", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
                      {{"and_0_0", false}, {"and_1_0", false}}},
-        /*********************************************** IMPLICATION TEST
-         ***********************************************/
+        /********************************************** IMPLICATION TEST **********************************************/
         // [2] Complex: Implication of broadcast - its always true
         BKexpParams {
             base::Implication::create("implication",
@@ -390,7 +389,23 @@ INSTANTIATE_TEST_SUITE_P(
         BKexpParams {base::Implication::create("implication",
                                                EasyExp::implication("implication_0", false, true),
                                                EasyExp::implication("implication_1", true, false)),
-                     {{"implication_0_cond", false}}}
+                     {{"implication_0_cond", false}}},
+        BKexpParams {base::Implication::create("implication",
+                                               EasyExp::implication("implication_0", false, true),
+                                               EasyExp::term("term", true)),
+                     {{"implication_0_cond", false}}},
+        BKexpParams {base::Implication::create("implication",
+                                               EasyExp::implication("implication_0", true, true),
+                                               EasyExp::term("term", true)),
+                     {{"implication_0_cond", true}, {"implication_0_imp", true}, {"term", true}}},
+        BKexpParams {base::Implication::create("implication",
+                                               EasyExp::term("term", true),
+                                               EasyExp::implication("implication_0", false, true)),
+                     {{"term", true}, {"implication_0_cond", false}}},
+        BKexpParams {base::Implication::create("implication",
+                                               EasyExp::term("term", false),
+                                               EasyExp::implication("implication_0", false, true)),
+                     {{"term", false}}}
 
         // End
         ));
