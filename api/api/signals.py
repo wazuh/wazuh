@@ -14,15 +14,18 @@ import certifi
 from aiohttp import web
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.security import load_spec
 from wazuh.core.utils import get_utc_now
 
+import wazuh
 from api.constants import INSTALLATION_UID_PATH
 
-RELEASE_UPDATES_URL = 'http://cti:4041'
+CTI_URL = 'http://cti:4041'
+RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60*60*24
 INSTALLATION_UID_KEY = 'installation_uid'
 UPDATE_CHECK_OSSEC_FIELD = 'update_check'
+WAZUH_UID_KEY = 'wazuh-uid'
+WAZUH_TAG_KEY = 'wazuh-tag'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -70,8 +73,7 @@ def _get_current_version() -> str:
     str
         Wazuh version in format X.Y.Z format.
     """
-    spec = load_spec()
-    return spec['info']['version']
+    return wazuh.__version__
 
 
 def _is_running_in_master_node() -> bool:
@@ -84,7 +86,7 @@ def _is_running_in_master_node() -> bool:
     """
     cluster_config = read_cluster_config()
 
-    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
+    return not cluster_config['disabled'] or cluster_config['node_type'] == 'master'
 
 
 def _update_check_is_enabled() -> bool:
@@ -136,18 +138,16 @@ async def get_update_information(app: web.Application) -> None:
         Application context to inject the update information
     """
     headers = {
-        'wazuh-uid': app[INSTALLATION_UID_KEY],
-        'wazuh-tag': f'v{_get_current_version()}'
+        WAZUH_UID_KEY: app[INSTALLATION_UID_KEY],
+        WAZUH_TAG_KEY: f'v{_get_current_version()}'
     }
-
-    updates_url = os.path.join(RELEASE_UPDATES_URL, 'api', 'v1', 'ping')
 
     async with aiohttp.ClientSession(connector=_get_connector()) as session:
         while True:
             logger.info('Getting updates information...')
-            logger.debug('Querying %s', updates_url)
+            logger.debug('Querying %s', RELEASE_UPDATES_URL)
             try:
-                async with session.get(updates_url, headers=headers) as response:
+                async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
                     response_data = await response.json()
 
                     logger.debug("Response status: %s", response.status)
