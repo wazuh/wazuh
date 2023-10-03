@@ -157,6 +157,7 @@ namespace RSync
             std::map<RSYNC_HANDLE, std::shared_ptr<RSyncContext>> m_remoteSyncContexts;
             std::mutex m_mutex;
             RegistrationController m_registrationController;
+            std::unordered_map<RSYNC_HANDLE, std::atomic<int32_t>> m_currentSyncId;
     };
 }// namespace RSync
 

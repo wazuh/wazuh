@@ -107,6 +107,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
+        m_currentSyncId[handle] = checksumCtx.rightCtx.id;
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
@@ -150,21 +151,33 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
 
     const auto registerCallback
     {
-        [spDBSyncWrapper, syncConfiguration, callbackWrapper] (const SyncInputData & syncData)
+        [spDBSyncWrapper, syncConfiguration, callbackWrapper, this, handle] (const SyncInputData & syncData)
         {
             try
             {
-                if (0 == syncData.command.compare("checksum_fail"))
+                if (syncData.id < m_currentSyncId.at(handle))
                 {
-                    sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
+                    m_currentSyncId[handle] = syncData.id;
                 }
-                else if (0 == syncData.command.compare("no_data"))
+
+                if (syncData.id > m_currentSyncId.at(handle))
                 {
-                    sendAllData(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
+                    Log::debugVerbose << "Sync id: " << std::to_string(syncData.id) << " is not the current id: " << std::to_string(m_currentSyncId.at(handle)) << LogEndl;
                 }
                 else
                 {
-                    throw rsync_error { INVALID_OPERATION };
+                    if (0 == syncData.command.compare("checksum_fail"))
+                    {
+                        sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
+                    }
+                    else if (0 == syncData.command.compare("no_data"))
+                    {
+                        sendAllData(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
+                    }
+                    else
+                    {
+                        throw rsync_error { INVALID_OPERATION };
+                    }
                 }
 
             }
