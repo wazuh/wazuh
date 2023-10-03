@@ -5,9 +5,7 @@
 
 """Unit tests for gcloud module."""
 
-import os
 import sys
-from sys import path, exit
 from os.path import join, dirname, realpath
 import pytest
 import logging

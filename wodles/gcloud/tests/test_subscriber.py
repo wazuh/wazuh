@@ -8,7 +8,6 @@
 
 """Unit tests for subscriber module."""
 
-import os
 import sys
 from os.path import join, dirname, realpath
 from logging import Logger
@@ -23,7 +22,7 @@ from pubsub.subscriber import WazuhGCloudSubscriber
 from exceptions import GCloudError
 
 
-data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
+data_path = join(dirname(realpath(__file__)), 'data/')
 MAX_MESSAGES = 100
 
 
@@ -70,7 +69,7 @@ def test_WazuhGCloudSubscriber__init__ko(credentials_file, errcode):
     invalid parameters.
     """
     with pytest.raises(GCloudError) as e:
-        WazuhGCloudSubscriber(**get_wodle_config(credentials_file=os.path.join(data_path, credentials_file)))
+        WazuhGCloudSubscriber(**get_wodle_config(credentials_file=join(data_path, credentials_file)))
     assert e.value.errcode == errcode
 
 

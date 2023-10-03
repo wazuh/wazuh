@@ -8,18 +8,9 @@
 
 """This module contains the class for sending events from Google Cloud subscriber service to Wazuh. """
 
-
-import logging
 from os.path import abspath, dirname
 from sys import path
 from json import JSONDecodeError
-
-try:
-    from google.cloud import pubsub_v1 as pubsub
-    import google.api_core.exceptions
-except ImportError as e:
-    raise exceptions.GCloudError(errcode=1003, package=e.name)
-
 
 # Local Imports
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
@@ -27,8 +18,11 @@ import exceptions
 from integration import WazuhGCloudIntegration
 from shared.wazuh_cloud_logger import WazuhCloudLogger
 
-
-
+try:
+    from google.cloud import pubsub_v1 as pubsub
+    import google.api_core.exceptions
+except ImportError as e:
+    raise exceptions.GCloudError(errcode=1003, package=e.name)
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
     """Class for sending events from Google Cloud to Wazuh."""
