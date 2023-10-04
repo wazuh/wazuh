@@ -572,6 +572,7 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
         if (std::ifstream(path))
         {
             isRemoved = std::remove(path.c_str());
+
             for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
             {
                 std::this_thread::sleep_for(1s); //< Sleep for 1s
