@@ -405,7 +405,41 @@ INSTANTIATE_TEST_SUITE_P(
         BKexpParams {base::Implication::create("implication",
                                                EasyExp::term("term", false),
                                                EasyExp::implication("implication_0", false, true)),
-                     {{"term", false}}}
+                     {{"term", false}}},
+        // Implication of or
+        BKexpParams {base::Implication::create("implication",
+                                                  EasyExp::or_("or_0", {true, true}),
+                                                  EasyExp::or_("or_1", {true, true})),
+                        {{"or_0_0", true}, {"or_1_0", true}}},
+        BKexpParams {base::Implication::create("implication",
+                                                  EasyExp::or_("or_0", {true, false}),
+                                                  EasyExp::or_("or_1", {false, true})),
+                        {{"or_0_0", true}, {"or_1_0", false}, {"or_1_1", true}}},
+        BKexpParams {base::Implication::create("implication",
+                                                  EasyExp::or_("or_0", {false, false}),
+                                                  EasyExp::or_("or_1", {false, false})),
+                        {{"or_0_0", false}, {"or_0_1", false}}},
+        // Implication of and
+        BKexpParams {base::Implication::create("implication",
+                                                  EasyExp::and_("and_0", {true, true}),
+                                                  EasyExp::and_("and_1", {true, true})),
+                        {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
+        BKexpParams {base::Implication::create("implication",
+                                                  EasyExp::and_("and_0", {false, false}),
+                                                  EasyExp::and_("and_1", {false, false})),
+                        {{"and_0_0", false}}},
+        BKexpParams {base::Implication::create("implication",
+                                                  EasyExp::and_("and_0", {true, true}),
+                                                    EasyExp::and_("and_1", {false, false})),
+                        {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}},
+        /********************************************** OR TEST **********************************************/
+        // [2] Complex: Or of broadcast
+        BKexpParams {
+            base::Or::create("or", {EasyExp::broadcast("broadcast_0", {true, true}),
+                                    EasyExp::broadcast("broadcast_1", {true, true})}),
+            {{"broadcast_0_1", true}, {"broadcast_0_0", true}}}
+
+
 
         // End
         ));
