@@ -730,7 +730,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
     }
 
     if (dwRtnCode != ERROR_SUCCESS) {
-        merror("GetSecurityInfo error code = (%lu), '%s'", dwRtnCode, win_strerror(dwRtnCode));
+        mdebug1("GetSecurityInfo error code = (%lu), '%s'", dwRtnCode, win_strerror(dwRtnCode));
         *AcctName = '\0';
         goto end;
     }
@@ -1067,7 +1067,7 @@ char *get_registry_group(char **sid, HANDLE hndl) {
     }
 
     if (dwRtnCode != ERROR_SUCCESS) {
-        merror("GetSecurityInfo error code = (%lu), '%s'", dwRtnCode, win_strerror(dwRtnCode));
+        mdebug1("GetSecurityInfo error code = (%lu), '%s'", dwRtnCode, win_strerror(dwRtnCode));
         *GrpName = '\0';
         goto end;
     }
