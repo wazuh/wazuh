@@ -25,6 +25,9 @@
 #include "packages/packageFamilyDataAFactory.h"
 #include "packages/pkgWrapper.h"
 #include "packages/packageMac.h"
+#include "hardware/factoryHardwareFamilyCreator.h"
+#include "hardware/hardwareWrapperImplMac.h"
+#include "osPrimitivesImplMac.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -87,85 +90,11 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     return jsProcessInfo;
 }
 
-void SysInfo::getMemory(nlohmann::json& info) const
+nlohmann::json SysInfo::getHardware() const
 {
-    constexpr auto vmPageSize{"vm.pagesize"};
-    constexpr auto vmPageFreeCount{"vm.page_free_count"};
-    uint64_t ram{0};
-    const std::vector<int> mib{CTL_HW, HW_MEMSIZE};
-    size_t len{sizeof(ram)};
-    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
-
-    if (ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading total RAM."
-        };
-    }
-
-    const auto ramTotal{ram / KByte};
-    info["ram_total"] = ramTotal;
-    u_int pageSize{0};
-    len = sizeof(pageSize);
-    ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
-
-    if (ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading page size."
-        };
-    }
-
-    uint64_t freePages{0};
-    len = sizeof(freePages);
-    ret = sysctlbyname(vmPageFreeCount, &freePages, &len, nullptr, 0);
-
-    if (ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading free pages."
-        };
-    }
-
-    const auto ramFree{(freePages * pageSize) / KByte};
-    info["ram_free"] = ramFree;
-    info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
-}
-
-int SysInfo::getCpuMHz() const
-{
-    constexpr auto MHz{1000000};
-    unsigned long cpuMHz{0};
-    constexpr auto clockRate{"hw.cpufrequency"};
-    size_t len{sizeof(cpuMHz)};
-    const auto ret{sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
-
-    if (ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading cpu frequency."
-        };
-    }
-
-    return cpuMHz / MHz;
-}
-
-std::string SysInfo::getSerialNumber() const
-{
-    const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
-    return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
+    nlohmann::json hardware;
+    FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_shared<OSHardwareWrapperMac<OsPrimitivesMac>>())->buildHardwareData(hardware);
+    return hardware;
 }
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
@@ -179,7 +108,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             if (Utils::endsWith(package, ".app"))
             {
                 nlohmann::json jsPackage;
-                FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
 
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
@@ -199,7 +128,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     if (!Utils::startsWith(version, "."))
                     {
                         nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
 
                         if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                         {

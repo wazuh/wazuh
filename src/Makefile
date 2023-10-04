@@ -100,7 +100,7 @@ DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
-CA_NAME?=DigiCert High Assurance EV Root CA
+CA_NAME?=DigiCert Assured ID Root CA
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
@@ -234,7 +234,7 @@ ifeq (${uname_S},Darwin)
 	AR_LDFLAGS+=-pthread
 	AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
 	SHARED=dylib
-	OSSEC_LIBS+=-framework Security
+	OSSEC_LIBS+=-framework Security -framework CoreFoundation -framework SystemConfiguration
 	PRECOMPILED_OS:=darwin
 else
 ifeq (${uname_S},FreeBSD)
@@ -635,7 +635,7 @@ help: failtarget
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
-	@echo "   make CA_NAME="DigiCert High Assurance EV Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is "DigiCert High Assurance EV Root CA"."
+	@echo "   make CA_NAME="DigiCert Assured ID Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -1026,18 +1026,13 @@ ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 
 ifeq (${TARGET},winagent)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} --enable-static=yes --disable-shared --with-winssl --disable-ldap --without-libidn2 && ${MAKE}
-else
-ifeq (${uname_S},Darwin)
-$(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} --enable-static=yes --disable-shared --with-schannel --disable-ldap --without-libidn2 && ${MAKE}
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --with-ssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli
 else
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
-endif
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --with-ssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2
 endif
 endif
 
@@ -1194,7 +1189,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 20
+DEPS_VERSION = 21
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no

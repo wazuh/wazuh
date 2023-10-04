@@ -20,7 +20,7 @@
 #include "networkInterfaceSolaris.h"
 #include "sharedDefs.h"
 
-template <OSType osType>
+template <OSPlatformType osType>
 class FactoryNetworkFamilyCreator final
 {
     public:
@@ -34,7 +34,7 @@ class FactoryNetworkFamilyCreator final
 };
 
 template <>
-class FactoryNetworkFamilyCreator<OSType::LINUX> final
+class FactoryNetworkFamilyCreator<OSPlatformType::LINUX> final
 {
     public:
         static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
@@ -44,7 +44,7 @@ class FactoryNetworkFamilyCreator<OSType::LINUX> final
 };
 
 template <>
-class FactoryNetworkFamilyCreator<OSType::BSDBASED> final
+class FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED> final
 {
     public:
         static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
@@ -54,7 +54,7 @@ class FactoryNetworkFamilyCreator<OSType::BSDBASED> final
 };
 
 template <>
-class FactoryNetworkFamilyCreator<OSType::WINDOWS> final
+class FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS> final
 {
     public:
         static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
@@ -64,7 +64,7 @@ class FactoryNetworkFamilyCreator<OSType::WINDOWS> final
 };
 
 template <>
-class FactoryNetworkFamilyCreator<OSType::SOLARIS> final
+class FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS> final
 {
     public:
         static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)

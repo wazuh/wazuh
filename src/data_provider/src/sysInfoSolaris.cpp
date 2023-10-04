@@ -49,26 +49,40 @@ static void getOsInfoFromUname(nlohmann::json& info)
     }
 }
 
-
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     return UNKNOWN_VALUE;
 }
-std::string SysInfo::getCpuName() const
+
+static std::string getCpuName()
 {
     return UNKNOWN_VALUE;
 }
-int SysInfo::getCpuMHz() const
+
+static int getCpuMHz()
 {
     return 0;
 }
-int SysInfo::getCpuCores() const
+
+static int getCpuCores()
 {
     return 0;
 }
-void SysInfo::getMemory(nlohmann::json& /*info*/) const
+
+static void getMemory(nlohmann::json& /*info*/)
 {
 
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["board_serial"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_mhz"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
 }
 
 static void getPackagesFromPath(const std::string& pkgDirectory, std::function<void(nlohmann::json&)> callback)
@@ -81,7 +95,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, std::function<v
         const auto fullPath {  pkgDirectory + package };
         const auto pkgWrapper{ std::make_shared<SolarisWrapper>(fullPath) };
 
-        FactoryPackageFamilyCreator<OSType::SOLARIS>::create(pkgWrapper)->buildPackageData(jsPackage);
+        FactoryPackageFamilyCreator<OSPlatformType::SOLARIS>::create(pkgWrapper)->buildPackageData(jsPackage);
 
         if (!jsPackage.at("name").get_ref<const std::string&>().empty())
         {
@@ -177,18 +191,18 @@ nlohmann::json SysInfo::getNetworks() const
                     {
                         // IPv4 data
                         const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_INET, socketV4.get(), itemr) };
-                        FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
+                        FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(wrapper)->buildNetworkData(network);
                     }
                     else if (AF_INET6 == itemr.first->lifr_addr.ss_family)
                     {
                         // IPv6 data
                         const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_INET6, socketV6.get(), itemr) };
-                        FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
+                        FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(wrapper)->buildNetworkData(network);
                     }
                 }
 
                 const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_UNSPEC, firstItemFD, firstItem) };
-                FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
+                FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(wrapper)->buildNetworkData(network);
 
                 networks["iface"].push_back(network);
             }

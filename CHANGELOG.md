@@ -4,10 +4,29 @@ All notable changes to this project will be documented in this file.
 ## [v4.4.5]
 
 
-## [v4.4.4]
+## [v4.4.4] - 2023-06-13
+
+### Manager
+
+#### Fixed
+
+- The vulnerability scanner stops producing false positives for some Windows 11 vulnerabilities due to a change in the feed's CPE. ([#17178](https://github.com/wazuh/wazuh/pull/17178))
+- Prevented the VirusTotal integration from querying the API when the source alert is missing the MD5. ([#16908](https://github.com/wazuh/wazuh/pull/16908))
+
+### Agent
+
+#### Changed
+
+- The Windows agent package signing certificate has been updated. ([#17506](https://github.com/wazuh/wazuh/pull/17506))
+
+### Ruleset
+
+#### Changed
+
+- Updated all current rule descriptions from "Ossec" to "Wazuh". ([#17211](https://github.com/wazuh/wazuh/pull/17211))
 
 
-## [v4.4.3]
+## [v4.4.3] - 2023-05-26
 
 ### Agent
 
@@ -30,7 +49,7 @@ All notable changes to this project will be documented in this file.
 - The SCA policy names have been unified. ([#17202](https://github.com/wazuh/wazuh/pull/17202))
 
 
-## [v4.4.2] - 2022-05-18
+## [v4.4.2] - 2023-05-18
 
 ### Manager
 

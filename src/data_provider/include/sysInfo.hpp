@@ -46,11 +46,7 @@ public:
     void processes(std::function<void(nlohmann::json &)>);
     nlohmann::json hotfixes();
 private:
-    virtual std::string getSerialNumber() const;
-    virtual std::string getCpuName() const;
-    virtual int getCpuMHz() const;
-    virtual int getCpuCores() const;
-    virtual void getMemory(nlohmann::json& info) const;
+    virtual nlohmann::json getHardware() const;
     virtual nlohmann::json getPackages() const;
     virtual nlohmann::json getOsInfo() const;
     virtual nlohmann::json getProcessesInfo() const;

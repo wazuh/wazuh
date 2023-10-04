@@ -80,7 +80,10 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         }
 
         char *new_env = getenv("PATH");
-        mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+        if (new_env) {
+            mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+        }
+
         free(new_path);
     }
 

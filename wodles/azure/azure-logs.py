@@ -698,6 +698,10 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
                      f"container: '{container_name}' ")
         search = "." if not args.blobs else args.blobs
         for blob in blobs:
+            # Skip if the blob is empty
+            if blob.properties.content_length == 0:
+                continue
+
             # Skip the blob if its name has not the expected format
             if search not in blob.name:
                 continue
