@@ -30,7 +30,6 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
-#include <CoreServices/CoreServices.h>
 
 
 const std::string MACPORTS_DB_NAME {"registry.db"};
@@ -64,8 +63,9 @@ static const std::vector<PKGDirectoryEntry> s_PKGDirectoryTable =
     { "/Applications", 2 },
     { "/Library", 0 },
     { "/System/Applications", 0 },
-    { "/System/Library", 0 },
-    { "/Users", 0 },
+    { "/System/Applications/Utilities", 0 },
+    { "/System/Library", 2 },
+    //{ "/Users", 0 },
 };
 
 static const std::map<std::string, int> s_mapPackagesDirectories =
@@ -120,47 +120,56 @@ nlohmann::json SysInfo::getHardware() const
     return hardware;
 }
 
+void getAppsPathsFromLaunchServices(std::deque<std::string>& apps);
+
 static void getPKGPackagesFromLaunchServices(std::function<void(nlohmann::json&)> callback)
 {
-  CFBundleRef bundleRef = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.LaunchServices"));
-  if (bundleRef == nullptr)
-  {
-    throw std::runtime("LaunchServices bundle not found");
-  }
+    (void)callback;
 
-  auto pFunc = (OSStatus(*)(CFArrayRef*)) CFBundleGetFunctionPointerForName(bundleRef, CFSTR("_LSCopyAllApplicationURLs"));
-  if (pFunc == nullptr)
-  {
-    throw std::runtime("_LSCopyAllApplicationURLs function not found");
-  }
+    std::deque<std::string> appsPaths;
 
-  CFArrayRef listApps = nullptr;
-  if (pFunc(&listApps) != noErr || listApps == nullptr)
-  {
-    throw std::runtime("Could not list LaunchServices applications");
-  }
+    getAppsPathsFromLaunchServices(appsPaths);
 
-/*
-  for (id app in (__bridge NSArray*)listApps)
-  {
-    if (app != nil && [app isKindOfClass:[NSURL class]]) {
-      apps.insert(std::string([[app path] UTF8String]) + "/Contents/Info.plist");
+    for (const auto &appPath : appsPaths)
+    {
+        std::cout << "DEBUG. appPath: " << appPath << std::endl;
+
+
+SEGUIR ACA!
+
+
+        nlohmann::json jsPackage;
+        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
+
+        if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                !jsPackage.at("version").get_ref<const std::string&>().empty() &&
+                !jsPackage.at("format").get_ref<const std::string&>().empty()
+            )
+        {
+            DEBUG_AppFoundCounter++; // DEBUG
+
+            // Only return valid content packages
+            callback(jsPackage);
+
+            maxRecurrencySubDirectory = -1;
+        }
+
+
+
     }
-  }
-*/
-
-  CFRelease(listApps);
 }
 
 static void getPKGPackagesFromPath(const std::string& path, const int maxRecurrency, std::function<void(nlohmann::json&)> callback)
 {
     DEBUG_DirAnalizedTotalCounter++; // DEBUG
 
-    std::function<void(const std::string&)> pkgAnalizeDirectory;
+    std::function<void(const std::string&, const int)> pkgAnalizeDirectory;
 
     pkgAnalizeDirectory =
         [&](const std::string & directory, const int maxRecurrency)
     {
+        //std::cout << "directory: " << directory << ". maxRecurrency: " << maxRecurrency << std::endl;
+
         const auto subDirectories { Utils::enumerateDirTypeDir(directory) };
 
         for (const auto& subDirectory : subDirectories)
@@ -172,12 +181,10 @@ static void getPKGPackagesFromPath(const std::string& path, const int maxRecurre
 
             DEBUG_SubdirAnalizedTotalCounter++; // DEBUG
 
-            int maxRecurrencySubDirectory = maxRecurrency;
+            int maxRecurrencySubDirectory = 0;
 
             if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
             {
-                std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
-
                 try
                 {
                     nlohmann::json jsPackage;
@@ -199,19 +206,20 @@ static void getPKGPackagesFromPath(const std::string& path, const int maxRecurre
                 catch (const std::exception& e)
                 {
                     std::cerr << e.what() << std::endl;
-                    maxRecurrencySubDirectory = 0;
                 }
             }
             else
             {
-                if(maxRecurrency > 0)
-                {
-                    maxRecurrencySubDirectory = maxRecurrency - 1;
-                }
+                maxRecurrencySubDirectory = maxRecurrency;
             }
 
             if(maxRecurrencySubDirectory)
             {
+                if(maxRecurrencySubDirectory > 0)
+                {
+                    maxRecurrencySubDirectory--;
+                }
+
                 std::string pathSubDirectory { directory + "/" + subDirectory };
                 pkgAnalizeDirectory(pathSubDirectory, maxRecurrencySubDirectory);
             }
@@ -614,7 +622,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
         }
     }
-    std::cout << "DEBUG_DirAnalizedTotalCounter: " << DEBUG_DirAnalizedTotalCounter << ". DEBUG_SubdirAnalizedTotalCounter: " << DEBUG_SubdirAnalizedTotalCounter << ". DEBUG_AppFoundCounter: " << DEBUG_AppFoundCounter; // DEBUG
+    std::cout << "DEBUG_DirAnalizedTotalCounter: " << DEBUG_DirAnalizedTotalCounter << ". DEBUG_SubdirAnalizedTotalCounter: " << DEBUG_SubdirAnalizedTotalCounter << ". DEBUG_AppFoundCounter: " << DEBUG_AppFoundCounter << std::endl; // DEBUG
 }
 
 nlohmann::json SysInfo::getHotfixes() const

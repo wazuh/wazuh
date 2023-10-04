@@ -110,6 +110,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
     file(GLOB SYSINFO_SRC
         "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*Mac.mm"
         "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
         "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
@@ -118,6 +119,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   else()
     file(GLOB SYSINFO_SRC
         "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*Mac.mm"
         "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
         "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
