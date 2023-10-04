@@ -210,6 +210,10 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
+    // Both actions can't use RocksDB.
+    auto parametersWithoutDatabasePath = m_parameters;
+    parametersWithoutDatabasePath.at("configData").erase("databasePath");
+
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
 
     EXPECT_NO_THROW(routerProvider->start());
@@ -217,7 +221,7 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
     m_parameters["ondemand"] = true;
 
     auto action1 {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
-    auto action2 {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action2 {std::make_shared<Action>(routerProvider, topicName, parametersWithoutDatabasePath)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 

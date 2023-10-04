@@ -51,7 +51,8 @@ protected:
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/action-tests",
                     "dataFormat": "json",
-                    "contentFileName": "sample.json"
+                    "contentFileName": "sample.json",
+                    "databasePath": "/tmp/action-tests/rocksdb"
                 }
             }
         )"_json;
