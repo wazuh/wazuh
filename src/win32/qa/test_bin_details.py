@@ -23,7 +23,7 @@ def test_bin_details(current_bin):
     file_version_build = file_version_raw[2]
     file_version_revision = '0'
 
-    fields_dict = {'FileDescription': 'Wazuh Windows Agent internal file',
+    fields_dict = {'FileDescription': 'Wazuh Agent',
                    'ProductName': 'Wazuh Windows Agent',
                    'ProductVersion': product_version,
                    'FileVersionRaw.Major': file_version_major,
@@ -31,7 +31,7 @@ def test_bin_details(current_bin):
                    'FileVersionRaw.Build': file_version_build,
                    'FileVersionRaw.Revision': file_version_revision,
                    'OriginalFilename': '',
-                   'LegalCopyright': 'Copyright (C) 2015, Wazuh Inc.',
+                   'LegalCopyright': 'Copyright (C) Wazuh, Inc.',
                    'Language': 'English (United States)'}
 
     for key in fields_dict:
