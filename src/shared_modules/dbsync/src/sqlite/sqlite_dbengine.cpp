@@ -571,13 +571,14 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
     {
         if (std::ifstream(path))
         {
-            for (uint8_t amountTries = 0; amountTries < MAX_TRIES && (isRemoved = std::remove(path.c_str()));amountTries++)
+            for (uint8_t amountTries = 0; amountTries < MAX_TRIES && (isRemoved = std::remove(path.c_str())); amountTries++)
             {
                 std::this_thread::sleep_for(1s); //< Sleep for 1s
             }
+
             if (!isRemoved)
             {
-                return false;
+                ret = false;
             }
         }
     }
