@@ -20,11 +20,10 @@ from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
 from shared.wazuh_cloud_logger import WazuhCloudLogger
 from tools import MIN_NUM_THREADS, MIN_NUM_MESSAGES, get_script_arguments
-from gcp_logger import GCPLogStrategy
 
 # Set GCP logger
 gcp_logger = WazuhCloudLogger(
-    strategy=GCPLogStrategy()
+    logger_name=':gcloud_wodle:'
 )
 
 
@@ -113,15 +112,11 @@ def main():
             raise exceptions.GCloudError(1002, integration_type=arguments.integration_type)
 
     except exceptions.WazuhIntegrationException as gcloud_exception:
-        logging_func = gcp_logger.critical if \
-            isinstance(gcloud_exception, exceptions.WazuhIntegrationInternalError) else \
-            gcp_logger.error
-
-        logging_func(f'An exception happened while running the wodle: {gcloud_exception}')
+        gcp_logger.error(f'An exception happened while running the wodle: {gcloud_exception}')
         exit(gcloud_exception.errcode)
 
     except Exception as e:
-        gcp_logger.critical(f'Unknown error: {e}')
+        gcp_logger.error(f'Unknown error: {e}')
         exit(exceptions.UNKNOWN_ERROR_ERRCODE)
 
     else:

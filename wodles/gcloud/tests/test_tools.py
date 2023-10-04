@@ -14,12 +14,14 @@ from unittest.mock import patch
 # Local imports
 sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501 # noqa: E501
 from gcloud import get_script_arguments
-from gcp_logger import GCPLogStrategy
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 
 @pytest.fixture(scope='module')
-def gcp_strategy():
-    return GCPLogStrategy()
+def gcp_logger():
+    return WazuhCloudLogger(
+            logger_name='test_logger'
+            )
 
 
 def test_get_script_arguments(capsys):
@@ -51,10 +53,9 @@ def test_get_script_arguments_required(capsys, args):
     (logging.DEBUG, 'debug', 'Test debug message'),
     (logging.WARNING, 'warning', 'Test warning message'),
     (logging.ERROR, 'error', 'Test error message'),
-    (logging.CRITICAL, 'critical', 'Test critical message'),
 ])
-def test_log_methods(gcp_strategy, caplog, log_level, log_method, expected_message):
+def test_log_methods(gcp_logger, caplog, log_level, log_method, expected_message):
     with caplog.at_level(log_level, logger='TestGCPLogStrategy'):
-        with patch.object(gcp_strategy, 'logger', logging.getLogger('TestGCPLogStrategy')):
-            getattr(gcp_strategy, log_method)(expected_message)
+        with patch.object(gcp_logger, 'logger', logging.getLogger('TestGCPLogStrategy')):
+            getattr(gcp_logger, log_method)(expected_message)
     assert expected_message in caplog.text
