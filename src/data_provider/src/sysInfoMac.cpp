@@ -132,30 +132,28 @@ static void getPKGPackagesFromLaunchServices(std::function<void(nlohmann::json&)
 
     for (const auto &appPath : appsPaths)
     {
-        std::cout << "DEBUG. appPath: " << appPath << std::endl;
+        //std::cout << "DEBUG. appPath: " << appPath << std::endl;
 
-
-SEGUIR ACA!
-
-
-        nlohmann::json jsPackage;
-        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
-
-        if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
-                !jsPackage.at("version").get_ref<const std::string&>().empty() &&
-                !jsPackage.at("format").get_ref<const std::string&>().empty()
-            )
+        size_t posDelimiter = appPath.rfind('/');
+        if(posDelimiter != std::string::npos)
         {
-            DEBUG_AppFoundCounter++; // DEBUG
+            std::string directory = appPath.substr(0, posDelimiter);
+            std::string subDirectory = appPath.substr(posDelimiter + 1);
 
-            // Only return valid content packages
-            callback(jsPackage);
+            //std::cout << "DEBUG. directory: " << directory << ". subDirectory:" << subDirectory << std::endl;
 
-            maxRecurrencySubDirectory = -1;
+            nlohmann::json jsPackage;
+            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
+
+            if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                    !jsPackage.at("version").get_ref<const std::string&>().empty() &&
+                    !jsPackage.at("format").get_ref<const std::string&>().empty()
+                )
+            {
+                // Only return valid content packages
+                callback(jsPackage);
+            }
         }
-
-
-
     }
 }
 
