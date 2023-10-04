@@ -30,6 +30,8 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
+#include <CoreServices/CoreServices.h>
+
 
 const std::string MACPORTS_DB_NAME {"registry.db"};
 const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
@@ -51,13 +53,13 @@ static const std::vector<int> s_validFDSock =
     }
 };
 
-typedef struct PKGInfoEntry
+struct PKGDirectoryEntry
 {
     std::string path;
     int maxRecurrency;
-} PKGInfoEntry;
+};
 
-static const std::vector<PKGInfoEntry> s_PKGInfoTable =
+static const std::vector<PKGDirectoryEntry> s_PKGDirectoryTable =
 {
     { "/Applications", 2 },
     { "/Library", 0 },
@@ -116,6 +118,38 @@ nlohmann::json SysInfo::getHardware() const
     nlohmann::json hardware;
     FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_shared<OSHardwareWrapperMac<OsPrimitivesMac>>())->buildHardwareData(hardware);
     return hardware;
+}
+
+static void getPKGPackagesFromLaunchServices(std::function<void(nlohmann::json&)> callback)
+{
+  CFBundleRef bundleRef = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.LaunchServices"));
+  if (bundleRef == nullptr)
+  {
+    throw std::runtime("LaunchServices bundle not found");
+  }
+
+  auto pFunc = (OSStatus(*)(CFArrayRef*)) CFBundleGetFunctionPointerForName(bundleRef, CFSTR("_LSCopyAllApplicationURLs"));
+  if (pFunc == nullptr)
+  {
+    throw std::runtime("_LSCopyAllApplicationURLs function not found");
+  }
+
+  CFArrayRef listApps = nullptr;
+  if (pFunc(&listApps) != noErr || listApps == nullptr)
+  {
+    throw std::runtime("Could not list LaunchServices applications");
+  }
+
+/*
+  for (id app in (__bridge NSArray*)listApps)
+  {
+    if (app != nil && [app isKindOfClass:[NSURL class]]) {
+      apps.insert(std::string([[app path] UTF8String]) + "/Contents/Info.plist");
+    }
+  }
+*/
+
+  CFRelease(listApps);
 }
 
 static void getPKGPackagesFromPath(const std::string& path, const int maxRecurrency, std::function<void(nlohmann::json&)> callback)
@@ -556,11 +590,18 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     DEBUG_SubdirAnalizedTotalCounter = 0; //DEBUG
     DEBUG_AppFoundCounter = 0; // DEBUG
 
-    for (const auto& PKGInfoEntry : s_PKGInfoTable)
+    try
     {
-        if (Utils::existsDir(PKGInfoEntry.path))
+        getPKGPackagesFromLaunchServices(callback);
+    }
+    catch (...)
+    {
+        for (const auto& PKGDirectoryEntry : s_PKGDirectoryTable)
         {
-            getPKGPackagesFromPath(PKGInfoEntry.path, PKGInfoEntry.maxRecurrency, callback);
+            if (Utils::existsDir(PKGDirectoryEntry.path))
+            {
+                getPKGPackagesFromPath(PKGDirectoryEntry.path, PKGDirectoryEntry.maxRecurrency, callback);
+            }
         }
     }
 
