@@ -126,7 +126,7 @@ static void callbackDiff(const void* data,
                          const size_t /*size*/,
                          void* ctx)
 {
-    auto json = nlohmann::json::parse(reinterpret_cast<const char *>(data));
+    auto json = nlohmann::json::parse(reinterpret_cast<const char*>(data));
     auto diff = json.diff(json, *reinterpret_cast<nlohmann::json*>(ctx));
 
     for (const auto& element : diff)

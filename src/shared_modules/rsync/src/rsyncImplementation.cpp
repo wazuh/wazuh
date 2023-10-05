@@ -164,7 +164,7 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
                 if (syncData.id > SynchronizationController::instance().get(handle))
                 {
                     Log::debugVerbose << "Sync id: " << std::to_string(syncData.id) << " is not the current id: "
-                        << std::to_string(SynchronizationController::instance().get(handle)) << LogEndl;
+                                      << std::to_string(SynchronizationController::instance().get(handle)) << LogEndl;
                 }
                 else
                 {
