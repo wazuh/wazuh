@@ -27,6 +27,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a data mismatch in the OS name between the global and agents' databases. ([#18903](https://github.com/wazuh/wazuh/pull/18903))
 - Fixed an array limit check in wazuh-logcollector. ([#19069](https://github.com/wazuh/wazuh/pull/19069))
 - Fixed wrong Windows agent binaries metadata. ([#19286](https://github.com/wazuh/wazuh/pull/19286))
+- Fixed error during the windows agent upgrade. ([#19397](https://github.com/wazuh/wazuh/pull/19397))
+- Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
 
 ### RESTful API
 
