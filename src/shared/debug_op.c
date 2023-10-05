@@ -38,6 +38,12 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 }
 
 
+#ifdef WAZUH_UNIT_TESTING
+void resetDebug() {
+    dbg_flag = 0;
+}
+#endif
+
 #ifdef WIN32
 void WinSetError();
 #endif
