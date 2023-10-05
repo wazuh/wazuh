@@ -40,7 +40,7 @@ from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 
 # URLs
-URL_azure_logger = 'https://login.microsoftonline.com'
+URL_LOGGING = 'https://login.microsoftonline.com'
 URL_ANALYTICS = 'https://api.loganalytics.io'
 URL_GRAPH = 'https://graph.microsoft.com'
 SOCKET_HEADER = '1:Azure:'
@@ -327,8 +327,8 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
         if item is None:
             item = create_new_row(table=orm.LogAnalytics, query=args.la_query, md5_hash=md5_hash, offset=offset)
     except orm.AzureORMError as e:
-        azure_logger.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}': "
-                      f"{e}")
+        azure_logger.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' "
+                           f"using md5='{md5}': {e}")
         sys.exit(1)
 
     min_str = item.min_processed_date
@@ -786,7 +786,7 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
         'scope': scope,
         'grant_type': 'client_credentials'
     }
-    auth_url = f'{URL_azure_logger}/{domain}/oauth2/v2.0/token'
+    auth_url = f'{URL_LOGGING}/{domain}/oauth2/v2.0/token'
     try:
         token_response = post(auth_url, data=body).json()
         return token_response['access_token']
