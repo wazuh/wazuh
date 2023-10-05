@@ -1,0 +1,520 @@
+-
+  name: miscellaneous
+  description: Test successfull and err while dealing with deltas
+  test_case:
+    -
+      input: agent 001 dbsync this_table_doesnot_exist test NULL
+      output: err
+      stage: invalid table.
+    -
+      input: agent 001 dbsync
+      output: err Invalid DB query syntax, near 'dbsync'
+      stage: missing table.
+    -
+      input: agent 001 dbsync ports
+      output: err Invalid dbsync query syntax, near 'ports'
+      stage: missing operation.
+    -
+      input: agent 001 dbsync ports CUSTOMOPERATION
+      output: err Invalid dbsync query syntax, near 'ports'
+      stage: invalid operation.
+-
+  name: ports
+  description: Test successfull and err while dealing with ports deltas
+  test_case:
+    -
+      input: >-
+        agent 001 dbsync ports INSERTED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713","inode":494908,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: insert port.
+    -
+      input: >-
+        agent 001 dbsync ports INSERTED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713","inode":494908,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: insert duplicated port.
+    -
+      input: >-
+        agent 001 dbsync ports INSERTED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713",
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: insert port without PK.
+    -
+      input: >-
+        agent 001 dbsync ports MODIFIED {"checksum":"eff13e52290143eb5b5b9b8c191902609f123456","inode":494908,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:50:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: modify port.
+    -
+      input: >-
+        agent 001 dbsync ports MODIFIED {"checksum":"eff13e52290143eb5b5b9b8c191902609f123456","inode":494908,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":"NULL","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:50:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: modify port from value to NULL string.
+    -
+      input: >-
+        agent 001 dbsync ports MODIFIED {"checksum":"eff13e52290143eb5b5b9b8c191902609f123456",
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":"NULL","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:50:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: modify port without enough fields (PKs).
+    -
+      input: >-
+        agent 001 dbsync ports MODIFIED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713","inode":12345,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: modify nonexistent port (will be treated as an insertion).
+    -
+      input: >-
+        agent 001 dbsync ports MODIFIED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713","inode":["12345"],
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: err
+      stage: modify port with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync ports DELETED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713",
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: delete port without enough fields (PKs).
+    -
+      input: >-
+        agent 001 dbsync ports DELETED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713","inode":494908,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: delete port.
+    -
+      input: >-
+        agent 001 dbsync ports DELETED {"checksum":"eff13e52290143eb5b5b9b8c191902609f37c713","inode":494908,
+        "item_id":"e2c92964ad145a635139f6318057506e386e00a3","local_ip":"0.0.0.0","local_port":34340,"pid":0,
+        "process":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":1,
+        "scan_time":"2021/10/13 14:40:03","state":"listening","tx_queue":1}
+      output: 'ok '
+      stage: delete already deleted port.
+-
+  name: processes
+  description: Test successfull and err while dealing with processes deltas
+  test_case:
+    -
+      input: >-
+        agent 001 dbsync processes INSERTED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "cmd":"","egroup":"root","euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,
+        "pid":"156102","ppid":116169,"priority":20,"processor":3,"resident":129,"rgroup":"root","ruser":"root",
+        "scan_time":"2021/10/13 14:57:07","session":116167,"sgroup":"root","share":114,"size":2019,
+        "start_time":5799612,"state":"S","stime":0,"suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":8076}
+      output: 'ok '
+      stage: insert process.
+    -
+      input: >-
+        agent 001 dbsync processes INSERTED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"ppid":116169,
+        "priority":20,"processor":3,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":8076,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: insert process without enough fields.
+    -
+      input: >-
+        agent 001 dbsync processes INSERTED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"156102","ppid":116169,
+        "priority":20,"processor":3,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":8076,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: insert duplicated process.
+    -
+      input: >-
+        agent 001 dbsync processes INSERTED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"156102",
+        "priority":20,"processor":3,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":8076,"cmd":"","egroup":"root","ppid":"116169test"}
+      output: err
+      stage: insert process with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync processes MODIFIED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"156102","ppid":116169,
+        "priority":20,"processor":7,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: modify process.
+    -
+      input: >-
+        agent 001 dbsync processes MODIFIED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"156102","ppid":116169,
+        "priority":20,"processor":7test,"resident":129,"rgroup":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root","ruser":"root"}
+      output: err
+      stage: modify process with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync processes MODIFIED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"ppid":116169,
+        "priority":20,"processor":7,"resident":129,"rgroup":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root","ruser":"root"}
+      output: 'ok '
+      stage: modify process without enough fields.
+    -
+      input: >-
+        agent 001 dbsync processes MODIFIED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"12345","ppid":116169,
+        "priority":20,"processor":7,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: modify nonexistent process.
+    -
+      input: >-
+        agent 001 dbsync processes DELETED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"ppid":116169,
+        "priority":20,"processor":7,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: delete process without enough fields.
+    -
+      input: >-
+        agent 001 dbsync processes DELETED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"12345","ppid":116169,
+        "priority":20,"processor":7,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: delete process.
+    -
+      input: >-
+        agent 001 dbsync processes DELETED {"argvs":"180","checksum":"343ed10dc637334a7400d01b8a28deb8db5cba28",
+        "euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":116167,"pid":"12345","ppid":116169,
+        "priority":20,"processor":7,"resident":129,"rgroup":"root","ruser":"root","scan_time":"2021/10/13 14:57:07",
+        "session":116167,"sgroup":"root","share":114,"size":2019,"start_time":5799612,"state":"S","stime":0,
+        "suser":"root","tgid":156102,"tty":0,"utime":0,"vm_size":10000,"cmd":"","egroup":"root"}
+      output: 'ok '
+      stage: delete already deleted process.
+-
+  name: packages
+  description: Test successfull and err while dealing with packages deltas
+  test_case:
+    -
+      input: >-
+        agent 001 dbsync packages INSERTED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs","location":" ",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: insert package.
+    -
+      input: >-
+        agent 001 dbsync packages INSERTED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: insert package without enough fields.
+    -
+      input: >-
+        agent 001 dbsync packages INSERTED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs","location":" ",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: insert duplicated package.
+    -
+      input: >-
+        agent 001 dbsync packages INSERTED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572MB,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: err
+      stage: insert package with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync packages MODIFIED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"extra","location":" ",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: modify package.
+    -
+      input: >-
+        agent 001 dbsync packages MODIFIED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"}
+      output: 'ok '
+      stage: modify package without enough fields.
+    -
+      input: >-
+        agent 001 dbsync packages MODIFIED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs","location":" ",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu2"}
+      output: 'ok '
+      stage: modify nonexistent packages.
+    -
+      input: >-
+        agent 001 dbsync packages MODIFIED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572mb,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: err
+      stage: modify package with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync packages DELETED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: delete package without enough fields.
+    -
+      input: >-
+        agent 001 dbsync packages DELETED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: delete package.
+    -
+      input: >-
+        agent 001 dbsync packages DELETED {"checksum":"1c1bf8bbc20caef77010f960461cc20fb9c67568",
+        "architecture":"amd64","description":"Qt 5 OpenGL module","format":"deb","groups":"libs",
+        "item_id":"caa4868d177fbebc5b145a2a92497ebcf566838a","multiarch":"same","name":"libqt5opengl5",
+        "priority":"optional","scan_time":"2021/10/13 15:10:49","size":572,"source":"qtbase-opensource-src",
+        "vendor":"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>","version":"5.12.8+dfsg-0ubuntu1"}
+      output: 'ok '
+      stage: delete already deleted package.
+-
+  name: osinfo
+  description: Test successfull and err while dealing with osinfo deltas
+  test_case:
+    -
+      input: >-
+        agent 001 dbsync osinfo INSERTED {"checksum":"1634140017886803554","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: 'ok '
+      stage: insert osinfo.
+    -
+      input: >-
+        agent 001 dbsync osinfo INSERTED {"checksum":"1634140017886803554","architecture":"x86_64","hostname":"UBUNTU",
+        "os_build":"7601","os_major":"6","os_minor":"1","os_release":"sp1","os_version":"6.1.7601",
+        "os_display_version":"test"}
+      output: 'ok '
+      stage: insert osinfo without enough fields.
+    -
+      input: >-
+        agent 001 dbsync osinfo INSERTED {"checksum":"1634140017886803554","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":["Microsoft Windows 7"],"os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: err
+      stage: insert osinfo with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync osinfo MODIFIED {"checksum":"1634140017886803570","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: 'ok '
+      stage: modify osinfo.
+    -
+      input: >-
+        agent 001 dbsync osinfo MODIFIED {"checksum":"1634140017886803554","architecture":"x86_64","hostname":"UBUNTU",
+        "os_build":"7601","os_major":"6","os_minor":"1","os_release":"sp1","os_version":"6.1.7601",
+        "os_display_version":"test"}
+      output: 'ok '
+      stage: modify osinfo without enough fields.
+    -
+      input: >-
+        agent 001 dbsync osinfo MODIFIED {"checksum":"1634140017886803570","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: 'ok '
+      stage: modify nonexistent osinfo.
+    -
+      input: >-
+        agent 001 dbsync osinfo MODIFIED {"checksum":"1634140017886803570","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":["Microsoft Windows 7"],"os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: err
+      stage: modify osinfo with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync osinfo DELETED {"checksum":"1634140017886803570","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: err
+      ignore: 'yes'
+      stage: delete osinfo without enough fields.
+    -
+      input: >-
+        agent 001 dbsync osinfo DELETED {"checksum":"1634140017886803570","architecture":"x86_64","hostname":"UBUNTU",
+        "os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601",
+        "os_build":"7601","os_display_version":"test"}
+      output: err
+      ignore: 'yes'
+      stage: delete osinfo.
+-
+  name: hwinfo
+  description: Test successfull and err while dealing with hwinfo deltas
+  test_case:
+    -
+      input: >-
+        agent 001 dbsync hwinfo INSERTED {"scan_time":"2021/10/13 14:41:43","board_serial":"Intel Corporation",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54}
+      output: 'ok '
+      stage: insert hwinfo.
+    -
+      input: >-
+        agent 001 dbsync hwinfo INSERTED {"scan_time":"2021/10/13 14:41:43",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54}
+      output: 'ok '
+      stage: insert hwinfo without enough fields.
+    -
+      input: >-
+        agent 001 dbsync hwinfo INSERTED {"scan_time":"2021/10/13 14:41:43","board_serial":"Intel Corporation",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904Hz,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54}
+      output: err
+      stage: insert hwinfo with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync hwinfo MODIFIED {"scan_time":"2021/10/13 14:41:43","board_serial":"Intel Corporation",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":225,"ram_total":4972208,"ram_usage":54}
+      output: 'ok '
+      stage: modify hwinfo.
+    -
+      input: >-
+        agent 001 dbsync hwinfo MODIFIED {"scan_time":"2021/10/13 14:41:43",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":29040,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":225,"ram_total":4972208,"ram_usage":54}
+      output: 'ok '
+      stage: modify hwinfo without enough fields.
+    -
+      input: >-
+        agent 001 dbsync hwinfo MODIFIED {"scan_time":"2021/10/13 14:41:43","board_serial":"Intel Corporation",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":225mb,"ram_total":49722,"ram_usage":54}
+      output: err
+      stage: modify hwinfo with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync hwinfo MODIFIED {"scan_time":"2021/10/13 14:41:43","board_serial":"AMD",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":225,"ram_total":4972208,"ram_usage":54}
+      output: 'ok '
+      stage: modify nonexistent hwinfo.
+    -
+      input: >-
+        agent 001 dbsync hwinfo DELETED {"scan_time":"2021/10/13 14:41:43",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":225,"ram_total":4972208,"ram_usage":54}
+      output: err
+      ignore: 'yes'
+      stage: delete hwinfo without enough fields.
+    -
+      input: >-
+        agent 001 dbsync hwinfo DELETED {"scan_time":"2021/10/13 14:41:43","board_serial":"Intel Corporation",
+        "checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,
+        "cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":225,"ram_total":4972208,"ram_usage":54}
+      output: err
+      ignore: 'yes'
+      stage: delete hwinfo.
+-
+  name: hotfixes
+  description: Test successfull and err while dealing with hotfixes deltas
+  test_case:
+    -
+      input: >-
+        agent 001 dbsync hotfixes INSERTED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005539",
+        "scan_time":"2021/10/14 02:24:18"}
+      output: 'ok '
+      stage: insert hotfix.
+    -
+      input: >-
+        agent 001 dbsync hotfixes INSERTED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a",
+        "scan_time":"2021/10/14 02:24:18"}
+      output: 'ok '
+      stage: insert hotfix without enough fields.
+    -
+      input: >-
+        agent 001 dbsync hotfixes INSERTED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005539",
+        "scan_time":"2021/10/14 02:24:18"}
+      output: 'ok '
+      stage: insert duplicated hotfix.
+    -
+      input: >-
+        agent 001 dbsync hotfixes INSERTED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005539",
+        "scan_time":["2021/10/14 02:24:18"]}
+      output: err
+      stage: insert hotfix with invalid field type.
+    -
+      input: >-
+        agent 001 dbsync hotfixes MODIFIED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005539",
+        "scan_time":"2021/10/14 02:24:40"}
+      output: 'ok '
+      stage: modify hotfix.
+    -
+      input: >-
+        agent 001 dbsync hotfixes MODIFIED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a",
+        "scan_time":"2021/10/14 02:24:40"}
+      output: 'ok '
+      stage: modify hotfix without enough fields.
+    -
+      input: >-
+        agent 001 dbsync hotfixes MODIFIED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005123",
+        "scan_time":"2021/10/14 02:24:40"}
+      output: 'ok '
+      stage: modify nonexistent hotfix.
+    -
+      input: >-
+        agent 001 dbsync hotfixes DELETED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a",
+        "scan_time":"2021/10/14 02:24:40"}
+      output: 'ok '
+      stage: delete hotfix without enough fields.
+    -
+      input: >-
+        agent 001 dbsync hotfixes MODIFIED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005123",
+        "scan_time":"2021/10/14 02:24:40"}
+      output: 'ok '
+      stage: delete hotfix.
+    -
+      input: >-
+        agent 001 dbsync hotfixes MODIFIED {"checksum":"ded25e55c93121675adcb8d429dc586cbb351e3a","hotfix":"KB5005123",
+        "scan_time":"2021/10/14 02:24:40"}
+      output: 'ok '
+      stage: delete already deleted hotfix.

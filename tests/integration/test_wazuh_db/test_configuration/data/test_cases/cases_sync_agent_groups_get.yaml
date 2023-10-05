@@ -1,0 +1,159 @@
+- name: Test sync_status with response
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"sync_status"}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test sync_status without response
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    pre_input:
+      - global sql UPDATE agent SET group_sync_status="synced"
+    input: global sync-agent-groups-get {"condition":"sync_status"}
+    output: "[{'data': []}]"
+
+- name: Test 'all' condition when agent groups are in 'sync_req'
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"all"}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test 'all' condition when agent groups are in 'synced'
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    pre_input:
+      - global sql UPDATE agent SET group_sync_status="synced"
+    input: global sync-agent-groups-get {"condition":"all"}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test 'sync_status' condition when one agent groups are in 'synced'
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    pre_input:
+      - global sql UPDATE agent SET group_sync_status="synced" WHERE id = 2
+    input: global sync-agent-groups-get {"condition":"sync_status"}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}]}]"
+
+- name: Test 'all' condition when one agent groups are in 'synced'
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    pre_input:
+      - global sql UPDATE agent SET group_sync_status="synced" WHERE id = 2
+    input: global sync-agent-groups-get {"condition":"all"}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test with and invalid filter in condition
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"testinvalid"}
+    output: err Could not obtain a response from wdb_global_sync_agent_groups_get
+
+- name: Test without condition
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":0}
+    output: "[{'data': []}]"
+
+- name: Test set_synced in True
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"sync_status", "set_synced":true}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+    new_status: synced
+    agent_id: "[1,2]"
+
+- name: Test set_synced with invalid value - false
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"sync_status", "set_synced":false}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+    new_status: syncreq
+    agent_id: "[1,2]"
+
+- name: Test set_synced with invalid value - String
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"sync_status", "set_synced":"set"}
+    output: err Invalid JSON data, invalid alternative fields data
+    new_status: syncreq
+    agent_id: "[1,2]"
+
+- name: Test get_global_hash with condition
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":0, "condition":"sync_status", "get_global_hash":true}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']},
+             {'id': 2, 'groups': ['Test_group2']}], 'hash': '[GLOBAL_HASH]'}]"
+
+- name: Test only get_global_hash
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"get_global_hash":true}
+    output: "[{'data': [], 'hash': '[GLOBAL_HASH]'}]"
+
+- name: Test get_global_hash in false
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":0, "condition":"sync_status", "get_global_hash":false}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test get_global_hash with invalid value
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":0, "condition":"sync_status", "get_global_hash":"set"}
+    output: err Invalid JSON data, invalid alternative fields data
+
+- name: Test 'agent_registration_delta' in 0 and sync_status
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"sync_status", "agent_registration_delta":0}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test 'agent_registration_delta' in 0 and all condition
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"condition":"all", "agent_registration_delta":0}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test 'agent_registration_delta' with delta in 10000 and sync_status
+  test_case:
+    pre_required_group: Test_group1,Test_group2,Test_group5
+    pre_input:
+      - global insert-agent {"id":5,"name":"Agent-test5","date_add":1545753642}
+      - global set-agent-groups {"mode":"append","sync_status":"syncreq","data":[{"id":5,"groups":["Test_group5"]}]}
+    input: global sync-agent-groups-get {"condition":"sync_status", "agent_registration_delta":10000}
+    output: "[{'data': [{'id': 5, 'groups': ['Test_group5']}]}]"
+
+- name: Test 'agent_registration_delta' with delta in 10000 and all
+  test_case:
+    pre_required_group: Test_group1,Test_group2,Test_group6
+    pre_input:
+      - global insert-agent {"id":6,"name":"Agent-test6","date_add":1545753642}
+      - global set-agent-groups {"mode":"append","sync_status":"syncreq","data":[{"id":6,"groups":["Test_group6"]}]}
+    input: global sync-agent-groups-get {"condition":"all", "agent_registration_delta":10000}
+    output: "[{'data': [{'id': 6, 'groups': ['Test_group6']}]}]"
+
+- name: Test last_id - by default
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":0, "condition":"sync_status"}
+    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test last_id - obtain from second group
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":1, "condition":"sync_status"}
+    output: "[{'data': [{'id': 2, 'groups': ['Test_group2']}]}]"
+
+- name: Test last_id - with not exist id
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":3, "condition":"sync_status"}
+    output: "[{'data': []}]"
+
+-
+  name: Test last_id - with negative value
+  test_case:
+    pre_required_group: Test_group1,Test_group2
+    input: global sync-agent-groups-get {"last_id":-3, "condition":"sync_status"}
+    output: err Invalid JSON data, invalid alternative fields data

@@ -24,11 +24,14 @@ from wazuh_testing.tools.simulators.agent_simulator import create_agents, connec
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
-from wazuh_testing.utils.file import remove_file
+from wazuh_testing.utils.file import remove_file, truncate_file, recursive_directory_creation
 from wazuh_testing.utils.manage_agents import remove_agents
 from wazuh_testing.utils.services import control_service
+from wazuh_testing.tools.monitors import file_monitor
+
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
+
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -652,6 +655,7 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
         remoted.shutdown() if create_remoted else None
 
 
+<<<<<<< HEAD
 @pytest.fixture()
 def simulate_agents(test_metadata):
 
@@ -664,3 +668,50 @@ def simulate_agents(test_metadata):
     control_service('start')
     remove_agents([a.id for a in agents],'manage_agents')
     control_service('stop')
+=======
+@pytest.fixture(scope='module')
+def restart_wazuh_daemon(daemon=None):
+    """
+    Restart a Wazuh daemon
+    """
+    truncate_file(WAZUH_LOG_PATH)
+    control_service("restart", daemon=daemon)
+
+
+@pytest.fixture(scope='function')
+def remove_backups(backups_path):
+    "Creates backups folder in case it does not exist."
+    remove_file(backups_path)
+    recursive_directory_creation(backups_path)
+    os.chmod(backups_path, 0o777)
+    yield
+    remove_file(backups_path)
+    recursive_directory_creation(backups_path)
+    os.chmod(backups_path, 0o777)
+
+
+
+@pytest.fixture(scope='function')
+def file_monitoring(request):
+    """Fixture to handle the monitoring of a specified file.
+
+    It uses the variable `file_to_monitor` to determinate the file to monitor. Default `LOG_FILE_PATH`
+
+    Args:
+        request (fixture): Provide information on the executing test function.
+    """
+    if hasattr(request.module, 'file_to_monitor'):
+        file_to_monitor = getattr(request.module, 'file_to_monitor')
+    else:
+        file_to_monitor = WAZUH_LOG_PATH
+
+    logger.debug(f"Initializing file to monitor to {file_to_monitor}")
+
+    log_monitor = file_monitor.FileMonitor(file_to_monitor)
+    setattr(request.module, 'log_monitor', log_monitor)
+
+    yield
+
+    truncate_file(file_to_monitor)
+    logger.debug(f"Trucanted {file_to_monitor}")
+>>>>>>> b19cec2e51 (Update to migrate wazuh-db)

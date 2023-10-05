@@ -1,0 +1,31 @@
+- tags:
+  apply_to_modules:
+  - test_db_backup
+  - test_wdb_backup_configs
+  sections:
+  - section: wdb
+    elements:
+    - backup:
+        attributes:
+          - database: 'global'
+        elements:
+        - enabled:
+            value: ENABLED
+        - interval:
+            value: INTERVAL
+        - max_files:
+            value: MAX_FILES
+  - section: sca
+    elements:
+    - enabled:
+        value: 'no'
+  - section: rootcheck
+    elements:
+    - disabled:
+        value: 'yes'
+  - section: wodle
+    attributes:
+      - name: 'syscollector'
+    elements:
+      - disabled:
+          value: 'yes'
