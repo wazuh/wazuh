@@ -262,14 +262,15 @@ def get_json_options(file_location: str) -> any:
     JSONDecodeError
         If no valid JSON file is used.
     """
-    try:
-        with open(file_location, encoding='utf-8') as options_file:
-            return json.load(options_file)
-    except FileNotFoundError:
-        logger.error("JSON file for options %s doesn't exist", file_location)
-    except BaseException as e:
-        logger.error("Failed getting JSON options. Error: %s", e)
-        sys.exit(ERR_INVALID_JSON)
+    if file_location:
+        try:
+            with open(file_location, encoding='utf-8') as options_file:
+                return json.load(options_file)
+        except FileNotFoundError:
+            logger.error("JSON file for options %s doesn't exist", file_location)
+        except BaseException as e:
+            logger.error("Failed getting JSON options. Error: %s", e)
+            sys.exit(ERR_INVALID_JSON)
 
 def print_help_msg():
     """Send the command's help message to the standard output."""
