@@ -127,10 +127,11 @@ static void getPKGPackagesFromLaunchServices(std::function<void(nlohmann::json&)
     std::deque<std::string> appsPaths;
     getAppsPathsFromLaunchServices(appsPaths);
 
-    for (const auto &appPath : appsPaths)
+    for (const auto& appPath : appsPaths)
     {
         size_t posDelimiter = appPath.rfind('/');
-        if(posDelimiter != std::string::npos)
+
+        if (posDelimiter != std::string::npos)
         {
             std::string directory = appPath.substr(0, posDelimiter);
             std::string subDirectory = appPath.substr(posDelimiter + 1);
@@ -143,13 +144,13 @@ static void getPKGPackagesFromLaunchServices(std::function<void(nlohmann::json&)
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
                         !jsPackage.at("version").get_ref<const std::string&>().empty() &&
                         !jsPackage.at("format").get_ref<const std::string&>().empty()
-                    )
+                   )
                 {
                     // Only return valid content packages
                     callback(jsPackage);
                 }
             }
-            catch(const std::exception& e)
+            catch (const std::exception& e)
             {
                 std::cerr << e.what() << std::endl;
             }
@@ -187,7 +188,7 @@ static void getPKGPackagesFromPath(const std::string& path, const int maxRecurre
                     if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
                             !jsPackage.at("version").get_ref<const std::string&>().empty() &&
                             !jsPackage.at("format").get_ref<const std::string&>().empty()
-                        )
+                       )
                     {
                         // Only return valid content packages
                         callback(jsPackage);
@@ -209,9 +210,9 @@ static void getPKGPackagesFromPath(const std::string& path, const int maxRecurre
                 maxRecurrencySubDirectory = maxRecurrency;
             }
 
-            if(maxRecurrencySubDirectory)
+            if (maxRecurrencySubDirectory)
             {
-                if(maxRecurrencySubDirectory > 0)
+                if (maxRecurrencySubDirectory > 0)
                 {
                     maxRecurrencySubDirectory--;
                 }
