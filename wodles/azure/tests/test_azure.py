@@ -1,7 +1,6 @@
 import importlib
 import json
-import logging
-import os
+from os.path import join, dirname, realpath
 import socket
 import sys
 from datetime import datetime
@@ -14,15 +13,13 @@ import pytz
 from dateutil.parser import parse
 from requests import HTTPError
 
-from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
-
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
+sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 
 with patch('azure-logs.orm'):
     azure = importlib.import_module("azure-logs")
 
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-TEST_AUTHENTICATION_PATH = os.path.join(TEST_DATA_PATH, 'authentication_files')
+TEST_DATA_PATH = join(dirname(realpath(__file__)), 'data')
+TEST_AUTHENTICATION_PATH = join(TEST_DATA_PATH, 'authentication_files')
 
 PAST_DATE = "2022-01-01T12:00:00.000000Z"
 PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
@@ -125,7 +122,7 @@ def test_arg_valid_blob_extension(arg_string):
 ])
 def test_read_auth_file(file_name, fields):
     """Test read_auth_file correctly handles valid authentication files."""
-    credentials = azure.read_auth_file(auth_path=os.path.join(TEST_AUTHENTICATION_PATH, file_name), fields=fields)
+    credentials = azure.read_auth_file(auth_path=join(TEST_AUTHENTICATION_PATH, file_name), fields=fields)
     assert isinstance(credentials, tuple)
     for i in range(len(fields)):
         assert credentials[i] == f"{fields[i]}_value"
@@ -142,7 +139,7 @@ def test_read_auth_file(file_name, fields):
 def test_read_auth_file_ko(mock_logging, file_name):
     """Test read_auth_file correctly handles invalid authentication files."""
     with pytest.raises(SystemExit) as err:
-        azure.read_auth_file(auth_path=os.path.join(TEST_AUTHENTICATION_PATH, file_name), fields=("field", "field"))
+        azure.read_auth_file(auth_path=join(TEST_AUTHENTICATION_PATH, file_name), fields=("field", "field"))
     assert err.value.code == 1
     mock_logging.assert_called_once()
 
@@ -330,7 +327,7 @@ def test_get_log_analytics_events(mock_get, mock_position, mock_iter, mock_updat
     field was present."""
     azure.args = MagicMock(la_query="test_query")
     m = MagicMock(status_code=200)
-    with open(os.path.join(TEST_DATA_PATH, file)) as f:
+    with open(join(TEST_DATA_PATH, file)) as f:
         try:
             events = json.loads(f.read())
             m.json.return_value = events
@@ -386,7 +383,7 @@ def test_iter_log_analytics_events(mock_send):
     """Test iter_log_analytics_events iterates through the columns and rows to build the events and send them to the
     socket."""
     azure.args = MagicMock(la_tag="tag")
-    with open(os.path.join(TEST_DATA_PATH, "log_analytics_events")) as f:
+    with open(join(TEST_DATA_PATH, "log_analytics_events")) as f:
         events = json.loads(f.read())
         columns = events['tables'][0]['columns']
         rows = events['tables'][0]['rows']
@@ -510,7 +507,7 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
     """Test get_graph_events recursively request the data using the specified url and process the values present in the
     response."""
     def load_events(path):
-        with open(os.path.join(TEST_DATA_PATH, path)) as f:
+        with open(join(TEST_DATA_PATH, path)) as f:
             return json.loads(f.read())
 
     azure.args = MagicMock(graph_query="test_query", graph_tag="tag")
@@ -671,7 +668,7 @@ def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desire
     else:
         test_file = "storage_events_plain"
 
-    with open(os.path.join(TEST_DATA_PATH, test_file)) as f:
+    with open(join(TEST_DATA_PATH, test_file)) as f:
         contents = f.read()
         blob_service.get_blob_to_text.return_value = MagicMock(content=contents)
 
