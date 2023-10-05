@@ -13,6 +13,7 @@
 #define _SYNCHRONIZATION_CONTROLLER_HPP
 
 #include "commonDefs.h"
+#include "loggerHelper.h"
 #include "rsync_exception.h"
 #include <mutex>
 #include <shared_mutex>
@@ -24,24 +25,38 @@ namespace RSync
     class SynchronizationController final : public Singleton<SynchronizationController>
     {
         public:
-            void set(const RSYNC_HANDLE key, const int32_t value)
+            void start(const RSYNC_HANDLE key, const int32_t value)
             {
-                std::lock_guard<std::shared_timed_mutex> lock{ mutex };
-                data[key] = value;
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                m_data[key] = value;
             }
 
-            int32_t get(const RSYNC_HANDLE key)
+            void checkId(const RSYNC_HANDLE key, const int32_t value)
             {
-                std::shared_lock<std::shared_timed_mutex> lock{ mutex };
-                if (data.find(key) == data.end())
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                const auto it = m_data.find(key);
+                if (it == m_data.end())
                 {
                     throw rsync_error { HANDLE_NOT_FOUND };
                 }
-                return data[key];
+                else
+                {
+                    if (value < it->second)
+                    {
+                        it->second =  value;
+                    }
+
+                    if (value > it->second)
+                    {
+                        Log::debugVerbose << "Sync id: " << std::to_string(value) << " is not the current id: "
+                            << std::to_string(it->second) << LogEndl;
+                        throw std::runtime_error { "Sync id is not the current id" };
+                    }
+                }
             }
         private:
-            std::unordered_map<RSYNC_HANDLE, int32_t> data;
-            std::shared_timed_mutex mutex;
+            std::unordered_map<RSYNC_HANDLE, int32_t> m_data;
+            std::mutex m_mutex;
     };
 } // namespace RSync
 #endif // _SYNCHRONIZATION_CONTROLLER_HPP

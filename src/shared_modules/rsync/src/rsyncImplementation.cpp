@@ -108,7 +108,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
-        SynchronizationController::instance().set(handle, checksumCtx.rightCtx.id);
+        SynchronizationController::instance().start(handle, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
@@ -156,32 +156,20 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
         {
             try
             {
-                if (syncData.id < SynchronizationController::instance().get(handle))
-                {
-                    SynchronizationController::instance().set(handle, syncData.id);
-                }
+                SynchronizationController::instance().checkId(handle, syncData.id);
 
-                if (syncData.id > SynchronizationController::instance().get(handle))
+                if (0 == syncData.command.compare("checksum_fail"))
                 {
-                    Log::debugVerbose << "Sync id: " << std::to_string(syncData.id) << " is not the current id: "
-                                      << std::to_string(SynchronizationController::instance().get(handle)) << LogEndl;
+                    sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
+                }
+                else if (0 == syncData.command.compare("no_data"))
+                {
+                    sendAllData(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
                 }
                 else
                 {
-                    if (0 == syncData.command.compare("checksum_fail"))
-                    {
-                        sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
-                    }
-                    else if (0 == syncData.command.compare("no_data"))
-                    {
-                        sendAllData(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
-                    }
-                    else
-                    {
-                        throw rsync_error { INVALID_OPERATION };
-                    }
+                    throw rsync_error { INVALID_OPERATION };
                 }
-
             }
             catch (const std::exception& e)
             {

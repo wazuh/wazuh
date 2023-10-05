@@ -181,7 +181,6 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
 
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
-    //EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":4,"name":"System1", "tid":100, "cpu_percentage":10.7})"))).Times(1);
     EXPECT_CALL(*mockDbSync, select(_, _)).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
     {
         data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
