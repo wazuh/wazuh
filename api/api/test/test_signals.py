@@ -100,12 +100,13 @@ async def test_get_update_information_catch_exceptions_and_dont_raise(
 @pytest.mark.parametrize(
     'major,minor,patch',
     (
-        [['5.0.0'], ['4.9.0'], ['4.8.1']],
         [['5.0.0', '5.0.1'], ['4.9.0', '4.9.1'], ['4.8.1', '4.8.2']],
-        [['5.0.0'], ['4.9.0'], []],
-        [['5.0.0'], ['4.9.0', '4.9.1'], []],
-        [['5.0.0'], [], []],
-        [['5.0.0', '5.0.1'], [], []],
+        [['5.0.0', '5.0.1'], ['4.9.0', '4.9.1'], ['4.8.1', ]],
+        [['5.0.0', '5.0.1'], ['4.9.0'], ['4.8.1', '4.8.2']],
+        [['5.0.0'], ['4.9.1'], ['4.8.1']],
+        [['5.0.0'], ['4.9.1'], []],
+        [['5.0.0'], [], ['4.8.1']],
+        [[], ['4.9.1'], ['4.8.1']],
         [[], [], []],
     ),
 )
@@ -122,7 +123,7 @@ async def test_get_update_information_injects_correct_data_into_app_context_when
                     'description': 'Some description',
                     'title': f'Wazuh {semver}',
                     'published_date': '2023-09-22T10:44:00Z',
-                    'semver': {'minor': minor, 'patch': patch, 'mayor': major},
+                    'semver': {'minor': minor, 'patch': patch, 'major': major},
                 }
             )
 
@@ -132,7 +133,7 @@ async def test_get_update_information_injects_correct_data_into_app_context_when
         'data': {
             'minor': _build_release_info(minor),
             'patch': _build_release_info(patch),
-            'mayor': _build_release_info(major),
+            'major': _build_release_info(major),
         }
     }
     status = 200
@@ -153,16 +154,22 @@ async def test_get_update_information_injects_correct_data_into_app_context_when
         application_mock_with_installation_uid['update_information']['status_code']
         == status
     )
-    available_update = application_mock_with_installation_uid['update_information'][
-        'available_update'
-    ]
+    update_information = application_mock_with_installation_uid['update_information']
+
+    if len(major):
+        assert update_information['last_available_major'] == response_data['data']['major'][-1]
+    else:
+        assert update_information['last_available_major'] == {}
+
+    if len(minor):
+        assert update_information['last_available_minor'] == response_data['data']['minor'][-1]
+    else:
+        assert update_information['last_available_minor'] == {}
 
     if len(patch):
-        assert available_update == response_data['data']['patch'][0]
-    elif len(minor):
-        assert available_update == response_data['data']['minor'][0]
-    elif len(major):
-        assert available_update == response_data['data']['mayor'][0]
+        assert update_information['last_available_patch'] == response_data['data']['patch'][-1]
+    else:
+        assert update_information['last_available_patch'] == {}
 
 
 async def test_get_update_information_injects_correct_data_into_app_context_when_satatus_not_200(
