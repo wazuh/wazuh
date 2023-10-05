@@ -16,6 +16,7 @@
 #include "loggerHelper.h"
 #include "messageCreatorFactory.h"
 #include "rsync.hpp"
+#include "synchronizationController.hpp"
 
 using namespace RSync;
 
@@ -107,7 +108,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
-        m_currentSyncId[handle] = checksumCtx.rightCtx.id;
+        SynchronizationController::instance().set(handle, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
@@ -151,18 +152,19 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
 
     const auto registerCallback
     {
-        [spDBSyncWrapper, syncConfiguration, callbackWrapper, this, handle] (const SyncInputData & syncData)
+        [spDBSyncWrapper, syncConfiguration, callbackWrapper, handle] (const SyncInputData & syncData)
         {
             try
             {
-                if (syncData.id < m_currentSyncId.at(handle))
+                if (syncData.id < SynchronizationController::instance().get(handle))
                 {
-                    m_currentSyncId[handle] = syncData.id;
+                    SynchronizationController::instance().set(handle, syncData.id);
                 }
 
-                if (syncData.id > m_currentSyncId.at(handle))
+                if (syncData.id > SynchronizationController::instance().get(handle))
                 {
-                    Log::debugVerbose << "Sync id: " << std::to_string(syncData.id) << " is not the current id: " << std::to_string(m_currentSyncId.at(handle)) << LogEndl;
+                    Log::debugVerbose << "Sync id: " << std::to_string(syncData.id) << " is not the current id: "
+                        << std::to_string(SynchronizationController::instance().get(handle)) << LogEndl;
                 }
                 else
                 {

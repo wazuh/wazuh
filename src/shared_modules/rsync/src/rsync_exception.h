@@ -53,6 +53,10 @@ namespace RSync
     {
         std::make_pair(9, "Component already registered." )
     };
+    constexpr auto HANDLE_NOT_FOUND
+    {
+        std::make_pair(10, "Handle not found." )
+    };
 
     /**
      *   This class should be used by concrete types to report errors.

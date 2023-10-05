@@ -151,7 +151,6 @@ void FIMDB::runIntegrity()
             sync();
             promise->set_value();
             std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
-
             while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_currentSyncInterval}, [&]()
         {
             return m_stopping;
@@ -199,11 +198,11 @@ void FIMDB::pushMessage(const std::string& data)
 
 void FIMDB::teardown()
 {
-    std::unique_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
     try
     {
         stopIntegrity();
+        std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
         m_rsyncHandler = nullptr;
         m_dbsyncHandler = nullptr;
     }
