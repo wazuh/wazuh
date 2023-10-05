@@ -186,7 +186,7 @@ def test_max_upload_size(test_configuration, test_metadata, add_configuration, t
 
     # Create a new group
     response = requests.post(base_url + GROUPS_ROUTE, headers=authentication_headers, verify=False,
-                             json={'group_id': group_name})
+                             json={'group_name': group_name})
     # Check if it was created or not depending on the expected code
     assert response.status_code == expected_code, f"Expected status code was {expected_code}, but " \
                                                   f"{response.status_code} was returned: {response.json()}"
