@@ -15,6 +15,14 @@ from unittest.mock import patch, MagicMock
 # Local imports
 sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 import gcloud
+from shared.wazuh_cloud_logger import WazuhCloudLogger
+
+
+@pytest.fixture(scope='module')
+def gcp_logger():
+    return WazuhCloudLogger(
+            logger_name='test_logger'
+            )
 
 
 def get_wodle_config(integration_type: str, credentials_file: str = None, log_level: int = 1,
@@ -105,3 +113,15 @@ def test_gcloud_ko(mock_get_script_arguments, mock_logger, mock_data, mock_json,
     assert err.type == SystemExit
     assert err.value.code == errcode
 
+
+@pytest.mark.parametrize("log_level, log_method, expected_message", [
+    (logging.INFO, 'info', 'Test info message'),
+    (logging.DEBUG, 'debug', 'Test debug message'),
+    (logging.WARNING, 'warning', 'Test warning message'),
+    (logging.ERROR, 'error', 'Test error message'),
+])
+def test_log_methods(gcp_logger, caplog, log_level, log_method, expected_message):
+    with caplog.at_level(log_level, logger='TestGCPLogStrategy'):
+        with patch.object(gcp_logger, 'logger', logging.getLogger('TestGCPLogStrategy')):
+            getattr(gcp_logger, log_method)(expected_message)
+    assert expected_message in caplog.text

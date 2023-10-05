@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import logging
 from os.path import join, dirname, realpath
 import sys
 import pytest
@@ -11,15 +10,7 @@ from unittest.mock import patch
 # Local imports
 sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501 # noqa: E501
 from gcloud import get_script_arguments
-from shared.wazuh_cloud_logger import WazuhCloudLogger
-
-
-@pytest.fixture(scope='module')
-def gcp_logger():
-    return WazuhCloudLogger(
-            logger_name='test_logger'
-            )
-
+from tools import arg_valid_date
 
 def test_get_script_arguments(capsys):
     """Test get_script_arguments shows no messages when the required parameters were provided."""
@@ -45,14 +36,7 @@ def test_get_script_arguments_required(capsys, args):
     assert exception.value.code == 2
 
 
-@pytest.mark.parametrize("log_level, log_method, expected_message", [
-    (logging.INFO, 'info', 'Test info message'),
-    (logging.DEBUG, 'debug', 'Test debug message'),
-    (logging.WARNING, 'warning', 'Test warning message'),
-    (logging.ERROR, 'error', 'Test error message'),
-])
-def test_log_methods(gcp_logger, caplog, log_level, log_method, expected_message):
-    with caplog.at_level(log_level, logger='TestGCPLogStrategy'):
-        with patch.object(gcp_logger, 'logger', logging.getLogger('TestGCPLogStrategy')):
-            getattr(gcp_logger, log_method)(expected_message)
-    assert expected_message in caplog.text
+def test_arg_valid_date():
+    """Test arg_valid_dates raises an error when a date parameter doesn't have a valid format."""
+    with pytest.raises(argparse.ArgumentTypeError):
+        arg_valid_date('invalid_date')

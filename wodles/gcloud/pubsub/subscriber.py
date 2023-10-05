@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module contains the class for sending events from Google Cloud subscriber service to Wazuh. """
+"""This module contains the class for sending events from Google Cloud subscriber service to Wazuh."""
 
 from os.path import abspath, dirname
 from sys import path
@@ -23,6 +23,7 @@ try:
     import google.api_core.exceptions
 except ImportError as e:
     raise exceptions.GCloudError(errcode=1003, package=e.name)
+
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
     """Class for sending events from Google Cloud to Wazuh."""

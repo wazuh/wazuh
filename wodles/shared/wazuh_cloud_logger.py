@@ -86,15 +86,18 @@ class WazuhCloudLogger:
         """
         self.logger.warning(message)
 
-    def error(self, message: str):
+    def error(self, message: str, log_exception: bool = False):
         """
         Log an ERROR level message using the selected strategy.
         Parameters
         ----------
         message : str
             The message to be logged.
+        log_exception : bool
+            A boolean to log more information about the exception
         """
-        self.logger.error(message)
+        self.logger.error(message,
+                          exc_info=log_exception)
 
     def set_level(self, log_level: int):
         """
