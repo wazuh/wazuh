@@ -33,7 +33,6 @@ azure_logger = WazuhCloudLogger(
 
 if __name__ == '__main__':
     args = get_script_arguments()
-    set_logger(args.debug_level)
 
     if not check_database_integrity():
         sys.exit(1)
