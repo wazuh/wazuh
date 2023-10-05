@@ -11,17 +11,17 @@ from typing import AsyncGenerator, Callable
 
 import aiohttp
 import certifi
+import wazuh
 from aiohttp import web
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.utils import get_utc_now
 
-import wazuh
 from api.constants import INSTALLATION_UID_PATH
 
 CTI_URL = get_ossec_conf(
     section='global'
-).get('cti_url', 'http://cti:4041')  # This default must be removed once we have the configuratoin in the ossec parser.
+).get('cti_url', 'http://cti:4041')  # This default must be removed once we have the configuration in the ossec parser.
 RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60*60*24
 INSTALLATION_UID_KEY = 'installation_uid'
@@ -68,12 +68,12 @@ def _get_connector() -> aiohttp.TCPConnector:
 
 
 def _get_current_version() -> str:
-    """Return the version of running Wazuh instance
+    """Return the version of running Wazuh instance.
 
     Returns
     -------
     str
-        Wazuh version in format X.Y.Z format.
+        Wazuh version in X.Y.Z format.
     """
     return wazuh.__version__
 
@@ -84,11 +84,11 @@ def _is_running_in_master_node() -> bool:
     Returns
     -------
     bool
-        True if API is runing in master node or if cluster is disabled else False.
+        True if API is running in master node or if cluster is disabled else False.
     """
     cluster_config = read_cluster_config()
 
-    return not cluster_config['disabled'] or cluster_config['node_type'] == 'master'
+    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
 
 
 def _update_check_is_enabled() -> bool:
@@ -111,7 +111,7 @@ async def modify_response_headers(request, response):
 
 @cancel_signal_handler
 async def check_installation_uid(app: web.Application) -> None:
-    """Check if the installation UID, populate if not and inject into the application context.
+    """Check if the installation UID exists, populate it if not and inject it into the application context.
 
     Parameters
     ----------
@@ -137,7 +137,7 @@ async def get_update_information(app: web.Application) -> None:
     Parameters
     ----------
     app : web.Application
-        Application context to inject the update information
+        Application context to inject the update information.
     """
     current_version = f'v{_get_current_version()}'
     headers = {
@@ -178,9 +178,9 @@ async def get_update_information(app: web.Application) -> None:
 
                     app['update_information'] = update_information
             except aiohttp.ClientError as err:
-                logger.error("Something was wrong querying the update check service.", exc_info=err)
+                logger.error("Something went wrong when querying the update check service.", exc_info=err)
             except Exception as err:
-                logger.error("An unknown error occurs trying to get updates information.", exc_info=err)
+                logger.error("An unknown error occurred while trying to get updates information.", exc_info=err)
             finally:
                 await asyncio.sleep(ONE_DAY_SLEEP)
 

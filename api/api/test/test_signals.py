@@ -172,10 +172,10 @@ async def test_get_update_information_injects_correct_data_into_app_context_when
         assert update_information['last_available_patch'] == {}
 
 
-async def test_get_update_information_injects_correct_data_into_app_context_when_satatus_not_200(
+async def test_get_update_information_injects_data_into_app_context_on_error(
     application_mock_with_installation_uid, client_session_get_mock
 ):
-    response_data = {'errors': {'detail': 'Unathorized'}}
+    response_data = {'errors': {'detail': 'Unauthorized'}}
     status = 403
 
     client_session_get_mock.return_value.__aenter__.return_value.status = status
@@ -200,7 +200,7 @@ async def test_get_update_information_injects_correct_data_into_app_context_when
 
 
 @pytest.mark.asyncio
-async def test_get_update_information_make_request_with_correct_parameters(
+async def test_get_update_information_request(
     application_mock_with_installation_uid, client_session_get_mock
 ):
     version = '4.8.0'
@@ -223,7 +223,7 @@ async def test_get_update_information_make_request_with_correct_parameters(
 
 
 @pytest.mark.asyncio
-async def test_get_update_information_sleep_correctly_until_next_excecution(
+async def test_get_update_information_schedule(
     application_mock_with_installation_uid, client_session_get_mock
 ):
     with patch('api.signals.asyncio') as sleep_mock:
@@ -238,16 +238,16 @@ async def test_get_update_information_sleep_correctly_until_next_excecution(
 
 
 @pytest.mark.parametrize(
-    'cconfig,update_check_config,registered_tasks',
+    'cluster_config,update_check_config,registered_tasks',
     [
-        ({'disabled': 'no', 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 2),
-        ({'disabled': 'no', 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
-        ({'disabled': 'no', 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 0),
-        ({'disabled': 'no', 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
-        ({'disabled': 'yes', 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 2),
-        ({'disabled': 'yes', 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
-        ({'disabled': 'yes', 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 0),
-        ({'disabled': 'yes', 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
+        ({'disabled': False, 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 2),
+        ({'disabled': False, 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
+        ({'disabled': False, 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 0),
+        ({'disabled': False, 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
+        ({'disabled': True, 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 2),
+        ({'disabled': True, 'node_type': 'master'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
+        ({'disabled': True, 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'yes'}, 2),
+        ({'disabled': True, 'node_type': 'worker'}, {UPDATE_CHECK_OSSEC_FIELD: 'no'}, 0),
     ]
 )
 @patch('api.signals.check_installation_uid')
@@ -255,12 +255,12 @@ async def test_get_update_information_sleep_correctly_until_next_excecution(
 @patch('api.signals.get_ossec_conf')
 @patch('api.signals.read_cluster_config')
 @pytest.mark.asyncio
-async def test_register_background_tasks_register_and_cancel_correct_amount_of_tasks(
+async def test_register_background_tasks(
     cluster_config_mock,
     ossec_conf_mock,
     get_update_information_mock,
     check_installation_uid_mock,
-    cconfig,
+    cluster_config,
     update_check_config,
     registered_tasks
 ):
@@ -269,7 +269,7 @@ async def test_register_background_tasks_register_and_cancel_correct_amount_of_t
             self.await_count += 1
             return iter([])
 
-    cluster_config_mock.return_value = cconfig
+    cluster_config_mock.return_value = cluster_config
     ossec_conf_mock.return_value = update_check_config
 
     with patch('api.signals.asyncio') as create_task_mock:
