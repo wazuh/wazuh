@@ -471,6 +471,9 @@ TEST_F(RSyncTest, RegisterAndPush)
     const auto handle_rsync { rsync_create(THREAD_POOL_SIZE, MAX_QUEUE_SIZE) };
     ASSERT_NE(nullptr, handle_rsync);
 
+    auto expectedGlobalResponse =
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+
     const auto expectedResult1
     {
         R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
@@ -552,6 +555,7 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     CallbackMock wrapper;
 
+    sync_callback_data_t callbackDataDiff { callbackDiff, reinterpret_cast<void*>(&expectedGlobalResponse) };
     sync_callback_data_t callbackData { callback, &wrapper };
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult2)).Times(1);
@@ -564,8 +568,10 @@ TEST_F(RSyncTest, RegisterAndPush)
     const std::unique_ptr<cJSON, CJsonSmartDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
     ASSERT_EQ(0, rsync_register_sync_id(handle_rsync, "test_id", handle_dbsync, spRegisterConfigStmt.get(), callbackData));
 
-    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spStartConfigStmt{ cJSON_Parse(START_CONFIG_STMT_PATH) };
+    ASSERT_EQ(0, rsync_start_sync(handle_rsync, handle_dbsync, spStartConfigStmt.get(), callbackDataDiff));
 
+    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer1.data()), buffer1.size()));
 
     std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/fonts/unicode.pf2","id":1})"};
@@ -588,7 +594,6 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
 
     auto expectedGlobalResponse =
         R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
-
 
     const auto registerConfigStmt
     {
@@ -637,7 +642,6 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     CallbackMock wrapper;
 
     sync_callback_data_t callbackData { callback, &wrapper };
-
     sync_callback_data_t callbackDataDiff { callbackDiff, reinterpret_cast<void*>(&expectedGlobalResponse) };
 
     const std::unique_ptr<cJSON, CJsonSmartDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };

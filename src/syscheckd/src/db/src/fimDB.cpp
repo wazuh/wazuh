@@ -151,6 +151,7 @@ void FIMDB::runIntegrity()
             sync();
             promise->set_value();
             std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
+
             while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_currentSyncInterval}, [&]()
         {
             return m_stopping;
