@@ -27,6 +27,7 @@ setup.template.json.name: 'wazuh-5'
 setup.template.settings:
   index.number_of_shards: 1
   index.number_of_replicas: 0
+setup.template.overwrite: true
 setup.ilm.overwrite: true
 setup.ilm.enabled: false
 

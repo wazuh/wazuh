@@ -8128,12 +8128,18 @@
     "order": 1,
     "settings": {
         "index": {
+            "number_of_shards": "3",
+            "number_of_replicas": "0",
+            "auto_expand_replicas": "0-1",
             "mapping": {
                 "total_fields": {
                     "limit": 10000
                 }
             },
-            "refresh_interval": "5s"
+            "refresh_interval": "5s",
+            "query.default_field": [
+                "event.original"
+            ]
         }
     }
 }
