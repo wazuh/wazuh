@@ -14,19 +14,19 @@ from datetime import datetime, timezone
 from json import dumps, JSONDecodeError
 from os.path import join, dirname, realpath
 
-try:
-    from google.cloud import storage
-    from google.api_core import exceptions as google_exceptions
-    import pytz
-except ImportError as e:
-    raise exceptions.WazuhIntegrationException(errcode=1003, package=e.name)
-
 # Local Imports
 path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
 import utils
 import exceptions
 from integration import WazuhGCloudIntegration
 from shared.wazuh_cloud_logger import WazuhCloudLogger
+
+try:
+    from google.cloud import storage
+    from google.api_core import exceptions as google_exceptions
+    import pytz
+except ImportError as e:
+    raise exceptions.WazuhIntegrationException(errcode=1003, package=e.name)
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):

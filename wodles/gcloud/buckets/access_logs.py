@@ -36,7 +36,7 @@ class GCSAccessLogs(WazuhGCloudBucket):
         self.db_table_name = "access_logs"
 
     def load_information_from_file(self, msg: str):
-        """Load the contents of an Access Logs bucket and process them.
+        """Load the contents of an Access Logs blob and process them.
 
         GCS Access Logs blobs will always contain the fieldnames as the first line while the remaining lines store the
         data of the log itself.

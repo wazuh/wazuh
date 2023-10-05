@@ -8,12 +8,12 @@
 
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
-import exceptions
 from os import cpu_count
 from sys import path, exit
 from os.path import join, dirname, realpath
 
 # Local Imports
+import exceptions
 path.append(join(dirname(realpath(__file__)), '..', '..'))
 from buckets.access_logs import GCSAccessLogs
 from pubsub.subscriber import WazuhGCloudSubscriber
@@ -72,6 +72,9 @@ def main():
             gcp_logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
                              f" message{'s' if max_messages > 1 else ''} in total")
 
+            # Initialize number of messages variable
+            num_processed_messages = 0
+
             # Process messages
             with ThreadPoolExecutor() as executor:
                 futures = []
@@ -103,7 +106,7 @@ def main():
                         "only_logs_after": arguments.only_logs_after,
                         "reparse": arguments.reparse}
 
-            # Get Access bucket logs
+            # Get Access logs from bucket
             integration = GCSAccessLogs(arguments.credentials_file, gcp_logger, **f_kwargs)
             integration.check_permissions()
             num_processed_messages = integration.process_data()
@@ -116,10 +119,12 @@ def main():
         exit(gcloud_exception.errcode)
 
     except Exception as e:
-        gcp_logger.error(f'Unknown error: {e}')
+        gcp_logger.error(f'Unknown error: {e}',
+                         log_exception=True)
         exit(exceptions.UNKNOWN_ERROR_ERRCODE)
 
     else:
+        # Log pubsub acknowledged messages
         gcp_logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'
                         f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
         exit(0)
