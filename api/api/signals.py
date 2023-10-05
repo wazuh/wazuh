@@ -139,9 +139,10 @@ async def get_update_information(app: web.Application) -> None:
     app : web.Application
         Application context to inject the update information
     """
+    current_version = f'v{_get_current_version()}'
     headers = {
         WAZUH_UID_KEY: app[INSTALLATION_UID_KEY],
-        WAZUH_TAG_KEY: f'v{_get_current_version()}'
+        WAZUH_TAG_KEY: current_version
     }
 
     async with aiohttp.ClientSession(connector=_get_connector()) as session:
@@ -157,18 +158,21 @@ async def get_update_information(app: web.Application) -> None:
 
                     update_information = {
                         'last_check_date': get_utc_now(),
+                        'current_version': current_version,
                         'status_code': response.status,
                         'message': '',
-                        'available_update': {}
+                        'last_available_major': {},
+                        'last_available_minor': {},
+                        'last_available_patch': {},
                     }
 
                     if response.status == 200:
+                        if len(response_data['data']['major']):
+                            update_information['last_available_major'].update(**response_data['data']['major'][-1])
+                        if len(response_data['data']['minor']):
+                            update_information['last_available_minor'].update(**response_data['data']['minor'][-1])
                         if len(response_data['data']['patch']):
-                            update_information['available_update'].update(**response_data['data']['patch'][0])
-                        elif len(response_data['data']['minor']):
-                            update_information['available_update'].update(**response_data['data']['minor'][0])
-                        elif len(response_data['data']['mayor']):
-                            update_information['available_update'].update(**response_data['data']['mayor'][0])
+                            update_information['last_available_patch'].update(**response_data['data']['patch'][-1])
                     else:
                         update_information['message'] = response_data['errors']['detail']
 
