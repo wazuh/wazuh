@@ -394,9 +394,8 @@ INSTANTIATE_TEST_SUITE_P(
                                                EasyExp::implication("implication_0", false, true),
                                                EasyExp::term("term", true)),
                      {{"implication_0_cond", false}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::implication("implication_0", true, true),
-                                               EasyExp::term("term", true)),
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::implication("implication_0", true, true), EasyExp::term("term", true)),
                      {{"implication_0_cond", true}, {"implication_0_imp", true}, {"term", true}}},
         BKexpParams {base::Implication::create("implication",
                                                EasyExp::term("term", true),
@@ -407,38 +406,148 @@ INSTANTIATE_TEST_SUITE_P(
                                                EasyExp::implication("implication_0", false, true)),
                      {{"term", false}}},
         // Implication of or
-        BKexpParams {base::Implication::create("implication",
-                                                  EasyExp::or_("or_0", {true, true}),
-                                                  EasyExp::or_("or_1", {true, true})),
-                        {{"or_0_0", true}, {"or_1_0", true}}},
-        BKexpParams {base::Implication::create("implication",
-                                                  EasyExp::or_("or_0", {true, false}),
-                                                  EasyExp::or_("or_1", {false, true})),
-                        {{"or_0_0", true}, {"or_1_0", false}, {"or_1_1", true}}},
-        BKexpParams {base::Implication::create("implication",
-                                                  EasyExp::or_("or_0", {false, false}),
-                                                  EasyExp::or_("or_1", {false, false})),
-                        {{"or_0_0", false}, {"or_0_1", false}}},
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})),
+                     {{"or_0_0", true}, {"or_1_0", true}}},
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::or_("or_0", {true, false}), EasyExp::or_("or_1", {false, true})),
+                     {{"or_0_0", true}, {"or_1_0", false}, {"or_1_1", true}}},
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})),
+                     {{"or_0_0", false}, {"or_0_1", false}}},
         // Implication of and
-        BKexpParams {base::Implication::create("implication",
-                                                  EasyExp::and_("and_0", {true, true}),
-                                                  EasyExp::and_("and_1", {true, true})),
-                        {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
-        BKexpParams {base::Implication::create("implication",
-                                                  EasyExp::and_("and_0", {false, false}),
-                                                  EasyExp::and_("and_1", {false, false})),
-                        {{"and_0_0", false}}},
-        BKexpParams {base::Implication::create("implication",
-                                                  EasyExp::and_("and_0", {true, true}),
-                                                    EasyExp::and_("and_1", {false, false})),
-                        {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}},
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})),
+                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})),
+                     {{"and_0_0", false}}},
+        BKexpParams {base::Implication::create(
+                         "implication", EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})),
+                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}},
         /********************************************** OR TEST **********************************************/
         // [2] Complex: Or of broadcast
+        BKexpParams {base::Or::create("or",
+                                      {EasyExp::broadcast("broadcast_0", {true, true}),
+                                       EasyExp::broadcast("broadcast_1", {true, true})}),
+                     {{"broadcast_0_1", true}, {"broadcast_0_0", true}}},
+        BKexpParams {base::Or::create("or",
+                                      {EasyExp::broadcast("broadcast_0", {false, false}),
+                                       EasyExp::broadcast("broadcast_1", {false, false})}),
+                     {{"broadcast_0_1", false}, {"broadcast_0_0", false}}},
+        // [2] Complex: Or of chain
         BKexpParams {
-            base::Or::create("or", {EasyExp::broadcast("broadcast_0", {true, true}),
-                                    EasyExp::broadcast("broadcast_1", {true, true})}),
-            {{"broadcast_0_1", true}, {"broadcast_0_0", true}}}
-
+            base::Or::create("or", {EasyExp::chain("chain_0", {true, true}), EasyExp::chain("chain_1", {true, true})}),
+            {{"chain_0_0", true}, {"chain_0_1", true}}},
+        BKexpParams {base::Or::create(
+                         "or", {EasyExp::chain("chain_0", {true, false}), EasyExp::chain("chain_1", {false, true})}),
+                     {{"chain_0_0", true}, {"chain_0_1", false}}},
+        // [4] Complex: Or of implication
+        BKexpParams {base::Or::create("or",
+                                      {EasyExp::implication("implication_0", true, true),
+                                       EasyExp::implication("implication_1", true, true)}),
+                     {{"implication_0_cond", true}, {"implication_0_imp", true}}},
+        BKexpParams {base::Or::create("or",
+                                      {EasyExp::implication("implication_0", true, false),
+                                       EasyExp::implication("implication_1", true, false)}),
+                     {{"implication_0_cond", true}, {"implication_0_imp", false}}},
+        BKexpParams {base::Or::create("or",
+                                      {EasyExp::implication("implication_0", false, true),
+                                       EasyExp::implication("implication_1", true, false)}),
+                     {{"implication_0_cond", false}, {"implication_1_cond", true}, {"implication_1_imp", false}}},
+        BKexpParams {base::Or::create("or",
+                                      {EasyExp::implication("implication_0", false, true),
+                                       EasyExp::implication("implication_1", false, true)}),
+                     {{"implication_0_cond", false}, {"implication_1_cond", false}}},
+        // [3] Complex: Or of or
+        BKexpParams {base::Or::create("or", {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
+                     {{"or_0_0", true}}},
+        BKexpParams {
+            base::Or::create("or", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, true})}),
+            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", false}, {"or_1_1", true}}},
+        BKexpParams {
+            base::Or::create("or", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
+            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", false}, {"or_1_1", false}}},
+        BKexpParams {
+            base::Or::create("or", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {true, false})}),
+            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", true}}},
+        // [2] Complex: Or of and
+        BKexpParams {
+            base::Or::create("or", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
+            {{"and_0_0", true}, {"and_0_1", true}}},
+        BKexpParams {
+            base::Or::create("or", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
+            {{"and_0_0", false}, {"and_1_0", false}}},
+        BKexpParams {
+            base::Or::create("or", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})}),
+            {{"and_0_0", true}, {"and_0_1", true}}},
+        BKexpParams {
+            base::Or::create("or", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {true, false})}),
+            {{"and_0_0", false}, {"and_1_0", true}, {"and_1_1", false}}},
+        /********************************************** AND TEST **********************************************/
+        // [2] Complex: And of broadcast
+        BKexpParams {
+            base::And::create("and",
+                              {EasyExp::broadcast("broadcast_0", {true, true}),
+                               EasyExp::broadcast("broadcast_1", {true, true})}),
+            {{"broadcast_0_1", true}, {"broadcast_0_0", true}, {"broadcast_1_1", true}, {"broadcast_1_0", true}}},
+        BKexpParams {
+            base::And::create("and",
+                              {EasyExp::broadcast("broadcast_0", {false, false}),
+                               EasyExp::broadcast("broadcast_1", {false, false})}),
+            {{"broadcast_0_1", false}, {"broadcast_0_0", false}, {"broadcast_1_1", false}, {"broadcast_1_0", false}}},
+        // [2] Complex: And of chain
+        BKexpParams {base::And::create(
+                         "and", {EasyExp::chain("chain_0", {true, true}), EasyExp::chain("chain_1", {true, true})}),
+                     {{"chain_0_0", true}, {"chain_0_1", true}, {"chain_1_0", true}, {"chain_1_1", true}}},
+        BKexpParams {base::And::create(
+                         "and", {EasyExp::chain("chain_0", {true, false}), EasyExp::chain("chain_1", {false, true})}),
+                     {{"chain_0_0", true}, {"chain_0_1", false}, {"chain_1_0", false}, {"chain_1_1", true}}},
+        // [4] Complex: And of implication
+        BKexpParams {base::And::create("and",
+                                       {EasyExp::implication("implication_0", true, true),
+                                        EasyExp::implication("implication_1", true, true)}),
+                     {{"implication_0_cond", true},
+                      {"implication_0_imp", true},
+                      {"implication_1_cond", true},
+                      {"implication_1_imp", true}}},
+        BKexpParams {base::And::create("and",
+                                       {EasyExp::implication("implication_0", true, false),
+                                        EasyExp::implication("implication_1", true, false)}),
+                     {{"implication_0_cond", true},
+                      {"implication_0_imp", false},
+                      {"implication_1_cond", true},
+                      {"implication_1_imp", false}}},
+        BKexpParams {base::And::create("and",
+                                       {EasyExp::implication("implication_0", false, true),
+                                        EasyExp::implication("implication_1", true, false)}),
+                     {{"implication_0_cond", false}}},
+        BKexpParams {base::And::create("and",
+                                       {EasyExp::implication("implication_0", true, true),
+                                        EasyExp::implication("implication_1", false, true)}),
+                     {{"implication_0_cond", true}, {"implication_0_imp", true}, {"implication_1_cond", false}}},
+        BKexpParams {base::And::create("and",
+                                       {EasyExp::implication("implication_0", false, true),
+                                        EasyExp::implication("implication_1", false, true)}),
+                     {{"implication_0_cond", false}}},
+        // [3] Complex: And of or
+        BKexpParams {base::And::create("and", {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
+                     {{"or_0_0", true}, {"or_1_0", true}}},
+        BKexpParams {base::And::create(
+                         "and", {EasyExp::or_("or_0", {false, true}), EasyExp::or_("or_1", {false, true})}),
+                        {{"or_0_0", false}, {"or_0_1", true}, {"or_1_0", false}, {"or_1_1", true}}},
+        BKexpParams {base::And::create(
+                         "and", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
+                        {{"or_0_0", false}, {"or_0_1", false}}},
+        // [2] Complex: And of and
+        BKexpParams {base::And::create("and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
+                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
+        BKexpParams {base::And::create(
+                         "and", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
+                     {{"and_0_0", false}}},
+        BKexpParams {base::And::create(
+                         "and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})}),
+                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}}
 
 
         // End
@@ -455,8 +564,7 @@ struct Subscriber
         };
     }
 
-    void checkTraceActivation(Controller& controller,
-                              const std::vector<std::string>& expected)
+    void checkTraceActivation(Controller& controller, const std::vector<std::string>& expected)
     {
         auto event = std::make_shared<json::Json>();
         ASSERT_NO_THROW(controller.ingest(std::move(event)));
