@@ -324,7 +324,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             auto operands = expression->getPtr<base::Or>()->getOperands();
             checkOpSize(operands, "Or");
 
-            auto root = m_tf.emplace([]() { return FAILURE; }).name("root or");
+            auto root = m_tf.emplace([]() { }).name("root or");
             if (hasParent)
             {
                 root.succeed(parent);
@@ -340,13 +340,20 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
                                    .name("success or")
                                    .precede(task);
 
-            auto lastTask = root;
+            auto lastTask = tf::Task();
+            auto currentTask = tf::Task();
             auto eTask = tf::Task();
+
             for (auto& operand : operands)
             {
-                auto subTask = build(operand, eTask, true, publisher);
-                lastTask.precede(successTask, subTask);
-                lastTask = subTask;
+                if (lastTask.empty()) {
+                    currentTask = build(operand, root, true, publisher);
+                } else {
+                    auto subParent = m_tf.emplace([]() { }).name("root sub or");
+                    currentTask = build(operand, subParent, true, publisher);
+                    lastTask.precede(successTask, subParent);
+                }
+                lastTask = currentTask;
             }
             lastTask.precede(successTask, task);
 
@@ -366,7 +373,7 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
             auto operands = expression->getPtr<base::And>()->getOperands();
             checkOpSize(operands, "And");
 
-            auto root = m_tf.emplace([]() { return SUCCESS; }).name("root and");
+            auto root = m_tf.emplace([]() {}).name("root and");
             if (hasParent)
             {
                 root.succeed(parent);
@@ -382,13 +389,19 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
                                 .name("fail and")
                                 .precede(task);
 
-            auto lastTask = root;
+            auto lastTask = tf::Task();
+            auto currentTask = tf::Task();
             auto eTask = tf::Task();
             for (auto& operand : operands)
             {
-                auto subTask = build(operand, eTask, true, publisher);
-                lastTask.precede(subTask, failTask);
-                lastTask = subTask;
+                if (lastTask.empty()) {
+                    currentTask = build(operand, root, true, publisher);
+                } else {
+                    auto subParent = m_tf.emplace([]() { }).name("root sub and");
+                    currentTask = build(operand, subParent, true, publisher);
+                    lastTask.precede(subParent, failTask);
+                }
+                lastTask = currentTask;
             }
             lastTask.precede(task, failTask);
 
