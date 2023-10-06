@@ -4,20 +4,19 @@ parents:
   - decoder/windows-event/0
 
 metadata:
-  description: Decoder for Windows Powershell events
   module: Windows Powershell
   title: Decoder for Windows Powershell events
-  compatibility: >
-    This decoder has been tested on Wazuh version 4.3
+  description: Decoder for Windows Powershell events
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This decoder was tested on Windows 10, but should work on all versions of Windows Vista onwards.
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
   references:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
-  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
-  - windows.System.Channel.#text: string_equal(Windows PowerShell)
+  - windows.System.Channel.#text: Windows PowerShell
 
 normalize:
  - map:
@@ -40,7 +39,7 @@ normalize:
    - process.entity_id: $_event_data.HostId
    - process.command_line: $_event_data.HostApplication
    - process.title: $_event_data.HostName
-   - process.executable: $_event_data.ScriptName
+   - process.executable: $_event_data.ScriptName # revisar
 
   ## User fields.
    - _user_parts: split($_event_data.UserId, \\)
@@ -71,14 +70,17 @@ normalize:
    - file.extension: $_file_data.ext
    - file.name: $_file_data.name
 
- - check: $event.code=="400"
+ - check: $event.code == '400'
    map:
     - event.type: array_append(start)
 
- - check: $event.code=="403"
+ - check: $event.code == '403'
    map:
     - event.type: array_append(end)
 
 # Cleanup
  - map:
-   - windows: delete()
+   - windows.System.Keywords: kvdb_get(windows_powershell_winmeta_keywords, $windows.System.Keywords.#text)
+   - windows.EventData: delete()
+   - windows.System.TimeCreated: delete()
+   - windows.System.Level: delete()
