@@ -881,15 +881,4 @@
     </mitre>
   </rule>
 
-  <rule id="92082" level="15">
-    <if_group>sysmon_event1</if_group>
-    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)svchost\.exe</field>
-    <field name="win.eventdata.commandLine" type="pcre2">(?i)\\appdata\\</field>
-    <options>no_full_log</options>
-    <description>Possible scheduled task execution of binary located in suspicious folder</description>
-    <mitre>
-      <id>T1569.002</id>
-    </mitre>
-  </rule>
-
 </group>
