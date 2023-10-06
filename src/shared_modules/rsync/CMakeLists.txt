@@ -62,7 +62,8 @@ file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(rsync SHARED
-    ${RSYNC_SRC} )
+    ${RSYNC_SRC}
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)
