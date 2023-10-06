@@ -1,0 +1,10 @@
+{
+    "0x0":              "AnyKeyword",
+    "0x1000000000000":  "Response Time",
+    "0x4000000000000":  "WDI Diag",
+    "0x8000000000000":  "SQM",
+    "0x10000000000000": "Audit Failure",
+    "0x20000000000000": "Audit Success",
+    "0x40000000000000": "Correlation Hint",
+    "0x80000000000000": "Classic"
+}
