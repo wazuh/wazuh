@@ -1,3 +1,4 @@
+import sys
 from engine_test.events_collector import EventsCollector
 from engine_test.formats.syslog import SyslogFormat
 from engine_test.formats.json import JsonFormat
@@ -41,16 +42,22 @@ class Integration(CrudIntegration):
         # Client to API TEST
         self.api_client = ApiConnector(args)
 
-    def run(self):
+    def run(self, interactive: bool = True):
+        loop = True
         events_parsed = []
         try:
-            while (True):
-                # Get the events in single o multiline format
-                events = EventsCollector.collect(self.format)
+            while (loop):
+                if not interactive:
+                    events = sys.stdin.readlines()
+                    loop = False
+                else:
+                    # Get the events in single o multiline format
+                    events = EventsCollector.collect(self.format)
 
                 for event in events:
                     response = self.process_event(event, self.format)
                     events_parsed.append(response)
+
         except Exception as ex:
             print("An error occurred while trying to process the events. Error: {}".format(ex))
         finally:
