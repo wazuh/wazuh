@@ -1,6 +1,7 @@
 import pathlib
 import os
 import hashlib
+import pytest
 
 RELEASED_PATH = 'C:\\win-agent-released\\'
 BASE_PATH = 'C:\\win-agent-base\\'
@@ -18,7 +19,7 @@ def populate_dict(dict, files_list):
 
         # It's required to normalize the name because the installation process changes it
         dict[file.name.lower().replace('-', '_').replace('c++', 'cpp').replace(
-            '_dll', '.dll').replace('wazuh_agent_eventchannel.exe', 'wazuh_agent.exe')] = file_hash
+            '_dll', '.dll').replace('wazuh_agent_eventchannel.exe', 'wazuh_agent.exe').replace('libfimdb.dll', 'fimdb.dll')] = file_hash
 
 
 def test_win_upgrade():
@@ -63,12 +64,15 @@ def test_win_upgrade():
     installed_files_dict = {}
     populate_dict(installed_files_dict, installed_files)
 
-    assert len(installed_files_dict) == len(files_to_install_dict), f"Installed files: '{installed_files_dict}'\nFiles to install: '{files_to_install_dict}'"
+    assert len(installed_files_dict) == len(
+        files_to_install_dict), f"Installed files: '{installed_files_dict}'\nFiles to install: '{files_to_install_dict}'"
 
     success = True
     failed_keys = []
     for key in files_to_install_dict:
         # Compare hashes
+        if key not in installed_files_dict:
+            pytest.fail(f"File '{key}' not found in '{INSTALL_PATH}'\nInstalled files: '{installed_files_dict}'\nFiles to install: '{files_to_install_dict}'")
         if installed_files_dict[key] != files_to_install_dict[key]:
             success = False
             failed_keys.append(
