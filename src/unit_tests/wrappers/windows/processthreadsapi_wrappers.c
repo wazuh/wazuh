@@ -44,6 +44,12 @@ BOOL wrap_OpenProcessToken(__UNUSED_PARAM (HANDLE  ProcessHandle),
     return mock();
 }
 
+BOOL wrap_TerminateProcess(__UNUSED_PARAM(HANDLE hProcess), 
+                           __UNUSED_PARAM(UINT uExitCode)) {
+    function_called();
+    return mock();
+}
+
 void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret) {
     expect_value(wrap_SetThreadPriority, hThread, handle);
     expect_value(wrap_SetThreadPriority, nPriority, priority);

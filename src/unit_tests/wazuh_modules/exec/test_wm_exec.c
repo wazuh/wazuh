@@ -19,6 +19,10 @@
 #include "../../wrappers/wazuh/shared/list_op_wrappers.h"
 #include "../../wrappers/posix/signal_wrappers.h"
 
+#ifdef TEST_WINAGENT
+#include "../../wrappers/windows/processthreadsapi_wrappers.h"
+#endif
+
 #define COMMAND u8"Powershell -c \"@{ winCounter = (Get-Counter '\\mémoire\\mégaoctets disponibles').CounterSamples[0] } | ConvertTo-Json -compress\""
 #define COMMAND2 u8"Powershell -c \"@{ winCounter = (Get-Counter '\\processeur(_total)\\% temps processeur').CounterSamples[0] } | ConvertTo-Json -compress\""
 
@@ -259,17 +263,116 @@ static void test_wm_kill_children_parent(void ** state) {
 }
 
 #else
-static void test_wm_append_handle(void ** state) {
+static void test_wm_append_handle_null_list(void ** state) {
+    HANDLE hProcess = (HANDLE)0x00112233;
 
+    expect_string(__wrap__merror, formatted_msg, "Child process handle 00112233 could not be registered.");
+
+    wm_append_handle(hProcess);
 }
 
-static void test_wm_remove_handle(void ** state) {
+static void test_wm_append_handle_fail(void ** state) {
+    HANDLE hProcess = (HANDLE)0x00112233;
 
+    will_return(__wrap_OSList_AddData, false);
+    will_return(__wrap_OSList_AddData, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Child process handle 00112233 could not be registered.");
+
+    wm_append_handle(hProcess);
 }
 
-static void test_wm_kill_children_fork_failed_win(void ** state) {
+static void test_wm_append_handle_success(void ** state) {
+    HANDLE hProcess = (HANDLE)0x00112233;
+    OSListNode *node;
 
+    will_return(__wrap_OSList_AddData, true);
+    will_return(__wrap_OSList_AddData, node);
+
+    wm_append_handle(hProcess);
 }
+
+static void test_wm_remove_handle_null_list(void ** state) {
+    HANDLE hProccess = (HANDLE)0x00112233;
+
+    expect_string(__wrap__merror, formatted_msg, "Child process 00112233 not found.");
+
+    wm_remove_handle(hProccess);
+}
+
+static void test_wm_remove_handle_not_found(void ** state) {
+    HANDLE hProcces = (HANDLE)0x00112233;
+
+    will_return(__wrap_OSList_GetFirstNode, NULL);
+    expect_string(__wrap__merror, formatted_msg, "Child process 00112233 not found.");
+
+    wm_remove_handle(hProcces);
+}
+
+static void test_wm_remove_handle_success(void ** state) {
+    HANDLE hProcess = (HANDLE) 10;
+    HANDLE * p_hProcess = NULL;
+    OSListNode *node;
+
+    os_calloc(1, sizeof(HANDLE), p_hProcess);
+    *p_hProcess = hProcess;
+    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node->data = p_hProcess;
+
+    will_return(__wrap_OSList_GetFirstNode, node);
+    expect_function_call(__wrap_OSList_DeleteThisNode);
+
+    wm_remove_handle(hProcess);
+
+    os_free(node);
+}
+
+static void test_wm_kill_children_win_empty_list(void ** state) {
+    
+    will_return(__wrap_OSList_GetFirstNode, NULL);
+
+    test_mode = false;
+
+    wm_kill_children();
+}
+
+static void test_wm_kill_children_win_empty_node(void ** state) {    
+    OSListNode *node;
+
+    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node->data = NULL;
+
+    will_return(__wrap_OSList_GetFirstNode, node);
+
+    test_mode = false;
+
+    wm_kill_children();
+
+    os_free(node);
+}
+
+static void test_wm_kill_children_win_success(void ** state) {    
+    HANDLE hProcess = (HANDLE)10;
+    HANDLE * p_hProcess = NULL;
+    OSListNode *node;
+
+    os_calloc(1, sizeof(HANDLE), p_hProcess);
+    *p_hProcess = hProcess;
+    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node->data = p_hProcess;
+
+    will_return(__wrap_OSList_GetFirstNode, node);
+
+    expect_function_call(wrap_TerminateProcess);
+
+    test_mode = false;
+
+    wm_kill_children();
+
+    os_free(p_hProcess);
+    os_free(node);
+}
+
 #endif
 
 int main(void) {
@@ -287,9 +390,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_kill_children_timeout_kill_child, setup_modules, NULL),
         cmocka_unit_test_setup_teardown(test_wm_kill_children_parent, setup_modules, NULL)
 #else
-        cmocka_unit_test_setup_teardown(test_wm_append_handle, setup_modules, teardown_modules),
-        cmocka_unit_test_setup_teardown(test_wm_remove_handle, setup_modules, teardown_modules),
-        cmocka_unit_test_setup_teardown(test_wm_kill_children_win, setup_modules, teardown_modules)
+        cmocka_unit_test_setup_teardown(test_wm_append_handle_null_list, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_wm_append_handle_fail, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_wm_append_handle_success, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_wm_remove_handle_null_list, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_wm_remove_handle_not_found, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_wm_remove_handle_success, setup_modules, teardown_modules),        
+        cmocka_unit_test_setup_teardown(test_wm_kill_children_win_empty_list, setup_modules, NULL),
+        cmocka_unit_test_setup_teardown(test_wm_kill_children_win_empty_node, setup_modules, NULL),
+        cmocka_unit_test_setup_teardown(test_wm_kill_children_win_success, setup_modules, NULL)
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
