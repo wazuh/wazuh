@@ -9,13 +9,11 @@
  * Foundation.
  */
 
-#import <Foundation/Foundation.h>
-
+#include <Foundation/Foundation.h>
 #include <CoreServices/CoreServices.h>
 
 #include <string>
 #include <deque>
-#include <iostream>
 
 void getAppsPathsFromLaunchServices(std::deque<std::string>& apps)
 {

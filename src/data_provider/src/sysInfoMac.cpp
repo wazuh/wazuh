@@ -165,8 +165,6 @@ static void getPKGPackagesFromPath(const std::string& path, const int maxRecurre
     pkgAnalizeDirectory =
         [&](const std::string & directory, const int maxRecurrency)
     {
-        //std::cout << "directory: " << directory << ". maxRecurrency: " << maxRecurrency << std::endl;
-
         const auto subDirectories { Utils::enumerateDirTypeDir(directory) };
 
         for (const auto& subDirectory : subDirectories)
