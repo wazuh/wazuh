@@ -24,6 +24,7 @@
 #include "syncDecoder.h"
 #include "dbsyncWrapper.h"
 #include "cjsonSmartDeleter.hpp"
+#include "synchronizationController.hpp"
 
 namespace RSync
 {
@@ -157,6 +158,7 @@ namespace RSync
             std::map<RSYNC_HANDLE, std::shared_ptr<RSyncContext>> m_remoteSyncContexts;
             std::mutex m_mutex;
             RegistrationController m_registrationController;
+            static SynchronizationController m_synchronizationController;
     };
 }// namespace RSync
 

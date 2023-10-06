@@ -18,11 +18,10 @@
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
-#include <singleton.hpp>
 
 namespace RSync
 {
-    class SynchronizationController final : public Singleton<SynchronizationController>
+    class SynchronizationController final
     {
         public:
             void start(const RSYNC_HANDLE key, const int32_t value)

@@ -20,10 +20,12 @@
 
 using namespace RSync;
 
+SynchronizationController RSyncImplementation::m_synchronizationController;
+
 void RSyncImplementation::release()
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
-    SynchronizationController::instance().clear();
+    m_synchronizationController.clear();
 
     for (const auto& ctx : m_remoteSyncContexts)
     {
@@ -39,7 +41,7 @@ void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
     m_registrationController.removeComponentByHandle(handle);
     remoteSyncContext(handle)->m_msgDispatcher->rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
-    SynchronizationController::instance().stop(handle);
+    m_synchronizationController.stop(handle);
     m_remoteSyncContexts.erase(handle);
 }
 
@@ -110,7 +112,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
-        SynchronizationController::instance().start(handle, checksumCtx.rightCtx.id);
+        m_synchronizationController.start(handle, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
@@ -158,7 +160,7 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
         {
             try
             {
-                SynchronizationController::instance().checkId(handle, syncData.id);
+                m_synchronizationController.checkId(handle, syncData.id);
 
                 if (0 == syncData.command.compare("checksum_fail"))
                 {
