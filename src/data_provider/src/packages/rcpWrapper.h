@@ -271,7 +271,7 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto getVariable
             {
-                [&](size_t& offset) -> const BOMVar*
+                [](size_t& offset, size_t varsOffset, const BOMVars* pVars, std::vector<char>& fileContent) -> const BOMVar*
                 {
                     if (fileContent.size() < varsOffset + offset + sizeof(BOMVar))
                     {
@@ -301,7 +301,7 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto getPointer
             {
-                [&](int index, size_t& length) -> const char*
+                [](int index, size_t& length, const BOMBlockTable* pTable, std::vector<char>& fileContent) -> const char*
                 {
                     if (ntohl(index) >= ntohl(pTable->count))
                     {
@@ -346,7 +346,7 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto generatePathString
             {
-                [&](const BOMPaths * paths)
+                [&getPointer, &getPaths](const BOMPaths * paths, std::string& installPrefixPath, std::deque<std::string>& bomPaths)
                 {
                     std::map<uint32_t, std::string> filenames;
                     std::map<uint32_t, uint32_t> parents;
@@ -407,16 +407,16 @@ class RCPWrapper final : public IPackageWrapper
                                 continue;
                             }
 
-                            if (m_installPrefixPath == "/")
+                            if (installPrefixPath == "/")
                             {
                                 filename = filename.substr(1);
                             }
                             else
                             {
-                                filename = m_installPrefixPath + "/" + filename.substr(1);
+                                filename = installPrefixPath + "/" + filename.substr(1);
                             }
 
-                            m_bomPaths.push_back(filename);
+                            bomPaths.push_back(filename);
                         }
 
                         if (paths->forward == htonl(0))
