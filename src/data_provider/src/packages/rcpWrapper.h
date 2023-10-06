@@ -269,7 +269,7 @@ class RCPWrapper final : public IPackageWrapper
             const BOMVars* pVars { nullptr };
             std::vector<char> fileContent;
 
-            const auto getVariable
+            auto getVariable
             {
                 [&](size_t& offset) -> const BOMVar*
                 {
@@ -299,7 +299,7 @@ class RCPWrapper final : public IPackageWrapper
                 }
             };
 
-            const auto getPointer
+            auto getPointer
             {
                 [&](int index, size_t& length) -> const char*
                 {
@@ -323,7 +323,7 @@ class RCPWrapper final : public IPackageWrapper
                 }
             };
 
-            const auto getPaths
+            auto getPaths
             {
                 [&](int index) -> const BOMPaths*
                 {
@@ -344,7 +344,7 @@ class RCPWrapper final : public IPackageWrapper
                 }
             };
 
-            const auto generatePathString
+            auto generatePathString
             {
                 [&](const BOMPaths * paths)
                 {

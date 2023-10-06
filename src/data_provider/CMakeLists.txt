@@ -141,6 +141,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
     file(GLOB SYSINFO_SRC
         "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*Mac.mm"
         "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
         "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
@@ -149,6 +150,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   else()
     file(GLOB SYSINFO_SRC
         "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*Mac.mm"
         "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
         "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
         "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
@@ -214,7 +216,11 @@ elseif(APPLE)
   if(NOT corefoundation_lib)
     message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
   endif()
-  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
+  find_library(foundation_lib Foundation)
+  if(NOT foundation_lib)
+    message(FATAL_ERROR "Foundation library not found! Aborting...")
+  endif()
+  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib} ${foundation_lib})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
