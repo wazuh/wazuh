@@ -25,7 +25,11 @@ jobs:
           # We remove the executables that aren't distributed in the signed installer
           rm -f src/win32/setup-*.exe
           cp src/win32/*.exe src/bin_files/
-          cp src/*.dll src/bin_files/
+          # We exclude the libraries that aren't built by Wazuh
+          rm -f src/win32/libwinpthread-1.dll
+          rm -f src/win32/libgcc_s_dw2-1.dll
+          rm -f src/win32/libstdc++-6.dll
+          find src/ -name "*.dll" -not -path "src/external/*" -not -path "src/win32/SimpleSC/*" -not -path "src/win32/nsProcess/*" -exec cp {} src/bin_files/ \;
       - name: Upload Artifact binaries
         uses: actions/upload-artifact@v3
         with:
