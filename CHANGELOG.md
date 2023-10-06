@@ -70,7 +70,7 @@ All notable changes to this project will be documented in this file.
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
-- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547]https://github.com/wazuh/wazuh/pull/16547)
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547](https://github.com/wazuh/wazuh/pull/16547))
 
 #### Changed
 
@@ -111,7 +111,8 @@ All notable changes to this project will be documented in this file.
 - Fixed agent starts with an invalid fim configuration. ([#16268](https://github.com/wazuh/wazuh/pull/16268))
 - Fixed rootcheck scan trying to read deleted files. ([#15719](https://github.com/wazuh/wazuh/pull/15719))
 - Fixed compilation and build in Gentoo. ([#15739](https://github.com/wazuh/wazuh/pull/15739))
-
+- Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
+- 
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. ([#13878](https://github.com/wazuh/wazuh/pull/13878))
