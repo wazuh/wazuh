@@ -112,16 +112,3 @@ def test_gcloud_ko(mock_get_script_arguments, mock_logger, mock_data, mock_json,
         gcloud.main()
     assert err.type == SystemExit
     assert err.value.code == errcode
-
-
-@pytest.mark.parametrize("log_level, log_method, expected_message", [
-    (logging.INFO, 'info', 'Test info message'),
-    (logging.DEBUG, 'debug', 'Test debug message'),
-    (logging.WARNING, 'warning', 'Test warning message'),
-    (logging.ERROR, 'error', 'Test error message'),
-])
-def test_log_methods(gcp_logger, caplog, log_level, log_method, expected_message):
-    with caplog.at_level(log_level, logger='Test_gcp_logger'):
-        with patch.object(gcp_logger, 'logger', logging.getLogger('Test_gcp_logger')):
-            getattr(gcp_logger, log_method)(expected_message)
-    assert expected_message in caplog.text

@@ -94,7 +94,7 @@ class WazuhCloudLogger:
         message : str
             The message to be logged.
         log_exception : bool
-            A boolean to log more information about the exception
+            A boolean to log more information about the exception.
         """
         self.logger.error(message,
                           exc_info=log_exception)

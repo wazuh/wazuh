@@ -65,7 +65,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         Parameters
         ----------
         credentials_file : str
- logging.Logger           Path to credentials file.
+            Path to credentials file.
 
         Returns
         -------
