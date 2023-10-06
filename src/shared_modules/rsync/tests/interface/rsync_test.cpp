@@ -1509,6 +1509,7 @@ TEST_F(RSyncTest, RegisterAndPushShutdownCPP)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
 

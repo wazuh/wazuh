@@ -31,6 +31,21 @@ namespace RSync
                 m_data[key] = value;
             }
 
+            void stop(const RSYNC_HANDLE key)
+            {
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                if (m_data.find(key) != m_data.end())
+                {
+                    m_data.erase(key);
+                }
+            }
+
+            void clear()
+            {
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                m_data.clear();
+            }
+
             void checkId(const RSYNC_HANDLE key, const int32_t value)
             {
                 std::lock_guard<std::mutex> lock{ m_mutex };

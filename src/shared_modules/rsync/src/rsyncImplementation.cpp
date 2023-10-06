@@ -22,6 +22,7 @@ using namespace RSync;
 
 void RSyncImplementation::release()
 {
+    SynchronizationController::instance().clear();
     std::lock_guard<std::mutex> lock{ m_mutex };
 
     for (const auto& ctx : m_remoteSyncContexts)
@@ -35,6 +36,7 @@ void RSyncImplementation::release()
 
 void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
 {
+    SynchronizationController::instance().stop(handle);
     m_registrationController.removeComponentByHandle(handle);
     remoteSyncContext(handle)->m_msgDispatcher->rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
