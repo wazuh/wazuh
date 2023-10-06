@@ -1,46 +1,80 @@
-- name: "No_connection_with_remoted"
-  description:
+- name: Test_case_0
+  description: Check connection via TCP
   configuration_parameters:
+    PROTOCOL: 'tcp'
   metadata:
-    remoted: false
-    output:
-    - type: "file"
-      fields:
-        status: "pending"
-        last_keepalive: ""
-        last_ack: ""
-        msg_count: ""
+    max_retries: 3
+    retry_interval: 3
+    enroll: 'no'
 
-- name: "Successful_connection_with_remoted"
-  description:
+- name: Test_case_1
+  description: Check connection via TCP
   configuration_parameters:
+    PROTOCOL: 'tcp'
   metadata:
-    remoted: true
-    output:
-    - type: "file"
-      fields:
-        status: "connected"
-        last_keepalive: true
-        last_ack: true
-        msg_count: true
-    - type: "remote"
-      fields:
-        status: "connected"
-        last_keepalive: true
-        last_ack: true
-        msg_count: true
+    max_retries: 5
+    retry_interval: 5
+    enroll: 'no'
 
-- name: "Only_remote_request_available"
-  description:
+- name: Test_case_2
+  description: Check connection via TCP
   configuration_parameters:
+    PROTOCOL: 'tcp'
   metadata:
-    local_internal_options:
-      agent.state_interval: 0
-    remoted: true
-    output:
-    - type: "remote"
-      fields:
-        status: "connected"
-        last_keepalive: true
-        last_ack: true
-        msg_count: true
+    max_retries: 10
+    retry_interval: 10
+    enroll: 'no'
+
+- name: Test_case_3
+  description: Check connection via TCP with enrollment
+  configuration_parameters:
+    PROTOCOL: 'tcp'
+  metadata:
+    max_retries: 5
+    retry_interval: 5
+    enroll: 'yes'
+
+- name: Test_case_4
+  description: Check connection via UDP with enrollment
+  configuration_parameters:
+    PROTOCOL: 'udp'
+  metadata:
+    max_retries: 2
+    retry_interval: 2
+    enroll: 'yes'
+
+- name: Test_case_5
+  description: Check connection via UDP
+  configuration_parameters:
+    PROTOCOL: 'udp'
+  metadata:
+    max_retries: 1
+    retry_interval: 1
+    enroll: 'no'
+
+- name: Test_case_6
+  description: Check connection via UDP
+  configuration_parameters:
+    PROTOCOL: 'udp'
+  metadata:
+    max_retries: 5
+    retry_interval: 5
+    enroll: 'no'
+
+- name: Test_case_7
+  description: Check connection via UDP
+  configuration_parameters:
+    PROTOCOL: 'udp'
+  metadata:
+    max_retries: 10
+    retry_interval: 4
+    enroll: 'no'
+
+- name: Test_case_8
+  description: Check connection via UDP
+  configuration_parameters:
+    PROTOCOL: 'udp'
+  metadata:
+    max_retries: 3
+    retry_interval: 12
+    enroll: 'no'

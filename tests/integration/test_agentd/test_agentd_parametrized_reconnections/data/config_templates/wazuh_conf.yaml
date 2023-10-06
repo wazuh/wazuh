@@ -10,4 +10,4 @@
                 - port:
                     value: '1514'
                 - protocol:
-                    value: 'tcp'
+                    value: 'PROTOCOL'
