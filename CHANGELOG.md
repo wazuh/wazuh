@@ -111,7 +111,8 @@ All notable changes to this project will be documented in this file.
 - Fixed agent starts with an invalid fim configuration. ([#16268](https://github.com/wazuh/wazuh/pull/16268))
 - Fixed rootcheck scan trying to read deleted files. ([#15719](https://github.com/wazuh/wazuh/pull/15719))
 - Fixed compilation and build in Gentoo. ([#15739](https://github.com/wazuh/wazuh/pull/15739))
-
+- Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
+- 
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. ([#13878](https://github.com/wazuh/wazuh/pull/13878))
