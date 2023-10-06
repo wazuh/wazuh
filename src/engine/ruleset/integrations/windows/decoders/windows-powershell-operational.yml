@@ -4,17 +4,16 @@ parents:
   - decoder/windows-event/0
 
 metadata:
-  description: Decoder for Windows Powershell Operational events
   module: Windows Powershell/Operational
   title: Decoder for Windows Powershell Operational logs
-  compatibility: >
-    This decoder has been tested on Wazuh version 4.3
+  description: Decoder for Windows Powershell Operational events
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This decoder was tested on Windows 10, but should work on all versions of Windows Vista onwards.
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
   references:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
-  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check: string_equal($windows.System.Channel.#text,Microsoft-Windows-PowerShell/Operational)
 
@@ -28,10 +27,11 @@ normalize:
    - event.sequence: $windows.EventData.SequenceNumber
 
   # User fields
+   - user.id: $windows.User.identifier
    - _user_parts: split($windows.EventData.User, \\)
    - destination.user.domain: $_user_parts.0
    - destination.user.name: $_user_parts.1
-   - related.user: array_append(destination.user.name)
+   - related.user: array_append($destination.user.name)
    - _connected_user_parts: split($windows.EventData.ConnectedUser, \\)
    - source.user.domain: $_connected_user_parts.0
    - source.user.name: $_connected_user_parts.1
@@ -56,7 +56,6 @@ normalize:
    - powershell.file.script_block_text: $windows.EventData.ScriptBlockText
 
    # File fields
-   - file.path: $windows.EventData.Path
    - file.path: $windows.EventData.ScriptName
    - _file_data: parse_file($file.path)
    - file.directory: $_file_data.path
@@ -69,14 +68,18 @@ normalize:
    - process.title: $windows.EventData.HostName
    - process.executable: $file.path
 
- - check: $event.code=="4105"
+ - check: $event.code == '4105'
    map:
     - event.type: array_append(start)
 
- - check: $event.code=="4106"
+ - check: $event.code == '4106'
    map:
     - event.type: array_append(end)
 
 # Cleanup
  - map:
-   - windows: delete()
+   - windows.System.Opcode: kvdb_get(windows_powershell_operational_winmeta_opcodes, $windows.System.Opcode.#text)
+   - windows.System.Keywords: kvdb_get(windows_powershell_winmeta_keywords, $windows.System.Keywords.#text)
+   - windows.EventData: delete()
+   - windows.System.TimeCreated: delete()
+   - windows.System.Level: delete()

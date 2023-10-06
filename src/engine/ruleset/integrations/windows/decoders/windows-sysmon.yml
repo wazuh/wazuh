@@ -4,12 +4,12 @@ parents:
   - decoder/windows-event/0
 
 metadata:
-  description: Decoder for Windows Sysmon events
-  module: Windows Sysmon
+   module: Windows Sysmon
   title: Decoder for Windows Sysmon
+  description: Decoder for Windows Sysmon events
+  versions: [10x, 11x, 12x, 13x, 14x, 15x]
   compatibility: >
     This integration was tested on Windows 10, with sysmon version v15.x but it should support version v10.x onwards
-  versions: [10x, 11x, 12x, 13x, 14x, 15x]
   author:
     name: Wazuh, Inc.
     date: 2023/01/23
