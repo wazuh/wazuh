@@ -127,6 +127,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
 
@@ -271,6 +273,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
@@ -449,6 +453,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 
     EXPECT_EQ(TOTAL_EXPECTED_MESSAGES, messageCounter.load());
@@ -566,6 +572,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
@@ -687,6 +695,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 
