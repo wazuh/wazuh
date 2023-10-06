@@ -24,10 +24,10 @@ namespace RSync
     class SynchronizationController final
     {
         public:
-            void start(const RSYNC_HANDLE key, const int32_t value)
+            void start(const RSYNC_HANDLE key, const std::string& table, const int32_t value)
             {
                 std::lock_guard<std::mutex> lock{ m_mutex };
-                m_data[key] = value;
+                m_data[key][table] = value;
             }
 
             void stop(const RSYNC_HANDLE key)
@@ -45,7 +45,7 @@ namespace RSync
                 m_data.clear();
             }
 
-            void checkId(const RSYNC_HANDLE key, const int32_t value)
+            void checkId(const RSYNC_HANDLE key, const std::string& table, const int32_t value)
             {
                 std::lock_guard<std::mutex> lock{ m_mutex };
                 const auto it = m_data.find(key);
@@ -55,21 +55,26 @@ namespace RSync
                 }
                 else
                 {
-                    if (value < it->second)
-                    {
-                        it->second =  value;
-                    }
+                    const auto itTable = it->second.find(table);
 
-                    if (value > it->second)
+                    if (itTable != it->second.end())
                     {
-                        Log::debugVerbose << "Sync id: " << std::to_string(value) << " is not the current id: "
-                            << std::to_string(it->second) << LogEndl;
-                        throw std::runtime_error { "Sync id is not the current id" };
+                        if (value < itTable->second)
+                        {
+                            itTable->second = value;
+                        }
+
+                        if (value > itTable->second)
+                        {
+                            Log::debugVerbose << "Sync id: " << std::to_string(value) << " is not the current id: "
+                                << std::to_string(itTable->second) << " for table: "<< table << LogEndl;
+                            throw std::runtime_error { "Sync id is not the current id" };
+                        }
                     }
                 }
             }
         private:
-            std::unordered_map<RSYNC_HANDLE, int32_t> m_data;
+            std::unordered_map<RSYNC_HANDLE, std::unordered_map<std::string, int32_t>> m_data;
             std::mutex m_mutex;
     };
 } // namespace RSync

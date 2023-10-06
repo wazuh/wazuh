@@ -112,7 +112,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
-        m_synchronizationController.start(handle, checksumCtx.rightCtx.id);
+        m_synchronizationController.start(handle, jsStartParamsTable, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
@@ -160,7 +160,7 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
         {
             try
             {
-                m_synchronizationController.checkId(handle, syncData.id);
+                m_synchronizationController.checkId(handle, syncConfiguration.at("table"), syncData.id);
 
                 if (0 == syncData.command.compare("checksum_fail"))
                 {
