@@ -301,7 +301,7 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto getPointer
             {
-                [](int index, size_t& length, const BOMBlockTable* pTable, std::vector<char>& fileContent) -> const char*
+                [&](int index, size_t& length) -> const char*
                 {
                     if (ntohl(index) >= ntohl(pTable->count))
                     {
@@ -346,7 +346,7 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto generatePathString
             {
-                [&getPointer, &getPaths](const BOMPaths * paths, std::string& installPrefixPath, std::deque<std::string>& bomPaths)
+                [&](const BOMPaths * paths)
                 {
                     std::map<uint32_t, std::string> filenames;
                     std::map<uint32_t, uint32_t> parents;
@@ -407,16 +407,16 @@ class RCPWrapper final : public IPackageWrapper
                                 continue;
                             }
 
-                            if (installPrefixPath == "/")
+                            if (m_installPrefixPath == "/")
                             {
                                 filename = filename.substr(1);
                             }
                             else
                             {
-                                filename = installPrefixPath + "/" + filename.substr(1);
+                                filename = m_installPrefixPath + "/" + filename.substr(1);
                             }
 
-                            bomPaths.push_back(filename);
+                            m_bomPaths.push_back(filename);
                         }
 
                         if (paths->forward == htonl(0))
@@ -478,7 +478,7 @@ class RCPWrapper final : public IPackageWrapper
 
             for (uint32_t varsIdx = 0; varsIdx < ntohl(pVars->count); varsIdx++)
             {
-                auto pVar = getVariable(varOffset);
+                auto pVar = getVariable(varOffset, varsOffset, pVars, fileContent);
 
                 if (pVar == nullptr)
                 {
