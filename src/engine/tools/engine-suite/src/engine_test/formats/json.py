@@ -12,5 +12,6 @@ class JsonFormat(EventFormat):
         return self.parser.get_event_ossec_format(event, config)
 
     def format_event(self, event):
+        event = super().format_event(event)
         json_object = json.loads(event)
         return json.dumps(json_object, separators=(',',':'))
