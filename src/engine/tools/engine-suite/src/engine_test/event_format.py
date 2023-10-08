@@ -41,7 +41,8 @@ class EventFormat:
         return args
 
     def format_event(self, event):
-        return event
+        # To remove \n of event(s) from file
+        return event.strip()
 
     def get_events(self, events):
         return events

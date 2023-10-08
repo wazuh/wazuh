@@ -1,11 +1,21 @@
 import json
+from engine_test.event_format import Formats
 from engine_test.config import Config
 
 from importlib.metadata import files
 
 class CrudIntegration:
     def __init__(self):
-        pass
+        self.formats = []
+        self.formats.append(Formats.AUDIT.value['name'])
+        self.formats.append(Formats.COMMAND.value['name'])
+        self.formats.append(Formats.FULL_COMMAND.value['name'])
+        self.formats.append(Formats.EVENTCHANNEL.value['name'])
+        self.formats.append(Formats.JSON.value['name'])
+        self.formats.append(Formats.MACOS.value['name'])
+        self.formats.append(Formats.MULTI_LINE.value['name'])
+        self.formats.append(Formats.SYSLOG.value['name'])
+        self.formats.append(Formats.REMOTE_SYSLOG.value['name'])
 
     def get_integrations(self):
         json_content = ""
@@ -26,8 +36,16 @@ class CrudIntegration:
             return None
 
     def save_integration(self, integration_name: str, format: str, origin: str):
+        if not format and not integration_name:
+            print('To save the integration, the integration-name and format parameters cannot be empty.')
+            return False
+
         if self.get_integration(integration_name) != None:
             print('The integration already exists!')
+            return False
+
+        if format not in self.formats:
+            print('The format is invalid!')
             return False
 
         try:
@@ -35,10 +53,6 @@ class CrudIntegration:
                 json_content = json.load(fp)
         except Exception as ex:
             print('Error while reading configuration file: {}'.format(ex))
-            return False
-
-        if not format and not integration_name:
-            print('To save the integration, the integration-name and format parameters cannot be empty.')
             return False
 
         # TODO: implement "lines" parameter for multi-line format

@@ -1,4 +1,5 @@
 import sys
+import yaml
 from engine_test.events_collector import EventsCollector
 from engine_test.formats.syslog import SyslogFormat
 from engine_test.formats.json import JsonFormat
@@ -29,7 +30,9 @@ class Integration(CrudIntegration):
         if not self.integration:
             print("Integration not found!")
             exit(1)
-        print ('{}'.format(self.integration))
+
+        if self.args['verbose']:
+            print (self.integration)
 
         # Get the format of integration
         self.format = self.get_format(self.integration)
@@ -44,15 +47,15 @@ class Integration(CrudIntegration):
 
     def run(self, interactive: bool = True):
         loop = True
+        event_passed = self.args['event'] if 'event' in self.args else None
+        events = []
         events_parsed = []
         try:
             while (loop):
-                if not interactive:
-                    events = sys.stdin.readlines()
-                    loop = False
-                else:
-                    # Get the events in single o multiline format
-                    events = EventsCollector.collect(self.format)
+                loop = interactive
+
+                # Get the events
+                events = EventsCollector.collect(interactive, self.format, event_passed)
 
                 for event in events:
                     response = self.process_event(event, self.format)
@@ -66,7 +69,19 @@ class Integration(CrudIntegration):
 
     def process_event(self, event, format):
         event = format.format_event(event)
-        response = self.api_client.test_run(event)
+        result = self.api_client.test_run(event)
+        response = { }
+        if len(result["data"]["run"]["traces"]) > 0:
+            response['Traces'] = result["data"]["run"]["traces"]
+        response['Output'] = result["data"]["run"]["output"]
+        if not self.args['json_format']:
+            response = self.response_to_yml(response)
+        if not self.args['output_file']:
+            print ("\n{}".format(response))
+        return response
+
+    def response_to_yml(self, response):
+        response = yaml.dump(response, None, allow_unicode=True)
         return response
 
     def write_output_file(self, events_parsed):
@@ -75,7 +90,6 @@ class Integration(CrudIntegration):
                 with open(self.args['output_file'], 'a') as f:
                     for event in events_parsed:
                         f.write(f"{event}\n")
-                print("File output writed correctly.")
         except Exception as ex:
             print("Failed to register the output file. Error: {}".format(ex))
 

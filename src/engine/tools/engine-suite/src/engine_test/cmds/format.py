@@ -11,4 +11,7 @@ class FormatCommand(RunCommand):
         integration.run(interactive = False)
 
     def create_parser(self, subparsers: any):
-        return subparsers.add_parser('format', help='Format integration')
+        parser = subparsers.add_parser('format', help='Format integration')
+        parser.add_argument('-e', '--event', help=f'Event to test.',
+                            dest='event')
+        return parser
