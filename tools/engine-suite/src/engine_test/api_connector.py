@@ -38,15 +38,18 @@ class ApiConnector:
             if (self.config['full_verbose'] == True):
                 request.debug_mode = 2
             else:
-                if (self.config['verbose'] == True):
+                if self.config['verbose']:
                     request.debug_mode = 1
 
             if self.config['assets']:
                 request.asset_trace.extend(self.config['assets'])
 
-            print("\nSent: \n{}".format(request))
             response = self.api_client.send_command("run", "post", request)
-            print("Received: \n{}".format(response))
+
+            if self.config['verbose']:
+                print("\nSent: \n{}".format(request))
+                print("Received: \n{}".format(response))
+
             return response
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
@@ -66,7 +69,8 @@ class ApiConnector:
                     print("Session error: {}".format(response))
                     exit(1)
                 else:
-                    print("Session {} established successfully.".format(self.session_name))
+                    if self.config['verbose']:
+                        print("Session {} established successfully.".format(self.session_name))
             else:
                 # Connect to TEST with a temporal session with parametrized policy
                 request_post = test_pb2.SessionPost_Request()
@@ -81,7 +85,8 @@ class ApiConnector:
                     print("Session error: {}".format(response))
                     exit(1)
                 else:
-                    print("Session {} created with policy {} was established successfully.".format(self.session_name, self.config['policy']))
+                    if self.config['verbose']:
+                        print("Session {} created with policy {} was established successfully.".format(self.session_name, self.config['policy']))
         except Exception as ex:
             print('The session could not be created. Error: {}'.format(ex))
             exit(3)
@@ -92,12 +97,12 @@ class ApiConnector:
             request_delete.name = self.session_name
             response = self.api_client.send_command("sessions", "delete", request_delete)
             data = response['data']
-            print(data)
             if data['status'] == 'ERROR':
                 print("Session error: {}".format(response))
                 exit(1)
             else:
-                print("\nSession {} deleted successfully.".format(self.session_name))
+                if self.config['verbose']:
+                    print("\nSession {} deleted successfully.".format(self.session_name))
 
     def get_session_name(self):
         now = datetime.now()

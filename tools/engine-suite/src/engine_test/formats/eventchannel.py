@@ -17,44 +17,58 @@ class EventChannelFormat(EventFormat):
         return event_parsed
 
     def parse_eventchannel_format(self, event):
-        event_len = range(10, len(event))
-        has_event = False
         message = ""
         eventXML = ""
 
-        for i in event_len:
-            if has_event:
-                eventXML += event[i]
-            if event[i] == "Event Xml:":
-                has_event = True
-            if has_event == False:
-                message += event[i]
+        if type(event) == list:
+            # Unique event
+            event_len = range(10, len(event))
+            has_event = False
 
-        return '{{"Message":"{}","Event":"{}"}}'.format(message, eventXML.replace("\"", "'"))
+            for i in event_len:
+                if has_event:
+                    eventXML += event[i]
+                if event[i] == "Event Xml:":
+                    has_event = True
+                if has_event == False:
+                    message += event[i]
+            eventXML += event[i]
+        else:
+            eventXML += event
 
-    def parse_eventchannel_format2(source, event, config):
-        message = ""
-        eventXML = ""
-        has_description = False
-        has_event = False
-        for line in event:
-            if has_event:
-                eventXML += line
-            if line.startswith("<Event") or line.startswith("Event Xml"):
-                has_event = True
-                has_description = False
-            if has_description:
-                message += line
-            if line.startswith("Description:"):
-                has_description = True
-            if line.startswith("</Event>"):
-                break
         return '{{"Message":"{}","Event":"{}"}}'.format(message, eventXML.replace("\"", "'"))
 
     def format_event(self, event):
         return self.parse_eventchannel_format(event)
 
     def get_events(self, events):
+        events_open_tag = '<Events>'
+        events_close_tag = '</Events>'
+        event_open_tag = '<Event '
         events_multiline = []
-        events_multiline.append(events)
+
+        # Remove header from events
+        if events[0].startswith('<?xml'):
+            del events[0]
+
+        if len(events) > 0 and events[0].startswith(events_open_tag):
+            len_events = len(events)
+
+            # Remove <Events> tag
+            events[0] = events[0][len(events_open_tag): len(events[0])]
+
+            # Remove </Events> tag
+            events[len_events-1] = events[len_events-1][0: events[len_events-1].index(events_close_tag)]
+
+            # Unify events
+            event = ''.join([line for line in events])
+
+            # Split and build each event
+            result = event.split(event_open_tag)
+            for line in result:
+                events_multiline.append('{}{}'.format(event_open_tag, line))
+
+        else:
+            events_multiline.append(events)
+
         return events_multiline

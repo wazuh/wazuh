@@ -10,4 +10,5 @@ class SyslogFormat(EventFormat):
         return self.parser.get_event_ossec_format(event, self.config)
 
     def format_event(self, event):
+        event = super().format_event(event)
         return self.parser.parse_syslog_format(event)
