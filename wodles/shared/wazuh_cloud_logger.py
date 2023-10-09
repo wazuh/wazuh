@@ -13,14 +13,12 @@ import sys
 
 
 class WazuhCloudLogger:
-    """
-    WazuhCloudLogger class.
+    """WazuhCloudLogger class.
     Provides a standardized logging solution for Wazuh.
     """
 
     def __init__(self, logger_name: str):
-        """
-        Initialize the Wazuh Cloud Logger class.
+        """Initialize the Wazuh Cloud Logger class.
         Parameters
         ----------
         logger_name : str
@@ -30,8 +28,7 @@ class WazuhCloudLogger:
         self.logger = self.setup_logger()
 
     def setup_logger(self) -> logging.Logger:
-        """
-        Set up the logger.
+        """Set up the logger.
         Returns
         -------
         logging.Logger
@@ -45,8 +42,7 @@ class WazuhCloudLogger:
 
     @staticmethod
     def _setup_handler() -> logging.Handler:
-        """
-        Set up the handler for the logger.
+        """Set up the handler for the logger.
         Returns
         -------
         logging.Handler
@@ -57,8 +53,7 @@ class WazuhCloudLogger:
         return handler
 
     def info(self, message: str):
-        """
-        Log an INFO level message using the selected strategy.
+        """Log an INFO level message using the selected strategy.
         Parameters
         ----------
         message : str
@@ -67,8 +62,7 @@ class WazuhCloudLogger:
         self.logger.info(message)
 
     def debug(self, message: str):
-        """
-        Log a DEBUG level message using the selected strategy.
+        """Log a DEBUG level message using the selected strategy.
         Parameters
         ----------
         message : str
@@ -77,8 +71,7 @@ class WazuhCloudLogger:
         self.logger.debug(message)
 
     def warning(self, message: str):
-        """
-        Log a WARNING level message using the selected strategy.
+        """Log a WARNING level message using the selected strategy.
         Parameters
         ----------
         message : str
@@ -87,8 +80,7 @@ class WazuhCloudLogger:
         self.logger.warning(message)
 
     def error(self, message: str, log_exception: bool = False):
-        """
-        Log an ERROR level message using the selected strategy.
+        """Log an ERROR level message using the selected strategy.
         Parameters
         ----------
         message : str
@@ -100,8 +92,7 @@ class WazuhCloudLogger:
                           exc_info=log_exception)
 
     def set_level(self, log_level: int):
-        """
-        Set the logging level for the logger used by the strategy.
+        """Set the logging level for the logger used by the strategy.
         Parameters
         ----------
         log_level : int
