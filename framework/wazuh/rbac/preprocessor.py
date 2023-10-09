@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+import functools
 
 from wazuh.core.exception import WazuhError, WazuhPermissionError
 from wazuh.core.results import WazuhResult
@@ -115,6 +116,7 @@ def get_roles(auth_context=None, user_id=None):
     return roles
 
 
+@functools.cache
 def get_permissions(user_id=None, auth_context=None):
     """Obtain the permissions of a user using auth_context or user_id
 

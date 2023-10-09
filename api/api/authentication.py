@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import functools
 from concurrent.futures import ThreadPoolExecutor
 
 from cryptography.hazmat.primitives import serialization
@@ -88,6 +89,7 @@ _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
 
+@functools.cache
 def generate_keypair():
     """Generate key files to keep safe or load existing public and private keys."""
     try:
