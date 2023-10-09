@@ -159,6 +159,8 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
     const char *xml_limits = "limits";
     const char *xml_cti_url = "cti-url";
+    const char *xml_update_check = "update_check";
+
 
     const char *xml_emailto = "email_to";
     const char *xml_emailfrom = "email_from";
@@ -404,6 +406,21 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             }
             if (Config) {
                 Config->hostinfo = (u_int8_t) atoi(node[i]->content);
+            }
+        }
+        /* update check system */
+        else if (strcmp(node[i]->element, xml_update_check) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                if (Config) {
+                    Config->update_check = 1;
+                }
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                if (Config) {
+                    Config->update_check = 0;
+                }
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         }
         /* stats */
