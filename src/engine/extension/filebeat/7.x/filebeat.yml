@@ -65,7 +65,7 @@ processors:
       fields: ["log.offset", "log.file"]
         
   - drop_fields:
-      fields: ["agent.ephemeral_id", "agent.hostname", "agent.version", "input", "fields"]
+      fields: ["agent.ephemeral_id", "agent.hostname", "agent.version", "input"]
   - drop_fields:
       when:
         not:
