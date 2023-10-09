@@ -1,7 +1,11 @@
-DEFAULT_CONFIG_FILE = "/var/ossec/etc/engine-test.conf"
+DEFAULT_CONFIG_FOLDER = "/var/ossec/etc/"
+DEFAULT_CONFIG_FILE = "engine-test.conf"
 
 class Config:
-    config_file = DEFAULT_CONFIG_FILE
+    config_file = DEFAULT_CONFIG_FOLDER + DEFAULT_CONFIG_FILE
+
+    def get_config_file_name():
+        return DEFAULT_CONFIG_FILE
 
     def get_config_file():
         return Config.config_file
