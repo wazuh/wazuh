@@ -210,8 +210,8 @@ public:
      * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
-    std::optional<base::Error> subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
-                                                        rxbk::SubscribeToTraceCallback traceCallback,
+    std::optional<base::Error> subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
+                                                        const bk::Subscriber& traceCallback,
                                                         const std::vector<std::string>& assets,
                                                         const std::string& policyName);
 

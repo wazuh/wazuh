@@ -81,7 +81,7 @@ TEST_F(RuntimePolicyTest, processEvent_not_built)
 {
     auto policy = std::make_shared<router::RuntimePolicy>(POLICY_1);
     auto e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[0]);
-    auto error = policy->processEvent(e);
+    auto error = policy->processEvent(std::move(e));
     ASSERT_TRUE(error.has_value());
     ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/pol_1/0' is not built");
 }
@@ -97,7 +97,8 @@ TEST_F(RuntimePolicyTest, processEvent_1_event)
 
     // Send event
     auto decoderPath = json::Json::formatJsonPath("~decoder");
-    auto result = policy->processEvent(e);
+    auto tmpEvent = e;
+    auto result = policy->processEvent(std::move(tmpEvent));
     ASSERT_FALSE(result) << result.value().message;
     ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
     ASSERT_EQ(e->getString(decoderPath).value(), "deco_1") << e->prettyStr();
@@ -116,21 +117,24 @@ TEST_F(RuntimePolicyTest, processEvent_30_event)
     {
         auto e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[i % 3]);
         // Send event
-        auto result = policy->processEvent(e);
+        auto tmpEvent = e;
+        auto result = policy->processEvent(std::move(tmpEvent));
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_1") << e->prettyStr();
 
         e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[(i + 1) % 3]);
         // Send event
-        result = policy->processEvent(e);
+        tmpEvent = e;
+        result = policy->processEvent(std::move(tmpEvent));
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_2") << e->prettyStr();
 
         e = base::parseEvent::parseWazuhEvent(aux::sampleEventsStr[(i + 2) % 3]);
         // Send event
-        result = policy->processEvent(e);
+        tmpEvent = e;
+        result = policy->processEvent(std::move(tmpEvent));
         ASSERT_FALSE(result) << result.value().message;
         ASSERT_TRUE(e->exists(decoderPath) && e->isString(decoderPath)) << e->prettyStr();
         ASSERT_EQ(e->getString(decoderPath).value(), "deco_3") << e->prettyStr();

@@ -9,7 +9,7 @@ target_link_libraries(router
     PUBLIC
     # For api::Route, needs knos runtimeEnvironment becouse know runtimeEnvironment
     builders
-    rxbk
+    bk::taskf
     queue
     PRIVATE
     base
