@@ -80,6 +80,22 @@ public:
     }
 
     /**
+     * @brief Construct a new Controller from an expression and a set of traceables
+     *
+     * @param expression expression to build
+     * @param traceables traceables expressions
+     */
+    Controller(base::Expression expression, std::unordered_set<std::string> traceables)
+        : m_tf()
+        , m_executor(1)
+        , m_event()
+        , m_traceables(std::move(traceables))
+        , m_expression(std::move(expression))
+    {
+        auto eTask = tf::Task();
+        build(m_expression, eTask, true);
+    }
+    /**
      * @copydoc bk::IController::ingest
      */
     void ingest(base::Event&& event) override
