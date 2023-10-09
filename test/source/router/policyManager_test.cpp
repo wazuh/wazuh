@@ -99,17 +99,20 @@ TEST_F(PolicyManagerTest, policyFlow)
         ASSERT_FALSE(e3->exists(pathDeco));
 
         // Process event
-        err = manager.forwardEvent(POLICY_1, i, e1);
+        auto tmpEvent = e1;
+        err = manager.forwardEvent(POLICY_1, i, std::move(tmpEvent));
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e1->exists(pathDeco) && e1->isString(pathDeco));
         ASSERT_STREQ(e1->getString(pathDeco).value().c_str(), "deco_1");
 
-        err = manager.forwardEvent(POLICY_2, i, e2);
+        tmpEvent = e2;
+        err = manager.forwardEvent(POLICY_2, i, std::move(tmpEvent));
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e2->exists(pathDeco) && e2->isString(pathDeco));
         ASSERT_STREQ(e2->getString(pathDeco).value().c_str(), "deco_2");
 
-        err = manager.forwardEvent(POLICY_3, i, e3);
+        tmpEvent = e3;
+        err = manager.forwardEvent(POLICY_3, i, std::move(tmpEvent));
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e3->exists(pathDeco) && e3->isString(pathDeco));
         ASSERT_STREQ(e3->getString(pathDeco).value().c_str(), "deco_3");
@@ -118,21 +121,24 @@ TEST_F(PolicyManagerTest, policyFlow)
         err = manager.deletePolicy(POLICY_1);
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.forwardEvent(POLICY_1, i, e1);
+        tmpEvent = e1;
+        err = manager.forwardEvent(POLICY_1, i, std::move(tmpEvent));
         ASSERT_TRUE(err.has_value());
         ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_1/0' does not exist");
 
         err = manager.deletePolicy(POLICY_2);
         ASSERT_FALSE(err.has_value()) << err.value().message; // Process event
 
-        err = manager.forwardEvent(POLICY_2, i, e2);
+        tmpEvent = e2;
+        err = manager.forwardEvent(POLICY_2, i, std::move(tmpEvent));
         ASSERT_TRUE(err.has_value());
         ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_2/0' does not exist");
 
         err = manager.deletePolicy(POLICY_3);
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.forwardEvent(POLICY_3, i, e3);
+        tmpEvent = e3;
+        err = manager.forwardEvent(POLICY_3, i, std::move(tmpEvent));
         ASSERT_TRUE(err.has_value());
         ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/pol_3/0' does not exist");
     }

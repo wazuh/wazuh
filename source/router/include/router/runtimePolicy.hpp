@@ -6,10 +6,12 @@
 
 #include <builder.hpp>
 #include <error.hpp>
-#include <rxbk/rxFactory.hpp>
+#include <bk/icontroller.hpp>
 
 namespace router
 {
+
+using OutputSubscriber = std::function<void(base::Event&&)>;
 
 /**
  * @brief Runtime policy represent an policy in memory, ready to be builed and
@@ -21,9 +23,14 @@ class RuntimePolicy
 private:
     std::string m_asset;
     std::string m_hash;
-    std::shared_ptr<rxbk::Controller> m_controller;
-    rxcpp::composite_subscription m_csOutput;
-    rxcpp::composite_subscription m_csTraces;
+    std::shared_ptr<bk::IController> m_controller;
+
+    struct TraceSubscription {
+        OutputSubscriber publishOutput;                    ///< output callback
+        std::vector<std::pair< std::string, bk::Subscription>>  subscriptions {}; /// < subscriptions to the trace events
+    } m_trace;
+
+
 
 public:
     /**
@@ -35,6 +42,7 @@ public:
         : m_asset {asset}
         , m_controller {}
         , m_hash {}
+        , m_trace {}
     {
     }
 
@@ -59,7 +67,7 @@ public:
      * @note This function is not thread safe. Only one event at a time, because the expression tree (helper
      * functions) are not thread safe.
      */
-    std::optional<base::Error> processEvent(base::Event event);
+    std::optional<base::Error> processEvent(base::Event&& event);
 
     /**
      * @brief Complete the policy, needed to be able to free rxcpp resources
@@ -69,7 +77,7 @@ public:
     {
         if (m_controller)
         {
-            m_controller->complete();
+            m_controller->stop();
         }
     }
 
@@ -84,7 +92,7 @@ public:
      * @return std::optional<base::Error> If the subscription encounters an error, an error message is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
-    std::optional<base::Error> subscribeToOutput(rxbk::SubscribeToOutputCallback callback);
+    std::optional<base::Error> subscribeToOutput(const OutputSubscriber& callback);
 
     /**
      * @brief Listens to all trace events and receives generated trace data.
@@ -98,15 +106,15 @@ public:
      * @return std::optional<base::Error> If the listening encounters an error, an error message is returned.
      *         Otherwise, returns std::nullopt if the listening was successful.
      */
-    std::optional<base::Error> listenAllTrace(rxbk::SubscribeToTraceCallback callback,
+    std::optional<base::Error> listenAllTrace(const bk::Subscriber& callback,
                                               const std::vector<std::string>& assets);
 
     /**
      * @brief Get the Assets object
      *
-     * @return const std::vector<std::string>
+     * @return std::vector<std::string>
      */
-    const std::vector<std::string> getAssets() const;
+    std::vector<std::string> getAssets() const;
 
     /**
      * @brief

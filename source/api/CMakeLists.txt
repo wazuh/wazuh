@@ -44,6 +44,7 @@ target_include_directories(api
 target_link_libraries(api
     base
     builder::ibuilder
+    builders # TODO remove this dependency and implement the interface
     eMessages
     fmt
     json

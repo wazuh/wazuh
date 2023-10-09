@@ -11,7 +11,7 @@
 #include <logging/logging.hpp>
 #include <register.hpp>
 #include <registry.hpp>
-#include <schemf/test/mocks/schemf/emptySchema.hpp>
+#include <schemf/emptySchema.hpp>
 #include <store/mockStore.hpp>
 
 void inline initLogging(void)
