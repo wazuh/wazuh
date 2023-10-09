@@ -86,18 +86,17 @@ auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSyn
 }
 
 auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
-    -> std::function<void(const std::string_view&)>
+    -> bk::Subscriber
 {
-    return [dataSync](const std::string_view& svTrace)
+    return [dataSync](const std::string& trace, bool success)
     {
-        // TODO CHange std::string_view to std::string in bk
-        auto trace = std::string(svTrace);
-        constexpr auto opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
+        constexpr auto opPatternTrace = R"(\[([^\]]+)\]$)";
         const std::regex opRegex(opPatternTrace);
         std::smatch match;
         if (std::regex_search(trace, match, opRegex))
         {
-            dataSync->m_history.emplace_back(std::make_pair(match[1].str(), match[2].str()));
+            dataSync->m_history.emplace_back(std::make_pair(match[1].str(), success ? " -> success" : " -> failure"));
+            return;
         }
         constexpr auto opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
         const std::regex opRegexVerbose(opPatternTraceVerbose);
@@ -107,6 +106,8 @@ auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync
             auto traceStream = std::make_shared<std::stringstream>();
             *traceStream << trace;
             dataSync->m_trace.emplace_back(matchVerbose[1].str(), traceStream);
+        } else {
+            // TODO: consider adding a log message, should not happen
         }
     };
 }

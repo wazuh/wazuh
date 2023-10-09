@@ -89,7 +89,12 @@ std::optional<base::Error> RuntimePolicy::listenAllTrace(const bk::Subscriber& c
 
     for (const auto& asset : assets)
     {
-        auto res = m_controller->subscribe(asset, callback);
+        bk::Subscriber namedCallback = [callback, asset](const auto& trace, bool success) -> void
+        {
+            auto fullTrace = trace.empty() ? fmt::format("[{}]", asset) : fmt::format("[{}] {}", asset, trace);
+            callback(fullTrace, success);
+        };
+        auto res = m_controller->subscribe(asset, namedCallback);
         if (base::isError(res))
         {
             return base::Error {base::getError(res).message};
