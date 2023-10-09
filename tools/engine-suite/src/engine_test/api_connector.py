@@ -30,7 +30,7 @@ class ApiConnector:
             request = test_pb2.RunPost_Request()
             request.name = self.session_name
             request.protocol_queue = chr(self.config['queue'])
-            request.protocol_location = self.config['origin']
+            request.protocol_location = self.config['full_location']
             request.event.string_value = event
 
             request.namespaces.extend(self.config['namespaces'])
@@ -46,14 +46,14 @@ class ApiConnector:
 
             response = self.api_client.send_command("run", "post", request)
 
-            if self.config['verbose']:
+            if self.is_debug():
                 print("\nSent: \n{}".format(request))
                 print("Received: \n{}".format(response))
 
             return response
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
-            exit(2)
+            exit(1)
 
     def create_session(self):
         try:
@@ -69,7 +69,7 @@ class ApiConnector:
                     print("Session error: {}".format(response))
                     exit(1)
                 else:
-                    if self.config['verbose']:
+                    if self.is_debug():
                         print("Session {} established successfully.".format(self.session_name))
             else:
                 # Connect to TEST with a temporal session with parametrized policy
@@ -85,7 +85,7 @@ class ApiConnector:
                     print("Session error: {}".format(response))
                     exit(1)
                 else:
-                    if self.config['verbose']:
+                    if self.is_debug():
                         print("Session {} created with policy {} was established successfully.".format(self.session_name, self.config['policy']))
         except Exception as ex:
             print('The session could not be created. Error: {}'.format(ex))
@@ -101,9 +101,12 @@ class ApiConnector:
                 print("Session error: {}".format(response))
                 exit(1)
             else:
-                if self.config['verbose']:
+                if self.is_debug():
                     print("\nSession {} deleted successfully.".format(self.session_name))
 
     def get_session_name(self):
         now = datetime.now()
         return '{}_{}'.format(self.session_name, now.strftime("%Y%m%d%H%M%S%f"))
+
+    def is_debug(self):
+        return self.config['verbose'] or  self.config['full_verbose']

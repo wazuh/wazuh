@@ -7,10 +7,6 @@ class JsonFormat(EventFormat):
         super().__init__(integration, args)
         self.config['queue'] = Formats.JSON.value['queue']
 
-    def parse_event(self, event, config):
-        event = self.format_event(event)
-        return self.parser.get_event_ossec_format(event, config)
-
     def format_event(self, event):
         event = super().format_event(event)
         json_object = json.loads(event)
