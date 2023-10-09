@@ -35,7 +35,7 @@ public:
 class Controller final : public IController
 {
 public:
-    using Publisher = std::function<void(std::string_view)>; ///< Used to publish the trace to the subscribers.
+    using Publisher = std::function<void(const std::string&, bool)>; ///< Publish the trace and result to the subscribers.
 
 private:
     class TraceImpl; ///< Implementation of the trace
