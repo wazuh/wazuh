@@ -15,14 +15,6 @@ from unittest.mock import patch, MagicMock
 # Local imports
 sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 import gcloud
-from shared.wazuh_cloud_logger import WazuhCloudLogger
-
-
-@pytest.fixture(scope='module')
-def gcp_logger():
-    return WazuhCloudLogger(
-            logger_name='test_logger'
-            )
 
 
 def get_wodle_config(integration_type: str, credentials_file: str = None, log_level: int = 1,
