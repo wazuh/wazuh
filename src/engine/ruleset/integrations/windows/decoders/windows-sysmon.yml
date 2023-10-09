@@ -12,7 +12,7 @@ metadata:
     This integration was tested on Windows 10, with sysmon version v15.x but it should support version v10.x onwards
   author:
     name: Wazuh, Inc.
-    date: 2023/01/23
+    date: 2023/10/10
   references:
     - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
 
