@@ -60,13 +60,11 @@ constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
 constexpr auto DEFAULT_TIMEOUT {1000};
 
 auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
-    -> std::function<void(const rxbk::RxEvent&)>
+    -> std::function<void(base::Event&&)>
 {
-    return [dataSync](const rxbk::RxEvent& event)
+    return [dataSync](base::Event&& event)
     {
-        std::stringstream output;
-        output << event->payload()->prettyStr() << std::endl;
-        dataSync->m_output = output.str();
+        dataSync->m_output = event->prettyStr() + "\n";
 
         {
             std::unique_lock<std::mutex> lock(dataSync->m_sync);
@@ -88,10 +86,12 @@ auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSyn
 }
 
 auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
-    -> std::function<void(const std::string&)>
+    -> std::function<void(const std::string_view&)>
 {
-    return [dataSync](const std::string& trace)
+    return [dataSync](const std::string_view& svTrace)
     {
+        // TODO CHange std::string_view to std::string in bk
+        auto trace = std::string(svTrace);
         constexpr auto opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
         const std::regex opRegex(opPatternTrace);
         std::smatch match;

@@ -102,7 +102,7 @@ public:
      * the instance of an policy is not thread safe for processing events.
      * The lamda function of the expression is not thread safe.
      */
-    std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
+    std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event&& event);
 
     /**
      * @brief Subscribes to a callback that generates the outputs and traces corresponding to each event.
@@ -119,11 +119,10 @@ public:
      * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
-    std::optional<base::Error> subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
-                                                        rxbk::SubscribeToTraceCallback traceCallback,
+    std::optional<base::Error> subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
+                                                        const bk::Subscriber& traceCallback,
                                                         const std::vector<std::string>& assets,
-                                                        const std::string& name,
-                                                        std::size_t instance = 0);
+                                                        const std::string& name);
 
     /**
      * @brief Get the Assets object

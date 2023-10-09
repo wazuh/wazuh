@@ -5,6 +5,9 @@ CPMAddPackage(
   GIT_TAG v3.6.0
   VERSION 3.6.0
   EXCLUDE_FROM_ALL YES
+  OPTIONS
+    "-DTF_BUILD_TESTS OFF"
+    "-DTF_BUILD_EXAMPLES OFF"
 )
 
 
@@ -53,11 +56,11 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 
 ## TaskFlow Backend component test
-# add_executable(backend_ctest
-#     ${COMPONENT_SRC_DIR}/backend_test.cpp
-# )
-# target_link_libraries(backend_ctest gtest_main backend::fileDriver backend)
-# gtest_discover_tests(backend_ctest)
+add_executable(tfbk_ctest
+    ${COMPONENT_SRC_DIR}/bk_test.cpp
+)
+target_link_libraries(tfbk_ctest gtest_main bk::taskf)
+gtest_discover_tests(tfbk_ctest)
 
 ## TaskFlow Backend unit test
 add_executable(tfbk_utest

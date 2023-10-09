@@ -410,8 +410,8 @@ void Router::clear()
     m_policyManager->delAllPolicies();
 }
 
-std::optional<base::Error> Router::subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
-                                                            rxbk::SubscribeToTraceCallback traceCallback,
+std::optional<base::Error> Router::subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
+                                                            const bk::Subscriber& traceCallback,
                                                             const std::vector<std::string>& assets,
                                                             const std::string& policyName)
 {

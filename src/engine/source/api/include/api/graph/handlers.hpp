@@ -2,7 +2,7 @@
 #define _API_GRAPH_HANDLERS_HPP
 
 #include <api/api.hpp>
-#include <builder/builder.hpp>
+#include <builder.hpp>
 
 namespace api::graph::handlers
 {

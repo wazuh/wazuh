@@ -412,6 +412,11 @@ Policy::Policy(const json::Json& jsonDefinition,
                         asset->m_parents.emplace(defaultParents.at(nsId.value()));
                     }
                 }
+                else if (type == Asset::Type::FILTER && asset->m_parents.empty())
+                {
+                    throw std::runtime_error(fmt::format("Filter '{}' does not have any parent", assetName));
+                }
+
                 auto key = internals::syntax::getIntegrationSection(assetName);
 
                 // Keep track of the assets by type, to build the graphs
@@ -444,6 +449,10 @@ Policy::Policy(const json::Json& jsonDefinition,
                     {
                         iasset->m_parents.emplace(defaultParents.at(nsId.value()));
                     }
+                }
+                else if (itype == Asset::Type::FILTER && iasset->m_parents.empty())
+                {
+                    throw std::runtime_error(fmt::format("Filter '{}' does not have any parent", iasset->m_name));
                 }
 
                 m_assets.insert(std::make_pair(iasset->m_name, iasset));

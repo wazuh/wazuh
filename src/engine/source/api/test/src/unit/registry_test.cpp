@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <api/registry.hpp>
-#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <utils/wazuhProtocol/wazuhProtocol.hpp>
 
 using namespace base::utils::wazuhProtocol;
 

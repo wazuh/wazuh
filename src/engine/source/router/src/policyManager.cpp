@@ -108,7 +108,7 @@ std::vector<std::string> PolicyManager::listPolicies()
     return names;
 }
 
-std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, std::size_t instance, base::Event event)
+std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, std::size_t instance, base::Event&& event)
 {
 
     std::shared_lock<std::shared_mutex> lock(m_mutex);
@@ -130,11 +130,10 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
     return std::nullopt;
 }
 
-std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::SubscribeToOutputCallback outputCallback,
-                                                                   rxbk::SubscribeToTraceCallback traceCallback,
+std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
+                                                                   const bk::Subscriber& traceCallback,
                                                                    const std::vector<std::string>& assets,
-                                                                   const std::string& name,
-                                                                   std::size_t instance)
+                                                                   const std::string& name)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
@@ -143,24 +142,16 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(rxbk::Subscri
         return base::Error {fmt::format("Policy '{}' does not exist", name)};
     }
 
-    if (m_numInstances <= instance)
+    for (auto& env : it->second)
     {
-        return base::Error {
-            fmt::format("Invalid instance number '{}', the maximum is '{}'", instance, m_numInstances - 1)};
-    }
-    auto& env = it->second[instance];
-
-    const auto& output = env.subscribeToOutput(outputCallback);
-    const auto& trace = env.listenAllTrace(traceCallback, assets);
-
-    if (base::isError(output))
-    {
-        return base::Error{output.value().message};
-    }
-
-    if (base::isError(trace))
-    {
-        return base::Error{trace.value().message};
+        if (auto err = env.subscribeToOutput(outputCallback))
+        {
+            return err;
+        }
+        if (auto err = env.listenAllTrace(traceCallback, assets))
+        {
+            return err;
+        }
     }
 
     return std::nullopt;

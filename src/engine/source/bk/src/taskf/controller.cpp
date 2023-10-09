@@ -176,12 +176,12 @@ tf::Task Controller::build(const base::Expression& expression, tf::Task& parent,
     auto traceIt = m_traceables.find(expression->getName());
     if (traceIt != m_traceables.end())
     {
-        if (m_traces.find(expression->getName()) != m_traces.end())
+        if (m_traces.find(expression->getName()) == m_traces.end())
         {
-            throw std::runtime_error {"TraceImpl already exists"};
+            m_traces.emplace(expression->getName(), std::make_unique<TraceImpl>());
         }
-        m_traces.emplace(expression->getName(), std::make_unique<TraceImpl>());
         publisher = m_traces[expression->getName()]->publisher();
+
     }
 
     auto task = m_tf.placeholder(); // Change name output task
