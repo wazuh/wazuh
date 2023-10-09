@@ -39,7 +39,7 @@ normalize:
    - process.entity_id: $_event_data.HostId
    - process.command_line: $_event_data.HostApplication
    - process.title: $_event_data.HostName
-   - process.executable: $_event_data.ScriptName # revisar
+   - process.executable: $_event_data.ScriptName
 
   ## User fields.
    - _user_parts: split($_event_data.UserId, \\)

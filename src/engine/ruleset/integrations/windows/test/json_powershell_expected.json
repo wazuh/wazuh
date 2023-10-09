@@ -1,234 +1,218 @@
-[
-    {
-        "wazuh": {
-            "queue": 102,
-            "location": "[005] (vm-win7) any->EventChannel",
-            "message": "{\"Message\":\"Engine state is changed from None to Available. \\r\\n\\r\\nDetails: \\r\\n\\tNewEngineState=Available\\n\\tPreviousEngineState=None\\n\\n\\tSequenceNumber=9\\n\\n\\tHostName=ConsoleHost\\n\\tHostVersion=2.0\\n\\tHostId=8a46a106-ce36-4eac-80bb-d72aee4fb079\\n\\tEngineVersion=2.0\\n\\tRunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9\\n\\tPipelineId=\\n\\tCommandName=\\n\\tCommandType=\\n\\tScriptName=\\n\\tCommandPath=\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>400</EventID><Level>4</Level><Task>4</Task><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-07-26T02:29:02.000000000Z'/><EventRecordID>1620</EventRecordID><Channel>Windows PowerShell</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data>Available</Data><Data>None</Data><Data>\\tNewEngineState=Available  PreviousEngineState=None   SequenceNumber=9   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=2.0  RunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=</Data></EventData></Event>\"}",
-            "origin": "EventChannel",
-            "registered_ip": "any",
-            "decoders": [
-                "core-wazuh-message",
-                "core-windows",
-                "integrations",
-                "windows-json",
-                "windows-event",
-                "windows-powershell"
-            ],
-            "source": "logcollector"
+{
+    "output": {
+        "windows": {
+            "System": {
+                "Channel": {
+                    "#text": "Windows PowerShell"
+                },
+                "Task": {
+                    "#text": "4"
+                },
+                "EventRecordID": {
+                    "#text": "1620"
+                },
+                "Security": {},
+                "Keywords": "Classic",
+                "EventID": {
+                    "@Qualifiers": "0",
+                    "#text": "400"
+                },
+                "Computer": {
+                    "#text": "vm-win7"
+                },
+                "Provider": {
+                    "@Name": "PowerShell"
+                }
+            }
         },
-        "agent": {
-            "id": "005",
+        "TestSessionID": 1,
+        "host": {
             "name": "vm-win7",
-            "type": "wazuh-agent"
+            "id": "001"
         },
         "event": {
-            "original": "{\"Message\":\"Engine state is changed from None to Available. \\r\\n\\r\\nDetails: \\r\\n\\tNewEngineState=Available\\n\\tPreviousEngineState=None\\n\\n\\tSequenceNumber=9\\n\\n\\tHostName=ConsoleHost\\n\\tHostVersion=2.0\\n\\tHostId=8a46a106-ce36-4eac-80bb-d72aee4fb079\\n\\tEngineVersion=2.0\\n\\tRunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9\\n\\tPipelineId=\\n\\tCommandName=\\n\\tCommandType=\\n\\tScriptName=\\n\\tCommandPath=\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>400</EventID><Level>4</Level><Task>4</Task><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-07-26T02:29:02.000000000Z'/><EventRecordID>1620</EventRecordID><Channel>Windows PowerShell</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data>Available</Data><Data>None</Data><Data>\\tNewEngineState=Available  PreviousEngineState=None   SequenceNumber=9   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=2.0  RunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=</Data></EventData></Event>\"}",
-            "module": "windows",
-            "dataset": "powershell",
-            "start": "2023-07-26T02:29:02.000000000Z",
-            "code": "400",
-            "id": "400",
-            "kind": "event",
             "provider": "PowerShell",
             "category": [
                 "process"
             ],
+            "kind": "event",
+            "dataset": "powershell",
+            "id": "400",
+            "start": "2023-07-26T02:29:02.000000000Z",
             "type": [
                 "info",
                 "start"
             ],
-            "sequence": 9
+            "module": "windows",
+            "original": "\u003cEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'\u003e\u003cSystem\u003e\u003cProvider Name='PowerShell'/\u003e\u003cEventID Qualifiers='0'\u003e400\u003c/EventID\u003e\u003cLevel\u003e4\u003c/Level\u003e\u003cTask\u003e4\u003c/Task\u003e\u003cKeywords\u003e0x80000000000000\u003c/Keywords\u003e\u003cTimeCreated SystemTime='2023-07-26T02:29:02.000000000Z'/\u003e\u003cEventRecordID\u003e1620\u003c/EventRecordID\u003e\u003cChannel\u003eWindows PowerShell\u003c/Channel\u003e\u003cComputer\u003evm-win7\u003c/Computer\u003e\u003cSecurity/\u003e\u003c/System\u003e\u003cEventData\u003e\u003cData\u003eAvailable\u003c/Data\u003e\u003cData\u003eNone\u003c/Data\u003e\u003cData\u003e\tNewEngineState=Available  PreviousEngineState=None   SequenceNumber=9   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=2.0  RunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=\u003c/Data\u003e\u003c/EventData\u003e\u003c/Event\u003e",
+            "code": "400"
         },
-        "ecs": {
-            "version": "8.8"
-        },
-        "host": {
-            "id": "005",
-            "name": "vm-win7"
+        "agent": {
+            "name": "WIN-8I36CR3738L",
+            "type": "wazuh-agent",
+            "id": "001"
         },
         "log": {
             "level": "Information"
         },
-        "process": {
-            "entity_id": "8a46a106-ce36-4eac-80bb-d72aee4fb079",
-            "title": "ConsoleHost",
-            "executable": null
+        "ecs": {
+            "version": "8.8"
         },
-        "~powershell": {
-            "engine": {
-                "new_state": "Available",
-                "previous_state": "None",
-                "version": 2.0
-            },
-            "pipeline_id": null,
-            "runspace_id": "6fe98fb7-5dc3-4fe6-815d-a692c970aad9",
-            "process": {
-                "executable_version": 2.0
-            },
-            "command": {
-                "value": null,
-                "path": null,
-                "name": null,
-                "type": null
-            }
-        },
-        "file": {
-            "path": null
-        }
-    },
-    {
         "wazuh": {
-            "queue": 102,
-            "location": "[005] (vm-win7) any->EventChannel",
-            "message": "\t{\"Message\":\"Engine state is changed from Available to Stopped. \\r\\n\\r\\nDetails: \\r\\n\\tNewEngineState=Stopped\\n\\tPreviousEngineState=Available\\n\\n\\tSequenceNumber=10\\n\\n\\tHostName=ConsoleHost\\n\\tHostVersion=2.0\\n\\tHostId=8a46a106-ce36-4eac-80bb-d72aee4fb079\\n\\tEngineVersion=2.0\\n\\tRunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9\\n\\tPipelineId=\\n\\tCommandName=\\n\\tCommandType=\\n\\tScriptName=\\n\\tCommandPath=\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>403</EventID><Level>4</Level><Task>4</Task><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-07-26T02:30:13.000000000Z'/><EventRecordID>1621</EventRecordID><Channel>Windows PowerShell</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data>Stopped</Data><Data>Available</Data><Data>\\tNewEngineState=Stopped  PreviousEngineState=Available   SequenceNumber=10   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=2.0  RunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=</Data></EventData></Event>\"}",
-            "origin": "EventChannel",
-            "registered_ip": "any",
+            "source": "logcollector",
             "decoders": [
-                "core-wazuh-message",
-                "core-windows",
-                "integrations",
-                "windows-json",
                 "windows-event",
                 "windows-powershell"
             ],
-            "source": "logcollector"
-        },
+            "queue": 102,
+            "origin": "EventChannel",
+            "location": "[001] (WIN-8I36CR3738L) any-\u003eEventChannel",
+            "registered_ip": "any"
+        }
+    }
+},
+{
+    "output": {
         "agent": {
-            "id": "005",
-            "name": "vm-win7",
+            "id": "001",
+            "name": "WIN-8I36CR3738L",
             "type": "wazuh-agent"
         },
+        "ecs": {
+            "version": "8.8"
+        },
+        "windows": {
+            "System": {
+                "Channel": {
+                    "#text": "Windows PowerShell"
+                },
+                "EventID": {
+                    "#text": "403",
+                    "@Qualifiers": "0"
+                },
+                "EventRecordID": {
+                    "#text": "1621"
+                },
+                "Provider": {
+                    "@Name": "PowerShell"
+                },
+                "Security": {},
+                "Computer": {
+                    "#text": "vm-win7"
+                },
+                "Task": {
+                    "#text": "4"
+                },
+                "Keywords": "Classic"
+            }
+        },
         "event": {
-            "original": "\t{\"Message\":\"Engine state is changed from Available to Stopped. \\r\\n\\r\\nDetails: \\r\\n\\tNewEngineState=Stopped\\n\\tPreviousEngineState=Available\\n\\n\\tSequenceNumber=10\\n\\n\\tHostName=ConsoleHost\\n\\tHostVersion=2.0\\n\\tHostId=8a46a106-ce36-4eac-80bb-d72aee4fb079\\n\\tEngineVersion=2.0\\n\\tRunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9\\n\\tPipelineId=\\n\\tCommandName=\\n\\tCommandType=\\n\\tScriptName=\\n\\tCommandPath=\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>403</EventID><Level>4</Level><Task>4</Task><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-07-26T02:30:13.000000000Z'/><EventRecordID>1621</EventRecordID><Channel>Windows PowerShell</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data>Stopped</Data><Data>Available</Data><Data>\\tNewEngineState=Stopped  PreviousEngineState=Available   SequenceNumber=10   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=2.0  RunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=</Data></EventData></Event>\"}",
-            "module": "windows",
-            "dataset": "powershell",
-            "start": "2023-07-26T02:30:13.000000000Z",
-            "code": "403",
             "id": "403",
+            "dataset": "powershell",
+            "code": "403",
+            "module": "windows",
             "kind": "event",
             "provider": "PowerShell",
-            "category": [
-                "process"
-            ],
+            "start": "2023-07-26T02:30:13.000000000Z",
+            "original": "\u003cEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'\u003e\u003cSystem\u003e\u003cProvider Name='PowerShell'/\u003e\u003cEventID Qualifiers='0'\u003e403\u003c/EventID\u003e\u003cLevel\u003e4\u003c/Level\u003e\u003cTask\u003e4\u003c/Task\u003e\u003cKeywords\u003e0x80000000000000\u003c/Keywords\u003e\u003cTimeCreated SystemTime='2023-07-26T02:30:13.000000000Z'/\u003e\u003cEventRecordID\u003e1621\u003c/EventRecordID\u003e\u003cChannel\u003eWindows PowerShell\u003c/Channel\u003e\u003cComputer\u003evm-win7\u003c/Computer\u003e\u003cSecurity/\u003e\u003c/System\u003e\u003cEventData\u003e\u003cData\u003eStopped\u003c/Data\u003e\u003cData\u003eAvailable\u003c/Data\u003e\u003cData\u003e\tNewEngineState=Stopped  PreviousEngineState=Available   SequenceNumber=10   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=2.0  RunspaceId=6fe98fb7-5dc3-4fe6-815d-a692c970aad9  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=\u003c/Data\u003e\u003c/EventData\u003e\u003c/Event\u003e",
             "type": [
                 "info",
                 "end"
             ],
-            "sequence": 10
+            "category": [
+                "process"
+            ]
         },
-        "ecs": {
-            "version": "8.8"
-        },
-        "host": {
-            "id": "005",
-            "name": "vm-win7"
-        },
-        "log": {
-            "level": "Information"
-        },
-        "process": {
-            "entity_id": "8a46a106-ce36-4eac-80bb-d72aee4fb079",
-            "title": "ConsoleHost",
-            "executable": null
-        },
-        "~powershell": {
-            "engine": {
-                "new_state": "Stopped",
-                "previous_state": "Available",
-                "version": 2.0
-            },
-            "pipeline_id": null,
-            "runspace_id": "6fe98fb7-5dc3-4fe6-815d-a692c970aad9",
-            "process": {
-                "executable_version": 2.0
-            },
-            "command": {
-                "value": null,
-                "path": null,
-                "name": null,
-                "type": null
-            }
-        },
-        "file": {
-            "path": null
-        }
-    },
-    {
         "wazuh": {
-            "queue": 102,
-            "location": "[005] (vm-win7) any->EventChannel",
-            "message": "{\"Message\":\"Provider \\\"Environment\\\" is Started. \\r\\n\\r\\nDetails: \\r\\n\\tProviderName=Environment\\n\\tNewProviderState=Started\\n\\n\\tSequenceNumber=3\\n\\n\\tHostName=ConsoleHost\\n\\tHostVersion=2.0\\n\\tHostId=8a46a106-ce36-4eac-80bb-d72aee4fb079\\n\\tEngineVersion=\\n\\tRunspaceId=\\n\\tPipelineId=\\n\\tCommandName=\\n\\tCommandType=\\n\\tScriptName=\\n\\tCommandPath=\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>600</EventID><Level>4</Level><Task>6</Task><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-07-26T02:29:02.000000000Z'/><EventRecordID>1614</EventRecordID><Channel>Windows PowerShell</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data>Environment</Data><Data>Started</Data><Data>\\tProviderName=Environment  NewProviderState=Started   SequenceNumber=3   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=  RunspaceId=  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=</Data></EventData></Event>\"}",
-            "origin": "EventChannel",
-            "registered_ip": "any",
             "decoders": [
-                "core-wazuh-message",
-                "core-windows",
-                "integrations",
-                "windows-json",
                 "windows-event",
                 "windows-powershell"
             ],
+            "queue": 102,
+            "location": "[001] (WIN-8I36CR3738L) any-\u003eEventChannel",
+            "registered_ip": "any",
+            "origin": "EventChannel",
             "source": "logcollector"
         },
-        "agent": {
-            "id": "005",
-            "name": "vm-win7",
-            "type": "wazuh-agent"
+        "host": {
+            "id": "001",
+            "name": "vm-win7"
         },
-        "event": {
-            "original": "{\"Message\":\"Provider \\\"Environment\\\" is Started. \\r\\n\\r\\nDetails: \\r\\n\\tProviderName=Environment\\n\\tNewProviderState=Started\\n\\n\\tSequenceNumber=3\\n\\n\\tHostName=ConsoleHost\\n\\tHostVersion=2.0\\n\\tHostId=8a46a106-ce36-4eac-80bb-d72aee4fb079\\n\\tEngineVersion=\\n\\tRunspaceId=\\n\\tPipelineId=\\n\\tCommandName=\\n\\tCommandType=\\n\\tScriptName=\\n\\tCommandPath=\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>600</EventID><Level>4</Level><Task>6</Task><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-07-26T02:29:02.000000000Z'/><EventRecordID>1614</EventRecordID><Channel>Windows PowerShell</Channel><Computer>vm-win7</Computer><Security/></System><EventData><Data>Environment</Data><Data>Started</Data><Data>\\tProviderName=Environment  NewProviderState=Started   SequenceNumber=3   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=  RunspaceId=  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=</Data></EventData></Event>\"}",
-            "module": "windows",
-            "dataset": "powershell",
-            "start": "2023-07-26T02:29:02.000000000Z",
-            "code": "600",
-            "id": "600",
-            "kind": "event",
-            "provider": "PowerShell",
-            "category": [
-                "process"
-            ],
-            "type": [
-                "info"
-            ],
-            "sequence": 3
+        "TestSessionID": 1,
+        "log": {
+            "level": "Information"
+        }
+    }
+},
+{
+    "output": {
+        "TestSessionID": 1,
+        "host": {
+            "id": "001",
+            "name": "vm-win7"
         },
         "ecs": {
             "version": "8.8"
         },
-        "host": {
-            "id": "005",
-            "name": "vm-win7"
-        },
         "log": {
             "level": "Information"
         },
-        "process": {
-            "entity_id": "8a46a106-ce36-4eac-80bb-d72aee4fb079",
-            "title": "ConsoleHost",
-            "executable": null
+        "wazuh": {
+            "location": "[001] (WIN-8I36CR3738L) any-\u003eEventChannel",
+            "registered_ip": "any",
+            "source": "logcollector",
+            "queue": 102,
+            "origin": "EventChannel",
+            "decoders": [
+                "windows-event",
+                "windows-powershell"
+            ]
         },
-        "~powershell": {
-            "provider": {
-                "new_state": "Started",
-                "name": "Environment"
-            },
-            "engine": {
-                "version": null
-            },
-            "pipeline_id": null,
-            "runspace_id": null,
-            "process": {
-                "executable_version": 2.0
-            },
-            "command": {
-                "value": null,
-                "path": null,
-                "name": null,
-                "type": null
+        "event": {
+            "type": [
+                "info"
+            ],
+            "provider": "PowerShell",
+            "kind": "event",
+            "module": "windows",
+            "dataset": "powershell",
+            "code": "600",
+            "id": "600",
+            "start": "2023-07-26T02:29:02.000000000Z",
+            "category": [
+                "process"
+            ],
+            "original": "\u003cEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'\u003e\u003cSystem\u003e\u003cProvider Name='PowerShell'/\u003e\u003cEventID Qualifiers='0'\u003e600\u003c/EventID\u003e\u003cLevel\u003e4\u003c/Level\u003e\u003cTask\u003e6\u003c/Task\u003e\u003cKeywords\u003e0x80000000000000\u003c/Keywords\u003e\u003cTimeCreated SystemTime='2023-07-26T02:29:02.000000000Z'/\u003e\u003cEventRecordID\u003e1614\u003c/EventRecordID\u003e\u003cChannel\u003eWindows PowerShell\u003c/Channel\u003e\u003cComputer\u003evm-win7\u003c/Computer\u003e\u003cSecurity/\u003e\u003c/System\u003e\u003cEventData\u003e\u003cData\u003eEnvironment\u003c/Data\u003e\u003cData\u003eStarted\u003c/Data\u003e\u003cData\u003e\tProviderName=Environment  NewProviderState=Started   SequenceNumber=3   HostName=ConsoleHost  HostVersion=2.0  HostId=8a46a106-ce36-4eac-80bb-d72aee4fb079  EngineVersion=  RunspaceId=  PipelineId=  CommandName=  CommandType=  ScriptName=  CommandPath=  CommandLine=\u003c/Data\u003e\u003c/EventData\u003e\u003c/Event\u003e"
+        },
+        "agent": {
+            "type": "wazuh-agent",
+            "name": "WIN-8I36CR3738L",
+            "id": "001"
+        },
+        "windows": {
+            "System": {
+                "Security": {},
+                "Computer": {
+                    "#text": "vm-win7"
+                },
+                "EventID": {
+                    "#text": "600",
+                    "@Qualifiers": "0"
+                },
+                "EventRecordID": {
+                    "#text": "1614"
+                },
+                "Task": {
+                    "#text": "6"
+                },
+                "Provider": {
+                    "@Name": "PowerShell"
+                },
+                "Channel": {
+                    "#text": "Windows PowerShell"
+                },
+                "Keywords": "Classic"
             }
-        },
-        "file": {
-            "path": null
         }
     }
-]
+}
