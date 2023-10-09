@@ -37,7 +37,7 @@ class CrudIntegration:
         else:
             return None
 
-    def save_integration(self, integration_name: str, format: str, origin: str):
+    def save_integration(self, integration_name: str, format: str, origin: str, lines: str = None):
         if not format and not integration_name:
             print('To save the integration, the integration-name and format parameters cannot be empty.')
             return False
@@ -57,8 +57,6 @@ class CrudIntegration:
             print('Error while reading configuration file: {}'.format(ex))
             return False
 
-        # TODO: implement "lines" parameter for multi-line format
-
         if origin and format:
             content = {
                 "format": format,
@@ -67,6 +65,12 @@ class CrudIntegration:
         else:
             content = { "format": format }
 
+        if (Formats.MULTI_LINE.value['name'] == format):
+            if (lines != None):
+                content['lines'] = lines
+            else:
+                print("Parameter 'lines' is mandatory for multi-line format.")
+                return False
         try:
             json_content[integration_name] = content
         except KeyError as ex:
@@ -134,14 +138,22 @@ class CrudIntegration:
             print('Error while reading configuration file: {}'.format(ex))
             return False
 
-        # TODO: implement "lines" parameter for multi-line format
+        print(f"Importing from: '{working_path}'...\n")
+
         for item in json_content:
             try:
                 integration_name = item
                 format = json_content[item]['format']
                 origin = json_content[item]['origin']
+                lines = None
 
-                print(f"Adding integration '{item}' with format '{format}' and origin '{origin}' from: '{working_path}'")
-                self.save_integration(integration_name, format, origin)
+                message = f"Adding integration '{item}' with format '{format}'"
+                if (Formats.MULTI_LINE.value['name'] == format):
+                    lines = json_content[item]['lines']
+                    message += f", lines '{lines}'"
+                message += f" and origin '{origin}'"
+
+                print(message)
+                self.save_integration(integration_name, format, origin, lines)
             except Exception as ex:
                 print(f'Error importing file: {ex}')
