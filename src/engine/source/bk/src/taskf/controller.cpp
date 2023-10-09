@@ -60,7 +60,7 @@ Work getWork(base::EngineOp&& job, void* eventPtr, bk::taskf::Controller::Publis
         auto res = job(event);
         if (publisher != nullptr)
         {
-            publisher(res.trace());
+            publisher(res.trace(), res.success());
         }
     };
 }
@@ -81,7 +81,7 @@ RetWork getRetWork(base::EngineOp&& job, void* eventPtr, bk::taskf::Controller::
         auto res = job(event);
         if (publisher != nullptr)
         {
-            publisher(res.trace());
+            publisher(res.trace(), res.success());
         }
         return toTfRes(res);
     };
@@ -152,18 +152,19 @@ public:
      */
     Publisher publisher()
     {
-        return [thisPtr = this->weak_from_this()](std::string_view message)
+        return [thisPtr = this->weak_from_this()](const std::string& message, bool success)
         {
             auto thisShared = thisPtr.lock();
             std::shared_lock lock {thisShared->m_subscribersMutex};
             for (const auto& [_, subscriber] : thisShared->m_subscribers)
             {
-                subscriber(message);
+                subscriber(message, success);
             }
         };
     }
 };
 
+// TODO All task should be the expression name as prefix
 tf::Task Controller::build(const base::Expression& expression, tf::Task& parent, bool needResult, Publisher publisher)
 {
     // Error if empty expression
