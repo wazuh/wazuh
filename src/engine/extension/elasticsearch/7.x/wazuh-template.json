@@ -1275,7 +1275,7 @@
                         "ignore_above": 1024
                     },
                     "original": {
-                        "type": "keyword"
+                        "type": "text"
                     },
                     "outcome": {
                         "type": "keyword",
