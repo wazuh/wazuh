@@ -11,7 +11,7 @@ metadata:
   compatibility: This decoder was tested on Windows 10, but should work on all versions of Windows Vista onwards.
   author:
     name: Wazuh, Inc.
-    date: 2023/01/23
+    date: 2023/10/10
   references:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
 
@@ -78,9 +78,18 @@ normalize:
    map:
     - event.type: array_append(end)
 
-# Cleanup
+# windows.logon
  - map:
-   - windows.System.Keywords: kvdb_get(windows_powershell_winmeta_keywords, $windows.System.Keywords.#text)
-   - windows.EventData: delete()
-   - windows.System.TimeCreated: delete()
-   - windows.System.Level: delete()
+   - windows.logon.activity_id: $windows.System.Task.@ActivityID
+   - windows.logon.channel: $windows.System.Channel.#text
+   - windows.logon.computer_name: $windows.System.Computer.#text
+   - windows.logon.event_id: $windows.System.EventID.#text
+   - windows.logon.keywords: kvdb_get(windows_powershell_winmeta_keywords, $windows.System.Keywords.#text)
+   - windows.logon.process.pid: $windows.System.Execution.@ProcessID
+   - windows.logon.process.thread.id: $windows.System.Execution.@ThreadID
+   - windows.logon.provider_guid: $windows.System.Provider.@Guid
+   - windows.logon.provider_name: $windows.System.Provider.@Name
+   - windows.logon.record_id: $windows.System.EventRecordID.#text
+   - windows.logon.task: $windows.System.Task.#text
+   - windows.logon.user.identifier: $windows.User.identifier
+   - windows.logon.version: $windows.System.Version.#text
