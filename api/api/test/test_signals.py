@@ -59,15 +59,25 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
     coroutine_mock.assert_awaited_once()
 
 
+@patch('api.signals.os.chmod')
+@patch('api.signals.os.chown')
+@patch('api.signals.common.wazuh_gid')
+@patch('api.signals.common.wazuh_uid')
 @pytest.mark.asyncio
 async def test_check_installation_uid_populate_uid_if_not_exists(
-    installation_uid_mock, application_mock
+    uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock, application_mock
 ):
+    uid = gid = 999
+    uid_mock.return_value = uid
+    gid_mock.return_value = gid
+
     await check_installation_uid(application_mock)
 
     assert os.path.exists(installation_uid_mock)
     with open(installation_uid_mock) as file:
         assert application_mock[INSTALLATION_UID_KEY] == file.readline()
+        chown_mock.assert_called_with(file.name, uid, gid)
+        chmod_mock.assert_called_with(file.name, 0o660)
 
 
 @pytest.mark.asyncio
