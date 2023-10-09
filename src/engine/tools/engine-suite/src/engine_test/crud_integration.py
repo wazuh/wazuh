@@ -1,4 +1,6 @@
 import json
+from os.path import exists
+from pathlib import Path
 from engine_test.event_format import Formats
 from engine_test.config import Config
 
@@ -109,3 +111,37 @@ class CrudIntegration:
             return False
 
         return True
+
+    def import_integration(self, integration_path: str):
+        working_path = integration_path
+        path = Path(working_path)
+        if path.is_dir():
+            working_path = str(path.resolve())
+        else:
+            print(f'Error: directory does not exist ')
+            return
+
+        config_file = working_path + '/' + Config.get_config_file_name()
+
+        if not exists(config_file):
+            print(f"File '{config_file}' not found!")
+            return
+
+        try:
+            with open(config_file) as fp:
+                json_content = json.load(fp)
+        except Exception as ex:
+            print('Error while reading configuration file: {}'.format(ex))
+            return False
+
+        # TODO: implement "lines" parameter for multi-line format
+        for item in json_content:
+            try:
+                integration_name = item
+                format = json_content[item]['format']
+                origin = json_content[item]['origin']
+
+                print(f"Adding integration '{item}' with format '{format}' and origin '{origin}' from: '{working_path}'")
+                self.save_integration(integration_name, format, origin)
+            except Exception as ex:
+                print(f'Error importing file: {ex}')
