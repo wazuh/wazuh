@@ -11,13 +11,15 @@ from typing import AsyncGenerator, Callable
 
 import aiohttp
 import certifi
-import wazuh
 from aiohttp import web
+
+import wazuh
+from api.constants import INSTALLATION_UID_PATH
+from wazuh.core import common
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.utils import get_utc_now
 
-from api.constants import INSTALLATION_UID_PATH
 
 CTI_URL = get_ossec_conf(
     section='global'
@@ -127,6 +129,8 @@ async def check_installation_uid(app: web.Application) -> None:
         installation_uid = str(uuid.uuid4())
         with open(INSTALLATION_UID_PATH, 'w') as file:
             file.write(installation_uid)
+            os.chown(file.name, common.wazuh_uid(), common.wazuh_gid())
+            os.chmod(file.name, 0o660)
     app[INSTALLATION_UID_KEY] = installation_uid
 
 
@@ -178,9 +182,9 @@ async def get_update_information(app: web.Application) -> None:
 
                     app['update_information'] = update_information
             except aiohttp.ClientError as err:
-                logger.error("Something went wrong when querying the update check service.", exc_info=err)
+                logger.error(f"Something went wrong when querying the update check service: {err}")
             except Exception as err:
-                logger.error("An unknown error occurred while trying to get updates information.", exc_info=err)
+                logger.error(f"An unknown error occurred while trying to get updates information: {err}")
             finally:
                 await asyncio.sleep(ONE_DAY_SLEEP)
 
