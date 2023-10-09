@@ -1,110 +1,174 @@
-[
-    {
+{
+    "output": {
+        "windows": {
+            "System": {
+                "Channel": {
+                    "#text": "Microsoft-Windows-PowerShell/Operational"
+                },
+                "Opcode": "Start",
+                "Correlation": {
+                    "@ActivityID": "{C9F5EBE4-BF98-0001-0EEC-F5C998BFD901}"
+                },
+                "Provider": {
+                    "@Name": "Microsoft-Windows-PowerShell",
+                    "@Guid": "{A0C1853B-5C40-4B15-8766-3CF1C58F985A}"
+                },
+                "Execution": {
+                    "@ThreadID": "336",
+                    "@ProcessID": "1832"
+                },
+                "Keywords": {
+                    "#text": "AnyKeyword"
+                },
+                "EventID": {
+                    "#text": "40961"
+                },
+                "EventRecordID": {
+                    "#text": "54"
+                },
+                "Security": {
+                    "@UserID": "S-1-5-21-3687077623-3779298101-2624825782-500"
+                },
+                "Computer": {
+                    "#text": "WIN-IV0BOSRBARR"
+                },
+                "Task": {
+                    "#text": "4"
+                },
+                "Version": {
+                    "#text": "1"
+                }
+            }
+        },
         "wazuh": {
+            "source": "logcollector",
             "queue": 102,
-            "location": "[005] (vm-win7) any->EventChannel",
-            "message": "{\"Message\":\"PowerShell console is starting up\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/><EventID>40961</EventID><Version>1</Version><Level>4</Level><Task>4</Task><Opcode>1</Opcode><Keywords>0x0</Keywords><TimeCreated SystemTime='2023-07-26T04:30:26.963678000Z'/><EventRecordID>54</EventRecordID><Correlation ActivityID='{C9F5EBE4-BF98-0001-0EEC-F5C998BFD901}'/><Execution ProcessID='1832' ThreadID='336'/><Channel>Microsoft-Windows-PowerShell/Operational</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security UserID='S-1-5-21-3687077623-3779298101-2624825782-500'/></System><EventData></EventData></Event>\"}",
             "origin": "EventChannel",
-            "registered_ip": "any",
             "decoders": [
-                "core-wazuh-message",
-                "core-windows",
-                "integrations",
-                "windows-json",
                 "windows-event",
                 "windows-powershell-operational"
             ],
-            "source": "logcollector"
+            "registered_ip": "any",
+            "location": "[001] (WIN-8I36CR3738L) any-\u003eEventChannel"
         },
         "agent": {
-            "id": "005",
-            "name": "vm-win7",
+            "name": "WIN-8I36CR3738L",
+            "id": "001",
             "type": "wazuh-agent"
         },
+        "log": {
+            "level": "Information"
+        },
+        "host": {
+            "id": "001",
+            "name": "WIN-IV0BOSRBARR"
+        },
         "event": {
-            "original": "{\"Message\":\"PowerShell console is starting up\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/><EventID>40961</EventID><Version>1</Version><Level>4</Level><Task>4</Task><Opcode>1</Opcode><Keywords>0x0</Keywords><TimeCreated SystemTime='2023-07-26T04:30:26.963678000Z'/><EventRecordID>54</EventRecordID><Correlation ActivityID='{C9F5EBE4-BF98-0001-0EEC-F5C998BFD901}'/><Execution ProcessID='1832' ThreadID='336'/><Channel>Microsoft-Windows-PowerShell/Operational</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security UserID='S-1-5-21-3687077623-3779298101-2624825782-500'/></System><EventData></EventData></Event>\"}",
             "module": "windows",
-            "dataset": "powershell",
-            "start": "2023-07-26T04:30:26.963678000Z",
-            "code": "40961",
+            "type": [
+                "info"
+            ],
+            "kind": "event",
             "id": "40961",
-            "kind": "event",
+            "original": "\u003cEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'\u003e\u003cSystem\u003e\u003cProvider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/\u003e\u003cEventID\u003e40961\u003c/EventID\u003e\u003cVersion\u003e1\u003c/Version\u003e\u003cLevel\u003e4\u003c/Level\u003e\u003cTask\u003e4\u003c/Task\u003e\u003cOpcode\u003e1\u003c/Opcode\u003e\u003cKeywords\u003e0x0\u003c/Keywords\u003e\u003cTimeCreated SystemTime='2023-07-26T04:30:26.963678000Z'/\u003e\u003cEventRecordID\u003e54\u003c/EventRecordID\u003e\u003cCorrelation ActivityID='{C9F5EBE4-BF98-0001-0EEC-F5C998BFD901}'/\u003e\u003cExecution ProcessID='1832' ThreadID='336'/\u003e\u003cChannel\u003eMicrosoft-Windows-PowerShell/Operational\u003c/Channel\u003e\u003cComputer\u003eWIN-IV0BOSRBARR\u003c/Computer\u003e\u003cSecurity UserID='S-1-5-21-3687077623-3779298101-2624825782-500'/\u003e\u003c/System\u003e\u003cEventData\u003e\u003c/EventData\u003e\u003c/Event\u003e",
+            "code": "40961",
             "provider": "Microsoft-Windows-PowerShell",
             "category": [
                 "process"
             ],
-            "type": [
-                "info"
-            ]
-        },
-        "ecs": {
-            "version": "8.8"
-        },
-        "host": {
-            "id": "005",
-            "name": "WIN-IV0BOSRBARR"
-        },
-        "log": {
-            "level": "Information"
-        },
-        "related": {
-            "user": [
-                "destination.user.name"
-            ]
-        }
-    },
-    {
-        "wazuh": {
-            "queue": 102,
-            "location": "[005] (vm-win7) any->EventChannel",
-            "message": "{\"Message\":\"PowerShell console is ready for user input\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/><EventID>40962</EventID><Version>1</Version><Level>4</Level><Task>4</Task><Opcode>2</Opcode><Keywords>0x0</Keywords><TimeCreated SystemTime='2023-07-26T04:30:27.026181900Z'/><EventRecordID>55</EventRecordID><Correlation ActivityID='{C9F5EBE4-BF98-0000-28EC-F5C998BFD901}'/><Execution ProcessID='1832' ThreadID='2604'/><Channel>Microsoft-Windows-PowerShell/Operational</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security UserID='S-1-5-21-3687077623-3779298101-2624825782-500'/></System><EventData></EventData></Event>\"}",
-            "origin": "EventChannel",
-            "registered_ip": "any",
-            "decoders": [
-                "core-wazuh-message",
-                "core-windows",
-                "integrations",
-                "windows-json",
-                "windows-event",
-                "windows-powershell-operational"
-            ],
-            "source": "logcollector"
-        },
-        "agent": {
-            "id": "005",
-            "name": "vm-win7",
-            "type": "wazuh-agent"
-        },
-        "event": {
-            "original": "{\"Message\":\"PowerShell console is ready for user input\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/><EventID>40962</EventID><Version>1</Version><Level>4</Level><Task>4</Task><Opcode>2</Opcode><Keywords>0x0</Keywords><TimeCreated SystemTime='2023-07-26T04:30:27.026181900Z'/><EventRecordID>55</EventRecordID><Correlation ActivityID='{C9F5EBE4-BF98-0000-28EC-F5C998BFD901}'/><Execution ProcessID='1832' ThreadID='2604'/><Channel>Microsoft-Windows-PowerShell/Operational</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security UserID='S-1-5-21-3687077623-3779298101-2624825782-500'/></System><EventData></EventData></Event>\"}",
-            "module": "windows",
             "dataset": "powershell",
-            "start": "2023-07-26T04:30:27.026181900Z",
-            "code": "40962",
-            "id": "40962",
-            "kind": "event",
-            "provider": "Microsoft-Windows-PowerShell",
-            "category": [
-                "process"
-            ],
-            "type": [
-                "info"
-            ]
+            "start": "2023-07-26T04:30:26.963678000Z"
         },
+        "TestSessionID": 1,
         "ecs": {
             "version": "8.8"
-        },
-        "host": {
-            "id": "005",
-            "name": "WIN-IV0BOSRBARR"
-        },
-        "log": {
-            "level": "Information"
-        },
-        "related": {
-            "user": [
-                "destination.user.name"
-            ]
         }
     }
-]
+},
+{
+    "output": {
+        "TestSessionID": 1,
+        "windows": {
+            "System": {
+                "Execution": {
+                    "@ProcessID": "1832",
+                    "@ThreadID": "2604"
+                },
+                "Version": {
+                    "#text": "1"
+                },
+                "Correlation": {
+                    "@ActivityID": "{C9F5EBE4-BF98-0000-28EC-F5C998BFD901}"
+                },
+                "Provider": {
+                    "@Name": "Microsoft-Windows-PowerShell",
+                    "@Guid": "{A0C1853B-5C40-4B15-8766-3CF1C58F985A}"
+                },
+                "Keywords": {
+                    "#text": "AnyKeyword"
+                },
+                "Security": {
+                    "@UserID": "S-1-5-21-3687077623-3779298101-2624825782-500"
+                },
+                "Task": {
+                    "#text": "4"
+                },
+                "EventID": {
+                    "#text": "40962"
+                },
+                "Computer": {
+                    "#text": "WIN-IV0BOSRBARR"
+                },
+                "Channel": {
+                    "#text": "Microsoft-Windows-PowerShell/Operational"
+                },
+                "Opcode": "Stop",
+                "EventRecordID": {
+                    "#text": "55"
+                }
+            }
+        },
+        "wazuh": {
+            "source": "logcollector",
+            "origin": "EventChannel",
+            "queue": 102,
+            "decoders": [
+                "windows-event",
+                "windows-powershell-operational"
+            ],
+            "registered_ip": "any",
+            "location": "[001] (WIN-8I36CR3738L) any-\u003eEventChannel"
+        },
+        "log": {
+            "level": "Information"
+        },
+        "agent": {
+            "id": "001",
+            "name": "WIN-8I36CR3738L",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "id": "40962",
+            "kind": "event",
+            "dataset": "powershell",
+            "category": [
+                "process"
+            ],
+            "type": [
+                "info"
+            ],
+            "code": "40962",
+            "provider": "Microsoft-Windows-PowerShell",
+            "module": "windows",
+            "original": "\u003cEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'\u003e\u003cSystem\u003e\u003cProvider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/\u003e\u003cEventID\u003e40962\u003c/EventID\u003e\u003cVersion\u003e1\u003c/Version\u003e\u003cLevel\u003e4\u003c/Level\u003e\u003cTask\u003e4\u003c/Task\u003e\u003cOpcode\u003e2\u003c/Opcode\u003e\u003cKeywords\u003e0x0\u003c/Keywords\u003e\u003cTimeCreated SystemTime='2023-07-26T04:30:27.026181900Z'/\u003e\u003cEventRecordID\u003e55\u003c/EventRecordID\u003e\u003cCorrelation ActivityID='{C9F5EBE4-BF98-0000-28EC-F5C998BFD901}'/\u003e\u003cExecution ProcessID='1832' ThreadID='2604'/\u003e\u003cChannel\u003eMicrosoft-Windows-PowerShell/Operational\u003c/Channel\u003e\u003cComputer\u003eWIN-IV0BOSRBARR\u003c/Computer\u003e\u003cSecurity UserID='S-1-5-21-3687077623-3779298101-2624825782-500'/\u003e\u003c/System\u003e\u003cEventData\u003e\u003c/EventData\u003e\u003c/Event\u003e",
+            "start": "2023-07-26T04:30:27.026181900Z"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "host": {
+            "name": "WIN-IV0BOSRBARR",
+            "id": "001"
+        }
+    }
+}
