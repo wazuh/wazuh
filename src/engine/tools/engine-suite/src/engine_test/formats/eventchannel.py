@@ -6,22 +6,12 @@ class EventChannelFormat(EventFormat):
         self.config['queue'] = Formats.EVENTCHANNEL.value['queue']
         self.config['origin'] = Formats.EVENTCHANNEL.value['origin']
 
-    def parse_events(self, events, config):
-        return self.parse_event(events, config)
-
-    def parse_event(self, event, config):
-        event_parsed = []
-        event = self.parse_eventchannel_format(event)
-        event = self.parser.get_event_ossec_format(event, config)
-        event_parsed.append(event)
-        return event_parsed
-
     def parse_eventchannel_format(self, event):
         message = ""
         eventXML = ""
 
         if type(event) == list:
-            # Unique event
+            # Parse unique event, with message tag
             event_len = range(10, len(event))
             has_event = False
 
@@ -32,8 +22,9 @@ class EventChannelFormat(EventFormat):
                     has_event = True
                 if has_event == False:
                     message += event[i]
-            eventXML += event[i]
+            eventXML += message
         else:
+            # Parse event, without message tag
             eventXML += event
 
         return '{{"Message":"{}","Event":"{}"}}'.format(message, eventXML.replace("\"", "'"))

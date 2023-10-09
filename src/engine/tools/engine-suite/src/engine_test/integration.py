@@ -30,7 +30,7 @@ class Integration(CrudIntegration):
             print("Integration not found!")
             exit(1)
 
-        if self.args['verbose']:
+        if self.is_debug():
             print (self.integration)
 
         # Get the format of integration
@@ -38,8 +38,8 @@ class Integration(CrudIntegration):
         if not self.format:
             print("Format of integration not found!")
             exit(1)
-        else:
-            self.args['origin'] = self.format.get_full_location(self.args)
+
+        self.args['full_location'] = self.format.get_full_location(self.args)
 
         # Client to API TEST
         self.api_client = ApiConnector(args)
@@ -114,3 +114,6 @@ class Integration(CrudIntegration):
                 return MultilineFormat(integration, self.args, integration['lines'])
         except Exception as ex:
             print("An error occurred while trying to obtain the integration format. Error: {}".format(ex))
+
+    def is_debug(self):
+        return self.args['verbose'] or  self.args['full_verbose']
