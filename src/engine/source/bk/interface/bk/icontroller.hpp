@@ -12,8 +12,8 @@
 namespace bk
 {
 
-using Subscriber = std::function<void(std::string_view)>; ///< Suscriber type for traces.
-using Subscription = std::size_t;                         ///< Identifier of the subscription.
+using Subscriber = std::function<void(const std::string&, bool)>; ///< Suscriber type for traces and result
+using Subscription = std::size_t;                                 ///< Identifier of the subscription.
 
 /**
  * @brief Interface for the backend.
