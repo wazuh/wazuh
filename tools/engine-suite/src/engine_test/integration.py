@@ -1,4 +1,3 @@
-import sys
 import yaml
 from engine_test.events_collector import EventsCollector
 from engine_test.formats.syslog import SyslogFormat
