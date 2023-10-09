@@ -34,11 +34,11 @@ tags:
 import os
 import pytest
 
-from wazuh_testing import LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_configuration_template, get_test_cases_data
-from wazuh_testing.tools.monitoring import FileMonitor
-from wazuh_testing.modules.sca import event_monitor as evm
-from wazuh_testing.modules.sca import SCA_DEFAULT_LOCAL_INTERNAL_OPTIONS as local_internal_options
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.modules.sca import patterns
+from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
@@ -48,21 +48,26 @@ TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
 TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 
+local_internal_options = {MODULESD_DEBUG: '2'}
+
 # Configuration and cases data
 configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_sca.yaml')
 cases_path = os.path.join(TEST_CASES_PATH, 'cases_validate_remediation.yaml')
 
 # Test configurations
-configuration_parameters, configuration_metadata, case_ids = get_test_cases_data(cases_path)
-configurations = load_configuration_template(configurations_path, configuration_parameters, configuration_metadata)
+configuration_parameters, configuration_metadata, case_ids = configuration.get_test_cases_data(cases_path)
+configurations = configuration.load_configuration_template(configurations_path, configuration_parameters, configuration_metadata)
 test_folder = '/testfile'
+
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Tests
-@pytest.mark.parametrize('configuration, metadata', zip(configurations, configuration_metadata), ids=case_ids)
-def test_validate_remediation_results(configuration, metadata, prepare_cis_policies_file, truncate_monitored_files,
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
+def test_validate_remediation_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                                       prepare_test_folder, set_wazuh_configuration,
-                                      configure_local_internal_options_function, restart_wazuh_function,
+                                      configure_local_internal_options, daemons_handler,
                                       wait_for_sca_enabled):
     '''
     description: This test will check that a SCA scan results, with the  expected initial results (passed/failed) for a
@@ -123,22 +128,27 @@ def test_validate_remediation_results(configuration, metadata, prepare_cis_polic
         - r".*sca.*wm_sca_hash_integrity.*DEBUG: ID: (\\d+); Result: '(.*)'"
     '''
 
-    wazuh_log_monitor = FileMonitor(LOG_FILE_PATH)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Get the results for the checks obtained in the initial SCA scan
-    results = evm.get_sca_scan_rule_id_results(file_monitor=wazuh_log_monitor, results_num=2)
+    log_monitor.start(callback=patterns.callback_scan_id_result, timeout=20, \
+                      only_new_events=True, accumulations=2)
+
+    results = log_monitor.callback_result
 
     # Assert the tested check has initial expected results (failed/passed)
-    check_result = results[metadata['check_id']-1][1]
-    assert check_result == metadata['initial_result'], f"Got unexcepted SCA result: {metadata['initial_result']},\
+    check_result = results[test_metadata['check_id']-1][1]
+    assert check_result == test_metadata['initial_result'], f"Got unexcepted SCA result: {test_metadata['initial_result']},\
                                                          got {check_result}"
     # Modify the folder's permissions
-    os.chmod(test_folder, metadata['perms'])
+    os.chmod(test_folder, test_metadata['perms'])
 
     # Get the results for the checks obtained in the SCA scan
-    results = evm.get_sca_scan_rule_id_results(file_monitor=wazuh_log_monitor, results_num=2)
+    log_monitor.start(callback=patterns.callback_scan_id_result, timeout=20, \
+                      only_new_events=True, accumulations=2)
+    results = log_monitor.callback_result
 
     # Assert the tested check result changed as expected (passed to failed, and vice-versa)
-    check_result = results[metadata['check_id']-1][1]
-    assert check_result == metadata['final_result'], f"Got unexcepted SCA result: {metadata['initial_result']},\
+    check_result = results[test_metadata['check_id']-1][1]
+    assert check_result == test_metadata['final_result'], f"Got unexcepted SCA result: {test_metadata['final_result']},\
                                                        got {check_result}"

@@ -41,11 +41,11 @@ tags:
 import os
 import pytest
 
-from wazuh_testing import LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_configuration_template, get_test_cases_data
-from wazuh_testing.tools.monitoring import FileMonitor
-from wazuh_testing.modules.sca import event_monitor as evm
-from wazuh_testing.modules.sca import SCA_DEFAULT_LOCAL_INTERNAL_OPTIONS as local_internal_options
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.modules.sca import patterns
+from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
@@ -55,27 +55,32 @@ TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
 TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 
+local_internal_options = {MODULESD_DEBUG: '2'}
+
 # Configuration and cases data
 configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_sca.yaml')
 
 # ---------------------------------------------------- TEST_ENABLED ---------------------------------------------------
 # Test configurations
 t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_sca_enabled.yaml')
-t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
-t1_configurations = load_configuration_template(configurations_path, t1_configuration_parameters,
+t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = configuration.get_test_cases_data(t1_cases_path)
+t1_configurations = configuration.load_configuration_template(configurations_path, t1_configuration_parameters,
                                                 t1_configuration_metadata)
 
 # ---------------------------------------------------- TEST_DISABLED --------------------------------------------------
 # Test configurations
 t2_cases_path = os.path.join(TEST_CASES_PATH, 'cases_sca_disabled.yaml')
-t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
-t2_configurations = load_configuration_template(configurations_path, t2_configuration_parameters,
+t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = configuration.get_test_cases_data(t2_cases_path)
+t2_configurations = configuration.load_configuration_template(configurations_path, t2_configuration_parameters,
                                                 t2_configuration_metadata)
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
-@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
-def test_sca_enabled(configuration, metadata, prepare_cis_policies_file, truncate_monitored_files,
-                     set_wazuh_configuration, configure_local_internal_options_function, restart_wazuh_function):
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
+def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
+                     set_wazuh_configuration, configure_local_internal_options, daemons_handler):
     '''
     description: Check SCA behavior when enabled tag is set to yes.
 
@@ -131,15 +136,19 @@ def test_sca_enabled(configuration, metadata, prepare_cis_policies_file, truncat
         - r'.*sca.*INFO: (Starting Security Configuration Assessment scan).'
         - r".*sca.*INFO: Security Configuration Assessment scan finished. Duration: (\\d+) seconds."
     '''
-    wazuh_log_monitor = FileMonitor(LOG_FILE_PATH)
-    evm.check_sca_enabled(wazuh_log_monitor)
-    evm.check_sca_scan_started(wazuh_log_monitor)
-    evm.check_sca_scan_ended(wazuh_log_monitor)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_ENABLED), timeout=10)
+    assert log_monitor.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
+    assert log_monitor.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_ENDED), timeout=10)
+    assert log_monitor.callback_result
 
 
-@pytest.mark.parametrize('configuration, metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
-def test_sca_disabled(configuration, metadata, prepare_cis_policies_file, truncate_monitored_files,
-                      set_wazuh_configuration, configure_local_internal_options_function, restart_wazuh_function):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
+def test_sca_disabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
+                      set_wazuh_configuration, configure_local_internal_options, daemons_handler):
     '''
     description: Check SCA behavior when enabled tag is set no.
 
@@ -190,5 +199,7 @@ def test_sca_disabled(configuration, metadata, prepare_cis_policies_file, trunca
         - r".*sca.*INFO: (Module disabled). Exiting."
     '''
 
-    wazuh_log_monitor = FileMonitor(LOG_FILE_PATH)
-    evm.check_sca_disabled(wazuh_log_monitor)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_DISABLED), timeout=10)
+    assert log_monitor.callback_result

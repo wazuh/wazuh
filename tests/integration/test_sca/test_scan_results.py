@@ -34,11 +34,11 @@ tags:
 import os
 import pytest
 
-from wazuh_testing import LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_configuration_template, get_test_cases_data
-from wazuh_testing.tools.monitoring import FileMonitor
-from wazuh_testing.modules.sca import event_monitor as evm
-from wazuh_testing.modules.sca import SCA_DEFAULT_LOCAL_INTERNAL_OPTIONS as local_internal_options
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.modules.sca import patterns
+from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
@@ -48,19 +48,24 @@ TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
 TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 
+local_internal_options = {MODULESD_DEBUG: '2'}
+
 # Configuration and cases data
 configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_sca.yaml')
 cases_path = os.path.join(TEST_CASES_PATH, 'cases_scan_results.yaml')
 
 # Test configurations
-configuration_parameters, configuration_metadata, case_ids = get_test_cases_data(cases_path)
-configurations = load_configuration_template(configurations_path, configuration_parameters, configuration_metadata)
+configuration_parameters, configuration_metadata, case_ids = configuration.get_test_cases_data(cases_path)
+configurations = configuration.load_configuration_template(configurations_path, configuration_parameters, configuration_metadata)
+
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Tests
-@pytest.mark.parametrize('configuration, metadata', zip(configurations, configuration_metadata), ids=case_ids)
-def test_sca_scan_results(configuration, metadata, prepare_cis_policies_file, truncate_monitored_files,
-                          set_wazuh_configuration, configure_local_internal_options_function, restart_wazuh_function,
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
+def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
+                          set_wazuh_configuration, configure_local_internal_options, daemons_handler,
                           wait_for_sca_enabled):
     '''
     description: This test will check that a SCA scan is correctly executed on an agent, with a given policy file and
@@ -122,20 +127,26 @@ def test_sca_scan_results(configuration, metadata, prepare_cis_policies_file, tr
         - r'.*sca_send_alert.*Sending event: (.*)'
     '''
 
-    wazuh_log_monitor = FileMonitor(LOG_FILE_PATH)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Wait for the end of SCA scan
-    evm.check_sca_scan_started(wazuh_log_monitor)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
+    assert log_monitor.callback_result
 
     # Check the regex engine used by SCA
-    engine = evm.get_scan_regex_engine(wazuh_log_monitor)
-    assert engine == metadata['regex_type'], f"Wrong regex-engine found: {engine}, expected: {metadata['regex_type']}"
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_OSREGEX_ENGINE), timeout=10)
+    engine = log_monitor.callback_result[0] if log_monitor.callback_result != None else None
+
+    assert engine == test_metadata['regex_type'], \
+        f"Wrong regex-engine found: {engine}, expected: {test_metadata['regex_type']}"
 
     # Check all checks have been done
-    evm.get_sca_scan_rule_id_results(file_monitor=wazuh_log_monitor, results_num=int(metadata['results']))
+    log_monitor.start(callback=patterns.callback_scan_id_result, timeout=20, accumulations=int(test_metadata['results']))
 
-    # Get scan summary event and check it matches with the policy file used
-    summary = evm.get_sca_scan_summary(file_monitor=wazuh_log_monitor)
-    assert summary['policy_id'] == metadata['policy_file'][0:-5], f"Unexpected policy_id found. Got \
+    # # Get scan summary event and check it matches with the policy file used
+    log_monitor.start(callback=patterns.callback_detect_sca_scan_summary, timeout=20)
+    summary = log_monitor.callback_result
+
+    assert summary['policy_id'] == test_metadata['policy_file'][0:-5], f"Unexpected policy_id found. Got \
                                                                     {summary['policy_id']}, expected \
-                                                                    {metadata['policy_file'][0:-5]}"
+                                                                    {test_metadata['policy_file'][0:-5]}"
