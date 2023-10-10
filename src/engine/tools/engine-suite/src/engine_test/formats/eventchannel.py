@@ -56,8 +56,10 @@ class EventChannelFormat(EventFormat):
 
             # Split and build each event
             result = event.split(event_open_tag)
+
             for line in result:
-                events_multiline.append('{}{}'.format(event_open_tag, line))
+                if line != '':
+                    events_multiline.append('{}{}'.format(event_open_tag, line))
 
         else:
             events_multiline.append(events)

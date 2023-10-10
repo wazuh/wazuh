@@ -4,19 +4,19 @@ from engine_test.parser import Parser
 class Formats(Enum):
     AUDIT = { "name": "audit", "queue": 49 }
     COMMAND = { "name": "command", "queue": 49 }
-    DJB_MULTILOG = "djb-multilog"
     EVENTCHANNEL = { "name": "eventchannel", "origin": "EventChannel", "queue": 102 }
-    EVENTLOG = "eventlog"
     FULL_COMMAND = { "name": "full_command", "queue": 49 }
-    IIS = "iis"
     JSON = { "name": "json", "queue": 49 }
     MACOS = { "name": "macos", "origin": "macos", "queue": 49 }
-    MULTI_LINE_REGEX = "multi-line-regex"
     MULTI_LINE = { "name": "multi-line", "queue": 49 }
-    MYSQL_LOG = "mysql_log"
-    NMAPG = "nmapg"
     SYSLOG = { "name": "syslog", "queue": 49 }
     REMOTE_SYSLOG = { "name": "remote-syslog", "queue": 50 }
+
+    def get_formats():
+        formats = []
+        for format in Formats:
+            formats.append(format.value["name"])
+        return formats
 
 class EventFormat:
     def __init__(self, integration, args):
