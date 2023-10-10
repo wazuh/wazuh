@@ -8,16 +8,7 @@ from importlib.metadata import files
 
 class CrudIntegration:
     def __init__(self):
-        self.formats = []
-        self.formats.append(Formats.AUDIT.value['name'])
-        self.formats.append(Formats.COMMAND.value['name'])
-        self.formats.append(Formats.FULL_COMMAND.value['name'])
-        self.formats.append(Formats.EVENTCHANNEL.value['name'])
-        self.formats.append(Formats.JSON.value['name'])
-        self.formats.append(Formats.MACOS.value['name'])
-        self.formats.append(Formats.MULTI_LINE.value['name'])
-        self.formats.append(Formats.SYSLOG.value['name'])
-        self.formats.append(Formats.REMOTE_SYSLOG.value['name'])
+        self.formats = Formats.get_formats()
 
     def get_integrations(self):
         json_content = ""
@@ -84,7 +75,7 @@ class CrudIntegration:
             print('Error while writing configuration file: {}'.format(ex))
             return False
 
-        print('Integration added successfully.')
+        print(f"Integration '{integration_name}' added successfully.")
         return True
 
     def delete_integration(self, integration_name: str):

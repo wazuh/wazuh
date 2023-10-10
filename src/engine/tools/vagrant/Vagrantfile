@@ -145,7 +145,7 @@ Vagrant.configure("2") do |config|
         engine-integration add -n wazuh integrations/windows/
         engine-integration add -n wazuh integrations/apache-http/
         engine-integration add -n wazuh integrations/suricata/
-        
+
         cd $HOME
         echo "Creating default policy 'policy/wazuh/0'..."
         $ENGINE_DIR/wazuh-engine policy add -p policy/wazuh/0 -f
@@ -158,10 +158,16 @@ Vagrant.configure("2") do |config|
         $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/apache-http/0
         $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/suricata/0
         echo "$($ENGINE_DIR/wazuh-engine policy get -n wazuh system user)"
-        
+
         echo "Enabling default environment..."
         $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 255 policy/wazuh/0
         echo
+
+        echo "Creating integrations of engine-test..."
+        # TODO: think about a better way to do this, maybe save the default information in kvdb
+        echo "{}" > /var/ossec/etc/engine-test.conf
+        engine-test add -n windows -f eventchannel
+        engine-test add -n syslog -f syslog -o /tmp/syslog.log
 
         # Add user vagrant to wazuh group
         usermod -a -G wazuh vagrant

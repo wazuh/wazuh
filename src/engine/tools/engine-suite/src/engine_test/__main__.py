@@ -13,7 +13,7 @@ def parse_args():
     meta = metadata('engine-suite')
     parser = argparse.ArgumentParser(prog='engine-test')
 
-    parser.add_argument('-c', '--config', help=f'Configuration file',
+    parser.add_argument('-c', '--config', help=f'Configuration file. Default: {Config.get_config_file()}',
                             type=str, default=Config.get_config_file(), dest='config_file')
 
     parser.add_argument('-v', '--version', action='version',
