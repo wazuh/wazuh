@@ -241,13 +241,10 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     SSL_set_bio(cfg->ssl, sbio, sbio);
 
     /* Do SNI */
-    if (!strcmp(ip_address, server_address)) {
-        if (1 != SSL_set_tlsext_host_name(cfg->ssl, server_address)) {
-            merror("Unable to set SNI hostname: %s", server_address);
-        } else {
-            minfo("SNI Hostname set to: %s", server_address);
-        }
+    if (1 != SSL_set_tlsext_host_name(cfg->ssl, server_address)) {
+        merror("Unable to set SNI hostname: %s", server_address);
     }
+
     
     ERR_clear_error();
     int ret = SSL_connect(cfg->ssl);
