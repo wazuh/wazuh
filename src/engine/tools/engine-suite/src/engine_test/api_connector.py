@@ -45,11 +45,6 @@ class ApiConnector:
                 request.asset_trace.extend(self.config['assets'])
 
             response = self.api_client.send_command("run", "post", request)
-
-            if self.is_debug():
-                print("\nSent: \n{}".format(request))
-                print("Received: \n{}".format(response))
-
             return response
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
@@ -68,9 +63,7 @@ class ApiConnector:
                 if data['status'] == "ERROR":
                     print("Session error: {}".format(response))
                     exit(1)
-                else:
-                    if self.is_debug():
-                        print("Session {} established successfully.".format(self.session_name))
+
             else:
                 # Connect to TEST with a temporal session with parametrized policy
                 request_post = test_pb2.SessionPost_Request()
@@ -84,9 +77,6 @@ class ApiConnector:
                 if data['status'] == 'ERROR':
                     print("Session error: {}".format(response))
                     exit(1)
-                else:
-                    if self.is_debug():
-                        print("Session {} created with policy {} was established successfully.".format(self.session_name, self.config['policy']))
         except Exception as ex:
             print('The session could not be created. Error: {}'.format(ex))
             exit(3)
@@ -100,13 +90,7 @@ class ApiConnector:
             if data['status'] == 'ERROR':
                 print("Session error: {}".format(response))
                 exit(1)
-            else:
-                if self.is_debug():
-                    print("\nSession {} deleted successfully.".format(self.session_name))
 
     def get_session_name(self):
         now = datetime.now()
         return '{}_{}'.format(self.session_name, now.strftime("%Y%m%d%H%M%S%f"))
-
-    def is_debug(self):
-        return self.config['verbose'] or  self.config['full_verbose']

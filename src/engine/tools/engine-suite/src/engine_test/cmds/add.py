@@ -1,4 +1,5 @@
 from engine_test.crud_integration import CrudIntegration
+from engine_test.event_format import Formats
 from engine_test.command import Command
 
 class AddCommand(Command):
@@ -22,10 +23,10 @@ class AddCommand(Command):
 
         group.add_argument('-p', '--integration-path', type=str, help=f'Integration path to import')
 
-        parser_add.add_argument('-f', '--format', help='Format of integration. Example: syslog',
+        parser_add.add_argument('-f', '--format', help=f'Format of integration.', choices=Formats.get_formats(),
                                 dest='format')
 
-        parser_add.add_argument('-o', '--origin', help='Origin of integration. Example: /tmp/events.log',
+        parser_add.add_argument('-o', '--origin', help='Origin of integration.',
                                 dest='origin')
 
         parser_add.add_argument('-l', '--lines', help='Number of lines. Only for multi-line format.',
