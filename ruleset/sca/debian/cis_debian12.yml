@@ -53,7 +53,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v cramfs -> r:install /bin/true'
+      - "c:modprobe -n -v cramfs -> r:install /bin/true"
       - "not c:lsmod -> r:cramfs"
 
   # 1.1.1.2 Ensure mounting of freevxfs filesystems is disabled (Automated)
@@ -72,7 +72,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v freevxfs -> r: install /bin/true'
+      - "c:modprobe -n -v freevxfs -> r: install /bin/true"
       - "not c:lsmod -> r:freevxfs"
 
   # 1.1.1.3 Ensure mounting of jffs2 filesystems is disabled (Automated)
@@ -91,7 +91,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v jffs2 -> r:install /bin/true'
+      - "c:modprobe -n -v jffs2 -> r:install /bin/true"
       - "not c:lsmod -> r:jffs2"
 
   # 1.1.1.4 Ensure mounting of hfs filesystems is disabled (Automated)
@@ -110,7 +110,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v hfs -> r:install /bin/true'
+      - "c:modprobe -n -v hfs -> r:install /bin/true"
       - "not c:lsmod -> r:hfs"
 
   # 1.1.1.5 Ensure mounting of hfsplus filesystems is disabled (Automated)
@@ -129,7 +129,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v hfsplus -> r:install /bin/true'
+      - "c:modprobe -n -v hfsplus -> r:install /bin/true"
       - "not c:lsmod -> r:hfsplus"
 
   # 1.1.1.6 Ensure mounting of squashfs filesystems is disabled (Manual)
@@ -149,7 +149,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v squashfs -> r:install /bin/true'
+      - "c:modprobe -n -v squashfs -> r:install /bin/true"
       - "not c:lsmod -> r:squashfs"
 
   # 1.1.1.7 Ensure mounting of udf filesystems is disabled (Automated)
@@ -168,7 +168,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:modprobe -n -v udf -> r:install /bin/true'
+      - "c:modprobe -n -v udf -> r:install /bin/true"
       - "not c:lsmod -> r:udf"
 
   # 1.1.2 Ensure /tmp is configured (Automated)
@@ -191,7 +191,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /tmp type tmpfs'
+      - "c:mount -> r:tmpfs on /tmp type tmpfs"
       - "f:/etc/fstab -> r:tmpfs /tmp tmpfs"
 
   # 1.1.3 Ensure nodev option set on /tmp partition (Automated)
@@ -210,7 +210,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /tmp type tmpfs && r:nodev'
+      - "c:mount -> r:tmpfs on /tmp type tmpfs && r:nodev"
 
   # 1.1.4 Ensure nosuid option set on /tmp partition (Automated)
   - id: 29500
@@ -228,7 +228,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /tmp type tmpfs && r:nosuid'
+      - "c:mount -> r:tmpfs on /tmp type tmpfs && r:nosuid"
 
   # 1.1.5 Ensure noexec option set on /tmp partition (Automated)
   - id: 29500
@@ -245,7 +245,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /tmp type tmpfs && r:noexec'
+      - "c:mount -> r:tmpfs on /tmp type tmpfs && r:noexec"
 
   # 1.1.6 Ensure separate partition exists for /var (Automated)
   - id: 29500
@@ -397,7 +397,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:/dev/xvdf1 on /home type ext4'
+      - "c:mount -> r:/dev/xvdf1 on /home type ext4"
 
   # 1.1.14 Ensure nodev option set on /home partition (Automated)
   - id: 29500
@@ -415,7 +415,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:/dev/xvdf1 on /home type ext4 && r:nodev'
+      - "c:mount -> r:/dev/xvdf1 on /home type ext4 && r:nodev"
 
   # 1.1.15 Ensure nodev option set on /dev/shm partition (Automated)
   - id: 29500
@@ -433,7 +433,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /dev/shm type tmpfs && r:nodev'
+      - "c:mount -> r:tmpfs on /dev/shm type tmpfs && r:nodev"
 
   # 1.1.16 Ensure nosuid option set on /dev/shm partition (Automated)
   - id: 29500
@@ -451,7 +451,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /dev/shm type tmpfs && r:nosuid'
+      - "c:mount -> r:tmpfs on /dev/shm type tmpfs && r:nosuid"
 
   # 1.1.17 Ensure noexec option set on /dev/shm partition (Automated)
   - id: 29500
@@ -468,7 +468,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
-      - 'c:mount -> r:tmpfs on /dev/shm type tmpfs && r:noexec'
+      - "c:mount -> r:tmpfs on /dev/shm type tmpfs && r:noexec"
 
   # 1.1.18 Ensure nodev option set on removable media partitions (Manual) - Not Implemented
   # 1.1.19 Ensure nosuid option set on removable media partitions (Manual) - Not Implemented
@@ -484,14 +484,14 @@ checks:
     remediation: "Run one of the following commands: Run the following command to disable autofs : # systemctl --now disable autofs OR Run the following command to remove autofs # apt purge autofs."
     compliance:
       - cis: ["1.1.22"]
-      - cis_csc_v7: ["8.4","8.5"]
+      - cis_csc_v7: ["8.4", "8.5"]
       - cmmc_v2.0: ["SI.1.213"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1215", "T1027", "T1045", "T1193", "T1194", "T1221", "T1200", "T1091"]
       - nist_sp_800-53: ["SI-3"]
     condition: any
     rules:
-      - 'c:systemctl is-enabled autofs -> r:disabled'
+      - "c:systemctl is-enabled autofs -> r:disabled"
       - "c:dpkg -s autofs -> r:package 'autofs' is not installed"
 
   # 1.1.23 Disable USB Storage (Automated)
@@ -502,19 +502,489 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/usb_storage.conf and add the following line: install usb-storage /bin/true Run the following command to unload the usb-storage module: rmmod usb-storage."
     compliance:
       - cis: ["1.1.23"]
-      - cis_csc_v7: ["8.4","8.5"]
+      - cis_csc_v7: ["8.4", "8.5"]
       - cmmc_v2.0: ["SI.1.213"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1215", "T1027", "T1045", "T1193", "T1194", "T1221", "T1200", "T1091"]
       - nist_sp_800-53: ["SI-3"]
     condition: all
     rules:
-      - 'c:modprobe -n -v usb-storage -> r:install /bin/true'
+      - "c:modprobe -n -v usb-storage -> r:install /bin/true"
       - "not c:lsmod -> r:usb-storage"
- 
- ##################################################
- # 1.2 Configure Software Updates
- ##################################################
 
-   # 1.2.1 Ensure package manager repositories are configured (Manual) - Not Implemented
-   # 1.2.2 Ensure GPG keys are configured (Manual) - Not Implemented
+  ##################################################
+  # 1.2 Configure Software Updates
+  ##################################################
+  # 1.2.1 Ensure package manager repositories are configured (Manual) - Not Implemented
+  # 1.2.2 Ensure GPG keys are configured (Manual) - Not Implemented
+
+  ##################################################
+  # 1.3 Configure sudo
+  ##################################################
+
+  # 1.3.1 Ensure sudo is installed (Automated)
+  - id: 29500
+    title: "Ensure sudo is installed."
+    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy. Note: Use the sudo-ldap package if you need LDAP support for sudoers."
+    rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
+    remediation: "Install sudo using the following command. # apt install sudo OR # apt install sudo-ldap."
+    compliance:
+      - cis: ["1.3.1"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+    condition: any
+    rules:
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
+
+  # 1.3.2 Ensure sudo commands use pty (Automated)
+  - id: 29500
+    title: "Ensure sudo commands use pty."
+    description: "sudo can be configured to run only from a pseudo-pty Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
+    rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
+    remediation: "Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty."
+    references:
+      - http://www.sudo.ws/
+    compliance:
+      - cis: ["1.3.2"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> r:Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers -> r: \.* -> r:Defaults\s*\t*use_pty'
+
+  # 1.3.3 Ensure sudo log file exists (Automated)
+  - id: 29500
+    title: "Ensure sudo log file exists."
+    description: "sudo can use a custom log file. Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
+    rationale: "A sudo log file simplifies auditing of sudo commands."
+    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log".'
+    compliance:
+      - cis: ["1.3.3"]
+      - cis_csc_v7: ["6.3"]
+      - cmmc_v2.0: ["CM.2.065"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12"]
+      - pci_dss_v3.2.1: ["10.1", "10.3"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> r:Defaults\s*\t*logfile=\S+'
+      - 'd:/etc/sudoers -> r: \.* -> r:Defaults\s*\t*logfile=\S+'
+
+  ###############################################
+  # 1.4 Filesystem Integrity Checking
+  ###############################################
+
+  # 1.4.1 Ensure AIDE is installed (Automated)
+  - id: 29500
+    title: "Ensure AIDE is installed."
+    description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system. Note: The prelinking feature can interfere with AIDE because it alters binaries to speed up their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus avoiding false positives from AIDE."
+    rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
+    remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands: # aideinit # mv /var/lib/aide aide.db.new /var/lib/aide/aide.db."
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s aide -> r:Status: install ok installed"
+      - "c:dpkg -s aide-common -> r:Status: install ok installed"
+
+  # 1.4.2 Ensure filesystem integrity is regularly checked (Automated)
+  - id: 29500
+    title: "Ensure filesystem integrity is regularly checked."
+    description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem. Notes: - The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy - systemd timers, timer file aidecheck.timer and service file aidecheck.service, have been included as an optional alternative to using cron - Ubuntu advises using /usr/bin/aide.wrapper rather than calling /usr/bin/aide directly in order to protect the database and prevent conflicts."
+    rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
+    remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
+    reference:
+      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
+      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
+    compliance:
+      - cis: ["1.4.2"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - 'c:systemctl status aidecheck.timer -> r:active\s*\(running\)'
+
+ #########################################
+ # 1.5 Secure Boot Settings
+ #########################################
+
+  # 1.5.1 Ensure permissions on bootloader config are configured (Automated)
+  - id: 29500
+    title: "Ensure permissions on bootloader config are configured."
+    description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options. Notes: - This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. - Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
+    rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
+    remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod og-rwx /boot/grub/grub.cfg."
+    compliance:
+      - cis: ["1.5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 1.5.2 Ensure bootloader password is set (Automated)
+  - id: 29528
+    title: "Ensure bootloader password is set."
+    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters. Notes: - This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. - Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
+    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
+    impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing 'e' or access the GRUB 2 command line by pressing 'c' If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information: https://help.ubuntu.com/community/Grub2/Passwords."
+    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password>. Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
+    references:
+      - https://help.ubuntu.com/community/Grub2/Passwords
+    compliance:
+      - cis: ["1.5.2"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password'
+
+  # 1.5.3 Ensure authentication required for single user mode (Automated)
+  - id: 29530
+    title: "Ensure authentication required for single user mode."
+    description: "Single user mode is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
+    rationale: "Requiring authentication in single user mode prevents an unauthorized user from rebooting the system into single user to gain root privileges without credentials."
+    remediation: "Run the following command and follow the prompts to set a password for the root user: # passwd root."
+    compliance:
+      - cis: ["1.5.3"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'f:/etc/shadow -> r:^root:\$\w'
+
+ #############################################
+ # 1.6 Additional Process Hardening
+ #############################################
+
+  # 1.6.1 Ensure XD/NX support is enabled (Automated)
+  - id: 29530
+    title: "Ensure XD/NX support is enabled."
+    description: "Recent processors in the x86 family support the ability to prevent code execution on a per memory page basis. Generically and on AMD processors, this ability is called No Execute (NX), while on Intel processors it is called Execute Disable (XD). This ability can help prevent exploitation of buffer overflow vulnerabilities and should be activated whenever possible. Extra steps must be taken to ensure that this protection is enabled, particularly on 32-bit x86 systems. Other processors, such as Itanium and POWER, have included such support since inception and the standard kernel for those platforms supports the feature. Note: Ensure your system supports the XD or NX bit and has PAE support before implementing this recommendation as this may prevent it from booting if these are not supported by your hardware."
+    rationale: "Enabling any feature that can protect against buffer overflow attacks enhances the security of the system."
+    remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios."
+    compliance:
+      - cis: ["1.6.1"]
+      - cis_csc_v7: ["8.3"]
+      - mitre_techniques: ["T1189", "T1190", "T1203", "T1212", "T1211", "T1068", "T1210", "T1117", "T1085", "T1080", "T1131", "T1003", "T1101"]
+      - nist_sp_800-53: ["SC-39", "SI-16"]
+    condition: all
+    rules:
+      - 'c:journalctl -> r:protection: active'
+
+  # 1.6.2 Ensure address space layout randomization (ASLR) is enabled (Automated)
+  - id: 29530
+    title: "Ensure address space layout randomization (ASLR) is enabled."
+    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
+    rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
+    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2."
+    compliance:
+      - cis: ["1.6.2"]
+      - cis_csc_v7: ["8.3"]
+      - mitre_techniques: ["T1189", "T1190", "T1203", "T1212", "T1211", "T1068", "T1210", "T1117", "T1085", "T1080", "T1131", "T1003", "T1101"]
+      - nist_sp_800-53: ["SC-39", "SI-16"]
+    condition: any
+    rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:kernel.randomize_va_space = 2'
+      - 'f:/etc/sysctl.conf -> r:kernel.randomize_va_space = 2'
+      - 'd:/etc/sysctl.d/ -> r:\.* -> r:kernel.randomize_va_space = 2'
+
+  # 1.6.3 Ensure prelink is disabled (Automated)
+  - id: 29530
+    title: "Ensure prelink is disabled."
+    description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
+    rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
+    remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink."
+    compliance:
+      - cis: ["1.6.3"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
+    condition: all
+    rules:
+      - "c:dpkg -s prelink -> r:package 'prelink' is not installed"
+
+  # 1.6.4 Ensure prelink is disabled (Automated)
+  - id: 29530
+    title: "Ensure prelink is disabled."
+    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
+    rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
+    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 If systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
+    compliance:
+      - cis: ["1.6.4"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - "f:/etc/security/limits.conf -> r:* hard core 0"
+      - 'c:sysctl fs.suid_dumpable -> r:fs.suid_dumpable = 0'
+      - 'f:/etc/sysctl.conf -> r:fs.suid_dumpable = 0'
+      - 'd:/etc/sysctl.d/* -> r:\.* -> r:fs.suid_dumpable = 0'
+      - 'c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled'
+
+ ##############################################
+ # 1.7 Mandatory Access Control
+ ##############################################
+ # 1.7.1 Configure AppArmor
+ ##############################################
+
+  # 1.7.1.1 Ensure AppArmor is installed (Automated)
+  - id: 29530
+    title: "Ensure AppArmor is installed."
+    description: "AppArmor provides Mandatory Access Controls."
+    rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
+    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 If systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
+    compliance:
+      - cis: ["1.7.1.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'c:dpkg -s apparmor -> r:install ok installed'
+
+  # 1.7.1.2 Ensure AppArmor is enabled in the bootloader configuration (Automated)
+  - id: 29530
+    title: "Ensure AppArmor is enabled in the bootloader configuration."
+    description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
+    remediation: "Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX=\"apparmor=1 security=apparmor\" Run the following command to update the grub2 configuration: # update-grub."
+    compliance:
+      - cis: ["1.7.1.2"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+    condition: all
+    rules:
+      - 'f:/boot/grub/grub.cfg -> r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:security=apparmor'
+
+  # 1.7.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
+  - id: 29530
+    title: "Ensure all AppArmor Profiles are in enforce or complain mode."
+    description: "AppArmor profiles define what resources applications are able to access."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    compliance:
+      - cis: ["1.7.1.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+    condition: all
+    rules:
+      - 'c:apparmor_status -> r:\d+ profiles are loaded || \d+ profiles are in enforce mode || \d+ profiles are in complain mode'
+      - 'c:apparmor_status -> r:^0\s*processes are unconfined'
+
+  # 1.7.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
+  - id: 29530
+    title: "Ensure all AppArmor Profiles are enforcing."
+    description: "AppArmor profiles define what resources applications are able to access."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    compliance:
+      - cis: ["1.7.1.4"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1035", "T1489", "T1198", "T1184", "T1165", "T1492", "T1169", "T1501", "T1080", "T1209", "T1134", "T1197", "T1538", "T1213", "T1044", "T1484", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1163", "T1021", "T1053", "T1023", "T1528", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+    condition: all
+    rules:
+      - 'c:apparmor_status -> n:^(\d+)\s*profiles are loaded compare > 0'
+      - 'c:apparmor_status -> r:^0\s*profiles are in complain mode'
+      - 'c:apparmor_status -> r:^0\s*processes are unconfined'
+
+ ########################################
+ # 1.8 Warning Banners
+ ########################################
+
+   # 1.8.1 Ensure message of the day is configured properly (Automated)
+  - id: 29530
+    title: "Ensure message of the day is configured properly."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
+    compliance:
+      - cis: ["1.8.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: any
+    rules:
+      - "not f:/etc/motd"
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian'
+
+   # 1.8.2 Ensure permissions on /etc/issue.net are configured (Automated)
+  - id: 29530
+    title: "Ensure permissions on /etc/issue.net are configured."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
+    rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net."
+    compliance:
+      - cis: ["1.8.2"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+   # 1.8.3 Ensure permissions on /etc/issue are configured (Automated)
+  - id: 29530
+    title: "Ensure permissions on /etc/issue are configured."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
+    rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue."
+    compliance:
+      - cis: ["1.8.3"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+   # 1.8.4 Ensure permissions on /etc/motd are configured (Automated)
+  - id: 29530
+    title: "Ensure permissions on /etc/motd are configured."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Note: If Message of the day is not needing, this file can be removed."
+    rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd OR Run the following command to remove the /etc/motd file: # rm /etc/motd."
+    compliance:
+      - cis: ["1.8.4"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: any
+    rules:
+      - "not f:/etc/motd"
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+   # 1.8.5 Ensure remote login warning banner is configured properly (Automated)
+  - id: 29530
+    title: "Ensure remote login warning banner is configured properly."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
+    remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
+    compliance:
+      - cis: ["1.8.5"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: none
+    rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian'
+
+   # 1.8.6 Ensure local login warning banner is configured properly (Automated)
+  - id: 29530
+    title: "Ensure local login warning banner is configured properly."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
+    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
+    compliance:
+      - cis: ["1.8.6"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: none
+    rules:
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian'
+
+   # 1.9 Ensure GDM is removed or login is configured (Automated)
+  - id: 29530
+    title: "Ensure GDM is removed or login is configured."
+    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
+    rationale: "If a graphical login is not required, it should be removed to reduce the attack surface of the system. If a graphical login is required, last logged in user display should be disabled, and a warning banner should be configured. displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Note: If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the last logged on user and apply an equivalent banner."
+    remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and edit or add the following: [org/gnome/login-screen] banner-message-enable=true banner-message-text='<banner message>' disable-user-list=true Example banner message: Authorized uses only. All activity may be monitored and reported. Run the following command to re-load GDM on the next login or reboot: # dpkg-reconfigure gdm3."
+    compliance:
+      - cis: ["1.9"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+      - 'c:dpkg -s GDM -> r:install ok installed'
+      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-enable=true | banner-message-text=\S+ | disable-user-list=true'
+
+   # 1.10 Ensure updates, patches, and additional security software are installed (Manual)
+  - id: 29530
+    title: "Ensure updates, patches, and additional security software are installed."
+    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality. Notes: - Site policy may mandate a testing period before install onto production systems for available updates. - upgrade - is used to install the newest versions of all packages currently installed on the system from the sources enumerated in /etc/apt/sources.list. Packages currently installed with new versions available are retrieved and upgraded; under no circumstances are currently installed packages removed, or packages not already installed retrieved and installed. New versions of currently installed packages that cannot be upgraded without changing the install status of another package will be left at their current version. An update must be performed first so that apt knows that new versions of packages are available. - dist-upgrade - in addition to performing the function of upgrade, also intelligently handles changing dependencies with new versions of packages; apt has a \"smart\" conflict resolution system, and it will attempt to upgrade the most important packages at the expense of less important ones if necessary. So, dist-upgrade command may remove some packages. The /etc/apt/sources.list file contains a list of locations from which to retrieve desired package files. See also apt_preferences(5) for a mechanism for overriding the general settings for individual packages."
+    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
+    remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade."
+    compliance:
+      - cis: ["1.10"]
+      - cis_csc_v7: ["3.4","3.5"]
+      - cmmc_v2.0: ["MA.2.111"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078", "T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100"]
+    condition: none
+    rules:
+      - "c:apt -s upgrade -> r:^The following packages will be upgraded"
