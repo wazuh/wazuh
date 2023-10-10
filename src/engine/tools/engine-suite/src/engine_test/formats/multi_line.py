@@ -28,3 +28,6 @@ class MultilineFormat(EventFormat):
                 event = event + ' '
 
         return events_formated
+
+    def is_multiline(self):
+        return Formats.MULTI_LINE.value['multiline']

@@ -11,3 +11,6 @@ class RemoteSyslogFormat(EventFormat):
     def get_full_location(self, args):
         origin = self.parser.get_origin(args['origin'])
         return "{}".format(origin)
+
+    def is_multiline(self):
+        return Formats.REMOTE_SYSLOG.value['multiline']
