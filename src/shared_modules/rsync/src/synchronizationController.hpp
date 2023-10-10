@@ -33,6 +33,7 @@ namespace RSync
             void stop(const RSYNC_HANDLE key)
             {
                 std::lock_guard<std::mutex> lock{ m_mutex };
+
                 if (m_data.find(key) != m_data.end())
                 {
                     m_data.erase(key);
@@ -49,6 +50,7 @@ namespace RSync
             {
                 std::lock_guard<std::mutex> lock{ m_mutex };
                 const auto it = m_data.find(key);
+
                 if (it == m_data.end())
                 {
                     throw rsync_error { HANDLE_NOT_FOUND };
@@ -67,7 +69,7 @@ namespace RSync
                         if (value > itTable->second)
                         {
                             Log::debugVerbose << "Sync id: " << std::to_string(value) << " is not the current id: "
-                                << std::to_string(itTable->second) << " for table: "<< table << LogEndl;
+                                              << std::to_string(itTable->second) << " for table: " << table << LogEndl;
                             throw std::runtime_error { "Sync id is not the current id" };
                         }
                     }
