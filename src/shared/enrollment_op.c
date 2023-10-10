@@ -198,11 +198,14 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     assert(server_address != NULL);
 
     char *ip_address = NULL;
+
     char *tmp_str = strchr(server_address, '/');
     if (tmp_str) {
         // server_address comes in {hostname}/{ip} format
         ip_address = strdup(++tmp_str);
+        server_address = strtok(server_address, "/");
     }
+
     if (!ip_address) {
         // server_address is either a host or a ip
         ip_address = OS_GetHost(server_address, 3);
@@ -237,6 +240,15 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     BIO * sbio = BIO_new_socket(sock, BIO_NOCLOSE);
     SSL_set_bio(cfg->ssl, sbio, sbio);
 
+    /* Do SNI */
+    if (!strcmp(ip_address, server_address)) {
+        if (1 != SSL_set_tlsext_host_name(cfg->ssl, server_address)) {
+            merror("Unable to set SNI hostname: %s", server_address);
+        } else {
+            minfo("SNI Hostname set to: %s", server_address);
+        }
+    }
+    
     ERR_clear_error();
     int ret = SSL_connect(cfg->ssl);
     if (ret <= 0) {
