@@ -42,7 +42,7 @@ class RunCommand(Command):
 
         group = parser_run.add_mutually_exclusive_group()
 
-        group.add_argument('-p', '--policy', help=f'Policy where to run the test',
+        group.add_argument('-p', '--policy', help=f'Policy where to run the test. A temporary test session will be created and deleted when the command is completed.',
                         default=DEFAULT_POLICY, dest='policy')
         group.add_argument('-s', '--session-name', help=f'Session where to run the test',
                         dest='session_name')

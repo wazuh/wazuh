@@ -30,9 +30,6 @@ class Integration(CrudIntegration):
             print("Integration not found!")
             exit(1)
 
-        if self.is_debug():
-            print (self.integration)
-
         # Get the format of integration
         self.format = self.get_format(self.integration)
         if not self.format:
@@ -69,14 +66,24 @@ class Integration(CrudIntegration):
     def process_event(self, event, format):
         event = format.format_event(event)
         result = self.api_client.test_run(event)
-        response = { }
+        response_output = { }
+        response_traces = { }
+
         if len(result["data"]["run"]["traces"]) > 0:
-            response['Traces'] = result["data"]["run"]["traces"]
-        response['Output'] = result["data"]["run"]["output"]
+            response_traces['Traces'] = result["data"]["run"]["traces"]
+
+        response_output['Output'] = result["data"]["run"]["output"]
+
         if not self.args['json_format']:
-            response = self.response_to_yml(response)
+            output = self.response_to_yml(response_output)
+            response = output.replace("Output", "---\nOutput")
+            if len(result["data"]["run"]["traces"]) > 0:
+                traces = self.response_to_yml(response_traces)
+                response += traces.replace("Traces", "---\nTraces")
+
         if not self.args['output_file']:
             print ("\n{}".format(response))
+
         return response
 
     def response_to_yml(self, response):
@@ -114,6 +121,3 @@ class Integration(CrudIntegration):
                 return MultilineFormat(integration, self.args, integration['lines'])
         except Exception as ex:
             print("An error occurred while trying to obtain the integration format. Error: {}".format(ex))
-
-    def is_debug(self):
-        return self.args['verbose'] or  self.args['full_verbose']
