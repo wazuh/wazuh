@@ -34,32 +34,17 @@ public:
 
 class Controller final : public IController
 {
-public:
-    using Publisher = std::function<void(const std::string&, bool)>; ///< Publish the trace and result to the subscribers.
-
 private:
-    class TraceImpl; ///< Implementation of the trace
+    class TracerImpl; ///< Implementation of the trace
 
-    std::unordered_map<std::string, std::shared_ptr<TraceImpl>> m_traces; ///< Traces
-    std::unordered_set<std::string> m_traceables;                         ///< Traceables
-    base::Expression m_expression;                                        ///< Expression
+    std::unordered_map<std::string, std::shared_ptr<TracerImpl>> m_traces; ///< Traces
+    std::unordered_set<std::string> m_traceables;                          ///< Traceables
+    base::Expression m_expression;                                         ///< Expression
 
     tf::Taskflow m_tf;       ///< Taskflow
     tf::Executor m_executor; ///< Executor
 
     base::Event m_event; ///< Shared event between the tasks
-
-    /**
-     * @brief Build a task from an expression
-     *
-     * @param expression expression to build
-     * @param parent parent task of the task to build (ignore if a empty task)
-     * @param needResult if the task needs to return a result
-     * @param publisher Publisher function to publish the trace
-     * @return tf::Task The task built
-     */
-    tf::Task
-    build(const base::Expression& expression, tf::Task& parent, bool needResult = false, Publisher publisher = nullptr);
 
 public:
     Controller() = delete;
@@ -68,16 +53,7 @@ public:
     ~Controller() = default;
 
     // TODO: Update to actual Policy interface
-    Controller(const FakePolicy& policy)
-        : m_tf()
-        , m_executor(1)
-        , m_event()
-        , m_traceables(policy.traceables())
-        , m_expression(policy.expression())
-    {
-        auto eTask = tf::Task();
-        build(m_expression, eTask, true);
-    }
+    Controller(const FakePolicy& policy);
 
     /**
      * @brief Construct a new Controller from an expression and a set of traceables
@@ -85,16 +61,8 @@ public:
      * @param expression expression to build
      * @param traceables traceables expressions
      */
-    Controller(base::Expression expression, std::unordered_set<std::string> traceables)
-        : m_tf()
-        , m_executor(1)
-        , m_event()
-        , m_traceables(std::move(traceables))
-        , m_expression(std::move(expression))
-    {
-        auto eTask = tf::Task();
-        build(m_expression, eTask, true);
-    }
+    Controller(base::Expression expression, std::unordered_set<std::string> traceables);
+
     /**
      * @copydoc bk::IController::ingest
      */
