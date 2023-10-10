@@ -324,7 +324,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body: dict, filename: str = None, overwrite: bool = False,
+async def put_file(request, body: bytes, filename: str = None, overwrite: bool = False,
                    pretty: bool = False, relative_dirname: str = None,
                    wait_for_complete: bool = False) -> web.Response:
     """Upload a rule file.
@@ -332,7 +332,7 @@ async def put_file(request, body: dict, filename: str = None, overwrite: bool = 
     Parameters
     ----------
     request : connexion.request
-    body : dict
+    body : bytes
         Body request with the file content to be uploaded.
     filename : str, optional
         Name of the file.
