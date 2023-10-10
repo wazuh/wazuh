@@ -11,3 +11,6 @@ class JsonFormat(EventFormat):
         event = super().format_event(event)
         json_object = json.loads(event)
         return json.dumps(json_object, separators=(',',':'))
+
+    def is_multiline(self):
+        return Formats.JSON.value['multiline']

@@ -22,7 +22,6 @@ class ApiConnector:
             exit(1)
 
         self.config = config
-        self.create_session()
 
     def test_run(self, event):
         try:

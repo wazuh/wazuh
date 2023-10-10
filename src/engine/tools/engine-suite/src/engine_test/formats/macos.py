@@ -6,3 +6,6 @@ class MacosFormat(EventFormat):
         super().__init__(integration, args)
         self.config['queue'] = Formats.MACOS.value['queue']
         self.config['origin'] = Formats.MACOS.value['origin']
+
+    def is_multiline(self):
+        return Formats.MACOS.value['multiline']
