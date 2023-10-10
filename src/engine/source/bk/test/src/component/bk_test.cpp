@@ -249,7 +249,7 @@ INSTANTIATE_TEST_SUITE_P(
                                               EasyExp::implication("implication_1", false, true)}),
                      {{"implication_1_cond", false}, {"implication_0_cond", false}}},
         // [3] Complex: Broadcast of or
-        BKexpParams {base::Broadcast::create("broadcast",
+        BKexpParams {base::Broadcast::create("broadcastXYZ",
                                              {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
                      {{"or_1_0", true}, {"or_0_0", true}}},
         BKexpParams {base::Broadcast::create(
@@ -537,7 +537,7 @@ struct Subscriber
     std::vector<std::string> traces;
     auto getSubscriber()
     {
-        return [&](auto trace)
+        return [&](auto trace, bool)
         {
             traces.emplace_back(trace);
         };
