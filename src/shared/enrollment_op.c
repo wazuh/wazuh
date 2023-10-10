@@ -244,7 +244,6 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     if (1 != SSL_set_tlsext_host_name(cfg->ssl, server_address)) {
         mwarn("Unable to set SNI hostname: %s", server_address);
     }
-
     
     ERR_clear_error();
     int ret = SSL_connect(cfg->ssl);
