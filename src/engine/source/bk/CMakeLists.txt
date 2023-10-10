@@ -66,6 +66,7 @@ gtest_discover_tests(tfbk_ctest)
 add_executable(tfbk_utest
     ${UNIT_SRC_DIR}/tfbk_test.cpp
 )
+target_include_directories(tfbk_utest PRIVATE ${TASKF_SRC_DIR})
 target_link_libraries(tfbk_utest gtest_main bk::taskf)
 gtest_discover_tests(tfbk_utest)
 
