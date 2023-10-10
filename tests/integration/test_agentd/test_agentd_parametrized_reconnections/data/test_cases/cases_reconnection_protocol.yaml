@@ -6,6 +6,7 @@
     max_retries: 3
     retry_interval: 3
     enroll: 'no'
+    protocol: 'tcp'
 
 - name: Test_case_1
   description: Check connection via TCP
@@ -15,6 +16,7 @@
     max_retries: 5
     retry_interval: 5
     enroll: 'no'
+    protocol: 'tcp'
 
 - name: Test_case_2
   description: Check connection via TCP
@@ -24,6 +26,7 @@
     max_retries: 10
     retry_interval: 10
     enroll: 'no'
+    protocol: 'tcp'
 
 - name: Test_case_3
   description: Check connection via TCP with enrollment
@@ -33,6 +36,7 @@
     max_retries: 5
     retry_interval: 5
     enroll: 'yes'
+    protocol: 'tcp'
 
 - name: Test_case_4
   description: Check connection via UDP with enrollment
@@ -42,6 +46,7 @@
     max_retries: 2
     retry_interval: 2
     enroll: 'yes'
+    protocol: 'udp'
 
 - name: Test_case_5
   description: Check connection via UDP
@@ -51,6 +56,7 @@
     max_retries: 1
     retry_interval: 1
     enroll: 'no'
+    protocol: 'udp'
 
 - name: Test_case_6
   description: Check connection via UDP
@@ -60,6 +66,7 @@
     max_retries: 5
     retry_interval: 5
     enroll: 'no'
+    protocol: 'udp'
 
 - name: Test_case_7
   description: Check connection via UDP
@@ -69,6 +76,7 @@
     max_retries: 10
     retry_interval: 4
     enroll: 'no'
+    protocol: 'udp'
 
 - name: Test_case_8
   description: Check connection via UDP
@@ -78,3 +86,4 @@
     max_retries: 3
     retry_interval: 12
     enroll: 'no'
+    protocol: 'udp'
