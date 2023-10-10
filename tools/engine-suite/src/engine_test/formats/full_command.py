@@ -15,3 +15,6 @@ class FullCommandFormat(EventFormat):
         origin = self.config['origin']
         event_parsed = '\n'.join([line for line in event])
         return f"ossec: output: '{origin}':{event_parsed}"
+
+    def is_multiline(self):
+        return Formats.FULL_COMMAND.value['multiline']

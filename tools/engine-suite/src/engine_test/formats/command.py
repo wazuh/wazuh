@@ -8,3 +8,6 @@ class CommandFormat(EventFormat):
     def format_event(self, event):
         origin = self.config['origin']
         return f"ossec: output: '{origin}': {event}"
+
+    def is_multiline(self):
+        return Formats.COMMAND.value['multiline']

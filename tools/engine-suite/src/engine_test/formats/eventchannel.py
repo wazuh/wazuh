@@ -39,7 +39,7 @@ class EventChannelFormat(EventFormat):
         events_multiline = []
 
         # Remove header from events
-        if events[0].startswith('<?xml'):
+        if len(events) > 0 and events[0].startswith('<?xml'):
             del events[0]
 
         if len(events) > 0 and events[0].startswith(events_open_tag):
@@ -62,6 +62,10 @@ class EventChannelFormat(EventFormat):
                     events_multiline.append('{}{}'.format(event_open_tag, line))
 
         else:
-            events_multiline.append(events)
+            if len(events) > 0:
+                events_multiline.append(events)
 
         return events_multiline
+
+    def is_multiline(self):
+        return Formats.EVENTCHANNEL.value['multiline']

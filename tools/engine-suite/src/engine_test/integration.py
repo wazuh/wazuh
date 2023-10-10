@@ -1,4 +1,9 @@
 import yaml
+try:
+    from yaml import CDumper as Dumper
+except ImportError:
+    from yaml import Dumper
+
 from engine_test.events_collector import EventsCollector
 from engine_test.formats.syslog import SyslogFormat
 from engine_test.formats.json import JsonFormat
@@ -40,6 +45,7 @@ class Integration(CrudIntegration):
 
         # Client to API TEST
         self.api_client = ApiConnector(args)
+        self.api_client.create_session()
 
     def run(self, interactive: bool = True):
         loop = True
@@ -50,12 +56,15 @@ class Integration(CrudIntegration):
             while (loop):
                 loop = interactive
 
-                # Get the events
-                events = EventsCollector.collect(interactive, self.format, event_passed)
-
-                for event in events:
-                    response = self.process_event(event, self.format)
-                    events_parsed.append(response)
+                try:
+                    # Get the events
+                    events = EventsCollector.collect(interactive, self.format, event_passed)
+                    if len(events) > 0:
+                        for event in events:
+                            response = self.process_event(event, self.format)
+                            events_parsed.append(response)
+                except KeyboardInterrupt as ex:
+                    loop = False
 
         except Exception as ex:
             print("An error occurred while trying to process the events. Error: {}".format(ex))
@@ -66,6 +75,7 @@ class Integration(CrudIntegration):
     def process_event(self, event, format):
         event = format.format_event(event)
         result = self.api_client.test_run(event)
+        response = "\n"
         response_output = { }
         response_traces = { }
 
@@ -75,11 +85,15 @@ class Integration(CrudIntegration):
         response_output['Output'] = result["data"]["run"]["output"]
 
         if not self.args['json_format']:
-            output = self.response_to_yml(response_output)
-            response = output.replace("Output", "---\nOutput")
             if len(result["data"]["run"]["traces"]) > 0:
                 traces = self.response_to_yml(response_traces)
                 response += traces.replace("Traces", "---\nTraces")
+
+            output = self.response_to_yml(response_output)
+            if len(result["data"]["run"]["traces"]) > 0:
+                response += "\n" + output
+            else:
+                response += output.replace("Output", "---\nOutput")
 
         if not self.args['output_file']:
             print ("\n{}".format(response))
@@ -87,7 +101,7 @@ class Integration(CrudIntegration):
         return response
 
     def response_to_yml(self, response):
-        response = yaml.dump(response, None, allow_unicode=True)
+        response = yaml.dump(response, sort_keys=True, Dumper=Dumper)
         return response
 
     def write_output_file(self, events_parsed):

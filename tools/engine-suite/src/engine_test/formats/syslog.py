@@ -8,3 +8,6 @@ class SyslogFormat(EventFormat):
     def format_event(self, event):
         event = super().format_event(event)
         return self.parser.parse_syslog_format(event)
+
+    def is_multiline(self):
+        return Formats.SYSLOG.value['multiline']
