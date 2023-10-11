@@ -42,16 +42,6 @@ namespace Utils
         }
 
         /**
-         * @brief Copy constructor.
-         *
-         * @param other Other instance.
-         */
-        RocksDBWrapper(RocksDBWrapper& other)
-            : m_db {std::move(other.m_db)}
-        {
-        }
-
-        /**
          * @brief Move constructor.
          *
          * @param other Other instance.
@@ -59,21 +49,6 @@ namespace Utils
         RocksDBWrapper(RocksDBWrapper&& other) noexcept
             : m_db {std::move(other.m_db)}
         {
-        }
-
-        /**
-         * @brief Copy assignment operator.
-         *
-         * @param other Other instance.
-         * @return RocksDBWrapper&
-         */
-        RocksDBWrapper& operator=(RocksDBWrapper& other)
-        {
-            if (this != &other)
-            {
-                m_db = std::move(other.m_db);
-            }
-            return *this;
         }
 
         /**
