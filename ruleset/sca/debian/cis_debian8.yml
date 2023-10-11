@@ -677,7 +677,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl fs.suid_dumpable -> r:fs.suid_dumpable\s*\t*=\s*\t*0'
       - 'f:/etc/security/limits.conf -> n:hard core\s*(\d+) compare == 0'
@@ -719,7 +719,7 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl kernel.randomize_va_space -> r:kernel.randomize_va_space\s*=\s*2'
       - 'f:/etc/sysctl.conf -> n:kernel.randomize_va_space\s*=\s*(\d+) compare == 2'
@@ -1220,7 +1220,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: none
     rules:
-      - 'c:dpkg -l xserver-xorg-core* -> r:^\wi\s*xserver-xorg'
+      - 'c:dpkg -l xserver-xorg* -> r:^\w\s*xserver-xorg'
 
   # 2.2.3 Ensure Avahi Server is not enabled. (Automated)
   - id: 1553 
@@ -1662,7 +1662,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
       - 'f:/etc/sysctl.conf -> r:net.ipv4.ip_forward\s*=\s*0$'
@@ -1688,7 +1688,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
       - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:=\s*\t*0$'
@@ -1717,7 +1717,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
       - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*\t*0$'
@@ -1748,7 +1748,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
       - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
@@ -1780,7 +1780,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
       - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:=\s*\t*0$'
@@ -1807,7 +1807,7 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:=\s*\t*1$'
       - 'c:sysctl net.ipv4.conf.default.log_martians -> r:=\s*\t*1$'
@@ -1833,7 +1833,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
       - 'f:/etc/sysctl.conf -> r:net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
@@ -1856,7 +1856,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
       - 'f:/etc/sysctl.conf -> r:net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
@@ -1879,7 +1879,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:=\s*\t*1$'
       - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:=\s*\t*1$'
@@ -1905,7 +1905,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
       - 'f:/etc/sysctl.conf -> r:net.ipv4.tcp_syncookies\s*=\s*1$'
@@ -1928,7 +1928,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
       - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*0$'
@@ -2410,12 +2410,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/audit.rules"
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change"
+      - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S adjtimex && r:-S settimeofday && r:-k time-change"
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change"
+      - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-k time-change"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change"
 
   # 4.1.5 Ensure events that modify user/group information are collected. (Automated)
@@ -2462,15 +2464,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/audit.rules"
       - "f:/etc/audit/audit.rules -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale"
+      - "f:/etc/audit/audit.rules -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S sethostname && r:-S setdomainname && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale"
-      - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale"
+      - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale"
 
   # 4.1.7 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 1607 
@@ -2489,12 +2492,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/audit.rules"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/selinux/ && r:-p wa && r:-k MAC-policy"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/usr/share/selinux/ && r:-p wa && r:-k MAC-policy"
+      - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy"
+      - "f:/etc/audit/audit.rules -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy"
 
   # 4.1.8 Ensure login and logout events are collected. (Automated)
   - id: 1608 
@@ -2706,7 +2711,7 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/audit.rules"
@@ -2714,6 +2719,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules"
       - "f:/etc/audit/audit.rules -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules"
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S init_module && r:-S delete_module && r:-k modules"
+      - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S init_module && r:-S delete_module && r:-k modules"
 
   # 4.1.18 Ensure the audit configuration is immutable. (Automated)
   - id: 1617 
@@ -2826,12 +2832,12 @@ checks:
       - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.1", "10.1.1", "10.3.3"]
       - soc_2: ["PL1.4"]
-    condition: all
+    condition: any
     rules:
       - "f:/etc/rsyslog.conf -> r:^$ModLoad imtcp"
-      - "d:/etc/rsyslog.d/ -> r:*.conf -> r:^$ModLoad imtcp"
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^$ModLoad imtcp'
       - "f:/etc/rsyslog.conf -> r:^$InputTCPServerRun 514"
-      - "d:/etc/rsyslog.d/ -> r:*.conf -> r:^$InputTCPServerRun 514"
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^$InputTCPServerRun 514'
 
   ###########################
   # 4.2.2 Configure syslog-ng
@@ -3416,7 +3422,7 @@ checks:
       - pci_dss_v4.0: ["8.2.8"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare >= 1'
       - 'c:sshd -T -> n:ClientAliveCountMax\s*\t*(\d+) compare <= 3'
 
   # 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
