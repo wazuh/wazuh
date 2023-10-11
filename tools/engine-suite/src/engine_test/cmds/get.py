@@ -8,11 +8,14 @@ class GetCommand(Command):
     def run(self, args):
         super().run(args)
         integration = CrudIntegration()
-        result = integration.get_integration(args['integration-name'])
-        if result == None:
-            print ("Integration not found!")
-        else:
-            print (result)
+        try:
+            result = integration.get_integration(args['integration-name'])
+            if result == None:
+                print ("Integration not found!")
+            else:
+                print (result)
+        except Exception as ex:
+            print(ex)
 
     def configure(self, subparsers):
         parser_list = subparsers.add_parser("get", help='Get integration')
