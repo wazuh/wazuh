@@ -187,7 +187,7 @@ checks:
 
   # 1.2.1 (L1) Ensure 'Account lockout duration' is set to '15 or more minute(s)'. (Automated)
    - id: 18506
-     title: "(L1) Ensure 'Account lockout duration' is set to '15 or more minute(s)'."
+     title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)'."
      description: "This policy setting determines the length of time that must pass before a locked account is unlocked and a user can try to log on again. The setting does this by specifying the number of minutes a locked out account will remain unavailable. If the value for this policy setting is configured to 0, locked out accounts will remain locked out until an administrator manually unlocks them. Although it might seem like a good idea to configure the value for this policy setting to a high value, such a configuration will likely increase the number of calls that the help desk receives to unlock accounts locked by mistake. Users should be aware of the length of time a lock remains in place, so that they realize they only need to call the help desk if they have an extremely urgent need to regain access to their computer. The recommended state for this setting is: 15 or more minute(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
      rationale: "A denial of service (DoS) condition can be created if an attacker abuses the Account lockout threshold and repeatedly attempts to log on with a specific account. Once you configure the Account lockout threshold setting, the account will be locked out after the specified number of failed attempts. If you configure the Account lockout duration setting to 0, then the account will remain locked out until an administrator unlocks it manually."
      impact: "Although it may seem like a good idea to configure this policy setting to never automatically unlock an account, such a configuration can increase the number of requests that your organization's help desk receives to unlock accounts that were locked by mistake."
@@ -200,12 +200,13 @@ checks:
        - cis_csc_v7: ["20", "10"]
        - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
        - pci_dss_v4.0: ["8.3.4"]
-     condition:
+     condition: all
      rules:
-
+       - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 15'
+ 
   # 1.2.2 (L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'. (Automated)
    - id: 18507
-     title: "(L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'."
+     title: "Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'."
      description: "This policy setting determines the number of failed logon attempts before the account is locked. Setting this policy to 0 does not conform to the benchmark as doing so disables the account lockout threshold. The recommended state for this setting is: 5 or fewer invalid logon attempt(s), but not 0. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
      rationale: "Setting an account lockout threshold reduces the likelihood that an online password brute force attack will be successful. Setting the account lockout threshold too low introduces risk of increased accidental lockouts and/or a malicious actor intentionally locking out accounts."
      impact: "If this policy setting is enabled, a locked-out account will not be usable until it is reset by an administrator or until the account lockout duration expires. This setting may generate additional help desk calls. If you enforce this setting an attacker could cause a denial of service condition by deliberately generating failed logons for multiple user, therefore you should also configure the Account Lockout Duration to a relatively low value. If you configure the Account Lockout Threshold to 0, there is a possibility that an attacker's attempt to discover passwords with a brute force password attack might go undetected if a robust audit mechanism is not in place."
@@ -218,30 +219,16 @@ checks:
        - cis_csc_v7: ["20", "10"]
        - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
        - pci_dss_v4.0: ["8.3.4"]
-     condition:
+     condition: all
      rules:
+      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
+      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
 
-  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual)
-   - id: 18508
-     title: "(L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'."
-     description: "This policy setting determines whether the built-in Administrator account is subject to the following Account Lockout Policy settings: Account lockout duration, Account lockout threshold, and Reset account lockout counter. By default, this account is excluded from the account lockout controls and will never be locked out with repeated bad password attempts. The recommended state for this setting is: Enabled. Note: This setting applies only to OSes patched as of October 11, 2022 (see MS KB5020282)."
-     rationale: "Enabling account lockout policies for the built-in Administrator account will reduce the likelihood of a successful brute force attack."
-     impact: "The built-in Administrator account will be subject to the policies in Section 1.2 Account Lockout Policy of this benchmark."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policies\\Allow Administrator account lockout."
-     references:
-       - 'https://support.microsoft.com/en-us/topic/kb5020282-account-lockout-available-'
-     compliance:
-       - cis: ["1.2.3"]
-       - cis_csc_v8: ["4.10"]
-       - cis_csc_v7: ["20", "10"]
-       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
-       - pci_dss_v4.0: ["8.3.4"]
-     condition:
-     rules:
+  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual) - Not Implemented
 
   # 1.2.4 (L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'. (Automated)
    - id: 18509
-     title: "(L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'."
+     title: "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'."
      description: "This policy setting determines the length of time before the Account lockout threshold resets to zero. The default value for this policy setting is Not Defined. If the Account lockout threshold is defined, this reset time must be less than or equal to the value for the Account lockout duration setting. If you leave this policy setting at its default value or configure the value to an interval that is too long, your environment could be vulnerable to a DoS attack. An attacker could maliciously perform a number of failed logon attempts on all users in the organization, which will lock out their accounts. If no policy were determined to reset the account lockout, it would be a manual task for administrators. Conversely, if a reasonable time value is configured for this policy setting, users would be locked out for a set period until all of the accounts are unlocked automatically. The recommended state for this setting is: 15 or more minute(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
      rationale: "Users can accidentally lock themselves out of their accounts if they mistype their password multiple times. To reduce the chance of such accidental lockouts, the Reset account lockout counter after setting determines the number of minutes that must elapse before the counter that tracks failed logon attempts and triggers lockouts is reset to 0."
      impact: "If you do not configure this policy setting or if the value is configured to an interval that is too long, a DoS attack could occur. An attacker could maliciously attempt to log on to each user's account numerous times and lock out their accounts as described in the preceding paragraphs. If you do not configure the Reset account lockout counter after setting, administrators would have to manually unlock all accounts. If you configure this policy setting to a reasonable value the users would be locked out for some period, after which their accounts would unlock automatically. Be sure that you notify users of the values used for this policy setting so that they will wait for the lockout timer to expire before they call the help desk about their inability to log on."
@@ -254,112 +241,15 @@ checks:
        - cis_csc_v7: ["20", "10"]
        - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
        - pci_dss_v4.0: ["8.3.4"]
-     condition:
+     condition: all
      rules:
+      - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
 
-  # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated)
-   - id: 18510
-     title: "(L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'."
-     description: "This security setting is used by Credential Manager during Backup and Restore. No accounts should have this user right, as it is only assigned to Winlogon. Users' saved credentials might be compromised if this user right is assigned to other entities. The recommended state for this setting is: No One."
-     rationale: "If an account is given this right the user of the account may create an application that calls into Credential Manager and is returned the credentials for another user."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Access Credential Manager as a trusted caller."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["2.2.1"]
-       - cis_csc_v8: ["6.8"]
-       - cis_csc_v7: ["4.8"]
-       - cmmc_v2.0: ["AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "SC.L2-3.13.3"]
-       - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
-       - iso_27001-2013: ["A.12.4.3"]
-       - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
-       - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
-       - soc_2: ["CC5.2", "CC6.3"]
-     condition:
-     rules:
-
-  # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Remote Desktop Users'. (Automated)
-   - id: 18511
-     title: "(L1) Ensure 'Access this computer from the network' is set to 'Administrators, Remote Desktop Users'."
-     description: "This policy setting allows other users on the network to connect to the computer and is required by various network protocols that include Server Message Block (SMB)-based protocols, NetBIOS, Common Internet File System (CIFS), and Component Object Model Plus (COM+). The recommended state for this setting is: Administrators, Remote Desktop Users."
-     rationale: "Users who can connect from their computer to the network can access resources on target computers for which they have permission. For example, the Access this computer from the network user right is required for users to connect to shared printers and folders. If this user right is assigned to the Everyone group, then anyone will be able to read the files in those shared folders. However, this situation is unlikely for new installations of Windows Server 2003 with Service Pack 1 (SP1), because the default share and NTFS permissions in Windows Server 2003 do not include the Everyone group. This vulnerability may have a higher level of risk for computers that you upgrade from Windows NT 4.0 or Windows 2000, because the default permissions for these operating systems are not as restrictive as the default permissions in Windows Server 2003."
-     impact: "If you remove the Access this computer from the network user right on Domain Controllers for all users, no one will be able to log on to the domain or use network resources. If you remove this user right on Member Servers, users will not be able to connect to those servers through the network. Successful negotiation of IPsec connections requires that the initiating machine has this right, therefore if using IPsec, it is recommended that it be assigned to the Authenticated Users group. If you have installed optional components such as ASP.NET or Internet Information Services (IIS), you may need to assign this user right to additional accounts that are required by those components. It is important to verify that authorized users are assigned this user right for the computers they need to access the network."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, Remote Desktop Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Access this computer from the network."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["2.2.2"]
-       - cis_csc_v8: ["6.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "SC.L2-3.13.3"]
-       - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
-       - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
-       - soc_2: ["CC5.2", "CC6.3"]
-     condition:
-     rules:
-
-  # 2.2.3 (L1) Ensure 'Act as part of the operating system' is set to 'No One'. (Automated)
-   - id: 18512
-     title: "(L1) Ensure 'Act as part of the operating system' is set to 'No One'."
-     description: "This policy setting allows a process to assume the identity of any user and thus gain access to the resources that the user is authorized to access. The recommended state for this setting is: No One. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "The Act as part of the operating system user right is extremely powerful. Anyone with this user right can take complete control of the computer and erase evidence of their activities."
-     impact: "There should be little or no impact because the Act as part of the operating system user right is rarely needed by any accounts other than the Local System account, which implicitly has this right."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Act as part of the operating system."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["2.2.3"]
-       - cis_csc_v8: ["6.8"]
-       - cmmc_v2.0: ["AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "SC.L2-3.13.3"]
-       - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
-       - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
-       - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
-       - soc_2: ["CC5.2", "CC6.3"]
-     condition:
-     rules:
-
-  # 2.2.4 (L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'. (Automated)
-   - id: 18513
-     title: "(L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'."
-     description: "This policy setting allows a user to adjust the maximum amount of memory that is available to a process. The ability to adjust memory quotas is useful for system tuning, but it can be abused. In the wrong hands, it could be used to launch a denial of service (DoS) attack. The recommended state for this setting is: Administrators, LOCAL SERVICE, NETWORK SERVICE."
-     rationale: "A user with the Adjust memory quotas for a process user right can reduce the amount of memory that is available to any process, which could cause business-critical network applications to become slow or to fail. In the wrong hands, this privilege could be used to start a denial of service (DoS) attack."
-     impact: "Organizations that have not restricted users to roles with limited privileges will find it difficult to impose this countermeasure. Also, if you have installed optional components such as ASP.NET or IIS, you may need to assign the Adjust memory quotas for a process user right to additional accounts that are required by those components. Otherwise, this countermeasure should have no impact on most computers. If this user right is necessary for a user account, it can be assigned to a local computer account instead of a domain account."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, LOCAL SERVICE, NETWORK SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Adjust memory quotas for a process."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["2.2.4"]
-       - cis_csc_v8: ["6.8"]
-       - cmmc_v2.0: ["AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "SC.L2-3.13.3"]
-       - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
-       - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
-       - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
-       - soc_2: ["CC5.2", "CC6.3"]
-     condition:
-     rules:
-
-  # 2.2.5 (L1) Ensure 'Allow log on locally' is set to 'Administrators, Users'. (Automated)
-   - id: 18514
-     title: "(L1) Ensure 'Allow log on locally' is set to 'Administrators, Users'."
-     description: "This policy setting determines which users can interactively log on to computers in your environment. Logons that are initiated by pressing the CTRL+ALT+DEL key sequence on the client computer keyboard require this user right. Users who attempt to log on through Terminal Services / Remote Desktop Services or IIS also require this user right. The recommended state for this setting is: Administrators, Users. Note: The Guest account is also assigned this user right by default. Although this account is disabled by default, it's recommended that you configure this setting through Group Policy. However, this user right should generally be restricted to the Administrators and Users groups. Assign this user right to the Backup Operators group if your organization requires that they have this capability."
-     rationale: "Any account with the Allow log on locally user right can log on at the console of the computer. If you do not restrict this user right to legitimate users who need to be able to log on to the console of the computer, unauthorized users could download and run malicious software to elevate their privileges."
-     impact: "If you remove these default groups, you could limit the abilities of users who are assigned to specific administrative roles in your environment. You should confirm that delegated activities will not be adversely affected by any changes that you make to the Allow log on locally user right."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Allow log on locally."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["2.2.5"]
-       - cis_csc_v8: ["6.8"]
-       - cmmc_v2.0: ["AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "SC.L2-3.13.3"]
-       - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
-       - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
-       - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
-       - soc_2: ["CC5.2", "CC6.3"]
-     condition:
-     rules:
+  # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated) - Not Implmented
+  # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Remote Desktop Users'. (Automated) - Not Implemented
+  # 2.2.3 (L1) Ensure 'Act as part of the operating system' is set to 'No One'. (Automated) - Not Implemented
+  # 2.2.4 (L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
+  # 2.2.5 (L1) Ensure 'Allow log on locally' is set to 'Administrators, Users'. (Automated) - Not Implemented
 
   # 2.2.6 (L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users'. (Automated)
    - id: 18515
