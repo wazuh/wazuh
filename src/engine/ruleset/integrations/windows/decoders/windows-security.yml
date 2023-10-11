@@ -35,15 +35,15 @@ normalize:
       - windows.logon.type: kvdb_get(windows_logon_type_to_title, $windows.EventData.LogonType)
 
       # Set User Account Control Description
-      - windows.EventData.NewUACList: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.NewUacValue)
-      - windows.EventData.OldUACList: kvdb_decode_bitmask(windows_bitmask_tables, uac, $windows.EventData.OldUacValue)
+      - windows.EventData.NewUACList: kvdb_decode_bitmask(windows_sec_bitmask_tables, uac, $windows.EventData.NewUacValue)
+      - windows.EventData.OldUACList: kvdb_decode_bitmask(windows_sec_bitmask_tables, uac, $windows.EventData.OldUacValue)
 
       # Set Service Name and type
       - service.name: $windows.EventData.ServiceName
       - service.type: kvdb_get(windows_service_value_to_service_type, $windows.EventData.ServiceType)
 
       # Set Kerberos Ticket Options
-      - windows.EventData.TicketOptionsDescription: kvdb_decode_bitmask(windows_bitmask_tables, TicketOptions, $windows.EventData.TicketOptions)
+      - windows.EventData.TicketOptionsDescription: kvdb_decode_bitmask(windows_sec_bitmask_tables, TicketOptions, $windows.EventData.TicketOptions)
 
   # Set Kerberos Encryption Types - windows.EventData.TicketEncryptionTypeDescription
   - check: exists($windows.EventData.TicketEncryptionType)
@@ -101,7 +101,7 @@ normalize:
 
   # Set Access Mask Descriptions
   - map:
-      - windows.EventData.AccessMaskList: kvdb_decode_bitmask(windows_bitmask_tables, access_mask, $windows.EventData.AccessMask)
+      - windows.EventData.AccessMaskList: kvdb_decode_bitmask(windows_sec_bitmask_tables, access_mask, $windows.EventData.AccessMask)
 
   # Set Failure Status and SubStatus for events 4625 and 4776
   - check: $event.id == '4625' OR $event.id == '4776'
