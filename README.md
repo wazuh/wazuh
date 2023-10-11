@@ -121,8 +121,6 @@ Here you can find all the automation tools maintained by the Wazuh team.
 
 * [Wazuh Bosh](https://github.com/wazuh/wazuh-bosh)
 
-* [Wazuh Salt](https://github.com/wazuh/wazuh-salt)
-
 ## Branches
 
 * `master` branch contains the latest code, be aware of possible bugs on this branch.
