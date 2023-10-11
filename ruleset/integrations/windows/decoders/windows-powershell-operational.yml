@@ -78,12 +78,16 @@ normalize:
     - event.type: array_append(end)
 
 # windows.logon
+ - check: $windows.System.Keywords.#text == '0x0'
+   map:
+   - windows.logon.keywords: array_append(AnyKeyword)
+
  - map:
    - windows.logon.activity_id: $windows.System.Task.@ActivityID
    - windows.logon.channel: $windows.System.Channel.#text
    - windows.logon.computer_name: $windows.System.Computer.#text
    - windows.logon.event_id: $windows.System.EventID.#text
-   - windows.logon.keywords: kvdb_decode_bitmask(windows_bitmask_tables, Keywords, $windows.System.Keywords.#text)
+   - windows.logon.keywords: kvdb_decode_bitmask(windows_powershell_bitmask_tables, Keywords, $windows.System.Keywords.#text)
    - windows.logon.opcode: kvdb_get(windows_powershell_operational_winmeta_opcodes, $windows.System.Opcode.#text)
    - windows.logon.process.pid: $windows.System.Execution.@ProcessID
    - windows.logon.process.thread.id: $windows.System.Execution.@ThreadID
