@@ -32,6 +32,9 @@ int get_binary_path(const char *binary, char **validated_comm) {
     if (isabspath(binary)) {
         // Check binary full path
         if (IsFile(binary) == -1) {
+            if (validated_comm) {
+                *validated_comm = strdup(binary);
+            }
             return OS_INVALID;
         }
         validated = strdup(binary);
@@ -39,6 +42,13 @@ int get_binary_path(const char *binary, char **validated_comm) {
     } else {
 
         env_path = getenv("PATH");
+
+        if (!env_path) {
+            if (validated_comm) {
+                *validated_comm = strdup(binary);
+            }
+            return OS_INVALID;
+        }
         os_strdup(env_path, env_path_copy);
         path = strtok_r(env_path_copy, sep, &save_ptr);
 

@@ -64,7 +64,8 @@ void test_get_binary_path_full_path_not_found(void **state) {
     int ret = get_binary_path("c:\\home\\test\\uname", &cmd_path);
 
     assert_int_equal(ret, OS_INVALID);
-    assert_null(cmd_path);
+    assert_string_equal(cmd_path, "c:\\home\\test\\uname");
+    os_free(cmd_path);
 }
 
 void test_get_binary_path_first(void **state) {
@@ -155,6 +156,19 @@ void test_get_binary_path_not_found_validated_null(void **state) {
 
     assert_int_equal(ret, OS_INVALID);
 }
+
+void test_get_binary_path_envpath_null(void **state) {
+    char *cmd_path = NULL;
+
+    expect_string(wrap_getenv, name, "PATH");
+    will_return(wrap_getenv, NULL);
+
+    int ret = get_binary_path("uname", &cmd_path);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_string_equal(cmd_path, "uname");
+    os_free(cmd_path);
+}
 #else
 void test_get_binary_path_full_path_found(void **state) {
     char *cmd_path = NULL;
@@ -179,7 +193,9 @@ void test_get_binary_path_full_path_not_found(void **state) {
     int ret = get_binary_path("/home/test/uname", &cmd_path);
 
     assert_int_equal(ret, OS_INVALID);
-    assert_null(cmd_path);
+    assert_string_equal(cmd_path, "/home/test/uname");
+
+    os_free(cmd_path);
 }
 
 void test_get_binary_path_first(void **state) {
@@ -270,6 +286,19 @@ void test_get_binary_path_not_found_validated_null(void **state) {
 
     assert_int_equal(ret, OS_INVALID);
 }
+
+void test_get_binary_path_envpath_null(void **state) {
+    char *cmd_path = NULL;
+
+    expect_string(__wrap_getenv, name, "PATH");
+    will_return(__wrap_getenv, NULL);
+
+    int ret = get_binary_path("uname", &cmd_path);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_string_equal(cmd_path, "uname");
+    os_free(cmd_path);
+}
 #endif
 
 
@@ -282,6 +311,7 @@ int main(void) {
         cmocka_unit_test(test_get_binary_path_not_found),
         cmocka_unit_test(test_get_binary_path_first_validated_null),
         cmocka_unit_test(test_get_binary_path_not_found_validated_null),
+        cmocka_unit_test(test_get_binary_path_envpath_null),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

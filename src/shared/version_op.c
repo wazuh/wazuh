@@ -788,6 +788,7 @@ os_info *get_unix_version()
                             merror("Cannot read from /etc/release.");
                             fclose(os_release);
                             pclose(cmd_output);
+                            os_free(uname_path);
                             goto free_os_info;
                         } else {
                             char *base;
@@ -803,11 +804,13 @@ os_info *get_unix_version()
                                 merror("Cannot get the Solaris version.");
                                 fclose(os_release);
                                 pclose(cmd_output);
+                                os_free(uname_path);
                                 goto free_os_info;
                             }
                         }
                     } else {
                         pclose(cmd_output);
+                        os_free(uname_path);
                         goto free_os_info;
                     }
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
