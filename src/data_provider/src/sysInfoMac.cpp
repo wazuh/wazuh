@@ -32,8 +32,6 @@
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
 
-#include <chrono>   // DEBUG
-
 
 const std::string MACPORTS_DB_NAME {"registry.db"};
 const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
@@ -571,10 +569,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     try
     {
-        auto start = std::high_resolution_clock::now();
         getPKGPackagesFromLaunchServices(callback);
-        auto duration = std::duration_cast<microseconds>(std::high_resolution_clock::now() - start);
-        std::cout << "DEBUG. getPKGPackagesFromLaunchServices. Duration: " << duration.count() << std::endl;
     }
     catch (...)
     {
@@ -582,10 +577,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {
             if (Utils::existsDir(PKGDirectoryEntry.path))
             {
-                auto start = std::high_resolution_clock::now();
                 getPKGPackagesFromPath(PKGDirectoryEntry.path, PKGDirectoryEntry.maxRecurrency, callback);
-                auto duration = std::duration_cast<microseconds>(std::high_resolution_clock::now() - start);
-                std::cout << "DEBUG. getPKGPackagesFromPath. Duration: " << duration.count() << ". Path: " << PKGDirectoryEntry.path << std::endl;
             }
         }
     }
@@ -596,10 +588,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
         if (Utils::existsDir(pkgDirectory))
         {
-            auto start = std::high_resolution_clock::now();
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
-            auto duration = std::duration_cast<microseconds>(std::high_resolution_clock::now() - start);
-            std::cout << "DEBUG. getPackagesFromPath. Duration: " << duration.count() << ". Path: " << pkgDirectory << ". Type: " << packageDirectory.second << std::endl;
         }
     }
 
@@ -609,12 +598,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
     };
 
-    {
-        auto start = std::high_resolution_clock::now();
-        ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
-        auto duration = std::duration_cast<microseconds>(std::high_resolution_clock::now() - start);
-        std::cout << "DEBUG. ModernFactoryPackagesCreator::getPackages. Duration: " << duration.count() << std::endl;
-    }
+    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const

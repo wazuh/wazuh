@@ -22,7 +22,8 @@
 class RCPWrapper final : public IPackageWrapper
 {
     public:
-        static constexpr auto INFO_PLIST_PATH { "Contents/Info.plist" };
+        static constexpr auto INFO_PLIST_FILENAME { "Info.plist" };
+        static constexpr auto INFO_PLIST_PARENTDIR { "Contents" };
 
         explicit RCPWrapper(const PackageContext& ctx)
             : m_groups {UNKNOWN_VALUE}
@@ -51,21 +52,14 @@ class RCPWrapper final : public IPackageWrapper
             {
                 getBomData(pathBomFile);
 
-                std::string infoPlistEndingApp { std::string(".app/") + INFO_PLIST_PATH };
-                std::string infoPlistEndingService { std::string(".service/") + INFO_PLIST_PATH };
                 size_t numSubdirectoriesMin = (size_t) -1;
-
                 for ( const auto& bomPath : m_bomPaths)
                 {
-                    if (Utils::endsWith(bomPath, infoPlistEndingApp) || Utils::endsWith(bomPath, infoPlistEndingService))
+                    size_t numSubdirectoriesCurrent = Utils::split(bomPath, '/').size();
+                    if (numSubdirectoriesCurrent < numSubdirectoriesMin)
                     {
-                        size_t numSubdirectoriesCurrent = Utils::split(bomPath, '/').size();
-
-                        if (numSubdirectoriesCurrent < numSubdirectoriesMin)
-                        {
-                            numSubdirectoriesMin = numSubdirectoriesCurrent;
-                            pathPlistFile = bomPath;
-                        }
+                        numSubdirectoriesMin = numSubdirectoriesCurrent;
+                        pathPlistFile = bomPath;
                     }
                 }
             }
@@ -344,37 +338,18 @@ class RCPWrapper final : public IPackageWrapper
                 }
             };
 
-            auto generatePathString
+            auto getInfoPlistPaths
             {
                 [&](const BOMPaths * paths)
                 {
-                    std::map<uint32_t, std::string> filenames;
-                    std::map<uint32_t, uint32_t> parents;
+                    std::unordered_map<uint32_t, std::string> filenames;
+                    std::unordered_map<uint32_t, uint32_t> parents;
 
                     while (paths != nullptr)
                     {
                         for (unsigned j = 0; j < ntohs(paths->count); j++)
                         {
-                            uint32_t index0 = paths->indices[j].index0;
                             uint32_t index1 = paths->indices[j].index1;
-
-                            size_t info1Size;
-                            auto info1 = reinterpret_cast<const BOMPathInfo1*>(getPointer(index0, info1Size));
-
-                            if (info1 == nullptr)
-                            {
-                                return;
-                            }
-
-                            size_t info2Size;
-                            auto info2 = reinterpret_cast<const BOMPathInfo2*>(getPointer(info1->index, info2Size));
-
-                            if (info2 == nullptr)
-                            {
-                                return;
-                            }
-
-                            // Compute full name using pointer size.
                             size_t fileSize;
                             auto file = reinterpret_cast<const BOMFile*>(getPointer(index1, fileSize));
 
@@ -383,28 +358,47 @@ class RCPWrapper final : public IPackageWrapper
                                 return;
                             }
 
-                            std::string filename(file->name, fileSize - sizeof(BOMFile));
-                            filename = std::string(filename.c_str());
+                            uint32_t index0 = paths->indices[j].index0;
+                            size_t info1Size;
+                            auto info1 = reinterpret_cast<const BOMPathInfo1*>(getPointer(index0, info1Size));
 
-                            // Maintain a lookup from BOM file index to filename.
+                            if (info1 == nullptr)
+                            {
+                                return;
+                            }
+
+                            std::string filename(file->name, fileSize - sizeof(BOMFile) - 1);
+
+                            // Maintain a lookup maps
                             filenames[info1->id] = filename;
-
                             if (file->parent)
                             {
                                 parents[info1->id] = file->parent;
                             }
 
+                            if(filename.compare(INFO_PLIST_FILENAME))
+                            {
+                                continue;
+                            }
+
                             auto it = parents.find(info1->id);
+                            if((it == parents.end()) || filenames[it->second].compare(INFO_PLIST_PARENTDIR))
+                            {
+                                continue;
+                            }
+                            filename = filenames[it->second] + "/" + filename;
+
+                            it = parents.find(it->second);
+                            if((it == parents.end()) || (!Utils::endsWith(filenames[it->second], ".app") && !Utils::endsWith(filenames[it->second], ".service")))
+                            {
+                                continue;
+                            }
+                            filename = filenames[it->second] + "/" + filename;
 
                             while (it != parents.end())
                             {
                                 filename = filenames[it->second] + "/" + filename;
                                 it = parents.find(it->second);
-                            }
-
-                            if (filename == ".")
-                            {
-                                continue;
                             }
 
                             if (m_installPrefixPath == "/")
@@ -513,7 +507,7 @@ class RCPWrapper final : public IPackageWrapper
                     pPaths = getPaths(pPaths->indices[0].index0);
                 }
 
-                generatePathString(pPaths);
+                getInfoPlistPaths(pPaths);
                 break;
             }
         }
