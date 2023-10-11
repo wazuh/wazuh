@@ -69,39 +69,20 @@ public:
     void on(tf::Task& success, tf::Task& failure) override
     {
         assertConnect();
-
-        if (success != failure) // We need to check the result
-        {
-            m_task.work(
-                [fn = m_op, publisher = m_publisher, data = m_data]()
+        m_task.work(
+            [fn = m_op, publisher = m_publisher, data = m_data]()
+            {
+                auto& event = *static_cast<base::Event*>(data);
+                auto res = fn(event);
+                if (publisher)
                 {
-                    auto& event = *static_cast<base::Event*>(data);
-                    auto res = fn(event);
-                    if (publisher)
-                    {
-                        publisher(res.trace(), res.success());
-                    }
+                    publisher(res.trace(), res.success());
+                }
 
-                    return res.success() ? 0 : 1;
-                });
+                return res.success() ? 0 : 1;
+            });
 
-            m_task.precede(success, failure);
-        }
-        else
-        {
-            m_task.work(
-                [fn = m_op, publisher = m_publisher, data = m_data]()
-                {
-                    auto& event = *static_cast<base::Event*>(data);
-                    auto res = fn(event);
-                    if (publisher)
-                    {
-                        publisher(res.trace(), res.success());
-                    }
-                });
-
-            m_task.precede(success);
-        }
+        m_task.precede(success, failure);
     }
 };
 
@@ -115,31 +96,23 @@ public:
     TaskBroadcast(tf::Taskflow& tf)
         : ITask()
         , m_input(tf.placeholder().name("broadcast_in"))
-        , m_output(tf.placeholder().name("broadcast_out"))
+        , m_output(tf.emplace([]() { return 0; }).name("broadcast_out"))
     {
     }
 
     tf::Task& input() override { return m_input; }
 
-    void addStep(ComplexTask step)
+    void addStep(ComplexTask step, tf::Taskflow& tf)
     {
         m_input.precede(step->input());
-        step->on(m_output, m_output);
+        auto broadcastStep = tf.placeholder().name("broadcast_step").precede(m_output);
+        step->on(broadcastStep, broadcastStep);
     }
 
     void on(tf::Task& success, tf::Task& failure) override
     {
         assertConnect();
-        if (success != failure)
-        {
-            // TODO: This construct should not be allowed, but we can handle it
-            m_output.work([]() { return 0; });
-            m_output.precede(success, failure);
-        }
-        else
-        {
-            m_output.precede(success);
-        }
+        m_output.precede(success, failure);
     }
 };
 
@@ -152,7 +125,7 @@ private:
 public:
     TaskChain(tf::Taskflow& tf)
         : ITask()
-        , m_output(tf.placeholder().name("chain_out"))
+        , m_output(tf.emplace([]() { return 0; }).name("chain_out"))
     {
     }
 
@@ -172,15 +145,7 @@ public:
     {
         assertConnect();
         m_steps.back()->on(m_output, m_output);
-        if (success != failure)
-        {
-            // TODO: This construct should not be allowed, but we can handle it
-            m_output.work([]() { return 0; }).precede(success, failure);
-        }
-        else
-        {
-            m_output.precede(success);
-        }
+        m_output.precede(success, failure);
     }
 };
 
@@ -195,8 +160,8 @@ public:
     TaskImplication(tf::Taskflow& tf)
         : ITask()
         , m_input(tf.placeholder().name("implication_in"))
-        , m_outputSuccess(tf.placeholder().name("implication_out_success"))
-        , m_outputFailure(tf.placeholder().name("implication_out_failure"))
+        , m_outputSuccess(tf.emplace([]() { return 0; }).name("implication_out_success"))
+        , m_outputFailure(tf.emplace([]() { return 0; }).name("implication_out_failure"))
     {
     }
 
@@ -212,12 +177,6 @@ public:
     void on(tf::Task& success, tf::Task& failure) override
     {
         assertConnect();
-        if (success == failure) // Avoid hard dependecy that leads to deadlock
-        {
-            m_outputSuccess.work([]() { return 0; });
-            m_outputFailure.work([]() { return 0; });
-        }
-
         m_outputSuccess.precede(success);
         m_outputFailure.precede(failure);
     }
@@ -235,8 +194,8 @@ public:
     TaskAnd(tf::Taskflow& tf)
         : ITask()
         , m_input(tf.placeholder().name("and_in"))
-        , m_outputSuccess(tf.placeholder().name("and_out_success"))
-        , m_outputFailure(tf.placeholder().name("and_out_failure"))
+        , m_outputSuccess(tf.emplace([]() { return 0; }).name("and_out_success"))
+        , m_outputFailure(tf.emplace([]() { return 0; }).name("and_out_failure"))
     {
     }
 
@@ -259,15 +218,7 @@ public:
     void on(tf::Task& success, tf::Task& failure) override
     {
         assertConnect();
-
         m_steps.back()->on(m_outputSuccess, m_outputFailure);
-
-        if (success == failure) // Avoid hard dependecy that leads to deadlock
-        {
-            m_outputSuccess.work([]() { return 0; });
-            m_outputFailure.work([]() { return 0; });
-        }
-
         m_outputSuccess.precede(success);
         m_outputFailure.precede(failure);
     }
@@ -285,8 +236,8 @@ public:
     TaskOr(tf::Taskflow& tf)
         : ITask()
         , m_input(tf.placeholder().name("or_in"))
-        , m_outputSuccess(tf.placeholder().name("or_out_success"))
-        , m_outputFailure(tf.placeholder().name("or_out_failure"))
+        , m_outputSuccess(tf.emplace([](){return 0;}).name("or_out_success"))
+        , m_outputFailure(tf.emplace([](){return 0;}).name("or_out_failure"))
     {
     }
 
@@ -310,13 +261,6 @@ public:
     {
         assertConnect();
         m_steps.back()->on(m_outputSuccess, m_outputFailure);
-
-        if (success == failure) // Avoid hard dependecy that leads to deadlock
-        {
-            m_outputSuccess.work([]() { return 0; });
-            m_outputFailure.work([]() { return 0; });
-        }
-
         m_outputSuccess.precede(success);
         m_outputFailure.precede(failure);
     }
@@ -348,7 +292,7 @@ private:
         // Build each operand
         for (auto& exprOperand : broadcast.getOperands())
         {
-            broadcastTask->addStep(recBuild(exprOperand, params));
+            broadcastTask->addStep(recBuild(exprOperand, params), params.tf);
         }
 
         return broadcastTask;
@@ -471,12 +415,17 @@ public:
                tf::Taskflow& tf,
                void* data,
                std::unordered_map<std::string, std::shared_ptr<Tracer>>& traces,
-               const std::unordered_set<std::string>& traceables)
+               const std::unordered_set<std::string>& traceables,
+               std::function<void()> endCallback = nullptr)
     {
         BuildParams params {.tf = tf, .publisher = nullptr, .data = data, .traces = traces, .traceables = traceables};
         // As complex task are not finished until output is connected we need to force the connection
         auto finalTask = recBuild(expression, params);
         auto output = tf.placeholder().name("output");
+        if (endCallback)
+        {
+            output.work(endCallback);
+        }
         finalTask->on(output, output);
     }
 };

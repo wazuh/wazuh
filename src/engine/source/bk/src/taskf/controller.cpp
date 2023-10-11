@@ -25,7 +25,7 @@ Controller::Controller(const FakePolicy& policy)
     }
 }
 
-Controller::Controller(base::Expression expression, std::unordered_set<std::string> traceables)
+Controller::Controller(base::Expression expression, std::unordered_set<std::string> traceables, std::function<void()> endCallback)
     : m_tf()
     , m_executor(1)
     , m_event()
@@ -34,7 +34,7 @@ Controller::Controller(base::Expression expression, std::unordered_set<std::stri
 {
     detail::ExprBuilder builder;
     std::unordered_map<std::string, std::shared_ptr<detail::Tracer>> traces;
-    builder.build(m_expression, m_tf, &m_event, traces, m_traceables);
+    builder.build(m_expression, m_tf, &m_event, traces, m_traceables, endCallback);
     for (auto& [name, trace] : traces)
     {
         m_traces.emplace(name, std::static_pointer_cast<TracerImpl>(trace));
