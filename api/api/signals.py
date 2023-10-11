@@ -14,22 +14,15 @@ import certifi
 from aiohttp import web
 
 import wazuh
-from api.constants import INSTALLATION_UID_PATH
+from api.constants import INSTALLATION_UID_KEY, INSTALLATION_UID_PATH, UPDATE_INFORMATION_KEY
 from wazuh.core import common
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.utils import get_utc_now
+from wazuh.core.requests import query_update_check_service
 
 
-CTI_URL = get_ossec_conf(
-    section='global'
-).get('cti_url', 'http://cti:4041')  # This default must be removed once we have the configuration in the ossec parser.
-RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60*60*24
-INSTALLATION_UID_KEY = 'installation_uid'
 UPDATE_CHECK_OSSEC_FIELD = 'update_check'
-WAZUH_UID_KEY = 'wazuh-uid'
-WAZUH_TAG_KEY = 'wazuh-tag'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -143,50 +136,12 @@ async def get_update_information(app: web.Application) -> None:
     app : web.Application
         Application context to inject the update information.
     """
-    current_version = f'v{_get_current_version()}'
-    headers = {
-        WAZUH_UID_KEY: app[INSTALLATION_UID_KEY],
-        WAZUH_TAG_KEY: current_version
-    }
 
-    async with aiohttp.ClientSession(connector=_get_connector()) as session:
-        while True:
-            logger.info('Getting updates information...')
-            logger.debug('Querying %s', RELEASE_UPDATES_URL)
-            try:
-                async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
-                    response_data = await response.json()
+    while True:
+        logger.info('Getting updates information...')
+        app[UPDATE_INFORMATION_KEY] = await query_update_check_service(app[INSTALLATION_UID_KEY])
 
-                    logger.debug("Response status: %s", response.status)
-                    logger.debug("Response data: %s", response_data)
-
-                    update_information = {
-                        'last_check_date': get_utc_now(),
-                        'current_version': current_version,
-                        'status_code': response.status,
-                        'message': '',
-                        'last_available_major': {},
-                        'last_available_minor': {},
-                        'last_available_patch': {},
-                    }
-
-                    if response.status == 200:
-                        if len(response_data['data']['major']):
-                            update_information['last_available_major'].update(**response_data['data']['major'][-1])
-                        if len(response_data['data']['minor']):
-                            update_information['last_available_minor'].update(**response_data['data']['minor'][-1])
-                        if len(response_data['data']['patch']):
-                            update_information['last_available_patch'].update(**response_data['data']['patch'][-1])
-                    else:
-                        update_information['message'] = response_data['errors']['detail']
-
-                    app['update_information'] = update_information
-            except aiohttp.ClientError as err:
-                logger.error(f"Something went wrong when querying the update check service: {err}")
-            except Exception as err:
-                logger.error(f"An unknown error occurred while trying to get updates information: {err}")
-            finally:
-                await asyncio.sleep(ONE_DAY_SLEEP)
+        await asyncio.sleep(ONE_DAY_SLEEP)
 
 
 async def register_background_tasks(app: web.Application) -> AsyncGenerator:

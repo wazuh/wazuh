@@ -1,0 +1,101 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GP
+import os
+import ssl
+from logging import getLogger
+
+import aiohttp
+import certifi
+
+import wazuh
+from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.utils import get_utc_now
+
+CTI_URL = get_ossec_conf(section="global").get(
+    "cti_url", "http://cti:4041"
+)  # This default must be removed once we have the configuration in the ossec parser.
+RELEASE_UPDATES_URL = os.path.join(CTI_URL, "api", "v1", "ping")
+ONE_DAY_SLEEP = 60 * 60 * 24
+WAZUH_UID_KEY = "wazuh-uid"
+WAZUH_TAG_KEY = "wazuh-tag"
+
+
+logger = getLogger("wazuh")
+
+
+def _get_connector() -> aiohttp.TCPConnector:
+    """Return a TCPConnector with default ssl context.
+
+    Returns
+    -------
+    aiohttp.TCPConnector
+        Instance with default ssl connector.
+    """
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    return aiohttp.TCPConnector(ssl=ssl_context)
+
+
+async def query_update_check_service(installation_uid: str) -> dict:
+    """Make a query to the update check service and retrieve updates information.
+
+    Parameters
+    ----------
+    installation_uid: str
+        Wazuh UID to include in the query.
+
+    Returns
+    -------
+    dict
+        With the updates information.
+    """
+    current_version = f"v{wazuh.__version__}"
+    headers = {WAZUH_UID_KEY: installation_uid, WAZUH_TAG_KEY: current_version}
+
+    update_information = {
+        "last_check_date": get_utc_now(),
+        "current_version": current_version,
+        "message": "",
+        "last_available_major": {},
+        "last_available_minor": {},
+        "last_available_patch": {},
+    }
+
+    async with aiohttp.ClientSession(connector=_get_connector()) as session:
+        logger.debug("Querying %s", RELEASE_UPDATES_URL)
+        try:
+            async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
+                response_data = await response.json()
+
+                logger.debug("Response status: %s", response.status)
+                logger.debug("Response data: %s", response_data)
+
+                update_information["status_code"] = response.status
+
+                if response.status == 200:
+                    if len(response_data["data"]["major"]):
+                        update_information["last_available_major"].update(
+                            **response_data["data"]["major"][-1]
+                        )
+                    if len(response_data["data"]["minor"]):
+                        update_information["last_available_minor"].update(
+                            **response_data["data"]["minor"][-1]
+                        )
+                    if len(response_data["data"]["patch"]):
+                        update_information["last_available_patch"].update(
+                            **response_data["data"]["patch"][-1]
+                        )
+                else:
+                    update_information["message"] = response_data["errors"]["detail"]
+        except aiohttp.ClientError as err:
+            logger.error(
+                f"Something went wrong when querying the update check service: {err}"
+            )
+            update_information.update({"message": str(err), "status_code": 500})
+        except Exception as err:
+            logger.error(
+                f"An unknown error occurred while trying to get updates information: {err}"
+            )
+            update_information.update({"message": str(err), "status_code": 500})
+
+    return update_information
