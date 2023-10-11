@@ -66,5 +66,15 @@
         "3": "Enc-tkt-in-skey",
         "1": "Renew",
         "0": "Validate"
+    },
+    "Keywords": {
+        "48": "Response Time",
+        "49": "WDIContext",
+        "50": "WDIDiag",
+        "51": "SQM",
+        "52": "AuditFailure",
+        "53": "AuditSuccess",
+        "54": "CorrelationHint",
+        "55": "EventlogClassic"
     }
 }
