@@ -152,8 +152,8 @@ INSTANTIATE_TEST_SUITE_P(
         BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "2" : "two", "3" : ["null"]} )"}, false),
         // Map with keys out of range
         BuildMapT(json::Json {R"( {"-1" : "zero", "1" : "one"} )"}, false),
-        BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "32" : "thirty two"} )"}, false),
-        BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "32" : "thirty two", "33" : "thirty three"} )"}, false),
+        BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "64" : "sixty four"} )"}, false),
+        BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "64" : "sixty four", "65" : "sixty five"} )"}, false),
         // Mao with invalid keys (not numbers)
         BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "a" : "thirty two"} )"}, false),
         BuildMapT(json::Json {R"( {"0" : "zero", "1" : "one", "a" : "thirty two", "33" : "thirty three"} )"}, false),
@@ -269,11 +269,11 @@ INSTANTIATE_TEST_SUITE_P(
                     true),
         // Invalid mask values
         DecodeMaskT(R"("0x0")", {}, false),
-        DecodeMaskT(R"("0x100000000")", {}, false),
-        DecodeMaskT(R"("0x100000001")", {}, false),
-        DecodeMaskT(R"("0x100000002")", {}, false),
-        DecodeMaskT(R"("0x100000003")", {}, false),
-        DecodeMaskT(R"("0x1FFFFFFFF")", {}, false),
+        DecodeMaskT(R"("0x100000000BB672397")", {}, false),
+        DecodeMaskT(R"("0x100000001492637AA")", {}, false),
+        DecodeMaskT(R"("0x1000000026B881A11")", {}, false),
+        DecodeMaskT(R"("0x1000000031A021C11")", {}, false),
+        DecodeMaskT(R"("0x1FFFFFFFFFFFFFFFF")", {}, false),
         DecodeMaskT(R"(null)", {}, false),
         DecodeMaskT(R"(1)", {}, false),
         DecodeMaskT(R"("str")", {}, false),
