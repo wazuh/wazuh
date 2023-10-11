@@ -17,12 +17,11 @@ import wazuh
 from api.constants import INSTALLATION_UID_KEY, INSTALLATION_UID_PATH, UPDATE_INFORMATION_KEY
 from wazuh.core import common
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.requests import query_update_check_service
 
 
 ONE_DAY_SLEEP = 60*60*24
-UPDATE_CHECK_OSSEC_FIELD = 'update_check'
 
 logger = logging.getLogger('wazuh-api')
 
@@ -86,19 +85,6 @@ def _is_running_in_master_node() -> bool:
     return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
 
 
-def _update_check_is_enabled() -> bool:
-    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
-
-    Returns
-    -------
-    bool
-        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
-    """
-    global_configurations = get_ossec_conf(section='global')
-
-    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, 'yes') == 'yes'
-
-
 async def modify_response_headers(request, response):
     # Delete 'Server' entry
     response.headers.pop('Server', None)
@@ -154,7 +140,7 @@ async def register_background_tasks(app: web.Application) -> AsyncGenerator:
     """
     tasks: list[asyncio.Task] = []
 
-    if _is_running_in_master_node() and _update_check_is_enabled():
+    if _is_running_in_master_node() and update_check_is_enabled():
         tasks.append(asyncio.create_task(check_installation_uid(app)))
         tasks.append(asyncio.create_task(get_update_information(app)))
 

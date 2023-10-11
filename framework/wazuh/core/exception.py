@@ -125,10 +125,6 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
-        1130: {'message': 'Update check is disabled',
-               'remediation': 'Update check can be enabled in WAZUH_PATH/etc/ossec.conf or '
-                              f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
-                              'reference.html#operation/api.controllers.manager_controller.update_configuration'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
