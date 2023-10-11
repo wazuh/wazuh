@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
 
 check:
-  - $windows.System.Channel.#text: Microsoft-Windows-PowerShell/Operational
+  - windows.System.Channel.#text: Microsoft-Windows-PowerShell/Operational
 
 normalize:
  - map:
@@ -68,6 +68,9 @@ normalize:
    - process.command_line: $windows.EventData.HostApplication
    - process.title: $windows.EventData.HostName
    - process.executable: $file.path
+
+  # Set message of id
+   - message: kvdb_get(windows_powershell_op_id_to_message, $event.code)
 
  - check: $event.code == '4105'
    map:
