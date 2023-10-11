@@ -17,7 +17,7 @@ from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from api.validator import check_component_configuration_pair
 from wazuh.core import common
-from wazuh.core import requests
+from wazuh.core import configuration, requests
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
 
@@ -622,7 +622,7 @@ async def check_available_version(
         API response.
     """
 
-    if force_query:
+    if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
         dapi = DistributedAPI(
             f=requests.query_update_check_service,

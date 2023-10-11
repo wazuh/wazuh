@@ -112,6 +112,7 @@ CONF_SECTIONS = MappingProxyType({
 })
 
 GETCONFIG_COMMAND = "getconfig"
+UPDATE_CHECK_OSSEC_FIELD = 'update_check'
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):
@@ -1258,3 +1259,16 @@ def write_ossec_conf(new_conf: str):
             f.writelines(new_conf)
     except Exception:
         raise WazuhError(1126)
+
+
+def update_check_is_enabled() -> bool:
+    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
+
+    Returns
+    -------
+    bool
+        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
+    """
+    global_configurations = get_ossec_conf(section='global')
+
+    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, 'yes') == 'yes'

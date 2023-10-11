@@ -8,12 +8,12 @@ import pytest
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from api.signals import (
     ONE_DAY_SLEEP,
-    UPDATE_CHECK_OSSEC_FIELD,
     cancel_signal_handler,
     check_installation_uid,
     get_update_information,
     register_background_tasks,
 )
+from wazuh.core.configuration import UPDATE_CHECK_OSSEC_FIELD
 
 # Fixtures
 
@@ -154,54 +154,54 @@ async def test_get_update_information_schedule(
     [
         (
             {'disabled': False, 'node_type': 'master'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'yes'},
+            True,
             2,
         ),
         (
             {'disabled': False, 'node_type': 'master'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'no'},
+            False,
             0,
         ),
         (
             {'disabled': False, 'node_type': 'worker'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'yes'},
+            True,
             0,
         ),
         (
             {'disabled': False, 'node_type': 'worker'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'no'},
+            False,
             0,
         ),
         (
             {'disabled': True, 'node_type': 'master'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'yes'},
+            True,
             2,
         ),
         (
             {'disabled': True, 'node_type': 'master'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'no'},
+            False,
             0,
         ),
         (
             {'disabled': True, 'node_type': 'worker'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'yes'},
+            True,
             2,
         ),
         (
             {'disabled': True, 'node_type': 'worker'},
-            {UPDATE_CHECK_OSSEC_FIELD: 'no'},
+            False,
             0,
         ),
     ],
 )
 @patch('api.signals.check_installation_uid')
 @patch('api.signals.get_update_information')
-@patch('api.signals.get_ossec_conf')
+@patch('api.signals.update_check_is_enabled')
 @patch('api.signals.read_cluster_config')
 @pytest.mark.asyncio
 async def test_register_background_tasks(
     cluster_config_mock,
-    ossec_conf_mock,
+    update_check_mock,
     get_update_information_mock,
     check_installation_uid_mock,
     cluster_config,
@@ -214,7 +214,7 @@ async def test_register_background_tasks(
             return iter([])
 
     cluster_config_mock.return_value = cluster_config
-    ossec_conf_mock.return_value = update_check_config
+    update_check_mock.return_value = update_check_config
 
     with patch('api.signals.asyncio') as create_task_mock:
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
