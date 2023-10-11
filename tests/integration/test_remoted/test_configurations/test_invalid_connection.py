@@ -31,7 +31,7 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 def test_invalid_connection(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
-    '''  
+    '''
     description: Check if `wazuh-remoted` fails using invalid 'connection' values and shows the expected error message
                  to inform about it. For this purpose, the test will set a configuration from the module test cases and
                  check if is correct using a FileMonitor catching the errors.
@@ -49,7 +49,7 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options using the values from `local_internal_options`.
-        - daemons_handler: 
+        - daemons_handler:
             type: fixture
             brief: Starts/Restarts the daemons indicated in `daemons_handler_configuration` before each test,
                    once the test finishes, stops the daemons.
@@ -61,8 +61,8 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     log_monitor.start(callback=generate_callback(INVALID_VALUE_FOR_ELEMENT))
-    assert test_metadata['element_type'] in log_monitor.callback_result 
-    assert test_metadata['element_name'] in log_monitor.callback_result 
+    assert test_metadata['element_type'] in log_monitor.callback_result
+    assert test_metadata['element_name'] in log_monitor.callback_result
 
     log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/ossec.conf"}))
     assert log_monitor.callback_result
