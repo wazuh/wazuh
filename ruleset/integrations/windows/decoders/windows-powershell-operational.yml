@@ -15,7 +15,8 @@ metadata:
   references:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
 
-check: $windows.System.Channel.#text == Microsoft-Windows-PowerShell/Operational
+check:
+  - $windows.System.Channel.#text: Microsoft-Windows-PowerShell/Operational
 
 normalize:
  - map:
@@ -82,7 +83,7 @@ normalize:
    - windows.logon.channel: $windows.System.Channel.#text
    - windows.logon.computer_name: $windows.System.Computer.#text
    - windows.logon.event_id: $windows.System.EventID.#text
-   - windows.logon.keywords: kvdb_get(windows_powershell_winmeta_keywords, $windows.System.Keywords.#text)
+   - windows.logon.keywords: kvdb_decode_bitmask(windows_bitmask_tables, Keywords, $windows.System.Keywords.#text)
    - windows.logon.opcode: kvdb_get(windows_powershell_operational_winmeta_opcodes, $windows.System.Opcode.#text)
    - windows.logon.process.pid: $windows.System.Execution.@ProcessID
    - windows.logon.process.thread.id: $windows.System.Execution.@ThreadID
@@ -92,4 +93,3 @@ normalize:
    - windows.logon.task: $windows.System.Task.#text
    - windows.logon.user.identifier: $windows.User.identifier
    - windows.logon.version: $windows.System.Version.#text
-

@@ -4,7 +4,7 @@ parents:
   - decoder/windows-event/0
 
 metadata:
-   module: Windows Sysmon
+  module: Windows Sysmon
   title: Decoder for Windows Sysmon
   description: Decoder for Windows Sysmon events
   versions: [10x, 11x, 12x, 13x, 14x, 15x]

@@ -578,11 +578,11 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
 namespace
 {
 // TODO Change this to use an vector instead of a map
-std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json::Json& jMap)
+std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json::Json& jMap)
 {
     const std::string throwTrace {"Engine KBDB Decode bit mask: "};
 
-    std::vector<std::optional<json::Json>> buildedMap(std::numeric_limits<uint32_t>::digits);
+    std::vector<std::optional<json::Json>> buildedMap(std::numeric_limits<uint64_t>::digits);
     // Fill the map with empty values
     std::fill(buildedMap.begin(), buildedMap.end(), std::nullopt);
     {
@@ -602,7 +602,7 @@ std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json
 
         for (auto& [key, value] : jMapObj)
         {
-            uint32_t index = 0;
+            uint64_t index = 0;
             // Validate key
             if (key.empty())
             {
@@ -621,11 +621,11 @@ std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json
             {
                 throw std::runtime_error(throwTrace + "Malformed map (Expected number as key on map provided)");
             }
-            if (index >= std::numeric_limits<uint32_t>::digits)
+            if (index >= std::numeric_limits<uint64_t>::digits)
             {
                 throw std::runtime_error(fmt::format(throwTrace + "Malformed map (Key out of range {}-{}: {})",
                                                      0,
-                                                     std::numeric_limits<uint32_t>::digits,
+                                                     std::numeric_limits<uint64_t>::digits,
                                                      index));
             }
 
@@ -645,7 +645,7 @@ std::function<std::optional<json::Json>(uint32_t pos)> getFnSearchMap(const json
     }
 
     // Function that get the value from the builded map, returns nullopt if not found
-    return [buildedMap](const uint32_t pos) -> std::optional<json::Json>
+    return [buildedMap](const uint64_t pos) -> std::optional<json::Json>
     {
         if (pos < buildedMap.size())
         {
@@ -727,18 +727,18 @@ base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField
 
     // Get the function to get the value from the event
     auto getMaskFn = [maskRef, failureTrace1, failureTrace2, failureTrace3](
-                         const base::Event& event) -> std::variant<uint32_t, std::string>
+                         const base::Event& event) -> std::variant<uint64_t, std::string>
     {
-        // If is a string, get the mask as hexa in range 0-0xFFFFFFFF
+        // If is a string, get the mask as hexa in range 0-0xFFFFFFFFFFFFFFFF
         const auto maskStr = event->getString(maskRef);
         if (maskStr.has_value())
         {
             try
             {
                 auto rMask = std::stoul(maskStr.value(), nullptr, 16);
-                if (rMask <= std::numeric_limits<uint32_t>::max())
+                if (rMask <= std::numeric_limits<uint64_t>::max())
                 {
-                    return static_cast<uint32_t>(rMask);
+                    return static_cast<uint64_t>(rMask);
                 }
                 return failureTrace3;
             }
@@ -757,19 +757,19 @@ base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField
             const base::Event& event) -> base::result::Result<base::Event>
         {
             // Get mask in hexa
-            uint32_t mask {};
+            uint64_t mask {};
             {
                 auto resultMask = getMaskFn(event);
                 if (std::holds_alternative<std::string>(resultMask))
                 {
                     return base::result::makeFailure(event, std::move(std::get<std::string>(resultMask)));
                 }
-                mask = std::get<uint32_t>(resultMask);
+                mask = std::get<uint64_t>(resultMask);
             }
 
             // iterate over the bits of the mask
             bool isResultEmpty {true};
-            for (uint32_t bitPos = 0; bitPos < std::numeric_limits<uint32_t>::digits; bitPos++)
+            for (uint64_t bitPos = 0; bitPos < std::numeric_limits<uint64_t>::digits; bitPos++)
             {
                 auto flag = 0x1 << bitPos;
                 if (flag & mask)
