@@ -198,7 +198,6 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     assert(server_address != NULL);
 
     char *ip_address = NULL;
-
     char *tmp_str = strchr(server_address, '/');
     if (tmp_str) {
         // server_address comes in {hostname}/{ip} format
