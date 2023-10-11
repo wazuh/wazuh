@@ -6927,6 +6927,13 @@ components:
       schema:
         type: boolean
         default: false
+    force_query:
+      in: query
+      name: force_query
+      description: "Force query to CTI service"
+      schema:
+        type: boolean
+        default: false
     file_path:
       in: query
       name: file_path
@@ -13071,7 +13078,7 @@ paths:
       operationId: api.controllers.manager_controller.check_available_version
       parameters:
         - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/force_query'
       responses:
         '200':
           description: "Information about the available version"
