@@ -1,0 +1,62 @@
+---
+-
+  name: 'Exec_path file not found'
+  description: 'Set an exec_path where the file does not exist'
+  test_case:
+  -
+    input: "id:004"
+    log:
+      - Key request integration (/var/ossec/framework/python/bin/python3 /tmp/fetch_keys_not_found.py) returned code 2.
+      - Error getting external key.
+  # Override ossec.conf
+  EXEC_PATH: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys_not_found.py'
+-
+  name: 'Exec_path file without python'
+  description: 'Try to execute script file without python3'
+  test_case:
+  -
+    input: "id:004"
+    log:
+      - "Invalid command: '/tmp/fetch_keys.py id 004'"
+      - "Cannot run key request integration (/tmp/fetch_keys.py): path is invalid or file has insufficient permissions."
+  # Override ossec.conf
+  EXEC_PATH: '/tmp/fetch_keys.py'
+-
+  name: 'Empty exec_path'
+  description: 'Error with an empty exec_path value'
+  test_case:
+  -
+    input: "id:005"
+    log:
+      - "Invalid command: '(null) id 005': (0) Success"
+      - "Cannot run key request integration ((null)): path is invalid or file has insufficient permissions."
+  # Override ossec.conf
+  EXEC_PATH: ''
+-
+  name: 'Key request Error 3' # With a bad exec_path conf
+  description: 'Bad arguments passed to exec_path conf'
+  test_case:
+  -
+    input: "id:003"
+    log:
+      - 'Exec output: {"error": 3, "message": "Bad arguments given"}'
+      - "Could not get a key from ID 003. Error: 'Bad arguments given'"
+  # Override ossec.conf
+  EXEC_PATH: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys.py error1'
+-
+  name: 'Key request Error 1' # With a bad exec_path conf
+  description: 'Too few arguments passed to exec_path conf [bad message input to the socket krequest]'
+  test_case:
+  -
+    input: "id:"
+    log:
+      - 'Exec output: {"error": 1, "message": "Too few arguments"}'
+      - "Could not get a key from ID . Error: 'Too few arguments'"
+-
+  name: 'Invalid request'
+  description: 'Checking the handling of erroneous requests'
+  test_case:
+  -
+    input: "invalid:request"
+    log:
+      - Invalid request 'invalid:request' received in Agent key request.
