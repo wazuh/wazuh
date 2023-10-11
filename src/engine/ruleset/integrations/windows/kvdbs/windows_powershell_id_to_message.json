@@ -1,0 +1,9 @@
+{
+    "300": "supplier maintenance",
+    "400": "Engine state is changed from None to Available.",
+    "403": "Engine state is changed from Available to Stopped",
+    "500": "Command is Started",
+    "501": "Command is Stopped",
+    "600": "Provider is Started",
+    "800": "Pipeline execution"
+}

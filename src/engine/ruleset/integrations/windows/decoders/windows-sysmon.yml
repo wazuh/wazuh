@@ -23,11 +23,15 @@ definitions:
         - process
       type:
         - start
+      message:
+        - Process Create
     '2':
       category:
         - file
       type:
         - change
+      message:
+        - File creation time
     '3':
       category:
         - network
@@ -35,99 +39,137 @@ definitions:
         - start
         - connection
         - protocol
+      message:
+        - Network connection detected
     '4':
       category:
         - process
       type:
         - change
+      message:
+        - Sysmon service state change (cannot be filtered)
     '5':
       category:
         - process
       type:
         - end
+      message:
+        - Process terminated
     '6':
       category:
         - driver
       type:
         - start
+      message:
+        - Driver Loaded
     '7':
       category:
         - process
       type:
         - change
+      message:
+        - Image loaded
     '8':
       category:
         - process
       type:
         - change
+      message:
+        - CreateRemoteThread detected
     '9':
       category:
         - process
       type:
         - access
+      message:
+        - RawAccessRead detected
     '10':
       category:
         - process
       type:
         - access
+      message:
+        - Process accessed
     '11':
       category:
         - file
       type:
         - creation
+      message:
+        - File created
     '12':
       category:
         - configuration
         - registry
       type:
         - change
+      message:
+        - Registry object added or deleted
     '13':
       category:
         - configuration
         - registry
       type:
         - change
+      message:
+        - Registry value set
     '14':
       category:
         - configuration
         - registry
       type:
         - change
+      message:
+        - Registry object renamed
     '15':
       category:
         - file
       type:
         - access
+      message:
+        - File stream created
     '16':
       category:
         - configuration
       type:
         - change
+      message:
+        - Sysmon configuration change (cannot be filtered)
     '17':
       category:
         - file
       type:
         - creation
+      message:
+        - Named pipe created
     '18':
       category:
         - file
       type:
         - access
+      message:
+        - Named pipe connected
     '19':
       category:
         - process
       type:
         - creation
+      message:
+        - WMI filter
     '20':
       category:
         - process
       type:
         - creation
+      message:
+        - WMI consumer
     '21':
       category:
         - process
       type:
         - access
+      message:
+        - WMI consumer filter
     '22':
       category:
         - network
@@ -135,41 +177,57 @@ definitions:
         - connection
         - protocol
         - info
+      message:
+        - DNS query
     '23':
       category:
         - file
       type:
         - deletion
+      message:
+        - File Delete archived
     '24':
       type:
         - change
+      message:
+        - New content in the clipboard
     '25':
       category:
         - process
       type:
         - change
+      message:
+        - Process image change
     '26':
       category:
         - file
       type:
         - deletion
+      message:
+        - File Delete logged
     '27':
       category:
         - file
       type:
         - creation
         - denied
+      message:
+        - File Block Executable
     '28':
       category:
         - file
       type:
         - deletion
         - denied
+      message:
+        - File Block Shredding
     '255':
       category:
         - process
       type:
         - error
+      message:
+        - File Executable Detected
 
 check:
   - windows.System.Provider.@Name: Microsoft-Windows-Sysmon
@@ -180,6 +238,7 @@ normalize:
     - event.dataset: sysmon
     - event.kind: event
     - event: merge_value($idEvent_map, $event.code)
+    - message: rename($event.message)
 
     # Add categorization fields
     - rule.name: $windows.EventData.RuleName
