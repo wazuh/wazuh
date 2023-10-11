@@ -8,7 +8,10 @@ class DeleteCommand(Command):
     def run(self, args):
         super().run(args)
         integration = CrudIntegration()
-        integration.delete_integration(args['integration-name'])
+        try:
+            integration.delete_integration(args['integration-name'])
+        except Exception as ex:
+            print(ex)
 
     def configure(self, subparsers):
         parser_list = subparsers.add_parser("delete", help='Delete integration')
