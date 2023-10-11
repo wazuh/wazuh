@@ -11,5 +11,5 @@ def restart_wazuh_expect_error() -> None:
         pass
 
     yield
-    
+
     services.control_service('stop')
