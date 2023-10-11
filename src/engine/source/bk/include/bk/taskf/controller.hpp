@@ -60,8 +60,9 @@ public:
      *
      * @param expression expression to build
      * @param traceables traceables expressions
+     * @param endCallback callback to call when the expression is finished
      */
-    Controller(base::Expression expression, std::unordered_set<std::string> traceables);
+    Controller(base::Expression expression, std::unordered_set<std::string> traceables, std::function<void()> endCallback = nullptr);
 
     /**
      * @copydoc bk::IController::ingest
