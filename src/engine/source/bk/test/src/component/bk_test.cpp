@@ -2,7 +2,6 @@
 
 #include <bk/taskf/controller.hpp>
 
-
 using namespace bk::taskf;
 
 /********************************************
@@ -112,9 +111,17 @@ class BKTaskFlowControllerTest : public ::testing::TestWithParam<BKexpParams>
 TEST_P(BKTaskFlowControllerTest, buildAndIngest)
 {
     auto [expr, expResult] = GetParam();
-    auto controller = bk::taskf::Controller(FakePolicy {expr, {}});
+    auto counter = 0;
+    auto controller =
+        bk::taskf::Controller(expr,
+                              {},
+                              [&]()
+                              {
+                                  ++counter;
+                                  ASSERT_EQ(counter, 1)
+                                      << "Only one event is send but the end callback received more than one event";
+                              });
     auto event = std::make_shared<json::Json>();
-
     ASSERT_NO_THROW(event = controller.ingestGet(std::move(event)));
 
     auto jResult = event->getArray();
@@ -514,22 +521,22 @@ INSTANTIATE_TEST_SUITE_P(
         // [3] Complex: And of or
         BKexpParams {base::And::create("and", {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
                      {{"or_0_0", true}, {"or_1_0", true}}},
-        BKexpParams {base::And::create(
-                         "and", {EasyExp::or_("or_0", {false, true}), EasyExp::or_("or_1", {false, true})}),
-                        {{"or_0_0", false}, {"or_0_1", true}, {"or_1_0", false}, {"or_1_1", true}}},
-        BKexpParams {base::And::create(
-                         "and", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
-                        {{"or_0_0", false}, {"or_0_1", false}}},
+        BKexpParams {
+            base::And::create("and", {EasyExp::or_("or_0", {false, true}), EasyExp::or_("or_1", {false, true})}),
+            {{"or_0_0", false}, {"or_0_1", true}, {"or_1_0", false}, {"or_1_1", true}}},
+        BKexpParams {
+            base::And::create("and", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
+            {{"or_0_0", false}, {"or_0_1", false}}},
         // [2] Complex: And of and
-        BKexpParams {base::And::create("and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
-                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
-        BKexpParams {base::And::create(
-                         "and", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
-                     {{"and_0_0", false}}},
-        BKexpParams {base::And::create(
-                         "and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})}),
-                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}}
-        // End
+        BKexpParams {
+            base::And::create("and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
+            {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
+        BKexpParams {
+            base::And::create("and", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
+            {{"and_0_0", false}}},
+        BKexpParams {
+            base::And::create("and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})}),
+            {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}} // End
         ));
 
 struct Subscriber
