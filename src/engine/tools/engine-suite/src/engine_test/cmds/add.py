@@ -9,10 +9,13 @@ class AddCommand(Command):
     def run(self, args):
         super().run(args)
         integration = CrudIntegration()
-        if (args['integration_path'] != None):
-            integration.import_integration(args['integration_path'])
-        else:
-            integration.save_integration(args['integration_name'], args['format'], args['origin'])
+        try:
+            if (args['integration_path'] != None):
+                integration.import_integration(args['integration_path'])
+            else:
+                integration.save_integration(args['integration_name'], args['format'], args['origin'])
+        except Exception as ex:
+            print(ex)
 
     def configure(self, subparsers):
         parser_add = subparsers.add_parser("add", help='Add integration')
