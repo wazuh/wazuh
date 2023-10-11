@@ -201,7 +201,7 @@ int main (int argc, char **argv) {
 
     write_debug_file(argv[0], "Ended");
 
-	cJSON_Delete(input_json);
+    cJSON_Delete(input_json);
     os_free(netsh_path);
 
     return OS_SUCCESS;

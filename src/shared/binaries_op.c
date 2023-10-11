@@ -9,6 +9,13 @@
 
 #include "shared.h"
 
+
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#define getenv wrap_getenv
+#endif
+#endif
+
 int get_binary_path(const char *binary, char **validated_comm) {
 #ifdef WIN32
     const char sep[2] = ";";
@@ -19,23 +26,21 @@ int get_binary_path(const char *binary, char **validated_comm) {
     char *full_path;
     char *validated = NULL;
     char *env_path = NULL;
+    char *env_path_copy = NULL;
     char *save_ptr = NULL;
 
-#ifdef WIN32
-    if (IsFile(binary) == 0) {
-#else
-    if (binary[0] == '/') {
+    if (isabspath(binary)) {
         // Check binary full path
         if (IsFile(binary) == -1) {
             return OS_INVALID;
         }
-#endif
         validated = strdup(binary);
 
     } else {
 
         env_path = getenv("PATH");
-        path = strtok_r(env_path, sep, &save_ptr);
+        os_strdup(env_path, env_path_copy);
+        path = strtok_r(env_path_copy, sep, &save_ptr);
 
         while (path != NULL) {
             os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
@@ -58,7 +63,7 @@ int get_binary_path(const char *binary, char **validated_comm) {
             if (validated_comm) {
                 *validated_comm = strdup(binary);
             }
-            os_free(env_path);
+            os_free(env_path_copy);
             return OS_INVALID;
         }
     }
@@ -66,8 +71,7 @@ int get_binary_path(const char *binary, char **validated_comm) {
     if (validated_comm) {
         *validated_comm = strdup(validated);
     }
-
     os_free(validated);
-    os_free(env_path);
+    os_free(env_path_copy);
     return OS_SUCCESS;
 }

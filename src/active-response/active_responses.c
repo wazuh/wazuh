@@ -25,15 +25,6 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
 
-#ifdef WIN32
-/**
- * Check if dir exists
- * @param dir Input path to be checked
- * @return 1 if it exists or 0 if it does not exist.
- * */
-static int direxist(char *dir);
-#endif
-
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -657,5 +648,4 @@ int get_ip_version(const char *ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
-#else
 #endif

@@ -155,5 +155,4 @@ void unlock(const char *lock_path, const char *log_path);
  * */
 int get_ip_version(const char *ip);
 
-#else
 #endif

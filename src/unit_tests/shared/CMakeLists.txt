@@ -185,11 +185,14 @@ list(APPEND shared_tests_flags " ")
 endif()
 
 list(APPEND shared_tests_names "test_binaries_op")
-set(BINARIES_OP_BASE_FLAGS "-Wl,--wrap,getenv -Wl,--wrap,IsFile ${DEBUG_OP_WRAPPERS}")
+set(BINARIES_OP_BASE_FLAGS "-Wl,--wrap,IsFile")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck")
+list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
+                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS}")
+list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,getenv")
 endif()
 
 

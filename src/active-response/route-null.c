@@ -124,7 +124,6 @@ int main (int argc, char **argv) {
 #else
     char log_msg[OS_MAXSTR];
     char *route_path = NULL;
-    char win_dir[OS_MAXSTR -1];
 
     if (get_binary_path("route.exe", &route_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);

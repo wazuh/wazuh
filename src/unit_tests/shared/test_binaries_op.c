@@ -14,13 +14,31 @@
 #include <stdio.h>
 #include <string.h>
 #include "shared.h"
-#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../headers/binaries_op.h"
+#include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
-char *__wrap_getenv(const char *__name) {
-    check_expected(__name);
+/* setups/teardowns */
+static int setup_group(void **state) {
+    test_mode = 1;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    test_mode = 0;
+    return 0;
+}
+
+#ifndef TEST_WINAGENT
+extern char * __real_getenv(const char *name);
+char * __wrap_getenv(const char *name) {
+    if (!test_mode) {
+        return __real_getenv(name);
+    }
+    check_expected(name);
     return mock_type(char *);
 }
+#endif
 
 #ifdef TEST_WINAGENT
 void test_get_binary_path_full_path_found(void **state) {
@@ -51,11 +69,10 @@ void test_get_binary_path_full_path_not_found(void **state) {
 
 void test_get_binary_path_first(void **state) {
     char *cmd_path = NULL;
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "c:\\home\\test";
 
-    os_strdup("c:\\home\\test\\", path);
-    expect_string(__wrap_getenv, __name, "PATH");
-    will_return(__wrap_getenv, path);
+    expect_string(wrap_getenv, name, "PATH");
+    will_return(wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "c:\\home\\test\\uname");
     will_return(__wrap_IsFile, 0);
@@ -70,11 +87,10 @@ void test_get_binary_path_first(void **state) {
 
 void test_get_binary_path_usr_bin(void **state) {
     char *cmd_path = NULL;
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "c:\\home\\test;c:\\usr\\bin";
 
-    os_strdup("c:\\home\\test\\uname;c:\\usr\\bin", path);
-    expect_string(__wrap_getenv, __name, "PATH");
-    will_return(__wrap_getenv, path);
+    expect_string(wrap_getenv, name, "PATH");
+    will_return(wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "c:\\home\\test\\uname");
     will_return(__wrap_IsFile, -1);
@@ -91,11 +107,10 @@ void test_get_binary_path_usr_bin(void **state) {
 
 void test_get_binary_path_not_found(void **state) {
     char *cmd_path = NULL;
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "c:\\home\\test;c:\\usr\\bin";
 
-    os_strdup("c:\\home\\test\\uname:c:\\usr\\bin", path);
-    expect_string(__wrap_getenv, __name, "PATH");
-    will_return(__wrap_getenv, path);
+    expect_string(wrap_getenv, name, "PATH");
+    will_return(wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "c:\\home\\test\\uname");
     will_return(__wrap_IsFile, -1);
@@ -111,11 +126,10 @@ void test_get_binary_path_not_found(void **state) {
 }
 
 void test_get_binary_path_first_validated_null(void **state) {
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "c:\\home\\test";
 
-    os_strdup("c:\\home\\test", path);
-    expect_string(__wrap_getenv, __name, "PATH");
-    will_return(__wrap_getenv, path);
+    expect_string(wrap_getenv, name, "PATH");
+    will_return(wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "c:\\home\\test\\uname");
     will_return(__wrap_IsFile, 0);
@@ -126,11 +140,10 @@ void test_get_binary_path_first_validated_null(void **state) {
 }
 
 void test_get_binary_path_not_found_validated_null(void **state) {
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "c:\\home\\test;c:\\usr\\bin";
 
-    os_strdup("c:\\home\\test\\uname:c:\\usr\\bin", path);
-    expect_string(__wrap_getenv, __name, "PATH");
-    will_return(__wrap_getenv, path);
+    expect_string(wrap_getenv, name, "PATH");
+    will_return(wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "c:\\home\\test\\uname");
     will_return(__wrap_IsFile, -1);
@@ -171,10 +184,9 @@ void test_get_binary_path_full_path_not_found(void **state) {
 
 void test_get_binary_path_first(void **state) {
     char *cmd_path = NULL;
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "/home/test";
 
-    os_strdup("/home/test", path);
-    expect_string(__wrap_getenv, __name, "PATH");
+    expect_string(__wrap_getenv, name, "PATH");
     will_return(__wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "/home/test/uname");
@@ -190,10 +202,9 @@ void test_get_binary_path_first(void **state) {
 
 void test_get_binary_path_usr_bin(void **state) {
     char *cmd_path = NULL;
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "/home/test:/usr/bin";
 
-    os_strdup("/home/test:/usr/bin", path);
-    expect_string(__wrap_getenv, __name, "PATH");
+    expect_string(__wrap_getenv, name, "PATH");
     will_return(__wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "/home/test/uname");
@@ -211,10 +222,9 @@ void test_get_binary_path_usr_bin(void **state) {
 
 void test_get_binary_path_not_found(void **state) {
     char *cmd_path = NULL;
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "/home/test:/usr/bin";
 
-    os_strdup("/home/test:/usr/bin", path);
-    expect_string(__wrap_getenv, __name, "PATH");
+    expect_string(__wrap_getenv, name, "PATH");
     will_return(__wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "/home/test/uname");
@@ -231,10 +241,9 @@ void test_get_binary_path_not_found(void **state) {
 }
 
 void test_get_binary_path_first_validated_null(void **state) {
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "/home/test";
 
-    os_strdup("/home/test", path);
-    expect_string(__wrap_getenv, __name, "PATH");
+    expect_string(__wrap_getenv, name, "PATH");
     will_return(__wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "/home/test/uname");
@@ -246,10 +255,9 @@ void test_get_binary_path_first_validated_null(void **state) {
 }
 
 void test_get_binary_path_not_found_validated_null(void **state) {
-    char *path = NULL;
+    char path[OS_BUFFER_SIZE] = "/home/test:/usr/bin";
 
-    os_strdup("/home/test:/usr/bin", path);
-    expect_string(__wrap_getenv, __name, "PATH");
+    expect_string(__wrap_getenv, name, "PATH");
     will_return(__wrap_getenv, path);
 
     expect_string(__wrap_IsFile, file, "/home/test/uname");
@@ -275,5 +283,5 @@ int main(void) {
         cmocka_unit_test(test_get_binary_path_first_validated_null),
         cmocka_unit_test(test_get_binary_path_not_found_validated_null),
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
