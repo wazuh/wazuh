@@ -393,7 +393,6 @@ class RCPWrapper final : public IPackageWrapper
                             {
                                 continue;
                             }
-                            filename = filenames[it->second] + "/" + filename;
 
                             while (it != parents.end())
                             {
