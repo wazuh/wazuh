@@ -6,6 +6,6 @@
         -  allowed-ips:
             value: 127.0.0.1
         - port:
-            value: 'PORT' 
+            value: 'PORT'
         - protocol:
             value: 'PROTOCOL'

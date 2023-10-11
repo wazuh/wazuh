@@ -49,7 +49,7 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options using the values from `local_internal_options`.
-        - daemons_handler: 
+        - daemons_handler:
             type: fixture
             brief: Starts/Restarts the daemons indicated in `daemons_handler_configuration` before each test,
                    once the test finishes, stops the daemons.
@@ -61,8 +61,8 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     log_monitor.start(callback=generate_callback(regex=INVALID_VALUE_FOR_PORT_NUMBER, replacement={"port": test_metadata['port_number']}))
-    assert test_metadata['port_number'] in log_monitor.callback_result 
-  
+    assert test_metadata['port_number'] in log_monitor.callback_result
+
     log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/ossec.conf"}))
     assert log_monitor.callback_result
 
