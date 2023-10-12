@@ -16,7 +16,7 @@ from aiohttp import web
 import wazuh
 from api.constants import INSTALLATION_UID_KEY, INSTALLATION_UID_PATH, UPDATE_INFORMATION_KEY
 from wazuh.core import common
-from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.requests import query_update_check_service
 
@@ -70,19 +70,6 @@ def _get_current_version() -> str:
         Wazuh version in X.Y.Z format.
     """
     return wazuh.__version__
-
-
-def _is_running_in_master_node() -> bool:
-    """Determine if cluster is disabled or API is running in a master node.
-
-    Returns
-    -------
-    bool
-        True if API is running in master node or if cluster is disabled else False.
-    """
-    cluster_config = read_cluster_config()
-
-    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
 
 
 async def modify_response_headers(request, response):
@@ -140,7 +127,7 @@ async def register_background_tasks(app: web.Application) -> AsyncGenerator:
     """
     tasks: list[asyncio.Task] = []
 
-    if _is_running_in_master_node() and update_check_is_enabled():
+    if running_in_master_node() and update_check_is_enabled():
         tasks.append(asyncio.create_task(check_installation_uid(app)))
         tasks.append(asyncio.create_task(get_update_information(app)))
 

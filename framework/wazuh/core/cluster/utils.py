@@ -354,3 +354,16 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
                           broadcasting=broadcasting)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()
+
+
+def running_in_master_node() -> bool:
+    """Determine if cluster is disabled or API is running in a master node.
+
+    Returns
+    -------
+    bool
+        True if API is running in master node or if cluster is disabled else False.
+    """
+    cluster_config = read_cluster_config()
+
+    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
