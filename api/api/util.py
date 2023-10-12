@@ -14,6 +14,7 @@ from connexion import ProblemException
 
 from api.api_exception import APIError
 from wazuh.core import common, exception
+from wazuh.core.cluster.utils import running_in_master_node
 
 
 class APILoggerSize:
@@ -465,3 +466,16 @@ def deprecate_endpoint(link: str = ''):
         return wrapper
 
     return add_deprecation_headers
+
+
+def only_master_endpoint(func):
+    """Decorator used to restrict endpoints only on master node."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not running_in_master_node():
+            raise_if_exc(exception.WazuhResourceNotFound(902))
+        else:
+            return func(*args, **kwargs)
+
+    return wrapper
