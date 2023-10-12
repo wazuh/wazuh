@@ -13078,15 +13078,15 @@ paths:
     get:
       tags:
       - Manager
-      summary: "Check available version update"
-      description: "Return if there an available version update"
+      summary: "Check available updates"
+      description: "Return if there any available update"
       operationId: api.controllers.manager_controller.check_available_version
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/force_query'
       responses:
         '200':
-          description: "Information about the available version"
+          description: "Information about available new versions"
           content:
             application/json:
               schema:
@@ -13095,9 +13095,10 @@ paths:
                 data:
                   last_check_date: '2023-10-09T15:39:57.616301+00:00'
                   current_version: v4.8.0
+                  update_check: true
                   last_available_major:
                     tag: v5.0.0
-                    description:
+                    description: ""
                     title: Wazuh 5.0.0
                     published_date: '2023-10-05T12:48:00Z'
                     semver:
@@ -13106,7 +13107,7 @@ paths:
                       patch: 0
                   last_available_minor:
                     tag: v4.9.1
-                    description:
+                    description: ""
                     title: Wazuh 4.9.1
                     published_date: '2023-10-05T12:47:00Z'
                     semver:
@@ -13115,7 +13116,7 @@ paths:
                       patch: 1
                   last_available_patch:
                     tag: v4.8.2
-                    description:
+                    description: ""
                     title: Wazuh 4.8.2
                     published_date: '2023-10-05T12:46:00Z'
                     semver:
