@@ -1,13 +1,16 @@
+from datetime import datetime
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from aiohttp import ClientError
 
+import wazuh
 from wazuh.core.requests import (
     RELEASE_UPDATES_URL,
     WAZUH_TAG_KEY,
     WAZUH_UID_KEY,
+    get_update_information_template,
     query_update_check_service,
 )
 
@@ -26,6 +29,21 @@ def installation_uid():
 
 
 # Tests
+
+@pytest.mark.parametrize('update_check', (True, False))
+@pytest.mark.parametrize('last_check_date', (None, datetime.now()))
+def test_get_update_information_template(last_check_date, update_check):
+    template = get_update_information_template(update_check=update_check, last_check_date=last_check_date)
+
+    assert 'last_check_date' in template
+    assert template['last_check_date'] == (last_check_date if last_check_date is not None else '')
+    assert 'update_check' in template
+    assert template['update_check'] == update_check
+    assert 'current_version' in template
+    assert template['current_version'] == wazuh.__version__
+    assert 'last_available_major' in template
+    assert 'last_available_minor' in template
+    assert 'last_available_patch' in template
 
 
 @pytest.mark.asyncio
