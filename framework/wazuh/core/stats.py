@@ -225,8 +225,8 @@ def is_agent_a_manager(agent_id: Union[str, int]) -> bool:
 
     Parameters
     ----------
-    agent_id: str
-        The ID of the agent to check.
+    agent_id: Union[str, int]
+        The ID of the agent to check, which can be either a string or an integer.
 
     Returns
     -------
@@ -242,8 +242,8 @@ def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
 
     Parameters
     ----------
-    agent_id: str
-        The ID of the agent.
+    agent_id: Union[str, int]
+        The ID of the agent, which can be either a string or an integer.
     daemon: str
         The name of the daemon.
 
@@ -264,12 +264,12 @@ def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool
 
     Parameters
     ----------
-    agent_id: str
-        The ID of the agent.
+    agent_id: Union[str, int]
+        The ID of the agent, which can be either a string or an integer.
     daemon: str
         The name of the daemon.
     next_page: bool
-        If the next page of the response is requested.
+        If True, request the next page of the response.
 
     Returns
     -------
@@ -294,8 +294,8 @@ def check_if_daemon_exists_in_agent(agent_id: Union[str, int], daemon: str) -> b
 
     Parameters
     ----------
-    agent_id: str
-        The ID of the agent.
+    agent_id: Union[str, int]
+        The ID of the agent, which can be either a string or an integer.
     daemon: str
         The name of the daemon.
 
