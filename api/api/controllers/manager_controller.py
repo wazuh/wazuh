@@ -18,7 +18,9 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deseri
 from api.validator import check_component_configuration_pair
 from wazuh.core import common
 from wazuh.core import configuration, requests
+from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -621,6 +623,9 @@ async def check_available_version(
     web.Response
         API response.
     """
+
+    if not running_in_master_node():
+        raise_if_exc(WazuhResourceNotFound(902))
 
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')

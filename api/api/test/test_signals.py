@@ -13,7 +13,6 @@ from api.signals import (
     get_update_information,
     register_background_tasks,
 )
-from wazuh.core.configuration import UPDATE_CHECK_OSSEC_FIELD
 
 # Fixtures
 
@@ -152,55 +151,19 @@ async def test_get_update_information_schedule(
 @pytest.mark.parametrize(
     'cluster_config,update_check_config,registered_tasks',
     [
-        (
-            {'disabled': False, 'node_type': 'master'},
-            True,
-            2,
-        ),
-        (
-            {'disabled': False, 'node_type': 'master'},
-            False,
-            0,
-        ),
-        (
-            {'disabled': False, 'node_type': 'worker'},
-            True,
-            0,
-        ),
-        (
-            {'disabled': False, 'node_type': 'worker'},
-            False,
-            0,
-        ),
-        (
-            {'disabled': True, 'node_type': 'master'},
-            True,
-            2,
-        ),
-        (
-            {'disabled': True, 'node_type': 'master'},
-            False,
-            0,
-        ),
-        (
-            {'disabled': True, 'node_type': 'worker'},
-            True,
-            2,
-        ),
-        (
-            {'disabled': True, 'node_type': 'worker'},
-            False,
-            0,
-        ),
+        (True, True, 2),
+        (True, False, 0),
+        (False, True, 0),
+        (False, False, 0),
     ],
 )
 @patch('api.signals.check_installation_uid')
 @patch('api.signals.get_update_information')
 @patch('api.signals.update_check_is_enabled')
-@patch('api.signals.read_cluster_config')
+@patch('api.signals.running_in_master_node')
 @pytest.mark.asyncio
 async def test_register_background_tasks(
-    cluster_config_mock,
+    running_in_master_node_mock,
     update_check_mock,
     get_update_information_mock,
     check_installation_uid_mock,
@@ -213,7 +176,7 @@ async def test_register_background_tasks(
             self.await_count += 1
             return iter([])
 
-    cluster_config_mock.return_value = cluster_config
+    running_in_master_node_mock.return_value = cluster_config
     update_check_mock.return_value = update_check_config
 
     with patch('api.signals.asyncio') as create_task_mock:
