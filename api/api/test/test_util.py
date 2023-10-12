@@ -302,3 +302,16 @@ async def test_deprecate_endpoint(link):
         assert response.headers.pop('Link') == f'<{link}>; rel="Deprecated"', 'No link was found'
 
     assert response.headers == {}, f'Unexpected deprecation headers were found: {response.headers}'
+
+
+@patch('api.util.raise_if_exc')
+def test_only_master_endpoint(mock_exc):
+    @util.only_master_endpoint
+    def func_():
+        pass
+
+    with patch('api.util.running_in_master_node', return_value=False):
+        func_()
+        mock_exc.assert_called_once_with(WazuhResourceNotFound(902))
+    with patch('api.util.running_in_master_node', return_value=True):
+        func_()
