@@ -285,3 +285,19 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
     assert await utils.forward_function(auxiliary_func) == DAPIMock().result()
     distributed_api_mock.assert_called_once()
     concurrent_mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    'cluster_config,expected',
+    (
+        [{'disabled': False, 'node_type': 'master'}, True],
+        [{'disabled': False, 'node_type': 'worker'}, False],
+        [{'disabled': True, 'node_type': 'master'}, True],
+        [{'disabled': True, 'node_type': 'worker'}, True],
+    )
+)
+@patch('wazuh.core.cluster.utils.read_cluster_config')
+def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
+    read_cluster_config_mock.return_value = cluster_config
+
+    assert utils.running_in_master_node() == expected
