@@ -3376,10 +3376,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'c:sshd -T -C user=root -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 33634 
@@ -3401,10 +3402,11 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
       - "f:/etc/ssh/sshd_config -> r:loglevel"
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:loglevel'
 
   # 5.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 33635 
@@ -3419,10 +3421,11 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1021", "T1021.004"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
       - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\sUsePAM\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled. (Automated)
   - id: 33636 
@@ -3442,10 +3445,11 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\sPermitRootLogin\s+yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled. (Automated)
   - id: 33637 
@@ -3465,10 +3469,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\sHostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
   - id: 33638 
@@ -3488,10 +3493,11 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\sPermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled. (Automated)
   - id: 33639 
@@ -3512,10 +3518,11 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\sPermitUserEnvironment\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\sPermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled. (Automated)
   - id: 33640 
@@ -3529,10 +3536,11 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:\s*ignorerhosts\s*yes'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*ignorerhosts\s+no'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled. (Automated)
   - id: 33641 
@@ -3553,10 +3561,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*x11forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled. (Automated)
   - id: 33642 
@@ -3584,6 +3593,7 @@ checks:
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> r:^\s*AllowTcpForwarding\s+yes'
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden. (Automated)
   - id: 33643 
