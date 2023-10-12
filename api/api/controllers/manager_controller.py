@@ -14,13 +14,13 @@ import wazuh.stats as stats
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
+from api.util import (
+    deprecate_endpoint, deserialize_date, only_master_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+)
 from api.validator import check_component_configuration_pair
 from wazuh.core import common
 from wazuh.core import configuration, requests
-from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -604,6 +604,7 @@ async def update_configuration(request, body: dict, pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@only_master_endpoint
 async def check_available_version(
         request: web.Request, pretty: bool = False, force_query: bool = False
 ) -> web.Response:
@@ -623,9 +624,6 @@ async def check_available_version(
     web.Response
         API response.
     """
-
-    if not running_in_master_node():
-        raise_if_exc(WazuhResourceNotFound(902))
 
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
