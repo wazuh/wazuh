@@ -325,18 +325,23 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 @patch('wazuh.cdb_list.delete_list_file')
 @patch('wazuh.cdb_list.remove')
 @patch('wazuh.cdb_list.exists', return_value=True)
+@pytest.mark.parametrize('relative_dirname', ['/some/value', None])
 def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_upload_file,
-                          mock_delete_file_with_backup, mock_safe_move):
+                          mock_delete_file_with_backup, mock_safe_move, relative_dirname):
     """Check that functions inside upload_list_file are called with expected params"""
     filename = 'test_file'
     content = 'test_key:test_value\n'
-    upload_list_file(filename, content, overwrite=True)
+    upload_list_file(filename, content, overwrite=True, relative_dirname=relative_dirname)
 
-    mock_upload_file.assert_called_once_with(content, os.path.join('etc', 'lists', filename),
-                                             check_xml_formula_values=False)
-    mock_delete_file_with_backup.assert_called_once_with(os.path.join(common.USER_LISTS_PATH, filename + '.backup'),
-                                                         os.path.join(common.USER_LISTS_PATH, filename),
-                                                         mock_delete_list_file)
+    etc_list_path = os.path.join('etc', 'lists', relative_dirname, filename) if relative_dirname\
+        else os.path.join('etc', 'lists', filename)
+    backup_path = os.path.join(common.USER_LISTS_PATH, relative_dirname, filename + '.backup') if relative_dirname\
+        else os.path.join(common.USER_LISTS_PATH, filename + '.backup')
+    path = os.path.join(common.USER_LISTS_PATH, relative_dirname, filename) if relative_dirname\
+        else os.path.join(common.USER_LISTS_PATH, filename)
+
+    mock_upload_file.assert_called_once_with(content, etc_list_path, check_xml_formula_values=False)
+    mock_delete_file_with_backup.assert_called_once_with(backup_path, path, mock_delete_list_file)
 
 
 @patch('wazuh.cdb_list.common.USER_LISTS_PATH', return_value='/test/path')
@@ -373,18 +378,21 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
-def test_delete_list_file(mock_delete_file):
+@pytest.mark.parametrize('relative_dirname', ['/some/value', None])
+def test_delete_list_file(mock_delete_file, relative_dirname):
     """Check that expected result is returned when the file is deleted."""
     try:
         # Create directory for the test
-        test_file = os.path.join(DATA_PATH, 'test_file')
+        test_file = os.path.join(DATA_PATH, relative_dirname, 'test_file') if relative_dirname \
+            else os.path.join(DATA_PATH, 'test_file')
         with open(test_file, 'a') as f:
             f.write('key:value\n"ke:y2":value2\n')
 
         with patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH):
-            result = delete_list_file(['test_file'])
-            assert result.render()['data']['affected_items'][0] ==\
-                   'framework/wazuh/tests/data/test_cdb_list/test_file'
+            result = delete_list_file(['test_file'], relative_dirname=relative_dirname)
+            relative_path = os.path.join(RELATIVE_PATH, relative_dirname, 'test_file') if relative_dirname \
+                else os.path.join(RELATIVE_PATH, relative_dirname, 'test_file')
+            assert result.render()['data']['affected_items'][0] == relative_path
     finally:
         try:
             os.remove(test_file)

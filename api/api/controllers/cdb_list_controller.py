@@ -126,7 +126,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
 
 
 async def put_file(request, body: dict, overwrite: bool = False, pretty: bool = False, wait_for_complete: bool = False,
-                   filename: str = None) -> web.Response:
+                   filename: str = None, relative_dirname: str = None) -> web.Response:
     """Upload content of CDB list file.
 
     Parameters
@@ -142,6 +142,8 @@ async def put_file(request, body: dict, overwrite: bool = False, pretty: bool = 
         If set to false, an exception will be raised when updating contents of an already existing filename.
     filename : str
         Name of the new CDB list file.
+    relative_dirname : str
+        Relative directory where the file is located.
 
     Returns
     -------
@@ -154,7 +156,8 @@ async def put_file(request, body: dict, overwrite: bool = False, pretty: bool = 
 
     f_kwargs = {'filename': filename,
                 'overwrite': overwrite,
-                'content': parsed_body}
+                'content': parsed_body,
+                'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=cdb_list.upload_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -170,7 +173,7 @@ async def put_file(request, body: dict, overwrite: bool = False, pretty: bool = 
 
 
 async def delete_file(request, pretty: bool = False, wait_for_complete: bool = False,
-                      filename: str = None) -> web.Response:
+                      filename: str = None, relative_dirname: str = None) -> web.Response:
     """Delete a CDB list file.
 
     Parameters
@@ -182,13 +185,15 @@ async def delete_file(request, pretty: bool = False, wait_for_complete: bool = F
         Disable timeout response.
     filename : str
         Name of the CDB list file to delete.
+    relative_dirname : str
+        Relative directory where the file is located.
 
     Returns
     -------
     web.Response
         API response.
     """
-    f_kwargs = {'filename': filename}
+    f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=cdb_list.delete_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

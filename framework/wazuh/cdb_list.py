@@ -111,7 +111,8 @@ def get_list_file(filename: list = None, raw: bool = None) -> AffectedItemsWazuh
 
 
 @expose_resources(actions=['lists:update'], resources=['*:*:*'])
-def upload_list_file(filename: str = None, content: str = None, overwrite: bool = False) -> AffectedItemsWazuhResult:
+def upload_list_file(filename: str = None, content: str = None, overwrite: bool = False,
+                     relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Upload a new list file.
 
     Parameters
@@ -122,6 +123,8 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
         Content of file to be uploaded.
     overwrite : bool
         True for updating existing files, false otherwise.
+    relative_dirname : str
+        Relative directory where the file is located.
 
     Returns
     -------
@@ -130,7 +133,10 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
                                       none_msg='Could not upload CDB list file')
-    full_path = join(common.USER_LISTS_PATH, filename)
+    if relative_dirname:
+        full_path = join(common.USER_LISTS_PATH, relative_dirname, filename[0])
+    else:
+        full_path = join(common.USER_LISTS_PATH, filename[0])
     backup_file = ''
 
     try:
@@ -163,13 +169,15 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
 
 
 @expose_resources(actions=['lists:delete'], resources=['list:file:{filename}'])
-def delete_list_file(filename: list) -> AffectedItemsWazuhResult:
+def delete_list_file(filename: list, relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a CDB list file.
 
     Parameters
     ----------
     filename : list
         Destination path of the new file.
+    relative_dirname : str
+        Relative directory where the file is located.
 
     Returns
     -------
@@ -178,7 +186,11 @@ def delete_list_file(filename: list) -> AffectedItemsWazuhResult:
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file was successfully deleted',
                                       none_msg='Could not delete CDB list file')
-    full_path = join(common.USER_LISTS_PATH, filename[0])
+
+    if relative_dirname:
+        full_path = join(common.USER_LISTS_PATH, relative_dirname, filename[0])
+    else:
+        full_path = join(common.USER_LISTS_PATH, filename[0])
 
     try:
         delete_list(to_relative_path(full_path))
