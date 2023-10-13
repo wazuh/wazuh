@@ -13,6 +13,7 @@
 #include "rsyncImplementationTest.h"
 #include "rsyncImplementation.h"
 #include "rsync_exception.h"
+#include "rsync.hpp"
 #include "../mocks/dbsyncmock.h"
 
 using ::testing::_;
@@ -65,7 +66,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
     const auto config { R"({"decoder_type":"JSON_RANGE", "component":"test_decoder","table":"test","no_data_query_json":{"row_filter":"","column_list":"","distinct_opt":"","order_by_opt":""}})" };
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
-    EXPECT_CALL(*mockDbSync, select(_, _));
+    EXPECT_CALL(*mockDbSync, select(_, _)).Times(3);
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle, "test_id", mockDbSync, nlohmann::json::parse(config), {}));
 
     std::string buffer{R"(test_id no_data {"begin":"1","end":"2","id":1})"};
@@ -74,7 +75,59 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
     const auto last{first + buffer.size()};
     const std::vector<unsigned char> data{first, last};
 
+    const auto startConfigStmt =
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"_json;
+
+    std::function<void(const std::string&)> callbackWrapper
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper](const std::string & payload)
+        {
+            callbackWrapper(payload);
+        }
+    };
+
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
@@ -132,6 +185,18 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
 
     EXPECT_CALL(*mockDbSync, select(_, _)).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
     {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data["checksum"] = "test_checksum";
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
         data["count_field"] = 1;
         callback(ReturnTypeCallback::GENERIC, data);
     })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
@@ -157,7 +222,59 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
     const auto last{first + buffer.size()};
     const std::vector<unsigned char> data{first, last};
 
+    const auto startConfigStmt =
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"_json;
+
+    std::function<void(const std::string&)> callbackWrapper2
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper2](const std::string & payload)
+        {
+            callbackWrapper2(payload);
+        }
+    };
+
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
@@ -221,6 +338,18 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
 
     EXPECT_CALL(*mockDbSync, select(_, _)).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
     {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data["checksum"] = "test_checksum";
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
         data["count_field"] = 2;
         callback(ReturnTypeCallback::GENERIC, data);
     })).WillOnce(testing::DoAll(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
@@ -272,7 +401,59 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
     const auto last{first + buffer.size()};
     const std::vector<unsigned char> data{first, last};
 
+    const auto startConfigStmt =
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"_json;
+
+    std::function<void(const std::string&)> callbackWrapper2
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper2](const std::string & payload)
+        {
+            callbackWrapper2(payload);
+        }
+    };
+
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 
@@ -318,7 +499,19 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
 
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
-    EXPECT_CALL(*mockDbSync, select(_, _)).Times(0);
+    EXPECT_CALL(*mockDbSync, select(_, _)).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data["checksum"] = "test_checksum";
+        callback(ReturnTypeCallback::GENERIC, data);
+    }));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle, "test_id", mockDbSync, nlohmann::json::parse(config), nullptr));
 
@@ -328,7 +521,59 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
     const auto last{first + buffer.size()};
     const std::vector<unsigned char> data{first, last};
 
+    const auto startConfigStmt =
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"_json;
+
+    std::function<void(const std::string&)> callbackWrapper2
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper2](const std::string & payload)
+        {
+            callbackWrapper2(payload);
+        }
+    };
+
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
@@ -375,6 +620,18 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
 
     EXPECT_CALL(*mockDbSync, select(_, _)).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
     {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data["checksum"] = "test_checksum";
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
         data["count_field"] = 0;
         callback(ReturnTypeCallback::GENERIC, data);
     }));
@@ -387,7 +644,59 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
     const auto last{first + buffer.size()};
     const std::vector<unsigned char> data{first, last};
 
+    const auto startConfigStmt =
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"_json;
+
+    std::function<void(const std::string&)> callbackWrapper2
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper2](const std::string & payload)
+        {
+            callbackWrapper2(payload);
+        }
+    };
+
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 
@@ -398,11 +707,77 @@ TEST_F(RSyncImplementationTest, InvalidPushData)
 {
     const auto handle { RSync::RSyncImplementation::instance().create() };
 
+    auto mockDbSync { std::make_shared<MockDBSync>() };
+
+    EXPECT_CALL(*mockDbSync, select(_, _)).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data = R"({"path":"test_path", "checksum":"test_checksum"})"_json;
+        callback(ReturnTypeCallback::GENERIC, data);
+    })).WillOnce(testing::Invoke([](nlohmann::json & data, ResultCallbackData callback)
+    {
+        data["checksum"] = "test_checksum";
+        callback(ReturnTypeCallback::GENERIC, data);
+    }));
+
+    const auto startConfigStmt =
+        R"({"table":"entry_path",
+            "first_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path ASC",
+                    "count_opt":1
+                },
+            "last_query":
+                {
+                    "column_list":["path"],
+                    "row_filter":"WHERE path is null",
+                    "distinct_opt":false,
+                    "order_by_opt":"path DESC",
+                    "count_opt":1
+                },
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+            })"_json;
+
+    std::function<void(const std::string&)> callbackWrapper2
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_FALSE(payload.empty());
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper2](const std::string & payload)
+        {
+            callbackWrapper2(payload);
+        }
+    };
+
     std::string buffer{R"(test_id)"};
 
     const auto first{reinterpret_cast<const unsigned char*>(buffer.data())};
     const auto last{first + buffer.size()};
     const std::vector<unsigned char> data{first, last};
+
+    EXPECT_NO_THROW(RSync::RSyncImplementation::instance().startRSync(handle, mockDbSync, startConfigStmt, callbackData));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
 
