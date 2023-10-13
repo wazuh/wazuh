@@ -3595,7 +3595,7 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
              "GetSecurityInfo error code = (%lu), 'Access denied.'",
              ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     array[0] = get_file_user("C:\\a\\path", &array[1]);
 
@@ -4117,7 +4117,7 @@ void test_get_registry_group_GetSecurityInfo_fails(void **state) {
              "GetSecurityInfo error code = (%lu), 'Access denied.'",
              ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     group = get_registry_group(&group_id, hndl);
 
