@@ -27,7 +27,7 @@ static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 int _xml_sgetc(OS_XML *_lxml)  __attribute__((nonnull));
-static int _getattributes(unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
 
 /**
@@ -350,7 +350,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
             }
             _currentlycont = _lxml->cur - 1;
             if (isspace(c)) {
-                if ((_ga = _getattributes(parent, _lxml)) < 0) {
+                if ((_ga = _getattributes(parent, _lxml, flag_truncate)) < 0) {
                     goto end;
                 }
             }
@@ -541,7 +541,7 @@ static int _writecontent(const char *str, __attribute__((unused)) size_t size, u
 }
 
 /* Read the attributes of an element */
-static int _getattributes(unsigned int parent, OS_XML *_lxml)
+static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate)
 {
     int location = 0;
     unsigned int count = 0;
@@ -556,6 +556,10 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml)
 
     while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
         if (count >= XML_MAXSIZE) {
+            if (flag_truncate && 1 == location) {
+                value[count - 1] = '\0';
+                return (0);
+            }
             attr[count - 1] = '\0';
             xml_error(_lxml,
                       "XMLERR: Overflow attempt at attribute '%.20s'.", attr);
@@ -639,7 +643,7 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml)
             }
             c = xml_getc_fun(_lxml->fp, _lxml);
             if (isspace(c)) {
-                return (_getattributes(parent, _lxml));
+                return (_getattributes(parent, _lxml, flag_truncate));
             } else if (c == _R_CONFE) {
                 return (0);
             } else if (c == '/') {
