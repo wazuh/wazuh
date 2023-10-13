@@ -174,7 +174,8 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
-    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
+    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
