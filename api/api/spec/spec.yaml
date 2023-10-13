@@ -4804,10 +4804,15 @@ components:
           type: string
           description: "Package format"
           enum:
+            - pacman
             - deb
             - rpm
             - win
             - pkg
+            - apk
+            - macports
+            - pypi
+            - npm
         multiarch:
           type: string
           description: "Whether the package has multi architecture support"
