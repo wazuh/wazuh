@@ -24,14 +24,14 @@
     <rule id="99501" level="3">
         <if_sid>99500</if_sid>
         <options>no_full_log</options>
-        <field name="relationship">alerts|alerts_v2</field>
+        <field name="ms-graph.relationship">alerts|alerts_v2</field>
         <description>MS Graph message: Alert related events.</description>
     </rule>
     
     <rule id="99502" level="3">
         <if_sid>99500</if_sid>
         <options>no_full_log</options>
-        <field name="relationship">incidents</field>
+        <field name="ms-graph.relationship">incidents</field>
         <description>MS Graph message: Incident related events.</description>
     </rule>
 
