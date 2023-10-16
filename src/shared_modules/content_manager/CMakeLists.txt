@@ -51,4 +51,6 @@ set_target_properties(content_manager PROPERTIES
 )
 
 add_subdirectory(testtool)
-add_subdirectory(tests)
+if(UNIT_TEST)
+    add_subdirectory(tests)
+endif()

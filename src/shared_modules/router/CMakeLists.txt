@@ -41,4 +41,6 @@ set_target_properties(router PROPERTIES
 )
 
 add_subdirectory(testtool)
-add_subdirectory(tests)
+if(UNIT_TEST)
+    add_subdirectory(tests)
+endif()
