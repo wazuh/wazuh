@@ -75,6 +75,15 @@ def wait_agent_notification(current_value):
     truncate_wazuh_logs()
     return(wazuh_log_monitor.callback_result != None), f'Sending agent notification message not found'
 
+def wait_server_rollback():
+    """
+        Watch ossec.log until "Unable to connect to any server" message is found current_value times
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT))
+    truncate_wazuh_logs()
+    return(wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
+
 def delete_keys_file():
     """Remove the agent's client.keys file."""
     os.remove(WAZUH_CLIENT_KEYS_PATH)
