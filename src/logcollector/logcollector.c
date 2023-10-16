@@ -1530,6 +1530,9 @@ int check_pattern_expand(int do_seek) {
 
                     if (current_files >= maximum_files) {
                         mwarn(FILE_LIMIT, maximum_files);
+                        for (int f = file; result[f] != NULL; f++) {
+                            os_free(result[f]);
+                        }
                         break;
                     }
 
@@ -1619,7 +1622,6 @@ int check_pattern_expand(int do_seek) {
                     }
                     os_free(full_path);
                 }
-
                 os_free(result);
             }
         }
