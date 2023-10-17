@@ -855,7 +855,7 @@ checks:
      impact: "The Microsoft network server will not communicate with a Microsoft network client unless that client agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-digitally-sign-communications-always'
      compliance:
        - cis: ["2.3.9.2"]
        - cis_csc_v8: ["3.10"]
@@ -878,7 +878,7 @@ checks:
      impact: "The Microsoft network server will negotiate SMB packet signing as requested by the client. That is, if packet signing has been enabled on the client, packet signing will be negotiated. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/smbv1-microsoft-network-server-digitally-sign-communications-if-client-agrees'
      compliance:
        - cis: ["2.3.9.3"]
        - cis_csc_v8: ["3.10"]
@@ -901,7 +901,7 @@ checks:
      impact: "None - this is the default behavior. If logon hours are not used in your organization, this policy setting will have no impact. If logon hours are used, existing user sessions will be forcibly terminated when their logon hours expire."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Disconnect clients when logon hours expire."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-disconnect-clients-when-logon-hours-expire'
      compliance:
        - cis: ["2.3.9.4"]
        - cis_csc_v7: ["16.13"]
@@ -919,7 +919,7 @@ checks:
      impact: "All Windows operating systems support both a client-side SMB component and a server-side SMB component. This setting affects the server SMB behavior, and its implementation should be carefully evaluated and tested to prevent disruptions to file and print serving capabilities. If configured to Accept if provided by client, the SMB server will accept and validate the SPN provided by the SMB client and allow a session to be established if it matches the SMB server’s list of SPN’s for itself. If the SPN does NOT match, the session request for that SMB client will be denied. If configured to Required from client, the SMB client MUST send a SPN name in session setup, and the SPN name provided MUST match the SMB server that is being requested to establish a connection. If no SPN is provided by client, or the SPN provided does not match, the session is denied."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Accept if provided by client (configuring to Required from client also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Server SPN target name validation level."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-server-spn-target-name-validation-level'
      compliance:
        - cis: ["2.3.9.5"]
      condition: all
@@ -936,7 +936,7 @@ checks:
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Allow anonymous SID/Name translation."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-allow-anonymous-sidname-translation'
      compliance:
        - cis: ["2.3.10.1"]
      condition: any
@@ -951,7 +951,7 @@ checks:
      impact: "None - this is the default behavior. It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-anonymous-enumeration-of-sam-accounts'
      compliance:
        - cis: ["2.3.10.2"]
      condition: any
@@ -962,21 +962,24 @@ checks:
 
   # 2.3.10.3 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'. (Automated)
    - id: 18582
-     title: "(L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'."
+     title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'."
      description: "This policy setting controls the ability of anonymous users to enumerate SAM accounts as well as shares. If you enable this policy setting, anonymous users will not be able to enumerate domain account user names and network share names on the systems in your environment. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
      rationale: "An unauthorized user could anonymously list account names and shared resources and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)."
      impact: "It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server. Users who access file and print servers anonymously will be unable to list the shared network resources on those servers; the users will have to authenticate before they can view the lists of shared folders and printers. However, even with this policy setting enabled, anonymous users will have access to resources with permissions that explicitly include the built-in group, ANONYMOUS LOGON."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-anonymous-enumeration-of-sam-accounts-and-shares'
      compliance:
        - cis: ["2.3.10.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 1'
 
   # 2.3.10.4 (L1) Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'. (Automated)
    - id: 18583
-     title: "(L1) Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'."
+     title: "Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'."
      description: "This policy setting determines whether Credential Manager (formerly called Stored User Names and Passwords) saves passwords or credentials for later use when it gains domain authentication. The recommended state for this setting is: Enabled. Note: Changes to this setting will not take effect until Windows is restarted."
      rationale: "Passwords that are cached can be accessed by the user when logged on to the computer. Although this information may sound obvious, a problem can arise if the user unknowingly executes hostile code that reads the passwords and forwards them to another, unauthorized user."
      impact: "Credential Manager will not store passwords and credentials on the computer. Users will be forced to enter passwords whenever they log on to their Passport account or other network resources that aren't accessible to their domain account. Testing has shown that clients running Windows Vista or Windows Server 2008 will be unable to connect to Distributed File System (DFS) shares in untrusted domains. Enabling this setting also makes it impossible to specify alternate credentials for scheduled tasks, this can cause a variety of problems. For example, some third-party backup products will no longer work. This policy setting should have no impact on users who access network resources that are configured to allow access with their Active Directory-based domain account."
@@ -985,96 +988,127 @@ checks:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-storage-of-passwords-and-credentials-for-network-authentication'
      compliance:
        - cis: ["2.3.10.4"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds -> 1'
 
   # 2.3.10.5 (L1) Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'. (Automated)
    - id: 18584
-     title: "(L1) Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'."
+     title: "Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'."
      description: "This policy setting determines what additional permissions are assigned for anonymous connections to the computer. The recommended state for this setting is: Disabled."
      rationale: "An unauthorized user could anonymously list account names and shared resources and use the information to attempt to guess passwords, perform social engineering attacks, or launch DoS attacks."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Let Everyone permissions apply to anonymous users."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-let-everyone-permissions-apply-to-anonymous-users'
      compliance:
        - cis: ["2.3.10.5"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 0'
 
   # 2.3.10.6 (L1) Ensure 'Network access: Named Pipes that can be accessed anonymously' is set to 'None'. (Automated)
    - id: 18585
-     title: "(L1) Ensure 'Network access: Named Pipes that can be accessed anonymously' is set to 'None'."
+     title: "Ensure 'Network access: Named Pipes that can be accessed anonymously' is set to 'None'."
      description: "This policy setting determines which communication sessions, or pipes, will have attributes and permissions that allow anonymous access. The recommended state for this setting is: <blank> (i.e. None)."
      rationale: "Limiting named pipes that can be accessed anonymously will reduce the attack surface of the system."
      impact: "This configuration will disable null session access over named pipes, and applications that rely on this feature or on unauthenticated access to named pipes will no longer function."
      remediation: "To establish the recommended configuration via GP, set the following UI path to <blank> (i.e. None): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Named Pipes that can be accessed anonymously."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-named-pipes-that-can-be-accessed-anonymously'
      compliance:
        - cis: ["2.3.10.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
 
   # 2.3.10.7 (L1) Ensure 'Network access: Remotely accessible registry paths' is configured. (Automated)
    - id: 18586
-     title: "(L1) Ensure 'Network access: Remotely accessible registry paths' is configured."
+     title: "Ensure 'Network access: Remotely accessible registry paths' is configured."
      description: "This policy setting determines which registry paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: This setting does not exist in Windows XP. There was a setting with that name in Windows XP, but it is called \"Network access: Remotely accessible registry paths and sub-paths\" in Windows Server 2003, Windows Vista, and Windows Server 2008 (non-R2). Note #2: When you configure this setting you specify a list of one or more objects. The delimiter used when entering the list is a line feed or carriage return, that is, type the first object on the list, press the Enter button, type the next object, press Enter again, etc. The setting value is stored as a comma-delimited list in group policy security templates. It is also rendered as a comma-delimited list in Group Policy Editor's display pane and the Resultant Set of Policy console. It is recorded in the registry as a line-feed delimited list in a REG_MULTI_SZ value. The recommended state for this setting is: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications Software\\Microsoft\\Windows NT\\CurrentVersion."
      rationale: "The registry is a database that contains computer configuration information, and much of the information is sensitive. An attacker could use this information to facilitate unauthorized activities. To reduce the risk of such an attack, suitable ACLs are assigned throughout the registry to help protect it from access by unauthorized users."
      impact: "None - this is the default behavior. However, if you remove the default registry paths from the list of accessible ones, remote management tools such as the Microsoft Baseline Security Analyzer and Microsoft Systems Management Server could fail, as they require remote access to the registry to properly monitor and manage computers. Note: If you want to allow remote access, you must also enable the Remote Registry service."
      remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-remotely-accessible-registry-paths'
      compliance:
        - cis: ["2.3.10.7"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications Software\\Microsoft\\Windows NT\\CurrentVersion'
 
   # 2.3.10.8 (L1) Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured. (Automated)
    - id: 18587
-     title: "(L1) Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured."
+     title: "Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured."
      description: "This policy setting determines which registry paths and sub-paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: In Windows XP this setting is called \"Network access: Remotely accessible registry paths,\" the setting with that same name in Windows Vista, Windows Server 2008 (non-R2), and Windows Server 2003 does not exist in Windows XP. Note #2: When you configure this setting you specify a list of one or more objects. The delimiter used when entering the list is a line feed or carriage return, that is, type the first object on the list, press the Enter button, type the next object, press Enter again, etc. The setting value is stored as a comma-delimited list in group policy security templates. It is also rendered as a comma-delimited list in Group Policy Editor's display pane and the Resultant Set of Policy console. It is recorded in the registry as a line-feed delimited list in a REG_MULTI_SZ value. The recommended state for this setting is: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog."
      rationale: "The registry contains sensitive computer configuration information that could be used by an attacker to facilitate unauthorized activities. The fact that the default ACLs assigned throughout the registry are fairly restrictive and help to protect the registry from access by unauthorized users reduces the risk of such an attack."
      impact: "None - this is the default behavior. However, if you remove the default registry paths from the list of accessible ones, remote management tools such as the Microsoft Baseline Security Analyzer and Microsoft Systems Management Server could fail, as they require remote access to the registry to properly monitor and manage computers. Note: If you want to allow remote access, you must also enable the Remote Registry service."
      remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-remotely-accessible-registry-paths-and-subpaths'
      compliance:
        - cis: ["2.3.10.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Print\\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\Eventlog'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\OLAP Server'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Print'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ContentIndex'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\SysmonLog'
 
   # 2.3.10.9 (L1) Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'. (Automated)
    - id: 18588
-     title: "(L1) Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'."
+     title: "Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'."
      description: "When enabled, this policy setting restricts anonymous access to only those shares and pipes that are named in the Network access: Named pipes that can be accessed anonymously and Network access: Shares that can be accessed anonymously settings. This policy setting controls null session access to shares on your computers by adding RestrictNullSessAccess with the value 1 in the HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\LanManServer\\Parameters registry key. This registry value toggles null session shares on or off to control whether the server service restricts unauthenticated clients' access to named resources. The recommended state for this setting is: Enabled."
      rationale: "Null sessions are a weakness that can be exploited through shares (including the default shares) on computers in your environment."
      impact: "None - this is the default behavior. If you choose to enable this setting and are supporting Windows NT 4.0 domains, you should check if any of the named pipes are required to maintain trust relationships between the domains, and then add the pipe to the Network access: Named pipes that can be accessed anonymously list: - COMNAP: SNA session access - COMNODE: SNA session access - SQL\\QUERY: SQL instance access - SPOOLSS: Spooler service - LLSRPC: License Logging service - NETLOGON: Net Logon service - LSARPC: LSA access - SAMR: Remote access to SAM objects - BROWSER: Computer Browser service Previous to the release of Windows Server 2003 with Service Pack 1 (SP1) these named pipes were allowed anonymous access by default, but with the increased hardening in Windows Server 2003 with SP1 these pipes must be explicitly added if needed."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict anonymous access to Named Pipes and Shares."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-restrict-anonymous-access-to-named-pipes-and-shares'
      compliance:
        - cis: ["2.3.10.9"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess -> 1'
 
   # 2.3.10.10 (L1) Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow'. (Automated)
    - id: 18589
-     title: "(L1) Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow'."
-     description: "This policy setting allows you to restrict remote RPC connections to SAM. The recommended state for this setting is: Administrators: Remote Access: Allow. Note: A Windows 10 R1607, Server 2016 or newer OS is required to access and set this value in Group Policy. Note #2: This setting was originally only supported on Windows 10 R1607 and newer, then support for it was added to Windows 7 and newer via the March 2017 security patches. Note #3: If your organization is using Azure Advanced Threat Protection (APT), the service account, “AATP Service” will need to be added to the recommendation configuration. For more information on adding the “AATP Service” account please see Configure SAM-R to enable lateral movement path detection in Microsoft Defender for Identity | Microsoft Docs."
+     title: "Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow'."
+     description: "This policy setting allows you to restrict remote RPC connections to SAM. The recommended state for this setting is: Administrators: Remote Access: Allow. Note: A Windows 10 R1607, Server 2016 or newer OS is required to access and set this value in Group Policy. Note #2: This setting was originally only supported on Windows 10 R1607 and newer, then support for it was added to Windows 7 and newer via the March 2017 security patches. Note #3: If your organization is using Azure Advanced Threat Protection (APT), the service account, \"AATP Service\" will need to be added to the recommendation configuration. For more information on adding the \"AATP Service\" account please see Configure SAM-R to enable lateral movement path detection in Microsoft Defender for Identity | Microsoft Docs."
      rationale: "To ensure that an unauthorized user cannot anonymously list local account names or groups and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Remote Access: Allow: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict clients allowed to make remote calls to SAM."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-restrict-clients-allowed-to-make-remote-sam-calls'
      compliance:
        - cis: ["2.3.10.10"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam -> r:O:BAG:BAD:\(A;;RC;;;BA\)'
 
   # 2.3.10.11 (L1) Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'. (Automated)
    - id: 18590
-     title: "(L1) Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'."
+     title: "Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'."
      description: "This policy setting determines which network shares can be accessed by anonymous users. The default configuration for this policy setting has little effect because all users have to be authenticated before they can access shared resources on the server. The recommended state for this setting is: <blank> (i.e. None)."
      rationale: "It is very dangerous to allow any values in this setting. Any shares that are listed can be accessed by any network user, which could lead to the exposure or corruption of sensitive data."
      impact: "None - this is the default behavior."
@@ -1092,40 +1126,49 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> \S+'
 
   # 2.3.10.12 (L1) Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'. (Automated)
    - id: 18591
-     title: "(L1) Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'."
+     title: "Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'."
      description: "This policy setting determines how network logons that use local accounts are authenticated. The Classic option allows precise control over access to resources, including the ability to assign different types of access to different users for the same resource. The Guest only option allows you to treat all users equally. In this context, all users authenticate as Guest only to receive the same access level to a given resource. The recommended state for this setting is: Classic - local users authenticate as themselves. Note: This setting does not affect interactive logons that are performed remotely by using such services as Telnet or Remote Desktop Services (formerly called Terminal Services)."
      rationale: "With the Guest only model, any user who can authenticate to your computer over the network does so with guest privileges, which probably means that they will not have write access to shared resources on that computer. Although this restriction does increase security, it makes it more difficult for authorized users to access shared resources on those computers because ACLs on those resources must include access control entries (ACEs) for the Guest account. With the Classic model, local accounts should be password protected. Otherwise, if Guest access is enabled, anyone can use those user accounts to access shared system resources."
      impact: "None - this is the default configuration for domain-joined computers."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Classic - local users authenticate as themselves: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Sharing and security model for local accounts."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-sharing-and-security-model-for-local-accounts'
      compliance:
        - cis: ["2.3.10.12"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest -> 0'
 
   # 2.3.11.1 (L1) Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'. (Automated)
    - id: 18592
-     title: "(L1) Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'."
+     title: "Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'."
      description: "This policy setting determines whether Local System services that use Negotiate when reverting to NTLM authentication can use the computer identity. This policy is supported on at least Windows 7 or Windows Server 2008 R2. The recommended state for this setting is: Enabled."
      rationale: "When connecting to computers running versions of Windows earlier than Windows Vista or Windows Server 2008 (non-R2), services running as Local System and using SPNEGO (Negotiate) that revert to NTLM use the computer identity. In Windows 7, if you are connecting to a computer running Windows Server 2008 or Windows Vista, then a system service uses either the computer identity or a NULL session. When connecting with a NULL session, a system-generated session key is created, which provides no protection but allows applications to sign and encrypt data without errors. When connecting with the computer identity, both signing and encryption is supported in order to provide data protection."
      impact: "Services running as Local System that use Negotiate when reverting to NTLM authentication will use the computer identity. This might cause some authentication requests between Windows operating systems to fail and log an error."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Allow Local System to use computer identity for NTLM."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-allow-local-system-to-use-computer-identity-for-ntlm'
      compliance:
        - cis: ["2.3.11.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> UseMachineId'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> UseMachineId -> 1'
 
   # 2.3.11.2 (L1) Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'. (Automated)
    - id: 18593
-     title: "(L1) Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'."
+     title: "Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'."
      description: "This policy setting determines whether NTLM is allowed to fall back to a NULL session when used with LocalSystem. The recommended state for this setting is: Disabled."
      rationale: "NULL sessions are less secure because by definition they are unauthenticated."
      impact: "None - this is the default behavior. Any applications that require NULL sessions for LocalSystem will not work as designed."
@@ -1134,12 +1177,15 @@ checks:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-allow-localsystem-null-session-fallback'
      compliance:
        - cis: ["2.3.11.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback -> 0'
 
   # 2.3.11.3 (L1) Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'. (Automated)
    - id: 18594
-     title: "(L1) Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'."
+     title: "Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'."
      description: "This setting determines if online identities are able to authenticate to this computer. The Public Key Cryptography Based User-to-User (PKU2U) protocol introduced in Windows 7 and Windows Server 2008 R2 is implemented as a security support provider (SSP). The SSP enables peer-to-peer authentication, particularly through the Windows 7 media and file sharing feature called HomeGroup, which permits sharing between computers that are not members of a domain. With PKU2U, a new extension was introduced to the Negotiate authentication package, Spnego.dll. In previous versions of Windows, Negotiate decided whether to use Kerberos or NTLM for authentication. The extension SSP for Negotiate, Negoexts.dll, which is treated as an authentication protocol by Windows, supports Microsoft SSPs including PKU2U. When computers are configured to accept authentication requests by using online IDs, Negoexts.dll calls the PKU2U SSP on the computer that is used to log on. The PKU2U SSP obtains a local certificate and exchanges the policy between the peer computers. When validated on the peer computer, the certificate within the metadata is sent to the logon peer for validation and associates the user's certificate to a security token and the logon process completes. The recommended state for this setting is: Disabled."
      rationale: "The PKU2U protocol is a peer-to-peer authentication protocol - authentication should be managed centrally in most managed networks."
      impact: "None - this is the default configuration for domain-joined computers."
@@ -1150,18 +1196,46 @@ checks:
        - cis: ["2.3.11.3"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> 0'
+
+  # 2.3.11.4 Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
+   - id: 26057
+     title: "Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'."
+     description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may still require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it."
+     rationale: "The strength of each encryption algorithm varies from one to the next, choosing stronger algorithms will reduce the risk of compromise however doing so may cause issues when the computer attempts to authenticate with systems that do not support them."
+     impact: "If not selected, the encryption type will not be allowed. This setting may affect compatibility with client computers or services and applications. Multiple selections are permitted. Note: Some legacy applications and OSes may still require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it. Note #2: Windows Vista and below allow DES for Kerberos by default, but later OS versions do not. Note #3: Some prerequisites might need to be met on Domain Controllers to support Kerberos AES 128 and 256 bit encryption types, as well as enabling support for Kerberos AES 128 and 256 bit on user accounts (in account options) for this recommendation to work correctly. Note #4: If your organization uses Azure Files, please note that Microsoft did not introduce AES 256 Kerberos encryption support for it until AD DS authentication module v0.2.2. Please see this link for more information: Azure Files on-premises AD DS Authentication support for AES 256 Kerberos encryption | Microsoft Docs."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Configure encryption types allowed for Kerberos."
+     references: 
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-configure-encryption-types-allowed-for-kerberos'
+     compliance:
+      - cis: ["2.3.11.4"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4", "18.5"]
+      - cmmc_v2.0: ["AC.L2-3.1.17","AC.L2-3.1.13","IA.L2-3.5.10","SC.L2-3.13.11","SC.L2-3.13.8","SC.L2-3.13.15"]
+      - hipaa: ["164.312(a)(2)(iv)","164.312(e)(1)","164.312(e)(2)(i)","164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - nist_sp_800-53: ["AC-17(2)","SC-8","SC-8(1)"]
+      - pci_dss_3.2.1: ["2.1.1","4.1","4.1.1","8.2.1"]
+      - pci_dss_4.0: ["2.2.7","4.1.1","4.2.1","4.2.1.2","4.2.2","8.3.2"]
+     condition: all
+     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes -> r:2147483644|2147483640'
 
   # 2.3.11.5 (L1) Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'. (Automated)
    - id: 18595
-     title: "(L1) Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'."
+     title: "Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'."
      description: "This policy setting determines whether the LAN Manager (LM) hash value for the new password is stored when the password is changed. The LM hash is relatively weak and prone to attack compared to the cryptographically stronger Microsoft Windows NT hash. Since LM hashes are stored on the local computer in the security database, passwords can then be easily compromised if the database is attacked. Note: Older operating systems and some third-party applications may fail when this policy setting is enabled. Also, note that the password will need to be changed on all accounts after you enable this setting to gain the proper benefit. The recommended state for this setting is: Enabled."
      rationale: "The SAM file can be targeted by attackers who seek access to username and password hashes. Such attacks use special tools to crack passwords, which can then be used to impersonate users and gain access to resources on your network. These types of attacks will not be prevented if you enable this policy setting, but it will be much more difficult for these types of attacks to succeed."
      impact: "None - this is the default behavior. Earlier operating systems such as Windows 95, Windows 98, and Windows ME as well as some third-party applications will fail."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Do not store LAN Manager hash value on next password change."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-do-not-store-lan-manager-hash-value-on-next-password-change'
      compliance:
        - cis: ["2.3.11.5"]
        - cis_csc_v8: ["3.11"]
@@ -1173,33 +1247,39 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash -> 1'
 
   # 2.3.11.6 (L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'. (Manual)
    - id: 18596
-     title: "(L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'."
+     title: "Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'."
      description: "This policy setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Microsoft network server: Disconnect clients when logon hours expire (Rule 2.3.9.4). The recommended state for this setting is: Enabled."
      rationale: "If this setting is disabled, a user could remain connected to the computer outside of their allotted logon hours."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Force logoff when logon hours expire."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-force-logoff-when-logon-hours-expire'
      compliance:
        - cis: ["2.3.11.6"]
        - cis_csc_v7: ["16.13"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
   # 2.3.11.7 (L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'. (Automated)
    - id: 18597
-     title: "(L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'."
+     title: "Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'."
      description: "LAN Manager (LM) was a family of early Microsoft client/server software (predating Windows NT) that allowed users to link personal computers together on a single network. LM network capabilities included transparent file and print sharing, user security features, and network administration tools. In Active Directory domains, the Kerberos protocol is the default authentication protocol. However, if the Kerberos protocol is not negotiated for some reason, Active Directory will use LM, NTLM, or NTLMv2. LAN Manager authentication includes the LM, NTLM, and NTLM version 2 (NTLMv2) variants, and is the protocol that is used to authenticate all Windows clients when they perform the following operations: - Join a domain - Authenticate between Active Directory forests - Authenticate to down-level domains - Authenticate to computers that do not run Windows 2000, Windows Server 2003, or Windows XP - Authenticate to computers that are not in the domain The Network security: LAN Manager authentication level setting determines which challenge/response authentication protocol is used for network logons. This choice affects the level of authentication protocol used by clients, the level of session security negotiated, and the level of authentication accepted by servers. The recommended state for this setting is: Send NTLMv2 response only. Refuse LM & NTLM."
      rationale: "Windows 2000 and Windows XP clients were configured by default to send LM and NTLM authentication responses (Windows 95-based and Windows 98-based clients only send LM). The default settings in OSes predating Windows Vista / Windows Server 2008 (non-R2) allowed all clients to authenticate with servers and use their resources. However, this meant that LM responses - the weakest form of authentication response - were sent over the network, and it was potentially possible for attackers to sniff that traffic to more easily reproduce the user's password. The Windows 95, Windows 98, and Windows NT operating systems cannot use the Kerberos version 5 protocol for authentication. For this reason, in a Windows Server 2003 domain, these computers authenticate by default with both the LM and NTLM protocols for network authentication. You can enforce a more secure authentication protocol for Windows 95, Windows 98, and Windows NT by using NTLMv2. For the logon process, NTLMv2 uses a secure channel to protect the authentication process. Even if you use NTLMv2 for older clients and servers, Windows-based clients and servers that are members of the domain will use the Kerberos authentication protocol to authenticate with Windows Server 2003 or newer Domain Controllers. For these reasons, it is strongly preferred to restrict the use of LM & NTLM (non-v2) as much as possible."
      impact: "Clients use NTLMv2 authentication only and use NTLMv2 session security if the server supports it; Domain Controllers refuse LM and NTLM (accept only NTLMv2 authentication). Clients that do not support NTLMv2 authentication will not be able to authenticate in the domain and access domain resources by using LM and NTLM."
      remediation: "To establish the recommended configuration via GP, set the following UI path to: Send NTLMv2 response only. Refuse LM & NTLM: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: LAN Manager authentication level."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-lan-manager-authentication-level'
      compliance:
        - cis: ["2.3.11.7"]
        - cis_csc_v8: ["3.10"]
@@ -1210,18 +1290,21 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 5'
 
   # 2.3.11.8 (L1) Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher. (Automated)
    - id: 18598
-     title: "(L1) Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher."
+     title: "Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher."
      description: "This policy setting determines the level of data signing that is requested on behalf of clients that issue LDAP BIND requests. Note: This policy setting does not have any impact on LDAP simple bind (ldap_simple_bind) or LDAP simple bind through SSL (ldap_simple_bind_s). No Microsoft LDAP clients that are included with Windows XP Professional use ldap_simple_bind or ldap_simple_bind_s to communicate with a Domain Controller. The recommended state for this setting is: Negotiate signing. Configuring this setting to Require signing also conforms to the benchmark."
      rationale: "Unsigned network traffic is susceptible to man-in-the-middle attacks in which an intruder captures the packets between the client and server, modifies them, and then forwards them to the server. For an LDAP server, this susceptibility means that an attacker could cause a server to make decisions that are based on false or altered data from the LDAP queries. To lower this risk in your network, you can implement strong physical security measures to protect the network infrastructure. Also, you can make all types of man-in-the-middle attacks extremely difficult if you require digital signatures on all network packets by means of IPsec authentication headers."
      impact: "None - this is the default behavior. However, if you choose instead to configure the server to require LDAP signatures then you must also configure the client. If you do not configure the client it will not be able to communicate with the server, which could cause many features to fail, including user authentication, Group Policy, and logon scripts, because the caller will be told that the LDAP BIND command request failed."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Negotiate signing (configuring to Require signing also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: LDAP client signing requirements."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-ldap-client-signing-requirements'
      compliance:
        - cis: ["2.3.11.8"]
        - cis_csc_v8: ["3.10"]
@@ -1231,22 +1314,100 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity -> n:(\d+) compare >= 1'
+
+  # 2.3.11.9 Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'
+   - id: 26062
+     title: "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'."
+     description: "This policy setting determines which behaviors are allowed by clients for applications using the NTLM Security Support Provider (SSP). The SSP Interface (SSPI) is used by applications that need authentication services. The setting does not modify how the authentication sequence works but instead require certain behaviors in applications that use the SSPI. The recommended state for this setting is: Require NTLMv2 session security, Require 128-bit encryption. Note: These values are dependent on the Network security: LAN Manager Authentication Level (Rule 2.3.11.7) security setting value."
+     rationale: "You can enable both options for this policy setting to help protect network traffic that uses the NTLM Security Support Provider (NTLM SSP) from being exposed or tampered with by an attacker who has gained access to the same network. In other words, these options help protect against man-in-the-middle attacks."
+     impact: "NTLM connections will fail if NTLMv2 protocol and strong encryption (128-bit) are not both negotiated. Client applications that are enforcing these settings will be unable to communicate with older servers that do not support them."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) clients."
+     compliance:
+       - cis: ["2.3.11.9"]
+       - cis_csc_v8: ["3.10"]
+       - cis_csc_v7: ["12.5"]
+       - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinClientSec'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinClientSec -> 537395200'
+
+  # 2.3.11.10 Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'
+   - id: 26063
+     title: "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'."
+     description: "This policy setting determines which behaviors are allowed by servers for applications using the NTLM Security Support Provider (SSP). The SSP Interface (SSPI) is used by applications that need authentication services. The setting does not modify how the authentication sequence works but instead require certain behaviors in applications that use the SSPI. The recommended state for this setting is: Require NTLMv2 session security, Require 128-bit encryption. Note: These values are dependent on the Network security: LAN Manager Authentication Level (Rule 2.3.11.7) security setting value."
+     rationale: "You can enable all of the options for this policy setting to help protect network traffic that uses the NTLM Security Support Provider (NTLM SSP) from being exposed or tampered with by an attacker who has gained access to the same network. That is, these options help protect against man-in-the-middle attacks."
+     impact: "NTLM connections will fail if NTLMv2 protocol and strong encryption (128-bit) are not both negotiated. Server applications that are enforcing these settings will be unable to communicate with older servers that do not support them."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) servers."
+     compliance:
+       - cis: ["2.3.11.10"]
+       - cis_csc_v8: ["3.10"]
+       - cis_csc_v7: ["12.5"]
+       - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+     references:
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-minimum-session-security-for-ntlm-ssp-based-including-secure-rpc-servers'
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec -> 537395200'
+
+  # 2.3.14.1 (L2) Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher (Automated)
+   - id: 26064
+     title: "Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher."
+     description: "This policy setting determines whether users' private keys (such as their S-MIME keys) require a password to be used. The recommended state for this setting is: User is prompted when the key is first used. Configuring this setting to User must enter a password each time they use a key also conforms to the benchmark."
+     rationale: "If a user's account is compromised or their computer is inadvertently left unsecured the malicious user can use the keys stored for the user to access protected resources. You can configure this policy setting so that users must provide a password that is distinct from their domain password every time they use a key. This configuration makes it more difficult for an attacker to access locally stored user keys, even if the attacker takes control of the user's computer and determines their logon password."
+     impact: "Users will have to enter their password the first time they access a key that is stored on their computer. For example, if users use an S-MIME certificate to digitally sign their e-mail they will be forced to enter the password for that certificate the first time that they send a signed e-mail message. For even stronger security, the value User must enter a password each time they use a key can be set, but the overhead that is involved using this configuration may be too high for some organizations. Microsoft does not recommend enforcing this setting on servers due to the significant impact on manageability. For example, you may not be able to configure Remote Desktop Services to use SSL certificates. More information is available in the Windows PKI TechNet Blog here: What is a strong key protection in Windows?."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to User is prompted when the key is first used (configuring to User must enter a password each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System cryptography: Force strong key protection for user keys stored on the computer."
+     references:
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/system-cryptography-force-strong-key-protection-for-user-keys-stored-on-the-computer'
+     compliance:
+       - cis: ["2.3.14.1"]
+       - cis_csc_v8: ["3.11"]
+       - cis_csc_v7: ["16.4"]
+       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+       - iso_27001-2013: ["A.10.1.1"]
+       - nist_sp_800-53: ["SC-28", "SC-28(1)"]
+       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
+       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+       - soc_2: ["CC6.1"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection -> n:(\d+) compare > 0'
 
   # 2.3.15.1 (L1) Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'. (Automated)
    - id: 18599
-     title: "(L1) Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'."
+     title: "Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'."
      description: "This policy setting determines whether case insensitivity is enforced for all subsystems. The Microsoft Win32 subsystem is case insensitive. However, the kernel supports case sensitivity for other subsystems, such as the Portable Operating System Interface for UNIX (POSIX). Because Windows is case insensitive (but the POSIX subsystem will support case sensitivity), failure to enforce this policy setting makes it possible for a user of the POSIX subsystem to create a file with the same name as another file by using mixed case to label it. Such a situation can block access to these files by another user who uses typical Win32 tools, because only one of the files will be available. The recommended state for this setting is: Enabled."
      rationale: "Because Windows is case-insensitive but the POSIX subsystem will support case sensitivity, failure to enable this policy setting would make it possible for a user of that subsystem to create a file with the same name as another file but with a different mix of upper and lower case letters. Such a situation could potentially confuse users when they try to access such files from normal Win32 tools because only one of the files will be available."
      impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Require case insensitivity for non- Windows subsystems."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Require case insensitivity for non-Windows subsystems."
      references:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/system-objects-require-case-insensitivity-for-non-windows-subsystems'
      compliance:
        - cis: ["2.3.15.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel -> ObCaseInsensitive'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel -> ObCaseInsensitive -> 1'
 
   # 2.3.15.2 (L1) Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'. (Automated)
    - id: 18600
