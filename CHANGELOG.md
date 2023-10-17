@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.5.4]
 
+### Manager
+
+#### Fixed
+- Fixed a bug that might leave some worker's services hanging if the connection to the master was broken. ([#19702](https://github.com/wazuh/wazuh/pull/19702))
+
 
 ## [v4.5.3] - 2023-10-10
 
