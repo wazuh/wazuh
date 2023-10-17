@@ -62,6 +62,7 @@ public:
      * @param allocator RapidJSON document allocator instance.
      *
      * @return rapidjson::Value Converted RapidJSON value.
+     * TODO: Delete this, should not use rapidjson
      */
     static rapidjson::Value parseScalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator);
 
@@ -71,9 +72,25 @@ public:
      * @param value RapidJSON value to convert.
      *
      * @return YAML::Node Converted YAML node.
+     * TODO: Delete this, should not use rapidjson
      */
     static YAML::Node jsonToYaml(const rapidjson::Value& value);
+
 };
+
+namespace utils
+{
+
+/**
+ * @brief Convert a YML string to a pretty YAML string.
+ *
+ * @param ymlStr YML string to convert.
+ * @param sort Sort the YAML keys alphabetically.
+ * @return std::string Converted YAML string.
+ * @throw std::runtime_error if the YML string is invalid.
+ */
+std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort = false);
+} // namespace util
 
 } // namespace yml
 
