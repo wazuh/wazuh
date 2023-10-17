@@ -210,9 +210,13 @@ class AbstractClient(common.Handler):
         self._cancel_all_tasks()
 
     def _cancel_all_tasks(self):
-        """Iterate asyncio tasks and cancel each of them."""
+        """Cancel all asyncio tasks and clients."""
         for task in asyncio.all_tasks():
             task.cancel()
+
+        for client in list(self.get_manager().local_server.clients.keys()):
+            self.get_manager().local_server.clients[client].close()
+            del self.get_manager().local_server.clients[client]
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for clients.
