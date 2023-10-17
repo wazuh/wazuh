@@ -1,5 +1,8 @@
-#include <iostream>
 #include <yml/yml.hpp>
+
+#include <iostream>
+#include <string>
+#include <vector>
 
 namespace yml
 {
@@ -154,5 +157,73 @@ rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Docume
     return v;
 }
 
-} // namespace yml2json
+namespace utils
+{
+namespace
+{
 
+YAML::Node sortKeysRecursively(const YAML::Node& node)
+{
+    if (!node.IsMap())
+    {
+        return node;
+    }
+
+    YAML::Node sortedNode;
+    std::vector<std::string> sortedKeys;
+    for (const auto& kv : node)
+    {
+        sortedKeys.push_back(kv.first.as<std::string>());
+    }
+    std::sort(sortedKeys.begin(), sortedKeys.end());
+
+    for (const auto& key : sortedKeys)
+    {
+        if (node[key].IsMap())
+        {
+            sortedNode[key] = sortKeysRecursively(node[key]);
+        }
+        else
+        {
+            sortedNode[key] = node[key];
+        }
+    }
+
+    return sortedNode;
+};
+} // namespace
+std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort)
+{
+
+    YAML::Node node;
+    try
+    {
+        node = YAML::Load(ymlStr);
+    }
+    catch (const YAML::ParserException& e)
+    {
+        throw std::runtime_error("Error parsing yml string: " + std::string(e.what()));
+    }
+
+    // Crear un Emitter y configurarlo para ser "pretty"
+    YAML::Emitter out;
+    // Pretty YML
+    out.SetIndent(2);
+    out.SetMapFormat(YAML::Block);
+    out.SetSeqFormat(YAML::Block);
+
+    if (sort)
+    {
+        // Ordenar las claves recursivamente
+        YAML::Node sortedNode = sortKeysRecursively(node);
+        out << sortedNode;
+    }
+    else
+    {
+        out << node;
+    }
+
+    return out.c_str();
+};
+} // namespace utils
+} // namespace yml

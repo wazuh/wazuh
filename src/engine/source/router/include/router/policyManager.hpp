@@ -120,7 +120,7 @@ public:
      *         Otherwise, returns std::nullopt if the subscription was successful.
      */
     std::optional<base::Error> subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
-                                                        const bk::Subscriber& traceCallback,
+                                                        const TraceSubscriber& traceCallback,
                                                         const std::vector<std::string>& assets,
                                                         const std::string& name);
 
