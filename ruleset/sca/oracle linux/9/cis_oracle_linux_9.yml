@@ -3648,10 +3648,11 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxAuthTries\s*\t*(\d+) compare =< 4'
 
   # 5.2.17 Ensure SSH MaxStartups is configured. (Automated)
   - id: 33646 
@@ -3671,7 +3672,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
       - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
@@ -3679,6 +3680,9 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare =< 10'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare =< 30'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare =< 60'
 
   # 5.2.18 Ensure SSH MaxSessions is set to 10 or less. (Automated)
   - id: 33647 
@@ -3694,7 +3698,8 @@ checks:
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare => 10'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+(\d+) compare => 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 33648 
@@ -3707,10 +3712,11 @@ checks:
       - mitre_mitigations: ["M1036"]
       - mitre_tactics: ["TA0006"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
       - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
+      - 'd:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
 
   # 5.2.20 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 33649 
