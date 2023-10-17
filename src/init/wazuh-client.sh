@@ -11,8 +11,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
-VERSION="v4.5.3"
-REVISION="40508"
+VERSION="v4.5.4"
+REVISION="40509"
 TYPE="agent"
 
 ###  Do not modify below here ###
