@@ -411,7 +411,7 @@ void Router::clear()
 }
 
 std::optional<base::Error> Router::subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
-                                                            const bk::Subscriber& traceCallback,
+                                                            const TraceSubscriber& traceCallback,
                                                             const std::vector<std::string>& assets,
                                                             const std::string& policyName)
 {

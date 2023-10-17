@@ -76,7 +76,7 @@ std::optional<base::Error> RuntimePolicy::subscribeToOutput(const OutputSubscrib
     return std::nullopt;
 }
 
-std::optional<base::Error> RuntimePolicy::listenAllTrace(const bk::Subscriber& callback,
+std::optional<base::Error> RuntimePolicy::listenAllTrace(const TraceSubscriber& callback,
                                                          const std::vector<std::string>& assets)
 {
     if (!callback)
@@ -91,8 +91,7 @@ std::optional<base::Error> RuntimePolicy::listenAllTrace(const bk::Subscriber& c
     {
         bk::Subscriber namedCallback = [callback, asset](const auto& trace, bool success) -> void
         {
-            auto fullTrace = trace.empty() ? fmt::format("[{}]", asset) : fmt::format("[{}] {}", asset, trace);
-            callback(fullTrace, success);
+            callback(asset, trace, success);
         };
         auto res = m_controller->subscribe(asset, namedCallback);
         if (base::isError(res))

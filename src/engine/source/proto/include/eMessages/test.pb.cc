@@ -45,12 +45,26 @@ struct SessionDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SessionDefaultTypeInternal _Session_default_instance_;
+PROTOBUF_CONSTEXPR Run_AssetTrace::Run_AssetTrace(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.traces_)*/{}
+  , /*decltype(_impl_.asset_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.success_)*/false
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct Run_AssetTraceDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR Run_AssetTraceDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~Run_AssetTraceDefaultTypeInternal() {}
+  union {
+    Run_AssetTrace _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 Run_AssetTraceDefaultTypeInternal _Run_AssetTrace_default_instance_;
 PROTOBUF_CONSTEXPR Run::Run(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.traces_)*/{}
-  , /*decltype(_impl_.output_)*/nullptr} {}
+    /*decltype(_impl_.asset_traces_)*/{}
+  , /*decltype(_impl_.output_)*/nullptr
+  , /*decltype(_impl_._cached_size_)*/{}} {}
 struct RunDefaultTypeInternal {
   PROTOBUF_CONSTEXPR RunDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -218,7 +232,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_test_2eproto[12];
+static ::_pb::Metadata file_level_metadata_test_2eproto[13];
 static const ::_pb::EnumDescriptor* file_level_enum_descriptors_test_2eproto[1];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_test_2eproto = nullptr;
 
@@ -237,16 +251,23 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Session, _impl_.route_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Session, _impl_.lifespan_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Session, _impl_.description_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _impl_._has_bits_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run_AssetTrace, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run_AssetTrace, _impl_.asset_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run_AssetTrace, _impl_.success_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run_AssetTrace, _impl_.traces_),
+  ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _impl_.output_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _impl_.traces_),
-  0,
-  ~0u,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::Run, _impl_.asset_traces_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -360,21 +381,23 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::com::wazuh::api::engine::test::Session)},
-  { 14, 22, -1, sizeof(::com::wazuh::api::engine::test::Run)},
-  { 24, 31, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Request)},
-  { 32, 41, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Response)},
-  { 44, 54, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Request)},
-  { 58, 65, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Response)},
-  { 66, -1, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Request)},
-  { 72, 81, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Response)},
-  { 84, 92, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Request)},
-  { 94, 101, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Response)},
-  { 102, 115, -1, sizeof(::com::wazuh::api::engine::test::RunPost_Request)},
-  { 122, 131, -1, sizeof(::com::wazuh::api::engine::test::RunPost_Response)},
+  { 14, -1, -1, sizeof(::com::wazuh::api::engine::test::Run_AssetTrace)},
+  { 23, -1, -1, sizeof(::com::wazuh::api::engine::test::Run)},
+  { 31, 38, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Request)},
+  { 39, 48, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Response)},
+  { 51, 61, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Request)},
+  { 65, 72, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Response)},
+  { 73, -1, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Request)},
+  { 79, 88, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Response)},
+  { 91, 99, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Request)},
+  { 101, 108, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Response)},
+  { 109, 122, -1, sizeof(::com::wazuh::api::engine::test::RunPost_Request)},
+  { 129, 138, -1, sizeof(::com::wazuh::api::engine::test::RunPost_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::test::_Session_default_instance_._instance,
+  &::com::wazuh::api::engine::test::_Run_AssetTrace_default_instance_._instance,
   &::com::wazuh::api::engine::test::_Run_default_instance_._instance,
   &::com::wazuh::api::engine::test::_SessionGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::test::_SessionGet_Response_default_instance_._instance,
@@ -394,42 +417,44 @@ const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "oto\"\220\001\n\007Session\022\014\n\004name\030\001 \001(\t\022\n\n\002id\030\002 \001("
   "\r\022\025\n\rcreation_date\030\003 \001(\r\022\016\n\006policy\030\004 \001(\t"
   "\022\016\n\006filter\030\005 \001(\t\022\r\n\005route\030\006 \001(\t\022\020\n\010lifes"
-  "pan\030\007 \001(\r\022\023\n\013description\030\010 \001(\t\"M\n\003Run\022+\n"
-  "\006output\030\001 \001(\0132\026.google.protobuf.ValueH\000\210"
-  "\001\001\022\016\n\006traces\030\002 \003(\tB\t\n\007_output\"0\n\022Session"
-  "Get_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001B\007\n\005_name\""
-  "\255\001\n\023SessionGet_Response\0222\n\006status\030\001 \001(\0162"
-  "\".com.wazuh.api.engine.ReturnStatus\022\022\n\005e"
-  "rror\030\002 \001(\tH\000\210\001\001\0228\n\007session\030\003 \001(\0132\".com.w"
-  "azuh.api.engine.test.SessionH\001\210\001\001B\010\n\006_er"
-  "rorB\n\n\010_session\"\237\001\n\023SessionPost_Request\022"
-  "\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n\006policy\030\002 \001(\tH\001\210\001\001\022"
-  "\025\n\010lifespan\030\003 \001(\rH\002\210\001\001\022\030\n\013description\030\004 "
-  "\001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_policyB\013\n\t_lifespa"
-  "nB\016\n\014_description\"4\n\024SessionPost_Respons"
-  "e\022\022\n\005error\030\001 \001(\tH\000\210\001\001B\010\n\006_error\"\025\n\023Sessi"
-  "onsGet_Request\"v\n\024SessionsGet_Response\0222"
-  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
-  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004list\030\003"
-  " \003(\tB\010\n\006_error\"H\n\026SessionsDelete_Request"
-  "\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\022\n\ndelete_all\030\002 \001(\010B"
-  "\007\n\005_name\"7\n\027SessionsDelete_Response\022\022\n\005e"
-  "rror\030\001 \001(\tH\000\210\001\001B\010\n\006_error\"\300\002\n\017RunPost_Re"
-  "quest\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022*\n\005event\030\002 \001(\0132"
-  "\026.google.protobuf.ValueH\001\210\001\001\022\033\n\016protocol"
-  "_queue\030\003 \001(\tH\002\210\001\001\022=\n\ndebug_mode\030\004 \001(\0162$."
-  "com.wazuh.api.engine.test.DebugModeH\003\210\001\001"
-  "\022\023\n\013asset_trace\030\005 \003(\t\022\036\n\021protocol_locati"
-  "on\030\006 \001(\tH\004\210\001\001\022\022\n\nnamespaces\030\007 \003(\tB\007\n\005_na"
-  "meB\010\n\006_eventB\021\n\017_protocol_queueB\r\n\013_debu"
-  "g_modeB\024\n\022_protocol_location\"\236\001\n\020RunPost"
-  "_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.ap"
-  "i.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001"
-  "\001\0220\n\003run\030\003 \001(\0132\036.com.wazuh.api.engine.te"
-  "st.RunH\001\210\001\001B\010\n\006_errorB\006\n\004_run*W\n\tDebugMo"
-  "de\022\017\n\013OUTPUT_ONLY\020\000\022\025\n\021OUTPUT_AND_TRACES"
-  "\020\001\022\"\n\036OUTPUT_AND_TRACES_WITH_DETAILS\020\002b\006"
-  "proto3"
+  "pan\030\007 \001(\r\022\023\n\013description\030\010 \001(\t\"\254\001\n\003Run\022&"
+  "\n\006output\030\001 \001(\0132\026.google.protobuf.Value\022\?"
+  "\n\014asset_traces\030\002 \003(\0132).com.wazuh.api.eng"
+  "ine.test.Run.AssetTrace\032<\n\nAssetTrace\022\r\n"
+  "\005asset\030\001 \001(\t\022\017\n\007success\030\002 \001(\010\022\016\n\006traces\030"
+  "\003 \003(\t\"0\n\022SessionGet_Request\022\021\n\004name\030\001 \001("
+  "\tH\000\210\001\001B\007\n\005_name\"\255\001\n\023SessionGet_Response\022"
+  "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
+  "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0228\n\007sessi"
+  "on\030\003 \001(\0132\".com.wazuh.api.engine.test.Ses"
+  "sionH\001\210\001\001B\010\n\006_errorB\n\n\010_session\"\237\001\n\023Sess"
+  "ionPost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n\006po"
+  "licy\030\002 \001(\tH\001\210\001\001\022\025\n\010lifespan\030\003 \001(\rH\002\210\001\001\022\030"
+  "\n\013description\030\004 \001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_po"
+  "licyB\013\n\t_lifespanB\016\n\014_description\"4\n\024Ses"
+  "sionPost_Response\022\022\n\005error\030\001 \001(\tH\000\210\001\001B\010\n"
+  "\006_error\"\025\n\023SessionsGet_Request\"v\n\024Sessio"
+  "nsGet_Response\0222\n\006status\030\001 \001(\0162\".com.waz"
+  "uh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001("
+  "\tH\000\210\001\001\022\014\n\004list\030\003 \003(\tB\010\n\006_error\"H\n\026Sessio"
+  "nsDelete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\022\n\nd"
+  "elete_all\030\002 \001(\010B\007\n\005_name\"7\n\027SessionsDele"
+  "te_Response\022\022\n\005error\030\001 \001(\tH\000\210\001\001B\010\n\006_erro"
+  "r\"\300\002\n\017RunPost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001"
+  "\022*\n\005event\030\002 \001(\0132\026.google.protobuf.ValueH"
+  "\001\210\001\001\022\033\n\016protocol_queue\030\003 \001(\tH\002\210\001\001\022=\n\ndeb"
+  "ug_mode\030\004 \001(\0162$.com.wazuh.api.engine.tes"
+  "t.DebugModeH\003\210\001\001\022\023\n\013asset_trace\030\005 \003(\t\022\036\n"
+  "\021protocol_location\030\006 \001(\tH\004\210\001\001\022\022\n\nnamespa"
+  "ces\030\007 \003(\tB\007\n\005_nameB\010\n\006_eventB\021\n\017_protoco"
+  "l_queueB\r\n\013_debug_modeB\024\n\022_protocol_loca"
+  "tion\"\236\001\n\020RunPost_Response\0222\n\006status\030\001 \001("
+  "\0162\".com.wazuh.api.engine.ReturnStatus\022\022\n"
+  "\005error\030\002 \001(\tH\000\210\001\001\0220\n\003run\030\003 \001(\0132\036.com.waz"
+  "uh.api.engine.test.RunH\001\210\001\001B\010\n\006_errorB\006\n"
+  "\004_run*W\n\tDebugMode\022\017\n\013OUTPUT_ONLY\020\000\022\025\n\021O"
+  "UTPUT_AND_TRACES\020\001\022\"\n\036OUTPUT_AND_TRACES_"
+  "WITH_DETAILS\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_test_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -437,9 +462,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_test_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_test_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_test_2eproto = {
-    false, false, 1606, descriptor_table_protodef_test_2eproto,
+    false, false, 1702, descriptor_table_protodef_test_2eproto,
     "test.proto",
-    &descriptor_table_test_2eproto_once, descriptor_table_test_2eproto_deps, 2, 12,
+    &descriptor_table_test_2eproto_once, descriptor_table_test_2eproto_deps, 2, 13,
     schemas, file_default_instances, TableStruct_test_2eproto::offsets,
     file_level_metadata_test_2eproto, file_level_enum_descriptors_test_2eproto,
     file_level_service_descriptors_test_2eproto,
@@ -960,13 +985,278 @@ void Session::InternalSwap(Session* other) {
 
 // ===================================================================
 
+class Run_AssetTrace::_Internal {
+ public:
+};
+
+Run_AssetTrace::Run_AssetTrace(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.test.Run.AssetTrace)
+}
+Run_AssetTrace::Run_AssetTrace(const Run_AssetTrace& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  Run_AssetTrace* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.traces_){from._impl_.traces_}
+    , decltype(_impl_.asset_){}
+    , decltype(_impl_.success_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.asset_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.asset_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_asset().empty()) {
+    _this->_impl_.asset_.Set(from._internal_asset(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.success_ = from._impl_.success_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.test.Run.AssetTrace)
+}
+
+inline void Run_AssetTrace::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.traces_){arena}
+    , decltype(_impl_.asset_){}
+    , decltype(_impl_.success_){false}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.asset_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.asset_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+Run_AssetTrace::~Run_AssetTrace() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.test.Run.AssetTrace)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void Run_AssetTrace::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.traces_.~RepeatedPtrField();
+  _impl_.asset_.Destroy();
+}
+
+void Run_AssetTrace::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void Run_AssetTrace::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.test.Run.AssetTrace)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.traces_.Clear();
+  _impl_.asset_.ClearToEmpty();
+  _impl_.success_ = false;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* Run_AssetTrace::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string asset = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_asset();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.Run.AssetTrace.asset"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool success = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.success_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated string traces = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_traces();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.Run.AssetTrace.traces"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<26>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* Run_AssetTrace::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.test.Run.AssetTrace)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string asset = 1;
+  if (!this->_internal_asset().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_asset().data(), static_cast<int>(this->_internal_asset().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.Run.AssetTrace.asset");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_asset(), target);
+  }
+
+  // bool success = 2;
+  if (this->_internal_success() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_success(), target);
+  }
+
+  // repeated string traces = 3;
+  for (int i = 0, n = this->_internal_traces_size(); i < n; i++) {
+    const auto& s = this->_internal_traces(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.Run.AssetTrace.traces");
+    target = stream->WriteString(3, s, target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.test.Run.AssetTrace)
+  return target;
+}
+
+size_t Run_AssetTrace::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.test.Run.AssetTrace)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated string traces = 3;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.traces_.size());
+  for (int i = 0, n = _impl_.traces_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.traces_.Get(i));
+  }
+
+  // string asset = 1;
+  if (!this->_internal_asset().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_asset());
+  }
+
+  // bool success = 2;
+  if (this->_internal_success() != 0) {
+    total_size += 1 + 1;
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData Run_AssetTrace::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    Run_AssetTrace::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*Run_AssetTrace::GetClassData() const { return &_class_data_; }
+
+
+void Run_AssetTrace::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<Run_AssetTrace*>(&to_msg);
+  auto& from = static_cast<const Run_AssetTrace&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.test.Run.AssetTrace)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.traces_.MergeFrom(from._impl_.traces_);
+  if (!from._internal_asset().empty()) {
+    _this->_internal_set_asset(from._internal_asset());
+  }
+  if (from._internal_success() != 0) {
+    _this->_internal_set_success(from._internal_success());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void Run_AssetTrace::CopyFrom(const Run_AssetTrace& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.test.Run.AssetTrace)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool Run_AssetTrace::IsInitialized() const {
+  return true;
+}
+
+void Run_AssetTrace::InternalSwap(Run_AssetTrace* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  _impl_.traces_.InternalSwap(&other->_impl_.traces_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.asset_, lhs_arena,
+      &other->_impl_.asset_, rhs_arena
+  );
+  swap(_impl_.success_, other->_impl_.success_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata Run_AssetTrace::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
+      file_level_metadata_test_2eproto[1]);
+}
+
+// ===================================================================
+
 class Run::_Internal {
  public:
-  using HasBits = decltype(std::declval<Run>()._impl_._has_bits_);
   static const ::PROTOBUF_NAMESPACE_ID::Value& output(const Run* msg);
-  static void set_has_output(HasBits* has_bits) {
-    (*has_bits)[0] |= 1u;
-  }
 };
 
 const ::PROTOBUF_NAMESPACE_ID::Value&
@@ -974,8 +1264,10 @@ Run::_Internal::output(const Run* msg) {
   return *msg->_impl_.output_;
 }
 void Run::clear_output() {
-  if (_impl_.output_ != nullptr) _impl_.output_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  if (GetArenaForAllocation() == nullptr && _impl_.output_ != nullptr) {
+    delete _impl_.output_;
+  }
+  _impl_.output_ = nullptr;
 }
 Run::Run(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
@@ -987,10 +1279,9 @@ Run::Run(const Run& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   Run* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.traces_){from._impl_.traces_}
-    , decltype(_impl_.output_){nullptr}};
+      decltype(_impl_.asset_traces_){from._impl_.asset_traces_}
+    , decltype(_impl_.output_){nullptr}
+    , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_output()) {
@@ -1004,10 +1295,9 @@ inline void Run::SharedCtor(
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.traces_){arena}
+      decltype(_impl_.asset_traces_){arena}
     , decltype(_impl_.output_){nullptr}
+    , /*decltype(_impl_._cached_size_)*/{}
   };
 }
 
@@ -1022,7 +1312,7 @@ Run::~Run() {
 
 inline void Run::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.traces_.~RepeatedPtrField();
+  _impl_.asset_traces_.~RepeatedPtrField();
   if (this != internal_default_instance()) delete _impl_.output_;
 }
 
@@ -1036,24 +1326,21 @@ void Run::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.traces_.Clear();
-  cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    GOOGLE_DCHECK(_impl_.output_ != nullptr);
-    _impl_.output_->Clear();
+  _impl_.asset_traces_.Clear();
+  if (GetArenaForAllocation() == nullptr && _impl_.output_ != nullptr) {
+    delete _impl_.output_;
   }
-  _impl_._has_bits_.Clear();
+  _impl_.output_ = nullptr;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* Run::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
-  _Internal::HasBits has_bits{};
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // optional .google.protobuf.Value output = 1;
+      // .google.protobuf.Value output = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_output(), ptr);
@@ -1061,16 +1348,14 @@ const char* Run::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
-      // repeated string traces = 2;
+      // repeated .com.wazuh.api.engine.test.Run.AssetTrace asset_traces = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
           ptr -= 1;
           do {
             ptr += 1;
-            auto str = _internal_add_traces();
-            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            ptr = ctx->ParseMessage(_internal_add_asset_traces(), ptr);
             CHK_(ptr);
-            CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.Run.traces"));
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<18>(ptr));
         } else
@@ -1092,7 +1377,6 @@ const char* Run::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
     CHK_(ptr != nullptr);
   }  // while
 message_done:
-  _impl_._has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
@@ -1106,21 +1390,19 @@ uint8_t* Run::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // optional .google.protobuf.Value output = 1;
-  if (_internal_has_output()) {
+  // .google.protobuf.Value output = 1;
+  if (this->_internal_has_output()) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
       InternalWriteMessage(1, _Internal::output(this),
         _Internal::output(this).GetCachedSize(), target, stream);
   }
 
-  // repeated string traces = 2;
-  for (int i = 0, n = this->_internal_traces_size(); i < n; i++) {
-    const auto& s = this->_internal_traces(i);
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      s.data(), static_cast<int>(s.length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.test.Run.traces");
-    target = stream->WriteString(2, s, target);
+  // repeated .com.wazuh.api.engine.test.Run.AssetTrace asset_traces = 2;
+  for (unsigned i = 0,
+      n = static_cast<unsigned>(this->_internal_asset_traces_size()); i < n; i++) {
+    const auto& repfield = this->_internal_asset_traces(i);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+        InternalWriteMessage(2, repfield, repfield.GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1139,17 +1421,15 @@ size_t Run::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // repeated string traces = 2;
-  total_size += 1 *
-      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.traces_.size());
-  for (int i = 0, n = _impl_.traces_.size(); i < n; i++) {
-    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-      _impl_.traces_.Get(i));
+  // repeated .com.wazuh.api.engine.test.Run.AssetTrace asset_traces = 2;
+  total_size += 1UL * this->_internal_asset_traces_size();
+  for (const auto& msg : this->_impl_.asset_traces_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  // optional .google.protobuf.Value output = 1;
-  cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
+  // .google.protobuf.Value output = 1;
+  if (this->_internal_has_output()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
         *_impl_.output_);
@@ -1173,7 +1453,7 @@ void Run::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_N
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.traces_.MergeFrom(from._impl_.traces_);
+  _this->_impl_.asset_traces_.MergeFrom(from._impl_.asset_traces_);
   if (from._internal_has_output()) {
     _this->_internal_mutable_output()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
         from._internal_output());
@@ -1195,15 +1475,14 @@ bool Run::IsInitialized() const {
 void Run::InternalSwap(Run* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  _impl_.traces_.InternalSwap(&other->_impl_.traces_);
+  _impl_.asset_traces_.InternalSwap(&other->_impl_.asset_traces_);
   swap(_impl_.output_, other->_impl_.output_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata Run::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[1]);
+      file_level_metadata_test_2eproto[2]);
 }
 
 // ===================================================================
@@ -1420,7 +1699,7 @@ void SessionGet_Request::InternalSwap(SessionGet_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[2]);
+      file_level_metadata_test_2eproto[3]);
 }
 
 // ===================================================================
@@ -1723,7 +2002,7 @@ void SessionGet_Response::InternalSwap(SessionGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[3]);
+      file_level_metadata_test_2eproto[4]);
 }
 
 // ===================================================================
@@ -2089,7 +2368,7 @@ void SessionPost_Request::InternalSwap(SessionPost_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionPost_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[4]);
+      file_level_metadata_test_2eproto[5]);
 }
 
 // ===================================================================
@@ -2306,7 +2585,7 @@ void SessionPost_Response::InternalSwap(SessionPost_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionPost_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[5]);
+      file_level_metadata_test_2eproto[6]);
 }
 
 // ===================================================================
@@ -2346,7 +2625,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SessionsGet_Request::GetClassD
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionsGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[6]);
+      file_level_metadata_test_2eproto[7]);
 }
 
 // ===================================================================
@@ -2632,7 +2911,7 @@ void SessionsGet_Response::InternalSwap(SessionsGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionsGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[7]);
+      file_level_metadata_test_2eproto[8]);
 }
 
 // ===================================================================
@@ -2876,7 +3155,7 @@ void SessionsDelete_Request::InternalSwap(SessionsDelete_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionsDelete_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[8]);
+      file_level_metadata_test_2eproto[9]);
 }
 
 // ===================================================================
@@ -3093,7 +3372,7 @@ void SessionsDelete_Response::InternalSwap(SessionsDelete_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionsDelete_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[9]);
+      file_level_metadata_test_2eproto[10]);
 }
 
 // ===================================================================
@@ -3592,7 +3871,7 @@ void RunPost_Request::InternalSwap(RunPost_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata RunPost_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[10]);
+      file_level_metadata_test_2eproto[11]);
 }
 
 // ===================================================================
@@ -3895,7 +4174,7 @@ void RunPost_Response::InternalSwap(RunPost_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata RunPost_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_test_2eproto_getter, &descriptor_table_test_2eproto_once,
-      file_level_metadata_test_2eproto[11]);
+      file_level_metadata_test_2eproto[12]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -3908,6 +4187,10 @@ PROTOBUF_NAMESPACE_OPEN
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::test::Session*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::test::Session >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::test::Session >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::test::Run_AssetTrace*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::test::Run_AssetTrace >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::test::Run_AssetTrace >(arena);
 }
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::test::Run*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::test::Run >(Arena* arena) {

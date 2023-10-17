@@ -11,7 +11,8 @@
 namespace router
 {
 
-using OutputSubscriber = std::function<void(base::Event&&)>;
+using OutputSubscriber = std::function<void(base::Event&&)>; ///< Output subscriber callback
+using TraceSubscriber = std::function<void(const std::string&, const std::string&, bool)>; ///< Trace subscriber callback
 
 /**
  * @brief Runtime policy represent an policy in memory, ready to be builed and
@@ -106,7 +107,7 @@ public:
      * @return std::optional<base::Error> If the listening encounters an error, an error message is returned.
      *         Otherwise, returns std::nullopt if the listening was successful.
      */
-    std::optional<base::Error> listenAllTrace(const bk::Subscriber& callback,
+    std::optional<base::Error> listenAllTrace(const TraceSubscriber& callback,
                                               const std::vector<std::string>& assets);
 
     /**

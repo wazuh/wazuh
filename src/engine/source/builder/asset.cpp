@@ -233,18 +233,26 @@ base::Expression Asset::getExpression() const
         case Asset::Type::OUTPUT:
         case Asset::Type::RULE:
         case Asset::Type::DECODER:
+        {
+            std::vector<base::Expression> checkOp;
+            checkOp.reserve(2);
             if (m_check)
             {
-                asset = base::Implication::create(m_name, m_check, m_stages);
+                checkOp.push_back(m_check);
+            } else {
+                checkOp.push_back(base::Term<base::EngineOp>::create(
+                "AcceptAll", [](auto e) { return base::result::makeSuccess(e, ""); }));
             }
-            else
-            {
-                auto trueExpression = base::Term<base::EngineOp>::create(
-                    "AcceptAll", [](auto e) { return base::result::makeSuccess(e, ""); });
-                asset = base::Implication::create(m_name, trueExpression, m_stages);
-            }
-            break;
-        case Asset::Type::FILTER: asset = base::And::create(m_name, {m_check}); break;
+            checkOp.push_back(base::Term<base::EngineOp>::create(
+                "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); }));
+
+
+            auto check = base::And::create("check", checkOp);
+
+            asset = base::Implication::create(m_name, check, m_stages);
+        }
+        break;
+        case Asset::Type::FILTER: asset = base::And::create(m_name, {m_check}); break; // TODO Check empty filters (m_check == empty)
         default: throw std::runtime_error(fmt::format("Asset type not supported from asset '{}'", m_name));
     }
 

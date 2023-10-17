@@ -62,6 +62,9 @@ extern RunPost_RequestDefaultTypeInternal _RunPost_Request_default_instance_;
 class RunPost_Response;
 struct RunPost_ResponseDefaultTypeInternal;
 extern RunPost_ResponseDefaultTypeInternal _RunPost_Response_default_instance_;
+class Run_AssetTrace;
+struct Run_AssetTraceDefaultTypeInternal;
+extern Run_AssetTraceDefaultTypeInternal _Run_AssetTrace_default_instance_;
 class Session;
 struct SessionDefaultTypeInternal;
 extern SessionDefaultTypeInternal _Session_default_instance_;
@@ -98,6 +101,7 @@ PROTOBUF_NAMESPACE_OPEN
 template<> ::com::wazuh::api::engine::test::Run* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::Run>(Arena*);
 template<> ::com::wazuh::api::engine::test::RunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::RunPost_Request>(Arena*);
 template<> ::com::wazuh::api::engine::test::RunPost_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::RunPost_Response>(Arena*);
+template<> ::com::wazuh::api::engine::test::Run_AssetTrace* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::Run_AssetTrace>(Arena*);
 template<> ::com::wazuh::api::engine::test::Session* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::Session>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionGet_Response>(Arena*);
@@ -392,6 +396,196 @@ class Session final :
 };
 // -------------------------------------------------------------------
 
+class Run_AssetTrace final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.test.Run.AssetTrace) */ {
+ public:
+  inline Run_AssetTrace() : Run_AssetTrace(nullptr) {}
+  ~Run_AssetTrace() override;
+  explicit PROTOBUF_CONSTEXPR Run_AssetTrace(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  Run_AssetTrace(const Run_AssetTrace& from);
+  Run_AssetTrace(Run_AssetTrace&& from) noexcept
+    : Run_AssetTrace() {
+    *this = ::std::move(from);
+  }
+
+  inline Run_AssetTrace& operator=(const Run_AssetTrace& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline Run_AssetTrace& operator=(Run_AssetTrace&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const Run_AssetTrace& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const Run_AssetTrace* internal_default_instance() {
+    return reinterpret_cast<const Run_AssetTrace*>(
+               &_Run_AssetTrace_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    1;
+
+  friend void swap(Run_AssetTrace& a, Run_AssetTrace& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(Run_AssetTrace* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(Run_AssetTrace* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  Run_AssetTrace* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<Run_AssetTrace>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const Run_AssetTrace& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const Run_AssetTrace& from) {
+    Run_AssetTrace::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(Run_AssetTrace* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.test.Run.AssetTrace";
+  }
+  protected:
+  explicit Run_AssetTrace(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kTracesFieldNumber = 3,
+    kAssetFieldNumber = 1,
+    kSuccessFieldNumber = 2,
+  };
+  // repeated string traces = 3;
+  int traces_size() const;
+  private:
+  int _internal_traces_size() const;
+  public:
+  void clear_traces();
+  const std::string& traces(int index) const;
+  std::string* mutable_traces(int index);
+  void set_traces(int index, const std::string& value);
+  void set_traces(int index, std::string&& value);
+  void set_traces(int index, const char* value);
+  void set_traces(int index, const char* value, size_t size);
+  std::string* add_traces();
+  void add_traces(const std::string& value);
+  void add_traces(std::string&& value);
+  void add_traces(const char* value);
+  void add_traces(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& traces() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_traces();
+  private:
+  const std::string& _internal_traces(int index) const;
+  std::string* _internal_add_traces();
+  public:
+
+  // string asset = 1;
+  void clear_asset();
+  const std::string& asset() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_asset(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_asset();
+  PROTOBUF_NODISCARD std::string* release_asset();
+  void set_allocated_asset(std::string* asset);
+  private:
+  const std::string& _internal_asset() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_asset(const std::string& value);
+  std::string* _internal_mutable_asset();
+  public:
+
+  // bool success = 2;
+  void clear_success();
+  bool success() const;
+  void set_success(bool value);
+  private:
+  bool _internal_success() const;
+  void _internal_set_success(bool value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.Run.AssetTrace)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> traces_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr asset_;
+    bool success_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_test_2eproto;
+};
+// -------------------------------------------------------------------
+
 class Run final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.test.Run) */ {
  public:
@@ -440,7 +634,7 @@ class Run final :
                &_Run_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    1;
+    2;
 
   friend void swap(Run& a, Run& b) {
     a.Swap(&b);
@@ -510,37 +704,33 @@ class Run final :
 
   // nested types ----------------------------------------------------
 
+  typedef Run_AssetTrace AssetTrace;
+
   // accessors -------------------------------------------------------
 
   enum : int {
-    kTracesFieldNumber = 2,
+    kAssetTracesFieldNumber = 2,
     kOutputFieldNumber = 1,
   };
-  // repeated string traces = 2;
-  int traces_size() const;
+  // repeated .com.wazuh.api.engine.test.Run.AssetTrace asset_traces = 2;
+  int asset_traces_size() const;
   private:
-  int _internal_traces_size() const;
+  int _internal_asset_traces_size() const;
   public:
-  void clear_traces();
-  const std::string& traces(int index) const;
-  std::string* mutable_traces(int index);
-  void set_traces(int index, const std::string& value);
-  void set_traces(int index, std::string&& value);
-  void set_traces(int index, const char* value);
-  void set_traces(int index, const char* value, size_t size);
-  std::string* add_traces();
-  void add_traces(const std::string& value);
-  void add_traces(std::string&& value);
-  void add_traces(const char* value);
-  void add_traces(const char* value, size_t size);
-  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& traces() const;
-  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_traces();
+  void clear_asset_traces();
+  ::com::wazuh::api::engine::test::Run_AssetTrace* mutable_asset_traces(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::test::Run_AssetTrace >*
+      mutable_asset_traces();
   private:
-  const std::string& _internal_traces(int index) const;
-  std::string* _internal_add_traces();
+  const ::com::wazuh::api::engine::test::Run_AssetTrace& _internal_asset_traces(int index) const;
+  ::com::wazuh::api::engine::test::Run_AssetTrace* _internal_add_asset_traces();
   public:
+  const ::com::wazuh::api::engine::test::Run_AssetTrace& asset_traces(int index) const;
+  ::com::wazuh::api::engine::test::Run_AssetTrace* add_asset_traces();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::test::Run_AssetTrace >&
+      asset_traces() const;
 
-  // optional .google.protobuf.Value output = 1;
+  // .google.protobuf.Value output = 1;
   bool has_output() const;
   private:
   bool _internal_has_output() const;
@@ -566,10 +756,9 @@ class Run final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> traces_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::test::Run_AssetTrace > asset_traces_;
     ::PROTOBUF_NAMESPACE_ID::Value* output_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_test_2eproto;
@@ -624,7 +813,7 @@ class SessionGet_Request final :
                &_SessionGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    2;
+    3;
 
   friend void swap(SessionGet_Request& a, SessionGet_Request& b) {
     a.Swap(&b);
@@ -782,7 +971,7 @@ class SessionGet_Response final :
                &_SessionGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    3;
+    4;
 
   friend void swap(SessionGet_Response& a, SessionGet_Response& b) {
     a.Swap(&b);
@@ -971,7 +1160,7 @@ class SessionPost_Request final :
                &_SessionPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    4;
+    5;
 
   friend void swap(SessionPost_Request& a, SessionPost_Request& b) {
     a.Swap(&b);
@@ -1184,7 +1373,7 @@ class SessionPost_Response final :
                &_SessionPost_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    5;
+    6;
 
   friend void swap(SessionPost_Response& a, SessionPost_Response& b) {
     a.Swap(&b);
@@ -1341,7 +1530,7 @@ class SessionsGet_Request final :
                &_SessionsGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    6;
+    7;
 
   friend void swap(SessionsGet_Request& a, SessionsGet_Request& b) {
     a.Swap(&b);
@@ -1460,7 +1649,7 @@ class SessionsGet_Response final :
                &_SessionsGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    7;
+    8;
 
   friend void swap(SessionsGet_Response& a, SessionsGet_Response& b) {
     a.Swap(&b);
@@ -1655,7 +1844,7 @@ class SessionsDelete_Request final :
                &_SessionsDelete_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    9;
 
   friend void swap(SessionsDelete_Request& a, SessionsDelete_Request& b) {
     a.Swap(&b);
@@ -1824,7 +2013,7 @@ class SessionsDelete_Response final :
                &_SessionsDelete_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    10;
 
   friend void swap(SessionsDelete_Response& a, SessionsDelete_Response& b) {
     a.Swap(&b);
@@ -1982,7 +2171,7 @@ class RunPost_Request final :
                &_RunPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    11;
 
   friend void swap(RunPost_Request& a, RunPost_Request& b) {
     a.Swap(&b);
@@ -2267,7 +2456,7 @@ class RunPost_Response final :
                &_RunPost_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    12;
 
   friend void swap(RunPost_Response& a, RunPost_Response& b) {
     a.Swap(&b);
@@ -2729,13 +2918,160 @@ inline void Session::set_allocated_description(std::string* description) {
 
 // -------------------------------------------------------------------
 
+// Run_AssetTrace
+
+// string asset = 1;
+inline void Run_AssetTrace::clear_asset() {
+  _impl_.asset_.ClearToEmpty();
+}
+inline const std::string& Run_AssetTrace::asset() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.Run.AssetTrace.asset)
+  return _internal_asset();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Run_AssetTrace::set_asset(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.asset_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.AssetTrace.asset)
+}
+inline std::string* Run_AssetTrace::mutable_asset() {
+  std::string* _s = _internal_mutable_asset();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.Run.AssetTrace.asset)
+  return _s;
+}
+inline const std::string& Run_AssetTrace::_internal_asset() const {
+  return _impl_.asset_.Get();
+}
+inline void Run_AssetTrace::_internal_set_asset(const std::string& value) {
+  
+  _impl_.asset_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Run_AssetTrace::_internal_mutable_asset() {
+  
+  return _impl_.asset_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Run_AssetTrace::release_asset() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.Run.AssetTrace.asset)
+  return _impl_.asset_.Release();
+}
+inline void Run_AssetTrace::set_allocated_asset(std::string* asset) {
+  if (asset != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.asset_.SetAllocated(asset, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.asset_.IsDefault()) {
+    _impl_.asset_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.Run.AssetTrace.asset)
+}
+
+// bool success = 2;
+inline void Run_AssetTrace::clear_success() {
+  _impl_.success_ = false;
+}
+inline bool Run_AssetTrace::_internal_success() const {
+  return _impl_.success_;
+}
+inline bool Run_AssetTrace::success() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.Run.AssetTrace.success)
+  return _internal_success();
+}
+inline void Run_AssetTrace::_internal_set_success(bool value) {
+  
+  _impl_.success_ = value;
+}
+inline void Run_AssetTrace::set_success(bool value) {
+  _internal_set_success(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.AssetTrace.success)
+}
+
+// repeated string traces = 3;
+inline int Run_AssetTrace::_internal_traces_size() const {
+  return _impl_.traces_.size();
+}
+inline int Run_AssetTrace::traces_size() const {
+  return _internal_traces_size();
+}
+inline void Run_AssetTrace::clear_traces() {
+  _impl_.traces_.Clear();
+}
+inline std::string* Run_AssetTrace::add_traces() {
+  std::string* _s = _internal_add_traces();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+  return _s;
+}
+inline const std::string& Run_AssetTrace::_internal_traces(int index) const {
+  return _impl_.traces_.Get(index);
+}
+inline const std::string& Run_AssetTrace::traces(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+  return _internal_traces(index);
+}
+inline std::string* Run_AssetTrace::mutable_traces(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+  return _impl_.traces_.Mutable(index);
+}
+inline void Run_AssetTrace::set_traces(int index, const std::string& value) {
+  _impl_.traces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline void Run_AssetTrace::set_traces(int index, std::string&& value) {
+  _impl_.traces_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline void Run_AssetTrace::set_traces(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.traces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline void Run_AssetTrace::set_traces(int index, const char* value, size_t size) {
+  _impl_.traces_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline std::string* Run_AssetTrace::_internal_add_traces() {
+  return _impl_.traces_.Add();
+}
+inline void Run_AssetTrace::add_traces(const std::string& value) {
+  _impl_.traces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline void Run_AssetTrace::add_traces(std::string&& value) {
+  _impl_.traces_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline void Run_AssetTrace::add_traces(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.traces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline void Run_AssetTrace::add_traces(const char* value, size_t size) {
+  _impl_.traces_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+Run_AssetTrace::traces() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+  return _impl_.traces_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+Run_AssetTrace::mutable_traces() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.Run.AssetTrace.traces)
+  return &_impl_.traces_;
+}
+
+// -------------------------------------------------------------------
+
 // Run
 
-// optional .google.protobuf.Value output = 1;
+// .google.protobuf.Value output = 1;
 inline bool Run::_internal_has_output() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  PROTOBUF_ASSUME(!value || _impl_.output_ != nullptr);
-  return value;
+  return this != internal_default_instance() && _impl_.output_ != nullptr;
 }
 inline bool Run::has_output() const {
   return _internal_has_output();
@@ -2756,14 +3092,14 @@ inline void Run::unsafe_arena_set_allocated_output(
   }
   _impl_.output_ = output;
   if (output) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.Run.output)
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* Run::release_output() {
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.output_;
   _impl_.output_ = nullptr;
 #ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
@@ -2779,13 +3115,13 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* Run::release_output() {
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* Run::unsafe_arena_release_output() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.Run.output)
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.output_;
   _impl_.output_ = nullptr;
   return temp;
 }
 inline ::PROTOBUF_NAMESPACE_ID::Value* Run::_internal_mutable_output() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   if (_impl_.output_ == nullptr) {
     auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
     _impl_.output_ = p;
@@ -2810,87 +3146,52 @@ inline void Run::set_allocated_output(::PROTOBUF_NAMESPACE_ID::Value* output) {
       output = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
           message_arena, output, submessage_arena);
     }
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   _impl_.output_ = output;
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.Run.output)
 }
 
-// repeated string traces = 2;
-inline int Run::_internal_traces_size() const {
-  return _impl_.traces_.size();
+// repeated .com.wazuh.api.engine.test.Run.AssetTrace asset_traces = 2;
+inline int Run::_internal_asset_traces_size() const {
+  return _impl_.asset_traces_.size();
 }
-inline int Run::traces_size() const {
-  return _internal_traces_size();
+inline int Run::asset_traces_size() const {
+  return _internal_asset_traces_size();
 }
-inline void Run::clear_traces() {
-  _impl_.traces_.Clear();
+inline void Run::clear_asset_traces() {
+  _impl_.asset_traces_.Clear();
 }
-inline std::string* Run::add_traces() {
-  std::string* _s = _internal_add_traces();
-  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.test.Run.traces)
-  return _s;
+inline ::com::wazuh::api::engine::test::Run_AssetTrace* Run::mutable_asset_traces(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.Run.asset_traces)
+  return _impl_.asset_traces_.Mutable(index);
 }
-inline const std::string& Run::_internal_traces(int index) const {
-  return _impl_.traces_.Get(index);
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::test::Run_AssetTrace >*
+Run::mutable_asset_traces() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.Run.asset_traces)
+  return &_impl_.asset_traces_;
 }
-inline const std::string& Run::traces(int index) const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.Run.traces)
-  return _internal_traces(index);
+inline const ::com::wazuh::api::engine::test::Run_AssetTrace& Run::_internal_asset_traces(int index) const {
+  return _impl_.asset_traces_.Get(index);
 }
-inline std::string* Run::mutable_traces(int index) {
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.Run.traces)
-  return _impl_.traces_.Mutable(index);
+inline const ::com::wazuh::api::engine::test::Run_AssetTrace& Run::asset_traces(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.Run.asset_traces)
+  return _internal_asset_traces(index);
 }
-inline void Run::set_traces(int index, const std::string& value) {
-  _impl_.traces_.Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.traces)
+inline ::com::wazuh::api::engine::test::Run_AssetTrace* Run::_internal_add_asset_traces() {
+  return _impl_.asset_traces_.Add();
 }
-inline void Run::set_traces(int index, std::string&& value) {
-  _impl_.traces_.Mutable(index)->assign(std::move(value));
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.Run.traces)
+inline ::com::wazuh::api::engine::test::Run_AssetTrace* Run::add_asset_traces() {
+  ::com::wazuh::api::engine::test::Run_AssetTrace* _add = _internal_add_asset_traces();
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.asset_traces)
+  return _add;
 }
-inline void Run::set_traces(int index, const char* value) {
-  GOOGLE_DCHECK(value != nullptr);
-  _impl_.traces_.Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.test.Run.traces)
-}
-inline void Run::set_traces(int index, const char* value, size_t size) {
-  _impl_.traces_.Mutable(index)->assign(
-    reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.test.Run.traces)
-}
-inline std::string* Run::_internal_add_traces() {
-  return _impl_.traces_.Add();
-}
-inline void Run::add_traces(const std::string& value) {
-  _impl_.traces_.Add()->assign(value);
-  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.traces)
-}
-inline void Run::add_traces(std::string&& value) {
-  _impl_.traces_.Add(std::move(value));
-  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.test.Run.traces)
-}
-inline void Run::add_traces(const char* value) {
-  GOOGLE_DCHECK(value != nullptr);
-  _impl_.traces_.Add()->assign(value);
-  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.test.Run.traces)
-}
-inline void Run::add_traces(const char* value, size_t size) {
-  _impl_.traces_.Add()->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.test.Run.traces)
-}
-inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
-Run::traces() const {
-  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.Run.traces)
-  return _impl_.traces_;
-}
-inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
-Run::mutable_traces() {
-  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.test.Run.traces)
-  return &_impl_.traces_;
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::test::Run_AssetTrace >&
+Run::asset_traces() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.test.Run.asset_traces)
+  return _impl_.asset_traces_;
 }
 
 // -------------------------------------------------------------------
@@ -4448,6 +4749,8 @@ inline void RunPost_Response::set_allocated_run(::com::wazuh::api::engine::test:
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------
