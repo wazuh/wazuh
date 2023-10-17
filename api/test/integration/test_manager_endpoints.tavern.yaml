@@ -1561,6 +1561,181 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /manager/version/check
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          last_check_date: !anystr
+          current_version: v4.8.0
+          update_check: true
+          last_available_major:
+            tag: v5.0.0
+            description: ""
+            title: Wazuh 5.0.0
+            published_date: '2023-10-05T12:48:00Z'
+            semver:
+              major: 5
+              minor: 0
+              patch: 0
+          last_available_minor:
+            tag: v4.9.1
+            description: ""
+            title: Wazuh 4.9.1
+            published_date: '2023-10-05T12:47:00Z'
+            semver:
+              major: 4
+              minor: 9
+              patch: 1
+          last_available_patch:
+            tag: v4.8.2
+            description: ""
+            title: Wazuh 4.8.2
+            published_date: '2023-10-05T12:46:00Z'
+            semver:
+              major: 4
+              minor: 8
+              patch: 2
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          last_check_date: !anystr
+          current_version: v4.8.0
+          update_check: true
+          last_available_major:
+            tag: v5.0.0
+            description: ""
+            title: Wazuh 5.0.0
+            published_date: '2023-10-05T12:48:00Z'
+            semver:
+              major: 5
+              minor: 0
+              patch: 0
+          last_available_minor:
+            tag: v4.9.1
+            description: ""
+            title: Wazuh 4.9.1
+            published_date: '2023-10-05T12:47:00Z'
+            semver:
+              major: 4
+              minor: 9
+              patch: 1
+          last_available_patch:
+            tag: v4.8.2
+            description: ""
+            title: Wazuh 4.8.2
+            published_date: '2023-10-05T12:46:00Z'
+            semver:
+              major: 4
+              minor: 8
+              patch: 2
+
+---
+test_name: GET /manager/version/check with update_check disabled
+
+marks:
+  - xfail
+
+stages:
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          last_check_date: !anystr
+          current_version: v4.8.0
+          update_check: false
+          last_available_major: {}
+          last_available_minor: {}
+          last_available_patch: {}
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          last_check_date: !anystr
+          current_version: v4.8.0
+          update_check: false
+          last_available_major: {}
+          last_available_minor: {}
+          last_available_patch: {}
+
+---
+test_name: GET /manager/version/check with update check service error
+
+stages:
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 500
+      json:
+        error: 2100
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 500
+      json:
+        error: 2100
+
+---
 test_name: PUT /manager/restart
 
 stages:
