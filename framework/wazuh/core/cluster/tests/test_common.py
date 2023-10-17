@@ -828,7 +828,12 @@ async def test_handler_forward_sendsync_response_ok():
 
 
 @pytest.mark.asyncio
-async def test_handler_forward_sendsync_response_ko():
+@pytest.mark.parametrize('exception, expected_error', [
+    (exception.WazuhException(1001), exception.WazuhException(1001)),
+    (exception.WazuhClusterError(3020), None),
+    (Exception('Test'), exception.WazuhClusterError(1000, extra_message='Test'))
+])
+async def test_handler_forward_sendsync_response_ko(exception, expected_error):
     """Test the exceptions present in 'forward_sendsync_response' method."""
 
     class ParentManager:
@@ -849,20 +854,22 @@ async def test_handler_forward_sendsync_response_ko():
 
     with patch('wazuh.core.cluster.common.Handler.get_manager', return_value=mock_manager):
         # Mock the functions with the expected exceptions
-        with patch.object(mock_manager.local_server, "send_request",
-                          side_effect=exception.WazuhException(1001)) as send_request_mock:
+        with patch.object(mock_manager.local_server, "send_request", side_effect=exception):
             with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
-                with patch('wazuh.core.cluster.common.Handler.send_request', return_value="some value"):
-                    with patch('json.dumps', return_value="some value"):
-                        await handler.forward_sendsync_response(b"client string_id")
-                        assert handler.in_str == {b'other_string': 'some value'}
-                        logger_mock.assert_called_once_with(f"Error sending sendsync response to local client: "
-                                                            f"{exception.WazuhException(1001)}")
+                with patch('wazuh.core.cluster.common.Handler.send_request',
+                           return_value="some value") as send_request_mock:
+                    await handler.forward_sendsync_response(b"client string_id")
+                    assert handler.in_str == {b'other_string': 'some value'}
 
-                        send_request_mock.side_effect = Exception
-                        await handler.forward_sendsync_response(b"client string_id")
-                        logger_mock.assert_called_with("Error sending sendsync response to local client: "
-                                                       "b'string_id'")
+                    if expected_error:
+                        logger_mock.assert_called_once_with(f"Error sending sendsync response to local client: "
+                                                            f"{str(exception)}")
+                        send_request_mock.assert_called_once_with(
+                            b'sendsync_err',
+                            json.dumps(expected_error, cls=cluster_common.WazuhJSONEncoder).encode()
+                        )
+                    else:
+                        logger_mock.assert_not_called()
 
 
 def test_handler_data_received_ok():
