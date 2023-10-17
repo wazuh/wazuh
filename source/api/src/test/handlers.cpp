@@ -1,9 +1,12 @@
 #include "api/test/handlers.hpp"
 
 #include <algorithm>
+#include <list>
 #include <optional>
 #include <regex>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -57,10 +60,11 @@ constexpr auto SESSION_NOT_REMOVED_MSG = "Session '{}' could not be removed from
 
 constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
 
-constexpr auto DEFAULT_TIMEOUT {1000};
+constexpr auto DEFAULT_TIMEOUT {5000};
+
 
 auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
-    -> std::function<void(base::Event&&)>
+    -> router::OutputSubscriber
 {
     return [dataSync](base::Event&& event)
     {
@@ -72,8 +76,7 @@ auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSyn
             {
                 dataSync->m_hasTimedout = false;
                 dataSync->m_output.clear();
-                dataSync->m_history.clear();
-                dataSync->m_trace.clear();
+                dataSync->m_traceStorage.clearData();
             }
             else
             {
@@ -86,36 +89,17 @@ auto getOutputCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSyn
 }
 
 auto getTraceCallbackFn(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
-    -> bk::Subscriber
+    -> router::TraceSubscriber
 {
-    return [dataSync](const std::string& trace, bool success)
+    return [dataSync](const std::string& asset, const std::string& trace, bool success)
     {
-        constexpr auto opPatternTrace = R"(\[([^\]]+)\]$)";
-        const std::regex opRegex(opPatternTrace);
-        std::smatch match;
-        if (std::regex_search(trace, match, opRegex))
-        {
-            dataSync->m_history.emplace_back(std::make_pair(match[1].str(), success ? " -> success" : " -> failure"));
-            return;
-        }
-        constexpr auto opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
-        const std::regex opRegexVerbose(opPatternTraceVerbose);
-        std::smatch matchVerbose;
-        if (std::regex_search(trace, matchVerbose, opRegexVerbose))
-        {
-            auto traceStream = std::make_shared<std::stringstream>();
-            *traceStream << trace;
-            dataSync->m_trace.emplace_back(matchVerbose[1].str(), traceStream);
-        } else {
-            // TODO: consider adding a log message, should not happen
-        }
+        dataSync->m_traceStorage.ingest(asset, trace, success);
     };
 }
 
 using namespace api::test::handlers;
-std::variant<std::tuple<std::string, json::Json>, base::Error>
-getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
-        DebugMode debugMode)
+std::variant<std::pair<std::string, api::sessionManager::TraceStorage::DataList>, base::Error>
+getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync)
 {
     // Wait until callbacks have been executed
     {
@@ -129,70 +113,7 @@ getData(std::shared_ptr<api::sessionManager::OutputTraceDataSync> dataSync,
         dataSync->m_processedData = false;
     }
 
-    json::Json json;
-    json.setArray();
-    if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
-    {
-        if (dataSync->m_history.empty())
-        {
-            dataSync->m_trace.clear();
-        }
-        else
-        {
-            for (const auto& [asset, condition] : dataSync->m_history)
-            {
-                auto it = std::find_if(dataSync->m_trace.begin(), dataSync->m_trace.end(), [&](const auto& kvp) {
-                    return kvp.m_asset == asset;
-                });
-
-                if (it == dataSync->m_trace.end())
-                {
-                    return base::Error {
-                        fmt::format("Policy '{}' has not been configured for trace tracking and output subscription",
-                                    dataSync->m_asset)};
-                }
-
-                std::list<std::string> traces;
-                for (const auto& traceStream : dataSync->m_trace)
-                {
-                    if (traceStream.m_asset == it->m_asset)
-                    {
-                        traces.push_back(traceStream.m_spCondition->str());
-                    }
-                }
-
-                json::Json tmp;
-                tmp.setArray();
-                for (auto& info : traces)
-                {
-                    tmp.appendString(info);
-                }
-
-                json.appendJson(tmp);
-            }
-
-            dataSync->m_trace.clear();
-        }
-    }
-    else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
-    {
-        if (dataSync->m_history.empty())
-        {
-            dataSync->m_trace.clear();
-        }
-        else
-        {
-            for (const auto& [asset, condition] : dataSync->m_history)
-            {
-                const auto& info = asset + " " + condition;
-                json.appendString(info);
-            }
-            dataSync->m_trace.clear();
-        }
-    }
-
-    dataSync->m_trace.clear();
-    return std::make_tuple(dataSync->m_output, std::move(json));
+    return std::make_pair(dataSync->m_output, dataSync->m_traceStorage.getDataList());
 }
 
 /**
@@ -1089,7 +1010,7 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
             getOutputCallbackFn(dataSync), getTraceCallbackFn(dataSync), assetsForSubscription, policyName);
         if (subscriptionError.has_value())
         {
-            dataSync->m_history.clear();
+            dataSync->m_traceStorage.clearData();
             return ::api::adapter::genericError<ResponseType>(subscriptionError.value().message);
         }
 
@@ -1127,48 +1048,49 @@ api::Handler runPost(const std::shared_ptr<SessionManager>& sessionManager,
         }
 
         // Get payload (output and traces)
-        const auto payload = getData(dataSync, routerDebugMode);
-        dataSync->m_history.clear();
+        const auto payload = getData(dataSync);
+        dataSync->m_traceStorage.clearData();
         dataSync->m_sessionVisit.store(false);
         if (std::holds_alternative<base::Error>(payload))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(payload).message);
         }
 
+        auto& [outputStr, dataTraceList] = std::get<std::pair<std::string, api::sessionManager::TraceStorage::DataList>>(payload);
+
         ResponseType eResponse;
 
         // Get output
-        const auto output = eMessage::eMessageFromJson<google::protobuf::Value>(
-            std::get<0>(std::get<std::tuple<std::string, json::Json>>(payload)));
-        if (std::holds_alternative<base::Error>(output))
+        const auto outputResult = eMessage::eMessageFromJson<google::protobuf::Value>(outputStr);
+        if (std::holds_alternative<base::Error>(outputResult))
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(output).message);
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(outputResult).message);
         }
         else
         {
-            const auto jsonOutput = std::get<google::protobuf::Value>(output);
+            const auto jsonOutput = std::get<google::protobuf::Value>(outputResult);
             eResponse.mutable_run()->mutable_output()->CopyFrom(jsonOutput);
         }
 
-        // Get traces
-        auto traceArray = std::get<1>(std::get<std::tuple<std::string, json::Json>>(payload));
-        if (!traceArray.isNull())
+        // Check if add trace is necesary
+        if (routerDebugMode != DebugMode::OUTPUT_ONLY)
         {
-            auto traces = traceArray.getArray().value();
-            for (size_t i = 0; i < traces.size(); i++)
+            // Iterate over the asset evaluation
+            for (const auto& assetData : dataTraceList)
             {
-                if (traces[i].getArray().has_value())
+                eTest::Run_AssetTrace assetTrace;
+                const auto& [name, data] = assetData;
+                assetTrace.set_asset(name);
+                assetTrace.set_success(data.success);
+                if (routerDebugMode == DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS)
                 {
-                    auto subArray = traces[i].getArray().value();
-                    for (size_t j = 0; j < subArray.size(); j++)
+                    for (const auto& trace : data.traces)
                     {
-                        eResponse.mutable_run()->add_traces(subArray[j].getString().value());
+                        assetTrace.add_traces(trace);
                     }
                 }
-                else
-                {
-                    eResponse.mutable_run()->add_traces(traces[i].getString().value());
-                }
+
+                eResponse.mutable_run()->add_asset_traces()->CopyFrom(assetTrace);
             }
         }
 

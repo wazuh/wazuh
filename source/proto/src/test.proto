@@ -21,8 +21,14 @@ message Session
 /* Client-facing representation of a test run in APIs */
 message Run
 {
-    optional google.protobuf.Value output = 1; // test output
-    repeated string traces = 2;                // test rules
+    message AssetTrace
+    {
+        string asset = 1;           // Asset name
+        bool success = 2;           // If the asset was successfully decoded
+        repeated string traces = 3; // Traces of the asset
+    }
+    google.protobuf.Value output = 1;     // test output
+    repeated AssetTrace asset_traces = 2; // Asset traces
 }
 
 enum DebugMode

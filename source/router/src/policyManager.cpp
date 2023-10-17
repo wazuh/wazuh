@@ -131,7 +131,7 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
 }
 
 std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
-                                                                   const bk::Subscriber& traceCallback,
+                                                                   const TraceSubscriber& traceCallback,
                                                                    const std::vector<std::string>& assets,
                                                                    const std::string& name)
 {

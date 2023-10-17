@@ -362,11 +362,11 @@ private:
         auto traceIt = params.traceables.find(expression->getName());
         if (traceIt != params.traceables.end())
         {
-            if (params.traces.find(expression->getName()) != params.traces.end())
+            if (params.traces.find(expression->getName()) == params.traces.end())
             {
-                throw std::runtime_error {"Tracer already exists"};
+                params.traces.emplace(expression->getName(), std::make_unique<Tracer>());
             }
-            params.traces.emplace(expression->getName(), std::make_unique<Tracer>());
+
             params.publisher = params.traces[expression->getName()]->publisher();
         }
 
