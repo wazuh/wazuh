@@ -1,5 +1,5 @@
-#include <map>
 #include <list>
+#include <map>
 #include <optional>
 
 /**
@@ -12,15 +12,17 @@
  * @tparam KeyType The type of the keys used for caching.
  * @tparam ValueType The type of the values associated with the keys.
  */
-template <typename KeyType, typename ValueType>
-class LRUCache {
+template<typename KeyType, typename ValueType>
+class LRUCache
+{
 public:
     /**
      * @brief Constructor to initialize an LRUCache with a specified capacity.
      *
      * @param capacity The maximum number of key-value pairs the cache can hold.
      */
-    explicit LRUCache(size_t capacity) : m_capacity(capacity) {};
+    explicit LRUCache(size_t capacity)
+        : m_capacity(capacity) {};
 
     /**
      * @brief Inserts a key-value pair into the cache.
@@ -32,8 +34,10 @@ public:
      * @param key The key to be inserted.
      * @param value The value associated with the key.
      */
-    void insertKey(KeyType key, ValueType value) {
-        if (m_map.size() >= m_capacity) {
+    void insertKey(KeyType key, ValueType value)
+    {
+        if (m_map.size() >= m_capacity)
+        {
             // Cache is full, remove the least recently used item (the back of the list)
             auto lruKey = m_list.back();
             m_list.pop_back();
@@ -57,9 +61,11 @@ public:
      * @return The value associated with the key or a default-constructed ValueType
      *         if the key is not found.
      */
-    std::optional<ValueType> getValue(KeyType key) {
+    std::optional<ValueType> getValue(KeyType key)
+    {
         // Check if the key exists in the cache
-        if (m_map.find(key) != m_map.end()) {
+        if (m_map.find(key) != m_map.end())
+        {
             // Move the accessed item to the front of the list (most recently used)
             refreshKey(key);
             return m_map[key];
@@ -68,16 +74,17 @@ public:
     }
 
 private:
-    std::map<KeyType, ValueType> m_map;      ///< The internal map storing key-value pairs.
-    std::list<KeyType> m_list;              ///< The list to manage the order of keys (LRU order).
-    size_t m_capacity;                      ///< The maximum capacity of the cache.
+    std::map<KeyType, ValueType> m_map; ///< The internal map storing key-value pairs.
+    std::list<KeyType> m_list;          ///< The list to manage the order of keys (LRU order).
+    size_t m_capacity;                  ///< The maximum capacity of the cache.
 
     /**
      * @brief Moves a key to the front of the list to mark it as the most recently used.
      *
      * @param key The key to be moved to the front.
      */
-    void refreshKey(KeyType key) {
+    void refreshKey(KeyType key)
+    {
         m_list.remove(key);
         m_list.emplace_front(key);
     }
