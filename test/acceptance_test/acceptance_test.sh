@@ -16,14 +16,14 @@ DO_TEST_ENGINE=true
 STATS_MONITOR_POLL_TIME_SECS=0.1
 
 # Benchmark configuration
-BT_TIME=60
+BT_TIME=30
 BT_RATE=0
-BT_INPUT=./utils/zz_test.log
-BT_OUTPUT=/tmp/filepath.txt
+BT_INPUT=./utils/zz_test2.log
+BT_OUTPUT=/var/ossec/logs/alerts/alerts-ECS.json
 
 # Engine Configurations
 ENGINE_BUILD_ABSOLUTE_PATH=$(realpath ../../build)
-ENGINE_N_THREADS=16
+ENGINE_N_THREADS=1
 
 # Constants for the test
 CONFIG_SRC_DIR=./analysisd/config
@@ -47,6 +47,7 @@ then
     fi
 fi
 
+echo -n -e > "${BT_OUTPUT}"
 
 # --------------------------- Analysisd test section ---------------------------
 
@@ -136,15 +137,23 @@ then
 
     # Clear the alert file
     echo -n > $BT_OUTPUT
-    ./main start --event_socket /var/ossec/queue/sockets/queue      \
-                --api_socket /var/ossec/queue/sockets/engine-api    \
-                --router_threads ${ENGINE_N_THREADS}                \
-                --file_storage ../ruleset/store                     \
-                --kvdb_path /var/ossec/etc/kvdb/ &
+    ./main server --event_queue_tasks 0                                    \
+                  --event_socket "/var/ossec/queue/sockets/queue"          \
+                  --api_queue_tasks 0                                      \
+                  --api_socket "/var/ossec/queue/sockets/engine-api"       \
+                  --server_threads 1                                       \
+                  --router_threads ${ENGINE_N_THREADS}                     \
+                  --queue_flood_file ""                                    \
+                  --store_path "../ruleset/store"                          \
+                  --log_level debug                                        \
+                  --kvdb_path "/var/ossec/etc/kvdb/"                       \
+                  start                                                    \
+                  --force_router_arg                                       \
+                  --policy "default:255:filter/allow-all/0:policy/wazuh/0" &
 
     ENGINE_PID=$!
 
-    sleep 2
+    sleep 5
 
     cd $SCRIPT_DIR
 
@@ -152,7 +161,7 @@ then
 
     MONITOR_PID=$!
 
-    go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -t $BT_TIME  -r $BT_RATE -i $BT_INPUT -f  | tee "engine-bench-${ENGINE_N_THREADS}-threads-${RANDOM}.log"
+    go run ./utils/benchmark_tool.go -o $BT_OUTPUT -t $BT_TIME  -r $BT_RATE -i $BT_INPUT -f  | tee "engine-bench-${ENGINE_N_THREADS}-threads-${RANDOM}.log"
 
     kill -INT $MONITOR_PID
     kill -INT $ENGINE_PID
