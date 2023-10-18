@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <api/api.hpp>
-#include <kvdb/iKVDBManager.hpp>
+#include <kvdb/ikvdbmanager.hpp>
 
 namespace api::kvdb::handlers
 {
