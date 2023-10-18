@@ -212,7 +212,7 @@ cJSON *getClusterConfig(void) {
 
     strcpy(sockname, CLUSTER_SOCK);
 
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = external_socket_connect(sockname, WAZUH_IPC_TIMEOUT), sock < 0) {
         switch (errno) {
         case ECONNREFUSED:
             merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);

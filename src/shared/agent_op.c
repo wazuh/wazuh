@@ -617,7 +617,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
 
     strcpy(sockname, CLUSTER_SOCK);
 
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
+    if (sock = external_socket_connect(sockname, WAZUH_IPC_TIMEOUT), sock >= 0) {
         if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
             if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
