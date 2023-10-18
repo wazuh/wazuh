@@ -373,7 +373,7 @@ TEST_F(KVDBApiTest, managerPostWithPathEmpty)
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, {""}));
     const auto expectedData =
-        json::Json {R"({"status":"ERROR","error":"Field /path is empty"})"};
+        json::Json {R"({"status":"ERROR","error":"The database could not be created. Error: The path is empty."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);

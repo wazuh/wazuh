@@ -11,7 +11,7 @@
 
 #include <error.hpp>
 
-#include <kvdb/iKVDBManager.hpp>
+#include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbHandler.hpp>
 #include <kvdb/kvdbHandlerCollection.hpp>
 

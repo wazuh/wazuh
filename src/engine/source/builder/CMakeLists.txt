@@ -74,7 +74,7 @@ target_link_libraries(builders
   base
   hlp
   logpar
-  kvdb
+  kvdb::ikvdb
   re2
   logicexpr
   wdb::iwdb
