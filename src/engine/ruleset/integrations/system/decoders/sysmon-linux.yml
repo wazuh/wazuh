@@ -117,71 +117,71 @@ normalize:
       - event.module: sysmon-linux
       - wazuh.decoders: array_append(sysmon-linux)
 
-      - log.level: get_value($lvl_map, $_sysmon.Event.System.Level.#text)
-      - event.start: $_sysmon.Event.System.TimeCreated.@SystemTime
-      - host.name: $_sysmon.Event.System.Computer.#text
+      - log.level: get_value($lvl_map, $_sysmon.System.Level.#text)
+      - event.start: $_sysmon.System.TimeCreated.@SystemTime
+      - host.name: $_sysmon.System.Computer.#text
       - event.kind: event
-      - event.code: $_sysmon.Event.System.EventID.#text
+      - event.code: $_sysmon.System.EventID.#text
 
-      - event: merge_value($idEvent_map, $_sysmon.Event.System.EventID.#text)
+      - event: merge_value($idEvent_map, $_sysmon.System.EventID.#text)
 
   #########################################################
   #                   Delete invalid fields
   #########################################################
-  - check: string_equal($_sysmon.Event.EventData.ConfigurationFileHash,-)
+  - check: string_equal($_sysmon.EventData.ConfigurationFileHash,-)
     map:
-      - _sysmon.Event.EventData.ConfigurationFileHash: delete()
-  - check: string_equal($_sysmon.Event.EventData.FileVersion,-)
+      - _sysmon.EventData.ConfigurationFileHash: delete()
+  - check: string_equal($_sysmon.EventData.FileVersion,-)
     map:
-      - _sysmon.Event.EventData.FileVersion: delete()
-  - check: string_equal($_sysmon.Event.EventData.Description,-)
+      - _sysmon.EventData.FileVersion: delete()
+  - check: string_equal($_sysmon.EventData.Description,-)
     map:
-      - _sysmon.Event.EventData.Description: delete()
-  - check: string_equal($_sysmon.Event.EventData.Product,-)
+      - _sysmon.EventData.Description: delete()
+  - check: string_equal($_sysmon.EventData.Product,-)
     map:
-      - _sysmon.Event.EventData.Product: delete()
-  - check: string_equal($_sysmon.Event.EventData.Company,-)
+      - _sysmon.EventData.Product: delete()
+  - check: string_equal($_sysmon.EventData.Company,-)
     map:
-      - _sysmon.Event.EventData.Company: delete()
-  - check: string_equal($_sysmon.Event.EventData.OriginalFileName,-)
+      - _sysmon.EventData.Company: delete()
+  - check: string_equal($_sysmon.EventData.OriginalFileName,-)
     map:
-      - _sysmon.Event.EventData.OriginalFileName: delete()
-  - check: string_equal($_sysmon.Event.EventData.Hashes,-)
+      - _sysmon.EventData.OriginalFileName: delete()
+  - check: string_equal($_sysmon.EventData.Hashes,-)
     map:
-      - _sysmon.Event.EventData.Hashes: delete()
-  - check: string_equal($_sysmon.Event.EventData.User,-)
+      - _sysmon.EventData.Hashes: delete()
+  - check: string_equal($_sysmon.EventData.User,-)
     map:
-      - _sysmon.Event.EventData.User: delete()
-  - check: string_equal($_sysmon.Event.EventData.IsExecutable,-)
+      - _sysmon.EventData.User: delete()
+  - check: string_equal($_sysmon.EventData.IsExecutable,-)
     map:
-      - _sysmon.Event.EventData.IsExecutable: delete()
-  - check: string_equal($_sysmon.Event.EventData.Archived,-)
+      - _sysmon.EventData.IsExecutable: delete()
+  - check: string_equal($_sysmon.EventData.Archived,-)
     map:
-      - _sysmon.Event.EventData.Archived: delete()
-  - check: string_equal($_sysmon.Event.EventData.RuleName,-)
+      - _sysmon.EventData.Archived: delete()
+  - check: string_equal($_sysmon.EventData.RuleName,-)
     map:
-      - _sysmon.Event.EventData.RuleName: delete()
-  - check: string_equal($_sysmon.Event.EventData.SourceHostname,-)
+      - _sysmon.EventData.RuleName: delete()
+  - check: string_equal($_sysmon.EventData.SourceHostname,-)
     map:
-      - _sysmon.Event.EventData.SourceHostname: delete()
-  - check: string_equal($_sysmon.Event.EventData.SourcePortName,-)
+      - _sysmon.EventData.SourceHostname: delete()
+  - check: string_equal($_sysmon.EventData.SourcePortName,-)
     map:
-      - _sysmon.Event.EventData.SourcePortName: delete()
-  - check: string_equal($_sysmon.Event.EventData.DestinationHostname,-)
+      - _sysmon.EventData.SourcePortName: delete()
+  - check: string_equal($_sysmon.EventData.DestinationHostname,-)
     map:
-      - _sysmon.Event.EventData.DestinationHostname: delete()
-  - check: string_equal($_sysmon.Event.EventData.DestinationPortName,-)
+      - _sysmon.EventData.DestinationHostname: delete()
+  - check: string_equal($_sysmon.EventData.DestinationPortName,-)
     map:
-      - _sysmon.Event.EventData.DestinationPortName: delete()
-  - check: string_equal($_sysmon.Event.EventData.ParentImage,-)
+      - _sysmon.EventData.DestinationPortName: delete()
+  - check: string_equal($_sysmon.EventData.ParentImage,-)
     map:
-      - _sysmon.Event.EventData.ParentImage: delete()
-  - check: string_equal($_sysmon.Event.EventData.ParentCommandLine,-)
+      - _sysmon.EventData.ParentImage: delete()
+  - check: string_equal($_sysmon.EventData.ParentCommandLine,-)
     map:
-      - _sysmon.Event.EventData.ParentCommandLine: delete()
-  - check: string_equal($_sysmon.Event.EventData.ParentUser,-)
+      - _sysmon.EventData.ParentCommandLine: delete()
+  - check: string_equal($_sysmon.EventData.ParentUser,-)
     map:
-      - _sysmon.Event.EventData.ParentUser: delete()
+      - _sysmon.EventData.ParentUser: delete()
 
   - check:
       - event.code: '255'
@@ -189,11 +189,11 @@ normalize:
       - error.code: '255'
 
   - map:
-      - rule.name: $_sysmon.Event.EventData.RuleName
-      - event.provider: $_sysmon.Event.System.Provider.@Name
+      - rule.name: $_sysmon.EventData.RuleName
+      - event.provider: $_sysmon.System.Provider.@Name
 
       # TODO: The hash fields are not implemented in sysmon linux yet
-      # ~tmp.hashes: parse_key_value($_sysmon.Event.EventData.Hashes, =, \,, ', ')
+      # ~tmp.hashes: parse_key_value($_sysmon.EventData.Hashes, =, \,, ', ')
       # - related.hash: $~tmp.hashes
 
   #########################################################
@@ -213,28 +213,28 @@ normalize:
   #     - process.hash: $~tmp.hashes
 
   - map:
-      - process.entity_id: $_sysmon.Event.EventData.ProcessGuid
-      # - process.entity_id: $_sysmon.Event.EventData.SourceProcessGuid (Only windows currently)
-      # - process.entity_id: $_sysmon.Event.EventData.SourceProcessGUID (Only windows currently)
-      - process.executable: $_sysmon.Event.EventData.Image
-      # - process.executable: $_sysmon.Event.EventData.SourceImage (Only windows currently)
-      # - process.executable: $_sysmon.Event.EventData.Destination (Only windows currently)
-      - process.pid: parse_long($_sysmon.Event.EventData.ProcessId)
-      # - process.pid: parse_long($_sysmon.Event.EventData.SourceProcessId)  (Only windows currently)
-      - process.command_line: $_sysmon.Event.EventData.CommandLine
-      - process.working_directory: $_sysmon.Event.EventData.CurrentDirectory
-      - process.parent.entity_id: $_sysmon.Event.EventData.ParentProcessGuid
-      - process.parent.pid: parse_long($_sysmon.Event.EventData.ParentProcessId)
-      - process.parent.executable: $_sysmon.Event.EventData.ParentImage
-      - process.parent.command_line: $_sysmon.Event.EventData.ParentCommandLine
+      - process.entity_id: $_sysmon.EventData.ProcessGuid
+      # - process.entity_id: $_sysmon.EventData.SourceProcessGuid (Only windows currently)
+      # - process.entity_id: $_sysmon.EventData.SourceProcessGUID (Only windows currently)
+      - process.executable: $_sysmon.EventData.Image
+      # - process.executable: $_sysmon.EventData.SourceImage (Only windows currently)
+      # - process.executable: $_sysmon.EventData.Destination (Only windows currently)
+      - process.pid: parse_long($_sysmon.EventData.ProcessId)
+      # - process.pid: parse_long($_sysmon.EventData.SourceProcessId)  (Only windows currently)
+      - process.command_line: $_sysmon.EventData.CommandLine
+      - process.working_directory: $_sysmon.EventData.CurrentDirectory
+      - process.parent.entity_id: $_sysmon.EventData.ParentProcessGuid
+      - process.parent.pid: parse_long($_sysmon.EventData.ParentProcessId)
+      - process.parent.executable: $_sysmon.EventData.ParentImage
+      - process.parent.command_line: $_sysmon.EventData.ParentCommandLine
 
   - check: $event.code != '7'
     map:
-      - process.pe.original_file_name: $_sysmon.Event.EventData.OriginalFileName
-      - process.pe.company: $_sysmon.Event.EventData.Company
-      - process.pe.description: $_sysmon.Event.EventData.Description
-      - process.pe.file_version: $_sysmon.Event.EventData.FileVersion
-      - process.pe.product: $_sysmon.Event.EventData.Product
+      - process.pe.original_file_name: $_sysmon.EventData.OriginalFileName
+      - process.pe.company: $_sysmon.EventData.Company
+      - process.pe.description: $_sysmon.EventData.Description
+      - process.pe.file_version: $_sysmon.EventData.FileVersion
+      - process.pe.product: $_sysmon.EventData.Product
 
   - map:
       - _file_data: parse_file($process.executable)
@@ -259,7 +259,7 @@ normalize:
     map:
       - event.action: service_start
       - service.name: sysmon
-      - service.state: $_sysmon.Event.EventData.State
+      - service.state: $_sysmon.EventData.State
 
   #########################################################
   #               Configuration fields
@@ -269,8 +269,8 @@ normalize:
       - event.code: '16'
     map:
       - event.action: configuration_chage
-      - file.path: $_sysmon.Event.EventData.Configuration
-      # TODO Store the file hash, unimplemented in sysmon currently ($_sysmon.Event.EventData.ConfigurationFileHash)
+      - file.path: $_sysmon.EventData.Configuration
+      # TODO Store the file hash, unimplemented in sysmon currently ($_sysmon.EventData.ConfigurationFileHash)
 
   #########################################################
   #                  File fields
@@ -286,21 +286,21 @@ normalize:
   #        - file.pe.imphash: rename($~tmp.hashes.imphash)  #TODO CHECK
   #        - file.hash: $~tmp.hashes
   - map:
-      - file.path: $_sysmon.Event.EventData.TargetFilename
-      - file.path: $_sysmon.Event.EventData.Device
-      - file.path: $_sysmon.Event.EventData.PipeName
-      - file.path: $_sysmon.Event.EventData.ImageLoaded
-      - file.code_signature.subject_name: $_sysmon.Event.EventData.Signature
-      - file.code_signature.status: $_sysmon.Event.EventData.SignatureStatus
+      - file.path: $_sysmon.EventData.TargetFilename
+      - file.path: $_sysmon.EventData.Device
+      - file.path: $_sysmon.EventData.PipeName
+      - file.path: $_sysmon.EventData.ImageLoaded
+      - file.code_signature.subject_name: $_sysmon.EventData.Signature
+      - file.code_signature.status: $_sysmon.EventData.SignatureStatus
 
   - check:
       - event.code: '7'
     map:
-      - file.pe.original_file_name: $_sysmon.Event.EventData.OriginalFileName
-      - file.pe.company: $_sysmon.Event.EventData.Company
-      - file.pe.description: $_sysmon.Event.EventData.Description
-      - file.pe.file_version: $_sysmon.Event.EventData.FileVersion
-      - file.pe.product: $_sysmon.Event.EventData.Product
+      - file.pe.original_file_name: $_sysmon.EventData.OriginalFileName
+      - file.pe.company: $_sysmon.EventData.Company
+      - file.pe.description: $_sysmon.EventData.Description
+      - file.pe.file_version: $_sysmon.EventData.FileVersion
+      - file.pe.product: $_sysmon.EventData.Product
       - _file_data: parse_file($file.path)
       - file.directory: $_file_data.path
       - file.extension: $_file_data.ext
@@ -310,41 +310,41 @@ normalize:
   #         Network fields
   #########################################################
   - map:
-      - network.transport: $_sysmon.Event.EventData.Protocol
+      - network.transport: $_sysmon.EventData.Protocol
 
   # Unimplemented in sysmon linux currently
   #- check:
   #  - event.code: string_not_equal(22)
   #  map:
-  #    - network.protocol: $_sysmon.Event.EventData.DestinationPortName
-  #    - network.protocol: $_sysmon.Event.EventData.SourcePortName
+  #    - network.protocol: $_sysmon.EventData.DestinationPortName
+  #    - network.protocol: $_sysmon.EventData.SourcePortName
   #- check:
   #  - event.code: string_equal(22)
   #  map:
   #    - network.protocol: dns
 
   - map:
-      - source.ip: parse_ip($_sysmon.Event.EventData.SourceIp)
-      - source.domain: parse_fqdn($_sysmon.Event.EventData.SourceHostname)
-      - source.port: parse_long($_sysmon.Event.EventData.SourcePort)
+      - source.ip: parse_ip($_sysmon.EventData.SourceIp)
+      - source.domain: parse_fqdn($_sysmon.EventData.SourceHostname)
+      - source.port: parse_long($_sysmon.EventData.SourcePort)
 
-      - destination.ip: parse_ip($_sysmon.Event.EventData.DestinationIp)
-      - destination.domain: parse_fqdn($_sysmon.Event.EventData.DestinationHostname)
-      - destination.port: parse_long($_sysmon.Event.EventData.DestinationPort)
+      - destination.ip: parse_ip($_sysmon.EventData.DestinationIp)
+      - destination.domain: parse_fqdn($_sysmon.EventData.DestinationHostname)
+      - destination.port: parse_long($_sysmon.EventData.DestinationPort)
 
-      - dns.question.name: $_sysmon.Event.EventData.QueryName
+      - dns.question.name: $_sysmon.EventData.QueryName
 
-  - check: $_sysmon.Event.EventData.Initiated == 'true'
+  - check: $_sysmon.EventData.Initiated == 'true'
     map:
       - network.direction: egress
-  - check: $_sysmon.Event.EventData.Initiated == 'false'
+  - check: $_sysmon.EventData.Initiated == 'false'
     map:
       - network.direction: ingress
 
-  - check: $_sysmon.Event.EventData.SourceIsIpv6 == 'true'
+  - check: $_sysmon.EventData.SourceIsIpv6 == 'true'
     map:
       - network.type: ipv6
-  - check: $_sysmon.Event.EventData.SourceIsIpv6 == 'false'
+  - check: $_sysmon.EventData.SourceIsIpv6 == 'false'
     map:
       - network.type: ipv4
 
@@ -355,11 +355,11 @@ normalize:
   #         User fields
   #########################################################
   - map:
-      - user.id: $_sysmon.Event.user.identifier
-      - _user_parts: split($_sysmon.Event.EventData.user, \\)
+      - user.id: $_sysmon.user.identifier
+      - _user_parts: split($_sysmon.EventData.user, \\)
       - user.domain: $_user_parts.0
       - user.name: $_user_parts.1
-      - user.name: $_sysmon.Event.EventData.user
+      - user.name: $_sysmon.EventData.user
       # If the user cannnot be parsed, the user.name should be traslate fron the user.identifier
 
   #########################################################
