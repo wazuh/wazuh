@@ -1447,7 +1447,7 @@ components:
           description: "Agent OS information"
         status_code:
           type: integer
-          description: "Agent connection status"
+          description: "Agent connection status code"
           type: integer
           format: int32
           default: 0
