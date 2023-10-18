@@ -3,7 +3,7 @@
 
 #include <baseTypes.hpp>
 #include <defs/idefinitions.hpp>
-#include <kvdb/iKVDBManager.hpp>
+#include <kvdb/ikvdbmanager.hpp>
 #include <schemf/ischema.hpp>
 
 #include "expression.hpp"

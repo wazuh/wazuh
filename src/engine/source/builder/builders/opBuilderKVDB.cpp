@@ -6,7 +6,7 @@
 #include <fmt/format.h>
 
 #include <json/json.hpp>
-#include <kvdb/iKVDBHandler.hpp>
+#include <kvdb/ikvdbhandler.hpp>
 #include <utils/stringUtils.hpp>
 
 #include "baseHelper.hpp"

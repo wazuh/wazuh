@@ -1,7 +1,8 @@
 #ifndef _KVDB_HANDLER_H
 #define _KVDB_HANDLER_H
 
-#include <kvdb/iKVDBHandler.hpp>
+#include <kvdb/ikvdbhandler.hpp>
+#include <kvdb/ikvdbhandlercollection.hpp>
 
 #include <rocksdb/slice.h>
 
@@ -58,50 +59,50 @@ public:
      * @copydoc IKVDBHandler::set(const std::string& key, const std::string& value)
      *
      */
-    std::optional<base::Error> set(const std::string& key, const std::string& value) override;
+    base::OptError set(const std::string& key, const std::string& value) override;
 
     /**
      * @copydoc IKVDBHandler::set(const std::string& key, const json::Json& value)
      *
      */
-    std::optional<base::Error> set(const std::string& key, const json::Json& value) override;
+    base::OptError set(const std::string& key, const json::Json& value) override;
 
     /**
      * @copydoc IKVDBHandler::add
      *
      */
-    std::optional<base::Error> add(const std::string& key) override;
+    base::OptError add(const std::string& key) override;
 
     /**
      * @copydoc IKVDBHandler::remove
      *
      */
-    std::optional<base::Error> remove(const std::string& key) override;
+    base::OptError remove(const std::string& key) override;
 
     /**
      * @copydoc IKVDBHandler::contains
      *
      */
-    std::variant<bool, base::Error> contains(const std::string& key) override;
+    base::RespOrError<bool> contains(const std::string& key) override;
 
     /**
      * @copydoc IKVDBHandler::get
      *
      */
-    std::variant<std::string, base::Error> get(const std::string& key) override;
+    base::RespOrError<std::string> get(const std::string& key) override;
 
     /**
      * @copydoc IKVDBHandler::dump
      *
      */
-    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> dump(const unsigned int page,
-                                                                                   const unsigned int records) override;
+    base::RespOrError<std::list<std::pair<std::string, std::string>>> dump(const unsigned int page,
+                                                                           const unsigned int records) override;
 
     /**
      * @copydoc IKVDBHandler::search
      *
      */
-    std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
+    base::RespOrError<std::list<std::pair<std::string, std::string>>>
     search(const std::string& filter, const unsigned int page, const unsigned int records) override;
 
 protected:
@@ -142,9 +143,9 @@ private:
      * @param page
      * @param records
      * @param filter
-     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
+     * @return base::RespOrError<std::list<std::pair<std::string, std::string>>>, base::Error>
      */
-    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> pageContent(
+    base::RespOrError<std::list<std::pair<std::string, std::string>>> pageContent(
         const unsigned int page, const unsigned int records, const std::function<bool(const rocksdb::Slice&)>& filter);
 
     /**
@@ -152,10 +153,10 @@ private:
      *
      * @param page
      * @param records
-     * @return std::variant<std::list<std::pair<std::string, std::string>>, base::Error>
+     * @return base::RespOrError<std::list<std::pair<std::string, std::string>>>, base::Error>
      */
-    std::variant<std::list<std::pair<std::string, std::string>>, base::Error> pageContent(const unsigned int page,
-                                                                                          const unsigned int records);
+    base::RespOrError<std::list<std::pair<std::string, std::string>>> pageContent(const unsigned int page,
+                                                                                  const unsigned int records);
 };
 
 } // namespace kvdbManager

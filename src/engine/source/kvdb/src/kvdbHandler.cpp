@@ -1,7 +1,5 @@
 #include <kvdb/kvdbHandler.hpp>
 
-#include <kvdb/iKVDBHandlerCollection.hpp>
-
 #include <fmt/format.h>
 #include <json/json.hpp>
 #include <logging/logging.hpp>

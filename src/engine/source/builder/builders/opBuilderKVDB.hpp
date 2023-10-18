@@ -5,7 +5,7 @@
 #include <memory>
 
 #include <defs/idefinitions.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdb/ikvdbmanager.hpp>
 #include <schemf/ischema.hpp>
 
 #include "expression.hpp"
