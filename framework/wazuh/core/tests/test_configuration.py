@@ -495,6 +495,10 @@ def test_write_ossec_conf_exceptions():
 )
 @patch('wazuh.core.configuration.get_ossec_conf')
 def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expected):
+    """
+    Test that update_check_is_enabled function returns the expected value,
+    based on the value of UPDATE_CHECK_OSSEC_FIELD.
+    """
     get_ossec_conf_mock.return_value = update_check_config
 
     assert configuration.update_check_is_enabled() == expected

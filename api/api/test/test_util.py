@@ -306,12 +306,16 @@ async def test_deprecate_endpoint(link):
 
 @patch('api.util.raise_if_exc')
 def test_only_master_endpoint(mock_exc):
+    """Test that only_master_endpoint decorator raise the correct exception when running_in_master_node is False."""
+
     @util.only_master_endpoint
     def func_():
-        pass
+        return ret_val
+
+    ret_val = 'foo'
 
     with patch('api.util.running_in_master_node', return_value=False):
         func_()
         mock_exc.assert_called_once_with(WazuhResourceNotFound(902))
     with patch('api.util.running_in_master_node', return_value=True):
-        func_()
+        assert func_() == ret_val

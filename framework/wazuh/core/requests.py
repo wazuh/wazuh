@@ -52,7 +52,7 @@ def get_update_information_template(
     current_version : str, optional
         Indicates the current version of Wazuh, by default wazuh.__version__.
     last_check_date : Optional[datetime], optional
-        Indicates the datetime of the last check else '', by default None.
+        Indicates the datetime of the last check, by default None.
 
     Returns
     -------

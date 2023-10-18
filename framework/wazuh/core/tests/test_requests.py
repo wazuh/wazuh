@@ -33,6 +33,8 @@ def installation_uid():
 @pytest.mark.parametrize('update_check', (True, False))
 @pytest.mark.parametrize('last_check_date', (None, datetime.now()))
 def test_get_update_information_template(last_check_date, update_check):
+    """Test that the get_update_information_template function is working properly with the given data."""
+
     template = get_update_information_template(update_check=update_check, last_check_date=last_check_date)
 
     assert 'last_check_date' in template
@@ -50,6 +52,7 @@ def test_get_update_information_template(last_check_date, update_check):
 async def test_query_update_check_service_catch_exceptions_and_dont_raise(
     installation_uid, client_session_get_mock
 ):
+    """Test that the query_update_check_service function handle errors correctly."""
     message_error = 'Some client error'
     client_session_get_mock.side_effect = ClientError(message_error)
     update_information = await query_update_check_service(installation_uid)
@@ -80,9 +83,10 @@ async def test_query_update_check_service_catch_exceptions_and_dont_raise(
         [[], [], []],
     ),
 )
-async def test_query_update_check_service_returns_correct_data_when_satatus_200(
+async def test_query_update_check_service_returns_correct_data_when_status_200(
     installation_uid, client_session_get_mock, major, minor, patch
 ):
+    """Test that query_update_check_service function proccess the updates information correctly."""
     def _build_release_info(semvers: list[str]) -> list:
         release_info = []
         for semver in semvers:
@@ -147,6 +151,8 @@ async def test_query_update_check_service_returns_correct_data_when_satatus_200(
 async def test_query_update_check_service_returns_correct_data_on_error(
     installation_uid, client_session_get_mock
 ):
+    """Test that query_update_check_service function returns correct data when an error occurs."""
+
     response_data = {'errors': {'detail': 'Unauthorized'}}
     status = 403
 
@@ -167,6 +173,8 @@ async def test_query_update_check_service_returns_correct_data_on_error(
 async def test_query_update_check_service_request(
     installation_uid, client_session_get_mock
 ):
+    """Test that query_update_check_service function make request to the URL with the correct headers."""
+
     version = '4.8.0'
     with patch('api.signals.wazuh.__version__', version):
         await query_update_check_service(installation_uid)

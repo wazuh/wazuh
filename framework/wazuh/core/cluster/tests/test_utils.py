@@ -298,6 +298,11 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
 )
 @patch('wazuh.core.cluster.utils.read_cluster_config')
 def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
+    """
+    Test that running_on_master function returns the expected value,
+    based on combinations of disabled/enabled and node type.
+    """
+
     read_cluster_config_mock.return_value = cluster_config
 
     assert utils.running_in_master_node() == expected

@@ -13074,7 +13074,7 @@ paths:
       tags:
       - Manager
       summary: "Check available updates"
-      description: "Return if there any available update"
+      description: "Return if there is any available update"
       operationId: api.controllers.manager_controller.check_available_version
       parameters:
         - $ref: '#/components/parameters/pretty'
