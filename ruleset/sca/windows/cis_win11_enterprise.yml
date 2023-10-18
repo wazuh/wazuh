@@ -1411,21 +1411,24 @@ checks:
 
   # 2.3.15.2 (L1) Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'. (Automated)
    - id: 18600
-     title: "(L1) Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'."
+     title: "Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'."
      description: "This policy setting determines the strength of the default discretionary access control list (DACL) for objects. Active Directory maintains a global list of shared system resources, such as DOS device names, mutexes, and semaphores. In this way, objects can be located and shared among processes. Each type of object is created with a default DACL that specifies who can access the objects and what permissions are granted. The recommended state for this setting is: Enabled."
      rationale: "This setting determines the strength of the default DACL for objects. Windows maintains a global list of shared computer resources so that objects can be located and shared among processes. Each type of object is created with a default DACL that specifies who can access the objects and with what permissions."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/system-objects-strengthen-default-permissions-of-internal-system-objects'
      compliance:
        - cis: ["2.3.15.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager -> ProtectionMode'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager -> ProtectionMode -> 1'
 
   # 2.3.17.1 (L1) Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'. (Automated)
    - id: 18601
-     title: "(L1) Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'."
+     title: "Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'."
      description: "This policy setting controls the behavior of Admin Approval Mode for the built-in Administrator account. The recommended state for this setting is: Enabled."
      rationale: "One of the risks that the User Account Control feature introduced with Windows Vista is trying to mitigate is that of malicious software running under elevated credentials without the user or administrator being aware of its activity. An attack vector for these programs was to discover the password of the account named \"Administrator\" because that user account was created for all installations of Windows. To address this risk, in Windows Vista or newer, the built-in Administrator account is now disabled by default. In a default installation of a new computer, accounts with administrative control over the computer are initially set up in one of two ways: - - If the computer is not joined to a domain, the first user account you create has the equivalent permissions as a local administrator. If the computer is joined to a domain, no local administrator accounts are created. The Enterprise or Domain Administrator must log on to the computer and create one if a local administrator account is warranted. Once Windows is installed, the built-in Administrator account may be manually enabled, but we strongly recommend that this account remain disabled."
      impact: "The built-in Administrator account uses Admin Approval Mode. Users that log on using the local Administrator account will be prompted for consent whenever a program requests an elevation in privilege, just like any other user would."
@@ -1436,12 +1439,32 @@ checks:
        - cis: ["2.3.17.1"]
        - cis_csc_v7: ["4.4"]
        - iso_27001-2013: ["A.9.4.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> FilterAdministratorToken'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> FilterAdministratorToken -> 1'
+
+  # 2.3.17.2 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher (Automated)
+   - id: 26068
+     title: "Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop'."
+     description: "This policy setting controls the behavior of the elevation prompt for administrators. The recommended state for this setting is: Prompt for consent on the secure desktop. Configuring this setting to Prompt for credentials on the secure desktop also conforms to the benchmark."
+     rationale: "One of the risks that the UAC feature introduced with Windows Vista is trying to mitigate is that of malicious software running under elevated credentials without the user or administrator being aware of its activity. This setting raises awareness to the administrator of elevated privilege operations and permits the administrator to prevent a malicious program from elevating its privilege when the program attempts to do so."
+     impact: "When an operation (including execution of a Windows binary) requires elevation of privilege, the user is prompted on the secure desktop to select either Permit or Deny. If the user selects Permit, the operation continues with the user's highest available privilege."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Prompt for consent on the secure desktop: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode."
+     references:
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-behavior-of-the-elevation-prompt-for-administrators-in-admin-approval-mode'
+     compliance:
+       - cis: ["2.3.17.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> r:^2$'
 
   # 2.3.17.3 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'. (Automated)
    - id: 18602
-     title: "(L1) Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'."
+     title: "Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'."
      description: "This policy setting controls the behavior of the elevation prompt for standard users. The recommended state for this setting is: Automatically deny elevation requests."
      rationale: "One of the risks that the User Account Control feature introduced with Windows Vista is trying to mitigate is that of malicious programs running under elevated credentials without the user or administrator being aware of their activity. This setting raises awareness to the user that a program requires the use of elevated privilege operations and requires that the user be able to supply administrative credentials in order for the program to run."
      impact: "When an operation requires elevation of privilege, a configurable access denied error message is displayed. An enterprise that is running desktops as standard user may choose this setting to reduce help desk calls. Note: With this setting configured as recommended, the default error message displayed when a user attempts to perform an operation or run a program requiring privilege elevation (without Administrator rights) is \"This program will not run. This program is blocked by group policy. For more information, contact your system administrator.\" Some users who are not used to seeing this message may believe that the operation or program they attempted to run is specifically blocked by group policy, as that is what the message seems to imply. This message may therefore result in user questions as to why that specific operation/program is blocked, when in fact, the problem is that they need to perform the operation or run the program with an Administrative account (or \"Run as Administrator\" if it is already an Administrator account), and they are not doing that."
@@ -1450,40 +1473,49 @@ checks:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-behavior-of-the-elevation-prompt-for-standard-users'
      compliance:
        - cis: ["2.3.17.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorUser'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorUser -> 0'
 
   # 2.3.17.4 (L1) Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'. (Automated)
    - id: 18603
-     title: "(L1) Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'."
+     title: "Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'."
      description: "This policy setting controls the behavior of application installation detection for the computer. The recommended state for this setting is: Enabled."
      rationale: "Some malicious software will attempt to install itself after being given permission to run. For example, malicious software with a trusted application shell. The user may have given permission for the program to run because the program is trusted, but if they are then prompted for installation of an unknown component this provides another way of trapping the software before it can do damage."
      impact: "When an application installation package is detected that requires elevation of privilege, the user is prompted to enter an administrative user name and password. If the user enters valid credentials, the operation continues with the applicable privilege."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Detect application installations and prompt for elevation."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-detect-application-installations-and-prompt-for-elevation'
      compliance:
        - cis: ["2.3.17.4"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableInstallerDetection'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableInstallerDetection -> 1'
 
   # 2.3.17.5 (L1) Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'. (Automated)
    - id: 18604
-     title: "(L1) Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'."
-     description: "This policy setting controls whether applications that request to run with a User Interface Accessibility (UIAccess) integrity level must reside in a secure location in the file system. Secure locations are limited to the following: - …\\Program Files\\, including subfolders - …\\Windows\\System32\\ - …\\Program Files (x86)\\, including subfolders (for 64-bit versions of Windows) Note: Windows enforces a public key infrastructure (PKI) signature check on any interactive application that requests to run with a UIAccess integrity level regardless of the state of this security setting. The recommended state for this setting is: Enabled."
+     title: "Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'."
+     description: "This policy setting controls whether applications that request to run with a User Interface Accessibility (UIAccess) integrity level must reside in a secure location in the file system. Secure locations are limited to the following: - ...\\Program Files\\, including subfolders - ...\\Windows\\System32\\ - ...\\Program Files (x86)\\, including subfolders (for 64-bit versions of Windows) Note: Windows enforces a public key infrastructure (PKI) signature check on any interactive application that requests to run with a UIAccess integrity level regardless of the state of this security setting. The recommended state for this setting is: Enabled."
      rationale: "UIAccess Integrity allows an application to bypass User Interface Privilege Isolation (UIPI) restrictions when an application is elevated in privilege from a standard user to an administrator. This is required to support accessibility features such as screen readers that are transmitting user interfaces to alternative forms. A process that is started with UIAccess rights has the following abilities: - To set the foreground window. - To drive any application window using SendInput function. - To use read input for all integrity levels using low-level hooks, raw input, GetKeyState, GetAsyncKeyState, and GetKeyboardInput. - To set journal hooks. - To uses AttachThreadInput to attach a thread to a higher integrity input queue."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Only elevate UIAccess applications that are installed in secure locations."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-only-elevate-uiaccess-applications-that-are-installed-in-secure-locations'
      compliance:
        - cis: ["2.3.17.5"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableSecureUIAPaths'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableSecureUIAPaths -> 1'
 
   # 2.3.17.6 (L1) Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'. (Automated)
    - id: 18605
-     title: "(L1) Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'."
+     title: "Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'."
      description: "This policy setting controls the behavior of all User Account Control (UAC) policy settings for the computer. If you change this policy setting, you must restart your computer. The recommended state for this setting is: Enabled. Note: If this policy setting is disabled, the Security Center notifies you that the overall security of the operating system has been reduced."
      rationale: "This is the setting that turns on or off UAC. If this setting is disabled, UAC will not be used and any security benefits and risk mitigations that are dependent on UAC will not be present on the system."
      impact: "None - this is the default behavior. Users and administrators will need to learn to work with UAC prompts and adjust their work habits to use least privilege operations."
@@ -1492,12 +1524,15 @@ checks:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-run-all-administrators-in-admin-approval-mode'
      compliance:
        - cis: ["2.3.17.6"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableLUA'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableLUA -> 1'
 
   # 2.3.17.7 (L1) Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'. (Automated)
    - id: 18606
-     title: "(L1) Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'."
+     title: "Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'."
      description: "This policy setting controls whether the elevation request prompt is displayed on the interactive user's desktop or the secure desktop. The recommended state for this setting is: Enabled."
      rationale: "Standard elevation prompt dialog boxes can be spoofed, which may cause users to disclose their passwords to malicious software. The secure desktop presents a very distinct appearance when prompting for elevation, where the user desktop dims, and the elevation prompt UI is more prominent. This increases the likelihood that users who become accustomed to the secure desktop will recognize a spoofed elevation prompt dialog box and not fall for the trick."
      impact: "None - this is the default behavior."
@@ -1506,26 +1541,32 @@ checks:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-switch-to-the-secure-desktop-when-prompting-for-elevation'
      compliance:
        - cis: ["2.3.17.7"]
-     condition:
+     condition: any
      rules:
-
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> PromptOnSecureDesktop'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> PromptOnSecureDesktop -> 1'
+ 
   # 2.3.17.8 (L1) Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'. (Automated)
    - id: 18607
-     title: "(L1) Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'."
+     title: "Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'."
      description: "This policy setting controls whether application write failures are redirected to defined registry and file system locations. This policy setting mitigates applications that run as administrator and write run-time application data to: - %ProgramFiles% - %windir% - %windir%\\System32 - HKEY_LOCAL_MACHINE\\SOFTWARE The recommended state for this setting is: Enabled."
      rationale: "This setting reduces vulnerabilities by ensuring that legacy applications only write data to permitted locations."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Virtualize file and registry write failures to per-user locations."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-virtualize-file-and-registry-write-failures-to-per-user-locations'
      compliance:
        - cis: ["2.3.17.8"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
 
   # 5.1 (L2) Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled'. (Automated)
    - id: 18608
-     title: "(L2) Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled'."
+     title: "Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled'."
      description: "Service supporting the audio gateway role of the Bluetooth Handsfree Profile. The recommended state for this setting is: Disabled."
      rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
      impact: "Bluetooth hands-free devices will not function properly with the computer."
@@ -1539,12 +1580,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BTAGService -> Start -> 4'
 
   # 5.2 (L2) Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'. (Automated)
    - id: 18609
-     title: "(L2) Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'."
+     title: "Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'."
      description: "The Bluetooth service supports discovery and association of remote Bluetooth devices. The recommended state for this setting is: Disabled."
      rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
      impact: "Already installed Bluetooth devices may fail to operate properly and new devices may be prevented from being discovered or associated. If Bluetooth devices were installed, then some Windows components, such as Devices and Printers, may fail to operate correctly - including hanging/freezing when opened. The solution, besides re-enabling this service, is to disable or delete the offending Bluetooth device(s) in Device Manager, or disable the device altogether via the system BIOS (if it is an on-board Bluetooth device)."
@@ -1558,12 +1600,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bthserv -> Start -> 4'
 
   # 5.3 (L1) Ensure 'Computer Browser (Browser)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18610
-     title: "(L1) Ensure 'Computer Browser (Browser)' is set to 'Disabled' or 'Not Installed'."
+     title: "Ensure 'Computer Browser (Browser)' is set to 'Disabled' or 'Not Installed'."
      description: "Maintains an updated list of computers on the network and supplies this list to computers designated as browsers. The recommended state for this setting is: Disabled or Not Installed. Note: In Windows 8.1 and Windows 10, this service is bundled with the SMB 1.0/CIFS File Sharing Support optional feature. As a result, removing that feature (highly recommended unless backward compatibility is needed to XP/2003 and older Windows OSes - see Stop using SMB1 | Storage at Microsoft) will also remediate this recommendation. The feature is not installed by default starting with Windows 10 R1709."
      rationale: "This is a legacy service - its sole purpose is to maintain a list of computers and their network shares in the environment (i.e. \"Network Neighborhood\"). If enabled, it generates a lot of unnecessary traffic, including \"elections\" to see who gets to be the \"master browser\". This noisy traffic could also aid malicious attackers in discovering online machines, because the service also allows anyone to \"browse\" for shared resources without any authentication. This service used to be running by default in older Windows versions (e.g. Windows XP), but today it only remains for backward compatibility for very old software that requires it."
      impact: "The list of computers and their shares on the network will not be updated or maintained."
@@ -1579,12 +1622,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
-
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Browser'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Browser -> Start'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Browser -> Start -> 4'
+ 
   # 5.4 (L2) Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'. (Automated)
    - id: 18611
-     title: "(L2) Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'."
+     title: "Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'."
      description: "Windows service for application access to downloaded maps. This service is started on-demand by application accessing downloaded maps."
      rationale: "Mapping technologies can unwillingly reveal your location to attackers and other software that picks up the information. In addition, automatic downloads of data from third-party sources should be minimized when not needed. Therefore, this service should not be needed in high security environments."
      impact: "Applications will be prevented from accessing maps data."
@@ -1598,14 +1644,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start -> 4'
 
   # 5.5 (L2) Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'. (Automated)
    - id: 18612
-     title: "(L2) Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'."
+     title: "Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'."
      description: "This service monitors the current location of the system and manages geofences (a geographical location with associated events). The recommended state for this setting is: Disabled."
-     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it’s not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
+     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it's not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
      impact: "Applications will be unable to use or receive notifications for geolocation or geofences."
      remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Geolocation Service."
      compliance:
@@ -1617,12 +1664,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc -> Start -> 4'
 
   # 5.6 (L1) Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18613
-     title: "(L1) Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not Installed'."
+     title: "Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not Installed'."
      description: "Enables the server to administer the IIS metabase. The IIS metabase stores configuration for the SMTP and FTP services. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services). Note #2: An organization may choose to selectively grant exceptions to web developers to allow IIS (or another web server) on their workstation, in order for them to locally test & develop web pages. However, the organization should track those machines and ensure the security controls and mitigations are kept up to date, to reduce risk of compromise."
      rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed, the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a workstation, not just IIS."
      impact: "IIS will not function, including Web, SMTP or FTP services."
@@ -1636,12 +1684,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
-
+        - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN'
+        - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN -> Start'
+        - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN -> Start -> 4'
+      
   # 5.7 (L1) Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18614
-     title: "(L1) Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or 'Not Installed'."
+     title: "Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or 'Not Installed'."
      description: "Detects other Infrared devices that are in range and launches the file transfer application. The recommended state for this setting is: Disabled or Not Installed."
      rationale: "Infrared connections can potentially be a source of data compromise - especially via the automatic \"file transfer application\" functionality. Enterprise-managed systems should utilize a more secure method of connection than infrared."
      impact: "Infrared file transfers will be prevented from working."
@@ -1655,12 +1706,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start -> 4'
 
   # 5.8 (L1) Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set to 'Disabled'. (Automated)
    - id: 18615
-     title: "(L1) Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set to 'Disabled'."
+     title: "Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set to 'Disabled'."
      description: "Provides network access translation, addressing, name resolution and/or intrusion prevention services for a home or small office network. The recommended state for this setting is: Disabled."
      rationale: "Internet Connection Sharing (ICS) is a feature that allows someone to \"share\" their Internet connection with other machines on the network - it was designed for home or small office environments where only one machine has Internet access - it effectively turns that machine into an Internet router. This feature causes the bridging of networks and likely bypassing other, more secure pathways. It should not be used on any enterprise-managed system."
      impact: "Internet Connection Sharing (ICS) will not be available. Wireless connections using Miracast will also be prevented. Note: This service is a prerequisite for the Microsoft Defender Application Guard feature in Windows 10, so an exception should be made to this recommendation if intending to use Microsoft Defender Application Guard. Note #2: If your organization is using Windows Subsystem for Linux (WSL) this service is needed for WSL to function, so an exception should be made to this recommendation. For more information, please visit the following Microsoft Blog: Troubleshooting Windows Subsystem for Linux | Microsoft Docs."
@@ -1674,12 +1728,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start -> 4'
 
   # 5.9 (L2) Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'. (Automated)
    - id: 18616
-     title: "(L2) Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'."
+     title: "Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'."
      description: "Creates a Network Map, consisting of PC and device topology (connectivity) information, and metadata describing each PC and device. The recommended state for this setting is: Disabled."
      rationale: "The feature that this service enables could potentially be used for unauthorized discovery and connection to network devices. Disabling the service helps to prevent responses to requests for network topology discovery in high security environments."
      impact: "The Network Map will not function properly."
@@ -1693,12 +1748,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start -> 4'
 
   # 5.10 (L1) Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18617
-     title: "(L1) Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'."
+     title: "Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'."
      description: "The LXSS Manager service supports running native ELF binaries. The service provides the infrastructure necessary for ELF binaries to run on Windows. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Windows Subsystem for Linux)."
      rationale: "The Linux Subsystem (LXSS) Manager allows full system access to Linux applications on Windows, including the file system. While this can certainly have some functionality and performance benefits for running those applications, it also creates new security risks in the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
      impact: "The Linux Subsystem will not be available, and native ELF binaries will no longer run. Note: If your organization has made an exception to this recommendation and is using Windows Subsystem for Linux (WSL), the Internet Connection Sharing (ICS) (SharedAccess) service will need to be Enabled for WSL to function. For more information, please visit the following Microsoft Blog: Troubleshooting Windows Subsystem for Linux | Microsoft Docs."
@@ -1714,10 +1770,13 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition:
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start -> 4'
 
   # 5.11 (L1) Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18618
-     title: "(L1) Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'."
+     title: "Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'."
      description: "Enables the server to be a File Transfer Protocol (FTP) server. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - FTP Server)."
      rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any FTP server application installed on a workstation, not just IIS."
      impact: "The computer will not function as an FTP server."
@@ -1731,12 +1790,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
 
   # 5.12 (L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'. (Automated)
    - id: 18619
-     title: "(L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'."
+     title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'."
      description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices. The recommended state for this setting is: Disabled."
      rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated and/or encrypted using another technology like IPsec. This service is generally more appropriate for servers in a controlled environment then on workstations requiring high security."
      impact: "The computer will not be able to directly login to or access iSCSI targets."
@@ -1750,12 +1812,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> 4'
 
   # 5.13 (L1) Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18620
-     title: "(L1) Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'."
+     title: "Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'."
      description: "SSH protocol based service to provide secure encrypted communications between two untrusted hosts over an insecure network. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows feature (OpenSSH Server)."
      rationale: "Hosting an SSH server from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any SSH server application installed on a workstation, not just the one supplied with Windows."
      impact: "The workstation will not be permitted to be a SSH host server."
@@ -1769,12 +1832,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start -> 4'
 
   # 5.14 (L2) Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'. (Automated)
    - id: 18621
-     title: "(L2) Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'."
+     title: "Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'."
      description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution Protocol (PNRP). The recommended state for this setting is: Disabled."
      rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
      impact: "Some peer-to-peer and collaborative applications, such as Remote Assistance, may not function."
@@ -1788,12 +1854,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> 4'
 
   # 5.15 (L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'. (Automated)
    - id: 18622
-     title: "(L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'."
+     title: "Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'."
      description: "Enables multi-party communication using Peer-to-Peer Grouping. The recommended state for this setting is: Disabled."
      rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
      impact: "Some applications, such as HomeGroup, may not function."
@@ -1807,8 +1874,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
   # 5.16 (L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'. (Automated)
    - id: 18623
