@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <store/istore.hpp>
 #include <store/store.hpp>
 #include <store/drivers/fileDriver.hpp>
 
@@ -76,7 +77,7 @@ protected:
 TEST_F(StoreTest, allSingleOpAndLoad)
 {
     // Clean store
-    std::shared_ptr<Store> store;
+    std::shared_ptr<IStore> store;
     ASSERT_NO_THROW(store = std::make_shared<Store>(m_fDriver));
 
     // Check store if store is empty
@@ -230,7 +231,7 @@ TEST_F(StoreTest, allSingleOpAndLoad)
 TEST_F(StoreTest, allColOpAndLoad)
 {
     // Clean store
-    std::shared_ptr<Store> store;
+    std::shared_ptr<IStore> store;
     ASSERT_NO_THROW(store = std::make_shared<Store>(m_fDriver));
 
     // Check store if store is empty
