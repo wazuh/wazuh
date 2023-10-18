@@ -18,6 +18,8 @@ import os
 import sys
 import json
 import time
+import subprocess
+import shlex
 from os.path import dirname, abspath
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
@@ -178,7 +180,7 @@ def run_kaspersky():
 
 def send_kaspersky(task):
 
-	os.system(task)
+	subprocess.run(shlex.split(task), shell=False)
 
 
 ##################################################################################################################

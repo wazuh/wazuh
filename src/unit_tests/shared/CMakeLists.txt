@@ -83,7 +83,8 @@ endif()
 list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets \
-                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen -Wl,--wrap,pclose")
+                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen -Wl,--wrap,pclose \
+                           -Wl,--wrap,get_binary_path")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
@@ -183,6 +184,18 @@ else()
 list(APPEND shared_tests_flags " ")
 endif()
 
+list(APPEND shared_tests_names "test_binaries_op")
+set(BINARIES_OP_BASE_FLAGS "-Wl,--wrap,IsFile")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
+                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,getenv")
+endif()
+
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
@@ -242,7 +255,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,audit_send \
                                 -Wl,--wrap,audit_rule_fieldpair_data -Wl,--wrap,fopen -Wl,--wrap,audit_add_rule_data \
                                 -Wl,--wrap,audit_delete_rule_data -Wl,--wrap,audit_close -Wl,--wrap,fclose \
                                 -Wl,--wrap,fflush -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek \
-                                -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
+                                -Wl,--wrap,get_binary_path ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_privsep_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
@@ -253,6 +267,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap
 
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+
 endif()
 
 if(${TARGET} STREQUAL "server")

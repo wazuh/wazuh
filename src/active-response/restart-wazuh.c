@@ -42,10 +42,10 @@ int main (int argc, char **argv) {
 #else
     char cmd[OS_MAXSTR + 1];
 
-    snprintf(cmd, OS_MAXSTR, "net stop Wazuh");
+    snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\net.exe stop Wazuh");
     system(cmd);
 
-    snprintf(cmd, OS_MAXSTR, "net start Wazuh");
+    snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\net.exe start Wazuh");
     system(cmd);
 #endif
 
