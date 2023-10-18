@@ -28,8 +28,9 @@ def get_real_configuration(test_configuration):
         for key in I:
             real_config[key] = I[key]
 
+    if real_config.get('protocol'):
+        real_config['protocol']['value'] = real_config['protocol']['value'].split(',')
 
-    real_config['protocol']['value'] = real_config['protocol']['value'].split(',')
     real_config_list = list()
     real_config_list.append(real_config)
     return real_config_list
