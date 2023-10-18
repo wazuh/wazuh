@@ -11,6 +11,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 from wazuh_testing.modules.remoted import patterns
+from wazuh_testing.modules.api import utils
 
 # Set pytest marks.
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
@@ -28,7 +29,7 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_invalid_connection_protocol(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                            set_wazuh_configuration, restart_wazuh_expect_error, protocols_list_to_str_upper_case):
+                            set_wazuh_configuration, restart_wazuh_expect_error, protocols_list_to_str_upper_case, get_real_configuration):
 
     '''
     description: Check if 'wazuh-remoted' sets properly prococol values.
@@ -61,6 +62,9 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
         - protocols_list_to_str_upper_case
             type: fixture
             brief: convert valid_protocol list to comma separated uppercase string
+        - get_real_configuration
+            type: fixture
+            brief: get elements from section config and convert  list to dict
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
@@ -95,3 +99,7 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
                                                         "protocol_valid_upper": used_protocol,
                                                         "connection": test_metadata['connection']}))
         assert log_monitor.callback_result
+
+        real_config_list = get_real_configuration
+
+        utils.compare_config_api_response(real_config_list, 'remote')
