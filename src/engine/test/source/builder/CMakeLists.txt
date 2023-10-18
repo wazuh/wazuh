@@ -177,6 +177,9 @@ add_executable(opBuilderHelperKVDB_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBDecodeBitmask_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/windowsHelper_test.cpp
 )
+
+target_link_libraries(opBuilderHelperKVDB_test kvdb)
+
 gtest_discover_tests(opBuilderHelperKVDB_test)
 
 add_executable(opBuilderWdb_test

@@ -1,7 +1,7 @@
 #ifndef _KVDB_HANDLER_COLLECTION_H
 #define _KVDB_HANDLER_COLLECTION_H
 
-#include <kvdb/iKVDBHandlerCollection.hpp>
+#include <kvdb/ikvdbhandlercollection.hpp>
 
 #include <map>
 #include <memory>

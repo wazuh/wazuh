@@ -8,7 +8,7 @@
 #include <variant>
 #include <vector>
 
-#include <kvdb/iKVDBHandler.hpp>
+#include <kvdb/ikvdbhandler.hpp>
 
 #include <utils/baseMacros.hpp>
 
