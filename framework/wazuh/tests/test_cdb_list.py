@@ -325,7 +325,7 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 @patch('wazuh.cdb_list.delete_list_file')
 @patch('wazuh.cdb_list.remove')
 @patch('wazuh.cdb_list.exists', return_value=True)
-@pytest.mark.parametrize('relative_dirname', ['/some/value', None])
+@pytest.mark.parametrize('relative_dirname', ['nested', None])
 def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_upload_file,
                           mock_delete_file_with_backup, mock_safe_move, relative_dirname):
     """Check that functions inside upload_list_file are called with expected params"""
@@ -378,7 +378,7 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
-@pytest.mark.parametrize('relative_dirname', ['/some/value', None])
+@pytest.mark.parametrize('relative_dirname', ['nested', None])
 def test_delete_list_file(mock_delete_file, relative_dirname):
     """Check that expected result is returned when the file is deleted."""
     try:
@@ -391,7 +391,7 @@ def test_delete_list_file(mock_delete_file, relative_dirname):
         with patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH):
             result = delete_list_file(['test_file'], relative_dirname=relative_dirname)
             relative_path = os.path.join(RELATIVE_PATH, relative_dirname, 'test_file') if relative_dirname \
-                else os.path.join(RELATIVE_PATH, relative_dirname, 'test_file')
+                else os.path.join(RELATIVE_PATH, 'test_file')
             assert result.render()['data']['affected_items'][0] == relative_path
     finally:
         try:

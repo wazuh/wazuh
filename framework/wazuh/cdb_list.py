@@ -134,9 +134,9 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
                                       none_msg='Could not upload CDB list file')
     if relative_dirname:
-        full_path = join(common.USER_LISTS_PATH, relative_dirname, filename[0])
+        full_path = join(common.USER_LISTS_PATH, relative_dirname, filename)
     else:
-        full_path = join(common.USER_LISTS_PATH, filename[0])
+        full_path = join(common.USER_LISTS_PATH, filename)
     backup_file = ''
 
     try:
