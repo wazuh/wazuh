@@ -8,6 +8,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 if(${TARGET} STREQUAL "server")
+    add_subdirectory(hmac)
     add_subdirectory(shared)
     add_subdirectory(sha1)
     add_subdirectory(blowfish)
