@@ -14,9 +14,6 @@
 
 #include "../config/integrator-config.h"
 
-#define MAX_DEBUG_LEVEL LOGLEVEL_CRITICAL + 1
-static const char* debugLevels[] = { "NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL" };
-
 /** Prototypes **/
 
 /* Read syslog config */
