@@ -200,7 +200,11 @@ int __wrap__fseeki64(__attribute__ ((__unused__)) FILE *stream, \
      return mock();
 }
 
+extern FILE *__real_popen(const char *command, const char *type);
 FILE *__wrap_popen(const char *command, const char *type) {
+    if(!test_mode){
+        return __real_popen(command, type);
+    }
     check_expected(command);
     check_expected(type);
     return mock_ptr_type(FILE*);

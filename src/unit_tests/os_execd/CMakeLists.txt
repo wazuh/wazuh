@@ -43,7 +43,7 @@ if(${TARGET} STREQUAL "winagent")
                              ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND execd_names "test_execd")
-    list(APPEND execd_flags "-Wl,--wrap,time -Wl,--wrap,select -Wl,--wrap,OS_RecvUnix \
+    list(APPEND execd_flags "-Wl,--wrap,time -Wl,--wrap,select -Wl,--wrap,OS_RecvUnix -Wl,--wrap,popen \
                              -Wl,--wrap,ReadExecConfig -Wl,--wrap,GetCommandbyName -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fwrite \
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                              -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap,fwrite \

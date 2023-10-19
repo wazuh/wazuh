@@ -20,7 +20,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate logcollector tests
 list(APPEND logcollector_names "test_logcollector")
-list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit \
+list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit -Wl,--wrap,popen \
                                 -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                                 -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos \
                                 -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
@@ -36,7 +36,7 @@ list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit
                                 ${HASH_OP_WRAPPERS}")
 
 list(APPEND logcollector_names "test_read_multiline_regex")
-list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,popen \
                                 -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
                                 -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
                                 -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status \
@@ -44,14 +44,14 @@ list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,ff
                                 -Wl,--wrap=w_fseek -Wl,--wrap,_mdebug2")
 
 list(APPEND logcollector_names "test_localfile-config")
-list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                 -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
                                 -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND logcollector_names "test_state")
 list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                 -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
-                                -Wl,--wrap,fgetpos -Wl,--wrap,time \
+                                -Wl,--wrap,fgetpos -Wl,--wrap,time -Wl,--wrap,popen \
                                 -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray \
                                 -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
                                 -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject \
@@ -74,13 +74,13 @@ list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,
                                 -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,wpclose -Wl,--wrap,access \
                                 -Wl,--wrap,getpid -Wl,--wrap,_minfo -Wl,--wrap,pthread_rwlock_wrlock \
                                 -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
-                                -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle \
+                                -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen \
                                 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_get_os_codename -Wl,--wrap,w_get_process_childs")
 
 list(APPEND logcollector_names "test_read_macos")
 list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_read -Wl,--wrap,fgets \
                                 -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,_mdebug2\
-                                -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
+                                -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,popen \
                                 -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,_merror -Wl,--wrap,waitpid \
                                 -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo \
                                 -Wl,--wrap,kill -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,strerror \
@@ -90,7 +90,7 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_rea
                                 -Wl,--wrap,w_macos_set_is_valid_data")
 
 list(APPEND logcollector_names "test_read_multiline")
-list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                 -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
                                 -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
                                 -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
