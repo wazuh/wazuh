@@ -14,7 +14,6 @@
 
 #include "../headers/shared.h"
 #include "../../os_crypto/aes/aes_op.h"
-#include "../../wrappers/common.h"
 
 // Tests
 

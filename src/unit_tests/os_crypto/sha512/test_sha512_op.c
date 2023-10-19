@@ -13,7 +13,6 @@
 #include <cmocka.h>
 
 #include "../../os_crypto/sha512/sha512_op.h"
-#include "../../wrappers/common.h"
 #include "../headers/shared.h"
 
 void test_sha512_string() {
