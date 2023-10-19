@@ -28,6 +28,8 @@ void expect_fopen(const char* path, const char* mode, FILE *fp);
 int __wrap_fprintf (FILE *__stream, const char *__format, ...);
 void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret);
 
+int __wrap_snprintf(char *__s, size_t __maxlen, const char *__format, ...);
+
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream);
 void expect_fread(char *file, int ret);
 
