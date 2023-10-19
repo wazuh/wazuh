@@ -42,7 +42,7 @@ void test_md5_string(void **state) {
 
 void test_md5_file(void **state) {
     const char *string = "teststring";
-    const char *string_md5 = "d41d8cd98f00b204e9800998ecf8427e";
+    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
 
     char path[] = "path/to/file";
 
@@ -51,6 +51,9 @@ void test_md5_file(void **state) {
     will_return(__wrap_fopen, 1);
 
     will_return(__wrap_fread, string);
+    will_return(__wrap_fread, strlen(string));
+
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
 
     expect_value(__wrap_fclose, _File, 1);
