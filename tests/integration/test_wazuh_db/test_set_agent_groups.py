@@ -78,6 +78,8 @@ def remove_database(request):
     yield
     delete_dbs()
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_case',
@@ -86,7 +88,7 @@ def remove_database(request):
                               for module_data, module_name in module_tests
                               for case in module_data]
                          )
-def test_set_agent_groups(remove_database, restart_wazuh_daemon, test_case, create_groups):
+def test_set_agent_groups(remove_database, daemons_handler, test_case, create_groups):
     '''
     description: Check that every input message using the 'set_agent_groups' command in wazuh-db socket generates
                  the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
@@ -99,7 +101,7 @@ def test_set_agent_groups(remove_database, restart_wazuh_daemon, test_case, crea
         - remove_database:
             type: fixture
             brief: Delete databases.
-        - restart_wazuh:
+        - daemons_handler:
             type: fixture
             brief: Reset the 'ossec.log' file and restart Wazuh.
         - test_case:

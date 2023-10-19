@@ -1,13 +1,13 @@
 import pytest
 
-from wazuh_testing.constants.executions import TIER0, SERVER
+from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.tools.simulators import agent_simulator as ag
 from wazuh_testing.tools.wazuh_manager import remove_all_agents
 
 
 # Marks
-pytestmark = [TIER0, pytest.mark.linux, SERVER]
+pytestmark = [TIER0, LINUX, SERVER]
 
 # Variables
 expected_database_version = '13'
@@ -19,9 +19,11 @@ def remove_agents():
     yield
     remove_all_agents('manage_agents')
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
-def test_agent_database_version(restart_wazuh_daemon, remove_agents):
+def test_agent_database_version(daemons_handler, remove_agents):
     '''
     description: Check that the agent database version is the expected one. To do this, it performs a query to the agent
                  database that gets the database version.
@@ -38,7 +40,7 @@ def test_agent_database_version(restart_wazuh_daemon, remove_agents):
     wazuh_min_version: 4.4.0
 
     parameters:
-        - restart_wazuh_daemon:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service.
 

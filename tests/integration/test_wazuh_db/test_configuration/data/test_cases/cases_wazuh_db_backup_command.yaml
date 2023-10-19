@@ -84,6 +84,6 @@
   -
     backups_amount: 1
     restore: true
-    snapshot: 
+    snapshot:
     save_pre_restore: false
     restore_response: err Invalid JSON syntax

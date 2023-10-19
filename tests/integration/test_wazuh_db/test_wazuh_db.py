@@ -56,25 +56,21 @@ from wazuh_testing.utils.file import get_list_of_content_yml
 from wazuh_testing.tools.wazuh_manager import remove_all_agents
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.callbacks import make_callback
-
+from wazuh_testing.modules.wazuh_db import WAZUH_DB_PREFIX
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
-
 
 # Configurations
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
 agent_message_files = os.path.join(test_data_path, 'config_templates/agent')
 global_message_file = os.path.join(test_data_path, 'config_templates/global', 'config_global_messages.yaml')
 
-WAZUH_DB_PREFIX = r'.*wazuh-db.*'
-
 global_module_tests = get_list_of_content_yml(global_message_file)
 agent_module_tests = []
 for file in os.listdir(agent_message_files):
     with open(os.path.join(agent_message_files, file)) as f:
         agent_module_tests.append((yaml.safe_load(f), file.split('_')[0]))
-
 
 # Variables
 log_monitor_paths = []

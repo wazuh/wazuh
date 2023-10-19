@@ -58,13 +58,13 @@ import yaml
 import pytest
 
 from wazuh_testing.constants.paths import WAZUH_PATH
-from wazuh_testing.constants.executions import TIER0, SERVER
+from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils.file import get_list_of_content_yml
 
 
 # Marks
-pytestmark = [TIER0, pytest.mark.linux, SERVER]
+pytestmark = [TIER0, LINUX, SERVER]
 
 # Configurations
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')

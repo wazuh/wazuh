@@ -45,15 +45,17 @@ import time
 import pytest
 import json
 
-from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants import paths
 from wazuh_testing.utils.database import query_wdb, delete_dbs
 from wazuh_testing.utils.db_queries import global_db
-from wazuh_testing.constants.executions import TIER0, SERVER
-from wazuh_testing.utils.file import get_list_of_content_yml
+from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
+from wazuh_testing.utils.file import get_list_of_content_yml, truncate_file
+from wazuh_testing.utils.services import control_service
+
 
 
 # Marks
-pytestmark = [pytest.mark.linux, TIER0, SERVER]
+pytestmark = [LINUX, TIER0, SERVER]
 
 # Configurations
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
@@ -61,15 +63,13 @@ messages_file = os.path.join(os.path.join(test_data_path, 'test_cases'), 'cases_
 module_tests = get_list_of_content_yml(messages_file)
 
 log_monitor_paths = []
-wdb_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb'))
+wdb_path = os.path.join(os.path.join(paths.WAZUH_PATH, 'queue', 'db', 'wdb'))
 receiver_sockets_params = [(wdb_path, 'AF_UNIX', 'TCP')]
 monitored_sockets_params = [('wazuh-db', None, True)]
 receiver_sockets = None  # Set in the fixtures
 
-
 # Fixtures
-
-# Insert agents into DB  and assign them into a group
+# Insert agents into DB  and assign them into a group)
 @pytest.fixture(scope='function')
 def pre_insert_agents_into_group():
 
@@ -87,6 +87,8 @@ def clean_databases():
     yield
     delete_dbs()
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_case',
@@ -95,13 +97,14 @@ def clean_databases():
                               for module_data, module_name in module_tests
                               for case in module_data]
                          )
-def test_sync_agent_groups(restart_wazuh_daemon, test_case, create_groups, pre_insert_agents_into_group,
+
+def test_sync_agent_groups(daemons_handler, test_case, create_groups, pre_insert_agents_into_group,
                            clean_databases):
     '''
     description: Check that commands about sync_aget_groups_get works properly.
     wazuh_min_version: 4.4.0
     parameters:
-        - restart_wazuh_daemon:
+        - daemons_handler:
             type: fixture
             brief: Truncate ossec.log and restart Wazuh.
         - test_case:

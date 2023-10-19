@@ -61,12 +61,13 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants import paths
-from wazuh_testing.constants.executions import TIER0, SERVER
+from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import validate_interval_format
+from wazuh_testing.modules.wazuh_db import patterns
 
 
 # Marks
-pytestmark =  [TIER0, pytest.mark.linux, SERVER]
+pytestmark =  [TIER0, LINUX, SERVER]
 
 
 # Configuration
@@ -100,9 +101,6 @@ configurations = load_wazuh_configurations(configurations_path, __name__ ,
 
 
 # Variables
-BACKUP_CREATION_CALLBACK = r'.*Created Global database backup "(backup/db/global.db-backup.*.gz)"'
-WRONG_INTERVAL_CALLBACK = r".*Invalid value for element ('interval':.*)"
-WRONG_MAX_FILES_CALLBACK = r".*Invalid value for element ('max_files':.*)"
 wazuh_log_monitor = file_monitor.FileMonitor(paths.logs.WAZUH_LOG_PATH)
 timeout = 15
 
@@ -168,13 +166,13 @@ def test_wdb_backup_configs(get_configuration, configure_environment, clear_logs
         control_service('restart')
     except (subprocess.CalledProcessError, ValueError) as err:
         if not validate_interval_format(test_interval):
-            wazuh_log_monitor.start(callback=callbacks.generate_callback(WRONG_INTERVAL_CALLBACK), timeout=timeout)
+            wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.WRONG_INTERVAL_CALLBACK), timeout=timeout)
             assert wazuh_log_monitor.callback_result, 'Did not receive expected ' \
                                                     '"Invalid value element for interval..." event'
 
             return
         elif not isinstance(test_max_files, numbers.Number) or test_max_files==0:
-            wazuh_log_monitor.start(callback=callbacks.generate_callback(WRONG_MAX_FILES_CALLBACK), timeout=timeout)
+            wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.WRONG_MAX_FILES_CALLBACK), timeout=timeout)
             assert wazuh_log_monitor.callback_result, 'Did not receive expected ' \
                                                         '"Invalid value element for max_files..." event'
             return
@@ -191,7 +189,7 @@ def test_wdb_backup_configs(get_configuration, configure_environment, clear_logs
             pytest.fail("Error: A file was found in backups_path. No backups where expected when enabled is 'no'.")
     # Manage if backup generation is enabled - one or more backups expected
     else:
-        result = wazuh_log_monitor.start(callback=callbacks.generate_callback(BACKUP_CREATION_CALLBACK),
+        result = wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.BACKUP_CREATION_CALLBACK),
                                         timeout=timeout, accumulations=test_max_files+1)
         assert wazuh_log_monitor.callback_result, 'Did not receive expected\
                                                         "Created Global database..." event'

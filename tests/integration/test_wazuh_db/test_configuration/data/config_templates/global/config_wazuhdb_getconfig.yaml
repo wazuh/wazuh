@@ -4,7 +4,6 @@
     -
       input: '{"version": 1, "origin": {"module": "api"}, "command": "getconfig", "module": "api"}'
       output: '{"error":4,"message":"Empty parameters","data":{}}'
-
 -
   name: Get config empty parameters
   test_case:
