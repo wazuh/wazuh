@@ -360,10 +360,6 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
             # Original file is restored with safe_move
             mock_safe_move.assert_called_once_with('', os.path.join(common.USER_LISTS_PATH, 'test'))
 
-            # File with same name already exists in subdirectory, raise exception
-            with patch('wazuh.cdb_list.get_filenames_paths', return_value=['/test']):
-                result = upload_list_file(filename='test', content='test:content', overwrite=True)
-                assert result.render()['data']['failed_items'][0]['error']['code'] == 1805
 
             # Exception while trying to create back up
             result = upload_list_file(filename='test', content='test:content', overwrite=True)

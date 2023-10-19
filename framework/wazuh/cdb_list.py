@@ -78,11 +78,12 @@ def get_lists(filename: list = None, offset: int = 0, limit: int = common.DATABA
 
 
 @expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
-def get_list_file(filename: list = None, raw: bool = None) -> AffectedItemsWazuhResult:
+def get_list_file(filename: list = None, raw: bool = None, relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Get a CDB list file content. The file is recursively searched.
 
     Parameters
     ----------
+    relative_dirname
     filename : list
         Full path of CDB list file to get.
     raw : bool, optional
@@ -98,7 +99,10 @@ def get_list_file(filename: list = None, raw: bool = None) -> AffectedItemsWazuh
 
     try:
         # Recursively search for filename inside {wazuh_path}/etc/lists/
-        content = get_list_from_file(get_filenames_paths(filename)[0], raw)
+        search_directory = join(common.USER_LISTS_PATH, relative_dirname) if relative_dirname \
+            else common.USER_LISTS_PATH
+
+        content = get_list_from_file(get_filenames_paths(filename, root_directory=search_directory)[0], raw)
         if raw:
             result = content
         else:
@@ -146,9 +150,6 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
         # If file already exists and overwrite is False, raise exception.
         if not overwrite and exists(full_path):
             raise WazuhError(1905)
-        # If file with same name already exists in subdirectory.
-        elif not overwrite and get_filenames_paths([filename])[0] != full_path:
-            raise WazuhError(1805)
         # Create backup and delete original CDB list.
         elif overwrite and exists(full_path):
             backup_file = f"{full_path}.backup"

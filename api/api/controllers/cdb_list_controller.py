@@ -83,7 +83,7 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
 
 
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+                   raw: bool = False, relative_dirname: str = None) -> Union[web.Response, ConnexionResponse]:
     """Get content of one CDB list file, in raw or dict format.
 
     Parameters
@@ -106,7 +106,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
             raw=False (default) -> web.Response      (application/json)
         If any exception was raised, it will return a web.Response with details.
     """
-    f_kwargs = {'filename': filename, 'raw': raw}
+    f_kwargs = {'filename': filename, 'raw': raw, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=cdb_list.get_list_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
