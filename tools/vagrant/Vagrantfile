@@ -61,11 +61,15 @@ Vagrant.configure("2") do |config|
         su vagrant -c "mkdir build"
         ENGINE_SRC_DIR=$(pwd)
 
-        # Install engine-schema python script
+        # Install engine tools python script
         pip3 install --system $ENGINE_SRC_DIR/tools/engine-suite
 
-        # Install api-communication python script
+        # Install api and cli communication lbs for python script
         pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/api-communication
+        pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/cli-communication
+
+        # Internal tools
+        pip3 install --system $ENGINE_SRC_DIR/tools/evtx2xml
 
         # Add autocompletion to profile
         echo "source $ENGINE_SRC_DIR/tools/vagrant/autocompletion.sh" >> /etc/profile
