@@ -29,7 +29,7 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_queue_size_syslog(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
+def test_big_queue_size(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                             set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
 
     '''
