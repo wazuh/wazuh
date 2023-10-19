@@ -121,6 +121,25 @@ void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret) {
 #endif
 }
 
+int __wrap_snprintf(char *__s, size_t __maxlen, const char *__format, ...) {
+    if (test_mode) {
+        check_expected_ptr(__maxlen);
+        check_expected_ptr(__format);
+        memset(__s, 0, __maxlen);
+
+        return mock_type(int);
+    } else {
+        va_list args;
+        va_start(args, __format);
+
+        int val = vsnprintf(__s, __maxlen, __format, args);
+
+        va_end(args);
+
+        return val;
+    }
+}
+
 extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
     if (test_mode) {
