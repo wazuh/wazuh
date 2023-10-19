@@ -36,6 +36,7 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "threadEventDispatcher_test.cpp"
     "xzHelper_test.cpp"
     "jsonArrayParser_test.cpp"
+    "zlibHelper_test.cpp"
 )
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -88,6 +89,7 @@ else()
         pthread
         rt
         lzma
+        z
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
