@@ -5,8 +5,14 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Changed
+
+- Set a timeout on requests between components through the cluster. ([#19729](https://github.com/wazuh/wazuh/pull/19729))
+
 #### Fixed
+
 - Fixed a bug that might leave some worker's services hanging if the connection to the master was broken. ([#19702](https://github.com/wazuh/wazuh/pull/19702))
+- Fixed vulnerability scan on Windows agent when the OS version has no release data. ([#19706](https://github.com/wazuh/wazuh/pull/19706))
 
 
 ## [v4.5.3] - 2023-10-10
