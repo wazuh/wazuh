@@ -15,7 +15,7 @@
 #include "customDeleter.hpp"
 #include <filesystem>
 #include <fstream>
-#include <utility>
+#include <memory>
 #include <zlib.h>
 
 using ZFilePtr = std::unique_ptr<gzFile_s, CustomDeleter<decltype(&gzclose), gzclose>>;
