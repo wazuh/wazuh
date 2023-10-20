@@ -173,6 +173,8 @@ add_executable(opBuilderHelperKVDB_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBGet_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBSet_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBGetArray_test.cpp
+  #${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
+  #${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
   # Use KVDB in builtime
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBDecodeBitmask_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/windowsHelper_test.cpp

@@ -93,10 +93,21 @@ std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
             try
             {
                 std::string value; // mandatory to pass to KeyMayExist.
-                bool valueFound;
+                bool valueFound = false;
 
                 pRocksDB->KeyMayExist(
                     rocksdb::ReadOptions(), pCFhandle.get(), rocksdb::Slice(key), &value, &valueFound);
+
+                // confirm exists
+                if (valueFound)
+                {
+                    auto status = pRocksDB->Get(rocksdb::ReadOptions(), pCFhandle.get(), rocksdb::Slice(key), &value);
+
+                    if (!status.ok())
+                    {
+                        valueFound = false;
+                    }
+                }
 
                 return valueFound;
             }

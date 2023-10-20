@@ -29,6 +29,19 @@ class IKVDBManager
 {
 public:
     /**
+     * @brief Initialize the KVDBManager.
+     * Setup options, filesystem, RocksDB internals, etc.
+     *
+     */
+    virtual void initialize() = 0;
+
+    /**
+     * @brief Finalize the KVDBManager.
+     *
+     */
+    virtual void finalize() = 0;
+
+    /**
      * @brief Returns a list of all the DBs in the Manager.
      *
      * @param loaded Show only loaded DBs.
