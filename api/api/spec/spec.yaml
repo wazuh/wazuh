@@ -13128,8 +13128,6 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
         '404':
           $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
