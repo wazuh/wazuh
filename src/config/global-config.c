@@ -218,11 +218,12 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-    /* update check system */
-    * Default values */
+
+    /* Default values */
     if (Config) {
         Config->update_check = 1;
     }
+    
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
