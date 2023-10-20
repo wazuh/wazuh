@@ -627,26 +627,24 @@ async def check_available_version(
 
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
-        dapi = DistributedAPI(
-            f=requests.query_update_check_service,
-            f_kwargs={
-                INSTALLATION_UID_KEY: request.app[INSTALLATION_UID_KEY]
-            },
-            request_type='local_master',
-            is_async=True,
-            logger=logger
-        )
+        dapi = DistributedAPI(f=requests.query_update_check_service,
+                              f_kwargs={
+                                  INSTALLATION_UID_KEY: request.app[INSTALLATION_UID_KEY]
+                              },
+                              request_type='local_master',
+                              is_async=True,
+                              logger=logger
+                              )
         update_information = raise_if_exc(await dapi.distribute_function())
         request.app[UPDATE_INFORMATION_KEY] = update_information.dikt
 
-    dapi = DistributedAPI(
-        f=manager.get_update_information,
-        f_kwargs={
-            UPDATE_INFORMATION_KEY: request.app.get(UPDATE_INFORMATION_KEY, {})
-        },
-        request_type='local_master',
-        is_async=False,
-        logger=logger
-    )
+    dapi = DistributedAPI(f=manager.get_update_information,
+                          f_kwargs={
+                              UPDATE_INFORMATION_KEY: request.app.get(UPDATE_INFORMATION_KEY, {})
+                          },
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
     data = raise_if_exc(await dapi.distribute_function())
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
