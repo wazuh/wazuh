@@ -74,13 +74,13 @@ async def query_update_check_service(installation_uid: str) -> dict:
 
     Parameters
     ----------
-    installation_uid: str
+    installation_uid : str
         Wazuh UID to include in the query.
 
     Returns
     -------
-    dict
-        With the updates information.
+    update_information : dict
+        Updates information.
     """
     current_version = f'v{wazuh.__version__}'
     headers = {WAZUH_UID_KEY: installation_uid, WAZUH_TAG_KEY: current_version}
@@ -92,13 +92,10 @@ async def query_update_check_service(installation_uid: str) -> dict:
     )
 
     async with aiohttp.ClientSession(connector=_get_connector()) as session:
-        logger.debug('Querying %s', RELEASE_UPDATES_URL)
         try:
             async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
                 response_data = await response.json()
 
-                logger.debug('Response status: %s', response.status)
-                logger.debug('Response data: %s', response_data)
 
                 update_information['status_code'] = response.status
 
