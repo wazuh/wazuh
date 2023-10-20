@@ -50,6 +50,12 @@ add_executable(metrics_utest
   ${TEST_UNIT_DIR}/metricsScope_test.cpp
 )
 
+# Mocks
+add_library(metrics_mocks INTERFACE)
+target_include_directories(metrics_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(metrics_mocks INTERFACE gmock)
+add_library(metrics::mocks ALIAS metrics_mocks)
+
 target_include_directories(metrics_utest INTERFACE ${TEST_MOCK_DIR})
 
 # TODO: Replace test_mocks with the metrics executable when you have the test folder available.

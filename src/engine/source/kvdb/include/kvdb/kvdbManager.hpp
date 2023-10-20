@@ -55,17 +55,16 @@ public:
                 const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 
     /**
-     * @brief Initialize the KVDBManager.
-     * Setup options, filesystem, RocksDB internals, etc.
+     * @copydoc IKVDBManager::initialize
      *
      */
-    void initialize();
+    void initialize() override;
 
     /**
-     * @brief Finalize the KVDBManager.
+     * @copydoc IKVDBManager::finalize
      *
      */
-    void finalize();
+    void finalize() override;
 
     /**
      * @copydoc IKVDBManager::getKVDBScopesInfo
