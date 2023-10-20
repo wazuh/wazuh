@@ -18,7 +18,8 @@ with patch('wazuh.common.wazuh_uid'):
             get_stats_analysisd, get_stats_hourly, get_stats_remoted, get_daemon_stats,
             get_stats_weekly, get_status, put_restart, update_configuration)
         from wazuh import manager
-        from wazuh.core import common, requests
+        from wazuh.core import common
+        from wazuh.core.manager import query_update_check_service
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -439,7 +440,7 @@ async def test_check_available_version(
 
     if force_query and update_check:
         mock_dapi.assert_any_call(
-            f=requests.query_update_check_service,
+            f=query_update_check_service,
             f_kwargs={INSTALLATION_UID_KEY: app_context[INSTALLATION_UID_KEY]},
             request_type='local_master',
             is_async=True,
