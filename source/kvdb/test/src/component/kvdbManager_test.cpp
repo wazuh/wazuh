@@ -9,7 +9,7 @@
 #include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
-#include <metrics/metricsManager.hpp>
+#include "fakeMetric.hpp"
 
 namespace
 {
@@ -17,7 +17,7 @@ namespace
 const std::string KVDB_PATH {"/tmp/kvdb_test/"};
 const std::string KVDB_DB_FILENAME {"TEST_DB"};
 
-auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
+auto metricsManager = std::make_shared<FakeMetricManager>();
 
 std::filesystem::path uniquePath(const std::string& path)
 {
@@ -92,10 +92,6 @@ TEST_F(KVDBManagerTest, InitializeDBInUseWithSameManager)
 
 TEST_F(KVDBManagerTest, InitializeDBInUseWithOtherManager)
 {
-    std::shared_ptr<metricsManager::IMetricsManager> metricsManager =
-        std::make_shared<metricsManager::MetricsManager>();
-    ASSERT_NE(metricsManager, nullptr);
-
     // Open a locked DB
     kvdbManager::KVDBManagerOptions kvdbManagerOptions {KVDBManagerTest::kvdbPath, KVDB_DB_FILENAME};
 
@@ -180,9 +176,6 @@ TEST_F(KVDBManagerTest, DeleteDataBaseWithRestart)
 
     m_kvdbManager.reset();
     ASSERT_EQ(m_kvdbManager.use_count(), 0);
-
-    std::shared_ptr<metricsManager::IMetricsManager> metricsManager =
-        std::make_shared<metricsManager::MetricsManager>();
 
     kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
     m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, metricsManager);
