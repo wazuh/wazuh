@@ -11,9 +11,8 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, \
-    OSSEC_LOG_FIELDS
-from wazuh.core.requests import get_update_information_template
+from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
+    get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources
