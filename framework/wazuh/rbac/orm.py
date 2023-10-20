@@ -3067,7 +3067,7 @@ class DatabaseManager:
             ID which the resources will be migrated to.
         """
 
-        list_of_resources = [AuthenticationManager, RolesManager, RulesManager, PoliciesManager, UserRolesManager
+        list_of_resources = [AuthenticationManager, RolesManager, RulesManager, PoliciesManager, UserRolesManager,
                              RolesPoliciesManager, RolesRulesManager]
 
         for manager in list_of_resources:
