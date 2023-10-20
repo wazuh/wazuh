@@ -2384,7 +2384,7 @@ checks:
 
   # 5.10 (L1) Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18617
-     title: "(L1) Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'."
      description: "The LXSS Manager service supports running native ELF binaries. The service provides the infrastructure necessary for ELF binaries to run on Windows. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Windows Subsystem for Linux)."
      rationale: "The Linux Subsystem (LXSS) Manager allows full system access to Linux applications on Windows, including the file system. While this can certainly have some functionality and performance benefits for running those applications, it also creates new security risks in the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
      impact: "The Linux Subsystem will not be available, and native ELF binaries will no longer run. Note: If your organization has made an exception to this recommendation and is using Windows Subsystem for Linux (WSL), the Internet Connection Sharing (ICS) (SharedAccess) service will need to be Enabled for WSL to function. For more information, please visit the following Microsoft Blog: Troubleshooting Windows Subsystem for Linux | Microsoft Docs."
@@ -2398,12 +2398,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start -> 4'
 
   # 5.11 (L1) Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18618
-     title: "(L1) Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'."
      description: "Enables the server to be a File Transfer Protocol (FTP) server. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - FTP Server)."
      rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any FTP server application installed on a workstation, not just IIS."
      impact: "The computer will not function as an FTP server."
@@ -2417,12 +2420,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
 
   # 5.12 (L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'. (Automated)
    - id: 18619
-     title: "(L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'."
+     title: "L2 Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'."
      description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices. The recommended state for this setting is: Disabled."
      rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated and/or encrypted using another technology like IPsec. This service is generally more appropriate for servers in a controlled environment then on workstations requiring high security."
      impact: "The computer will not be able to directly login to or access iSCSI targets."
@@ -2436,12 +2442,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> 4'
 
   # 5.13 (L1) Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18620
-     title: "(L1) Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'."
      description: "SSH protocol based service to provide secure encrypted communications between two untrusted hosts over an insecure network. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows feature (OpenSSH Server)."
      rationale: "Hosting an SSH server from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any SSH server application installed on a workstation, not just the one supplied with Windows."
      impact: "The workstation will not be permitted to be a SSH host server."
@@ -2455,12 +2462,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start -> 4'
 
   # 5.14 (L2) Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'. (Automated)
    - id: 18621
-     title: "(L2) Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'."
+     title: "L2 Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'."
      description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution Protocol (PNRP). The recommended state for this setting is: Disabled."
      rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
      impact: "Some peer-to-peer and collaborative applications, such as Remote Assistance, may not function."
@@ -2474,12 +2484,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> 4'
 
   # 5.15 (L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'. (Automated)
    - id: 18622
-     title: "(L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'."
+     title: "L2 Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'."
      description: "Enables multi-party communication using Peer-to-Peer Grouping. The recommended state for this setting is: Disabled."
      rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
      impact: "Some applications, such as HomeGroup, may not function."
@@ -2493,12 +2504,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
   # 5.16 (L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'. (Automated)
    - id: 18623
-     title: "(L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'."
+     title: "L2 Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'."
      description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer Grouping services. The recommended state for this setting is: Disabled."
      rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
      impact: "The Peer Name Resolution Protocol (PNRP) and Peer-to-Peer Grouping services may not function, and some applications, such as HomeGroup and Remote Assistance, may not function correctly."
@@ -2512,13 +2524,14 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
   # 5.17 (L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'. (Automated)
    - id: 18624
-     title: "(L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'."
-     description: "This service publishes a machine name using the Peer Name Resolution Protocol. Configuration is managed via the netsh context ‘p2p pnrp peer’. The recommended state for this setting is: Disabled."
+     title: "L2 Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'."
+     description: "This service publishes a machine name using the Peer Name Resolution Protocol. Configuration is managed via the netsh context 'p2p pnrp peer'. The recommended state for this setting is: Disabled."
      rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
      impact: "Some peer-to-peer and collaborative applications, such as Remote Assistance, may not function."
      remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\PNRP Machine Name Publication Service."
@@ -2531,12 +2544,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start -> 4'
 
   # 5.18 (L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled'. (Automated)
    - id: 18625
-     title: "(L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled'."
+     title: "L2 Ensure 'Print Spooler (Spooler)' is set to 'Disabled'."
      description: "This service spools print jobs and handles interaction with printers. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, unnecessary services especially those with known vulnerabilities should be disabled. Disabling the Print Spooler (Spooler) service mitigates the PrintNightmare vulnerability (CVE-2021-34527) and other attacks against the service."
      impact: "Users will not be able to print, including printing to files (such as Adobe Portable Document Format (PDF)) which uses the Print Spooler service."
@@ -2552,12 +2566,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   # 5.19 (L2) Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'. (Automated)
    - id: 18626
-     title: "(L2) Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'."
+     title: "L2 Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'."
      description: "This service provides support for viewing, sending and deletion of system-level problem reports for the Problem Reports and Solutions control panel. The recommended state for this setting is: Disabled."
      rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from Microsoft. In a high security environment, preventing this information from being sent can help reduce privacy concerns for sensitive corporate information."
      impact: "Sending and viewing system-level problem reports and solutions to and from Microsoft may no longer function."
@@ -2571,15 +2586,16 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start -> 4'
 
   # 5.20 (L2) Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'. (Automated)
    - id: 18627
-     title: "(L2) Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'."
+     title: "L2 Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'."
      description: "Creates a connection to a remote network whenever a program references a remote DNS or NetBIOS name or address. The recommended state for this setting is: Disabled."
      rationale: "The function of this service is to provide a \"demand dial\" type of functionality. In a high security environment, it is preferred that any remote \"dial\" connections (whether they be legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
-     impact: "\"Dial on demand\" functionality will no longer operate - remote dial-in (POTS) and VPN connections must be initiated manually by the user."
+     impact: 'Dial on demand functionality will no longer operate remote dial in (POTS) and VPN connections must be initiated manually by the user.'
      remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Access Auto Connection Manager."
      compliance:
        - cis: ["5.20"]
@@ -2590,12 +2606,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start -> 4'
 
   # 5.21 (L2) Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'. (Automated)
    - id: 18628
-     title: "(L2) Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'."
+     title: "L2 Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'."
      description: "Remote Desktop Configuration service (RDCS) is responsible for all Remote Desktop related configuration and session maintenance activities that require SYSTEM context. These include per-session temporary folders, RD themes, and RD certificates. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
      impact: "Users will be unable to use Remote Assistance."
@@ -2609,12 +2626,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start -> 4'
 
   # 5.22 (L2) Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'. (Automated)
    - id: 18629
-     title: "(L2) Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'."
+     title: "L2 Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'."
      description: "Allows users to connect interactively to a remote computer. Remote Desktop and Remote Desktop Session Host Server depend on this service. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
      impact: "Remote Desktop Services will not be available on the computer."
@@ -2628,12 +2646,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start -> 4'
 
   # 5.23 (L2) Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'. (Automated)
    - id: 18630
-     title: "(L2) Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'."
+     title: "L2 Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'."
      description: "Allows the redirection of Printers/Drives/Ports for RDP connections. The recommended state for this setting is: Disabled."
      rationale: "In a security-sensitive environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer within an RDP session."
      impact: "Printers, drives and ports (COM, LPT, PnP, etc.) will not be allowed to be redirected inside RDP sessions."
@@ -2647,12 +2666,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start -> 4'
 
   # 5.24 (L1) Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'. (Automated)
    - id: 18631
-     title: "(L1) Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'."
+     title: "L1 Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'."
      description: "In Windows 2003 and older versions of Windows, the Remote Procedure Call (RPC) Locator service manages the RPC name service database. In Windows Vista or newer versions of Windows, this service does not provide any functionality and is present for application compatibility. The recommended state for this setting is: Disabled."
      rationale: "This is a legacy service that has no value or purpose other than application compatibility for very old software. It should be disabled unless there is a specific old application still in use on the system that requires it."
      impact: "No impact, unless an old, legacy application requires it."
@@ -2666,12 +2686,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator -> Start -> 4'
 
   # 5.25 (L2) Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'. (Automated)
    - id: 18632
-     title: "(L2) Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'."
+     title: "L2 Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'."
      description: "Enables remote users to view and modify registry settings on this computer. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, exposing the registry to remote access is an increased security risk."
      impact: "The registry can be viewed and modified only by users on the computer. Note: Many remote administration tools, such as System Center Configuration Manager (SCCM), require the Remote Registry service to be operational for remote management. In addition, many vulnerability scanners use this service to access the registry remotely."
@@ -2685,12 +2706,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> Start -> 4'
 
   # 5.26 (L1) Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'. (Automated)
    - id: 18633
-     title: "(L1) Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'."
+     title: "L1 Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'."
      description: "Offers routing services to businesses in local area and wide area network environments. The recommended state for this setting is: Disabled."
      rationale: "This service's main purpose is to provide Windows router functionality - this is not an appropriate use of workstations in an enterprise managed environment."
      impact: "The computer will not be able to be configured as a Windows router between different connections."
@@ -2704,12 +2726,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess -> Start -> 4'
 
   # 5.27 (L2) Ensure 'Server (LanmanServer)' is set to 'Disabled'. (Automated)
    - id: 18634
-     title: "(L2) Ensure 'Server (LanmanServer)' is set to 'Disabled'."
+     title: "L2 Ensure 'Server (LanmanServer)' is set to 'Disabled'."
      description: "Supports file, print, and named-pipe sharing over the network for this computer. If this service is stopped, these functions will be unavailable. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, a secure workstation should only be a client, not a server. Sharing workstation resources for remote access increases security risk as the attack surface is notably higher."
      impact: "File, print and named-pipe sharing functions will be unavailable from this machine over the network. Note: Many remote administration tools, such as System Center Configuration Manager (SCCM), require the Server service to be operational for remote management. In addition, many vulnerability scanners use this service to scan the file system remotely."
@@ -2723,12 +2746,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start -> 4'
 
   # 5.28 (L1) Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18635
-     title: "(L1) Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'."
      description: "Supports the following TCP/IP services: Character Generator, Daytime, Discard, Echo, and Quote of the Day. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Simple TCPIP services (i.e. echo, daytime etc))."
      rationale: "The Simple TCP/IP Services have very little purpose in a modern enterprise environment - allowing them might increase exposure and risk for attack."
      impact: "The Simple TCP/IP services (Character Generator, Daytime, Discard, Echo and Quote of the Day) will not be available."
@@ -2744,12 +2768,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp -> Start -> 4'
 
   # 5.29 (L2) Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18636
-     title: "(L2) Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'."
+     title: "L2 Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'."
      description: "Enables Simple Network Management Protocol (SNMP) requests to be processed by this computer. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Simple Network Management Protocol (SNMP))."
      rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally."
      impact: "The computer will be unable to process SNMP requests."
@@ -2763,12 +2790,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP -> Start -> 4'
 
   # 5.30 (L1) Ensure 'Special Administration Console Helper (sacsvr)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18637
-     title: "(L1) Ensure 'Special Administration Console Helper (sacsvr)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'Special Administration Console Helper (sacsvr)' is set to 'Disabled' or 'Not Installed'."
      description: "This service allows administrators to remotely access a command prompt using Emergency Management Services. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows capability (Windows Emergency Management Services and Serial Console)."
      rationale: "Allowing the use of a remotely accessible command prompt that provides the ability to perform remote management tasks on a computer is a security risk."
      impact: "Users will not have access to a remote command prompt using Emergency Management Services."
@@ -2782,12 +2812,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr -> Start -> 4'
 
   # 5.31 (L1) Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'. (Automated)
    - id: 18638
-     title: "(L1) Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'."
+     title: "L1 Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'."
      description: "Discovers networked devices and services that use the SSDP discovery protocol, such as UPnP devices. Also announces SSDP devices and services running on the local computer. The recommended state for this setting is: Disabled."
      rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Note that UPnP is different than regular Plug n Play (PnP). Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed environment."
      impact: "SSDP-based devices will not be discovered."
@@ -2801,12 +2834,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SSDPSRV -> Start -> 4'
 
   # 5.32 (L1) Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'. (Automated)
    - id: 18639
-     title: "(L1) Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'."
+     title: "L1 Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'."
      description: "Allows UPnP devices to be hosted on this computer. The recommended state for this setting is: Disabled."
      rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP). Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed environment."
      impact: "Any hosted UPnP devices will stop functioning and no additional hosted devices can be added."
@@ -2820,12 +2854,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\upnphost -> Start -> 4'
 
   # 5.33 (L1) Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18640
-     title: "(L1) Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed'."
      description: "The Web Management Service enables remote and delegated management capabilities for administrators to manage for the Web server, sites and applications present on the machine. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - Web Management Tools - IIS Management Service)."
      rationale: "Remote web administration of IIS on a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed, the chance of successful attack increases significantly."
      impact: "Remote web-based management of IIS will not be available."
@@ -2839,12 +2874,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc -> Start -> 4'
 
   # 5.34 (L2) Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'. (Automated)
    - id: 18641
-     title: "(L2) Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'."
+     title: "L2 Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'."
      description: "Allows errors to be reported when programs stop working or responding and allows existing solutions to be delivered. Also allows logs to be generated for diagnostic and repair services. The recommended state for this setting is: Disabled."
      rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
      impact: "If this service is stopped, error reporting might not work correctly and results of diagnostic services and repairs might not be displayed."
@@ -2858,12 +2896,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WerSvc -> Start -> 4'
 
   # 5.35 (L2) Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'. (Automated)
    - id: 18642
-     title: "(L2) Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'."
+     title: "L2 Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'."
      description: "This service manages persistent subscriptions to events from remote sources that support WS-Management protocol. This includes Windows Vista event logs, hardware and IPMI-enabled event sources. The service stores forwarded events in a local Event Log. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, remote connections to secure workstations should be minimized, and management functions should be done locally."
      impact: "If this service is stopped or disabled event subscriptions cannot be created and forwarded events cannot be accepted. Note: Many remote management tools and third-party security audit tools depend on this service."
@@ -2877,12 +2916,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc -> Start -> 4'
 
   # 5.36 (L1) Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18643
-     title: "(L1) Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'."
      description: "Shares Windows Media Player libraries to other networked players and media devices using Universal Plug and Play. The recommended state for this setting is: Disabled or Not Installed."
      rationale: "Network sharing of media from Media Player has no place in an enterprise managed environment."
      impact: "Windows Media Player libraries will not be shared over the network to other devices and systems."
@@ -2896,12 +2936,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc -> Start -> 4'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc -> Start -> 4'
 
   # 5.37 (L1) Ensure 'Windows Mobile Hotspot Service (icssvc)' is set to 'Disabled'. (Automated)
    - id: 18644
-     title: "(L1) Ensure 'Windows Mobile Hotspot Service (icssvc)' is set to 'Disabled'."
+     title: "L1 Ensure 'Windows Mobile Hotspot Service (icssvc)' is set to 'Disabled'."
      description: "Provides the ability to share a cellular data connection with another device. The recommended state for this setting is: Disabled."
      rationale: "The capability to run a mobile hotspot from a domain-connected computer could easily expose the internal network to wardrivers or other hackers."
      impact: "The Windows Mobile Hotspot feature will not be available."
@@ -2915,12 +2958,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\icssvc -> Start -> 4'
 
   # 5.38 (L2) Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'. (Automated)
    - id: 18645
-     title: "(L2) Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'."
+     title: "L2 Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'."
      description: "This service runs in session 0 and hosts the notification platform and connection provider which handles the connection between the device and WNS server. The recommended state for this setting is: Disabled. Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this service was initially named Windows Push Notifications Service - but it was renamed to Windows Push Notifications System Service starting with Windows 10 R1607."
      rationale: "Windows Push Notification Services (WNS) is a mechanism to receive third-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
      impact: "Live Tiles and other features will not get live updates."
@@ -2934,12 +2978,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService -> Start -> 4'
 
   # 5.39 (L2) Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'. (Automated)
    - id: 18646
-     title: "(L2) Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'."
+     title: "L2 Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'."
      description: "This service manages Apps that are pushed to the device from the Microsoft Store App running on other devices or the web. The recommended state for this setting is: Disabled."
      rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
      impact: "Users will not be able to push Apps to this device from the Microsoft Store running on other devices or the web."
@@ -2953,12 +2998,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> Start -> 4'
 
   # 5.40 (L2) Ensure 'Windows Remote Management (WS- Management) (WinRM)' is set to 'Disabled'. (Automated)
    - id: 18647
-     title: "(L2) Ensure 'Windows Remote Management (WS- Management) (WinRM)' is set to 'Disabled'."
+     title: "L2 Ensure 'Windows Remote Management (WS- Management) (WinRM)' is set to 'Disabled'."
      description: "Windows Remote Management (WinRM) service implements the WS-Management protocol for remote management. WS-Management is a standard web services protocol used for remote software and hardware management. The WinRM service listens on the network for WS-Management requests and processes them. The recommended state for this setting is: Disabled."
      rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally."
      impact: "The ability to remotely manage the system with WinRM will be lost. Note: Many remote administration tools, such as System Center Configuration Manager (SCCM), may require the WinRM service to be operational for remote management."
@@ -2977,7 +3023,7 @@ checks:
 
   # 5.41 (L1) Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed'. (Automated)
    - id: 18648
-     title: "(L1) Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed'."
+     title: "L1 Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed'."
      description: "Provides Web connectivity and administration through the Internet Information Services Manager. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - World Wide Web Services). Note #2: An organization may choose to selectively grant exceptions to web developers to allow IIS (or another web server) on their workstation, in order for them to locally test & develop web pages. However, the organization should track those machines and ensure the security controls and mitigations are kept up to date, to reduce risk of compromise."
      rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed, the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a workstation, not just IIS."
      impact: "IIS Web Services will not function."
@@ -2991,12 +3037,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC -> Start -> 4'
 
   # 5.42 (L1) Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'. (Automated)
    - id: 18649
-     title: "(L1) Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'."
+     title: "L1 Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'."
      description: "This service manages connected Xbox Accessories. The recommended state for this setting is: Disabled."
      rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
      impact: "Connected Xbox accessories may not function."
@@ -3012,12 +3061,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxGipSvc -> Start -> 4'
 
   # 5.43 (L1) Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'. (Automated)
    - id: 18650
-     title: "(L1) Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'."
+     title: "L1 Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'."
      description: "Provides authentication and authorization services for interacting with Xbox Live. The recommended state for this setting is: Disabled."
      rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
      impact: "Connections to Xbox Live may fail and applications that interact with that service may also fail."
@@ -3033,12 +3083,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblAuthManager -> Start -> 4'
 
   # 5.44 (L1) Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'. (Automated)
    - id: 18651
-     title: "(L1) Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'."
+     title: "L1 Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'."
      description: "This service syncs save data for Xbox Live save enabled games. The recommended state for this setting is: Disabled."
      rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
      impact: "Game save data will not upload to or download from Xbox Live."
@@ -3054,12 +3105,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblGameSave -> Start -> 4'
 
   # 5.45 (L1) Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'. (Automated)
    - id: 18652
-     title: "(L1) Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'."
+     title: "L1 Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'."
      description: "This service supports the Windows.Networking.XboxLive application programming interface. The recommended state for this setting is: Disabled."
      rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
      impact: "Connections to Xbox Live may fail and applications that interact with that service may also fail."
@@ -3075,12 +3127,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvc -> Start -> 4'
 
   # 9.1.1 (L1) Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'. (Automated)
    - id: 18653
-     title: "(L1) Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'."
      description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
      rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -3097,12 +3150,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> EnableFirewall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> EnableFirewall -> 1'
 
   # 9.1.2 (L1) Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'. (Automated)
    - id: 18654
-     title: "(L1) Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'."
      description: "This setting determines the behavior for inbound connections that do not match an inbound firewall rule. The recommended state for this setting is: Block (default)."
      rationale: "If the firewall allows all traffic to access the system then an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -3119,12 +3175,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DefaultInboundAction'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DefaultInboundAction -> 1'
 
   # 9.1.3 (L1) Ensure 'Windows Firewall: Domain: Outbound connections' is set to 'Allow (default)'. (Automated)
    - id: 18655
-     title: "(L1) Ensure 'Windows Firewall: Domain: Outbound connections' is set to 'Allow (default)'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Outbound connections' is set to 'Allow (default)'."
      description: "This setting determines the behavior for outbound connections that do not match an outbound firewall rule. The recommended state for this setting is: Allow (default)."
      rationale: "Some people believe that it is prudent to block all outbound connections except those specifically approved by the user or administrator. Microsoft disagrees with this opinion, blocking outbound connections by default will force users to deal with a large number of dialog boxes prompting them to authorize or block applications such as their web browser or instant messaging software. Additionally, blocking outbound traffic has little value because if an attacker has compromised the system they can reconfigure the firewall anyway."
      impact: "None - this is the default behavior."
@@ -3141,12 +3200,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DefaultOutboundAction'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DefaultOutboundAction -> 0'
 
   # 9.1.4 (L1) Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'. (Automated)
    - id: 18656
-     title: "(L1) Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'."
      description: "Select this option to have Windows Firewall with Advanced Security display notifications to the user when a program is blocked from receiving inbound connections. The recommended state for this setting is: No. Note: When the Apply local firewall rules setting is configured to No, it's recommended to also configure the Display a notification setting to No. Otherwise, users will continue to receive messages that ask if they want to unblock a restricted inbound connection, but the user's response will be ignored."
      rationale: "Firewall notifications can be complex and may confuse the end users, who would not be able to address the alert."
      impact: "Windows Firewall will not display a notification when a program is blocked from receiving inbound connections."
@@ -3163,12 +3225,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DisableNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DisableNotifications -> 1'
 
   # 9.1.5 (L1) Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\domainfw.log'. (Automated)
    - id: 18657
-     title: "(L1) Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\domainfw.log'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log'."
      description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log."
      rationale: "If Windows Firewall events are not recorded it may be difficult or impossible for Administrators to analyze system issues or unauthorized activities of malicious users. Microsoft stores all firewall events as one file on the system (pfirewall.log). To improve logging, separate each firewall profile (domain, private, public) into its own distinct log file (domainfw.log, privatefw.log, publicfw.log) for better organization and identification of specific issues within each profile."
      impact: "The log file will be stored in the specified file."
@@ -3185,12 +3250,15 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFilePath'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\domainfw.log'
 
   # 9.1.6 (L1) Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'. (Automated)
    - id: 18658
-     title: "(L1) Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'."
      description: "Use this option to specify the size limit of the file in which Windows Firewall will write its log information. The recommended state for this setting is: 16,384 KB or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "The log file size will be limited to the specified size, old events will be overwritten by newer ones when the limit is reached."
@@ -3202,12 +3270,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1", "A.13.1.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
 
   # 9.1.7 (L1) Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'. (Automated)
    - id: 18659
-     title: "(L1) Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'."
      description: "Use this option to log when Windows Firewall with Advanced Security discards an inbound packet for any reason. The log records why and when the packet was dropped. Look for entries with the word DROP in the action column of the log. The recommended state for this setting is: Yes."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Information about dropped packets will be recorded in the firewall log file."
@@ -3222,12 +3293,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogDroppedPackets'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogDroppedPackets -> 1'
 
   # 9.1.8 (L1) Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'. (Automated)
    - id: 18660
-     title: "(L1) Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'."
+     title: "L1 Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'."
      description: "Use this option to log when Windows Firewall with Advanced Security allows an inbound connection. The log records why and when the connection was formed. Look for entries with the word ALLOW in the action column of the log. The recommended state for this setting is: Yes."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Information about successful connections will be recorded in the firewall log file."
@@ -3242,12 +3316,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogSuccessfulConnections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogSuccessfulConnections -> 1'
 
   # 9.2.1 (L1) Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'. (Automated)
    - id: 18661
-     title: "(L1) Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'."
+     title: "L1 Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'."
      description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
      rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -3264,12 +3341,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> EnableFirewall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> EnableFirewall -> 1'
 
   # 9.2.2 (L1) Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'. (Automated)
    - id: 18662
-     title: "(L1) Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'."
+     title: "L1 Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'."
      description: "This setting determines the behavior for inbound connections that do not match an inbound firewall rule. The recommended state for this setting is: Block (default)."
      rationale: "If the firewall allows all traffic to access the system then an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -3286,12 +3366,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultInboundAction'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultInboundAction -> 1'
 
   # 9.2.3 (L1) Ensure 'Windows Firewall: Private: Outbound connections' is set to 'Allow (default)'. (Automated)
    - id: 18663
-     title: "(L1) Ensure 'Windows Firewall: Private: Outbound connections' is set to 'Allow (default)'."
+     title: "L1 Ensure 'Windows Firewall: Private: Outbound connections' is set to 'Allow (default)'."
      description: "This setting determines the behavior for outbound connections that do not match an outbound firewall rule. The recommended state for this setting is: Allow (default). Note: If you set Outbound connections to Block and then deploy the firewall policy by using a GPO, computers that receive the GPO settings cannot receive subsequent Group Policy updates unless you create and deploy an outbound rule that enables Group Policy to work. Predefined rules for Core Networking include outbound rules that enable Group Policy to work. Ensure that these outbound rules are active, and thoroughly test firewall profiles before deploying."
      rationale: "Some people believe that it is prudent to block all outbound connections except those specifically approved by the user or administrator. Microsoft disagrees with this opinion, blocking outbound connections by default will force users to deal with a large number of dialog boxes prompting them to authorize or block applications such as their web browser or instant messaging software. Additionally, blocking outbound traffic has little value because if an attacker has compromised the system they can reconfigure the firewall anyway."
      impact: "None - this is the default behavior."
@@ -3308,12 +3391,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultOutboundAction'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultOutboundAction -> 0'
 
   # 9.2.4 (L1) Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'. (Automated)
    - id: 18664
-     title: "(L1) Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'."
+     title: "L1 Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'."
      description: "Select this option to have Windows Firewall with Advanced Security display notifications to the user when a program is blocked from receiving inbound connections. The recommended state for this setting is: No. Note: When the Apply local firewall rules setting is configured to No, it's recommended to also configure the Display a notification setting to No. Otherwise, users will continue to receive messages that ask if they want to unblock a restricted inbound connection, but the user's response will be ignored."
      rationale: "Firewall notifications can be complex and may confuse the end users, who would not be able to address the alert."
      impact: "Windows Firewall will not display a notification when a program is blocked from receiving inbound connections."
@@ -3328,19 +3414,21 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications -> 1'
 
   # 9.2.5 (L1) Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\privatefw.log'. (Automated)
    - id: 18665
-     title: "(L1) Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\privatefw.log'."
+     title: "L1 Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log'."
      description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log."
      rationale: "If Windows Firewall events are not recorded it may be difficult or impossible for Administrators to analyze system issues or unauthorized activities of malicious users. Microsoft stores all firewall events as one file on the system (pfirewall.log). To improve logging, separate each firewall profile (domain, private, public) into its own distinct log file (domainfw.log, privatefw.log, publicfw.log) for better organization and identification of specific issues within each profile."
      impact: "The log file will be stored in the specified file."
      remediation: "To establish the recommended configuration via GP, set the following UI path to %SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Name."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-os'
      compliance:
        - cis: ["9.2.5"]
        - cis_csc_v8: ["8.2"]
@@ -3351,12 +3439,15 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\privatefw.log'
 
   # 9.2.6 (L1) Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'. (Automated)
    - id: 18666
-     title: "(L1) Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'."
+     title: "L1 Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'."
      description: "Use this option to specify the size limit of the file in which Windows Firewall will write its log information. The recommended state for this setting is: 16,384 KB or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "The log file size will be limited to the specified size, old events will be overwritten by newer ones when the limit is reached."
@@ -3370,12 +3461,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1", "A.13.1.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
 
   # 9.2.7 (L1) Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'. (Automated)
    - id: 18667
-     title: "(L1) Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'."
+     title: "L1 Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'."
      description: "Use this option to log when Windows Firewall with Advanced Security discards an inbound packet for any reason. The log records why and when the packet was dropped. Look for entries with the word DROP in the action column of the log. The recommended state for this setting is: Yes."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Information about dropped packets will be recorded in the firewall log file."
@@ -3392,12 +3486,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogDroppedPackets'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogDroppedPackets -> 1'
 
   # 9.2.8 (L1) Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'. (Automated)
    - id: 18668
-     title: "(L1) Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'."
+     title: "L1 Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'."
      description: "Use this option to log when Windows Firewall with Advanced Security allows an inbound connection. The log records why and when the connection was formed. Look for entries with the word ALLOW in the action column of the log. The recommended state for this setting is: Yes."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Information about successful connections will be recorded in the firewall log file."
@@ -3414,12 +3511,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogSuccessfulConnections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogSuccessfulConnections -> 1'
 
   # 9.3.1 (L1) Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'. (Automated)
    - id: 18669
-     title: "(L1) Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'."
+     title: "L1 Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'."
      description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
      rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -3436,12 +3536,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> EnableFirewall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> EnableFirewall -> 1'
 
   # 9.3.2 (L1) Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'. (Automated)
    - id: 18670
-     title: "(L1) Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'."
+     title: "L1 Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'."
      description: "This setting determines the behavior for inbound connections that do not match an inbound firewall rule. The recommended state for this setting is: Block (default)."
      rationale: "If the firewall allows all traffic to access the system then an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -3458,12 +3561,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultInboundAction'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultInboundAction -> 1'
 
   # 9.3.3 (L1) Ensure 'Windows Firewall: Public: Outbound connections' is set to 'Allow (default)'. (Automated)
    - id: 18671
-     title: "(L1) Ensure 'Windows Firewall: Public: Outbound connections' is set to 'Allow (default)'."
+     title: "L1 Ensure 'Windows Firewall: Public: Outbound connections' is set to 'Allow (default)'."
      description: "This setting determines the behavior for outbound connections that do not match an outbound firewall rule. The recommended state for this setting is: Allow (default). Note: If you set Outbound connections to Block and then deploy the firewall policy by using a GPO, computers that receive the GPO settings cannot receive subsequent Group Policy updates unless you create and deploy an outbound rule that enables Group Policy to work. Predefined rules for Core Networking include outbound rules that enable Group Policy to work. Ensure that these outbound rules are active, and thoroughly test firewall profiles before deploying."
      rationale: "Some people believe that it is prudent to block all outbound connections except those specifically approved by the user or administrator. Microsoft disagrees with this opinion, blocking outbound connections by default will force users to deal with a large number of dialog boxes prompting them to authorize or block applications such as their web browser or instant messaging software. Additionally, blocking outbound traffic has little value because if an attacker has compromised the system they can reconfigure the firewall anyway."
      impact: "None - this is the default behavior."
@@ -3480,12 +3586,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultOutboundAction'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultOutboundAction -> 0'
 
   # 9.3.4 (L1) Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'. (Automated)
    - id: 18672
-     title: "(L1) Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'."
+     title: "L1 Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'."
      description: "Select this option to have Windows Firewall with Advanced Security display notifications to the user when a program is blocked from receiving inbound connections. The recommended state for this setting is: No."
      rationale: "Some organizations may prefer to avoid alarming users when firewall rules block certain types of network activity. However, notifications can be helpful when troubleshooting network issues involving the firewall."
      impact: "Windows Firewall will not display a notification when a program is blocked from receiving inbound connections."
@@ -3500,12 +3609,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DisableNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DisableNotifications -> 1'
 
   # 9.3.5 (L1) Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'. (Automated)
    - id: 18673
-     title: "(L1) Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'."
+     title: "L1 Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'."
      description: "This setting controls whether local administrators are allowed to create local firewall rules that apply together with firewall rules configured by Group Policy. The recommended state for this setting is: No. Note: When the Apply local firewall rules setting is configured to No, it's recommended to also configure the Display a notification setting to No. Otherwise, users will continue to receive messages that ask if they want to unblock a restricted inbound connection, but the user's response will be ignored."
      rationale: "When in the Public profile, there should be no special local firewall exceptions per computer. These settings should be managed by a centralized policy."
      impact: "Administrators can still create firewall rules, but the rules will not be applied."
