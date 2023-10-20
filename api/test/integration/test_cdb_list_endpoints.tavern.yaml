@@ -681,7 +681,7 @@ stages:
             - error:
                 code: 1905
               id:
-                - 'etc/lists/aws-eventnames'
+                - 'etc/lists/amazon/aws-eventnames'
           total_affected_items: 0
           total_failed_items: 1
 
