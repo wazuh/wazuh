@@ -3632,12 +3632,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalPolicyMerge'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalPolicyMerge -> 0'
 
   # 9.3.6 (L1) Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'. (Automated)
    - id: 18674
-     title: "(L1) Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'."
+     title: "L1 Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'."
      description: "This setting controls whether local administrators are allowed to create connection security rules that apply together with connection security rules configured by Group Policy. The recommended state for this setting is: No."
      rationale: "Users with administrative privileges might create firewall rules that expose the system to remote attack."
      impact: "Administrators can still create local connection security rules, but the rules will not be applied."
@@ -3652,12 +3655,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge -> 0'
 
   # 9.3.7 (L1) Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\publicfw.log'. (Automated)
    - id: 18675
-     title: "(L1) Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\publicfw.log'."
+     title: "L1 Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log'."
      description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log."
      rationale: "If Windows Firewall events are not recorded it may be difficult or impossible for Administrators to analyze system issues or unauthorized activities of malicious users. Microsoft stores all firewall events as one file on the system (pfirewall.log). To improve logging, separate each firewall profile (domain, private, public) into its own distinct log file (domainfw.log, privatefw.log, publicfw.log) for better organization and identification of specific issues within each profile."
      impact: "The log file will be stored in the specified file."
@@ -3674,12 +3680,15 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\publicfw.log'
 
   # 9.3.8 (L1) Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'. (Automated)
    - id: 18676
-     title: "(L1) Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'."
+     title: "L1 Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'."
      description: "Use this option to specify the size limit of the file in which Windows Firewall will write its log information. The recommended state for this setting is: 16,384 KB or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "The log file size will be limited to the specified size, old events will be overwritten by newer ones when the limit is reached."
@@ -3691,12 +3700,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1", "A.13.1.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
 
   # 9.3.9 (L1) Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'. (Automated)
    - id: 18677
-     title: "(L1) Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'."
+     title: "L1 Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'."
      description: "Use this option to log when Windows Firewall with Advanced Security discards an inbound packet for any reason. The log records why and when the packet was dropped. Look for entries with the word DROP in the action column of the log. The recommended state for this setting is: Yes."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Information about dropped packets will be recorded in the firewall log file."
@@ -3711,12 +3723,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets -> 1'
 
   # 9.3.10 (L1) Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'. (Automated)
    - id: 18678
-     title: "(L1) Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'."
+     title: "L1 Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'."
      description: "Use this option to log when Windows Firewall with Advanced Security allows an inbound connection. The log records why and when the connection was formed. Look for entries with the word ALLOW in the action column of the log. The recommended state for this setting is: Yes."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Information about successful connections will be recorded in the firewall log file."
@@ -3731,12 +3746,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections -> 1'
 
   # 17.1.1 (L1) Ensure 'Audit Credential Validation' is set to 'Success and Failure'. (Automated)
    - id: 18679
-     title: "(L1) Ensure 'Audit Credential Validation' is set to 'Success and Failure'."
+     title: "L1 Ensure 'Audit Credential Validation' is set to 'Success and Failure'."
      description: "This subcategory reports the results of validation tests on credentials submitted for a user account logon request. These events occur on the computer that is authoritative for the credentials. For domain accounts, the Domain Controller is authoritative, whereas for local accounts, the local computer is authoritative. In domain environments, most of the Account Logon events occur in the Security log of the Domain Controllers that are authoritative for the domain accounts. However, these events can occur on other computers in the organization when local accounts are used to log on. Events for this subcategory include: - 4774: An account was mapped for logon. - 4775: An account could not be mapped for logon. - 4776: The Domain Controller attempted to validate the credentials for an account. - 4777: The Domain Controller failed to validate the credentials for an account. The recommended state for this setting is: Success and Failure."
      rationale: "Auditing these events may be useful when investigating a security incident."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
@@ -3753,12 +3771,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditpol.exe /get /subcategory:"Credential Validation" -> r:Success and Failure'
 
   # 17.2.1 (L1) Ensure 'Audit Application Group Management' is set to 'Success and Failure'. (Automated)
    - id: 18680
-     title: "(L1) Ensure 'Audit Application Group Management' is set to 'Success and Failure'."
+     title: "L1 Ensure 'Audit Application Group Management' is set to 'Success and Failure'."
      description: "This policy setting allows you to audit events generated by changes to application groups such as the following: - Application group is created, changed, or deleted. - Member is added or removed from an application group. Application groups are utilized by Windows Authorization Manager, which is a flexible framework created by Microsoft for integrating role-based access control (RBAC) into applications. More information on Windows Authorization Manager is available at MSDN - Windows Authorization Manager. The recommended state for this setting is: Success and Failure."
      rationale: "Auditing events in this category may be useful when investigating an incident."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
@@ -3776,12 +3795,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: any
      rules:
+      - 'c:auditpol.exe /get /subcategory:"Application Group Management" -> r:Success and Failure'
 
   # 17.2.2 (L1) Ensure 'Audit Security Group Management' is set to include 'Success'. (Automated)
    - id: 18681
-     title: "(L1) Ensure 'Audit Security Group Management' is set to include 'Success'."
+     title: "L1 Ensure 'Audit Security Group Management' is set to include 'Success'."
      description: "This subcategory reports each event of security group management, such as when a security group is created, changed, or deleted or when a member is added to or removed from a security group. If you enable this Audit policy setting, administrators can track events to detect malicious, accidental, and authorized creation of security group accounts. Events for this subcategory include: - 4727: A security-enabled global group was created. - 4728: A member was added to a security-enabled global group. - 4729: A member was removed from a security-enabled global group. - 4730: A security-enabled global group was deleted. - 4731: A security-enabled local group was created. - 4732: A member was added to a security-enabled local group. - 4733: A member was removed from a security-enabled local group. - 4734: A security-enabled local group was deleted. - 4735: A security-enabled local group was changed. - 4737: A security-enabled global group was changed. - 4754: A security-enabled universal group was created. - 4755: A security-enabled universal group was changed. - 4756: A member was added to a security-enabled universal group. - 4757: A member was removed from a security-enabled universal group. - 4758: A security-enabled universal group was deleted. - 4764: A group's type was changed. The recommended state for this setting is to include: Success."
      rationale: "Auditing these events may be useful when investigating a security incident."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
@@ -3799,12 +3819,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditpol.exe /get /subcategory:"Security Group Management" -> r:Success'
 
   # 17.2.3 (L1) Ensure 'Audit User Account Management' is set to 'Success and Failure'. (Automated)
    - id: 18682
-     title: "(L1) Ensure 'Audit User Account Management' is set to 'Success and Failure'."
+     title: "L1 Ensure 'Audit User Account Management' is set to 'Success and Failure'."
      description: "This subcategory reports each event of user account management, such as when a user account is created, changed, or deleted; a user account is renamed, disabled, or enabled; or a password is set or changed. If you enable this Audit policy setting, administrators can track events to detect malicious, accidental, and authorized creation of user accounts. Events for this subcategory include: - 4720: A user account was created. - 4722: A user account was enabled. - 4723: An attempt was made to change an account's password. - 4724: An attempt was made to reset an account's password. - 4725: A user account was disabled. - 4726: A user account was deleted. - 4738: A user account was changed. - 4740: A user account was locked out. - 4765: SID History was added to an account. - 4766: An attempt to add SID History to an account failed. - 4767: A user account was unlocked. - 4780: The ACL was set on accounts which are members of administrators groups. - 4781: The name of an account was changed: - 4794: An attempt was made to set the Directory Services Restore Mode. - 5376: Credential Manager credentials were backed up. - 5377: Credential Manager credentials were restored from a backup. The recommended state for this setting is: Success and Failure."
      rationale: "Auditing these events may be useful when investigating a security incident."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
@@ -3822,12 +3843,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditpol.exe /get /subcategory:"User Account Management" -> r:Success and Failure'
 
   # 17.3.1 (L1) Ensure 'Audit PNP Activity' is set to include 'Success'. (Automated)
    - id: 18683
-     title: "(L1) Ensure 'Audit PNP Activity' is set to include 'Success'."
+     title: "L1 Ensure 'Audit PNP Activity' is set to include 'Success'."
      description: "This policy setting allows you to audit when plug and play detects an external device. The recommended state for this setting is to include: Success. Note: A Windows 10, Server 2016 or newer OS is required to access and set this value in Group Policy."
      rationale: "Enabling this setting will allow a user to audit events when a device is plugged into a system. This can help alert IT staff if unapproved devices are plugged in."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
@@ -3844,12 +3866,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditpol.exe /get /subcategory:"Plug and Play Events" -> r:Success'
 
   # 17.3.2 (L1) Ensure 'Audit Process Creation' is set to include 'Success'. (Automated)
    - id: 18684
-     title: "(L1) Ensure 'Audit Process Creation' is set to include 'Success'."
+     title: "L1 Ensure 'Audit Process Creation' is set to include 'Success'."
      description: "This subcategory reports the creation of a process and the name of the program or user that created it. Events for this subcategory include: - 4688: A new process has been created. - 4696: A primary token was assigned to process. Refer to Microsoft Knowledge Base article 947226: Description of security events in Windows Vista and in Windows Server 2008 for the most recent information about this setting. The recommended state for this setting is to include: Success."
      rationale: "Auditing these events may be useful when investigating a security incident."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
@@ -3866,8 +3889,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditpol.exe /get /subcategory:"Process Creation" -> r:Success'
 
   # 17.5.1 (L1) Ensure 'Audit Account Lockout' is set to include 'Failure'. (Automated)
    - id: 18685
