@@ -218,7 +218,11 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-
+    /* update check system */
+    * Default values */
+    if (Config) {
+        Config->update_check = 1;
+    }
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -406,21 +410,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             }
             if (Config) {
                 Config->hostinfo = (u_int8_t) atoi(node[i]->content);
-            }
-        }
-        /* update check system */
-        else if (strcmp(node[i]->element, xml_update_check) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->update_check = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->update_check = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
             }
         }
         /* stats */
