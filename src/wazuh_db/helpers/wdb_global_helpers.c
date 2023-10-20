@@ -1177,7 +1177,7 @@ time_t get_agent_date_added(int agent_id) {
     return 0;
 }
 
-int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit) {
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit, char *node_name_param) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int *array = NULL;
@@ -1186,7 +1186,12 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
     char *node_name = NULL;
     int aux_sock = -1;
 
-    node_name = get_node_name();
+    if (node_name_param == NULL) {
+        node_name = get_node_name();
+    } else {
+        os_strdup(node_name_param, node_name);
+    }
+
     while (status == WDBC_DUE) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, node_name, limit);

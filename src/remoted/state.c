@@ -40,7 +40,7 @@ STATIC remoted_agent_state_t * get_node(const char *agent_id);
  * @brief Clean non active agents from agents state
  * @param sock Wazuh DB socket
  */
-STATIC void w_remoted_clean_agents_state(int *sock);
+STATIC void w_remoted_clean_agents_state(int *sock, char *node_name);
 
 /**
  * @brief Increment received event messages counter for agents
@@ -136,10 +136,18 @@ void * rem_state_main() {
     int sock = -1;
     sock = wdbc_connect();
 
+    int count = 0;
+
     while (1) {
         rem_write_state();
         sleep(interval);
-        w_remoted_clean_agents_state(&sock);
+        if (count == 5) {
+            w_remoted_clean_agents_state(&sock, node_name);
+            count = 0;
+        } else {
+            count++;
+        }
+
     }
 
     wdbc_close(&sock);
@@ -233,7 +241,7 @@ STATIC remoted_agent_state_t * get_node(const char *agent_id) {
     }
 }
 
-STATIC void w_remoted_clean_agents_state(int *sock) {
+STATIC void w_remoted_clean_agents_state(int *sock, char *node_name) {
     int *active_agents = NULL;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
@@ -244,7 +252,7 @@ STATIC void w_remoted_clean_agents_state(int *sock) {
         return;
     }
 
-    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, sock, 0, -1), active_agents == NULL) {
+    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, sock, 0, -1, node_name), active_agents == NULL) {
         return;
     }
 

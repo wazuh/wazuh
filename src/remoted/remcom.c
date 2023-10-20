@@ -131,7 +131,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                 } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
                     last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
                     if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
-                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, REM_MAX_NUM_AGENTS_STATS);
+                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, REM_MAX_NUM_AGENTS_STATS, node_name);
                         if (agents_ids != NULL) {
                             for (count = 0; agents_ids[count] != -1; count++);
                             if (count < REM_MAX_NUM_AGENTS_STATS) {

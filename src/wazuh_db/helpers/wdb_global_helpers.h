@@ -317,7 +317,7 @@ time_t get_agent_date_added(int agent_id);
  * @param[in] limit Limit number of rows returned.
  * @return Returns pointer to the array of agents ids, on success. NULL on errors.
  */
-int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit);
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit, char *node_name_param);
 
 /**
  * @brief Returns a JSON array containing the group and group_hash assigned to all agents,

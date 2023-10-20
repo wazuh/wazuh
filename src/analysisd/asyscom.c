@@ -66,7 +66,7 @@ STATIC char* asyscom_output_builder(int error_code, const char* message, cJSON* 
  * @param output the configuration to send
  * @return the size of the string "output" containing the configuration
  */
-STATIC size_t asyscom_dispatch(char* request, char** output);
+STATIC size_t asyscom_dispatch(char* request, char** output, char *node_name);
 
 /**
  * @brief Process the message received to send the configuration requested
@@ -89,7 +89,7 @@ STATIC char* asyscom_output_builder(int error_code, const char* message, cJSON* 
     return msg_string;
 }
 
-STATIC size_t asyscom_dispatch(char* request, char** output) {
+STATIC size_t asyscom_dispatch(char* request, char** output, char *node_name) {
     cJSON *request_json = NULL;
     cJSON *command_json = NULL;
     cJSON *parameters_json = NULL;
@@ -128,7 +128,7 @@ STATIC size_t asyscom_dispatch(char* request, char** output) {
                 } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
                     last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
                     if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
-                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, ASYS_MAX_NUM_AGENTS_STATS);
+                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, ASYS_MAX_NUM_AGENTS_STATS, node_name);
                         if (agents_ids != NULL) {
                             for (count = 0; agents_ids[count] != -1; count++);
                             if (count < ASYS_MAX_NUM_AGENTS_STATS) {
@@ -221,6 +221,9 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
         return NULL;
     }
 
+    char *node_name = NULL;
+    node_name = get_node_name();
+
     while (1) {
 
         // Wait for socket
@@ -265,7 +268,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
             break;
 
         default:
-            length = asyscom_dispatch(buffer, &response);
+            length = asyscom_dispatch(buffer, &response, node_name);
             OS_SendSecureTCP(peer, length, response);
             os_free(response);
             close(peer);
@@ -276,6 +279,8 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
         break;
     #endif
     }
+
+    os_free(node_name);
 
     mdebug1("Local requests thread finished");
 
