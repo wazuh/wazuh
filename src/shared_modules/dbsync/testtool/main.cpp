@@ -46,10 +46,12 @@ int main(int argc, const char* argv[])
 
         auto handle
         {
-            dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
-                          (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
-                          dbName.c_str(),
-                          sqlStmt.c_str())
+            dbsync_create_((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
+                           (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                           dbName.c_str(),
+                           sqlStmt.c_str(),
+                           (persistance.compare("1") == 0) ? DbManagement::PERSISTENT : DbManagement::VOLATILE,
+                           nullptr)
         };
 
 

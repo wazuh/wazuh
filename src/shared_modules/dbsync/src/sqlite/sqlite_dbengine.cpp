@@ -19,11 +19,13 @@
 #include "commonDefs.h"
 
 SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
-                               const std::string& path,
-                               const std::string& tableStmtCreation)
+                               const std::string&                     path,
+                               const std::string&                     tableStmtCreation,
+                               const DbManagement                     dbManagement,
+                               const std::vector<std::string>&        upgradeStatements)
     : m_sqliteFactory(sqliteFactory)
 {
-    initialize(path, tableStmtCreation);
+    initialize(path, tableStmtCreation, dbManagement, upgradeStatements);
 }
 
 SQLiteDBEngine::~SQLiteDBEngine()
@@ -527,36 +529,81 @@ void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
 /// Private functions section
 ///
 
-void SQLiteDBEngine::initialize(const std::string& path,
-                                const std::string& tableStmtCreation)
+void SQLiteDBEngine::initialize(const std::string&              path,
+                                const std::string&              tableStmtCreation,
+                                const DbManagement              dbManagement,
+                                const std::vector<std::string>& upgradeStatements)
 {
     if (path.empty())
     {
-        throw dbengine_error { EMPTY_DATABASE_PATH };
+        throw dbengine_error {EMPTY_DATABASE_PATH};
     }
 
-    if (!cleanDB(path))
+    auto currentDbsyncVersion = upgradeStatements.size() + 1;
+
+    auto reCreateDbLambda = [&]()
     {
-        throw dbengine_error { DELETE_OLD_DB_ERROR };
-    }
 
-    m_sqliteConnection = m_sqliteFactory->createConnection(path);
-    const auto createDBQueryList { Utils::split(tableStmtCreation, ';') };
-    m_sqliteConnection->execute("PRAGMA temp_store = memory;");
-    m_sqliteConnection->execute("PRAGMA journal_mode = truncate;");
-    m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
-
-    for (const auto& query : createDBQueryList)
-    {
-        const auto stmt { getStatement(query) };
-
-        if (SQLITE_DONE != stmt->step())
+        if (!cleanDB(path))
         {
-            throw dbengine_error { STEP_ERROR_CREATE_STMT };
+            throw dbengine_error {DELETE_OLD_DB_ERROR};
+        }
+
+        m_sqliteConnection = m_sqliteFactory->createConnection(path);
+        const auto createDBQueryList {Utils::split(tableStmtCreation, ';')};
+        m_sqliteConnection->execute("PRAGMA temp_store = memory;");
+        m_sqliteConnection->execute("PRAGMA journal_mode = truncate;");
+        m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
+        m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(currentDbsyncVersion) + ";");
+
+        for (const auto& query : createDBQueryList)
+        {
+            const auto stmt {getStatement(query)};
+
+            if (SQLITE_DONE != stmt->step())
+            {
+                throw dbengine_error {STEP_ERROR_CREATE_STMT};
+            }
+        }
+
+        m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+    };
+
+    size_t dbVersion = 0;
+
+    if (DbManagement::PERSISTENT == dbManagement)
+    {
+        m_sqliteConnection = m_sqliteFactory->createConnection(path);
+        dbVersion = getDbVersion();
+
+        if (0 == dbVersion)
+        {
+            reCreateDbLambda();
+        }
+
+        else if (dbVersion < currentDbsyncVersion)
+        {
+            for (size_t i = dbVersion - 1; i < upgradeStatements.size(); ++i)
+            {
+                auto transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+                const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, upgradeStatements[i])};
+
+                if (SQLITE_DONE != stmt->step())
+                {
+                    throw dbengine_error {STEP_ERROR_UPDATE_STMT};
+                }
+
+                transaction->commit();
+                m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(i + 2) + ";");
+            }
+
+            m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
         }
     }
-
-    m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+    else if (DbManagement::VOLATILE == dbManagement)
+    {
+        reCreateDbLambda();
+    }
 }
 
 bool SQLiteDBEngine::cleanDB(const std::string& path)
@@ -575,6 +622,20 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
     }
 
     return ret;
+}
+
+size_t SQLiteDBEngine::getDbVersion()
+{
+    const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, "PRAGMA user_version;")};
+
+    size_t version {0};
+
+    if (SQLITE_ROW == stmt->step())
+    {
+        version = stmt->column(0)->value(int32_t {});
+    }
+
+    return version;
 }
 
 void SQLiteDBEngine::insertElement(const std::string& table,

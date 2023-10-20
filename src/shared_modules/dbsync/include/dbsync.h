@@ -43,10 +43,31 @@ EXPORTED void dbsync_initialize(log_fnc_t log_function);
 /**
  * @brief Creates a new DBSync instance.
  *
- * @param host_type     Dynamic library host type to be used.
- * @param db_type       Database type to be used (currently only supported SQLITE3)
- * @param path          Path where the local database will be created.
- * @param sql_statement SQL sentence to create tables in a SQL engine.
+ * @param host_type          Dynamic library host type to be used.
+ * @param db_type            Database type to be used (currently only supported SQLITE3)
+ * @param path               Path where the local database will be created.
+ * @param sql_statement      SQL sentence to create tables in a SQL engine.
+ * @param db_management      Database management type to be used at startup.
+ * @param upgrade_statements SQL sentences to be executed when upgrading the database (NULL terminated).
+ *
+ * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
+ */
+EXPORTED DBSYNC_HANDLE dbsync_create_(const HostType      host_type,
+                                      const DbEngineType  db_type,
+                                      const char*         path,
+                                      const char*         sql_statement,
+                                      const DbManagement  db_management,
+                                      const char**        upgrade_statements);
+
+/**
+ * @brief Creates a new DBSync instance (wrapper)
+ *
+ * @param host_type          Dynamic library host type to be used.
+ * @param db_type            Database type to be used (currently only supported SQLITE3)
+ * @param path               Path where the local database will be created.
+ * @param sql_statement      SQL sentence to create tables in a SQL engine.
+ *
+ * @note db_management will be DbManagement::VOLATILE as default and upgrade_statements will be NULL.
  *
  * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
  */
@@ -54,6 +75,24 @@ EXPORTED DBSYNC_HANDLE dbsync_create(const HostType      host_type,
                                      const DbEngineType  db_type,
                                      const char*         path,
                                      const char*         sql_statement);
+
+/**
+ * @brief Creates a new DBSync instance (wrapper)
+ *
+ * @param host_type          Dynamic library host type to be used.
+ * @param db_type            Database type to be used (currently only supported SQLITE3)
+ * @param path               Path where the local database will be created.
+ * @param sql_statement      SQL sentence to create tables in a SQL engine.
+ *
+ * @note db_management will be DbManagement::PERSISTENT as default.
+ *
+ * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
+ */
+EXPORTED DBSYNC_HANDLE dbsync_create_persistent(const HostType      host_type,
+                                                const DbEngineType  db_type,
+                                                const char*         path,
+                                                const char*         sql_statement,
+                                                const char**        upgrade_statements);
 
 /**
  * @brief Turns off the services provided by the shared library.
