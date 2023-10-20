@@ -113,6 +113,8 @@ CONF_SECTIONS = MappingProxyType({
 
 GETCONFIG_COMMAND = "getconfig"
 UPDATE_CHECK_OSSEC_FIELD = 'update_check'
+GLOBAL_KEY = 'global'
+YES_VALUE = 'yes'
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):
@@ -1269,6 +1271,6 @@ def update_check_is_enabled() -> bool:
     bool
         True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
     """
-    global_configurations = get_ossec_conf(section='global')
+    global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
 
-    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, 'yes') == 'yes'
+    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE

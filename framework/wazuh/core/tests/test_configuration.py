@@ -488,8 +488,9 @@ def test_write_ossec_conf_exceptions():
 @pytest.mark.parametrize(
     'update_check_config,expected',
     (
-        [{configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}, True],
-        [{configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}, False],
+        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}}, True],
+        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
+        [{configuration.GLOBAL_KEY: {}}, True],
         [{}, True]
     )
 )
