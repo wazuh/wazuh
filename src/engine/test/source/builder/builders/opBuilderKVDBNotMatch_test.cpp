@@ -4,10 +4,11 @@
 
 #include "opBuilderKVDB.hpp"
 #include <defs/mocks/failDef.hpp>
-#include <rapidjson/document.h>
+#include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb/kvdbExcept.hpp>
+#include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
+#include <rapidjson/document.h>
 
 using namespace metricsManager;
 
@@ -20,27 +21,38 @@ static FakeTrFn tr = [](std::string msg) {
 
 namespace
 {
+
+const std::string KVDB_PATH {"/tmp/kvdb_test/"};
+const std::string KVDB_DB_FILENAME {"TEST_DB"};
+
+std::filesystem::path uniquePath(const std::string& path)
+{
+    auto pid = getpid();
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << pid << "_" << tid << "/"; // Unique path per thread and process
+    return std::filesystem::path(path) / ss.str();
+}
+
 class opBuilderKVDBNotMatchTest : public ::testing::Test
 {
-
 protected:
-    static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-    static constexpr auto DB_NAME = "kvdb";
-    static constexpr auto DB_NAME_1 = "TEST_DB";
-
-    std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_metricsManager;
+    std::shared_ptr<kvdbManager::IKVDBManager> m_kvdbManager;
+    std::string kvdbPath;
 
     void SetUp() override
     {
-        m_manager = std::make_shared<MetricsManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
-        kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
+        logging::testInit();
 
-        auto err = kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(err);
-        auto result = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
-        ASSERT_FALSE(std::holds_alternative<base::Error>(result));
+        if (std::filesystem::exists(kvdbPath))
+        {
+            std::filesystem::remove_all(kvdbPath);
+        }
+
+        m_metricsManager = std::make_shared<MetricsManager>();
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
+        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_metricsManager);
     }
 
     void TearDown() override
@@ -49,14 +61,14 @@ protected:
         {
             kvdbManager->finalize();
         }
-        catch (kvdbManager::KVDBException& e)
+        catch (const std::exception& e)
         {
-            FAIL() << "KVDBException: " << e.what();
+            FAIL() << "Exception: " << e.what();
         }
 
-        if (std::filesystem::exists(DB_DIR))
+        if (std::filesystem::exists(kvdbPath))
         {
-            std::filesystem::remove_all(DB_DIR);
+            std::filesystem::remove_all(kvdbPath);
         }
     }
 };
@@ -64,7 +76,7 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBNotMatchTest, Builds)
 {
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_not_match/TEST_DB"}
     })"};
@@ -74,7 +86,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds)
 // Build incorrect number of arguments
 TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
 {
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_not_match"}
     })"};
@@ -85,7 +97,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
 // Build invalid DB
 TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
 {
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_not_match/INVALID_DB"}
     })"};
@@ -105,7 +117,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
     auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->writeKeyOnly("KEY");
 
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -146,7 +158,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
     auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->writeKeyOnly("KEY");
 
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"a.b.field2match": "+kvdb_not_match/TEST_DB"}
     })"};
