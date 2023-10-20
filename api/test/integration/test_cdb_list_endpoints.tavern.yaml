@@ -668,6 +668,8 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/lists/files/aws-eventnames"
       method: PUT
       data: "{new_cdb_list:s}"
+      params:
+        relative_dirname: 'amazon'
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -677,7 +679,7 @@ stages:
         data:
           failed_items:
             - error:
-                code: 1805
+                code: 1905
               id:
                 - 'etc/lists/aws-eventnames'
           total_affected_items: 0

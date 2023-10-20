@@ -381,7 +381,7 @@ def test_delete_list_file(mock_delete_file, relative_dirname):
         # Create directory for the test
         test_file = os.path.join(DATA_PATH, relative_dirname, 'test_file') if relative_dirname \
             else os.path.join(DATA_PATH, 'test_file')
-        with open(test_file, 'a') as f:
+        with open(test_file, 'a+') as f:
             f.write('key:value\n"ke:y2":value2\n')
 
         with patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH):
