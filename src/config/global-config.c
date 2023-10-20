@@ -158,6 +158,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
     const char *xml_limits = "limits";
+    const char *xml_update_check = "update_check";
 
 
     const char *xml_emailto = "email_to";
@@ -213,6 +214,11 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
         }
     }
 
+    /* Default values */
+    if (Config) {
+        Config->update_check = 1;
+    }
+    
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
