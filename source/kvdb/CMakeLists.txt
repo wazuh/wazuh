@@ -35,9 +35,11 @@ add_library(kvdb STATIC
     ${SRC_DIR}/refCounter.cpp
 )
 
+
 target_include_directories(kvdb
     PUBLIC
     ${INC_DIR}
+## TODO: private, after implement pimpl pattern
     ${rocksdb_SOURCE_DIR}/include
 )
 
@@ -57,6 +59,22 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+
+# Unit test
+add_executable(kvdb_utest
+    ${UNIT_SRC_DIR}/kvdb_test.cpp
+)
+target_link_libraries(kvdb_utest gtest_main kvdb)
+gtest_discover_tests(kvdb_utest)
+
+# Component test
+add_executable(kvdb_ctest
+    ${COMPONENT_SRC_DIR}/kvdbHandler_test.cpp
+    ${COMPONENT_SRC_DIR}/kvdbManager_test.cpp
+)
+
+target_link_libraries(kvdb_ctest gtest_main kvdb metrics)
+gtest_discover_tests(kvdb_ctest)
 
 ## Mocks
 add_library(kvdb_mocks INTERFACE)
