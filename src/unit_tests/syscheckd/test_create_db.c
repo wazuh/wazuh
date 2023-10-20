@@ -3821,9 +3821,9 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
 #endif
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry '/etc/a_test_file.txt' does not have any modified fields. No event will be generated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry '/etc/a_test_file.txt' does not have any modified fields. No event will be generated.");
 #else
-    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
 #endif
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
@@ -4044,7 +4044,7 @@ static void test_fim_event_callback_empty_changed_attributes(void **state) {
     cJSON_AddArrayToObject(data, "changed_attributes");
     cJSON_AddItemToObject(json_event, "data", data);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry '/path/to/file' does not have any modified fields. No event will be generated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry '/path/to/file' does not have any modified fields. No event will be generated.");
 
     fim_event_callback(json_event, &callback_ctx);
 

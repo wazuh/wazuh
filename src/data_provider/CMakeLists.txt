@@ -184,7 +184,8 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
-    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
+    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
@@ -199,7 +200,6 @@ elseif(UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-    set_target_properties(sysinfo PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
     # Do nothing for HP-UX

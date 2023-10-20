@@ -261,19 +261,6 @@ def test_aws_vpc_flow_bucket_db_maintenance(custom_database, expected_db_count: 
         table_name=instance.db_table_name)) == expected_db_count
 
 
-def test_aws_vpc_flow_bucket_get_vpc_prefix():
-    """Test 'get_vpc_prefix' method returns the prefix with the expected format."""
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
-
-    expected_vpc_prefix = utils.TEST_FULL_PREFIX + TEST_DATE + '/' + utils.TEST_ACCOUNT_ID + '_vpcflowlogs_' + \
-                          utils.TEST_REGION + '_' + TEST_FLOW_LOG_ID
-
-    with patch('aws_bucket.AWSLogsBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX):
-        vpc_prefix = instance.get_vpc_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION,
-                                             TEST_DATE, TEST_FLOW_LOG_ID)
-    assert expected_vpc_prefix == vpc_prefix
-
-
 def test_aws_vpc_flow_bucket_mark_complete(custom_database):
     """Test 'mark_complete' method inserts non-processed logs into the DB."""
     utils.database_execute_script(custom_database, TEST_EMPTY_TABLE_SCHEMA)

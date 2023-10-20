@@ -434,7 +434,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 exec_tmp_file,
                 integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey,
                 integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl,
-                dbg_lvl <= 0 ? "" : "debug",
+                debugLevels[dbg_lvl],
                 opt_file_created == 0 ? "" : opt_tmp_file,
                 integrator_config[s]->timeout,
                 integrator_config[s]->retries);

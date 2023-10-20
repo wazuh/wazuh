@@ -827,4 +827,58 @@
     </mitre>
   </rule>
 
+  <rule id="92077" level="10">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine">SecurityCenter2 Path AntiVirusProduct Get</field>
+    <options>no_full_log</options>
+    <description>WMI command was used for AV product discovery</description>
+    <mitre>
+      <id>T1518.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92078" level="10">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.currentDirectory">E:\\</field>
+    <field name="win.eventdata.commandLine">cmd\.exe</field>
+    <options>no_full_log</options>
+    <description>Cmd.exe executed from non-standard directory, may be related to link execution from mounted ISO file</description>
+    <mitre>
+      <id>T1204.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92079" level="10">
+    <if_sid>92078</if_sid>
+    <field name="win.eventdata.commandLine">rundll32</field>
+    <options>no_full_log</options>
+    <description>Rundll32 executed from non-standard directory, may be related to link execution from mounted ISO file</description>
+    <mitre>
+      <id>T1204.002</id>
+      <id>T1218.011</id>
+    </mitre>
+  </rule>
+
+  <rule id="92080" level="7">
+    <if_sid>92031</if_sid>
+    <field name="win.eventdata.commandLine">config workstation</field>
+    <options>no_full_log</options>
+    <description>System information discovery activity detected</description>
+    <mitre>
+      <id>T1082</id>
+      <id>T1047</id>
+    </mitre>
+  </rule>
+
+  <rule id="92081" level="15">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)RUNDLL32.EXE</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i).(html|htm|txt|png|jpg|pdf)"*,#</field>
+    <options>no_full_log</options>
+    <description>Rundll32 executing file with suspicious extension</description>
+    <mitre>
+      <id>T1218.011</id>
+    </mitre>
+  </rule>
+
 </group>

@@ -410,7 +410,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
                                             changed_attributes);
 
             if (cJSON_GetArraySize(changed_attributes) == 0) {
-                mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+                mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
                 goto end;
             }
         }
@@ -789,6 +789,17 @@ int fim_directory(const char *dir,
         }
         *(s_name) = '\0';
         path_size = strlen(f_name);
+
+#ifdef WIN32
+        // Check if the full path is too long if it is, skip this file
+        // and log a warning, PATH_MAX is 260 on windows, but reserves 1 char
+        // for the null terminator.
+        if (path_size + strlen(entry->d_name) >= PATH_MAX) {
+            mwarn(FIM_ERROR_PATH_TOO_LONG, f_name, entry->d_name, PATH_MAX);
+            continue;
+        }
+#endif
+
         snprintf(s_name, PATH_MAX + 2 - path_size, "%s", entry->d_name);
 
 #ifdef WIN32
@@ -816,7 +827,7 @@ void fim_event_callback(void* data, void * ctx)
 
         cJSON *changed_attributes = cJSON_GetObjectItem(data_json, "changed_attributes");
         if (changed_attributes && cJSON_GetArraySize(changed_attributes) == 0) {
-            mwarn(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
             return;
         }
 
