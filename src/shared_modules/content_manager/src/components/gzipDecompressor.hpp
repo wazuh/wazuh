@@ -70,7 +70,7 @@ private:
                 outputPath, (outputFolder / DOWNLOAD_FOLDER).string(), (outputFolder / CONTENTS_FOLDER).string());
 
             // Remove .gz extension.
-            outputPath = Utils::rightTrim(path, inputPath.extension());
+            outputPath = Utils::rightTrim(outputPath, inputPath.extension());
 
             // Decompress.
             Utils::ZlibHelper::gzipDecompress(inputPath, outputPath);

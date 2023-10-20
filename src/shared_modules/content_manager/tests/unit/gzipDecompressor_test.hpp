@@ -17,9 +17,11 @@
 #include <filesystem>
 #include <memory>
 
-const auto INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "gzipDecompressor"};
-const auto OUTPUT_SAMPLE_A_FILE_PATH {INPUT_FILES_DIR / "sample_a.json"};
-const auto OUTPUT_SAMPLE_B_FILE_PATH {INPUT_FILES_DIR / "sample_b.json"};
+const auto WORKING_DIR {std::filesystem::current_path() / "input_files" / "gzipDecompressor"};
+const auto INPUT_FILES_DIR {WORKING_DIR / DOWNLOAD_FOLDER};
+const auto OUTPUT_FILES_DIR {WORKING_DIR / CONTENTS_FOLDER};
+const auto OUTPUT_SAMPLE_A_FILE_PATH {OUTPUT_FILES_DIR / "sample_a.json"};
+const auto OUTPUT_SAMPLE_B_FILE_PATH {OUTPUT_FILES_DIR / "sample_b.json"};
 
 /**
  * @brief Runs unit tests for GzipDecompressor
@@ -41,7 +43,7 @@ protected:
     {
         m_spContext = std::make_shared<UpdaterContext>();
         m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
-        m_spContext->spUpdaterBaseContext->outputFolder = INPUT_FILES_DIR;
+        m_spContext->spUpdaterBaseContext->outputFolder = WORKING_DIR;
     }
 
     /**
