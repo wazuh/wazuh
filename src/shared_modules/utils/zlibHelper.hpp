@@ -58,14 +58,14 @@ namespace Utils
             std::ofstream outputFile {outputFilePath};
             if (!outputFile.good())
             {
-                throw std::runtime_error("Unable to create destination file");
+                throw std::runtime_error("Unable to create destination file: " + outputFilePath.string());
             }
 
             // Open compressed file.
             ZFilePtr gzFile {gzopen(gzFilePath.c_str(), "rb")};
             if (!gzFile)
             {
-                throw std::runtime_error("Unable to open compressed file");
+                throw std::runtime_error("Unable to open compressed file: " + gzFilePath.string());
             }
 
             int len {};
@@ -79,7 +79,7 @@ namespace Utils
                     if (outputFile.write(buf, len).bad())
                     {
                         // LCOV_EXCL_START
-                        throw std::runtime_error("Unable to write to destination file");
+                        throw std::runtime_error("Unable to write to destination file: " + outputFilePath.string());
                         // LCOV_EXCL_STOP
                     }
 

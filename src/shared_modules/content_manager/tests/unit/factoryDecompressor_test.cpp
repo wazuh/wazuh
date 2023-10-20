@@ -12,8 +12,11 @@
 #include "factoryDecompressor_test.hpp"
 #include "XZDecompressor.hpp"
 #include "factoryDecompressor.hpp"
+#include "gzipDecompressor.hpp"
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
+#include "utils/chainOfResponsability.hpp"
+#include "gtest/gtest.h"
 #include <memory>
 
 /*
@@ -59,4 +62,20 @@ TEST_F(FactoryDecompressorTest, InvalidCompressionType)
     // Create the decompressor
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor {};
     EXPECT_THROW(spDecompressor = FactoryDecompressor::create(config), std::invalid_argument);
+}
+
+/**
+ * @brief Check the creation of a gzip decompressor.
+ *
+ */
+TEST_F(FactoryDecompressorTest, CreateGzipDecompressor)
+{
+    const auto config = R"({"compressionType": "gzip"})"_json;
+
+    // Create the decompressor.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor;
+    ASSERT_NO_THROW(spDecompressor = FactoryDecompressor::create(config));
+
+    // Check decompressor type.
+    EXPECT_TRUE(std::dynamic_pointer_cast<GzipDecompressor>(spDecompressor));
 }
