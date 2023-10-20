@@ -96,7 +96,6 @@ async def query_update_check_service(installation_uid: str) -> dict:
             async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
                 response_data = await response.json()
 
-
                 update_information['status_code'] = response.status
 
                 if response.status == 200:
@@ -115,14 +114,8 @@ async def query_update_check_service(installation_uid: str) -> dict:
                 else:
                     update_information['message'] = response_data['errors']['detail']
         except aiohttp.ClientError as err:
-            logger.error(
-                f'Something went wrong when querying the update check service: {err}'
-            )
             update_information.update({'message': str(err), 'status_code': 500})
         except Exception as err:
-            logger.error(
-                f'An unknown error occurred while trying to get updates information: {err}'
-            )
             update_information.update({'message': str(err), 'status_code': 500})
 
     return update_information
