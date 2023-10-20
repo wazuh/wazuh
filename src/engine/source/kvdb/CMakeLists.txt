@@ -60,6 +60,12 @@ set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
+## Mocks
+add_library(kvdb_mocks INTERFACE)
+target_include_directories(kvdb_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(kvdb_mocks INTERFACE gmock kvdb::ikvdb)
+add_library(kvdb::mocks ALIAS kvdb_mocks)
+
 # Unit test
 add_executable(kvdb_utest
     ${UNIT_SRC_DIR}/kvdb_test.cpp
@@ -73,13 +79,11 @@ add_executable(kvdb_ctest
     ${COMPONENT_SRC_DIR}/kvdbManager_test.cpp
 )
 
-target_link_libraries(kvdb_ctest gtest_main kvdb metrics)
-gtest_discover_tests(kvdb_ctest)
+target_include_directories(kvdb_ctest
+    PRIVATE
+    ${TEST_SRC_DIR})
 
-## Mocks
-add_library(kvdb_mocks INTERFACE)
-target_include_directories(kvdb_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(kvdb_mocks INTERFACE gmock kvdb::ikvdb)
-add_library(kvdb::mocks ALIAS kvdb_mocks)
+target_link_libraries(kvdb_ctest gtest_main metrics kvdb)
+gtest_discover_tests(kvdb_ctest)
 
 endif(ENGINE_BUILD_TEST)
