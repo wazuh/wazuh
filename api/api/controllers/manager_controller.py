@@ -19,8 +19,9 @@ from api.util import (
 )
 from api.validator import check_component_configuration_pair
 from wazuh.core import common
-from wazuh.core import configuration, requests
+from wazuh.core import configuration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.manager import query_update_check_service
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -627,7 +628,7 @@ async def check_available_version(
 
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
-        dapi = DistributedAPI(f=requests.query_update_check_service,
+        dapi = DistributedAPI(f=query_update_check_service,
                               f_kwargs={
                                   INSTALLATION_UID_KEY: request.app[INSTALLATION_UID_KEY]
                               },

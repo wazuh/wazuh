@@ -18,7 +18,7 @@ from api.constants import INSTALLATION_UID_KEY, INSTALLATION_UID_PATH, UPDATE_IN
 from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.configuration import update_check_is_enabled
-from wazuh.core.requests import query_update_check_service
+from wazuh.core.manager import query_update_check_service
 
 
 ONE_DAY_SLEEP = 60*60*24
