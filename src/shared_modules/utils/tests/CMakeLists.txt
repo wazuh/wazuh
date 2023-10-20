@@ -13,6 +13,7 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "filesystemHelper_test.cpp"
     "byteArrayHelper_test.cpp"
     "cmdHelper_test.cpp"
+    "cacheLRU_test.cpp"
     "hashHelper_test.cpp"
     "mapWrapperSafe_test.cpp"
     "msgDispatcher_test.cpp"
