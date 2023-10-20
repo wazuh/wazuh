@@ -11430,6 +11430,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/raw'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Successfully got CDB list"
@@ -11488,6 +11489,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/overwrite'
+        - $ref: '#/components/parameters/get_dirnames_path'
       requestBody:
         description: "Content of the file to be uploaded"
         required: true
@@ -11539,6 +11541,7 @@ paths:
         - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/get_dirnames_path'
       responses:
         '200':
           description: "Confirmation message"
