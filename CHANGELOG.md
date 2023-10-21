@@ -112,7 +112,7 @@ All notable changes to this project will be documented in this file.
 - Fixed rootcheck scan trying to read deleted files. ([#15719](https://github.com/wazuh/wazuh/pull/15719))
 - Fixed compilation and build in Gentoo. ([#15739](https://github.com/wazuh/wazuh/pull/15739))
 - Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
-- 
+
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. ([#13878](https://github.com/wazuh/wazuh/pull/13878))
@@ -160,7 +160,21 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. ([#14138](https://github.com/wazuh/wazuh/pull/14138))
 
 
-## [v4.5.3]
+## [v4.5.4]
+
+### Manager
+
+#### Changed
+
+- Set a timeout on requests between components through the cluster. ([#19729](https://github.com/wazuh/wazuh/pull/19729))
+
+#### Fixed
+
+- Fixed a bug that might leave some worker's services hanging if the connection to the master was broken. ([#19702](https://github.com/wazuh/wazuh/pull/19702))
+- Fixed vulnerability scan on Windows agent when the OS version has no release data. ([#19706](https://github.com/wazuh/wazuh/pull/19706))
+
+
+## [v4.5.3] - 2023-10-10
 
 ### Manager
 
