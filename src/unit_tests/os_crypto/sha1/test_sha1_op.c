@@ -13,6 +13,9 @@
 #include <cmocka.h>
 
 #include "../headers/shared.h"
+#include "../../os_crypto/sha1/sha1_op.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/common.h"
 
 int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, int64_t nbytes);
 

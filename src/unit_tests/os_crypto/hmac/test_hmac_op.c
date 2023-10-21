@@ -14,6 +14,7 @@
 
 #include "../headers/shared.h"
 #include "../../os_crypto/hmac/hmac.h"
+#include "../../wrappers/common.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {

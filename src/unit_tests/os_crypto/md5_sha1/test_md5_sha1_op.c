@@ -14,6 +14,7 @@
 
 #include "../headers/shared.h"
 #include "../../os_crypto/md5_sha1/md5_sha1_op.h"
+#include "../../wrappers/common.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {
