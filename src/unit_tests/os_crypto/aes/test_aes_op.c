@@ -32,11 +32,7 @@ void test_aes_string
     assert_int_equal(OS_AES_Str(string, buffer1, key, strlen(string), OS_ENCRYPT), 16);
     assert_int_equal(OS_AES_Str(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT), 11);
 
-    // Remove junk from decryption
-    char *last = strchr(buffer2, 0x005);
-    *last = '\0';
-
-    assert_string_equal(buffer2, string);
+    assert_int_equal(strncmp(buffer2, string, strlen(string)), 0);
 }
 
 int main(void) {
