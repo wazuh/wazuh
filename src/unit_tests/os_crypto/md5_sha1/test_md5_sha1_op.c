@@ -15,6 +15,7 @@
 #include "../headers/shared.h"
 #include "../../os_crypto/md5_sha1/md5_sha1_op.h"
 #include "../../wrappers/common.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -126,9 +127,7 @@ void test_md5_sha1_cmd_file_popen_fail(void **state)
 
     will_return(__wrap_snprintf, 25);
 
-    expect_string(__wrap_popen, command, "");
-    expect_string(__wrap_popen, type, "r");
-    will_return(__wrap_popen, 0);
+    expect_popen("", "r", NULL);
 
     assert_int_equal(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT), -1);
 }
