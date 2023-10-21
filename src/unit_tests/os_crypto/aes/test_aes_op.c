@@ -29,8 +29,8 @@ void test_aes_string
     memset(buffer1, 0, sizeof(buffer1));
     memset(buffer2, 0, sizeof(buffer2));
 
-    OS_AES_Str(string, buffer1, key, strlen(string), OS_ENCRYPT);
-    OS_AES_Str(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT);
+    assert_int_equal(OS_AES_Str(string, buffer1, key, strlen(string), OS_ENCRYPT), 16);
+    assert_int_equal(OS_AES_Str(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT), 11);
 
     // Remove junk from decryption
     char *last = strchr(buffer2, 0x005);

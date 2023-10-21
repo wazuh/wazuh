@@ -36,7 +36,7 @@ void test_hmac_string(void **state)
 
     os_sha1 buffer;
 
-    OS_HMAC_SHA1_Str(key, string, buffer);
+    assert_int_equal(OS_HMAC_SHA1_Str(key, string, buffer), 0);
 
     assert_string_equal(buffer, string_hmac);
 }
@@ -57,7 +57,7 @@ void test_hmac_file(void **state)
     write(fd, string, strlen(string));
     close(fd);
 
-    OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT);
+    assert_int_equal(OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT), 0);
 
     assert_string_equal(buffer, string_hmac);
 }
@@ -70,7 +70,7 @@ void test_hmac_string_length_key(void **state)
 
     os_sha1 buffer;
 
-    OS_HMAC_SHA1_Str(key, string, buffer);
+    assert_int_equal(OS_HMAC_SHA1_Str(key, string, buffer), 0);
 
     assert_string_equal(buffer, string_hmac);
 }
@@ -91,7 +91,7 @@ void test_hmac_file_length_key(void **state)
     write(fd, string, strlen(string));
     close(fd);
 
-    OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT);
+    assert_int_equal(OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT), 0);
 
     assert_string_equal(buffer, string_hmac);
 }

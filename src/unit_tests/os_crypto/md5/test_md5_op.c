@@ -35,7 +35,7 @@ void test_md5_string(void **state) {
     const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
     os_md5 buffer;
 
-    OS_MD5_Str(string, -1, buffer);
+    assert_int_equal(OS_MD5_Str(string, -1, buffer), 0);
 
     assert_string_equal(buffer, string_md5);
 }

@@ -44,8 +44,7 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
     expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, NULL);
 
-    int ret = OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes);
-    assert_int_equal(ret, -1);
+    assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -1);
 }
 
 void OS_SHA1_File_Nbytes_ok (void **state)
@@ -70,8 +69,7 @@ void OS_SHA1_File_Nbytes_ok (void **state)
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes);
-    assert_int_equal(ret, 0);
+    assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), 0);
 }
 
 void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
@@ -93,8 +91,7 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes);
-    assert_int_equal(ret, 0);
+    assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), 0);
 }
 
 /* OS_SHA1_Stream */

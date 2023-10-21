@@ -57,7 +57,7 @@ void test_sha512_file() {
     write(fd, string, strlen(string));
     close(fd);
 
-    OS_SHA512_File(file_name, buffer, OS_TEXT);
+    assert_int_equal(OS_SHA512_File(file_name, buffer, OS_TEXT), 0);
 
     assert_string_equal(buffer, string_sha512);
 }
