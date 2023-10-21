@@ -271,8 +271,8 @@ void test_encrypt_by_method_blowfish(void **state){
     char buffer1[buffersize];
     char buffer2[buffersize];
 
-    doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_BLOWFISH);
-    doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_BLOWFISH);
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_BLOWFISH), 1);
+    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_BLOWFISH), 1);
 
     assert_string_equal(buffer2, string);
 }
@@ -284,11 +284,10 @@ void test_encrypt_by_method_aes(void **state){
     char buffer1[buffersize];
     char buffer2[buffersize];
 
-    doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_AES);
-    doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_AES);
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_AES), 16);
+    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_AES), 0);
 
-//    assert_string_equal(buffer2, string);
-    assert_string_equal(string, string);
+    assert_int_equal(strncmp(buffer2, string, strlen(string)), 0);
 }
 
 void test_encrypt_by_method_default(void **state){
@@ -298,9 +297,7 @@ void test_encrypt_by_method_default(void **state){
     char buffer1[buffersize];
     char buffer2[buffersize];
 
-    int result = doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,2);
-
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,2), OS_INVALID);
 }
 
 void test_set_agent_crypto_method(void **state){
