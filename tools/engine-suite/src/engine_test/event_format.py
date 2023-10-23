@@ -35,6 +35,7 @@ class EventFormat:
         # To remove \n of event(s) from file
         return event.strip()
 
+    # TODO: Change name to split events if is needed (Raw input [] -> [raw event1,raw event2, ...] )
     def get_events(self, events):
         return events
 

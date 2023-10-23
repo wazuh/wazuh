@@ -6,8 +6,7 @@ class SyslogFormat(EventFormat):
         self.config['queue'] = Formats.SYSLOG.value['queue']
 
     def format_event(self, event):
-        event = super().format_event(event)
-        return self.parser.parse_syslog_format(event)
+        return super().format_event(event)
 
     def is_multiline(self):
         return Formats.SYSLOG.value['multiline']
