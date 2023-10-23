@@ -63,9 +63,16 @@ class Integration(CrudIntegration):
         try:
             while True:
                 try:
-                    # Get the events
                     events = []
+                    # Get the events
                     events = EventsCollector.collect(self.format)
+                    # Split the events
+                    events = self.format.get_events(events)
+                    # Format each event
+                    events = [self.format.format_event(event) for event in events]
+                    # Remove invalid events
+                    events = list(filter(None, events))
+
                     if len(events) > 0:
                         for event in events:
                             response = self.process_event(event, self.format)
@@ -85,7 +92,6 @@ class Integration(CrudIntegration):
             self.api_client.delete_session()
 
     def process_event(self, event, format):
-        event = format.format_event(event)
         result = self.api_client.test_run(event)
         response = "\n"
         response_output = { }
