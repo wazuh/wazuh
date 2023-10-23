@@ -52,12 +52,12 @@ EXPORTED void dbsync_initialize(log_fnc_t log_function);
  *
  * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
  */
-EXPORTED DBSYNC_HANDLE dbsync_create_(const HostType      host_type,
-                                      const DbEngineType  db_type,
-                                      const char*         path,
-                                      const char*         sql_statement,
-                                      const DbManagement  db_management,
-                                      const char**        upgrade_statements);
+DBSYNC_HANDLE dbsync_create_(const HostType      host_type,
+                             const DbEngineType  db_type,
+                             const char*         path,
+                             const char*         sql_statement,
+                             const DbManagement  db_management,
+                             const char**        upgrade_statements);
 
 /**
  * @brief Creates a new DBSync instance (wrapper)

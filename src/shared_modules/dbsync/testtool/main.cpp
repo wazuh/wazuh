@@ -44,16 +44,24 @@ int main(int argc, const char* argv[])
 
         dbsync_initialize(loggerFunction);
 
-        auto handle
-        {
-            dbsync_create_((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
-                           (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
-                           dbName.c_str(),
-                           sqlStmt.c_str(),
-                           (persistance.compare("1") == 0) ? DbManagement::PERSISTENT : DbManagement::VOLATILE,
-                           nullptr)
-        };
+        DBSYNC_HANDLE handle {0};
 
+        if (persistance.compare("1") == 0)
+        {
+            handle = dbsync_create_persistent((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
+                                              (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                                              dbName.c_str(),
+                                              sqlStmt.c_str(),
+                                              nullptr);
+
+        }
+        else
+        {
+            handle = dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
+                                   (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                                   dbName.c_str(),
+                                   sqlStmt.c_str());
+        }
 
         if (0 != handle)
         {
