@@ -6,15 +6,10 @@ class FullCommandFormat(EventFormat):
         super().__init__(integration, args)
         self.config['queue'] = Formats.FULL_COMMAND.value['queue']
 
-    def get_events(self, events):
-        events_multiline = []
-        events_multiline.append(events)
-        return events_multiline
-
     def format_event(self, event):
         origin = self.config['origin']
-        event_parsed = '\n'.join([line for line in event])
-        return f"ossec: output: '{origin}':{event_parsed}"
+        event = super().format_event(event)
+        return f"ossec: output: '{origin}':{event}"
 
     def is_multiline(self):
         return Formats.FULL_COMMAND.value['multiline']
