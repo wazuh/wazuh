@@ -42,32 +42,33 @@ class Integration(CrudIntegration):
             exit(1)
 
         self.args['full_location'] = self.format.get_full_location(self.args)
-
+        # TODO: move escape :| :
         # Client to API TEST
         self.api_client = ApiConnector(args)
         self.api_client.create_session()
 
-    def run(self, interactive: bool = True):
-        loop = True
-        event_passed = self.args['event'] if 'event' in self.args else None
+    def run(self):
         events = []
         events_parsed = []
         try:
-            while (loop):
-                loop = interactive
-
+            while True:
                 try:
                     # Get the events
-                    events = EventsCollector.collect(interactive, self.format, event_passed)
+                    events = EventsCollector.collect(self.format)
                     if len(events) > 0:
                         for event in events:
                             response = self.process_event(event, self.format)
                             events_parsed.append(response)
                 except KeyboardInterrupt as ex:
-                    loop = False
+                    break;
+
+                if not sys.stdin.isatty():
+                    break;
 
         except Exception as ex:
-            print("An error occurred while trying to process the events. Error: {}".format(ex))
+            print("An error occurred while trying to process the events of the integration. Error: {}".format(ex))
+            ex.with_traceback()
+
         finally:
             self.write_output_file(events_parsed)
             self.api_client.delete_session()
