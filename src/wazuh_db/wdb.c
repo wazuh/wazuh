@@ -1121,6 +1121,7 @@ void wdb_check_fragmentation() {
         w_mutex_lock(&node->mutex);
         current_fragmentation = wdb_get_db_state(node);
         current_free_pages_percentage = wdb_get_db_free_pages_percentage(node);
+        minfo("Checking fragmentation on the '%s' database. CF: %d CFP: %d", node->id, current_fragmentation, current_free_pages_percentage);
         if (current_fragmentation == OS_INVALID || current_free_pages_percentage == OS_INVALID) {
             merror("Couldn't get current state for the database '%s'", node->id);
         } else {
@@ -1158,7 +1159,7 @@ void wdb_check_fragmentation() {
                         continue;
                     }
                     gettime(&ts_end);
-                    mdebug2("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
+                    minfo("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
 
                     // save fragmentation after vacuum
                     if (fragmentation_after_vacuum = wdb_get_db_state(node), fragmentation_after_vacuum == OS_INVALID) {
@@ -1166,6 +1167,8 @@ void wdb_check_fragmentation() {
                     } else {
                         char str_vacuum_time[OS_SIZE_128] = { '\0' };
                         char str_vacuum_value[OS_SIZE_128] = { '\0' };
+
+                        minfo("Vacuum executed on the '%s' database. Time: %.3f ms | FPB: %d FB: %d | FA: %d ", node->id, time_diff(&ts_start, &ts_end) * 1e3, current_free_pages_percentage, current_fragmentation, fragmentation_after_vacuum);
 
                         snprintf(str_vacuum_time, OS_SIZE_128, "%ld", time(0));
                         snprintf(str_vacuum_value, OS_SIZE_128, "%d", fragmentation_after_vacuum);
