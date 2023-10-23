@@ -25,6 +25,9 @@ class EngineDumper(BaseDumper):
         # If the value contains a single quote, force double quotes
         if style is None and "'" in value:
             style = '"'
+        # If the value contains a line break, force literal style
+        if '\n' in value:
+            style = '|'
         return super(EngineDumper, self).represent_scalar(tag, value, style)
 
 class Integration(CrudIntegration):
