@@ -210,7 +210,7 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
 
         FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData);
     }
-    else if (1 <= size)
+    else if (1 < size)
     {
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 

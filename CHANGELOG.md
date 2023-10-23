@@ -90,6 +90,7 @@ All notable changes to this project will be documented in this file.
 - Refactored methods responsible for file synchronization within the cluster. ([#13065](https://github.com/wazuh/wazuh/pull/13065))
 - Changed schema constraints for sys_hwinfo table. ([#16065](https://github.com/wazuh/wazuh/pull/16065))
 - Auth process not start when registration password is empty. ([#15709](https://github.com/wazuh/wazuh/pull/15709))
+- Changed error messages about corrupt GetSecurityInfo messages from FIM to debug logs. ([#19400](https://github.com/wazuh/wazuh/pull/19400))
 
 #### Fixed
 
@@ -151,6 +152,7 @@ All notable changes to this project will be documented in this file.
 - Unit tests have been added to the shared SQLite handling library. ([#14476](https://github.com/wazuh/wazuh/pull/14476))
 - Improved command to change user and group from version 4.2.x to 4.x.x. ([#15032](https://github.com/wazuh/wazuh/pull/15032))
 - Changed the internal value of the open_attemps configuration. ([#15647](https://github.com/wazuh/wazuh/pull/15647))
+- Reduced the default FIM event throughput to 50 EPS. ([#19758](https://github.com/wazuh/wazuh/pull/19758))
 
 #### Fixed
 
@@ -174,7 +176,8 @@ All notable changes to this project will be documented in this file.
 - Fixed rootcheck scan trying to read deleted files. ([#15719](https://github.com/wazuh/wazuh/pull/15719))
 - Fixed compilation and build in Gentoo. ([#15739](https://github.com/wazuh/wazuh/pull/15739))
 - Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
-- 
+- Fixed FIM who-data support for aarch64 platforms. ([#19378](https://github.com/wazuh/wazuh/pull/19378))
+
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. ([#13878](https://github.com/wazuh/wazuh/pull/13878))
@@ -222,7 +225,21 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. ([#14138](https://github.com/wazuh/wazuh/pull/14138))
 
 
-## [v4.5.3]
+## [v4.5.4]
+
+### Manager
+
+#### Changed
+
+- Set a timeout on requests between components through the cluster. ([#19729](https://github.com/wazuh/wazuh/pull/19729))
+
+#### Fixed
+
+- Fixed a bug that might leave some worker's services hanging if the connection to the master was broken. ([#19702](https://github.com/wazuh/wazuh/pull/19702))
+- Fixed vulnerability scan on Windows agent when the OS version has no release data. ([#19706](https://github.com/wazuh/wazuh/pull/19706))
+
+
+## [v4.5.3] - 2023-10-10
 
 ### Manager
 
