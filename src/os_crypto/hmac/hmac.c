@@ -32,8 +32,8 @@ int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output)
     key_length = strlen(key);
     text_length = strlen(text);
 
+    os_sha1 sha_key;
     if (key_length > HMAC_SHA1_BLOCKSIZE){
-        os_sha1 sha_key;
         OS_SHA1_Str(key, key_length, sha_key);
         key = sha_key;
         key_length = SHA_DIGEST_LENGTH;
@@ -84,8 +84,8 @@ int OS_HMAC_SHA1_File(const char *key, const char *file_path, os_sha1 output, in
 
     key_length = strlen(key);
 
+    os_sha1 sha_key;
     if (key_length > HMAC_SHA1_BLOCKSIZE){
-        os_sha1 sha_key;
         OS_SHA1_Str(key, key_length, sha_key);
         key = sha_key;
         key_length = SHA_DIGEST_LENGTH;
