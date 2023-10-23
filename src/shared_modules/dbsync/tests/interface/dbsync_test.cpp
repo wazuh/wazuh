@@ -59,6 +59,7 @@ void DBSyncTest::SetUp()
 void DBSyncTest::TearDown()
 {
     EXPECT_NO_THROW(dbsync_teardown());
+    std::remove(DATABASE_TEMP);
 };
 
 TEST_F(DBSyncTest, Initialization)
@@ -2391,7 +2392,6 @@ TEST_F(DBSyncTest, TestPersistentMode)
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"test1","value":1})"))).Times(1);
 
     EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
-    std::remove(DATABASE_TEMP);
 }
 
 TEST_F(DBSyncTest, TestUpgrade)
@@ -2434,5 +2434,4 @@ TEST_F(DBSyncTest, TestUpgrade)
     };
 
     EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
-    std::remove(DATABASE_TEMP);
 }

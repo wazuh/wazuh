@@ -32,6 +32,11 @@ SQLiteDBEngine::~SQLiteDBEngine()
 {
     std::lock_guard<std::mutex> lock(m_stmtMutex);
     m_statementsCache.clear();
+
+    if (m_transaction)
+    {
+        m_transaction->commit();
+    }
 }
 
 void SQLiteDBEngine::setMaxRows(const std::string& table,
@@ -543,7 +548,6 @@ void SQLiteDBEngine::initialize(const std::string&              path,
 
     auto reCreateDbLambda = [&]()
     {
-
         if (!cleanDB(path))
         {
             throw dbengine_error {DELETE_OLD_DB_ERROR};
@@ -578,6 +582,7 @@ void SQLiteDBEngine::initialize(const std::string&              path,
 
         if (0 == dbVersion)
         {
+            m_sqliteConnection.reset();
             reCreateDbLambda();
         }
 
