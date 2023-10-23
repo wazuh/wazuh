@@ -95,6 +95,56 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_limit_disabled(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                         configure_local_internal_options, folder_to_monitor, daemons_handler, start_monitoring):
+    '''
+    description: Check if the 'wazuh-syscheckd' daemon detects that the 'file_limit' feature of FIM is disabled.
+                 For this purpose, the test will monitor a testing directory, and finally, it will verify
+                 that the FIM event 'no limit' is generated.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - start_monitoring:
+            type: fixture
+            brief: Wait FIM to start.
+
+    assertions:
+        - Verify the FIM event 'no limit' is generated when the 'file_limit' feature is disabled.
+
+    input_description: The test cases are contained in external YAML file (cases_limit_disabled.yaml)
+                       which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
+                       directories to monitor. The configuration template is contained in another external YAML
+                       file (configuration_basic.yaml).
+
+    expected_output:
+        - r'.*No limit set to maximum number of file entries to be monitored'
+
+    tags:
+        - scheduled
+        - realtime
+    '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     
