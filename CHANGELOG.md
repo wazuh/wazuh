@@ -151,6 +151,7 @@ All notable changes to this project will be documented in this file.
 - Unit tests have been added to the shared SQLite handling library. ([#14476](https://github.com/wazuh/wazuh/pull/14476))
 - Improved command to change user and group from version 4.2.x to 4.x.x. ([#15032](https://github.com/wazuh/wazuh/pull/15032))
 - Changed the internal value of the open_attemps configuration. ([#15647](https://github.com/wazuh/wazuh/pull/15647))
+- Improved the subprocess execution to ensure good practices. ([#19720](https://github.com/wazuh/wazuh/pull/19720))
 
 #### Fixed
 
@@ -174,7 +175,7 @@ All notable changes to this project will be documented in this file.
 - Fixed rootcheck scan trying to read deleted files. ([#15719](https://github.com/wazuh/wazuh/pull/15719))
 - Fixed compilation and build in Gentoo. ([#15739](https://github.com/wazuh/wazuh/pull/15739))
 - Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
-- 
+-
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. ([#13878](https://github.com/wazuh/wazuh/pull/13878))
