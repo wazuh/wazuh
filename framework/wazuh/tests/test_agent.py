@@ -5,12 +5,12 @@
 import os
 import shutil
 import sys
+import pytest
+
 from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
 from unittest.mock import MagicMock, patch, call
-
-import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
