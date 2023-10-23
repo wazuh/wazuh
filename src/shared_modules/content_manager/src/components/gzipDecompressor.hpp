@@ -40,13 +40,9 @@ private:
      */
     void pushStageStatus(nlohmann::json& contextData, std::string status) const
     {
-        auto statusObject = R"(
-            { 
-                "stage": "GzipDecompressor",
-                "status": "n/a"
-            }
-        )"_json;
-        statusObject.at("status") = std::move(status);
+        auto statusObject = nlohmann::json::object();
+        statusObject["stage"] = "GzipDecompressor";
+        statusObject["status"] = std::move(status);
 
         contextData.at("stageStatus").push_back(std::move(statusObject));
     }
