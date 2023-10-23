@@ -52,7 +52,7 @@ private:
     }
 
     /**
-     * @brief Decompress the compresesd content and update the context paths.
+     * @brief Decompress the compressed content and update the context paths.
      *
      * @param context Updater context.
      */
