@@ -100,6 +100,64 @@ base_checks = [configuration.ATTR_CHECKSUM, configuration.ATTR_TYPE]
 def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                   truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     '''
+    description: Check if the 'wazuh-syscheckd' daemon adds in the generated events the 'check_' specified in
+                 the configuration. These checks are attributes indicating that a monitored directory entry has
+                 been modified. For example, if 'check_all=yes' and 'check_perm=no' are set for the same entry,
+                 'syscheck' must send an event containing every possible 'check_' except the perms.
+                 For this purpose, the test will monitor a directory using the 'check_all' attribute in
+                 conjunction with one or more 'check_' on the same directory, having 'check_all' to 'yes' and the other
+                 one to 'no'. Then it will make directory operations inside it, and finally, the test
+                 will verify that the FIM events generated contain only the fields of the 'checks' specified for
+                 the monitored keys/values.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - file_to_monitor:
+            type: str
+            brief: File created for monitoring.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - start_monitoring:
+            type: fixture
+            brief: Wait FIM to start.
+
+    assertions:
+        - Verify that the FIM events generated contains the 'check_' fields specified in the configuration.
+
+    input_description: The test cases are contained in external YAML file (cases_checkers.yaml) which includes
+                       configuration parameters for the 'wazuh-syscheckd' daemon and testing directories to monitor.
+                       The configuration template is contained in another external YAML file 
+                       (configuration_basic.yaml).
+
+    expected_output:
+        - r'.*Sending FIM event: (.+)$' ('added', 'modified', and 'deleted' events)
+
+    tags:
+        - scheduled
+        - realtime
+        - who_data
     '''
     monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
