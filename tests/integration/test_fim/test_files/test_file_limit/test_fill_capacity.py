@@ -97,11 +97,11 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
                        configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
                        daemons_handler, start_monitoring):
     '''
-    description: Check if FIM events contain the correct number of file paths when a folder
-                 that contains multiple files is deleted. For this purpose, the test will monitor
-                 a testing folder and create multiple files before the scan starts. Finally, it
-                 verifies in the generated FIM event that the correct inodes and file paths
-                 are detected.
+    description: Check if the 'wazuh-syscheckd' daemon generates events for different capacity thresholds limits.
+                 For this purpose, the test will monitor a directory in which several testing files will be created,
+                 corresponding to different percentages of the total file limit. Then, it will check if FIM events
+                 are generated when the files amount exceeds 80% of the total. Finally, the test will verify that
+                 on the FIM event, inodes and monitored files number match.
 
     wazuh_min_version: 4.2.0
 
@@ -137,16 +137,19 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
             brief: Wait FIM to start.
 
     assertions:
-        - Verify that when using hard and symbolic links, the FIM events contain
-          the number of inodes and paths to files consistent.
+        - Verify that FIM events are generated when the number of files to be monitored
+          exceeds the established threshold and vice versa.
+        - Verify that the FIM events contain the same number of inodes and files in the monitored directory.
 
-    input_description: The test cases are contained in external YAML file (cases_delete_hardlink_symlink.yaml)
+    input_description: The test cases are contained in external YAML file (cases_fill_capacity.yaml)
                        which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
                        directories to monitor. The configuration template is contained in another external YAML
                        file (configuration_basic.yaml).
 
     expected_output:
         - r".*Fim inode entries: '(d+)', path count: '(d+)'"
+        - r".*Maximum number of files to be monitored: '(\d+)'"
+        - r'.*File database is (\d+)% full.'
 
     tags:
         - scheduled

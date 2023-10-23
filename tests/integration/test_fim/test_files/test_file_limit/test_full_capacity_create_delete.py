@@ -99,6 +99,65 @@ if sys.platform == WINDOWS:
 def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                                      configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
                                      daemons_handler, start_monitoring):
+    '''
+    description: Check if a testing file is not inserted in the FIM database when the maximum monitored
+                 files limit has already been reached, and if the FIM event 'delete' is generated when
+                 an already monitored file is deleted. For this purpose, the test will monitor a directory
+                 and fill it with several test files until the maximum limit of monitored files is reached.
+                 Then, it will create a testfile and wait for no FIM events to be generated. Finally,
+                 it will delete the already monitored files and verify the 'deleted' FIM event is raised.
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - fill_folder_to_monitor:
+            type: str
+            brief: Fill the monitored folder with test files.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - start_monitoring:
+            type: fixture
+            brief: Wait FIM to start.
+
+    assertions:
+        - Verify that the FIM database is in 'full database alert' mode
+          when the maximum number of files to monitor has been reached.
+        - Verify that proper FIM events are generated while the database is in 'full database alert' mode.
+
+    input_description: The test cases are contained in external YAML file (cases_full_capacity_create_delete.yaml)
+                       which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
+                       directories to monitor. The configuration template is contained in another external YAML
+                       file (configuration_basic.yaml).
+
+    expected_output:
+        - r'.*"type":"added".*'
+        - r'.*"type":"deleted".*'
+
+    tags:
+        - scheduled
+        - realtime
+    '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
 
