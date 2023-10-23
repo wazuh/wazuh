@@ -669,7 +669,7 @@ stages:
       method: PUT
       data: "{new_cdb_list:s}"
       params:
-        relative_dirname: 'amazon'
+        relative_dirname: '/amazon'
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
