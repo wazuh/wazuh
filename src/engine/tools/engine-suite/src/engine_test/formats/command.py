@@ -6,6 +6,7 @@ class CommandFormat(EventFormat):
         self.config['queue'] = Formats.COMMAND.value['queue']
 
     def format_event(self, event):
+        event = super().format_event(event)
         origin = self.config['origin']
         return f"ossec: output: '{origin}': {event}"
 
