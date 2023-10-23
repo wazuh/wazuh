@@ -58,16 +58,20 @@ tags:
 import pytest
 from pathlib import Path
 import sys
+import time
 
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, add_custom_key, kill_server
+from .. import wait_enrollment, wait_connect, wait_server_rollback, add_custom_key, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -96,8 +100,8 @@ This test covers different options of delays between server connection attempts:
 """
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_parametrized_reconnections(configure_authd_server, start_authd, stop_agent, set_keys,
-                                           configure_environment, get_configuration, teardown):
+def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                             truncate_monitored_files):
     '''
     description: Check how the agent behaves when there are delays between connection
                  attempts to the server. For this purpose, different values for
@@ -154,48 +158,46 @@ def test_agentd_parametrized_reconnections(configure_authd_server, start_authd, 
     RECV_TIMEOUT = 5
     ENROLLMENT_SLEEP = 20
     LOG_TIMEOUT = 30
+    import pdb; pdb.set_trace()
 
-    global remoted_server
-
-    PROTOCOL = protocol = get_configuration['metadata']['PROTOCOL']
-    RETRIES = get_configuration['metadata']['MAX_RETRIES']
-    INTERVAL = get_configuration['metadata']['RETRY_INTERVAL']
-    ENROLL = get_configuration['metadata']['ENROLL']
-
+    # Stop target Agent
     control_service('stop')
-    clean_logs()
-    log_monitor = FileMonitor(LOG_FILE_PATH)
-    remoted_server = RemotedSimulator(protocol=PROTOCOL, client_keys=CLIENT_KEYS_PATH)
+
+    # Add dummy key in order to communicate with RemotedSimulator
+    add_custom_key()
+    
+    # Start service
     control_service('start')
 
+    # Start RemotedSimulator
+    remoted_server = RemotedSimulator(protocol = test_metadata['protocol'])
+    remoted_server.start()
+
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
     # 2 Check for unsuccessful connection retries in Agentd initialization
-    interval = INTERVAL
-    if PROTOCOL == 'udp':
+    interval = test_metadata['retry_interval']
+    if test_metadata['protocol'] == 'udp':
         interval += RECV_TIMEOUT
 
-    if ENROLL == 'yes':
-        total_retries = RETRIES + 1
+    if test_metadata['enroll'] == 'yes':
+        total_retries = test_metadata['max_retries'] + 1
     else:
-        total_retries = RETRIES
+        total_retries = test_metadata['max_retries']
 
     for retry in range(total_retries):
         # 3 If auto enrollment is enabled, retry check enrollment and retries after that
-        if ENROLL == 'yes' and retry == total_retries - 1:
+        if test_metadata['enroll'] == 'yes' and retry == total_retries - 1:
             # Wait successfully enrollment
-            try:
-                log_monitor.start(timeout=20, callback=wait_enrollment)
-            except TimeoutError as err:
-                raise AssertionError("No successful enrollment after retries!")
-            last_log = parse_time_from_log_line(log_monitor.result())
-
+            wait_enrollment()
+            first_found_log_time = time.time()
             # Next retry will be after enrollment sleep
             interval = ENROLLMENT_SLEEP
-
-        try:
-            log_monitor.start(timeout=interval + LOG_TIMEOUT, callback=wait_connect)
-        except TimeoutError as err:
-            raise AssertionError("Connection attempts took too much!")
-        actual_retry = parse_time_from_log_line(log_monitor.result())
+    
+        wazuh_log_monitor.start(timeout = interval + LOG_TIMEOUT, callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
+        second_found_log_time = time.time()
+        assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
+        
         if retry > 0:
             delta_retry = actual_retry - last_log
             # Check if delay was applied
@@ -204,17 +206,14 @@ def test_agentd_parametrized_reconnections(configure_authd_server, start_authd, 
         last_log = actual_retry
 
     # 4 Wait for server rollback
-    try:
-        log_monitor.start(timeout=30, callback=wait_server_rollback)
-    except TimeoutError as err:
-        raise AssertionError("Server rollback took too much!")
+    wait_server_rollback()
 
     # 5 Check amount of retries and enrollment
     (connect, enroll) = count_retry_mesages()
     assert connect == total_retries
-    if ENROLL == 'yes':
+    if test_metadata['enroll'] == 'yes':
         assert enroll == 1
     else:
         assert enroll == 0
 
-    return
+    kill_server(remoted_server)
