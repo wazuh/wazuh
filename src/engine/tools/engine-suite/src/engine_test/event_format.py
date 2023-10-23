@@ -40,3 +40,6 @@ class EventFormat:
 
     def is_multiline(self):
         return False
+
+    def is_singleline(self):
+        return not self.is_multiline()
