@@ -61,6 +61,8 @@ private:
             auto outputPath {path.get<std::string>()};
 
             // Replace downloads folder for contents folder.
+            // For example, for an output folder equal to '/tmp/output' and a path equal to
+            // '/tmp/output/downloads/file.json.gz', the new path will be '/tmp/output/contents/file.json.gz'.
             const auto& outputFolder {context.spUpdaterBaseContext->outputFolder};
             Utils::replaceFirst(
                 outputPath, (outputFolder / DOWNLOAD_FOLDER).string(), (outputFolder / CONTENTS_FOLDER).string());
