@@ -39,8 +39,3 @@ class Parser:
         header = self.get_header_ossec_format(queue, config['agent_id'], config['agent_name'], config['agent_ip'], config['origin'])
         return "{}:{}".format(header, event)
 
-    def parse_syslog_format(self, event):
-        if len(event) > 5 and event[0] == '<':
-            return event[5:len(event)]
-        else:
-            return event

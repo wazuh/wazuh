@@ -1,3 +1,4 @@
+import re
 from engine_test.event_format import EventFormat, Formats
 
 class RemoteSyslogFormat(EventFormat):
@@ -6,7 +7,11 @@ class RemoteSyslogFormat(EventFormat):
         self.config['queue'] = Formats.REMOTE_SYSLOG.value['queue']
 
     def format_event(self, event):
-        return self.parser.parse_syslog_format(event)
+        event = super().format_event(event)
+        # Remove PRI from event: rfc3164 section-4.1.1
+        pri_pattern = re.compile(r'^<\d+>')
+        event = pri_pattern.sub('', event)
+        return event
 
     def get_full_location(self, args):
         origin = self.parser.get_origin(args['origin'])

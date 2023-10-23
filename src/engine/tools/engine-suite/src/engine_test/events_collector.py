@@ -10,12 +10,12 @@ class EventsCollector:
         # If is a terminal
         if is_user_input:
             event = ""
-            while event == "": # TODO Better filter
+            while event == "" or event == "\n":
                 if format.is_singleline():
-                    print("Enter any events [ENTER to send event, CTRL+C to finish]:\n")
+                    print("\nEnter any events [ENTER to send event, CTRL+C to finish]:\n")
                     event = sys.stdin.readline()
                 else:
-                    print("Enter any events [CTRL + D to send event, CTRL + C to finish]:\n")
+                    print("\nEnter any events [CTRL + D to send event, CTRL + C to finish]:\n")
                     event = sys.stdin.read()
             print("\n")
             events.append(event)
@@ -23,6 +23,8 @@ class EventsCollector:
         else:
             if format.is_singleline():
                 events = sys.stdin.readlines()
+                # Ignore empty lines
+                events = list(filter(lambda event: event != "\n", events))
             else:
                 events.append(sys.stdin.read())
 
