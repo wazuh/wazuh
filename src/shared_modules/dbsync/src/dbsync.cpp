@@ -80,7 +80,7 @@ DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
 
             while (upgrade_statements && *upgrade_statements)
             {
-                upgradeStatements.emplace_back(std::move(std::string(*upgrade_statements)));
+                upgradeStatements.emplace_back(std::string(*upgrade_statements));
                 upgrade_statements++;
             }
 
