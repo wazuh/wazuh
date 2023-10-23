@@ -96,7 +96,7 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_move(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-              truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring, path_to_edit):
+              truncate_monitored_files, folder_to_monitor, daemons_handler, path_to_edit, start_monitoring):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects 'added' and 'deleted' events when moving a
                  subdirectory or a file from a monitored folder to another one. For this purpose, the test
