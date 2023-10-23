@@ -5,7 +5,7 @@ class Formats(Enum):
     AUDIT = { "name": "audit", "queue": 49, "multiline": True }
     COMMAND = { "name": "command", "queue": 49, "multiline": False }
     EVENTCHANNEL = { "name": "eventchannel", "origin": "EventChannel", "queue": 102, "multiline": True }
-    FULL_COMMAND = { "name": "full_command", "queue": 49, "multiline": True }
+    FULL_COMMAND = { "name": "full-command", "queue": 49, "multiline": True }
     JSON = { "name": "json", "queue": 49, "multiline": False }
     MACOS = { "name": "macos", "origin": "macos", "queue": 49, "multiline": False }
     MULTI_LINE = { "name": "multi-line", "queue": 49, "multiline": True }
