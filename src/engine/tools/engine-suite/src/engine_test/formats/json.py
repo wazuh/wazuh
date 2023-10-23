@@ -9,8 +9,19 @@ class JsonFormat(EventFormat):
 
     def format_event(self, event):
         event = super().format_event(event)
-        json_object = json.loads(event)
-        return json.dumps(json_object, separators=(',',':'))
+
+        # Try parse event as json
+        try:
+            event = json.loads(event)
+        except ValueError:
+            return None
+
+        # Logcollector only reads json objects
+        if not isinstance(event, dict):
+            return None
+
+        # Dump event as json
+        return json.dumps(event, separators=(',', ':'))
 
     def is_multiline(self):
         return Formats.JSON.value['multiline']
