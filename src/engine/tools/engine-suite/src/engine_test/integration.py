@@ -1,8 +1,9 @@
 import yaml
+import sys
 try:
-    from yaml import CDumper as Dumper
+    from yaml import CDumper as BaseDumper
 except ImportError:
-    from yaml import Dumper
+    from yaml import Dumper as BaseDumper
 
 from engine_test.events_collector import EventsCollector
 from engine_test.formats.syslog import SyslogFormat
@@ -18,6 +19,13 @@ from engine_test.event_format import Formats
 from engine_test.crud_integration import CrudIntegration
 
 from engine_test.api_connector import ApiConnector
+
+class EngineDumper(BaseDumper):
+    def represent_scalar(self, tag, value, style=None):
+        # If the value contains a single quote, force double quotes
+        if style is None and "'" in value:
+            style = '"'
+        return super(EngineDumper, self).represent_scalar(tag, value, style)
 
 class Integration(CrudIntegration):
     def __init__(self, args):
@@ -48,12 +56,12 @@ class Integration(CrudIntegration):
         self.api_client.create_session()
 
     def run(self):
-        events = []
         events_parsed = []
         try:
             while True:
                 try:
                     # Get the events
+                    events = []
                     events = EventsCollector.collect(self.format)
                     if len(events) > 0:
                         for event in events:
@@ -102,7 +110,7 @@ class Integration(CrudIntegration):
         return response
 
     def response_to_yml(self, response):
-        response = yaml.dump(response, sort_keys=True, Dumper=Dumper)
+        response = yaml.dump(response, sort_keys=True, Dumper=EngineDumper)
         return response
 
     def write_output_file(self, events_parsed):

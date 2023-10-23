@@ -45,7 +45,7 @@ Vagrant.configure("2") do |config|
         wget https://github.com/dandavison/delta/releases/download/0.16.5/git-delta-musl_0.16.5_amd64.deb
         dpkg -i git-delta-musl_0.16.5_amd64.deb
         rm git-delta-musl_0.16.5_amd64.deb
-        
+
         #CMake 3.24 installation from its release page
         curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | tar -xz -C /usr/local --strip-components=1
         export PATH=$PATH:/usr/local/bin
@@ -178,6 +178,7 @@ Vagrant.configure("2") do |config|
         echo "{}" > /var/ossec/etc/engine-test.conf
         engine-test add -n windows -f eventchannel
         engine-test add -n syslog -f syslog -o /tmp/syslog.log
+        engine-test add -n remote-syslog -f remote-syslog -o 127.0.0.1
 
         # Add user vagrant to wazuh group
         usermod -a -G wazuh vagrant
