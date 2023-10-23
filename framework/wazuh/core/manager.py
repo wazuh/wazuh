@@ -29,9 +29,7 @@ from wazuh.core.wazuh_socket import WazuhSocket
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
-CTI_URL = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get(
-    'cti_url', 'http://cti:4041'
-)  # This default must be removed once we have the configuration in the ossec parser.
+CTI_URL = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get('cti-url', 'https://cti.wazuh.com')
 RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
