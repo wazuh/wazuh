@@ -37,7 +37,7 @@ import signal
 import socket
 import sqlite3
 import sys
-from typing import Iterator, Optional
+from typing import Iterator, List, Optional
 
 try:
     import boto3
@@ -607,7 +607,7 @@ class WazuhIntegration:
             gzip_file.read()
             gzip_file.seek(0)
             return gzip_file
-        except (gzip.BadGzipFile, zlib.error, TypeError):
+        except (OSError, zlib.error, TypeError):
             print(f'ERROR: invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
@@ -3334,7 +3334,7 @@ class AWSCloudWatchLogs(AWSService):
 
 class AWSQueueMessageProcessor:
     """Class in charge of processing the messages retrieved from an AWS SQS queue."""
-    def extract_message_info(self, sqs_messages: list[dict]) -> dict:
+    def extract_message_info(self, sqs_messages: List[dict]) -> dict:
         messages = []
         for mesg in sqs_messages:
             body = mesg['Body']
@@ -3385,7 +3385,7 @@ class AWSS3LogHandler:
 
         Returns
         -------
-        list[dict]
+        list
             List of extracted events to send to Wazuh.
         """
         raise NotImplementedError
@@ -3421,7 +3421,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                                   **kwargs)
 
     @staticmethod
-    def _process_jsonl(file: io.TextIOWrapper) -> list[dict]:
+    def _process_jsonl(file: io.TextIOWrapper) -> List[dict]:
         """Process JSON objects present in a JSONL file.
 
         Parameters
@@ -3430,7 +3430,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
             File object.
         Returns
         -------
-        list[dict]
+        List[dict]
             List of events from the file.
         """
         json_list = list(file)
@@ -3496,7 +3496,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
         # Check if the header row matches the regex pattern
         return not bool(not_header_pattern.match(header_row))
 
-    def obtain_logs(self, bucket: str, log_path: str) -> list[dict]:
+    def obtain_logs(self, bucket: str, log_path: str) -> List[dict]:
         """Fetch a file from a bucket and obtain a list of events from it.
 
         Parameters
@@ -3508,7 +3508,7 @@ class AWSSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
 
         Returns
         -------
-        list[dict]
+        List[dict]
             List of extracted events to send to Wazuh.
         """
 
@@ -3600,7 +3600,7 @@ class AWSSLSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
                                   sts_endpoint=sts_endpoint,
                                   **kwargs)
 
-    def obtain_logs(self, bucket: str, log_path: str) -> list:
+    def obtain_logs(self, bucket: str, log_path: str) -> List[str]:
         """Fetch a parquet file from a bucket and obtain a list of the events it contains.
 
         Parameters
@@ -3612,7 +3612,7 @@ class AWSSLSubscriberBucket(WazuhIntegration, AWSS3LogHandler):
 
         Returns
         -------
-        events : list
+        events : List[str]
             Events contained inside the parquet file.
         """
         debug(f'Processing file {log_path} in {bucket}', 2)

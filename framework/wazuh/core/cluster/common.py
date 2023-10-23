@@ -747,12 +747,15 @@ class Handler(asyncio.Protocol):
         try:
             await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
         except Exception as e:
-            self.logger.error(f"Error sending sendsync response to local client: {e}")
             if isinstance(e, exception.WazuhException):
-                exc = json.dumps(e, cls=WazuhJSONEncoder)
+                if e.code == 3020:
+                    return
+                else:
+                    exc = json.dumps(e, cls=WazuhJSONEncoder)
             else:
                 exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
             with contextlib.suppress(Exception):
+                self.logger.error(f"Error sending sendsync response to local client: {e}")
                 await self.send_request(b'sendsync_err', exc.encode())
         finally:
             # Remove the string after using it

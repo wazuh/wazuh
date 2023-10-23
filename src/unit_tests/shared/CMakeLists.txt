@@ -121,7 +121,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,OS_ConnectUnixDomain \
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,external_socket_connect \
                                 -Wl,--wrap,sleep -Wl,--wrap,strerror -Wl,--wrap,getpid -Wl,--wrap,close \
                                 -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP ${DEBUG_OP_WRAPPERS}")
 endif()

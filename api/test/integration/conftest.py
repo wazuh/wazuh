@@ -539,7 +539,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
         ) for k, v in results.items()])])
 
 
-@pytest.fixture
+@pytest.fixture(scope='function', autouse=True)
 def big_events_payload() -> list:
     """Return a payload with a number of events larger than the maximum allowed.
 
@@ -551,7 +551,7 @@ def big_events_payload() -> list:
     return [f"Event {i}" for i in range(101)]
 
 
-@pytest.fixture
+@pytest.fixture(scope='function', autouse=True)
 def max_size_event() -> str:
     """Return an event with the max size allowed.
 
@@ -563,7 +563,7 @@ def max_size_event() -> str:
     return " ".join(str(i) for i in range(12772))
 
 
-@pytest.fixture
+@pytest.fixture(scope='function', autouse=True)
 def large_event() -> str:
     """Return an event with the size larger than the maximum allowed.
 
