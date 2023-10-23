@@ -28,5 +28,4 @@ class EventsCollector:
             else:
                 events.append(sys.stdin.read())
 
-        # TODO Check empty file with pipe
-        return format.get_events(events)
+        return events
