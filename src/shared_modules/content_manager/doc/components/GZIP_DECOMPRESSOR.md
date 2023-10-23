@@ -22,6 +22,8 @@ Paths after stage execution:
 ]
 ```
 
+> Note: In order to generate the output files names, the stage copies the input files names and removes their final extensions. That being said, if an input file name has only the `.gz` extension, its respective output file will have no extension at all. For example, for an input file called `content.gz`, the output file will be called just `content`.
+
 ## Relation with the UpdaterContext
 
 The context fields related to this stage are:
