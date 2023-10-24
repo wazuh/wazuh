@@ -321,7 +321,7 @@ base::Expression opBuilderComparison(const std::string& targetField,
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
     // Get the expression depending on the type
@@ -504,9 +504,9 @@ base::Expression opBuilderHelperRegexMatch(const std::string& targetField,
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -558,9 +558,9 @@ base::Expression opBuilderHelperRegexNotMatch(const std::string& targetField,
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -616,11 +616,11 @@ base::Expression opBuilderHelperIPCIDR(const std::string& targetField,
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 2);
+    helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
     for (const auto& parameter : parameters)
     {
-        helper::base::checkParameterType(rawName, parameter, helper::base::Parameter::Type::VALUE);
+        helper::base::checkParameterType(parameter, helper::base::Parameter::Type::VALUE);
     }
     // Format name for the tracer
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
@@ -708,7 +708,7 @@ base::Expression opBuilderHelperExists(const std::string& targetField,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -739,7 +739,7 @@ base::Expression opBuilderHelperNotExists(const std::string& targetField,
                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -774,7 +774,7 @@ base::Expression opBuilderHelperArrayPresence(const std::string& targetField,
                                               bool checkPresence)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersMinSize(rawName, parameters, 1);
+    helper::base::checkParametersMinSize(parameters, 1);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -883,7 +883,7 @@ base::Expression opBuilderHelperIsNumber(const std::string& targetField,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -928,7 +928,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::string& targetField,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -972,7 +972,7 @@ base::Expression opBuilderHelperIsString(const std::string& targetField,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1017,7 +1017,7 @@ base::Expression opBuilderHelperIsNotString(const std::string& targetField,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1062,7 +1062,7 @@ base::Expression opBuilderHelperIsBool(const std::string& targetField,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1108,7 +1108,7 @@ base::Expression opBuilderHelperIsNotBool(const std::string& targetField,
                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1153,7 +1153,7 @@ base::Expression opBuilderHelperIsArray(const std::string& targetField,
                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1199,7 +1199,7 @@ base::Expression opBuilderHelperIsNotArray(const std::string& targetField,
                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1244,7 +1244,7 @@ base::Expression opBuilderHelperIsObject(const std::string& targetField,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1290,7 +1290,7 @@ base::Expression opBuilderHelperIsNotObject(const std::string& targetField,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1335,7 +1335,7 @@ base::Expression opBuilderHelperIsNull(const std::string& targetField,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1380,7 +1380,7 @@ base::Expression opBuilderHelperIsNotNull(const std::string& targetField,
                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1425,7 +1425,7 @@ base::Expression opBuilderHelperIsTrue(const std::string& targetField,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1470,7 +1470,7 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
@@ -1519,7 +1519,7 @@ base::Expression opBuilderHelperMatchValue(const std::string& targetField,
                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions, false)};
-    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
 
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1636,7 +1636,7 @@ base::Expression opBuilderHelperMatchKey(const std::string& targetField,
                                          std::shared_ptr<schemf::ISchema> schema)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions, false)};
-    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
 
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 

@@ -30,7 +30,7 @@ std::filesystem::path uniquePath()
     return std::filesystem::path("/tmp") / (ss.str() + "_kvdbTestSuitePath/");
 }
 
-class opBuilderKVDBGetArrayTest : public ::testing::Test
+class KVDBGetArray : public ::testing::Test
 {
 
 protected:
@@ -141,7 +141,7 @@ protected:
 } // namespace
 
 // Build ok
-TEST_F(opBuilderKVDBGetArrayTest, getBuilder)
+TEST_F(KVDBGetArray, getBuilder)
 {
     ASSERT_NO_THROW(getOpBuilderKVDBGetArray(kvdbManager, DB_NAME_1, schema));
 }
@@ -163,7 +163,7 @@ TEST_P(Builds, Params)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(opBuilderKVDB,
+INSTANTIATE_TEST_SUITE_P(KVDBGetArray,
                          Builds,
                          testing::Values(BuildsT(true, "field", "name", {"test_db", "$ref"}),
                                          BuildsT(false, "field", "name", {"test_db"}),
@@ -208,7 +208,7 @@ TEST_P(Operates, Params)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    opBuilderKVDB,
+    KVDBGetArray,
     Operates,
     testing::Values(
         OperatesT(true, R"({"ref": ["key"]})", R"({"ref": ["key"], "field":["value"]})", {{"key", R"("value")"}}),
