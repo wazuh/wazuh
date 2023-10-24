@@ -144,7 +144,6 @@ HelperBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager
     };
 }
 
-// TODO: documentation and tests of this method are missing
 base::Expression existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
                                 const std::string& kvdbScopeName,
                                 const std::string& targetField,
@@ -210,7 +209,6 @@ base::Expression existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
         });
 }
 
-// TODO: tests for this method are missing
 // <field>: +kvdb_match/<DB>
 HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
@@ -223,7 +221,6 @@ HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, c
     };
 }
 
-// TODO: tests for this method are missing
 // <field>: +kvdb_not_match/<DB>
 HelperBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {

@@ -14,13 +14,12 @@
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
 
-#include <metrics/metricsManager.hpp>
-
-using namespace metricsManager;
+#include <mocks/fakeMetric.hpp>
 
 namespace
 {
 using namespace base;
+using namespace metricsManager;
 using namespace builder::internals::builders;
 
 constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
@@ -42,8 +41,6 @@ class OpBuilderKVDBDecodeBitmask : public ::testing::TestWithParam<T>
 {
 
 protected:
-
-
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> m_kvdbManager;
     std::shared_ptr<schemf::mocks::MockSchema> m_schema;
@@ -61,7 +58,7 @@ protected:
         {
             std::filesystem::remove_all(kvdbPath);
         }
-        m_manager = std::make_shared<MetricsManager>();
+        m_manager = std::make_shared<FakeMetricManager>();
 
         kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
         m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
