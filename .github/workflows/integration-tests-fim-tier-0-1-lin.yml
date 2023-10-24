@@ -65,13 +65,17 @@ jobs:
           git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
+      # Install audit required by FIM
+      - name: Install audit
+        run: |
+          sudo apt-get update
+          sudo apt-get install auditd -y
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
           cd tests/integration
           mkdir results
-          sudo python -m pytest --tier 0 --tier 1 test_fim/ --html=results/report.html > results/report.log
-      # Save the results.
+          sudo python -m pytest --tier 0 --tier 1 test_fim/ --html=results/report.html
       - name: Upload Artifact results
         uses: actions/upload-artifact@v3
         with:

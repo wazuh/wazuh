@@ -148,8 +148,8 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
 
     expected_output:
         - r".*Fim inode entries: '(d+)', path count: '(d+)'"
-        - r".*Maximum number of files to be monitored: '(\d+)'"
-        - r'.*File database is (\d+)% full.'
+        - r".*Maximum number of files to be monitored: '(d+)'"
+        - r'.*File database is (d+)% full.'
 
     tags:
         - scheduled
