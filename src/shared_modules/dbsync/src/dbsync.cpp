@@ -41,23 +41,6 @@ void dbsync_initialize(log_fnc_t log_function)
     });
 }
 
-DBSYNC_HANDLE dbsync_create(const HostType     host_type,
-                            const DbEngineType db_type,
-                            const char*        path,
-                            const char*        sql_statement)
-{
-    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::VOLATILE, nullptr);
-}
-
-DBSYNC_HANDLE dbsync_create_persistent(const HostType     host_type,
-                                       const DbEngineType db_type,
-                                       const char*        path,
-                                       const char*        sql_statement,
-                                       const char**       upgrade_statements)
-{
-    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::PERSISTENT, upgrade_statements);
-}
-
 DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
                              const DbEngineType db_type,
                              const char*        path,
@@ -80,7 +63,7 @@ DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
 
             while (upgrade_statements && *upgrade_statements)
             {
-                upgradeStatements.emplace_back(std::string(*upgrade_statements));
+                upgradeStatements.emplace_back(*upgrade_statements);
                 upgrade_statements++;
             }
 
@@ -101,6 +84,23 @@ DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
 
     log_message(errorMessage);
     return retVal;
+}
+
+DBSYNC_HANDLE dbsync_create(const HostType     host_type,
+                            const DbEngineType db_type,
+                            const char*        path,
+                            const char*        sql_statement)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::VOLATILE, nullptr);
+}
+
+DBSYNC_HANDLE dbsync_create_persistent(const HostType     host_type,
+                                       const DbEngineType db_type,
+                                       const char*        path,
+                                       const char*        sql_statement,
+                                       const char**       upgrade_statements)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::PERSISTENT, upgrade_statements);
 }
 
 void dbsync_teardown(void)
