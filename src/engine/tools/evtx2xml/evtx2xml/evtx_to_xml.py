@@ -27,6 +27,13 @@ def evtx_to_xml(evtx_file_path, xml_output_path=None):
     else:
         print(final_xml)
 
+def check_url(url):
+    try:
+        response = requests.head(url)
+        return response.status_code // 100 == 2
+    except requests.RequestException as e:
+        print(f"Error: {e}")
+        return False
 
 def download_file(url, local_filename):
     with requests.get(url, stream=True) as r:
@@ -49,7 +56,14 @@ def main():
     parsed_url = urlparse(evtx_file_path_or_url)
     isUrl = parsed_url.scheme in ['http', 'https']
     if isUrl:
+        if not check_url(evtx_file_path_or_url):
+            print(f"Error: URL {evtx_file_path_or_url} is not accessible.")
+            sys.exit(1)
         evtx_file_path_or_url = download_file(evtx_file_path_or_url, 'tmp_downloaded.evtx')
+    else:
+        if not os.path.exists(evtx_file_path_or_url):
+            print(f"Error: File {evtx_file_path_or_url} does not exist.")
+            sys.exit(1)
 
     evtx_to_xml(evtx_file_path_or_url, xml_output_path)
 
