@@ -2,6 +2,8 @@ from datetime import datetime
 from enum import Enum
 from api_communication import communication
 from api_communication import test_pb2
+from api_communication import engine_pb2
+import google.protobuf.json_format
 
 class ApiConfig(Enum):
     OriginName = "engine-test"
@@ -57,10 +59,10 @@ class ApiConnector:
                 request_get = test_pb2.SessionGet_Request()
                 request_get.name = self.session_name
                 response = self.api_client.send_command("session", "get", request_get)
-                data = response['data']
+                response_get = google.protobuf.json_format.ParseDict(response['data'], test_pb2.SessionGet_Response)
 
-                if data['status'] == "ERROR":
-                    print("Session error: {}".format(response))
+                if response_get.status != engine_pb2.ReturnStatus.OK:
+                    print("Session error: {}".format(response_get.error))
                     exit(1)
 
             else:
@@ -72,9 +74,10 @@ class ApiConnector:
                 request_post.lifespan = ApiConfig.Lifespan.value
                 request_post.description = ApiConfig.Description.value
                 response = self.api_client.send_command("session", "post", request_post)
-                data = response['data']
-                if data['status'] == 'ERROR':
-                    print("Session error: {}".format(response))
+                response_post = google.protobuf.json_format.ParseDict(response['data'], engine_pb2.GenericStatus_Response)
+
+                if response_post.status != engine_pb2.ReturnStatus.OK:
+                    print("Session error: {}".format(response_post.error))
                     exit(1)
         except Exception as ex:
             print('The session could not be created. Error: {}'.format(ex))
@@ -85,9 +88,9 @@ class ApiConnector:
             request_delete = test_pb2.SessionsDelete_Request()
             request_delete.name = self.session_name
             response = self.api_client.send_command("sessions", "delete", request_delete)
-            data = response['data']
-            if data['status'] == 'ERROR':
-                print("Session error: {}".format(response))
+            response_delete = google.protobuf.json_format.ParseDict(response['data'], engine_pb2.GenericStatus_Response)
+            if response_delete.status != engine_pb2.ReturnStatus.OK:
+                print("Session error: {}".format(response_delete.error))
                 exit(1)
 
     def get_session_name(self):

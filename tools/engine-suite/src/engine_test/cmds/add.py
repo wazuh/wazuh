@@ -6,8 +6,24 @@ class AddCommand(Command):
     def __init__(self):
         pass
 
+    def adjust_origin(self, args):
+        if (args['origin'] == None):
+            swticher = {
+                Formats.AUDIT.value["name"]: Formats.AUDIT.value["origin"],
+                Formats.COMMAND.value["name"]: Formats.COMMAND.value["origin"],
+                Formats.EVENTCHANNEL.value["name"]: Formats.EVENTCHANNEL.value["origin"],
+                Formats.FULL_COMMAND.value["name"]: Formats.FULL_COMMAND.value["origin"],
+                Formats.JSON.value["name"]: Formats.JSON.value["origin"],
+                Formats.MACOS.value["name"]: Formats.MACOS.value["origin"],
+                Formats.MULTI_LINE.value["name"]: Formats.MULTI_LINE.value["origin"],
+                Formats.SYSLOG.value["name"]: Formats.SYSLOG.value["origin"],
+                Formats.REMOTE_SYSLOG.value["name"]: Formats.REMOTE_SYSLOG.value["origin"]
+            }
+            args['origin'] = swticher.get(args['format'], None)
+
     def run(self, args):
         super().run(args)
+        args['post_parse'](args)
         integration = CrudIntegration()
         try:
             if (args['integration_path'] != None):
@@ -35,4 +51,4 @@ class AddCommand(Command):
         parser_add.add_argument('-l', '--lines', help='Number of lines. Only for multi-line format.',
                                 dest='lines')
 
-        parser_add.set_defaults(func=self.run)
+        parser_add.set_defaults(func=self.run, post_parse=self.adjust_origin)
