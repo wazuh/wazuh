@@ -64,14 +64,14 @@ All notable changes to this project will be documented in this file.
 - Added new unit tests for GCloud integration and increased coverage to 99%. ([#13573](https://github.com/wazuh/wazuh/pull/13573))
 - Added new unit tests for Azure Storage integration and increased coverage to 99%. ([#14104](https://github.com/wazuh/wazuh/pull/14104))
 - Added new unit tests for Docker Listener integration. ([#14177](https://github.com/wazuh/wazuh/pull/14177))
-- Added support for Microsoft Graph security API. ([#18116](https://github.com/wazuh/wazuh/pull/18116))
+- Added support for Microsoft Graph security API. Thanks to Bryce Shurts (@S-Bryce). ([#18116](https://github.com/wazuh/wazuh/pull/18116))
 - Added wildcard support in FIM Windows registers. ([#15852](https://github.com/wazuh/wazuh/pull/15852))
 - Added wildcards support for folders in the localfile configuration on Windows. ([#15973](https://github.com/wazuh/wazuh/pull/15973))
 - Added new settings `ignore` and `restrict` to logcollector. ([#14782](https://github.com/wazuh/wazuh/pull/14782))
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
-- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547](https://github.com/wazuh/wazuh/pull/16547))
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. Thanks to Bryce Shurts (@S-Bryce). ([#16547](https://github.com/wazuh/wazuh/pull/16547))
 
 #### Changed
 
