@@ -6,7 +6,6 @@ from engine_test.cmds.add import AddCommand
 from engine_test.cmds.get import GetCommand
 from engine_test.cmds.list import ListCommand
 from engine_test.cmds.delete import DeleteCommand
-from engine_test.cmds.format import FormatCommand
 from engine_test.config import Config
 
 def parse_args():
@@ -36,9 +35,6 @@ def parse_args():
 
     delete_command = DeleteCommand()
     delete_command.configure(subparsers)
-
-    format_command = FormatCommand()
-    format_command.configure(subparsers)
 
     return parser.parse_args()
 
