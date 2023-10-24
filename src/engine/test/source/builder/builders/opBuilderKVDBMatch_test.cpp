@@ -59,6 +59,7 @@ protected:
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
         m_builder = getOpBuilderKVDBMatch(m_kvdbManager, "builder_test");
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
     void TearDown() override
@@ -112,6 +113,7 @@ INSTANTIATE_TEST_SUITE_P(KVDBMatch,
                              // bad size
                              MatchParamsT({DB_NAME_1, "test"}, false),
                              MatchParamsT({DB_NAME_1, "test", "test2"}, false),
+                             MatchParamsT({DB_NAME_1, "test", "$test2"}, false),
                              MatchParamsT({}, false)));
 
 using MatchKeyT = std::tuple<std::string, std::vector<std::string>, bool, std::string>;

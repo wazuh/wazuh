@@ -61,6 +61,8 @@ protected:
         ASSERT_FALSE(err1);
 
         m_builder = getOpBuilderKVDBDelete(m_kvdbManager, "builder_test");
+
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
     void TearDown() override
@@ -110,13 +112,14 @@ INSTANTIATE_TEST_SUITE_P(KVDBDelete,
                          ::testing::Values(
                              // OK
                              DeleteParamsT({DB_NAME_1, "key"}, true),
+                             DeleteParamsT({DB_NAME_1, "$key"}, true),
                              // NOK
                              DeleteParamsT({DB_NAME_1, "test", "test2"}, false),
+                             DeleteParamsT({DB_NAME_1, "test", "$test2"}, false),
                              DeleteParamsT({DB_NAME_1}, false),
-                             DeleteParamsT({}, false),
-                             DeleteParamsT({"unknow_database", ""}, false)));
+                             DeleteParamsT({}, false)));
 
-using DeleteKeyT = std::tuple<std::vector<std::string>, bool>;
+using DeleteKeyT = std::tuple<std::vector<std::string>, bool, std::string>;
 class DeleteKey : public KVDBDeleteHelper<DeleteKeyT>
 {
 protected:
@@ -140,21 +143,20 @@ TEST_P(DeleteKey, deleting)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_delete";
 
-    auto [parameters, shouldPass] = GetParam();
-    auto event = std::make_shared<json::Json>(R"({"result": ""})");
-
-    auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto [parameters, shouldPass, rawEvent] = GetParam();
+    auto event = std::make_shared<json::Json>(rawEvent.c_str());
 
     result::Result<Event> resultEvent;
-    ASSERT_NO_THROW(resultEvent = op(event));
 
     if (shouldPass)
     {
+            auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
+        ASSERT_NO_THROW(resultEvent = op(event));
         ASSERT_TRUE(resultEvent.success());
     }
     else
     {
-        ASSERT_TRUE(resultEvent.failure());
+        ASSERT_THROW(auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn(), std::runtime_error);
     }
 }
 
@@ -162,7 +164,9 @@ INSTANTIATE_TEST_SUITE_P(KVDBDelete,
                          DeleteKey,
                          ::testing::Values(
                              // OK
-                             DeleteKeyT({DB_NAME_1, "key1"}, true),
-                             DeleteKeyT({DB_NAME_1, "KEY2"}, true),
-                             DeleteKeyT({DB_NAME_1, "key_"}, true),
-                             DeleteKeyT({DB_NAME_1, ""}, true)));
+                             DeleteKeyT({DB_NAME_1, "key1"}, true, R"({"result": ""})"),
+                             DeleteKeyT({DB_NAME_1, "KEY2"}, true, R"({"result": ""})"),
+                             DeleteKeyT({DB_NAME_1, "key_"}, true, R"({"result": ""})"),
+                             DeleteKeyT({DB_NAME_1, "$key"}, true, R"({"key":"key3", "result": ""})"),
+                             // NOK
+                             DeleteKeyT({"unknow_database", "key1"}, false, R"({"result": ""})")));

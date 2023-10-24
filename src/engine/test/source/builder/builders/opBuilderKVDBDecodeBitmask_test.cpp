@@ -123,7 +123,7 @@ TEST_P(MapBuild, builds)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    KVDB_Decode_Bitmask,
+    KVDBDecodeBitmask,
     MapBuild,
     ::testing::Values(
         // Ok map
@@ -233,7 +233,7 @@ TEST_P(DecodeMask, decoding)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    KVDB_Decode_Bitmask,
+    KVDBDecodeBitmask,
     DecodeMask,
     ::testing::Values(
         // Ok map
@@ -320,7 +320,7 @@ TEST_P(BuildParams, build)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    KVDB_Decode_Bitmask,
+    KVDBDecodeBitmask,
     BuildParams,
     ::testing::Values(
         // Ok map

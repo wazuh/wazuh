@@ -65,9 +65,9 @@ HelperBuilder getWindowsSidListDescHelperBuilder(std::shared_ptr<kvdbManager::IK
         const auto name = formatHelperName(targetField, rawName, parameters);
 
         // Check parameters
-        checkParametersSize(rawName, parameters, 2);
-        checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
-        checkParameterType(rawName, parameters[1], Parameter::Type::REFERENCE);
+        checkParametersSize(parameters, 2);
+        checkParameterType(parameters[0], Parameter::Type::VALUE);
+        checkParameterType(parameters[1], Parameter::Type::REFERENCE);
 
         auto kvdbName = parameters[0].m_value;
         auto sidListRef = parameters[1].m_value;

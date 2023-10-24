@@ -1064,10 +1064,10 @@ HelperBuilder getBuilderSCAdecoder(std::shared_ptr<wazuhdb::IWDBManager> wdbMana
         // Identify references and build JSON pointer paths
         const auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
         // Assert expected number of parameters
-        helper::base::checkParametersSize(rawName, parameters, 2);
+        helper::base::checkParametersSize(parameters, 2);
         // Parameter type check
-        helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
-        helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
+        helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::REFERENCE);
+        helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::REFERENCE);
 
         // Format name for the tracer
         const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
