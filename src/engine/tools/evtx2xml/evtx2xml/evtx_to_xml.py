@@ -3,10 +3,11 @@ import os
 import sys
 import re
 import requests
-from evtx import PyEvtxParser # https://github.com/omerbenamram/evtx/
+import argparse
+from evtx import PyEvtxParser  # https://github.com/omerbenamram/evtx/
 from urllib.parse import urlparse
 
-def evtx_to_xml(evtx_file_path, xml_output_path=None):
+def evtx_to_xml(evtx_file_path):
     parser = PyEvtxParser(evtx_file_path, number_of_threads=0)
     xml_records = []
     try:
@@ -21,11 +22,7 @@ def evtx_to_xml(evtx_file_path, xml_output_path=None):
     final_xml += '\n'.join(xml_records)
     final_xml += '\n</Events>'
 
-    if xml_output_path:
-        with open(xml_output_path, "w") as xml_output:
-            xml_output.write(final_xml)
-    else:
-        print(final_xml)
+    print(final_xml)
 
 def check_url(url):
     try:
@@ -45,12 +42,13 @@ def download_file(url, local_filename):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python evtx_to_xml.py <evtx_file_path_or_url> [xml_output_path]")
-        sys.exit(1)
 
-    evtx_file_path_or_url = sys.argv[1]
-    xml_output_path = sys.argv[2] if len(sys.argv) == 3 else None
+    parser = argparse.ArgumentParser(description='Converts EVTX files to XML.')
+    parser.add_argument('evtx_file_path_or_url', help='Path to the EVTX file or URL to download it from.')
+
+    args = parser.parse_args()
+
+    evtx_file_path_or_url = args.evtx_file_path_or_url
 
     # Check if the evtx_file_path_or_url is a URL
     parsed_url = urlparse(evtx_file_path_or_url)
@@ -65,7 +63,7 @@ def main():
             print(f"Error: File {evtx_file_path_or_url} does not exist.")
             sys.exit(1)
 
-    evtx_to_xml(evtx_file_path_or_url, xml_output_path)
+    evtx_to_xml(evtx_file_path_or_url)
 
     # Delete the downloaded file
     if isUrl:
