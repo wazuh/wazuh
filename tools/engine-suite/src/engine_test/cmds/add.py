@@ -13,7 +13,7 @@ class AddCommand(Command):
             if (args['integration_path'] != None):
                 integration.import_integration(args['integration_path'])
             else:
-                integration.save_integration(args['integration_name'], args['format'], args['origin'])
+                integration.save_integration(args['integration_name'], args['format'], args['origin'], args['lines'])
         except Exception as ex:
             print(ex)
 
