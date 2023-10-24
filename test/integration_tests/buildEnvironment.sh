@@ -4,15 +4,48 @@ setup_directories() {
     local src_dir="$2"
     echo "--- Folder creation ---"
     mkdir -p "$base_dir" "$base_dir/engine" "$base_dir/queue/sockets" "$base_dir/logs"
-    local ruleset_dir="$src_dir/ruleset/wazuh-core-test"
-    mkdir -p "$ruleset_dir/decoders" "$ruleset_dir/filters"
-    echo "name: decoder/test-message/0" > "$ruleset_dir/decoders/test-message.yml"
-    echo "name: filter/allow-all/0" > "$ruleset_dir/filters/allow-all.yml"
-    cat <<- EOM > "$ruleset_dir/manifest.yml"
-name: integration/wazuh-core-test/0
-decoders:
-  - decoder/test-message/0
-EOM
+}
+
+load_integrations() {
+    local environment_dir="$1"
+    local engine_src_dir="$2"
+
+    echo "--- Loading ruleset & enabling wazuh environment  ---"
+    local serv_conf_file="$engine_src_dir/test/integration_tests/configuration_files/general.conf"
+    sed -i "s|github_workspace|$environment_dir|g" "$serv_conf_file"
+
+    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error start &
+
+    sleep 2
+
+    # Capture the process ID of the binary
+    local binary_pid=$!
+
+    cd $engine_src_dir/ruleset
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n system wazuh-core/
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/syslog/
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/system/
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/windows/
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/apache-http/
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/suricata/
+
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api add -p policy/wazuh/0 -f
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api parent-set decoder/integrations/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api parent-set -n wazuh decoder/integrations/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n system integration/wazuh-core/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/syslog/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/system/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/windows/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/apache-http/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/suricata/0
+
+    "$engine_src_dir/build/main" router --api_socket $environment_dir/queue/sockets/engine-api add default filter/allow-all/0 255 policy/wazuh/0
+
+    cd $engine_src_dir
+    engine-test add -i windows -f eventchannel
+    engine-test add -i syslog -f syslog -o /tmp/syslog.log
+
+    kill $binary_pid
 }
 
 setup_engine() {
@@ -38,5 +71,6 @@ main() {
     ENGINE_DIR="$ENVIRONMENT_DIR/engine"
     setup_directories "$ENVIRONMENT_DIR" "$ENGINE_SRC_DIR"
     setup_engine "$ENGINE_SRC_DIR" "$ENGINE_DIR"
+    load_integrations "$ENVIRONMENT_DIR" "$ENGINE_SRC_DIR"
 }
 main "$@"
