@@ -64,6 +64,7 @@ EXPORTED DBSYNC_HANDLE dbsync_create(const HostType      host_type,
  * @param db_type            Database type to be used (currently only supported SQLITE3)
  * @param path               Path where the local database will be created.
  * @param sql_statement      SQL sentence to create tables in a SQL engine.
+ * @param upgrade_statements SQL sentences to upgrade tables in a SQL engine.
  *
  * @note db_management will be DbManagement::PERSISTENT as default.
  *
