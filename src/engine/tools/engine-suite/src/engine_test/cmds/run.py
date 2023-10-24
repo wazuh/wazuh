@@ -10,6 +10,7 @@ DEFAULT_VERBOSE = False
 DEFAULT_POLICY = "policy/wazuh/0"
 DEFAULT_ASSETS = []
 DEFAULT_JSON_FORMAT = False
+DEFAULT_API_SOCKET = "/var/ossec/queue/sockets/engine-api"
 
 class RunCommand(Command):
     def __init__(self):
@@ -24,6 +25,9 @@ class RunCommand(Command):
         parser_run = self.create_parser(subparsers)
         parser_run.add_argument('-i', '--agent-id', help=f'Agent ID for event filling',
                                 type=str, default=DEFAULT_AGENT_ID, dest='agent_id')
+
+        parser_run.add_argument('--api-socket', help=f'Socket to connect to the API',
+                                type=str, default=DEFAULT_API_SOCKET, dest='api-socket')
 
         parser_run.add_argument('-n', '--agent-name', help=f'Agent name for events filling',
                                 type=str, default=DEFAULT_AGENT_NAME, dest='agent_name')

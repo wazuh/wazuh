@@ -8,7 +8,6 @@ import google.protobuf.json_format
 class ApiConfig(Enum):
     OriginName = "engine-test"
     OriginModule = "engine-test"
-    Socket = "/var/ossec/queue/sockets/engine-api"
     Component = "test"
     SessionName = "engine_test"
     Lifespan = 0
@@ -17,7 +16,7 @@ class ApiConfig(Enum):
 class ApiConnector:
     def __init__(self, config):
         try:
-            self.api_client = communication.APIClient(ApiConfig.Socket.value, ApiConfig.Component.value)
+            self.api_client = communication.APIClient(config['api-socket'], ApiConfig.Component.value)
             self.session_name = ApiConfig.SessionName.value
         except Exception as ex:
             print('Could not establish communication with the API. Error: {}'.format(ex))
