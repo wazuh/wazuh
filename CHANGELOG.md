@@ -31,6 +31,12 @@ All notable changes to this project will be documented in this file.
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
 
+### Other
+
+#### Changed
+
+- Replaced Filebeat's date index name processor. ([#19819](https://github.com/wazuh/wazuh/pull/19819))
+
 
 ## [v4.7.1]
 
