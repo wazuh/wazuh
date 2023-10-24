@@ -13,19 +13,19 @@ class MultilineFormat(EventFormat):
         return event
 
     def get_events(self, events):
-        lines = 0
-        event = ''
+
         events_formated = []
-        for line in events:
-            event = event + line
-            lines = lines + 1
-            # Only add if the number of lines is full, the rest are discarded
-            if lines == self.config['lines']:
-                events_formated.append(event)
-                event = ''
-                lines = 0
-            else:
-                event = event + ' '
+        maxLines = int(self.config['lines'])
+        # Group events by maxLines
+        for event in events:
+            clean_event = event.strip()
+            # Split event by lines
+            lines = clean_event.splitlines()
+            chunks = []
+            for i in range(0, len(lines), maxLines):
+                chunk = lines[i:i + maxLines]
+                if len(chunk) == maxLines:
+                    events_formated.append(' '.join(chunk))
 
         return events_formated
 
