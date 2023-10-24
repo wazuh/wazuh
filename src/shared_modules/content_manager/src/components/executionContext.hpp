@@ -100,7 +100,7 @@ private:
         const auto databaseOffset {getDatabaseOffset(context)};
         const auto configOffset {getConfigOffset(context.configData)};
 
-        // Chose the greater between the DB and the config offset.
+        // Choose the greatest between the DB and the config offset.
         const auto currentOffset {std::max(databaseOffset, configOffset)};
 
         if (currentOffset != databaseOffset)
