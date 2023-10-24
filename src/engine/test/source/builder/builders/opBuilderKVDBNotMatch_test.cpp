@@ -1,67 +1,73 @@
+#include <any>
+#include <memory>
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <json/json.hpp>
 
-#include "opBuilderKVDB.hpp"
+#include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
-#include <metrics/metricsManager.hpp>
-#include <rapidjson/document.h>
+#include <opBuilderKVDB.hpp>
+#include <testsCommon.hpp>
 
-using namespace metricsManager;
+#include <mocks/fakeMetric.hpp>
 
-using namespace base;
-namespace bld = builder::internals::builders;
-
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
+constexpr auto DB_NAME_1 = "TEST_DB";
+constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
+constexpr auto DB_NAME = "kvdb";
 
 namespace
 {
+using namespace base;
+using namespace metricsManager;
+using namespace builder::internals::builders;
 
-const std::string KVDB_PATH {"/tmp/kvdb_test/"};
-const std::string KVDB_DB_FILENAME {"TEST_DB"};
-
-std::filesystem::path uniquePath(const std::string& path)
+template<typename T>
+class KVDBMatchHelper : public ::testing::TestWithParam<T>
 {
-    auto pid = getpid();
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << pid << "_" << tid << "/"; // Unique path per thread and process
-    return std::filesystem::path(path) / ss.str();
-}
 
-class opBuilderKVDBNotMatchTest : public ::testing::Test
-{
 protected:
-    std::shared_ptr<IMetricsManager> m_metricsManager;
+    std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::IKVDBManager> m_kvdbManager;
+    std::shared_ptr<defs::mocks::FailDef> m_failDef;
+    builder::internals::HelperBuilder m_builder;
     std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
 
+        // cleaning directory in order to start without garbage.
+        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
+
         if (std::filesystem::exists(kvdbPath))
         {
             std::filesystem::remove_all(kvdbPath);
         }
 
-        m_metricsManager = std::make_shared<MetricsManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_metricsManager);
+        m_manager = std::make_shared<FakeMetricManager>();
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
+        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
+
+        m_kvdbManager->initialize();
+
+        auto err = m_kvdbManager->createDB(DB_NAME_1);
+        ASSERT_FALSE(err);
+        auto result = m_kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
+        ASSERT_FALSE(std::holds_alternative<base::Error>(result));
+
+        m_builder = getOpBuilderKVDBNotMatch(m_kvdbManager, "builder_test");
     }
 
     void TearDown() override
     {
         try
         {
-            kvdbManager->finalize();
+            m_kvdbManager->finalize();
         }
-        catch (const std::exception& e)
+        catch (std::exception& e)
         {
             FAIL() << "Exception: " << e.what();
         }
@@ -73,120 +79,95 @@ protected:
     }
 };
 
-// Build ok
-TEST_F(opBuilderKVDBNotMatchTest, Builds)
-{
-    rapidjson::Document doc {R"({
-        "check":
-            {"field2match": "+kvdb_not_match/TEST_DB"}
-    })"};
-    ASSERT_NO_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()));
-}
-
-// Build incorrect number of arguments
-TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
-{
-    rapidjson::Document doc {R"({
-        "check":
-            {"field2match": "+kvdb_not_match"}
-    })"};
-    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()),
-                 std::runtime_error);
-}
-
-// Build invalid DB
-TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
-{
-    rapidjson::Document doc {R"({
-        "check":
-            {"field2match": "+kvdb_not_match/INVALID_DB"}
-    })"};
-    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()),
-                 std::runtime_error);
-}
-
-// Test ok: static values
-TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
-{
-    // Set Up KVDB
-    auto res = kvdbManager->getHandler("TEST_DB", "builder_test");
-    if (auto err = std::get_if<base::Error>(&res))
-    {
-        throw std::runtime_error(err->message);
-    }
-    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
-    kvdb->writeKeyOnly("KEY");
-
-    rapidjson::Document doc {R"({
-        "check":
-            {"field2match": "+kvdb_match/TEST_DB"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field2match":"KEY"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field2match":"INEXISTENT_KEY"}
-            )"));
-            // Other fields will be ignored
-            s.on_next(createSharedEvent(R"(
-                {"otherfield":"KEY"}
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>());
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/field2match").GetString(), "INEXISTENT_KEY");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/otherfield").GetString(), "KEY");
-}
-
-TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
-{
-    auto res = kvdbManager->getHandler("TEST_DB");
-    if (auto err = std::get_if<base::Error>(&res))
-    {
-        throw std::runtime_error(err->message);
-    }
-    auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
-    kvdb->writeKeyOnly("KEY");
-
-    rapidjson::Document doc {R"({
-        "check":
-            {"a.b.field2match": "+kvdb_not_match/TEST_DB"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b":{"field2match":"KEY"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b":{"field2match":"INEXISTENT_KEY"}}}
-            )"));
-            // Other fields will continue
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b":{"otherfield":"KEY"}}}
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = bld::opBuilderKVDBNotMatch(doc.get("/check"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b/field2match").GetString(), "INEXISTENT_KEY");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/a/b/otherfield").GetString(), "KEY");
-}
-
 } // namespace
+
+using NotMatchParamsT = std::tuple<std::vector<std::string>, bool>;
+class NotMatchParams : public KVDBMatchHelper<NotMatchParamsT>
+{
+};
+
+// Test of build params
+TEST_P(NotMatchParams, builds)
+{
+    const std::string targetField = "/field";
+    const std::string rawName = "kvdb_not_match";
+
+    auto [parameters, shouldPass] = GetParam();
+
+    if (shouldPass)
+    {
+        ASSERT_NO_THROW(m_builder(targetField, rawName, parameters, m_failDef));
+    }
+    else
+    {
+        ASSERT_THROW(m_builder(targetField, rawName, parameters, m_failDef), std::runtime_error);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(KVDBNotMatch,
+                         NotMatchParams,
+                         ::testing::Values(
+                             // Ok
+                             NotMatchParamsT({DB_NAME_1}, true),
+                             // bad size
+                             NotMatchParamsT({DB_NAME_1, "test"}, false),
+                             NotMatchParamsT({DB_NAME_1, "test", "test2"}, false),
+                             NotMatchParamsT({}, false)));
+
+using NotMatchKeyT = std::tuple<std::string, std::vector<std::string>, bool, std::string>;
+class NotMatchKey : public KVDBMatchHelper<NotMatchKeyT>
+{
+protected:
+    void SetUp() override
+    {
+        KVDBMatchHelper<NotMatchKeyT>::SetUp();
+
+        // Insert initial state to DB
+        auto handler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
+            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test"));
+
+        ASSERT_FALSE(handler->set("key1", "value"));
+        ASSERT_FALSE(handler->set("key_founded", "value"));
+        ASSERT_FALSE(handler->set("key2", "value"));
+    }
+};
+
+// Test of match function
+TEST_P(NotMatchKey, matching)
+{
+    const std::string targetField = "/field";
+    const std::string rawName = "kvdb_not_match";
+
+    auto [raw_event, parameters, shouldPass, expected] = GetParam();
+    auto event = std::make_shared<json::Json>(raw_event.c_str());
+
+    auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    result::Result<Event> resultEvent;
+    ASSERT_NO_THROW(resultEvent = op(event));
+
+    if (shouldPass)
+    {
+        ASSERT_TRUE(resultEvent.success());
+        auto value = resultEvent.payload()->getString("/field").value();
+        ASSERT_EQ(value, expected);
+    }
+    else
+    {
+        ASSERT_TRUE(resultEvent.failure());
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(KVDBNotMatch,
+                         NotMatchKey,
+                         ::testing::Values(
+                             // OK
+                             NotMatchKeyT(R"({"field": "key_found"})", {DB_NAME_1}, true, "key_found"),
+                             NotMatchKeyT(R"({"field": "key"})", {DB_NAME_1}, true, "key"),
+                             NotMatchKeyT(R"({"field": "key_"})", {DB_NAME_1}, true, "key_"),
+                             NotMatchKeyT(R"({"field": "not_found"})", {DB_NAME_1}, true, "not_found"),
+                             NotMatchKeyT(R"({"field": ""})", {DB_NAME_1}, true, ""),
+                             // NOK
+                             NotMatchKeyT(R"({"field": "key_founded"})", {DB_NAME_1}, false, ""),
+                             NotMatchKeyT(R"({"field": "key1"})", {DB_NAME_1}, false, ""),
+                             NotMatchKeyT(R"({"field": "key2"})", {DB_NAME_1}, false, "")));
