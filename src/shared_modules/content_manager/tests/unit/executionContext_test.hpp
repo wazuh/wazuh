@@ -15,6 +15,7 @@
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
+#include <filesystem>
 #include <memory>
 
 /**
@@ -32,6 +33,8 @@ protected:
 
     std::shared_ptr<ExecutionContext> m_spExecutionContext; ///< ExecutionContext.
 
+    const std::filesystem::path m_databasePath {"/tmp/database"}; ///< Path used to store the database files.
+
     /**
      * @brief Sets initial conditions for each test case.
      *
@@ -48,6 +51,16 @@ protected:
                 "outputFolder": "/tmp/content_manager"
             }
         )"_json;
+    }
+
+    /**
+     * @brief Tear down routine for each test fixture.
+     *
+     */
+    void TearDown() override
+    {
+        std::filesystem::remove_all("/tmp/content_manager");
+        std::filesystem::remove_all(m_databasePath);
     }
 };
 
