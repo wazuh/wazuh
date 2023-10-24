@@ -6183,7 +6183,7 @@ checks:
 
   # 18.9.27.6 (L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'. (Automated)
    - id: 18799
-     title: "(L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'."
+     title: "L1 Ensure 'Turn off picture password sign-in' is set to 'Enabled'."
      description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled. Note: If the picture password feature is permitted, the user's domain password is cached in the system vault when using it."
      rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
      impact: "Users will not be able to set up or sign in with a picture password."
@@ -6195,12 +6195,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword -> 1'
 
   # 18.9.27.7 (L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'. (Automated)
    - id: 18800
-     title: "(L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'."
+     title: "L1 Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'."
      description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work. Note: The user's domain password will be cached in the system vault when using this feature. The recommended state for this setting is: Disabled."
      rationale: "A PIN is created from a much smaller selection of characters than a password, so in most cases a PIN will be much less robust than a password."
      impact: "None - this is the default behavior."
@@ -6212,12 +6215,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon -> 0'
 
   # 18.9.30.1 (L2) Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'. (Automated)
    - id: 18801
-     title: "(L2) Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'."
+     title: "L2 Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'."
      description: "This setting determines whether Clipboard contents can be synchronized across devices. The recommended state for this setting is: Disabled."
      rationale: "In high security environments, clipboard data should stay local to the system and not synced across devices, as it may contain very sensitive information that must be contained locally."
      impact: "Clipboard contents will not be shareable to other devices."
@@ -6229,12 +6235,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard -> 0'
 
   # 18.9.30.2 (L2) Ensure 'Allow upload of User Activities' is set to 'Disabled'. (Automated)
    - id: 18802
-     title: "(L2) Ensure 'Allow upload of User Activities' is set to 'Disabled'."
+     title: "L2 Ensure 'Allow upload of User Activities' is set to 'Disabled'."
      description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "Activities of type User Activity are not allowed to be uploaded to the cloud. The Timeline feature will not function across devices."
@@ -6243,12 +6252,15 @@ checks:
        - cis: ["18.9.30.2"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities -> 0'
 
   # 18.9.32.6.1 (L1) Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'. (Automated)
    - id: 18803
-     title: "(L1) Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'."
+     title: "L1 Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'."
      description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems. The recommended state for this setting is: Disabled."
      rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, on battery and in a sleep state."
      impact: "Network connectivity in standby (while on battery) is not guaranteed. This connectivity restriction currently only applies to WLAN networks only, but is subject to change (according to Microsoft)."
@@ -6259,12 +6271,15 @@ checks:
        - cis: ["18.9.32.6.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> DCSettingIndex'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> DCSettingIndex -> 0'
 
   # 18.9.32.6.2 (L1) Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'. (Automated)
    - id: 18804
-     title: "(L1) Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'."
+     title: "L1 Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'."
      description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems. The recommended state for this setting is: Disabled."
      rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, plugged in and in a sleep state."
      impact: "Network connectivity in standby (while plugged in) is not guaranteed. This connectivity restriction currently only applies to WLAN networks only, but is subject to change (according to Microsoft)."
@@ -6275,12 +6290,15 @@ checks:
        - cis: ["18.9.32.6.2"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> ACSettingIndex'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> ACSettingIndex -> 0'
 
   # 18.9.32.6.3 (BL) Ensure 'Allow standby states (S1-S3) when sleeping (on battery)' is set to 'Disabled'. (Automated)
    - id: 18805
-     title: "(BL) Ensure 'Allow standby states (S1-S3) when sleeping (on battery)' is set to 'Disabled'."
+     title: "BL Ensure 'Allow standby states (S1-S3) when sleeping (on battery)' is set to 'Disabled'."
      description: "This policy setting manages whether or not Windows is allowed to use standby states when putting the computer in a sleep state. The recommended state for this setting is: Disabled."
      rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
      impact: "Users will not be able to use Sleep (S3) while on battery, which resumes faster than Hibernation (S4)."
@@ -6304,7 +6322,7 @@ checks:
 
   # 18.9.32.6.5 (L1) Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'. (Automated)
    - id: 18807
-     title: "(L1) Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'."
+     title: "L1 Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'."
      description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
      impact: "None - this is the default behavior."
@@ -6313,12 +6331,15 @@ checks:
        - cis: ["18.9.32.6.5"]
        - cis_csc_v7: ["16.11"]
        - iso_27001-2013: ["A.8.1.3"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex -> 1'
 
   # 18.9.32.6.6 (L1) Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'. (Automated)
    - id: 18808
-     title: "(L1) Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'."
+     title: "L1 Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'."
      description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
      impact: "None - this is the default behavior."
@@ -6327,12 +6348,15 @@ checks:
        - cis: ["18.9.32.6.6"]
        - cis_csc_v7: ["16.11"]
        - iso_27001-2013: ["A.8.1.3"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex -> 1'
 
   # 18.9.34.1 (L1) Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'. (Automated)
    - id: 18809
-     title: "(L1) Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'."
+     title: "L1 Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'."
      description: "This policy setting allows you to turn on or turn off Offer (Unsolicited) Remote Assistance on this computer. Help desk and support personnel will not be able to proactively offer assistance, although they can still respond to user assistance requests. The recommended state for this setting is: Disabled."
      rationale: "A user might be tricked and accept an unsolicited Remote Assistance offer from a malicious user."
      impact: "None - this is the default behavior."
@@ -6346,12 +6370,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited -> 0'
 
   # 18.9.34.2 (L1) Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'. (Automated)
    - id: 18810
-     title: "(L1) Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'."
+     title: "L1 Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'."
      description: "This policy setting allows you to turn on or turn off Solicited (Ask for) Remote Assistance on this computer. The recommended state for this setting is: Disabled."
      rationale: "There is slight risk that a rogue administrator will gain access to another user's desktop session, however, they cannot connect to a user's computer unannounced or control it without permission from the user. When an expert tries to connect, the user can still choose to deny the connection or give the expert view-only privileges. The user must explicitly click the Yes button to allow the expert to remotely control the workstation."
      impact: "Users on this computer cannot use e-mail or file transfer to ask someone for help. Also, users cannot use instant messaging programs to allow connections to this computer."
@@ -6365,12 +6392,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> 0'
 
   # 18.9.35.1 (L1) Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'. (Automated)
    - id: 18811
-     title: "(L1) Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'."
+     title: "L1 Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'."
      description: "This policy setting controls whether RPC clients authenticate with the Endpoint Mapper Service when the call they are making contains authentication information. The Endpoint Mapper Service on computers running Windows NT4 (all service packs) cannot process authentication information supplied in this manner. This policy setting can cause a specific issue with 1-way forest trusts if it is applied to the trusting domain DCs (see Microsoft KB3073942), so we do not recommend applying it to Domain Controllers. Note: This policy will not in effect until the system is rebooted. The recommended state for this setting is: Enabled."
      rationale: "Anonymous access to RPC services could result in accidental disclosure of information to unauthenticated users."
      impact: "RPC clients will authenticate to the Endpoint Mapper Service for calls that contain authentication information. Clients making such calls will not be able to communicate with the Windows NT4 Server Endpoint Mapper Service."
@@ -6381,8 +6411,11 @@ checks:
        - cis: ["18.9.35.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution -> 1'
 
   # 18.9.35.2 (L1) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'. (Automated)
    - id: 18812
