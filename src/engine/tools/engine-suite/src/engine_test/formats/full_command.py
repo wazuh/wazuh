@@ -9,7 +9,7 @@ class FullCommandFormat(EventFormat):
     def format_event(self, event):
         origin = self.config['origin']
         event = super().format_event(event)
-        return f"ossec: output: '{origin}':{event}"
+        return f"ossec: output: '{origin}': {event}"
 
     def is_multiline(self):
         return Formats.FULL_COMMAND.value['multiline']
