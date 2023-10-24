@@ -28,11 +28,18 @@ run_behave_tests() {
     return $exit_code
 }
 
+run_test_health() {
+    local command="python3 $integration_tests_dir/health_test.py $github_working_dir"
+    echo "Running test_health command: $command"
+    $command
+}
+
 main() {
     check_arguments "$@"
     local github_working_dir="$1"
-    local engine_src_dir="${2:-$github_working_dir/src/engine}"
-    local conf_file="${3:-general.conf}"
+    local test_type="$2"
+    local engine_src_dir="${3:-$github_working_dir/src/engine}"
+    local conf_file="${4:-general.conf}"
     local environment_dir="$github_working_dir/environment"
     local integration_tests_dir="$engine_src_dir/test/integration_tests"
     local serv_conf_file="$integration_tests_dir/configuration_files/$conf_file"
@@ -45,10 +52,19 @@ main() {
     local binary_pid=$!
     # Wait for the server to start
     sleep 2
-    ENGINE_DIR=$engine_src_dir ENV_DIR=$github_working_dir run_behave_tests "$integration_tests_dir"
-    local behave_exit_code=$?
-    # Terminate the binary process
+    if [ "$test_type" == "integration_test" ]; then
+        ENGINE_DIR=$engine_src_dir ENV_DIR=$github_working_dir run_behave_tests "$integration_tests_dir"
+        exit exit_code=$?
+    elif [ "$test_type" == "health_test" ]; then
+        run_test_health "$integration_tests_dir"
+        exit_code=$?
+    else
+        echo "Invalid test type: $test_type"
+        exit_code=1
+    fi
+
+    echo "Exit code $exit_code"
     kill $binary_pid
-    exit $behave_exit_code
+    exit $exit_code
 }
 main "$@"
