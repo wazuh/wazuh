@@ -13,13 +13,12 @@
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
 
-#include <metrics/metricsManager.hpp>
-
-using namespace metricsManager;
+#include <mocks/fakeMetric.hpp>
 
 namespace
 {
 using namespace base;
+using namespace metricsManager;
 using namespace builder::internals::builders;
 
 std::filesystem::path uniquePath()
@@ -56,7 +55,7 @@ protected:
             std::filesystem::remove_all(kvdbPath);
         }
 
-        m_manager = std::make_shared<MetricsManager>();
+        m_manager = std::make_shared<FakeMetricManager>();
         kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
         schema = std::make_shared<schemf::mocks::MockSchema>();
@@ -111,7 +110,7 @@ protected:
             std::filesystem::remove_all(kvdbPath);
         }
 
-        m_manager = std::make_shared<MetricsManager>();
+        m_manager = std::make_shared<FakeMetricManager>();
         kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
         schema = std::make_shared<schemf::mocks::MockSchema>();
