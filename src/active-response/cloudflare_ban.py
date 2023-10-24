@@ -147,7 +147,8 @@ def main(argv):
     alert = msg.alert["parameters"]["alert"]
     ip = alert["data"]["srcip"]
     agent_name = alert["agent"]["name"]
-    keys = [alert["rule"]["id"]]
+    keys = [alert["rule"]["id"],ip]
+
 
     agent_info = agent_mapping.get(agent_name, {})
     ZONE_ID = agent_info.get("zone_id")
