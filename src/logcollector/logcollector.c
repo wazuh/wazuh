@@ -1520,7 +1520,7 @@ int check_pattern_expand(int do_seek) {
             }
 
             char** result = expand_win32_wildcards(globs[j].gpath);
-            
+
             if (result) {
 
                 int file;
@@ -1530,10 +1530,14 @@ int check_pattern_expand(int do_seek) {
 
                     if (current_files >= maximum_files) {
                         mwarn(FILE_LIMIT, maximum_files);
+                        for (int f = file; result[f] != NULL; f++) {
+                            os_free(result[f]);
+                        }
                         break;
                     }
 
                     os_strdup(result[file], full_path);
+                    os_free(result[file]);
 
                     found = 0;
                     for (i = 0; globs[j].gfiles[i].file; i++) {
@@ -1618,6 +1622,7 @@ int check_pattern_expand(int do_seek) {
                     }
                     os_free(full_path);
                 }
+                os_free(result);
             }
         }
     }

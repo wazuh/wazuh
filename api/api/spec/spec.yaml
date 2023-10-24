@@ -10336,7 +10336,7 @@ paths:
                         skip_proc: yes
                         skip_sys: yes
                         process_priority: 10
-                        max_eps: 100
+                        max_eps: 50
                         synchronization:
                           enabled: yes
                           interval: "5m"

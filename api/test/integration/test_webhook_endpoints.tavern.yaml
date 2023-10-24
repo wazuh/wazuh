@@ -80,12 +80,8 @@ stages:
         title: Bad Request
 
 ---
-
 test_name: POST /events with more than 100 events
 
-marks:
-  - usefixtures:
-      - big_events_payload
 
 stages:
   - name: Try to send events with an invalid size
@@ -101,13 +97,7 @@ stages:
         title: Events bulk size exceeded
 
 ---
-
 test_name: POST /events with big events
-
-marks:
-  - usefixtures:
-      - max_size_event
-      - large_event
 
 stages:
   - name: Try to send a too big event (65536B)
@@ -159,7 +149,6 @@ stages:
         error: 2
 
 ---
-
 test_name: Try to send more than 30 requests per minute
 
 stages:
