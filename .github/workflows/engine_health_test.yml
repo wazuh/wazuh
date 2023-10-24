@@ -1,4 +1,4 @@
-name: Engine Integration Test
+name: Engine Health Test
 
 # Controls when the action will run.
 on:
@@ -22,10 +22,11 @@ concurrency:
 env:
   BUILD_TYPE: Release
   ENGINE_DIR: ${{github.workspace}}/src/engine
-  TEST_TYPE: integration_test
+  TEST_TYPE: health_test
+
 jobs:
   build:
-    name: Engine Integration Test
+    name: Engine Health Test
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
@@ -49,10 +50,9 @@ jobs:
     - name: Install dependencies
       # Install behave
       run: |
-        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
+        pip install ${{env.ENGINE_DIR}}/test/integration_tests/api-communication/
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/cli-communication/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-        pip install behave
 
     - name: Configure CMake
       # Configure the CMake build system with the specified build type
@@ -66,6 +66,6 @@ jobs:
       # Set Server Configuration
       run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}}
 
-    - name: Integration Test
+    - name: Health Test
       # Run integration tests using behave
       run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{github.workspace}} ${{env.TEST_TYPE}}
