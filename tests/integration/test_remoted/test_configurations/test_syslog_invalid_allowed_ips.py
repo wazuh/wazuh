@@ -62,5 +62,17 @@ def test_invalid_allowed_ips(test_configuration, test_metadata, configure_local_
     log_monitor.start(callback=generate_callback(patterns.ERROR_INVALID_IP,
                                                     replacement={
                                                     "ip": test_metadata['allowed-ips']}))
-    print(log_monitor.callback_result)
+
+    assert log_monitor.callback_result
+
+    log_monitor.start(callback=generate_callback(patterns.ERROR_IN_CONFIGURATION,
+                                                    replacement={
+                                                    "severity": 'ERROR',
+                                                    "conf_path": "etc/ossec.conf"}))
+    assert log_monitor.callback_result
+
+    log_monitor.start(callback=generate_callback(patterns.ERROR_IN_CONFIGURATION,
+                                                    replacement={
+                                                    "severity": 'CRITICAL',
+                                                    "conf_path": "etc/ossec.conf"}))
     assert log_monitor.callback_result
