@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import EVENT_TYPE_DELETED
+from wazuh_testing.modules.fim.patterns import EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
@@ -155,6 +155,10 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
+    
+    file.write_file(file_to_monitor, 'test')
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
+    assert wazuh_log_monitor.callback_result
 
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
