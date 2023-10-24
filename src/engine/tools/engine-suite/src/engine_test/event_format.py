@@ -2,15 +2,15 @@ from enum import Enum
 from engine_test.parser import Parser
 
 class Formats(Enum):
-    AUDIT = { "name": "audit", "queue": 49, "multiline": True }
-    COMMAND = { "name": "command", "queue": 49, "multiline": False }
+    AUDIT = { "name": "audit", "queue": 49, "multiline": True, "origin": "/test/audit.log" }
+    COMMAND = { "name": "command", "queue": 49, "multiline": False, "origin": "commandTest --single" }
     EVENTCHANNEL = { "name": "eventchannel", "origin": "EventChannel", "queue": 102, "multiline": True }
-    FULL_COMMAND = { "name": "full-command", "queue": 49, "multiline": True }
-    JSON = { "name": "json", "queue": 49, "multiline": False }
+    FULL_COMMAND = { "name": "full-command", "queue": 49, "multiline": True, "origin": "commandTest --full" }
+    JSON = { "name": "json", "queue": 49, "multiline": False, "origin": "/test/test.json" }
     MACOS = { "name": "macos", "origin": "macos", "queue": 49, "multiline": False }
-    MULTI_LINE = { "name": "multi-line", "queue": 49, "multiline": True }
-    SYSLOG = { "name": "syslog", "queue": 49, "multiline": False }
-    REMOTE_SYSLOG = { "name": "remote-syslog", "queue": 50, "multiline": False }
+    MULTI_LINE = { "name": "multi-line", "queue": 49, "multiline": True, "origin": "/test/multiline.log" }
+    SYSLOG = { "name": "syslog", "queue": 49, "multiline": False, "origin": "/test/syslog.log" }
+    REMOTE_SYSLOG = { "name": "remote-syslog", "queue": 50, "multiline": False, "origin": "127.0.1.1"}
 
     def get_formats():
         formats = []
