@@ -219,12 +219,19 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                 if re.match(self.discard_regex, log['full_log']):
                     aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. '
                                     f'The event will be skipped.', 2)
+                else:
+                    print(f'WARNING: The "{self.discard_regex.pattern}" regex did not match any value in the '
+                          f'field. The event will be processed.')             
                     continue
             elif self.event_should_be_skipped(log):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
                                 f'in the "{self.discard_field}" '
                       f'field. The event will be skipped.', 2)
                 continue
+            else:
+                aws_tools.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex did not match any value in the '
+                                f'"{self.discard_field}" field. The event will be processed.', 3)
 
             msg['aws'].update(log)
             self.send_msg(msg)
