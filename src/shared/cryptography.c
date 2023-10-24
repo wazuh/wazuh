@@ -45,8 +45,8 @@ DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_me
         return ERROR_INVALID_DATA;
     }
 
-    WINTRUST_DATA WinTrustData;
-    WINTRUST_FILE_INFO WinTrustFileInfo;
+    WINTRUST_DATA WinTrustData = {0};
+    WINTRUST_FILE_INFO WinTrustFileInfo = {0};
     GUID policy_GUID = WINTRUST_ACTION_GENERIC_VERIFY_V2;
 
     WinTrustFileInfo.cbStruct = sizeof(WINTRUST_FILE_INFO);
@@ -63,10 +63,12 @@ DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_me
     WinTrustData.dwStateAction = WTD_STATEACTION_VERIFY;
     WinTrustData.hWVTStateData = NULL;
     WinTrustData.pwszURLReference = NULL;
+    // We avoid revocation check across the network
+    WinTrustData.dwProvFlags = WTD_CACHE_ONLY_URL_RETRIEVAL;
     WinTrustData.dwUIContext = 0;
     WinTrustData.pFile = &WinTrustFileInfo;
 
-    DWORD status = WinVerifyTrust(NULL, &policy_GUID, &WinTrustData);
+    DWORD status = WinVerifyTrust(INVALID_HANDLE_VALUE, &policy_GUID, &WinTrustData);
 
     switch (status) {
     case ERROR_SUCCESS:
@@ -319,7 +321,7 @@ DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_me
 
     // Any hWVTStateData must be released by a call with close.
     WinTrustData.dwStateAction = WTD_STATEACTION_CLOSE;
-    WinVerifyTrust(NULL, &policy_GUID, &WinTrustData);
+    WinVerifyTrust(INVALID_HANDLE_VALUE, &policy_GUID, &WinTrustData);
 
     return status;
 }
