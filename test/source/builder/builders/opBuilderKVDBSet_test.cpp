@@ -59,6 +59,7 @@ protected:
         ASSERT_FALSE(m_kvdbManager->createDB("test_db"));
 
         m_builder = getOpBuilderKVDBSet(m_kvdbManager, "builder_test");
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
     void TearDown() override
@@ -109,13 +110,15 @@ INSTANTIATE_TEST_SUITE_P(KVDBSet,
                              // OK
                              SetParamsT({DB_NAME_1, "key", "value"}, true),
                              SetParamsT({DB_NAME_1, "key", ""}, true),
+                             SetParamsT({DB_NAME_1, "$key", "value"}, true),
+                             SetParamsT({DB_NAME_1, "$key", ""}, true),
                              // NOK
                              SetParamsT({DB_NAME_1}, false),
                              SetParamsT({DB_NAME_1, "key"}, false),
-                             SetParamsT({}, false),
-                             SetParamsT({"unknow_database", "key", "value"}, false)));
+                             SetParamsT({DB_NAME_1, "$key"}, false),
+                             SetParamsT({}, false)));
 
-using SetKeyT = std::tuple<std::vector<std::string>, bool>;
+using SetKeyT = std::tuple<std::vector<std::string>, bool, std::string>;
 class SetKey : public KVDBSetHelper<SetKeyT>
 {
 protected:
@@ -128,8 +131,8 @@ TEST_P(SetKey, setting)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_set";
 
-    auto [parameters, shouldPass] = GetParam();
-    auto event = std::make_shared<json::Json>(R"({"result": ""})");
+    auto [parameters, shouldPass, rawEvent] = GetParam();
+    auto event = std::make_shared<json::Json>(rawEvent.c_str());
     result::Result<Event> resultEvent;
 
     if (shouldPass)
@@ -138,7 +141,6 @@ TEST_P(SetKey, setting)
         ASSERT_NO_THROW(resultEvent = op(event));
         ASSERT_TRUE(resultEvent.success());
         auto value = resultEvent.payload()->getString("/result").value();
-        std::cout << "Result: " << value << std::endl;
     }
     else
     {
@@ -150,8 +152,9 @@ INSTANTIATE_TEST_SUITE_P(KVDBSet,
                          SetKey,
                          ::testing::Values(
                              // OK
-                             SetKeyT({DB_NAME_1, "key", "value"}, true),
-                             SetKeyT({DB_NAME_1, "KEY2", ""}, true),
-                             SetKeyT({DB_NAME_1, "", "value"}, true),
+                             SetKeyT({DB_NAME_1, "key", "value"}, true, R"({"result": ""})"),
+                             SetKeyT({DB_NAME_1, "KEY2", ""}, true, R"({"result": ""})"),
+                             SetKeyT({DB_NAME_1, "", "value"}, true, R"({"result": ""})"),
+                             SetKeyT({DB_NAME_1, "$key", "value"}, true, R"({"result": "", "key": "key3"})"),
                              // NOK
-                             SetKeyT({"unknow_database", "key", "value"}, false)));
+                             SetKeyT({"unknow_database", "key", "value"}, false, R"({"result": ""})")));

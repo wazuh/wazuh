@@ -258,7 +258,7 @@ base::Expression opBuilderHelperDummy(const std::string& targetField,
                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
-    helper::base::checkParametersSize(rawName, parameters, 0);
+    helper::base::checkParametersSize(parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     return base::Term<base::EngineOp>::create(

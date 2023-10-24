@@ -116,16 +116,16 @@ base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
     const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     // Assert expected number of parameters
-    helper::base::checkParametersSize(rawName, parameters, 4);
+    helper::base::checkParametersSize(parameters, 4);
     // Parameter type check
     // Agent_id
-    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::REFERENCE);
     // scan_id
-    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::REFERENCE);
     // name
-    helper::base::checkParameterType(rawName, parameters[2], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[2], helper::base::Parameter::Type::REFERENCE);
     // array (IPv4 or IPv6)
-    helper::base::checkParameterType(rawName, parameters[3], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[3], helper::base::Parameter::Type::REFERENCE);
 
     const auto traceName = helper::base::formatHelperName(rawName, targetField, parameters);
 

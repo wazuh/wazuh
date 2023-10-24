@@ -76,7 +76,7 @@ std::vector<Parameter> processParameters(const std::string& name,
     return newParameters;
 }
 
-void checkParametersSize(const std::string& name, const std::vector<Parameter>& parameters, size_t size)
+void checkParametersSize(const std::vector<Parameter>& parameters, size_t size)
 {
     if (parameters.size() != size)
     {
@@ -84,7 +84,7 @@ void checkParametersSize(const std::string& name, const std::vector<Parameter>& 
     }
 }
 
-void checkParametersMinSize(const std::string& name, const std::vector<Parameter>& parameters, const size_t minSize)
+void checkParametersMinSize(const std::vector<Parameter>& parameters, const size_t minSize)
 {
     if (parameters.size() < minSize)
     {
@@ -92,7 +92,7 @@ void checkParametersMinSize(const std::string& name, const std::vector<Parameter
     }
 }
 
-void checkParameterType(const std::string& name, const Parameter& parameter, Parameter::Type type)
+void checkParameterType(const Parameter& parameter, Parameter::Type type)
 {
     if (parameter.m_type != type)
     {

@@ -28,9 +28,9 @@ HelperBuilder getBuilderHelperSendUpgradeConfirmation(std::shared_ptr<sockiface:
         // Identify references and build JSON pointer paths
         auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
         // Assert expected number of parameters
-        helper::base::checkParametersSize(rawName, parameters, 1);
+        helper::base::checkParametersSize(parameters, 1);
         // Assert expected parameter type reference
-        helper::base::checkParameterType(rawName, parameters[0], Parameter::Type::REFERENCE);
+        helper::base::checkParameterType(parameters[0], Parameter::Type::REFERENCE);
         // Format name for the tracer
         const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 

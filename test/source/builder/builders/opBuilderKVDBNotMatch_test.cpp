@@ -59,6 +59,7 @@ protected:
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
         m_builder = getOpBuilderKVDBNotMatch(m_kvdbManager, "builder_test");
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
     void TearDown() override
