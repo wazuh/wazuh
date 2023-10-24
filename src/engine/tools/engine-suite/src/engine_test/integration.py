@@ -1,3 +1,4 @@
+import json
 import yaml
 import sys
 try:
@@ -92,29 +93,38 @@ class Integration(CrudIntegration):
             self.api_client.delete_session()
 
     def process_event(self, event, format):
+
+        # Get the values to send
         result = self.api_client.test_run(event)
-        response = "\n"
-        response_output = { }
-        response_traces = { }
+        hasTrace : bool = len(result["data"]["run"]["traces"]) > 0
+        rawOutput = result["data"]["run"]["output"]
+        rawTraces = result["data"]["run"]["traces"] if hasTrace else []
 
-        if len(result["data"]["run"]["traces"]) > 0:
-            response_traces['Traces'] = result["data"]["run"]["traces"]
+        # TODO: Move to centralize integration configuration
+        # Get the conditions to print the output
+        isJsonOutput : bool = self.args['json_format']
+        showTrace: bool = self.args['verbose'] or self.args['full_verbose']
+        # Set the keys to print the output
+        keyOutput = 'output'
+        keyTraces = 'traces'
 
-        response_output['Output'] = result["data"]["run"]["output"]
-
-        if not self.args['json_format']:
-            if len(result["data"]["run"]["traces"]) > 0:
-                traces = self.response_to_yml(response_traces)
-                response += traces.replace("Traces", "---\nTraces")
-
-            output = self.response_to_yml(response_output)
-            if len(result["data"]["run"]["traces"]) > 0:
-                response += "\n" + output
+        response = ""
+        if isJsonOutput:
+            if showTrace:
+                response = json.dumps({keyOutput: rawOutput, keyTraces: rawTraces}, separators=(',',':'))
             else:
-                response += output.replace("Output", "---\nOutput")
+                response = json.dumps(rawOutput, separators=(',',':'))
+
+        else:
+            response += "---\n"
+            if showTrace:
+                response += self.response_to_yml({keyTraces: rawTraces}) + "\n"
+                response += self.response_to_yml({keyOutput: rawOutput}) + "\n"
+            else:
+                response += self.response_to_yml(rawOutput) + "\n"
 
         if not self.args['output_file']:
-            print ("\n{}".format(response))
+            print ("{}".format(response))
 
         return response
 
