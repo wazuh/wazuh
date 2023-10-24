@@ -30,7 +30,7 @@ def evtx_to_xml(evtx_file_path, xml_output_path=None):
 def check_url(url):
     try:
         response = requests.head(url)
-        return response.status_code // 100 == 2
+        return 2 <= response.status_code // 100 <= 3
     except requests.RequestException as e:
         print(f"Error: {e}")
         return False
@@ -57,7 +57,7 @@ def main():
     isUrl = parsed_url.scheme in ['http', 'https']
     if isUrl:
         if not check_url(evtx_file_path_or_url):
-            print(f"Error: URL {evtx_file_path_or_url} is not accessible.")
+            print(f"Error: URL {evtx_file_path_or_url} is not valid.")
             sys.exit(1)
         evtx_file_path_or_url = download_file(evtx_file_path_or_url, 'tmp_downloaded.evtx')
     else:
