@@ -62,14 +62,14 @@ private:
      * @brief Parses the offset from the input configuration.
      *
      * @param inputConfig Reference to the input config.
-     * @return unsigned int Non negative offset from the input config.
+     * @return unsigned int Non-negative offset from the input config.
      */
     unsigned int getConfigOffset(const nlohmann::json& inputConfig) const
     {
         const auto configOffset {inputConfig.at("offset").get<int>()};
         if (configOffset < 0)
         {
-            throw std::runtime_error {"Offset is not a non negative number: " + std::to_string(configOffset)};
+            throw std::runtime_error {"Offset is not a non-negative number: " + std::to_string(configOffset)};
         }
 
         return configOffset;
