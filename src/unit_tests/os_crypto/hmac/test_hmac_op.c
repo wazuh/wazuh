@@ -67,7 +67,7 @@ void test_hmac_string_length_key(void **state)
 {
     const char *key = "test_key_abcdefghijklmnopqrstvwxzabcdefghijklmnopqrstvwxzabcdefgh";
     const char *string = "test string";
-    const char *string_hmac = "f021644701a6fe0317ccc03ca211960223c231db";
+    const char *string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
 
     os_sha1 buffer;
 
@@ -80,7 +80,7 @@ void test_hmac_file_length_key(void **state)
 {
     const char *key = "test_key_abcdefghijklmnopqrstvwxzabcdefghijklmnopqrstvwxzabcdefgh";
     const char *string = "test string";
-    const char *string_hmac = "f021644701a6fe0317ccc03ca211960223c231db";
+    const char *string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
 
     os_sha1 buffer;
 
