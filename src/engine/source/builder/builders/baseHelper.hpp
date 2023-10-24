@@ -63,35 +63,32 @@ std::vector<Parameter> processParameters(const std::string& name,
 /**
  * @brief Check that the number of parameters is correct and throw otherwise.
  *
- * @param name name of the helper
  * @param parameters
  * @param size
  *
  * @throws std::runtime_error if the number of parameters is not correct.
  */
-void checkParametersSize(const std::string& name, const std::vector<Parameter>& parameters, size_t size);
+void checkParametersSize(const std::vector<Parameter>& parameters, size_t size);
 
 /**
  * @brief Check that the number of parameters is equal or bigger than
  * minimum and throw otherwise.
  *
- * @param name name of the helper
  * @param parameters vector of parameters to check
  * @param size minimum size of parameters
  *
  * @throws std::runtime_error if the number of parameters is not correct.
  */
-void checkParametersMinSize(const std::string& name, const std::vector<Parameter>& parameters, const size_t minSize);
+void checkParametersMinSize(const std::vector<Parameter>& parameters, const size_t minSize);
 /**
  * @brief Check that the paremeter is of Parameter::Type and throw otherwise.
  *
- * @param name name of the helper
  * @param parameter
  * @param type
  *
  * @throws std::runtime_error if the parameter is not of the expected type.
  */
-void checkParameterType(const std::string& name, const Parameter& parameter, Parameter::Type type);
+void checkParameterType(const Parameter& parameter, Parameter::Type type);
 
 /**
  * @brief Format the name to be used in Tracers.

@@ -51,7 +51,7 @@ TEST(checkParametersSize, Builds)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(helper::base::checkParametersSize("checkParameterType", parameters, 1));
+    ASSERT_NO_THROW(helper::base::checkParametersSize(parameters, 1));
 }
 
 TEST(checkParametersSize, Exec_check_parameters_size_false)
@@ -62,7 +62,7 @@ TEST(checkParametersSize, Exec_check_parameters_size_false)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_THROW(helper::base::checkParametersSize("checkParameterType", parameters, 2), std::runtime_error);
+    ASSERT_THROW(helper::base::checkParametersSize(parameters, 2), std::runtime_error);
 }
 
 TEST(checkParametersSize, Exec_check_parameters_size_true)
@@ -73,7 +73,7 @@ TEST(checkParametersSize, Exec_check_parameters_size_true)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(helper::base::checkParametersSize("checkParameterType", parameters, 1));
+    ASSERT_NO_THROW(helper::base::checkParametersSize(parameters, 1));
 }
 
 // checkParameterType
@@ -85,8 +85,7 @@ TEST(checkParameterType, Builds)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(
-        helper::base::checkParameterType("checkParameterType", parameters[0], helper::base::Parameter::Type::VALUE));
+    ASSERT_NO_THROW(helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE));
 }
 
 TEST(checkParameterType, Exec_check_parameters_type_false)
@@ -97,9 +96,8 @@ TEST(checkParameterType, Exec_check_parameters_type_false)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_THROW(
-        helper::base::checkParameterType("checkParameterType", parameters[0], helper::base::Parameter::Type::REFERENCE),
-        std::runtime_error);
+    ASSERT_THROW(helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::REFERENCE),
+                 std::runtime_error);
 }
 
 TEST(checkParameterType, Exec_check_parameters_type_value_true)
@@ -110,8 +108,7 @@ TEST(checkParameterType, Exec_check_parameters_type_value_true)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(
-        helper::base::checkParameterType("checkParameterType", parameters[0], helper::base::Parameter::Type::VALUE));
+    ASSERT_NO_THROW(helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE));
 }
 
 TEST(checkParameterType, Exec_check_parameters_type_reference_true)
@@ -122,8 +119,7 @@ TEST(checkParameterType, Exec_check_parameters_type_reference_true)
 
     std::vector<helper::base::Parameter> parameters = {p};
 
-    ASSERT_NO_THROW(helper::base::checkParameterType(
-        "checkParameterType", parameters[0], helper::base::Parameter::Type::REFERENCE));
+    ASSERT_NO_THROW(helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::REFERENCE));
 }
 
 // formatHelperName

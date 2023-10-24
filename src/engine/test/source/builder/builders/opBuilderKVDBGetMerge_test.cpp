@@ -78,20 +78,22 @@ protected:
 } // namespace
 
 using GetParamsT = std::tuple<std::vector<std::string>, bool>;
-class GetParams : public KVDBGetHelper<GetParamsT>
+using GetKeyT = std::tuple<std::vector<std::string>, bool, std::string, std::string>;
+
+class GetMergeParams : public KVDBGetHelper<GetParamsT>
 {
     void SetUp() override
     {
         KVDBGetHelper<GetParamsT>::SetUp();
-        m_builder = getOpBuilderKVDBGet(m_kvdbManager, "builder_test");
+        m_builder = getOpBuilderKVDBGetMerge(m_kvdbManager, "builder_test");
     }
 };
 
 // Test of build params
-TEST_P(GetParams, builds)
+TEST_P(GetMergeParams, builds)
 {
     const std::string targetField = "/field";
-    const std::string rawName = "kvdb_get";
+    const std::string rawName = "kvdb_get_merge";
 
     auto [parameters, shouldPass] = GetParam();
 
@@ -105,8 +107,8 @@ TEST_P(GetParams, builds)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(KVDBGet,
-                         GetParams,
+INSTANTIATE_TEST_SUITE_P(KVDBGetMerge,
+                         GetMergeParams,
                          ::testing::Values(
                              // OK
                              GetParamsT({DB_NAME_1, "key"}, true),
@@ -117,8 +119,7 @@ INSTANTIATE_TEST_SUITE_P(KVDBGet,
                              GetParamsT({DB_NAME_1}, false),
                              GetParamsT({}, false)));
 
-using GetKeyT = std::tuple<std::vector<std::string>, bool, std::string, std::string>;
-class GetKey : public KVDBGetHelper<GetKeyT>
+class GetMergeKey : public KVDBGetHelper<GetKeyT>
 {
 protected:
     void SetUp() override
@@ -129,21 +130,19 @@ protected:
         auto handler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
             m_kvdbManager->getKVDBHandler(DB_NAME_1, "test"));
 
-        ASSERT_FALSE(handler->set("keyString", R"("string_value")"));
-        ASSERT_FALSE(handler->set("keyNumber", "123"));
-        ASSERT_FALSE(handler->set("keyObject", R"({"field1": "value1", "field2": "value2"})"));
-        ASSERT_FALSE(handler->set("keyArray", R"(["value1", "value2"])"));
-        ASSERT_FALSE(handler->set("keyNull", "null"));
+        ASSERT_FALSE(handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})"));
+        ASSERT_FALSE(handler->set("keyArray", R"(["value1", "value2", "value3"])"));
+        ASSERT_FALSE(handler->set("keyString", R"("value1")"));
 
-        m_builder = getOpBuilderKVDBGet(m_kvdbManager, "builder_test");
+        m_builder = getOpBuilderKVDBGetMerge(m_kvdbManager, "builder_test");
     }
 };
 
 // Test of get function
-TEST_P(GetKey, getting)
+TEST_P(GetMergeKey, getting)
 {
     const std::string targetField = "/result";
-    const std::string rawName = "kvdb_get";
+    const std::string rawName = "kvdb_get_merge";
 
     auto [parameters, shouldPass, rawEvent, rawExpected] = GetParam();
     auto event = std::make_shared<json::Json>(rawEvent.c_str());
@@ -166,22 +165,40 @@ TEST_P(GetKey, getting)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    KVDBGet,
-    GetKey,
+    KVDBGetMerge,
+    GetMergeKey,
     ::testing::Values(
         // OK
-        GetKeyT({DB_NAME_1, "keyString"}, true, R"({})", R"({"result": "string_value"})"),
-        GetKeyT({DB_NAME_1, "keyNumber"}, true, R"({})", R"({"result": 123})"),
-        GetKeyT({DB_NAME_1, "keyObject"}, true, R"({})", R"({"result": {"field1": "value1", "field2": "value2"}})"),
-        GetKeyT({DB_NAME_1, "keyArray"}, true, R"({})", R"({"result": ["value1", "value2"]})"),
-        GetKeyT({DB_NAME_1, "keyNull"}, true, R"({})", R"({"result": null})"),
-        GetKeyT({DB_NAME_1, "$keyString"}, true, R"({"keyString": "keyString"})", R"({"keyString": "keyString","result": "string_value"})"),
-        GetKeyT({DB_NAME_1, "$keyNumber"}, true, R"({"keyNumber": "keyNumber"})", R"({"keyNumber": "keyNumber", "result": 123})"),
-        GetKeyT({DB_NAME_1, "$keyObject"}, true, R"({"keyObject": "keyObject"})", R"({"keyObject": "keyObject", "result": {"field1": "value1", "field2": "value2"}})"),
-        GetKeyT({DB_NAME_1, "$keyArray"}, true, R"({"keyArray": "keyArray"})", R"({"keyArray": "keyArray", "result": ["value1", "value2"]})"),
-        GetKeyT({DB_NAME_1, "$keyNull"}, true, R"({"keyNull": "keyNull"})", R"({"keyNull": "keyNull", "result": null})"),
+        GetKeyT({DB_NAME_1, "keyObject"},
+                true,
+                R"({"result": {"field0": "value0"}})",
+                R"({"result":{"field0":"value0","field1":"value1","field2":"value2","field3":"value3"}})"),
+        GetKeyT({DB_NAME_1, "keyArray"},
+                true,
+                R"({"result": ["value0"]})",
+                R"({"result": ["value0", "value1", "value2", "value3"]})"),
+        GetKeyT({DB_NAME_1, "$keyObject"},
+                true,
+                R"({"keyObject": "keyObject", "result": {"field0": "value0"}})",
+                R"({"keyObject":"keyObject", "result":{"field0":"value0","field1":"value1","field2":"value2","field3":"value3"}})"),
+        GetKeyT({DB_NAME_1, "$keyArray"},
+                true,
+                R"({"keyArray": "keyArray", "result": ["value0"]})",
+                R"({"keyArray": "keyArray", "result": ["value0", "value1", "value2", "value3"]})"),
         // NOK
+        GetKeyT({DB_NAME_1, "keyObject"},
+                false,
+                R"({"other_result": {"field0": "value0"}})",
+                R"({"result":{"field0":"value0","field1":"value1","field2":"value2","field3":"value3"}})"),
+        GetKeyT({DB_NAME_1, "keyArray"},
+                false,
+                R"({"other_result": ["value0"]})",
+                R"({"result": ["value0", "value1", "value2", "value3"]})"),
+        GetKeyT({DB_NAME_1, "$keyArray"},
+                false,
+                R"({"other_result": ["value0"]})",
+                R"({"result": ["value0", "value1", "value2", "value3"]})"),
+        GetKeyT({DB_NAME_1, "keyString"}, false, R"({})", R"({})"),
         GetKeyT({DB_NAME_1, "KEY2"}, false, R"({})", R"({})"),
         GetKeyT({DB_NAME_1, "key_"}, false, R"({})", R"({})"),
-        GetKeyT({DB_NAME_1, "$key"}, false, R"({})", R"({})"),
         GetKeyT({DB_NAME_1, ""}, false, R"({})", R"({})")));

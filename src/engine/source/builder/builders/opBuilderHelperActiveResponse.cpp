@@ -50,7 +50,7 @@ base::Expression opBuilderHelperCreateAR(const std::string& targetField,
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
 
     // Assert expected number of parameters
-    helper::base::checkParametersMinSize(rawName, parameters, 2);
+    helper::base::checkParametersMinSize(parameters, 2);
 
     // Format name for the tracer
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
@@ -84,7 +84,7 @@ base::Expression opBuilderHelperCreateAR(const std::string& targetField,
     // Get extra-args -> optional parameter, it must be a reference of an array
     if (paramsQtty > 3)
     {
-        helper::base::checkParameterType(name, parameters[3], Parameter::Type::REFERENCE);
+        helper::base::checkParameterType(parameters[3], Parameter::Type::REFERENCE);
     }
     const auto extraArgsRefValue {(paramsQtty > 3) ? parameters[3].m_value : ""};
 
@@ -297,7 +297,7 @@ HelperBuilder getBuilderHelperSendAR(std::shared_ptr<sockiface::ISockFactory> so
         // Identify references and build JSON pointer paths
         auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
         // Assert expected number of parameters
-        helper::base::checkParametersSize(rawName, parameters, 1);
+        helper::base::checkParametersSize(parameters, 1);
         // Format name for the tracer
         const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 

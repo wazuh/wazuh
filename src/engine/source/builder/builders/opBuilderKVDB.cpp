@@ -32,8 +32,8 @@ base::Expression KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto parameters {processParameters(rawName, rawParameters, definitions)};
 
     // Assert expected number of parameters
-    checkParametersSize(rawName, parameters, 2);
-    checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
+    checkParametersSize(parameters, 2);
+    checkParameterType(parameters[0], Parameter::Type::VALUE);
 
     // Format name for the tracer
     const auto name = formatHelperName(rawName, targetField, parameters);
@@ -154,8 +154,8 @@ base::Expression existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
 {
 
     const auto parameters = processParameters(rawName, rawParameters, definitions);
-    checkParametersSize(rawName, parameters, 1);
-    checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
+    checkParametersSize(parameters, 1);
+    checkParameterType(parameters[0], Parameter::Type::VALUE);
     const auto name = formatHelperName(targetField, rawName, parameters);
 
     const auto dbName = parameters[0].m_value;
@@ -243,8 +243,8 @@ base::Expression KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
 
     const auto parameters = processParameters(rawName, rawParameters, definitions);
 
-    checkParametersSize(rawName, parameters, 3);
-    checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
+    checkParametersSize(parameters, 3);
+    checkParameterType(parameters[0], Parameter::Type::VALUE);
 
     const auto name = formatHelperName(targetField, rawName, parameters);
 
@@ -370,7 +370,7 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
 {
 
     const auto parameters = processParameters(rawName, rawParameters, definitions);
-    checkParametersSize(rawName, parameters, 2);
+    checkParametersSize(parameters, 2);
     const auto name = formatHelperName(targetField, rawName, parameters);
 
     const auto& dbName = parameters[0].m_value;
@@ -454,7 +454,7 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
                                                 std::shared_ptr<defs::IDefinitions> definitions)
     {
         auto parameters = processParameters(rawName, rawParameters, definitions);
-        checkParametersSize(rawName, parameters, 2);
+        checkParametersSize(parameters, 2);
         const auto name = formatHelperName(targetField, rawName, parameters);
 
         const auto& dbName = parameters[0].m_value;
@@ -674,10 +674,10 @@ base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField
     const std::string failureTrace4 {fmt::format("[{}] -> Failure: no value found for the mask", name)};
 
     // Verify parameters size and types
-    helper::base::checkParametersSize(rawName, parameters, 3);
-    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
-    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
-    helper::base::checkParameterType(rawName, parameters[2], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParametersSize(parameters, 3);
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(parameters[2], helper::base::Parameter::Type::REFERENCE);
 
     // Extract parameters
     const auto& dbName = parameters[0].m_value;
