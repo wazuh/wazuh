@@ -48,7 +48,7 @@ private:
         {
             databaseOffset = std::stoi(context.spRocksDB->getLastKeyValue().second.ToString());
         }
-        catch ([[maybe_unused]] const std::runtime_error& e)
+        catch (const std::runtime_error&)
         {
             // First execution. Set offset to zero.
             databaseOffset = 0;
@@ -69,7 +69,7 @@ private:
         const auto configOffset {inputConfig.at("offset").get<int>()};
         if (configOffset < 0)
         {
-            throw std::runtime_error {"Offset is not a non-negative number: " + std::to_string(configOffset)};
+            throw std::runtime_error {"Offset should be a non-negative number: " + std::to_string(configOffset)};
         }
 
         return configOffset;
@@ -86,14 +86,14 @@ private:
         const auto databaseName {"/updater_" + context.topicName + "_metadata"};
         const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
 
-        // check if the output folder exists.
+        // Check if the output folder exists.
         if (!std::filesystem::exists(databasePath))
         {
             // Create the folders.
             std::filesystem::create_directories(databasePath);
         }
 
-        // Inititalize RocksDB driver instance.
+        // Initialize RocksDB driver instance.
         context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
 
         // Read input offsets.
@@ -103,7 +103,7 @@ private:
         // Choose the greatest between the DB and the config offset.
         const auto currentOffset {std::max(databaseOffset, configOffset)};
 
-        if (currentOffset != databaseOffset)
+        if (currentOffset > databaseOffset)
         {
             // Put the current offset in the database.
             context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), std::to_string(currentOffset));
