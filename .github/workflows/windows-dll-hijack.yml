@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install mingw
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
       - name: make deps
@@ -29,7 +29,7 @@ jobs:
           rm -f src/win32/setup-*.exe
           cp src/win32/*.exe src/exe_files/
       - name: Upload Artifact executables
-        uses: actions/upload-artifact@v3
+        uses: ./.github/actions/upload-artifact
         with:
           name: executables
           path: src/exe_files
@@ -42,7 +42,7 @@ jobs:
           sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf
           cp src/win32/internal_options.conf src/configuration_files/
       - name: Upload Artifact configuration files
-        uses: actions/upload-artifact@v3
+        uses: ./.github/actions/upload-artifact
         with:
           name: configuration
           path: src/configuration_files
@@ -54,19 +54,19 @@ jobs:
     needs: build
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: ./.github/actions/setup-python
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact executables
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: executables
           path: C:\executables\
       - name: Download Artifact configuration files
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: configuration
           path: C:\configuration_files\
@@ -87,7 +87,7 @@ jobs:
           python -m pytest -vv ./test_dll_hijack.py
       - name: Upload .csv files
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: ./.github/actions/upload-artifact
         with:
           name: csv_files ${{ matrix.os }}
           path: C:\executables\*.csv

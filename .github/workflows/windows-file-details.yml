@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install mingw
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
       - name: make deps
@@ -31,7 +31,7 @@ jobs:
           rm -f src/win32/libstdc++-6.dll
           find src/ -name "*.dll" -not -path "src/external/*" -not -path "src/win32/SimpleSC/*" -not -path "src/win32/nsProcess/*" -exec cp {} src/bin_files/ \;
       - name: Upload Artifact binaries
-        uses: actions/upload-artifact@v3
+        uses: ./.github/actions/upload-artifact
         with:
           name: binaries
           path: src/bin_files
@@ -40,14 +40,14 @@ jobs:
     needs: build
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: ./.github/actions/setup-python
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact binaries
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: binaries
           path: C:\binaries\

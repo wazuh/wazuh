@@ -23,13 +23,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: "Install dependencies"
         uses: ./.github/actions/install_build_deps
         with:
           target: ${{ matrix.target }}
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: ./.github/actions/setup-python
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
@@ -45,7 +45,7 @@ jobs:
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: ./.github/actions/upload-artifact
         with:
           name: coverage_report ${{ env.ARTIFACT_NAME }} ${{ matrix.target }}
           path: ./**/coverage_report/**

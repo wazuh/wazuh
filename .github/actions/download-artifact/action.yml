@@ -1,0 +1,17 @@
+name: "Download artifact"
+description: "This action is a wrapper of actions/download-artifact@vX to centralize version management"
+inputs:
+   name:
+     required: true
+     description: "Name of the artifact"
+   path:
+     required: true
+     description: "Path to download the artifact"
+runs:
+  using: "composite"
+  steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}

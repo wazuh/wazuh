@@ -1,0 +1,17 @@
+name: "Setup python"
+description: "This action is a wrapper of actions/setup-python@vX to centralize version management"
+inputs:
+   python-version-file:
+     required: true
+     description: "File path with the Python version to be used"
+   architecture:
+     required: true
+     description: "Architecture to be used"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup python
+      uses: actions/setup-python@v4
+      with:
+        python-version-file: ${{ inputs.python-version-file }}
+        architecture: ${{ inputs.architecture }}
