@@ -114,7 +114,7 @@ else()
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
-    set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG \
+    set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,popen \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
                            -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
