@@ -374,6 +374,21 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 return (OS_INVALID);
             }
         }
+        /* update check system */
+        else if (strcmp(node[i]->element, xml_update_check) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                if (Config) {
+                    Config->update_check = 1;
+                }
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                if (Config) {
+                    Config->update_check = 0;
+                }
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        }
         /* Compress alerts */
         else if (strcmp(node[i]->element, xml_compress_alerts) == 0) {
             /* removed from here -- compatibility issues only */
