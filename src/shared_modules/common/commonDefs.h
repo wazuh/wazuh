@@ -33,6 +33,16 @@ typedef enum
 } DbEngineType;
 
 /**
+ * @brief Configures how the engine manages the database at startup.
+ */
+typedef enum
+{
+    VOLATILE   = 0,  /*< Removes the DB every time .                          */
+    PERSISTENT = 1,  /*< The DB is kept and the correct version is checked.   */
+} DbManagement;
+
+
+/**
  * @brief Represents the database operation events.
  */
 typedef enum

@@ -181,9 +181,6 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
 
-// Get binary full path
-int wm_get_path(const char *binary, char **validated_comm);
-
 /**
  Check the binary wich executes a commad has the specified hash.
  Returns:

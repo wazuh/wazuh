@@ -41,10 +41,12 @@ void dbsync_initialize(log_fnc_t log_function)
     });
 }
 
-DBSYNC_HANDLE dbsync_create(const HostType     host_type,
-                            const DbEngineType db_type,
-                            const char*        path,
-                            const char*        sql_statement)
+DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
+                             const DbEngineType db_type,
+                             const char*        path,
+                             const char*        sql_statement,
+                             const DbManagement db_management,
+                             const char**       upgrade_statements)
 {
     DBSYNC_HANDLE retVal{ nullptr };
     std::string errorMessage;
@@ -57,7 +59,15 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
     {
         try
         {
-            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
+            auto upgradeStatements = std::vector<std::string>();
+
+            while (upgrade_statements && *upgrade_statements)
+            {
+                upgradeStatements.emplace_back(*upgrade_statements);
+                upgrade_statements++;
+            }
+
+            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement, db_management, upgradeStatements);
         }
         catch (const DbSync::dbsync_error& ex)
         {
@@ -74,6 +84,23 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
 
     log_message(errorMessage);
     return retVal;
+}
+
+DBSYNC_HANDLE dbsync_create(const HostType     host_type,
+                            const DbEngineType db_type,
+                            const char*        path,
+                            const char*        sql_statement)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::VOLATILE, nullptr);
+}
+
+DBSYNC_HANDLE dbsync_create_persistent(const HostType     host_type,
+                                       const DbEngineType db_type,
+                                       const char*        path,
+                                       const char*        sql_statement,
+                                       const char**       upgrade_statements)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::PERSISTENT, upgrade_statements);
 }
 
 void dbsync_teardown(void)
@@ -640,11 +667,13 @@ void DBSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-DBSync::DBSync(const HostType     hostType,
-               const DbEngineType dbType,
-               const std::string& path,
-               const std::string& sqlStatement)
-    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement) }
+DBSync::DBSync(const HostType                  hostType,
+               const DbEngineType              dbType,
+               const std::string&              path,
+               const std::string&              sqlStatement,
+               const DbManagement              dbManagement,
+               const std::vector<std::string>& upgradeStatements)
+    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements) }
     , m_shouldBeRemoved{ true }
 { }
 

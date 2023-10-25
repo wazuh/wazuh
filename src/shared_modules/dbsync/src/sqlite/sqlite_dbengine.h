@@ -117,8 +117,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 {
     public:
         SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
-                       const std::string& path,
-                       const std::string& tableStmtCreation);
+                       const std::string&                     path,
+                       const std::string&                     tableStmtCreation,
+                       const DbManagement                     dbManagement = DbManagement::VOLATILE,
+                       const std::vector<std::string>&        upgradeStatements = {});
         ~SQLiteDBEngine();
 
         void bulkInsert(const std::string& table,
@@ -155,10 +157,14 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void addTableRelationship(const nlohmann::json& data) override;
 
     private:
-        void initialize(const std::string& path,
-                        const std::string& tableStmtCreation);
+        void initialize(const std::string&              path,
+                        const std::string&              tableStmtCreation,
+                        const DbManagement              dbManagement,
+                        const std::vector<std::string>& upgradeStatements);
 
         bool cleanDB(const std::string& path);
+
+        size_t getDbVersion();
 
         size_t loadTableData(const std::string& table);
 

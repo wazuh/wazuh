@@ -9,6 +9,7 @@ import re
 import sys
 
 from os import path
+from typing import List
 
 try:
     import pyarrow.parquet as pq
@@ -72,7 +73,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                                                     **kwargs)
 
     @staticmethod
-    def _process_jsonl(file: io.TextIOWrapper) -> list[dict]:
+    def _process_jsonl(file: io.TextIOWrapper) -> List[dict]:
         """Process JSON objects present in a JSONL file.
 
         Parameters
@@ -147,7 +148,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
         # Check if the header row matches the regex pattern
         return not bool(not_header_pattern.match(header_row))
 
-    def obtain_logs(self, bucket: str, log_path: str) -> list[dict]:
+    def obtain_logs(self, bucket: str, log_path: str) -> List[dict]:
         """Fetch a file from a bucket and obtain a list of events from it.
 
         Parameters
