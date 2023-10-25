@@ -12,8 +12,12 @@
 #include "factoryDownloader_test.hpp"
 #include "CtiApiDownloader.hpp"
 #include "S3Downloader.hpp"
+#include "chainOfResponsability.hpp"
 #include "factoryDownloader.hpp"
+#include "json.hpp"
+#include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
+#include "gtest/gtest.h"
 #include <memory>
 
 /*
@@ -46,6 +50,66 @@ TEST_F(FactoryDownloaderTest, CreateS3Downloader)
 
     // Check if the downloader is a S3Downloader
     EXPECT_TRUE(std::dynamic_pointer_cast<S3Downloader>(spDownloader));
+}
+
+/**
+ * @brief Check the creation of a OfflineDownloader for downloading a raw file.
+ *
+ */
+TEST_F(FactoryDownloaderTest, CreateOfflineDownloaderRawFile)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt",
+            "compressionType": "raw"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDownloader::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<OfflineDownloader>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
+}
+
+/**
+ * @brief Check the creation of a OfflineDownloader for downloading a compressed file.
+ *
+ */
+TEST_F(FactoryDownloaderTest, CreateOfflineDownloaderCompressedFile)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt.gz",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt.gz",
+            "compressionType": "gzip"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDownloader::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<OfflineDownloader>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
 }
 
 /*

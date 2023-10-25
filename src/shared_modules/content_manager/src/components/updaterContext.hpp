@@ -16,6 +16,7 @@
 #include "utils/rocksDBWrapper.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
+#include <string>
 
 constexpr auto DOWNLOAD_FOLDER = "downloads";
 constexpr auto CONTENTS_FOLDER = "contents";
@@ -67,6 +68,12 @@ struct UpdaterBaseContext
      *
      */
     std::filesystem::path contentsFolder;
+
+    /**
+     * @brief Hash of the downloaded file. Used to avoid redundant publications.
+     *
+     */
+    std::string downloadedFileHash;
 
     /**
      * @brief For testing purposes. Delete it.
