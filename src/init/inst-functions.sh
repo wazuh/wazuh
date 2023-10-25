@@ -1141,6 +1141,11 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
 
+    # Install the Wazuh cloud logger
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/shared
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/shared/__init__.py ${INSTALLDIR}/wodles/shared/__init__.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/shared/wazuh_cloud_logger.py ${INSTALLDIR}/wodles/shared/wazuh_cloud_logger.py
+
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws/buckets_s3
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws/services
@@ -1221,6 +1226,11 @@ InstallAgent()
     # hybrid installation mode
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
+
+    # Install the Wazuh cloud logger
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/shared
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/shared/__init__.py ${INSTALLDIR}/wodles/shared/__init__.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/shared/wazuh_cloud_logger.py ${INSTALLDIR}/wodles/shared/wazuh_cloud_logger.py
 
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws/buckets_s3
