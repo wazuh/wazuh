@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
+- Introduced native Maltiverse integration. Thanks to David Gil (@dgilm). ([#18026](https://github.com/wazuh/wazuh/pull/18026))
 - Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
 - Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
 - Added unit tests for the manage_agents tool. ([#15999](https://github.com/wazuh/wazuh/pull/15999))
@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added support for Custom Logs in Buckets via AWS SQS. ([#17951](https://github.com/wazuh/wazuh/pull/17951))
-- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([16198](https://github.com/wazuh/wazuh/pull/16198))
+- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([#16198](https://github.com/wazuh/wazuh/pull/16198))
 - Added package inventory support for Alpine Linux in Syscollector. ([#15699](https://github.com/wazuh/wazuh/pull/15699))
 - Added package inventory support for MacPorts in Syscollector. ([#15877](https://github.com/wazuh/wazuh/pull/15877))
 - Added package inventory support for PYPI and node in Syscollector. ([#17982](https://github.com/wazuh/wazuh/pull/17982))
@@ -50,6 +50,9 @@ All notable changes to this project will be documented in this file.
 - Fixed detection of osquery 5.4.0+ running outside the integration. ([#17006](https://github.com/wazuh/wazuh/pull/17006))
 
 ### RESTful API
+
+### Added
+- Added new `status_code` field to `GET /agents` response. ([#19726](https://github.com/wazuh/wazuh/pull/19726))
 
 #### Fixed
 
