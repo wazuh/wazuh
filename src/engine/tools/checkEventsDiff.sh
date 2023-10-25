@@ -11,15 +11,15 @@
 #   $3: Path to the output file or URL
 
 #   Check Events Diff
-if [[ "$#" -ne 3 ]]; then
-    echo "Usage: $0 <integration> <fileInput> <fileOutput>"
+if [[ "$#" -lt 3 ]]; then
+    echo "Usage: $0 <integration> <fileInput> <fileOutput> [diff]"
     exit 1
 fi
 
 integration=$1
 fileInput=$2
 fileOutput=$3
-
+diffCmd=$4
 
 # Download a file if it is a URL
 download_if_url() {
@@ -105,9 +105,20 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-# Compare the two files
-engine-diff "formatted_output.json" "$fileOutput"
+# Sort the keys in both files
+echo "Sorting keys..."
+jq -S . "formatted_output.json" > "formatted_output_sorted.json"
+jq -S . "$fileOutput" > "file_output_sorted.json"
 
-# Elimina el archivo temporal
+# Compare the two files
+echo "Comparing files..."
+if [[ -n $diffCmd ]]; then
+    diff --color -u "formatted_output_sorted.json" "file_output_sorted.json"
+else
+    engine-diff "formatted_output_sorted.json" "file_output_sorted.json"
+fi
+# Remove the temporary files
+rm "formatted_output_sorted.json"
+rm "file_output_sorted.json"
 rm "$tempFile"
 rm "formatted_output.json"
