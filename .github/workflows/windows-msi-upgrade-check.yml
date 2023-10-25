@@ -53,7 +53,7 @@ jobs:
           mkdir C:\win-agent-released
           python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released
       - name: Download base folder
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: win-agent-base.zip
           path: C:\win-agent-base
