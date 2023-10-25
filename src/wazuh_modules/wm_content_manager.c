@@ -13,6 +13,7 @@
 #include "content_manager.h"
 #include "external/cJSON/cJSON.h"
 #include "sym_load.h"
+#include "logging_helper.h"
 
 static void wm_content_manager_destroy();
 cJSON* wm_content_manager_dump();
@@ -44,7 +45,7 @@ void* wm_content_manager_main()
 
         if (content_manager_start_ptr)
         {
-            content_manager_start_ptr(NULL);
+            content_manager_start_ptr(taggedLogFunction);
         }
         else
         {

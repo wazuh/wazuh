@@ -15,9 +15,26 @@
 #include "content_manager.h"
 #include <utility>
 
-void ContentModule::start(const std::function<void(const modules_log_level_t, const std::string&)>& /*logFunction*/)
+static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
+
+static void logFunction(const modules_log_level_t logLevel, const std::string& message)
 {
+    if (!message.empty() && GS_LOG_FUNCTION)
+    {
+        GS_LOG_FUNCTION(logLevel, message);
+    }
+}
+
+
+void ContentModule::start(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
+{
+    if (!GS_LOG_FUNCTION)
+    {
+        GS_LOG_FUNCTION = logFunction;
+    }
+
     ContentModuleFacade::instance().start();
+    GS_LOG_FUNCTION(modules_log_level_t::LOG_INFO, "Content manager started");
 }
 
 void ContentModule::stop()
@@ -57,7 +74,13 @@ extern "C"
 
     void content_manager_start(log_callback_t callbackLog)
     {
-        std::ignore = callbackLog;
+        if (!GS_LOG_FUNCTION)
+        {
+            GS_LOG_FUNCTION = [callbackLog](const modules_log_level_t logLevel, const std::string& message)
+            {
+                callbackLog(logLevel, message.c_str(), "content-manager");
+            };
+        }
         ContentModuleFacade::instance().start();
     }
 

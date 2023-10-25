@@ -49,7 +49,8 @@ int main()
     auto& instance = ContentModule::instance();
 
     // Server
-    instance.start(nullptr);
+    instance.start([](const modules_log_level_t logLevel, const std::string& message)
+                   { std::cout << message << std::endl; });
 
     // CLiente -> vulnenability  detector
     ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};
