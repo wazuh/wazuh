@@ -18,7 +18,7 @@ The context fields related to this stage are:
 - `configData`
   + `outputFolder`: Used to set the output folder.
   + `databasePath`: Used to set the database files location.
-  + `offset`: Used to override the offset from the database.
+  + `offset`: Used to override (if greater than) the offset from the database.
 - `topicName`: Used to compose the name of the database.
 - `spRocksDB`: Used to initialize the database connector.
 - `outputFolder`: Used to create the output files location.
