@@ -808,7 +808,7 @@ void router_message_forward(char* msg, const char* agent_id) {
     if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_syscollector_mutex);
         if (!router_syscollector_handle) {
-            if (router_syscollector_handle = router_provider_create("syscollector"), !router_syscollector_handle) {
+            if (router_syscollector_handle = router_provider_create("deltas-syscollector"), !router_syscollector_handle) {
                 mdebug2("Failed to create router handle for 'syscollector'.");
                 w_mutex_unlock(&router_syscollector_mutex);
                 return;
@@ -821,7 +821,7 @@ void router_message_forward(char* msg, const char* agent_id) {
     } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_rsync_mutex);
         if (!router_rsync_handle) {
-            if (router_rsync_handle = router_provider_create("rsync"), !router_rsync_handle) {
+            if (router_rsync_handle = router_provider_create("rsync-syscollector"), !router_rsync_handle) {
                 mdebug2("Failed to create router handle for 'rsync'.");
                 w_mutex_unlock(&router_rsync_mutex);
                 return;

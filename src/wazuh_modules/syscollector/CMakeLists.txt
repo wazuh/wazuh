@@ -9,8 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-get_filename_component(FLATBUFFERS_FOLDER ${CMAKE_SOURCE_DIR}/schemas/ ABSOLUTE)
-get_filename_component(DELTA_FLATBUFFERS_FOLDER ${SRC_FOLDER}/shared_modules/utils/flatbuffers/schemas/ ABSOLUTE)
+get_filename_component(FLATBUFFERS_FOLDER ${SRC_FOLDER}/shared_modules/utils/flatbuffers/schemas/ ABSOLUTE)
 get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
@@ -94,13 +93,13 @@ if (NOT ${TARGET} STREQUAL "")
     message("${SRC_FOLDER}/external/flatbuffers/build/flatc")
     add_custom_target(compile_schemas)
     foreach(schema IN LISTS Schemas)
-      set(FILE "${FLATBUFFERS_FOLDER}/${schema}.fbs")
+      set(FILE "${FLATBUFFERS_FOLDER}/syscollectorRsync/${schema}.fbs")
       message("Analizing file ${FILE}")
       add_custom_command(
           TARGET compile_schemas
           COMMAND ${SRC_FOLDER}/external/flatbuffers/build/flatc
           ARGS --cpp
-          ARGS -o "${CMAKE_CURRENT_SOURCE_DIR}/include" "${FILE}"
+          ARGS -o "${FLATBUFFERS_FOLDER}/../include" "${FILE}"
           COMMENT "Building C++ header for ${schema} schema."
           DEPENDS ${FILE}
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -162,12 +161,12 @@ if (NOT ${TARGET} STREQUAL "")
 
     foreach(schema IN LISTS DeltaSchemas)
       if (${schema} STREQUAL "common_agentInfo")
-        set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/common/${schema}.fbs")
+        set(FBS_FILE "${FLATBUFFERS_FOLDER}/common/${schema}.fbs")
       else()
-        set(FBS_FILE "${DELTA_FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
+        set(FBS_FILE "${FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
       endif()
       add_custom_target(${schema}_target
-        COMMAND ${FLATC_PATH}/flatc -c -o ${DELTA_FLATBUFFERS_FOLDER}/../include/ ${FBS_FILE}
+        COMMAND ${FLATC_PATH}/flatc -c -o ${FLATBUFFERS_FOLDER}/../include/ ${FBS_FILE}
         COMMENT "Executing flatc to generate ${schema} header file."
       )
       add_dependencies(${PROJECT_NAME} ${schema}_target)
