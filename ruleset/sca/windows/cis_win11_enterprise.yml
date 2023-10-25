@@ -4309,7 +4309,7 @@ checks:
      impact: "If the option Enabled: Require DoH is chosen, this could limit third-party products from logging DNS traffic (in transit) as the traffic would be encrypted while in transit. The Require DoH option could also lead to domain-joined systems not functioning properly within the environment. The option Enabled: Allow DoH will perform DoH queries if the configured DNS servers support it. If they don´t support it, classic name resolution will be used. This is the safest option. Note: Per Microsoft, don't enable the Enabled: Require DoH option for domain-joined computers as Active Directory Domain Services is heavily reliant on DNS because the Windows Server DNS Server service does not support DoH queries."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow DoH (configuring to Enabled: Require DoH also conforms to the benchmark): Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure DNS over HTTPS (DoH) name resolution Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
      references:
-       - 'https://docs.microsoft.com/en-us/windows-server/networking/dns/doh-client-'
+       - 'https://docs.microsoft.com/en-us/windows-server/networking/dns/doh-client-support'
      compliance:
        - cis: ["18.6.4.1"]
        - cis_csc_v8: ["3.10"]
@@ -4320,30 +4320,36 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> DoHPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> DoHPolicy -> r:^2$|^3$'
 
   # 18.6.4.2 (L1) Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'. (Automated)
    - id: 18733
-     title: "(L1) Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'."
-     description: "This policy setting specifies if the Domain Name System (DNS) client will perform name resolution over Network Basic Input/Output System (NetBIOS). NetBIOS is a legacy name resolution method for internal Microsoft networking that predates the use of DNS for that purpose (pre–Active Directory). Some legacy applications still require the use of NetBIOS for full functionality. The recommended state for this setting is: Enabled: Disable NetBIOS name resolution on public networks. Configuring this setting to Enabled: Disable NetBIOS name resolution also conforms to the benchmark."
+     title: "Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'."
+     description: "This policy setting specifies if the Domain Name System (DNS) client will perform name resolution over Network Basic Input/Output System (NetBIOS). NetBIOS is a legacy name resolution method for internal Microsoft networking that predates the use of DNS for that purpose (pre-Active Directory). Some legacy applications still require the use of NetBIOS for full functionality. The recommended state for this setting is: Enabled: Disable NetBIOS name resolution on public networks. Configuring this setting to Enabled: Disable NetBIOS name resolution also conforms to the benchmark."
      rationale: "NetBIOS does not perform authentication and can allow remote attackers to cause a denial of service by sending spoofed Name Conflicts or Name Release datagrams. This is also known as \"NetBIOS Name Server Protocol Spoofing\". Preventing the use of NetBIOS on public networks reduces the attack surface."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable NetBIOS name resolution on public networks: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure NetBIOS settings."
      compliance:
        - cis: ["18.6.4.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> 0'
 
   # 18.6.4.3 (L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'. (Automated)
    - id: 18734
-     title: "(L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'."
+     title: "Ensure 'Turn off multicast name resolution' is set to 'Enabled'."
      description: "LLMNR is a secondary name resolution protocol. With LLMNR, queries are sent using multicast over a local network link on a single subnet from a client computer to another client computer on the same subnet that also has LLMNR enabled. LLMNR does not require a DNS server or DNS client configuration, and provides name resolution in scenarios in which conventional DNS name resolution is not possible. The recommended state for this setting is: Enabled."
      rationale: "An attacker can listen on a network for these LLMNR (UDP/5355) or NBT-NS (UDP/137) broadcasts and respond to them, tricking the host into thinking that it knows the location of the requested system. Note: To completely mitigate local name resolution poisoning, in addition to this setting, the properties of each installed NIC should also be set to Disable NetBIOS over TCP/IP (on the WINS tab in the NIC properties). Unfortunately, there is no global setting to achieve this that automatically applies to all NICs - it is a per-NIC setting that varies with different NIC hardware installations."
      impact: "In the event DNS is unavailable a system will be unable to request it from other systems on the same subnet."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Turn off multicast name resolution Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      references:
-       - 'https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-'
+       - 'https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-llmnrp/02b1d227-d7a2-4026-9fd6-27ea5651fe85'
      compliance:
        - cis: ["18.6.4.3"]
        - cis_csc_v8: ["4.8"]
@@ -4353,12 +4359,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast -> 0'
 
   # 18.6.5.1 (L2) Ensure 'Enable Font Providers' is set to 'Disabled'. (Automated)
    - id: 18735
-     title: "(L2) Ensure 'Enable Font Providers' is set to 'Disabled'."
+     title: "Ensure 'Enable Font Providers' is set to 'Disabled'."
      description: "This policy setting determines whether Windows is allowed to download fonts and font catalog data from an online font provider. The recommended state for this setting is: Disabled."
      rationale: "In an enterprise managed environment the IT department should be managing the changes to the system configuration, to ensure all changes are tested and approved."
      impact: "Windows will not connect to an online font provider and will only enumerate locally-installed fonts."
@@ -4369,28 +4378,34 @@ checks:
        - cis_csc_v7: ["18.4"]
        - pci_dss_v3.2.1: ["6.2"]
        - pci_dss_v4.0: ["12.3.4", "6.3.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders -> 0'
 
   # 18.6.8.1 (L1) Ensure 'Enable insecure guest logons' is set to 'Disabled'. (Automated)
    - id: 18736
-     title: "(L1) Ensure 'Enable insecure guest logons' is set to 'Disabled'."
+     title: "Ensure 'Enable insecure guest logons' is set to 'Disabled'."
      description: "This policy setting determines if the SMB client will allow insecure guest logons to an SMB server. The recommended state for this setting is: Disabled."
      rationale: "Insecure guest logons are used by file servers to allow unauthenticated access to shared folders."
      impact: "The SMB client will reject insecure guest logons. This was not originally the default behavior in older versions of Windows, but Microsoft changed the default behavior starting with Windows 10 R1709: Guest access in SMB2 disabled by default in Windows 10 and Windows Server 2016."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Lanman Workstation\\Enable insecure guest logons Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LanmanWorkstation.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
      references:
-       - 'https://docs.microsoft.com/en-us/troubleshoot/windows-server/networking/guest-'
+       - 'https://docs.microsoft.com/en-us/troubleshoot/windows-server/networking/guest-access-in-smb2-is-disabled-by-default'
      compliance:
        - cis: ["18.6.8.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth -> 0'
 
   # 18.6.9.1 (L2) Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'. (Automated)
    - id: 18737
-     title: "(L2) Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'."
+     title: "Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'."
      description: "This policy setting changes the operational behavior of the Mapper I/O network protocol driver. LLTDIO allows a computer to discover the topology of a network it's connected to. It also allows a computer to initiate Quality-of-Service requests such as bandwidth estimation and network health analysis. The recommended state for this setting is: Disabled."
      rationale: "To help protect from potentially discovering and connecting to unauthorized devices, this setting should be disabled to prevent responding to network traffic for network topology discovery."
      impact: "None - this is the default behavior."
@@ -4399,12 +4414,15 @@ checks:
        - cis: ["18.6.9.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD'
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> 0'
 
   # 18.6.9.2 (L2) Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'. (Automated)
    - id: 18738
-     title: "(L2) Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'."
+     title: "Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'."
      description: "This policy setting changes the operational behavior of the Responder network protocol driver. The Responder allows a computer to participate in Link Layer Topology Discovery requests so that it can be discovered and located on the network. It also allows a computer to participate in Quality-of-Service activities such as bandwidth estimation and network health analysis. The recommended state for this setting is: Disabled."
      rationale: "To help protect from potentially discovering and connecting to unauthorized devices, this setting should be disabled to prevent responding to network traffic for network topology discovery."
      impact: "None - this is the default behavior."
@@ -4413,18 +4431,21 @@ checks:
        - cis: ["18.6.9.2"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD'
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> 0'
 
   # 18.6.10.2 (L2) Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'. (Automated)
    - id: 18739
-     title: "(L2) Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'."
+     title: "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'."
      description: "The Peer Name Resolution Protocol (PNRP) allows for distributed resolution of a name to an IPv6 address and port number. The protocol operates in the context of clouds. A cloud is a set of peer computers that can communicate with each other by using the same IPv6 scope. Peer-to-Peer protocols allow for applications in the areas of RTC, collaboration, content distribution and distributed processing. The recommended state for this setting is: Enabled."
      rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to peer-to-peer networking."
      impact: "Microsoft Peer-to-Peer Networking Services are turned off in their entirety, and all applications dependent on them will stop working."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services Note: This Group Policy path is provided by the Group Policy template P2P- pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services Note: This Group Policy path is provided by the Group Policy template P2P-pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
      references:
-       - 'https://docs.microsoft.com/en-us/dotnet/framework/network-programming/peer-'
+       - 'https://docs.microsoft.com/en-us/dotnet/framework/network-programming/peer-name-resolution-protocol'
      compliance:
        - cis: ["18.6.10.2"]
        - cis_csc_v8: ["4.8"]
@@ -4434,12 +4455,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> 1'
 
   # 18.6.11.2 (L1) Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'. (Automated)
    - id: 18740
-     title: "(L1) Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'."
+     title: "Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'."
      description: "You can use this procedure to control a user's ability to install and configure a Network Bridge. The recommended state for this setting is: Enabled."
      rationale: "The Network Bridge setting, if enabled, allows users to create a Layer 2 Media Access Control (MAC) bridge, enabling them to connect two or more physical network segments together. A Network Bridge thus allows a computer that has connections to two different networks to share data between those networks. In an enterprise managed environment, where there is a need to control network traffic to only authorized paths, allowing users to create a Network Bridge increases the risk and attack surface from the bridged network."
      impact: "Users cannot create or configure a Network Bridge."
@@ -4454,12 +4478,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.1", "1.2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.4.2", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC5.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA -> 0'
 
   # 18.6.11.3 (L1) Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'. (Automated)
    - id: 18741
-     title: "(L1) Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'."
+     title: "Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'."
      description: "Although this \"legacy\" setting traditionally applied to the use of Internet Connection Sharing (ICS) in Windows 2000, Windows XP & Server 2003, this setting now freshly applies to the Mobile Hotspot feature in Windows 10 & Server 2016. The recommended state for this setting is: Enabled."
      rationale: "Non-administrators should not be able to turn on the Mobile Hotspot feature and open their Internet connectivity up to nearby mobile devices."
      impact: "Mobile Hotspot cannot be enabled or configured by Administrators and non-Administrators alike."
@@ -4473,28 +4500,50 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI -> 0'
+ 
 
   # 18.6.11.4 (L1) Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'. (Automated)
    - id: 18742
-     title: "(L1) Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'."
+     title: "Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'."
      description: "This policy setting determines whether to require domain users to elevate when setting a network's location. The recommended state for this setting is: Enabled."
      rationale: "Allowing regular users to set a network location increases the risk and attack surface."
      impact: "Domain users must elevate when setting a network's location."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Require domain users to elevate when setting a network's location Note: This Group Policy path may not exist by default. It is provided by the Group Policy template NetworkConnections.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
-     references:
-       - 'https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-'
      compliance:
        - cis: ["18.6.11.4"]
        - cis_csc_v7: ["4.3"]
        - iso_27001-2013: ["A.9.2.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation -> 1'
+#  18.6.14.1 (L1) Ensure 'Hardened UNC Paths' is set to 'Enabled, with "Require Mutual Authentication" and "Require Integrity" set for all NETLOGON and SYSVOL shares' (Automated)
+   - id: 26212
+     title: 'Ensure ''Hardened UNC Paths'' is set to ''Enabled, with "Require Mutual Authentication" and "Require Integrity" set for all NETLOGON and SYSVOL shares''.'
+     description: 'This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with Require Mutual Authentication and Require Integrity set for all NETLOGON and SYSVOL shares. Note: If the environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the "Privacy" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing.'
+     rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\\\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\\\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with the following paths configured, at a minimum: \\\\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\\\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Provider\\Hardened UNC Paths. Note: This Group Policy path does not exist by default. An additional Group Policy template (NetworkProvider.admx/adml) is required."
+     references:
+       - 'https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-dfsc/149a3039-98ce-491a-9268-2f5ddef08192'
+     compliance:
+       - cis: ["18.5.14.1"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
 
   # 18.6.19.2.1 (L2) Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)'). (Automated)
    - id: 18743
-     title: "(L2) Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')."
+     title: "Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')."
      description: "Internet Protocol version 6 (IPv6) is a set of protocols that computers use to exchange information over the Internet and over home and business networks. IPv6 allows for many more IP addresses to be assigned than IPv4 did. Older networking, hosts and operating systems may not support IPv6 natively. The recommended state for this setting is: DisabledComponents - 0xff (255)."
      rationale: "Since the vast majority of private enterprise managed networks have no need to utilize IPv6 (because they have access to private IPv4 addressing), disabling IPv6 components removes a possible attack surface that is also harder to monitor the traffic on. As a result, we recommend configuring IPv6 to a Disabled state when it is not needed."
      impact: "Connectivity to other systems using IPv6 will no longer operate, and software that depends on IPv6 will cease to function. Examples of Microsoft applications that may use IPv6 include: Remote Assistance, HomeGroup, DirectAccess, Windows Mail. This registry change is documented in Microsoft Knowledge Base article 929852: How to disable IPv6 or its components in Windows. Note: This registry change does not take effect until the next reboot."
@@ -4508,12 +4557,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents -> 255'
 
   # 18.6.20.1 (L2) Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'. (Automated)
    - id: 18744
-     title: "(L2) Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'."
+     title: "Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'."
      description: "This policy setting allows the configuration of wireless settings using Windows Connect Now (WCN). The WCN Registrar enables the discovery and configuration of devices over Ethernet (UPnP) over in-band 802.11 Wi-Fi through the Windows Portable Device API (WPD) and via USB Flash drives. Additional options are available to allow discovery and configuration over a specific medium. The recommended state for this setting is: Disabled."
      rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to user configuration of wireless settings."
      impact: "WCN operations are disabled over all media."
@@ -4527,12 +4579,23 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar -> 0'
 
   # 18.6.20.2 (L2) Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'. (Automated)
    - id: 18745
-     title: "(L2) Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'."
+     title: "Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'."
      description: "This policy setting prohibits access to Windows Connect Now (WCN) wizards. The recommended state for this setting is: Enabled."
      rationale: "Allowing standard users to access the Windows Connect Now wizard increases the risk and attack surface."
      impact: "The WCN wizards are turned off and users have no access to any of the wizard tasks. All the configuration related tasks including \"Set up a wireless router or access point\" and \"Add a wireless device\" are disabled."
@@ -4546,28 +4609,70 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi -> 1'
+
+#  18.6.21.1 (L1) Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 3 = Prevent Wi-Fi when on Ethernet' (Automated)
+   - id: 26216
+     title: "Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 3 = Prevent Wi-Fi when on Ethernet'."
+     description: "This policy setting prevents computers from establishing multiple simultaneous connections to either the Internet or to a Windows domain. The recommended state for this setting is: Enabled: 3 = Prevent Wi-Fi when on Ethernet."
+     rationale: "Preventing bridged network connections can help prevent a user unknowingly allowing traffic to route between internal and external networks, which risks exposure to sensitive internal data."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3 = Prevent Wi-Fi when on Ethernet: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Minimize the number of simultaneous connections to the Internet or a Windows Domain. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WCM.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates. It was updated with a new Minimize Policy Options sub-setting starting with the Windows 10 Release 1903 Administrative Templates."
+     compliance:
+       - cis: ["18.5.21.1"]
+       - pci_dss: ["4.1"]
+       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+       - nist_800_53: ["SC.8"]
+       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> 3'
 
   # 18.6.21.2 (L1) Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled'. (Automated)
    - id: 18746
-     title: "(L1) Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled'."
+     title: "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled'."
      description: "This policy setting prevents computers from connecting to both a domain based network and a non-domain based network at the same time. The recommended state for this setting is: Enabled."
      rationale: "The potential concern is that a user would unknowingly allow network traffic to flow between the insecure public network and the enterprise managed network."
      impact: "The computer responds to automatic and manual network connection attempts based on the following circumstances: Automatic connection attempts - When the computer is already connected to a domain based network, all automatic connection attempts to non-domain networks are blocked. - When the computer is already connected to a non-domain based network, automatic connection attempts to domain based networks are blocked. Manual connection attempts - When the computer is already connected to either a non-domain based network or a domain based network over media other than Ethernet, and a user attempts to create a manual connection to an additional network in violation of this policy setting, the existing network connection is disconnected and the manual connection is allowed. - When the computer is already connected to either a non-domain based network or a domain based network over Ethernet, and a user attempts to create a manual connection to an additional network in violation of this policy setting, the existing Ethernet connection is maintained and the manual connection attempt is blocked."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Prohibit connection to non-domain networks when connected to domain authenticated network Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WCM.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/configuration/manage-wifi-sense-in-'
      compliance:
        - cis: ["18.6.21.2"]
        - cis_csc_v7: ["12.4"]
        - iso_27001-2013: ["A.13.1.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> 1'
+
+#  18.6.23.2.1 (L1) Ensure 'Allow Windows to automatically connect to suggested open hotspots, to networks shared by contacts, and to hotspots offering paid services' is set to 'Disabled' (Automated)
+   - id: 26218
+     title: "Ensure 'Allow Windows to automatically connect to suggested open hotspots, to networks shared by contacts, and to hotspots offering paid services' is set to 'Disabled'."
+     description: 'This policy setting determines whether users can enable the following WLAN settings: Connect to suggested open hotspots, Connect to networks shared by my contacts, and Enable paid services. - Connect to suggested open hotspots enables Windows to automatically connect users to open hotspots it knows about by crowdsourcing networks that other people using Windows have connected to. - Connect to networks shared by my contacts enables Windows to automatically connect to networks that the user''s contacts have shared with them, and enables users on this device to share networks with their contacts. - Enable paid services enables Windows to temporarily connect to open hotspots to determine if paid services are available. The recommended state for this setting is: Disabled. Note: These features are also known by the name "Wi-Fi Sense".'
+     rationale: "Automatically connecting to an open hotspot or network can introduce the system to a rogue network with malicious intent."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\WLAN Service\\WLAN Settings\\Allow Windows to automatically connect to suggested open hotspots, to networks shared by contacts, and to hotspots offering paid services. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template wlansvc.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
+     references:
+       - 'https://docs.microsoft.com/en-us/windows/configuration/manage-wifi-sense-in-enterprise'
+     compliance:
+       - cis: ["18.5.23.2.1"]
+       - pci_dss: ["4.1"]
+       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+       - nist_800_53: ["SC.8"]
+       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config -> AutoConnectAllowedOEM'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config -> AutoConnectAllowedOEM -> 0'
 
   # 18.7.1 (L1) Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'. (Automated)
    - id: 18747
-     title: "(L1) Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'."
+     title: "Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'."
      description: "This policy setting controls whether the Print Spooler service will accept client connections. The recommended state for this setting is: Disabled. Note: The Print Spooler service must be restarted for changes to this policy to take effect."
      rationale: "Disabling the ability for the Print Spooler service to accept client connections mitigates remote attacks against the PrintNightmare vulnerability (CVE-2021-34527) and other remote Print Spooler attacks. However, this recommendation does not mitigate against local attacks on the Print Spooler service."
      impact: "Provided that the Print Spooler service is not disabled, users will continue to be able to print from their workstation. However, the workstation's Print Spooler service will not accept client connections or allow users to share printers. Note that all printers that were already shared will continue to be shared."
@@ -4583,40 +4688,49 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RegisterSpoolerRemoteRpcEndPoint'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RegisterSpoolerRemoteRpcEndPoint -> 2'
 
   # 18.7.2 (L1) Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'. (Automated)
    - id: 18748
-     title: "(L1) Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'."
+     title: "Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'."
      description: "This policy setting determines whether Redirection Guard is enabled for the print spooler. Redirection Guard can prevent file redirections from being used within the print spooler. The recommended state for this setting is: Enabled: Redirection Guard Enabled."
      rationale: "This setting prevents non-administrators from redirecting files within the print spooler process."
      impact: "None - this is default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Redirection Guard Enabled: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure Redirection Guard Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
      references:
-       - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-'
+       - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-version-22h2-security-baseline/ba-p/3632520'
      compliance:
        - cis: ["18.7.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RedirectionguardPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RedirectionguardPolicy -> 1'
 
   # 18.7.3 (L1) Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
    - id: 18749
-     title: "(L1) Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP'."
+     title: "Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP'."
      description: "This policy setting controls which protocol and protocol settings to use for outgoing Remote Procedure Call (RPC) connections to a remote print spooler. The recommended state for this setting is: Enabled: RPC over TCP."
      rationale: "This setting prevents the use of named pipes for RPC connections to the print spooler and forces the use of TCP which is a more secure communication method."
      impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: RPC over TCP: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC connection settings: Protocol to use for outgoing RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
      references:
-       - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-'
+       - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print#allow-rpc-over-tcp-communication'
      compliance:
        - cis: ["18.7.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcUseNamedPipeProtocol'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcUseNamedPipeProtocol -> 1'
 
   # 18.7.4 (L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'. (Automated)
    - id: 18750
-     title: "(L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'."
+     title: "Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'."
      description: "This policy setting controls which protocol and protocol settings to use for outgoing Remote Procedure Call (RPC) connections to a remote print spooler. The recommended state for this setting is: Enabled: Default."
      rationale: "This setting can prevent the use of named pipes for RPC connections to the print spooler and forces the use of TCP which is a more secure communication method."
      impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
@@ -4625,37 +4739,60 @@ checks:
        - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-'
      compliance:
        - cis: ["18.7.4"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication'
 
   # 18.7.5 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
    - id: 18751
-     title: "(L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'."
+     title: "Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'."
      description: "This policy setting controls which protocols incoming Remote Procedure Call (RPC) connections to the print spooler are allowed to use. The recommended state for this setting is: Enabled: RCP over TCP."
      rationale: "This setting can prevent the use of named pipes for RPC connections to the print spooler and forces the use of TCP which is a more secure communication method."
      impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: RCP over TCP: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC listener settings: Configure protocol options for incoming RPC connections Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
      compliance:
        - cis: ["18.7.5"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcProtocols'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcProtocols -> 7'
+
+#  18.7.6 (L1) Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher (Automated)
+   - id: 18751
+     title: "Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher."
+     description: "This policy setting controls which protocols incoming Remote Procedure Call (RPC) connections to the print spooler are allowed to use. The recommended state for this setting is: Enabled: Negotiate or higher.."
+     rationale: "This setting can prevent the use of named pipes for RPC connections to the print spooler and forces the use of TCP which is a more secure communication method."
+     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Negotiate or higher: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC listener settings: Configure protocol options for incoming RPC connections Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
+     compliance:
+       - cis: ["18.7.5"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> ForceKerberosForRpc'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> ForceKerberosForRpc -> 1'
 
   # 18.7.7 (L1) Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'. (Automated)
    - id: 18752
-     title: "(L1) Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'."
+     title: "Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'."
      description: "This policy setting controls which port is used for RPC over TCP for incoming connections to the print spooler and outgoing connections to remote print spoolers. The recommended state for this setting is: Enabled: 0."
      rationale: "Using dynamic ports for printing makes it more difficult for an attacker to know which port is being used and therefore which port to attack."
      impact: "If your current print environment is configured for a specific TCP port, this setting may require a firewall change (if applicable) for continued printing."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 0: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC over TCP port Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
      compliance:
        - cis: ["18.7.7"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcTcpPort'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcTcpPort -> n:^(\d+) compare <= 65535'
 
   # 18.7.8 (L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'. (Automated)
    - id: 18753
-     title: "(L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'."
-     description: "This policy setting controls whether users who aren't Administrators can install print drivers on the system. The recommended state for this setting is: Enabled. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481)."
+     title: "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'."
+     description: "This policy setting controls whether users who aren't Administrators can install print drivers on the system. The recommended state for this setting is: Enabled. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652 - Manage new Point and Print default driver installation behavior (CVE-2021-34481)."
      rationale: "Restricting the installation of print drives to Administrators can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Limits print driver installation to Administrators Note: This Group Policy path does not exist by default. An additional Group Policy template SecGuide.admx/adml is required - it is available from Microsoft at this link."
@@ -4664,28 +4801,33 @@ checks:
        - 'https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.8"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 0'
 
   # 18.7.9 (L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'. (Automated)
    - id: 18754
-     title: "(L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'."
+     title: "Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'."
      description: "This policy setting manages how queue-specific files are processed during printer installation. At printer installation time, a vendor-supplied installation application can specify a set of files, of any type, to be associated with a particular print queue. The files are downloaded to each client that connects to the print server. The recommended state for this setting is: Enabled: Limit Queue-specific files to Color profiles."
      rationale: "A Windows Print Spooler Remote Code Execution Vulnerability (CVE-2021-36958) exists when the Windows Print Spooler service improperly performs privileged file operations. An attacker who successfully exploites this vulnerability could run arbitrary code with SYSTEM privileges and then install programs; view, change, or delete data; or create new accounts with full user rights."
      impact: "None - this is default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Limit Queue-specific files to Color profiles: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Manage processing of Queue-specific files Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
      references:
-       - 'https://learn.microsoft.com/en-us/windows-hardware/drivers/print/installing-'
+       - 'https://learn.microsoft.com/en-us/windows-hardware/drivers/print/installing-queue-specific-files'
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
      compliance:
        - cis: ["18.7.9"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy'
 
   # 18.7.10 (L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
    - id: 18755
-     title: "(L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'."
-     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
+     title: "Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'."
+     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652 - Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
      rationale: "Enabling Windows User Account Control (UAC) for the installation of new print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When installing drivers for a new connection Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
@@ -4694,17 +4836,20 @@ checks:
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34481'
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527'
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
-       - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-'
-       - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
+       - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-change/'
+       - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872'
      compliance:
        - cis: ["18.7.10"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall -> 0'
 
   # 18.7.11 (L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
    - id: 18756
-     title: "(L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'."
-     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
+     title: "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'."
+     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652 - Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
      rationale: "Enabling Windows User Account Control (UAC) for updating existing print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When updating drivers for an existing connection Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
@@ -4713,16 +4858,19 @@ checks:
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34481'
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527'
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
-       - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-'
-       - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
+       - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-change/'
+       - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872'
      compliance:
        - cis: ["18.7.11"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> UpdatePromptSettings'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> UpdatePromptSettings -> 0'
 
   # 18.8.1.1 (L2) Ensure 'Turn off notifications network usage' is set to 'Enabled'. (Automated)
    - id: 18757
-     title: "(L2) Ensure 'Turn off notifications network usage' is set to 'Enabled'."
+     title: "Ensure 'Turn off notifications network usage' is set to 'Enabled'."
      description: "This policy setting blocks applications from using the network to send notifications to update tiles, tile badges, toast, or raw notifications. This policy setting turns off the connection between Windows and the Windows Push Notification Service (WNS). This policy setting also stops applications from being able to poll application services to update tiles. The recommended state for this setting is: Enabled."
      rationale: "Windows Push Notification Services (WNS) is a mechanism to receive third-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
      impact: "Applications and system features will not be able receive notifications from the network from WNS or via notification polling APIs."
@@ -4731,36 +4879,42 @@ checks:
        - cis: ["18.8.1.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
 
   # 18.9.3.1 (L1) Ensure 'Include command line in process creation events' is set to 'Enabled'. (Automated)
    - id: 18758
-     title: "(L1) Ensure 'Include command line in process creation events' is set to 'Enabled'."
+     title: "Ensure 'Include command line in process creation events' is set to 'Enabled'."
      description: "This policy setting controls whether the process creation command line text is logged in security audit events when a new process has been created. The recommended state for this setting is: Enabled. Note: This feature that this setting controls was not originally supported in workstation OSes older than Windows 8.1. However, in February 2015 Microsoft added support for the feature to Windows 7 and Windows 8.0 via an update - KB3004375. Therefore, this setting is also important to set on those older OSes."
      rationale: "Capturing process command line information in event logs can be very valuable when performing forensic investigations of attack incidents."
      impact: "Process command line information will be included in the event logs, which can contain sensitive or private information such as passwords or user data. Warning: There are potential risks of capturing credentials and sensitive information which could be exposed to users who have read-access to event logs. Microsoft provides a feature called \"Protected Event Logging\" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AuditSettings.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
      references:
-       - 'https://docs.microsoft.com/en-'
+       - 'https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows?view=powershell-7.2#protected-event-logging'
      compliance:
        - cis: ["18.9.3.1"]
        - cis_csc_v8: ["8.8"]
        - cis_csc_v7: ["16.4"]
        - iso_27001-2013: ["A.10.1.1"]
        - soc_2: ["CC5.2", "CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 1'
 
   # 18.9.4.1 (L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'. (Automated)
    - id: 18759
-     title: "(L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'."
+     title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'."
      description: "Some versions of the CredSSP protocol that is used by some applications (such as Remote Desktop Connection) are vulnerable to an encryption oracle attack against the client. This policy controls compatibility with vulnerable clients and servers and allows you to set the level of protection desired for the encryption oracle vulnerability. The recommended state for this setting is: Enabled: Force Updated Clients."
      rationale: "This setting is important to mitigate the CredSSP encryption oracle vulnerability, for which information was published by Microsoft on 03/13/2018 in CVE-2018-0886 | CredSSP Remote Code Execution Vulnerability. All versions of Windows from Windows Vista onwards are affected by this vulnerability, and will be compatible with this recommendation provided that they have been patched at least through May 2018 (or later)."
      impact: "Client applications which use CredSSP will not be able to fall back to the insecure versions and services using CredSSP will not accept unpatched clients. This setting should not be deployed until all remote hosts support the newest version, which is achieved by ensuring that all Microsoft security updates at least through May 2018 are installed."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Updated Clients: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Encryption Oracle Remediation Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredSsp.admx/adml that is included with the Microsoft Windows 10 Release 1803 Administrative Templates (or newer)."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/win32/secauthn/credential-security-'
+       - 'https://docs.microsoft.com/en-us/windows/win32/secauthn/credential-security-support-provider'
      compliance:
        - cis: ["18.9.4.1"]
        - cis_csc_v8: ["10.5"]
@@ -4768,8 +4922,11 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 0'
 
   # 18.9.4.2 (L1) Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'. (Automated)
    - id: 18760
