@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - "extensions/elasticsearch/7.x/**"
+      - ".github/workflows/wazuh-template-elasticsearch.yml"
 
 jobs:
   wazuh-template-elasticsearch:
