@@ -13,7 +13,7 @@ jobs:
       matrix:
         target: ['agent', 'server']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -38,7 +38,7 @@ jobs:
   scan-build-ubuntu-mingw-windows:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -65,7 +65,7 @@ jobs:
   scan-build-macos-agent:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           brew install llvm@14
