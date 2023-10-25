@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - ".github/workflows/macos-build-tests.yml"
 
 jobs:
   build-bigsur:
