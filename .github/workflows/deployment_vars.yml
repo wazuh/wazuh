@@ -10,7 +10,7 @@ jobs:
         name: Test Deployment variables on Ubuntu
         runs-on: ubuntu-latest
         steps:
-          - uses: actions/checkout@v2
+          - uses: actions/checkout@v4
 
           - name: Wait for build to succeed
             uses: fountainhead/action-wait-for-check@v1.0.0
@@ -34,7 +34,7 @@ jobs:
         name: Test Deployment variables on macOS
         runs-on: macOS-latest
         steps:
-          - uses: actions/checkout@v2
+          - uses: actions/checkout@v4
 
           - name: Wait for build to succeed
             uses: fountainhead/action-wait-for-check@v1.0.0
@@ -45,7 +45,7 @@ jobs:
               ref: ${{ github.event.pull_request.head.sha || github.sha }}
               timeoutSeconds: 3600
               intervalSeconds: 60
-          
+
           - name: Fail after timeout
             if: steps.wait-for-build.outputs.conclusion == 'timed_out'
             run: exit 1
@@ -58,7 +58,7 @@ jobs:
         name: Test Deployment variables on Windows
         runs-on: windows-latest
         steps:
-          - uses: actions/checkout@v2
+          - uses: actions/checkout@v4
 
           - name: Wait for build to succeed
             uses: fountainhead/action-wait-for-check@v1.0.0
