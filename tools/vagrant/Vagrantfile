@@ -64,12 +64,19 @@ Vagrant.configure("2") do |config|
         # Install engine tools python script
         pip3 install --system $ENGINE_SRC_DIR/tools/engine-suite
 
-        # Install api and cli communication lbs for python script
+        # Install api and cli communication libs for python script
         pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/api-communication
         pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/cli-communication
 
-        # Internal tools
+        # Install Internal tools
         pip3 install --system $ENGINE_SRC_DIR/tools/evtx2xml
+        # Check event
+        SCRIPT_CHECKEVENT_SRC="$ENGINE_SRC_DIR/tools/checkEventsDiff.sh"
+        SCRIPT_CHECKEVENT_TARGET="/usr/local/bin/engine-checkevents"
+        echo -e '#!/bin/bash\nsudo '$SCRIPT_CHECKEVENT_SRC' "$@"' | tee "$SCRIPT_CHECKEVENT_TARGET" > /dev/null
+        chmod +x "$SCRIPT_CHECKEVENT_TARGET"
+
+
 
         # Add autocompletion to profile
         echo "source $ENGINE_SRC_DIR/tools/vagrant/autocompletion.sh" >> /etc/profile
