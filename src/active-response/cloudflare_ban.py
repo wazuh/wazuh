@@ -154,8 +154,8 @@ def main(argv):
     ZONE_ID = agent_info.get("zone_id")
     domain = agent_info.get("domain")
 
-    if ZONE_ID is None or domain is None:
-        sys.exit(OS_INVALID)
+    # if ZONE_ID is None or domain is None:
+    #     sys.exit(OS_INVALID)
 
     TOKEN = 'F0Jq512QyMcy9i8EzcebMM-BLV3-_xn3UPMld9TL'
     MODE = 'block'  # block or challenge
