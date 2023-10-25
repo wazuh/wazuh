@@ -56,7 +56,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: ./.github/actions/setup-python
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
