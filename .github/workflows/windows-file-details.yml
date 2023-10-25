@@ -47,7 +47,7 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact binaries
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: binaries
           path: C:\binaries\

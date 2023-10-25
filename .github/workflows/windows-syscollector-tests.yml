@@ -70,27 +70,27 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact data_provider
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: data_provider
           path: C:\data_provider\
       - name: Download Artifact dbsync
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: dbsync
           path: C:\dbsync\
       - name: Download Artifact rsync
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: rsync
           path: C:\rsync\
       - name: Download Artifact syscollector
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: syscollector
           path: C:\syscollector\
       - name: Download Artifact shared_libraries
-        uses: actions/download-artifact@v3
+        uses: ./.github/actions/download-artifact
         with:
           name: shared_libraries
           path: C:\shared_libraries\
