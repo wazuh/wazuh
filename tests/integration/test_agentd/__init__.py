@@ -73,16 +73,16 @@ def wait_agent_notification(current_value):
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_SENDING_AGENT_NOTIFICATION), accumulations = int(current_value))
     truncate_wazuh_logs()
-    return(wazuh_log_monitor.callback_result != None), f'Sending agent notification message not found'
+    assert (wazuh_log_monitor.callback_result != None), f'Sending agent notification message not found'
 
 def wait_server_rollback():
     """
-        Watch ossec.log until "Unable to connect to any server" message is found current_value times
+        Watch ossec.log until "Unable to connect to any server" message is found'
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT))
     truncate_wazuh_logs()
-    return(wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
+    assert (wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
 
 def delete_keys_file():
     """Remove the agent's client.keys file."""
@@ -96,7 +96,17 @@ def check_module_stop():
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_MODULE_STOPPED))
     truncate_wazuh_logs()
-    return(wazuh_log_monitor.callback_result == None), f'Unable to access queue message found'
+    assert (wazuh_log_monitor.callback_result == None), f'Unable to access queue message found'
+
+def check_connection_try(interval, log_timeout):
+    """
+        Watch ossec.log until "Trying to connect to server" message is found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    matched_line = wazuh_log_monitor.start(timeout = interval + log_timeout, callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT), return_matched_line = True)
+    assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
+    truncate_wazuh_logs()
+    return matched_line
 
 def truncate_wazuh_logs():
     """
