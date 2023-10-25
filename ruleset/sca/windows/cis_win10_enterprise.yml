@@ -6419,7 +6419,7 @@ checks:
 
   # 18.9.35.2 (L1) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'. (Automated)
    - id: 18812
-     title: "(L1) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'."
+     title: "L1 Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'."
      description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- \"None\" allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- \"Authenticated\" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- \"Authenticated without exceptions\" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended. Note: This policy setting will not be applied until the system is rebooted. The recommended state for this setting is: Enabled: Authenticated."
      rationale: "Unauthenticated RPC communication can create a security vulnerability."
      impact: "None - this is the default behavior."
@@ -6430,12 +6430,15 @@ checks:
        - cis: ["18.9.35.2"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients -> 1'
 
   # 18.9.46.5.1 (L2) Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'. (Automated)
    - id: 18813
-     title: "(L2) Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'."
+     title: "L2 Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'."
      description: "This policy setting configures Microsoft Support Diagnostic Tool (MSDT) interactive communication with the support provider. MSDT gathers diagnostic data for analysis by support professionals. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "MSDT cannot run in support mode, and no data can be collected or sent to the support provider."
@@ -6449,12 +6452,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer -> 0'
 
   # 18.9.46.11.1 (L2) Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'. (Automated)
    - id: 18814
-     title: "(L2) Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'."
+     title: "L2 Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'."
      description: "This policy setting specifies whether to enable or disable tracking of responsiveness events. The recommended state for this setting is: Disabled."
      rationale: "When enabled the aggregated data of a given event will be transmitted to Microsoft. The option exists to restrict this feature for a specific user, set the consent level, and designate specific programs for which error reports could be sent. However, centrally restricting the ability to execute PerfTrack to limit the potential for unauthorized or undesired usage, data leakage, or unintentional communications is highly recommended."
      impact: "Responsiveness events are not processed."
@@ -6468,12 +6474,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled -> 0'
 
   # 18.9.48.1 (L2) Ensure 'Turn off the advertising ID' is set to 'Enabled'. (Automated)
    - id: 18815
-     title: "(L2) Ensure 'Turn off the advertising ID' is set to 'Enabled'."
+     title: "L2 Ensure 'Turn off the advertising ID' is set to 'Enabled'."
      description: "This policy setting turns off the advertising ID, preventing apps from using the ID for experiences across apps. The recommended state for this setting is: Enabled."
      rationale: "Tracking user activity for advertising purposes, even anonymously, may be a privacy concern. In an enterprise managed environment, applications should not need or require tracking for targeted advertising."
      impact: "The advertising ID is turned off. Apps can't use the ID for experiences across apps."
@@ -6487,12 +6496,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy -> 1'
 
   # 18.9.50.1.1 (L2) Ensure 'Enable Windows NTP Client' is set to 'Enabled'. (Automated)
    - id: 18816
-     title: "(L2) Ensure 'Enable Windows NTP Client' is set to 'Enabled'."
+     title: "L2 Ensure 'Enable Windows NTP Client' is set to 'Enabled'."
      description: "This policy setting specifies whether the Windows NTP Client is enabled. Enabling the Windows NTP Client allows your computer to synchronize its computer clock with other NTP servers. You might want to disable this service if you decide to use a third-party time provider. The recommended state for this setting is: Enabled."
      rationale: "A reliable and accurate account of time is important for a number of services and security requirements, including but not limited to distributed applications, authentication services, multi-user databases and logging services. The use of an NTP client (with secure operation) establishes functional accuracy and is a focal point when reviewing security relevant events."
      impact: "You can set the local computer clock to synchronize time with NTP servers."
@@ -6507,12 +6519,15 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> 1'
 
   # 18.9.50.1.2 (L2) Ensure 'Enable Windows NTP Server' is set to 'Disabled'. (Automated)
    - id: 18817
-     title: "(L2) Ensure 'Enable Windows NTP Server' is set to 'Disabled'."
+     title: "L2 Ensure 'Enable Windows NTP Server' is set to 'Disabled'."
      description: "This policy setting allows you to specify whether the Windows NTP Server is enabled. The recommended state for this setting is: Disabled."
      rationale: "The configuration of proper time synchronization is critically important in an enterprise managed environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
      impact: "None - this is the default behavior."
@@ -6527,12 +6542,15 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled -> 0'
 
   # 18.10.3.1 (L2) Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'. (Automated)
    - id: 18818
-     title: "(L2) Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'."
+     title: "L2 Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'."
      description: "Manages a Windows app's ability to share data between users who have installed the app. Data is shared through the SharedLocal folder. This folder is available through the Windows.Storage API. The recommended state for this setting is: Disabled."
      rationale: "Users of a system could accidentally share sensitive data with other users on the same system."
      impact: "None - this is the default behavior."
@@ -6541,12 +6559,15 @@ checks:
        - cis: ["18.10.3.1"]
        - cis_csc_v7: ["14.6"]
        - iso_27001-2013: ["A.9.1.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData -> 0'
 
   # 18.10.3.2 (L1) Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'. (Automated)
    - id: 18819
-     title: "(L1) Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'."
+     title: "L1 Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'."
      description: "This setting manages non-Administrator users' ability to install Windows app packages. The recommended state for this setting is: Enabled."
      rationale: "In a corporate managed environment, application installations should be managed centrally by IT staff, not by end users."
      impact: "Non-Administrator users will not be able to install Microsoft Store app packages, unless they are explicitly permitted by other policies. If a Microsoft Store app is required for legitimate use, an Administrator will need to perform the installation from an Administrator context. This setting can prevent standard users (without Administrator access) from launching Office 365 (O365) applications, displaying the error: \"Windows cannot access the specified device, path, or file. You may not have the appropriate permissions to access the item.\"."
@@ -6560,12 +6581,15 @@ checks:
        - nist_sp_800-53: ["CM-7(5)"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx -> BlockNonAdminUserInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx -> BlockNonAdminUserInstall -> 1'
 
   # 18.10.4.1 (L1) Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'. (Automated)
    - id: 18820
-     title: "(L1) Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'."
+     title: "L1 Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'."
      description: "This policy setting specifies whether Windows apps can be activated by voice (apps and Cortana) while the system is locked. The recommended state for this setting is: Enabled: Force Deny."
      rationale: "Access to any computer resource should not be allowed when the device is locked."
      impact: "Users will not be able to activate apps while the computer is locked."
@@ -6574,12 +6598,15 @@ checks:
        - cis: ["18.10.4.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy -> LetAppsActivateWithVoiceAboveLock'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy -> LetAppsActivateWithVoiceAboveLock -> 2'
 
   # 18.10.5.1 (L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'. (Automated)
    - id: 18821
-     title: "(L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
+     title: "L1 Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
      description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting allows an organization to use their enterprise user accounts instead of using their Microsoft accounts when accessing Windows store apps. This provides the organization with greater control over relevant credentials. Microsoft accounts cannot be centrally managed and as such enterprise credential security policies cannot be applied to them, which could put any information accessed by using Microsoft accounts at risk."
      impact: "Windows Store apps that typically require a Microsoft account to sign in will allow users to sign in with an enterprise account instead."
@@ -6590,12 +6617,15 @@ checks:
        - cis_csc_v7: ["16.2"]
        - nist_sp_800-53: ["AC-2(1)"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
 
   # 18.10.5.2 (L2) Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'. (Automated)
    - id: 18822
-     title: "(L2) Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'."
+     title: "L2 Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'."
      description: "This policy setting controls whether Microsoft Store apps with Windows Runtime API access directly from web content can be launched. The recommended state for this setting is: Enabled."
      rationale: "Blocking apps from the web with direct access to the Windows API can prevent malicious apps from being run on a system. Only system administrators should be installing approved applications."
      impact: "Universal Windows apps which declare Windows Runtime API access in the ApplicationContentUriRules section of the manifest cannot be launched (Universal Windows apps which have not declared Windows Runtime API access in the manifest will not be affected)."
@@ -6609,12 +6639,15 @@ checks:
        - nist_sp_800-53: ["CM-7(5)"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT -> 1'
 
   # 18.10.7.1 (L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'. (Automated)
    - id: 18823
-     title: "(L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
+     title: "L1 Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
      description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones. The recommended state for this setting is: Enabled."
      rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
      impact: "AutoPlay will not be allowed for MTP devices like cameras or phones."
@@ -6626,12 +6659,15 @@ checks:
        - cmmc_v2.0: ["MP.L2-3.8.7"]
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
 
   # 18.10.7.2 (L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'. (Automated)
    - id: 18824
-     title: "(L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'."
+     title: "L1 Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'."
      description: "This policy setting sets the default behavior for Autorun commands. Autorun commands are generally stored in autorun.inf files. They often launch the installation program or other routines. The recommended state for this setting is: Enabled: Do not execute any autorun commands."
      rationale: "Prior to Windows Vista, when media containing an autorun command is inserted, the system will automatically execute the program without user intervention. This creates a major security concern as code may be executed without user's knowledge. The default behavior starting with Windows Vista is to prompt the user whether autorun command is to be run. The autorun command is represented as a handler in the Autoplay dialog."
      impact: "AutoRun commands will be completely disabled."
@@ -6643,12 +6679,15 @@ checks:
        - cmmc_v2.0: ["MP.L2-3.8.7"]
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> 1'
 
   # 18.10.7.3 (L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'. (Automated)
    - id: 18825
-     title: "(L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'."
+     title: "L1 Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'."
      description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives. Note: You cannot use this policy setting to enable Autoplay on computer drives in which it is disabled by default, such as floppy disk and network drives. The recommended state for this setting is: Enabled: All drives."
      rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
      impact: "Autoplay will be disabled - users will have to manually launch setup or installation programs that are provided on removable media."
@@ -6660,16 +6699,19 @@ checks:
        - cmmc_v2.0: ["MP.L2-3.8.7"]
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
 
   # 18.10.8.1.1 (L1) Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'. (Automated)
    - id: 18826
-     title: "(L1) Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'."
+     title: "L1 Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'."
      description: "This policy setting determines whether enhanced anti-spoofing is configured for devices which support it. The recommended state for this setting is: Enabled."
      rationale: "Enterprise managed environments are now supporting a wider range of mobile devices, increasing the security on these devices will help protect against unauthorized access on your network."
      impact: "Windows will require all users on the device to use anti-spoofing for facial features, on devices which support it."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti- spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
      references:
        - 'https://docs.microsoft.com/en-us/windows/security/identity-protection/hello-for-'
      compliance:
@@ -6679,8 +6721,11 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing -> 1'
 
   # 18.10.9.1.1 (BL) Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'. (Automated)
    - id: 18827
@@ -7135,7 +7180,7 @@ checks:
 
   # 18.10.10.1 (L2) Ensure 'Allow Use of Camera' is set to 'Disabled'. (Automated)
    - id: 18854
-     title: "(L2) Ensure 'Allow Use of Camera' is set to 'Disabled'."
+     title: "L2 Ensure 'Allow Use of Camera' is set to 'Disabled'."
      description: "This policy setting controls whether the use of Camera devices on the machine are permitted. The recommended state for this setting is: Disabled."
      rationale: "Cameras in a high security environment can pose serious privacy and data exfiltration risks - they should be disabled to help mitigate that risk."
      impact: "Users will not be able to utilize the camera on a system."
@@ -7147,12 +7192,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera -> 0'
 
   # 18.10.12.1 (L1) Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'. (Automated)
    - id: 18855
-     title: "(L1) Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'."
+     title: "L1 Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'."
      description: "This policy setting determines whether cloud consumer account state content is allowed in all Windows experiences. The recommended state for this setting is: Enabled."
      rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage."
      impact: "Users will not be able to use Microsoft consumer accounts on the system, and associated Windows experiences will instead present default fallback content."
@@ -7162,12 +7210,15 @@ checks:
        - cis_csc_v8: ["5.6"]
        - nist_sp_800-53: ["AC-2(1)"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent -> 1'
 
   # 18.10.12.2 (L2) Ensure 'Turn off cloud optimized content' is set to 'Enabled'. (Automated)
    - id: 18856
-     title: "(L2) Ensure 'Turn off cloud optimized content' is set to 'Enabled'."
+     title: "L2 Ensure 'Turn off cloud optimized content' is set to 'Enabled'."
      description: "This policy setting turns off cloud optimized content in all Windows experiences. The recommended state for this setting is: Enabled."
      rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "Windows experiences that use the cloud optimized content client component, will present the default fallback content instead of customized content."
@@ -7181,12 +7232,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableCloudOptimizedContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableCloudOptimizedContent -> 1'
 
   # 18.10.12.3 (L1) Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'. (Automated)
    - id: 18857
-     title: "(L1) Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'."
+     title: "L1 Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'."
      description: "This policy setting turns off experiences that help consumers make the most of their devices and Microsoft account. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet, this policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions."
      rationale: "Having apps silently install in an enterprise managed environment is not good security practice - especially if the apps send data back to a third-party."
      impact: "Users will no longer see personalized recommendations from Microsoft and notifications about their Microsoft account."
@@ -7200,60 +7254,75 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
   # 18.10.13.1 (L1) Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'. (Automated)
    - id: 18858
-     title: "(L1) Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'."
+     title: "L1 Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'."
      description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device. The recommended state for this setting is: Enabled: First Time OR Enabled: Always."
      rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
      impact: "The pairing ceremony for connecting to new wireless display devices will always require a PIN."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: First Time OR Enabled: Always: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WirelessDisplay.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). The new Choose one of the following actions sub-option was later added as of the Windows 10 Release 1809 Administrative Templates. Choosing Enabled in the older templates is the equivalent of choosing Enabled: First Time in the newer templates."
      compliance:
        - cis: ["18.10.13.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing -> r:^1$|^2$'
 
   # 18.10.14.1 (L1) Ensure 'Do not display the password reveal button' is set to 'Enabled'. (Automated)
    - id: 18859
-     title: "(L1) Ensure 'Do not display the password reveal button' is set to 'Enabled'."
+     title: "L1 Ensure 'Do not display the password reveal button' is set to 'Enabled'."
      description: "This policy setting allows you to configure the display of the password reveal button in password entry user experiences. The recommended state for this setting is: Enabled."
      rationale: "This is a useful feature when entering a long and complex password, especially when using a touchscreen. The potential risk is that someone else may see your password while surreptitiously observing your screen."
      impact: "The password reveal button will not be displayed after a user types a password in the password entry text box."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Do not display the password reveal button Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredUI.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.10.14.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal -> 1'
 
   # 18.10.14.2 (L1) Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'. (Automated)
    - id: 18860
-     title: "(L1) Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'."
+     title: "L1 Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'."
      description: "This policy setting controls whether administrator accounts are displayed when a user attempts to elevate a running application. The recommended state for this setting is: Disabled."
      rationale: "Users could see the list of administrator accounts, making it slightly easier for a malicious user who has logged onto a console session to try to crack the passwords of those accounts."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Enumerate administrator accounts on elevation Note: This Group Policy path is provided by the Group Policy template CredUI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
      compliance:
        - cis: ["18.10.14.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators -> 0'
 
   # 18.10.14.3 (L1) Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'. (Automated)
    - id: 18861
-     title: "(L1) Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'."
+     title: "L1 Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'."
      description: "This policy setting controls whether security questions can be used to reset local account passwords. The security question feature does not apply to domain accounts, only local accounts on the workstation. The recommended state for this setting is: Enabled."
-     rationale: "Users could establish security questions that are easily guessed or sleuthed by observing the user’s social media accounts, making it easier for a malicious actor to change the local user account password and gain access to the computer as that user account."
+     rationale: "Users could establish security questions that are easily guessed or sleuthed by observing the user's social media accounts, making it easier for a malicious actor to change the local user account password and gain access to the computer as that user account."
      impact: "Local user accounts will not be able to set up and use security questions to reset their passwords."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Prevent the use of security questions for local accounts Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredUI.admx/adml that is included with the Microsoft Windows 10 Release 1903 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.10.14.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions -> 1'
 
   # 18.10.15.1 (L1) Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'. (Automated)
    - id: 18862
-     title: "(L1) Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'."
+     title: "L1 Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'."
      description: "This policy setting determines the amount of diagnostic and usage data reported to Microsoft: - A value of (0) Diagnostic data off (not recommended). Using this value, no diagnostic data is sent from the device. This value is only supported on Enterprise, Education, and Server editions. If you choose this setting, devices in your organization will still be secure. - A value of (1) Send required diagnostic data. This is the minimum diagnostic data necessary to keep Windows secure, up to date, and performing as expected. Using this value disables the Optional diagnostic data control in the Settings app. - A value of (3)Send optional diagnostic data. Additional diagnostic data is collected that helps us to detect, diagnose and fix issues, as well as make product improvements. Required diagnostic data will always be included when you choose to send optional diagnostic data. Optional diagnostic data can also include diagnostic log files and crash dumps. Use the Limit Dump Collection and the Limit Diagnostic Log Collection policies for more granular control of what optional diagnostic data is sent. Windows telemetry settings apply to the Windows operating system and some first party apps. This setting does not apply to third party apps running on Windows 10/11. The recommended state for this setting is: Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data. Note: If your organization relies on Windows Update, the minimum recommended setting is Required diagnostic data. Because no Windows Update information is collected when diagnostic data is off, important information about update failures is not sent. Microsoft uses this information to fix the causes of those failures and improve the quality of updates. Note #2: The Configure diagnostic data opt-in settings user interface group policy can be used to prevent end users from changing their data collection settings. Note #3: Enhanced diagnostic data setting is not available on Windows 11 and Windows Server 2022 and has been replaced with policies that can control the amount of optional diagnostic data that is sent. For more information on these settings visit Manage diagnostic data using Group Policy and MDM."
      rationale: "Sending any data to a third-party vendor is a security concern and should only be done on an as needed basis."
      impact: "Note that setting values of 0 or 1 will degrade certain experiences on the device."
@@ -7264,24 +7333,30 @@ checks:
        - cis: ["18.10.15.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry -> r:^0$|^1$'
 
   # 18.10.15.3 (L1) Ensure 'Disable OneSettings Downloads' is set to 'Enabled'. (Automated)
    - id: 18863
-     title: "(L1) Ensure 'Disable OneSettings Downloads' is set to 'Enabled'."
+     title: "L1 Ensure 'Disable OneSettings Downloads' is set to 'Enabled'."
      description: "This policy setting controls whether Windows attempts to connect with the OneSettings service to download configuration settings. The recommended state for this setting is: Enabled."
      rationale: "Sending data to a third-party vendor is a security concern and should only be done on an as-needed basis."
      impact: "Windows will not connect to the OneSettings service to download configuration settings."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Disable OneSettings Downloads Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.10.15.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads -> 1'
 
   # 18.10.15.4 (L1) Ensure 'Do not show feedback notifications' is set to 'Enabled'. (Automated)
    - id: 18864
-     title: "(L1) Ensure 'Do not show feedback notifications' is set to 'Enabled'."
+     title: "L1 Ensure 'Do not show feedback notifications' is set to 'Enabled'."
      description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft. The recommended state for this setting is: Enabled."
      rationale: "Users should not be sending any feedback to third-party vendors in an enterprise managed environment."
      impact: "Users will no longer see feedback notifications through the Windows Feedback app."
@@ -7290,12 +7365,15 @@ checks:
        - cis: ["18.10.15.4"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications -> 1'
 
   # 18.10.15.5 (L1) Ensure 'Enable OneSettings Auditing' is set to 'Enabled'. (Automated)
    - id: 18865
-     title: "(L1) Ensure 'Enable OneSettings Auditing' is set to 'Enabled'."
+     title: "L1 Ensure 'Enable OneSettings Auditing' is set to 'Enabled'."
      description: "This policy setting controls whether Windows records attempts to connect with the OneSettings service to the Event Log. The recommended state for this setting is: Enabled."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "Windows will record attempts to connect with the OneSettings service to the Applications and Services Logs\\Microsoft\\Windows\\Privacy-Auditing\\Operational Event Log channel."
@@ -7310,12 +7388,15 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing -> 1'
 
   # 18.10.15.6 (L1) Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'. (Automated)
    - id: 18866
-     title: "(L1) Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'."
+     title: "L1 Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'."
      description: "This policy setting controls whether additional diagnostic logs are collected when more information is needed to troubleshoot a problem on the device. The recommended state for this setting is: Enabled. Note: Diagnostic logs are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited when recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information."
      rationale: "Sending data to a third-party vendor is a security concern and should only be done on an as-needed basis."
      impact: "Diagnostic logs and information such as crash dumps will not be collected for transmission to Microsoft."
@@ -7327,24 +7408,30 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection -> 1'
 
   # 18.10.15.7 (L1) Ensure 'Limit Dump Collection' is set to 'Enabled'. (Automated)
    - id: 18867
-     title: "(L1) Ensure 'Limit Dump Collection' is set to 'Enabled'."
+     title: "L1 Ensure 'Limit Dump Collection' is set to 'Enabled'."
      description: "This policy setting limits the type of memory dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Memory dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited when recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information."
      rationale: "Memory dumps can contain sensitive information. Sending this data to a third-party vendor is a security concern and should only be done on an as-needed basis."
      impact: "Windows Error Reporting is limited to sending kernel mini and user mode triage memory dumps, reducing the risk of sending sensitive information to Microsoft."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Dump Collection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.10.15.7"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection -> 1'
 
   # 18.10.15.8 (L1) Ensure 'Toggle user control over Insider builds' is set to 'Disabled'. (Automated)
    - id: 18868
-     title: "(L1) Ensure 'Toggle user control over Insider builds' is set to 'Disabled'."
+     title: "L1 Ensure 'Toggle user control over Insider builds' is set to 'Disabled'."
      description: "This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under \"Get Insider builds,\" and enable users to make their devices available for downloading and installing Windows preview software. The recommended state for this setting is: Disabled. Note: This policy setting applies only to devices running Windows 10 Pro or Windows 10 Enterprise, up until Release 1703. For Release 1709 or newer, Microsoft encourages using the Manage preview builds setting (Rule 18.9.103.1.1). We have kept this setting in the benchmark to ensure that any older builds of Windows 10 in the environment are still enforced."
      rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
      impact: "The item \"Get Insider builds\" will be unavailable."
@@ -7358,12 +7445,15 @@ checks:
        - nist_sp_800-53: ["CM-10", "CM-7(2)", "CM-8(3)"]
        - pci_dss_v4.0: ["12.3.4"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview -> 0'
 
   # 18.10.16.1 (L1) Ensure 'Download Mode' is NOT set to 'Enabled: Internet'. (Automated)
    - id: 18869
-     title: "(L1) Ensure 'Download Mode' is NOT set to 'Enabled: Internet'."
+     title: "L1 Ensure 'Download Mode' is NOT set to 'Enabled: Internet'."
      description: "This policy setting specifies the download method that Delivery Optimization can use in downloads of Windows Updates, Apps and App updates. The following methods are supported: - 0 = HTTP only, no peering. - 1 = HTTP blended with peering behind the same NAT. - 2 = HTTP blended with peering across a private group. Peering occurs on devices in the same Active Directory Site (if exist) or the same domain by default. When this option is selected, peering will cross NATs. To create a custom group use Group ID in combination with Mode 2. - 3 = HTTP blended with Internet Peering. - 99 = Simple download mode with no peering. Delivery Optimization downloads using HTTP only and does not attempt to contact the Delivery Optimization cloud services. - 100 = Bypass mode. Do not use Delivery Optimization and use BITS instead. The recommended state for this setting is any value EXCEPT: Enabled: Internet (3). Note: The default on all SKUs other than Enterprise, Enterprise LTSB or Education is Enabled: Internet (3), so on other SKUs, be sure to set this to a different value."
      rationale: "Due to privacy concerns and security risks, updates should only be downloaded directly from Microsoft, or from a trusted machine on the internal network that received its updates from a trusted source and approved by the network administrator."
      impact: "Machines will not be able to download updates from peers on the Internet. If set to Enabled: HTTP only (0), Enabled: Simple (99), or Enabled: Bypass (100), machines will not be able to download updates from other machines on the same LAN."
@@ -7376,8 +7466,9 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -> DODownloadMode -> r:^3$'
 
   # 18.10.17.1 (L1) Ensure 'Enable App Installer' is set to 'Disabled'. (Automated)
    - id: 18870
@@ -7465,7 +7556,7 @@ checks:
 
   # 18.10.26.1.1 (L1) Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
    - id: 18874
-     title: "(L1) Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+     title: "L1 Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
      description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
      rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "None - this is the default behavior."
@@ -7477,12 +7568,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention -> 0'
 
   # 18.10.26.1.2 (L1) Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'. (Automated)
    - id: 18875
-     title: "(L1) Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
+     title: "L1 Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
      description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7494,12 +7588,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> n:^(\d+) compare >= 32768'
 
   # 18.10.26.2.1 (L1) Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
    - id: 18876
-     title: "(L1) Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+     title: "L1 Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
      description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
      rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "None - this is the default behavior."
@@ -7511,12 +7608,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention -> 0'
 
   # 18.10.26.2.2 (L1) Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'. (Automated)
    - id: 18877
-     title: "(L1) Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'."
+     title: "L1 Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'."
      description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 196,608 or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7528,12 +7628,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> n:^(\d+) compare >= 196608'
 
   # 18.10.26.3.1 (L1) Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
    - id: 18878
-     title: "(L1) Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+     title: "L1 Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
      description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
      rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "None - this is the default behavior."
@@ -7545,12 +7648,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention -> 0'
 
   # 18.10.26.3.2 (L1) Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'. (Automated)
    - id: 18879
-     title: "(L1) Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
+     title: "L1 Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
      description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7562,12 +7668,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> n:^(\d+) compare >= 32768'
 
   # 18.10.26.4.1 (L1) Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
    - id: 18880
-     title: "(L1) Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+     title: "L1 Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
      description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
      rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "None - this is the default behavior."
@@ -7579,12 +7688,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention -> 0'
 
   # 18.10.26.4.2 (L1) Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'. (Automated)
    - id: 18881
-     title: "(L1) Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
+     title: "L1 Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
      description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
      rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
      impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7596,12 +7708,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> n:^(\d+) compare >= 32768'
 
   # 18.10.29.2 (L1) Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'. (Automated)
    - id: 18882
-     title: "(L1) Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'."
+     title: "L1 Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'."
      description: "Disabling Data Execution Prevention can allow certain legacy plug-in applications to function without terminating Explorer. The recommended state for this setting is: Disabled. Note: Some legacy plug-in applications and other software may not function with Data Execution Prevention and will require an exception to be defined for that specific plug-in/software."
      rationale: "Data Execution Prevention is an important security feature supported by Explorer that helps to limit the impact of certain types of malware."
      impact: "None - this is the default behavior."
@@ -7615,12 +7730,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> 0'
 
   # 18.10.29.3 (L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'. (Automated)
    - id: 18883
-     title: "(L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'."
+     title: "L1 Ensure 'Turn off heap termination on corruption' is set to 'Disabled'."
      description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this. The recommended state for this setting is: Disabled."
      rationale: "Allowing an application to function after its session has become corrupt increases the risk posture to the system."
      impact: "None - this is the default behavior."
@@ -7632,12 +7750,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> 0'
 
   # 18.10.29.4 (L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'. (Automated)
    - id: 18884
-     title: "(L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'."
+     title: "L1 Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'."
      description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows. The recommended state for this setting is: Disabled."
      rationale: "Limiting the opening of files and folders to a limited set reduces the attack surface of the system."
      impact: "None - this is the default behavior."
@@ -7650,12 +7771,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior -> 0'
 
   # 18.10.33.1 (L1) Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'. (Automated)
    - id: 18885
-     title: "(L1) Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'."
+     title: "L1 Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'."
      description: "By default, users can add their computer to a HomeGroup on a home network. The recommended state for this setting is: Enabled. Note: The HomeGroup feature is available in all workstation releases of Windows from Windows 7 through Windows 10 Release 1709. Microsoft removed the feature completely starting with Windows 10 Release 1803. However, if your environment still contains any Windows 10 Release 1709 (or older) workstations, then this setting remains important to disable HomeGroup on those systems."
      rationale: "While resources on a domain-joined computer cannot be shared with a HomeGroup, information from the domain-joined computer can be leaked to other computers in the HomeGroup."
      impact: "A user on this computer will not be able to add this computer to a HomeGroup. This setting does not affect other network sharing features. Mobile users who access printers and other shared devices on their home networks will not be able to leverage the ease of use provided by HomeGroup functionality."
@@ -7671,8 +7795,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup -> 1'
 
   # 18.10.35.1 (L1) 'Disable Internet Explorer 11 as a standalone browser' is set to 'Enabled: Always'. (Automated)
    - id: 18886
@@ -7695,9 +7822,9 @@ checks:
 
   # 18.10.37.2 (L2) Ensure 'Turn off location' is set to 'Enabled'. (Automated)
    - id: 18887
-     title: "(L2) Ensure 'Turn off location' is set to 'Enabled'."
+     title: "L2 Ensure 'Turn off location' is set to 'Enabled'."
      description: "This policy setting turns off the location feature for the computer. The recommended state for this setting is: Enabled."
-     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it’s not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
+     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it's not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
      impact: "The location feature is turned off, and all programs on the computer are prevented from using location information from the location feature."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Location and Sensors\\Turn off location Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Sensors.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
      compliance:
@@ -7709,12 +7836,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation -> 1'
 
   # 18.10.41.1 (L2) Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'. (Automated)
    - id: 18888
-     title: "(L2) Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'."
+     title: "L2 Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'."
      description: "This policy setting allows backup and restore of cellular text messages to Microsoft's cloud services. The recommended state for this setting is: Disabled."
      rationale: "In a high security environment, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "Cellular text messages will not be backed up to (or restored from) Microsoft's cloud services."
@@ -7728,12 +7858,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync -> 0'
 
   # 18.10.42.1 (L1) Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'. (Automated)
    - id: 18889
-     title: "(L1) Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'."
+     title: "L1 Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'."
      description: "This setting determines whether applications and services on the device can utilize new consumer Microsoft account authentication via the Windows OnlineID and WebAccountManager APIs. The recommended state for this setting is: Enabled."
      rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used on their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
      impact: "All applications and services on the device will be prevented from new authentications using consumer Microsoft accounts via the Windows OnlineID and WebAccountManager APIs. Authentications performed directly by the user in web browsers or in apps that use OAuth will remain unaffected."
@@ -7747,12 +7880,15 @@ checks:
        - iso_27001-2013: ["A.9.2.1"]
        - nist_sp_800-53: ["AC-2(1)"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth -> 1'
 
   # 18.10.43.5.1 (L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'. (Automated)
    - id: 18890
-     title: "(L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'."
+     title: "L1 Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'."
      description: "This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. This setting can only be set by Group Policy. The recommended state for this setting is: Disabled."
      rationale: "The decision on whether or not to participate in Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
      impact: "None - this is the default behavior."
@@ -7768,12 +7904,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting -> 0'
 
   # 18.10.43.5.2 (L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled'. (Automated)
    - id: 18891
-     title: "(L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled'."
+     title: "L2 Ensure 'Join Microsoft MAPS' is set to 'Disabled'."
      description: "This policy setting allows you to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service is the online community that helps you choose how to respond to potential threats. The community also helps stop the spread of new malicious software infections. You can choose to send basic or additional information about detected software. Additional information helps Microsoft create new definitions and help it to protect your computer. Possible options are: - - - (0x0) Disabled (default) (0x1) Basic membership (0x2) Advanced membership Basic membership will send basic information to Microsoft about software that has been detected including where the software came from the actions that you apply or that are applied automatically and whether the actions were successful. Advanced membership in addition to basic information will send more information to Microsoft about malicious software spyware and potentially unwanted software including the location of the software file names how the software operates and how it has impacted your computer. The recommended state for this setting is: Disabled."
      rationale: "The information that would be sent can include things like location of detected items on your computer if harmful software was removed. The information would be automatically collected and sent. In some instances personal information might unintentionally be sent to Microsoft. However, Microsoft states that it will not use this information to identify you or contact you. For privacy reasons in high security environments, it is best to prevent these data submissions altogether."
      impact: "None - this is the default behavior."
@@ -7782,12 +7921,14 @@ checks:
        - cis: ["18.10.43.5.2"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting'
 
   # 18.10.43.6.1.1 (L1) Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'. (Automated)
    - id: 18892
-     title: "(L1) Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'."
+     title: "L1 Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'."
      description: "This policy setting controls the state for the Attack Surface Reduction (ASR) rules. The recommended state for this setting is: Enabled."
      rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
      impact: "When a rule is triggered, a notification will be displayed from the Action Center."
@@ -7802,12 +7943,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
 
   # 18.10.43.6.1.2 (L1) Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured. (Automated)
    - id: 18893
-     title: "(L1) Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured."
+     title: "L1 Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured."
      description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 56a863a9-875e-4185-98a7-b882c64b5ce5 - 1 (Block abuse of exploited vulnerable signed drivers) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes) e6db77e5-3df2-4cf1-b95a-636979351e5b - 1 (Block persistence through WMI event subscription) Note: More information on ASR rules can be found at the following link: Use Attack surface reduction rules to prevent malware infection | Microsoft Docs."
      rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
      impact: "When a rule is triggered, a notification will be displayed from the Action Center."
@@ -7822,12 +7966,35 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 26190899-1602-49E8-8B27-eB1D0A1CE869'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 26190899-1602-49E8-8B27-eB1D0A1CE869 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4 -> 1'
 
   # 18.10.43.6.3.1 (L1) Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'. (Automated)
    - id: 18894
-     title: "(L1) Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'."
+     title: "L1 Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'."
      description: "This policy setting controls Microsoft Defender Exploit Guard network protection. The recommended state for this setting is: Enabled: Block."
      rationale: "This setting can help prevent employees from using any application to access dangerous domains that may host phishing scams, exploit-hosting sites, and other malicious content on the Internet."
      impact: "Users and applications will not be able to access dangerous domains."
@@ -7844,12 +8011,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.4", "11.4"]
        - pci_dss_v4.0: ["1.2.6", "1.4.2"]
        - soc_2: ["CC5.2", "CC6.6", "CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
 
   # 18.10.43.7.1 (L2) Ensure 'Enable file hash computation feature' is set to 'Enabled'. (Automated)
    - id: 18895
-     title: "(L2) Ensure 'Enable file hash computation feature' is set to 'Enabled'."
+     title: "L2 Ensure 'Enable file hash computation feature' is set to 'Enabled'."
      description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled."
      rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny."
      impact: "This setting could cause performance degradation during initial deployment and for users where new executable content is frequently being created (such as software developers), or where applications are frequently installed or updated. For more information on this setting, please visit Security baseline (FINAL): Windows 10 and Windows Server, version 2004 - Microsoft Tech Community - 1543631. Note: The impact of this setting should be monitored closely during deployment to ensure user and system performance impact is within acceptable limits."
@@ -7864,12 +8034,15 @@ checks:
        - pci_dss_v3.2.1: ["5.1"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation -> 1'
 
   # 18.10.43.10.1 (L1) Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'. (Automated)
    - id: 18896
-     title: "(L1) Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'."
+     title: "L1 Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'."
      description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled."
      rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
      impact: "None - this is the default behavior."
@@ -7886,16 +8059,19 @@ checks:
        - pci_dss_v3.2.1: ["5.1"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
   # 18.10.43.10.2 (L1) Ensure 'Turn off real-time protection' is set to 'Disabled'. (Automated)
    - id: 18897
-     title: "(L1) Ensure 'Turn off real-time protection' is set to 'Disabled'."
+     title: "L1 Ensure 'Turn off real-time protection' is set to 'Disabled'."
      description: "This policy setting configures real-time protection prompts for known malware detection. Microsoft Defender Antivirus alerts you when malware or potentially unwanted software attempts to install itself or to run on your computer. The recommended state for this setting is: Disabled."
      rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
      impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real- time protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real time protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
      references:
        - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-antivirus/configure-real-time-protection-microsoft-defender-antivirus'
        - 'https://docs.microsoft.com/en-us/microsoft-365/security/defender-'
@@ -7909,12 +8085,15 @@ checks:
        - pci_dss_v3.2.1: ["5.1"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
   # 18.10.43.10.3 (L1) Ensure 'Turn on behavior monitoring' is set to 'Enabled'. (Automated)
    - id: 18898
-     title: "(L1) Ensure 'Turn on behavior monitoring' is set to 'Enabled'."
+     title: "L1 Ensure 'Turn on behavior monitoring' is set to 'Enabled'."
      description: "This policy setting allows you to configure behavior monitoring for Microsoft Defender Antivirus. The recommended state for this setting is: Enabled."
      rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
      impact: "None - this is the default behavior."
@@ -7927,12 +8106,15 @@ checks:
        - cis_csc_v7: ["8.1"]
        - iso_27001-2013: ["A.12.2.1"]
        - pci_dss_v4.0: ["5.3.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
   # 18.10.43.10.4 (L1) Ensure 'Turn on script scanning' is set to 'Enabled'. (Automated)
    - id: 18899
-     title: "(L1) Ensure 'Turn on script scanning' is set to 'Enabled'."
+     title: "L1 Ensure 'Turn on script scanning' is set to 'Enabled'."
      description: "This policy setting allows script scanning to be turned on/off. Script scanning intercepts scripts then scans them before they are executed on the system. The recommended state for this setting is: Enabled."
      rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
      impact: "None - this is the default behavior."
@@ -7945,12 +8127,15 @@ checks:
        - cis_csc_v7: ["8.1"]
        - iso_27001-2013: ["A.12.2.1"]
        - pci_dss_v4.0: ["5.3.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
   # 18.10.43.12.1 (L2) Ensure 'Configure Watson events' is set to 'Disabled'. (Automated)
    - id: 18900
-     title: "(L2) Ensure 'Configure Watson events' is set to 'Disabled'."
+     title: "L2 Ensure 'Configure Watson events' is set to 'Disabled'."
      description: "This policy setting allows you to configure whether or not Watson events are sent. The recommended state for this setting is: Disabled."
      rationale: "Watson events are the reports that get sent to Microsoft when a program or service crashes or fails, including the possibility of automatic submission. Preventing this information from being sent can help reduce privacy concerns."
      impact: "Watson events will not be sent to Microsoft automatically when a program or service crashes or fails."
@@ -7959,12 +8144,15 @@ checks:
        - cis: ["18.10.43.12.1"]
        - cis_csc_v7: ["13.3"]
        - iso_27001-2013: ["A.13.1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts -> 1'
 
   # 18.10.43.13.1 (L1) Ensure 'Scan removable drives' is set to 'Enabled'. (Automated)
    - id: 18901
-     title: "(L1) Ensure 'Scan removable drives' is set to 'Enabled'."
+     title: "L1 Ensure 'Scan removable drives' is set to 'Enabled'."
      description: "This policy setting allows you to manage whether or not to scan for malicious software and unwanted software in the contents of removable drives, such as USB flash drives, when running a full scan. The recommended state for this setting is: Enabled."
      rationale: "It is important to ensure that any present removable drives are always included in any type of scan, as removable drives are more likely to contain malicious software brought in to the enterprise managed environment from an external, unmanaged computer."
      impact: "Removable drives will be scanned during any type of scan by Microsoft Defender Antivirus."
@@ -7979,12 +8167,15 @@ checks:
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
        - pci_dss_v4.0: ["5.3.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning -> 0'
 
   # 18.10.43.13.2 (L1) Ensure 'Turn on e-mail scanning' is set to 'Enabled'. (Automated)
    - id: 18902
-     title: "(L1) Ensure 'Turn on e-mail scanning' is set to 'Enabled'."
+     title: "L1 Ensure 'Turn on e-mail scanning' is set to 'Enabled'."
      description: "This policy setting allows you to configure e-mail scanning. When e-mail scanning is enabled, the engine will parse the mailbox and mail files, according to their specific format, in order to analyze the mail bodies and attachments. Several e-mail formats are currently supported, for example: pst (Outlook), dbx, mbx, mime (Outlook Express), binhex (Mac). The recommended state for this setting is: Enabled."
      rationale: "Incoming e-mails should be scanned by an antivirus solution such as Microsoft Defender Antivirus, as email attachments are a commonly used attack vector to infiltrate computers with malicious software."
      impact: "E-mail scanning by Microsoft Defender Antivirus will be enabled."
@@ -8001,12 +8192,15 @@ checks:
        - pci_dss_v3.2.1: ["5.1"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning -> 0'
 
   # 18.10.43.16 (L1) Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'. (Automated)
    - id: 18903
-     title: "(L1) Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'."
+     title: "L1 Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'."
      description: "This policy setting controls detection and action for Potentially Unwanted Applications (PUA), which are sneaky unwanted application bundlers or their bundled applications, that can deliver adware or malware. The recommended state for this setting is: Enabled: Block. For more information, see this link: Block potentially unwanted applications with Microsoft Defender Antivirus | Microsoft Docs."
      rationale: "Potentially unwanted applications can increase the risk of your network being infected with malware, cause malware infections to be harder to identify, and can waste IT resources in cleaning up the applications. They should be blocked from installation."
      impact: "Applications that are identified by Microsoft as PUA will be blocked at download and install time."
@@ -8023,12 +8217,15 @@ checks:
        - pci_dss_v3.2.1: ["5.1"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
   # 18.10.43.17 (L1) Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'. (Automated)
    - id: 18904
-     title: "(L1) Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'."
+     title: "L1 Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'."
      description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled."
      rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable third-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative."
      impact: "None - this is the default behavior."
@@ -8045,8 +8242,11 @@ checks:
        - pci_dss_v3.2.1: ["5.1"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware -> 0'
 
   # 18.10.44.1 (NG) Ensure 'Allow auditing events in Microsoft Defender Application Guard' is set to 'Enabled'. (Automated)
    - id: 18905
@@ -8142,7 +8342,7 @@ checks:
 
   # 18.10.50.1 (L2) Ensure 'Enable news and interests on the taskbar' is set to 'Disabled'. (Automated)
    - id: 18910
-     title: "(L2) Ensure 'Enable news and interests on the taskbar' is set to 'Disabled'."
+     title: "L2 Ensure 'Enable news and interests on the taskbar' is set to 'Disabled'."
      description: "This policy setting specifies whether the news and interests feature is allowed on the device. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, apps and features such as news and interests on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to third-parties, such as Microsoft. In addition, the app may display inappropriate news and interests within the feed."
      impact: "The news and interests feature on the Windows taskbar will not be available on the device. Note: At time of benchmark publication, this setting does not hide or disable the taskbar menu options for the news and interests feature, however attempting to turn the feature back on does not cause any visible change. It is possible that Microsoft will modify this behavior to \"gray out\" the taskbar menu options in a future OS update."
@@ -8156,15 +8356,18 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds -> EnableFeeds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds -> EnableFeeds -> 0'
 
   # 18.10.51.1 (L1) Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'. (Automated)
    - id: 18911
-     title: "(L1) Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'."
+     title: "L1 Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'."
      description: "This policy setting lets you prevent apps and features from working with files on OneDrive using the Next Generation Sync Client. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting prevents users from accidentally (or intentionally) uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client. Note: This security concern applies to any cloud-based file storage application installed on a workstation, not just the one supplied with Windows."
-     impact: "Users can't access OneDrive from the OneDrive app and file picker. Windows Store apps can't access OneDrive using the WinRT API. OneDrive doesn't appear in the navigation pane in File Explorer. OneDrive files aren't kept in sync with the cloud. Users can't automatically upload photos and videos from the camera roll folder. Note: If your organization uses Office 365, be aware that this setting will prevent users from saving files to OneDrive/SkyDrive. Note #2: If your organization has decided to implement OneDrive for Business and therefore needs to except itself from this recommendation, we highly suggest that you also obtain and utilize the OneDrive.admx/adml template that is bundled with the latest OneDrive client, as noted at this link (this template is not included with the Windows Administrative Templates). Two alternative OneDrive settings in particular from that template are worth your consideration: - Allow syncing OneDrive accounts for only specific organizations - a computer- based setting that restricts OneDrive client connections to only approved tenant IDs. - Prevent users from synchronizing personal OneDrive accounts - a user-based setting that prevents use of consumer OneDrive (i.e. non-business)."
+     impact: "Users can't access OneDrive from the OneDrive app and file picker. Windows Store apps can't access OneDrive using the WinRT API. OneDrive doesn't appear in the navigation pane in File Explorer. OneDrive files aren't kept in sync with the cloud. Users can't automatically upload photos and videos from the camera roll folder. Note: If your organization uses Office 365, be aware that this setting will prevent users from saving files to OneDrive/SkyDrive. Note #2: If your organization has decided to implement OneDrive for Business and therefore needs to except itself from this recommendation, we highly suggest that you also obtain and utilize the OneDrive.admx/adml template that is bundled with the latest OneDrive client, as noted at this link (this template is not included with the Windows Administrative Templates). Two alternative OneDrive settings in particular from that template are worth your consideration: Allow syncing OneDrive accounts for only specific organizations a computer based setting that restricts OneDrive client connections to only approved tenant IDs. Prevent users from synchronizing personal OneDrive accounts a user-based setting that prevents use of consumer OneDrive (i.e. non-business)."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\OneDrive\\Prevent the usage of OneDrive for file storage Note: This Group Policy path may not exist by default. It is provided by the Group Policy template SkyDrive.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). However, we strongly recommend you only use the version included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Older versions of the templates had conflicting settings in different template files for both OneDrive & SkyDrive, until it was cleaned up properly in the above version. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Prevent the usage of SkyDrive for file storage, but it was renamed starting with the Windows 10 RTM (Release 1507) Administrative Templates."
      references:
        - 'https://docs.microsoft.com/en-us/office365/servicedescriptions/onedrive-for-'
@@ -8177,12 +8380,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC -> 1'
 
   # 18.10.56.1 (L2) Ensure 'Turn off Push To Install service' is set to 'Enabled'. (Automated)
    - id: 18912
-     title: "(L2) Ensure 'Turn off Push To Install service' is set to 'Enabled'."
+     title: "L2 Ensure 'Turn off Push To Install service' is set to 'Enabled'."
      description: "This policy setting controls whether users can push Apps to the device from the Microsoft Store App running on other devices or the web. The recommended state for this setting is: Enabled."
      rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
      impact: "Users will not be able to push Apps to this device from the Microsoft Store running on other devices or the web."
@@ -8196,24 +8402,30 @@ checks:
        - nist_sp_800-53: ["CM-7(5)"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> 1'
 
   # 18.10.57.2.2 (L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'. (Automated)
    - id: 18913
-     title: "(L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'."
+     title: "L1 Ensure 'Do not allow passwords to be saved' is set to 'Enabled'."
      description: "This policy setting helps prevent Remote Desktop clients from saving passwords on a computer. The recommended state for this setting is: Enabled. Note: If this policy setting was previously configured as Disabled or Not configured, any previously saved passwords will be deleted the first time a Remote Desktop client disconnects from any server."
      rationale: "An attacker with physical access to the computer may be able to break the protection guarding saved passwords. An attacker who compromises a user's account and connects to their computer could use saved passwords to gain access to additional hosts."
      impact: "The password saving checkbox will be disabled for Remote Desktop clients and users will not be able to save passwords."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Connection Client\\Do not allow passwords to be saved Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
      compliance:
        - cis: ["18.10.57.2.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> 1'
 
   # 18.10.57.3.2.1 (L2) Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'. (Automated)
    - id: 18914
-     title: "(L2) Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'."
+     title: "L2 Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'."
      description: "This policy setting allows you to configure remote access to computers by using Remote Desktop Services. The recommended state for this setting is: Disabled."
      rationale: "Any account with the Allow log on through Remote Desktop Services user right can log on to the remote console of the computer. If you do not restrict access to legitimate users who need to log on to the console of the computer, unauthorized users could download and execute malicious code to elevate their privileges."
      impact: "None - this is the default configuration, unless Remote Desktop Services has been manually enabled on the Remote tab in the System Properties sheet."
@@ -8227,13 +8439,16 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections -> 1'
 
   # 18.10.57.3.3.1 (L2) Ensure 'Allow UI Automation redirection' is set to 'Disabled'. (Automated)
    - id: 18915
-     title: "(L2) Ensure 'Allow UI Automation redirection' is set to 'Disabled'."
-     description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer´s Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don´t currently support UI Automation redirection."
+     title: "L2 Ensure 'Allow UI Automation redirection' is set to 'Disabled'."
+     description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer's Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don't currently support UI Automation redirection."
      rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
      impact: "UI Automation clients on the local computer will not be able to interact with remote apps."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
@@ -8246,12 +8461,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
   # 18.10.57.3.3.2 (L2) Ensure 'Do not allow COM port redirection' is set to 'Enabled'. (Automated)
    - id: 18916
-     title: "(L2) Ensure 'Do not allow COM port redirection' is set to 'Enabled'."
+     title: "L2 Ensure 'Do not allow COM port redirection' is set to 'Enabled'."
      description: "This policy setting specifies whether to prevent the redirection of data to client COM ports from the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
      rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for COM port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
      impact: "Users in a Remote Desktop Services session will not be able to redirect server data to local (client) COM ports."
@@ -8265,8 +8483,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> 1'
 
   # 18.10.57.3.3.3 (L1) Ensure 'Do not allow drive redirection' is set to 'Enabled'. (Automated)
    - id: 18917
