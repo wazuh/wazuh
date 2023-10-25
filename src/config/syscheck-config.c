@@ -120,7 +120,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->sync_thread_pool                = 1;
     syscheck->sync_max_eps                    = 10;
     syscheck->sync_queue_size                 = 16384;
-    syscheck->max_eps                         = 100;
+    syscheck->max_eps                         = 50;
     syscheck->max_files_per_second            = 0;
     syscheck->allow_remote_prefilter_cmd      = false;
     syscheck->disk_quota_enabled              = true;

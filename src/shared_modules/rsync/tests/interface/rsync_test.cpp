@@ -1746,4 +1746,98 @@ TEST(RSyncBuilderStartSyncConfigurationTest, TestExpectedHappyCase)
 }
 
 
+TEST_F(RSyncTest, RegisterAndPushCPPWithDeletedElement)
+{
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
+
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    auto expectedGlobalResponse =
+        R"(
+        {
+            "component":"test_id",
+            "data":
+            {
+                 "begin":"/boot/grub2/i386-pc/gzio.mod",
+                 "checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709",
+                 "end":"/boot/grub2/fonts/unicode.pf2",
+                 "id":1696450039
+            },
+            "type":"integrity_check_global"
+        })"_json;
+
+
+    const auto registerConfigStmt
+    {
+        R"({"decoder_type":"JSON_RANGE",
+            "table":"entry_path",
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "no_data_query_json":
+                {
+                    "row_filter":" ",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "count_range_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "count_field_name":"count",
+                    "column_list":["count(*) AS count "],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "row_data_query_json":
+                {
+                    "row_filter":"WHERE path ='?'",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+        })"
+    };
+
+    CallbackMock wrapper;
+    SyncCallbackData callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+
+    SyncCallbackData callbackDataDiff
+    {
+        [&](const std::string & data)
+        {
+            callbackDiff(data.c_str(), 0, &expectedGlobalResponse);
+        }
+    };
+
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+
+    EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(START_CONFIG_STMT_PATH), callbackDataDiff));
+
+    std::string buffer1{R"(test_id checksum_fail {"end":"/boot/grub2/z/z","begin":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    remoteSync.reset();
+}
 

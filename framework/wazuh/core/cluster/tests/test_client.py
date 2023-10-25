@@ -266,7 +266,7 @@ def test_ac_connection_lost(cancel_tasks_mock):
 
 
 def test_ac_cancel_all_tasks():
-    """Check whether all tasks are being properly closed."""
+    """Check whether all tasks and connections are being properly closed."""
 
     class TaskMock:
         def __init__(self):
@@ -275,13 +275,26 @@ def test_ac_cancel_all_tasks():
         def cancel(self):
             pass
 
-    task_mock = TaskMock()
+    class ParentManager:
+        def __init__(self, client) -> None:
+            self.local_server = self.LocalServer(client)
 
-    with patch('asyncio.all_tasks', return_value=[task_mock]) as all_tasks_mock:
-        with patch.object(TaskMock, "cancel") as cancel_mock:
-            abstract_client._cancel_all_tasks()
-            all_tasks_mock.assert_called_once()
-            cancel_mock.assert_called_once()
+        class LocalServer:
+            def __init__(self, client) -> None:
+                self.clients = {"client": client}
+
+    task_mock = TaskMock()
+    client_mock = MagicMock()
+    mock_manager = ParentManager(client_mock)
+
+    with patch('wazuh.core.cluster.common.Handler.get_manager', return_value=mock_manager):
+        with patch('asyncio.all_tasks', return_value=[task_mock]) as all_tasks_mock:
+            with patch.object(TaskMock, "cancel") as cancel_mock:
+                abstract_client._cancel_all_tasks()
+                all_tasks_mock.assert_called_once()
+                cancel_mock.assert_called_once()
+                client_mock.close.assert_called_once()
+                assert mock_manager.local_server.clients == {}
 
 
 def test_ac_process_response():
