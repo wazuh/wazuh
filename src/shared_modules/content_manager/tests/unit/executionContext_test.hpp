@@ -33,7 +33,8 @@ protected:
 
     std::shared_ptr<ExecutionContext> m_spExecutionContext; ///< ExecutionContext.
 
-    const std::filesystem::path m_databasePath {"/tmp/database"}; ///< Path used to store the database files.
+    const std::filesystem::path m_databasePath {"/tmp/database"};        ///< Path used to store the database files.
+    const std::filesystem::path m_outputFolder {"/tmp/content_manager"}; ///< Path used to store the output files.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -46,11 +47,7 @@ protected:
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
-        m_spUpdaterBaseContext->configData = R"(
-            {
-                "outputFolder": "/tmp/content_manager"
-            }
-        )"_json;
+        m_spUpdaterBaseContext->configData["outputFolder"] = m_outputFolder.string();
     }
 
     /**
@@ -59,7 +56,7 @@ protected:
      */
     void TearDown() override
     {
-        std::filesystem::remove_all("/tmp/content_manager");
+        std::filesystem::remove_all(m_outputFolder);
         std::filesystem::remove_all(m_databasePath);
     }
 };
