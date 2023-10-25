@@ -143,8 +143,8 @@ def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_c
             brief: Wait FIM to start.
 
     assertions:
-        - Verify that when using hard and symbolic links, the FIM events contain
-          the number of inodes and paths to files consistent.
+        - Verify that FIM automatically removes the 'audit' rule from the target of a monitored 'symbolic link'
+          when the target of that link is replaced.
 
     input_description: The test cases are contained in external YAML file (cases_delete_hardlink_symlink.yaml)
                        which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
@@ -152,7 +152,9 @@ def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_c
                        file (configuration_basic.yaml).
 
     expected_output:
-        - r".*Fim inode entries: '(d+)', path count: '(d+)'"
+        - r'.*Links check finalized.*'
+        - r'.*Audit rules reloaded\. Rules loaded: (.+)'
+        - r'.*"type":"modified".*'
 
     tags:
         - scheduled
