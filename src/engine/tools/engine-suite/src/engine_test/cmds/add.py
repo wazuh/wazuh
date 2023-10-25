@@ -2,6 +2,7 @@ from engine_test.crud_integration import CrudIntegration
 from engine_test.event_format import Formats
 from engine_test.command import Command
 
+
 class AddCommand(Command):
     def __init__(self):
         pass
