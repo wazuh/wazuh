@@ -52,7 +52,8 @@ protected:
                     "outputFolder": "/tmp/action-tests",
                     "dataFormat": "json",
                     "contentFileName": "sample.json",
-                    "databasePath": "/tmp/action-tests/rocksdb"
+                    "databasePath": "/tmp/action-tests/rocksdb",
+                    "offset": 0
                 }
             }
         )"_json;

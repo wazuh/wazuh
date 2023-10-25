@@ -13,10 +13,16 @@
 #define _EXECUTION_CONTEXT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "json.hpp"
+#include "stringHelper.h"
 #include "updaterContext.hpp"
 #include "utils/timeHelper.h"
+#include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <string>
 
 const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_path() / "output_folder"};
 
@@ -30,6 +36,46 @@ class ExecutionContext final : public AbstractHandler<std::shared_ptr<UpdaterBas
 {
 private:
     /**
+     * @brief Reads and returns the last offset from the database.
+     *
+     * @param context Updater context configured with the database driver.
+     * @return unsigned int Last offset from the database.
+     */
+    unsigned int getDatabaseOffset(const UpdaterBaseContext& context) const
+    {
+        unsigned int databaseOffset;
+        try
+        {
+            databaseOffset = std::stoi(context.spRocksDB->getLastKeyValue().second.ToString());
+        }
+        catch (const std::runtime_error&)
+        {
+            // First execution. Set offset to zero.
+            databaseOffset = 0;
+            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
+        }
+
+        return databaseOffset;
+    }
+
+    /**
+     * @brief Parses the offset from the input configuration.
+     *
+     * @param inputConfig Reference to the input config.
+     * @return unsigned int Non-negative offset from the input config.
+     */
+    unsigned int getConfigOffset(const nlohmann::json& inputConfig) const
+    {
+        const auto configOffset {inputConfig.at("offset").get<int>()};
+        if (configOffset < 0)
+        {
+            throw std::runtime_error {"Offset should be a non-negative number: " + std::to_string(configOffset)};
+        }
+
+        return configOffset;
+    }
+
+    /**
      * @brief Creates the RocksDB instance.
      *
      * @param context updater base context.
@@ -40,16 +86,30 @@ private:
         const auto databaseName {"/updater_" + context.topicName + "_metadata"};
         const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
 
-        // check if the output folder exists.
+        // Check if the output folder exists.
         if (!std::filesystem::exists(databasePath))
         {
             // Create the folders.
             std::filesystem::create_directories(databasePath);
         }
 
-        // Create a RocksDB instance
+        // Initialize RocksDB driver instance.
         context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
-        context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
+
+        // Read input offsets.
+        const auto databaseOffset {getDatabaseOffset(context)};
+        const auto configOffset {getConfigOffset(context.configData)};
+
+        // Choose the greatest between the DB and the config offset.
+        const auto currentOffset {std::max(databaseOffset, configOffset)};
+
+        if (currentOffset > databaseOffset)
+        {
+            // Put the current offset in the database.
+            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), std::to_string(currentOffset));
+        }
+
+        std::cout << "API offset to be used: " << currentOffset << std::endl;
     }
 
     /**
