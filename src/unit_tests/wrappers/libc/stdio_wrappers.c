@@ -230,15 +230,9 @@ FILE *__wrap_popen(const char *command, const char *type) {
 }
 
 void expect_popen(const char *command, const char *type, FILE *ret) {
-#ifndef WIN32
   expect_string(__wrap_popen, command, command);
   expect_string(__wrap_popen, type, type);
   will_return(__wrap_popen, ret);
-#else
-  expect_string(wrap_popen, command, command);
-  expect_string(wrap_popen, type, type);
-  will_return(wrap_popen, ret);
-#endif
 }
 
 int __wrap_pclose(FILE *stream) {
