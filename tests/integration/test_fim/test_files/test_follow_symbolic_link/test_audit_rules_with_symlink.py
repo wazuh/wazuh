@@ -68,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
+from wazuh_testing.modules.fim.patterns import AUDIT_RULES_RELOADED, EVENT_TYPE_MODIFIED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYMLINK_SCAN_INTERVAL, SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -97,6 +97,67 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                                   configure_local_internal_options, folder_to_monitor, symlink, symlink_new_target,
                                   daemons_handler, start_monitoring):
+    '''
+    description: Check if the 'wazuh-syscheckd' daemon removes the 'audit' rules when the target of
+                 a monitored symlink is changed. For this purpose, the test will monitor a 'symbolic link'
+                 pointing to a directory. Once FIM starts, it will create and expect events inside the
+                 pointed folder. After the events are processed, the test will change the target of the
+                 link to another folder and wait until the thread that checks the 'symbolic links' updates
+                 the link's target. Finally, it will generate some events inside the new target and verify
+                 that the audit rule of the previous target folder has been removed (via 'auditctl -l').
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set ossec.conf configuration.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - symlink:
+            type: str
+            brief: Create the required symlink.
+        - symlink_new_target:
+            type: str
+            brief: Create the directory/file that will be the new symlink`s target.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - start_monitoring:
+            type: fixture
+            brief: Wait FIM to start.
+
+    assertions:
+        - Verify that when using hard and symbolic links, the FIM events contain
+          the number of inodes and paths to files consistent.
+
+    input_description: The test cases are contained in external YAML file (cases_delete_hardlink_symlink.yaml)
+                       which includes configuration parameters for the 'wazuh-syscheckd' daemon and testing
+                       directories to monitor. The configuration template is contained in another external YAML
+                       file (configuration_basic.yaml).
+
+    expected_output:
+        - r".*Fim inode entries: '(d+)', path count: '(d+)'"
+
+    tags:
+        - scheduled
+        - realtime
+    '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     testfile_name = 'testie.txt'
 
@@ -105,6 +166,7 @@ def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_c
 
     wazuh_log_monitor.start(generate_callback(LINKS_SCAN_FINALIZED))
     assert wazuh_log_monitor.callback_result
+    wazuh_log_monitor.start(generate_callback(AUDIT_RULES_RELOADED))
 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     rules_paths = commands.get_rules_path()
