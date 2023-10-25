@@ -23,7 +23,7 @@ from pathlib import PureWindowsPath, PurePosixPath
 
 # Define a mapping of agent names to Cloudflare Zone IDs and Domains
 agent_mapping = {
-    "checkz-dev": {
+    "development": {
         "zone_id": "ZONE_ID",
         "domain": "example1.com"  # Add the appropriate domain for the agent
     },
@@ -154,10 +154,10 @@ def main(argv):
     ZONE_ID = agent_info.get("zone_id")
     domain = agent_info.get("domain")
 
-    # if ZONE_ID is None or domain is None:
-    #     sys.exit(OS_INVALID)
+    if ZONE_ID is None or domain is None:
+        sys.exit(OS_INVALID)
 
-    TOKEN = 'F0Jq512QyMcy9i8EzcebMM-BLV3-_xn3UPMld9TL'
+    TOKEN = 'CF_TOKEN'
     MODE = 'block'  # block or challenge
 
 
