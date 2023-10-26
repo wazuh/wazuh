@@ -6,7 +6,7 @@ The `offline downloader` stage is part of the Content Manager orchestration and 
 
 The copy can be made into any of the two following output directories:
 - Downloads folder: If the input file is compressed.
-- Content folder: If the input file is not compressed.
+- Contents folder: If the input file is not compressed.
 
 If the copy is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) with the copy destination path.
 
@@ -17,7 +17,7 @@ If the copy is successful, this stage also updates the context [data paths](../.
 The context fields related to this stage are:
 
 - `configData`
-  + `url`: Used as input file path.
+  + `url`: Used as input file path. The prefix `file://` is allowed.
   + `compressionType`: Used to know whether the input file is compressed or not.
 - `downloadsFolder`: Used as output folder when the input file is compressed.
 - `contentsFolder`: Used as output folder when the input file is not compressed.
