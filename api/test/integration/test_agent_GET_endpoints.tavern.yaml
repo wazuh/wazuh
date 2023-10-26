@@ -1031,6 +1031,47 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
 
+  - name: Filter agents by nested queries (first)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: id!=001;(status=active;(group=group1,group=group2))
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '002'
+            - id: '005'
+            - id: '006'
+            - id: '007'
+            - id: '008'
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+  
+  - name: Filter agents by nested queries (second)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: (status=never_connected,(id<4;(group=group1,group=group2)))
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+            - id: '002'
+            - id: '011'
+            - id: '012'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+
   - name: Try to show agents using an wrong query
     request:
       verify: False

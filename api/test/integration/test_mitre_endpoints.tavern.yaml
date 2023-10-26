@@ -1542,6 +1542,23 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+  
+  - name: Filter groups using q parameter with special character
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        q: "name=admin@338"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "intrusion-set--16ade1aa-0ea1-4bb7-88cc-9079df2ae756"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
 
   - name: Filter groups using q parameter (complex query)
     request:

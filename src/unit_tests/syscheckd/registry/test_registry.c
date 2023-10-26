@@ -863,7 +863,7 @@ static void test_fim_registry_key_transaction_callback_empty_changed_attributes(
     const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}}");
     fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -969,7 +969,7 @@ static void test_fim_registry_value_transaction_callback_empty_changed_attribute
     const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"name\":\"mock_name_value\"}}");
     fim_val_txn_context_t user_data = {.data = &value, .evt_data = &event_data, .diff = NULL};
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }

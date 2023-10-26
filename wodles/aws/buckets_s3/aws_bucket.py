@@ -10,6 +10,7 @@ import csv
 import zipfile
 import re
 from os import path
+from typing import Iterator
 
 from datetime import datetime
 
@@ -542,6 +543,27 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             message_args = {'bucket': bucket}
         aws_tools.debug(self.empty_bucket_message_template.format(**message_args), 1)
 
+    def _filter_bucket_files(self, bucket_files: list, **kwargs) -> Iterator[dict]:
+        """Apply filters over a list of bucket files.
+        Parameters
+        ----------
+        bucket_files : list
+            Bucket files to filter.
+        Yields
+        ------
+        Iterator[str]
+            A bucket file that matches the filters.
+        """
+        for bucket_file in bucket_files:
+            if not bucket_file['Key']:
+                continue
+
+            if bucket_file['Key'][-1] == '/':
+                # The file is a folder
+                continue
+
+            yield bucket_file
+
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, **kwargs):
         if aws_account_id is None:
             aws_account_id = self.aws_account_id
@@ -559,13 +581,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
                 processed_logs = 0
 
-                for bucket_file in bucket_files['Contents']:
-                    if not bucket_file['Key']:
-                        continue
-
-                    if bucket_file['Key'][-1] == '/':
-                        # The file is a folder
-                        continue
+                for bucket_file in self._filter_bucket_files(bucket_files['Contents'], **kwargs):
 
                     if self.check_prefix:
                         date_match = self.date_regex.search(bucket_file['Key'])

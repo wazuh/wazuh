@@ -457,9 +457,9 @@ def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, 
 @pytest.mark.parametrize('group_list, q, expected_result', [
     (['group-1', 'group-2'], None, ['group-1', 'group-2']),
     (['invalid_group'], None, []),
-    ([], 'name=group-empty', ['group-empty']),
-    ([], 'mergedSum=a336982f3c020cd558a16113f752fd5b', ['group-1', 'group-2']),
-    ([], 'count=0', ['group-empty'])
+    (['group-1', 'group-2'], 'name~1', ['group-1']),
+    (['group-1', 'group-2', 'group-3'], 'mergedSum=a336982f3c020cd558a16113f752fd5b', ['group-1', 'group-2']),
+    ([], '', []) # An empty group_list should return nothing
 ])
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)

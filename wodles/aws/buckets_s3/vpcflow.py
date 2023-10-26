@@ -5,6 +5,7 @@
 import csv
 import sys
 from os import path
+from typing import Iterator
 from aws_bucket import AWSLogsBucket
 try:
     import boto3
@@ -243,9 +244,21 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
-    def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
-        return self.get_full_prefix(aws_account_id, aws_region) + date \
-               + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
+    def _filter_bucket_files(self, bucket_files: list, **kwargs) -> Iterator[dict]:
+        """Filter bucket files that contain the flow_log_id in the filename.
+        Parameters
+        ----------
+        bucket_files : list
+            Bucket files to filter.
+        Yields
+        ------
+        Iterator[str]
+            A bucket file that matches the filter.
+        """
+        flow_log_id = kwargs["flow_log_id"]
+        for bucket_file in super()._filter_bucket_files(bucket_files, **kwargs):
+            if flow_log_id in bucket_file["Key"]:
+                yield bucket_file
 
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
         if self.reparse:

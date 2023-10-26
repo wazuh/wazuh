@@ -122,7 +122,7 @@ then
 
     # Framework
 
-    sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $FW_SETUP
+    sed -E -i'' -e "s/WAZUH_VERSION='.+'/WAZUH_VERSION='${version:1}'/g" $FW_SETUP
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
 
     # Cluster
