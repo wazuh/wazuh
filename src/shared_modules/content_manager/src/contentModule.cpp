@@ -25,7 +25,6 @@ static void logFunction(const modules_log_level_t logLevel, const std::string& m
     }
 }
 
-
 void ContentModule::start(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
 {
     if (!GS_LOG_FUNCTION)
@@ -34,7 +33,6 @@ void ContentModule::start(const std::function<void(const modules_log_level_t, co
     }
 
     ContentModuleFacade::instance().start();
-    GS_LOG_FUNCTION(modules_log_level_t::LOG_INFO, "Content manager started");
 }
 
 void ContentModule::stop()
