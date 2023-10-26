@@ -285,7 +285,7 @@ void test_encrypt_by_method_aes(void **state){
     char buffer2[buffersize];
 
     assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_AES), 16);
-    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_AES), 0);
+    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_AES), 11);
 
     assert_int_equal(strncmp(buffer2, string, strlen(string)), 0);
 }
