@@ -41,49 +41,36 @@ import os
 import socket
 import time
 import pytest
-from wazuh_testing.tools import WAZUH_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
-from wazuh_testing.authd import validate_authd_response
+from pathlib import Path
+
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.modules.authd.utils import validate_authd_response
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-client_keys_path = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
-test_cases = read_yaml(os.path.join(test_data_path, 'test_authd_valid_name_ip.yaml'))
-configurations = load_wazuh_configurations(configurations_path, __name__)
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_valid_name_ip.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
 
 log_monitor_paths = []
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 hostname = socket.gethostname()
 
 
-# Fixtures
-
-
-@pytest.fixture(scope='module', params=configurations, ids=[__name__])
-def get_configuration(request):
-    """
-    Get configurations from the module
-    """
-    return request.param
-
-
 # Test
-
-@pytest.mark.parametrize('test_case', [case['test_case'] for case in test_cases],
-                         ids=[case['name'] for case in test_cases])
-def test_authd_valid_name_ip(get_configuration, configure_environment, configure_sockets_environment,
-                             clean_client_keys_file_function, connect_to_sockets_module, test_case,
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_valid_name_ip(test_configuration, test_metadata, configure_sockets_environment,
+                             clean_client_keys_file_function, connect_to_sockets_module,
                              restart_authd_function, wait_for_authd_startup_function, tear_down):
     '''
     description:
@@ -139,13 +126,13 @@ def test_authd_valid_name_ip(get_configuration, configure_environment, configure
     receiver_sockets[0].open()
 
     # Set 'hostname' in test case's expected output message.
-    if test_case.get('insert_hostname_in_query'):
-        test_case['input'] = test_case.get('input').format(hostname)
-        if 'message' in test_case.get('output'):
-            test_case['output']['message'] = test_case['output'].get('message').format(hostname)
+    if test_metadata['insert_hostname_in_query'] == True:
+        test_metadata['input'] = test_metadata['input'].format(hostname)
+        if 'message' in test_metadata['output']:
+            test_metadata['output']['message'] = test_metadata['output'].get('message').format(hostname)
 
     # Send the message to the socket.
-    receiver_sockets[0].send(test_case['input'], size=False)
+    receiver_sockets[0].send(test_metadata['input'], size=False)
     # Set the timeout and the empty response str.
     timeout = time.time() + 10
     response = ''
@@ -157,10 +144,10 @@ def test_authd_valid_name_ip(get_configuration, configure_environment, configure
         response = receiver_sockets[0].receive().decode()
 
     # Get the validated authd response.
-    result, err_msg = validate_authd_response(response, test_case['output'])
+    result, err_msg = validate_authd_response(response, test_metadata['output'])
 
     # ASSERTIONS.
-    if test_case.get('expected_fail'):
+    if test_metadata['expected_fail'] == True:
         with pytest.raises(Exception):
             assert "ERROR" in result, f"No error raised. Complete response: '{response}'"
     else:
