@@ -530,7 +530,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     continue
                 else:
                     aws_tools.debug(
-                        f'+++ The "{self.discard_regex.pattern}" regex did not match any value in the '
+                        f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                         f'"{self.discard_field}" field. The event will be processed.', 3)
                 # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
