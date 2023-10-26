@@ -327,7 +327,7 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
  */
 TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 {
-    static const std::string DATABASE_NAME {"folder1/folder2/test.db"};
+    const std::string DATABASE_NAME {"folder1/folder2/test.db"};
 
     std::optional<Utils::RocksDBWrapper> db_wrapper;
 
