@@ -1,0 +1,8 @@
+- name: bucket_with_logs
+  description: Logs inside a custom bucket
+  configuration_parameters:
+    SQS_NAME: wazuh-sqs-integration-tests
+  metadata:
+    sqs_name: wazuh-sqs-integration-tests
+    bucket_name: wazuh-sqs-integration-test
+    bucket_type: cloudtrail
