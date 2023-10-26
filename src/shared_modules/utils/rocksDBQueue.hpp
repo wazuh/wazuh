@@ -13,6 +13,7 @@
 #define _ROCKSDB_QUEUE_HPP
 
 #include "rocksdb/db.h"
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
@@ -28,6 +29,9 @@ public:
         // RocksDB initialization.
         rocksdb::Options options;
         rocksdb::DB* db;
+
+        // Create directories recursively if they do not exist
+        std::filesystem::create_directories(std::filesystem::path(connectorName));
 
         options.create_if_missing = true;
         rocksdb::Status status = rocksdb::DB::Open(options, connectorName, &db);
