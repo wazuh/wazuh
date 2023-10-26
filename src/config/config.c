@@ -219,7 +219,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
-            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
+            if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+            if ((modules & CANDSOCKET) && (Read_AnalysisdSocket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
