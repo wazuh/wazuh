@@ -78,7 +78,7 @@ public:
         {
             return std::make_shared<S3Downloader>();
         }
-        if (downloaderType.compare("offline") == 0)
+        if ("offline" == downloaderType)
         {
             // When using an offline downloader, the compression type is automatically deduced.
             config["compressionType"] = deduceCompressionType(config.at("url").get_ref<const std::string&>());
