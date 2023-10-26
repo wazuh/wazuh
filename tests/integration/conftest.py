@@ -318,7 +318,7 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
 
     # Stop wazuh-service and ensure all daemons are stopped
     services.control_service('stop')
-    services.check_daemon_status(running_condition=False)
+    services.wait_expected_daemon_status(running_condition=False)
 
     monitored_sockets = list()
     mitm_list = list()
@@ -327,7 +327,7 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     for daemon, mitm, daemon_first in monitored_sockets_params:
         not daemon_first and mitm is not None and mitm.start()
         services.control_service('start', daemon=daemon, debug_mode=True)
-        services.check_daemon_status(
+        services.wait_expected_daemon_status(
             running_condition=True,
             target_daemon=daemon,
             extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
@@ -345,7 +345,7 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     for daemon, mitm, _ in monitored_sockets_params:
         mitm is not None and mitm.shutdown()
         services.control_service('stop', daemon=daemon)
-        services.check_daemon_status(
+        services.wait_expected_daemon_status(
             running_condition=False,
             target_daemon=daemon,
             extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
