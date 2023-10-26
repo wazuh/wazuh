@@ -1,0 +1,6 @@
+- name: custom_bucket_defaults
+  description: Custom bucket default configuration
+  configuration_parameters:
+    SQS_NAME: wazuh-sqs-integration-tests
+  metadata:
+    sqs_name: wazuh-sqs-integration-tests
