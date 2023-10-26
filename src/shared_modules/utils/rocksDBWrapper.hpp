@@ -13,8 +13,9 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
-#include <iostream>
 #include <rocksdb/db.h>
+#include <filesystem>
+#include <iostream>
 #include <string>
 
 namespace Utils
@@ -31,6 +32,10 @@ namespace Utils
             rocksdb::Options options;
             options.create_if_missing = true;
             rocksdb::DB* dbRawPtr;
+
+            // Create directories recursively if they do not exist
+            std::filesystem::create_directories(std::filesystem::path(dbPath));
+
             const auto status {rocksdb::DB::Open(options, dbPath, &dbRawPtr)};
             if (!status.ok())
             {
