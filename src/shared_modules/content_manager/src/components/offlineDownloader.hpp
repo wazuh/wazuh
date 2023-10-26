@@ -89,7 +89,7 @@ private:
     void download(UpdaterContext& context) const
     {
         // Take the 'url' as the input file path.
-        auto url {context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
+        auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
         constexpr auto filePrefix {"file://"};
         if (Utils::startsWith(url, filePrefix))
         {
@@ -97,22 +97,22 @@ private:
         }
         const std::filesystem::path inputFilePath {url};
 
-        // Check if file is compressed.
-        const auto compressed {
-            "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
-
-        // Generate output file path. If the input file is compressed, the output file will be in the downloads folder
-        // and if it's not compressed, in the contents folder.
-        auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
-                                        : context.spUpdaterBaseContext->contentsFolder};
-        outputFilePath = outputFilePath / inputFilePath.filename();
-
         // Process input file hash.
         auto inputFileHash {hashFile(inputFilePath)};
 
         // Just process the new file if the hash is different from the last one.
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
+            // Check if file is compressed.
+            const auto compressed {
+                "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
+
+            // Generate output file path. If the input file is compressed, the output file will be in the downloads
+            // folder and if it's not compressed, in the contents folder.
+            auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
+                                            : context.spUpdaterBaseContext->contentsFolder};
+            outputFilePath = outputFilePath / inputFilePath.filename();
+
             // Copy files.
             std::filesystem::copy(inputFilePath, outputFilePath);
 
@@ -126,7 +126,7 @@ private:
 
 public:
     /**
-     * @brief Copies a file from the localsystem in order to be processed and passes the control to the next chain
+     * @brief Copies a file from the local filesystem in order to be processed and passes the control to the next chain
      * stage.
      *
      * @param context Updater context.
