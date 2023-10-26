@@ -5,17 +5,19 @@ import os
 import yaml
 
 from wazuh_testing import logger
-from wazuh_testing.tools import LOG_FILE_PATH, CLIENT_KEYS_PATH, API_LOG_FILE_PATH
-from wazuh_testing.wazuh_db import insert_agent_in_db, clean_agents_from_db
-from wazuh_testing.tools.file import truncate_file
-from wazuh_testing.tools.monitoring import FileMonitor, make_callback, AUTHD_DETECTOR_PREFIX
-from wazuh_testing.tools.configuration import write_wazuh_conf, get_wazuh_conf, set_section_wazuh_conf,\
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db, clean_agents_from_db
+from wazuh_testing.utils import file
+from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.modules.authd.patterns import PREFIX, DAEMON_NAME
+from wazuh_testing.utils.configuration import write_wazuh_conf, get_wazuh_conf, set_section_wazuh_conf,\
                                               load_wazuh_configurations
-from wazuh_testing.tools.services import control_service
-from wazuh_testing.authd import DAEMON_NAME
-from wazuh_testing.api import get_api_details_dict
+from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.wazuh_manager import remove_agents
-from wazuh_testing.modules.api import event_monitor as evm
+from wazuh_testing.constants.api import WAZUH_API_PORT
+from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 
 
 AUTHD_STARTUP_TIMEOUT = 30
@@ -29,7 +31,7 @@ def truncate_client_keys_file():
         control_service("stop", DAEMON_NAME)
     except Exception:
         pass
-    truncate_file(CLIENT_KEYS_PATH)
+    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
 
 
 @pytest.fixture(scope='function')
@@ -53,7 +55,7 @@ def restart_authd(get_configuration):
     """
     Restart Authd.
     """
-    truncate_file(LOG_FILE_PATH)
+    file.truncate_file(WAZUH_LOG_PATH)
     control_service("restart", daemon=DAEMON_NAME)
 
 
@@ -62,7 +64,7 @@ def restart_authd_function():
     """
     Restart Authd.
     """
-    truncate_file(LOG_FILE_PATH)
+    file.truncate_file(WAZUH_LOG_PATH)
     control_service("restart", daemon=DAEMON_NAME)
 
 
@@ -75,23 +77,19 @@ def stop_authd_function():
 
 
 @pytest.fixture(scope='module')
-def wait_for_authd_startup_module(get_configuration):
+def wait_for_authd_startup_module():
     """Wait until authd has begun"""
-    log_monitor = FileMonitor(LOG_FILE_PATH)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT,
-                      callback=make_callback('Accepting connections on port 1515', prefix=AUTHD_DETECTOR_PREFIX,
-                                             escape=True),
-                      error_message='Authd doesn´t started correctly.')
+                      callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
 
 
 @pytest.fixture(scope='function')
 def wait_for_authd_startup_function():
     """Wait until authd has begun with function scope"""
-    log_monitor = FileMonitor(LOG_FILE_PATH)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT,
-                      callback=make_callback('Accepting connections on port 1515', prefix=AUTHD_DETECTOR_PREFIX,
-                                             escape=True),
-                      error_message='Authd doesn´t started correctly.')
+                      callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
 
 
 @pytest.fixture(scope='module')
@@ -102,7 +100,7 @@ def tear_down():
     yield
     # Stop Wazuh
     control_service('stop')
-    truncate_file(CLIENT_KEYS_PATH)
+    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
     control_service('start')
 
 
@@ -157,30 +155,45 @@ def override_authd_force_conf(format_configuration):
 
 
 @pytest.fixture(scope='module')
-def get_api_details():
-    return get_api_details_dict
-
-
-@pytest.fixture(scope='module')
 def restart_api_module():
     # Stop Wazuh and Wazuh API
     control_service('stop')
-    truncate_file(API_LOG_FILE_PATH)
+    file.truncate_file(WAZUH_API_LOG_FILE_PATH)
     control_service('start')
 
 
 @pytest.fixture(scope='module')
 def wait_for_start_module():
-    """Monitor the API log file to detect whether it has been started or not."""
-    evm.check_api_start_log()
+    """Monitor the API log file to detect whether it has been started or not.
+
+    Raises:
+        RuntimeError: When the log was not found.
+    """
+    # Set the default values
+    logs_format = 'plain'
+    host = '0.0.0.0'
+    port = WAZUH_API_PORT
+
+    # Check if specific values were set or set the defaults
+    file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if logs_format == 'json' else WAZUH_API_LOG_FILE_PATH
+    monitor_start_message = file_monitor.FileMonitor(file_to_monitor)
+    monitor_start_message.start(
+        callback=generate_callback(API_STARTED_MSG, {
+            'host': str(host),
+            'port': str(port)
+        })
+    )
+
+    if monitor_start_message.callback_result is None:
+        raise RuntimeError('The API was not started as expected.')
 
 
 @pytest.fixture(scope='function')
-def insert_pre_existent_agents(get_current_test_case, stop_authd_function):
-    agents = get_current_test_case.get('pre_existent_agents', [])
+def insert_pre_existent_agents(test_metadata, stop_authd_function):
+    agents = test_metadata.get('pre_existent_agents', [])
     time_now = int(time.time())
     try:
-        keys_file = open(CLIENT_KEYS_PATH, 'w')
+        keys_file = open(WAZUH_CLIENT_KEYS_PATH, 'w')
     except IOError as exception:
         raise exception
 

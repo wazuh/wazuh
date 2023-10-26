@@ -39,14 +39,16 @@ tags:
 import os
 import subprocess
 import time
+from pathlib import Path
 
 import pytest
-from wazuh_testing.cluster import FERNET_KEY, CLUSTER_DATA_HEADER_SIZE, cluster_msg_build
-from wazuh_testing.tools import WAZUH_PATH, CLUSTER_LOGS_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.monitoring import ManInTheMiddle
-from wazuh_testing.tools.file import read_yaml
+from wazuh_testing.modules.authd.utils import CLUSTER_DATA_HEADER_SIZE, cluster_msg_build
+from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_CLUSTER_LOGS_PATH
+from wazuh_testing.utils.wazuh import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.tools.mitm import ManInTheMiddle
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
@@ -83,25 +85,23 @@ class WorkerMID(ManInTheMiddle):
         self.event.clear()
 
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-message_tests = read_yaml(os.path.join(test_data_path, 'worker_messages.yaml'))
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-params = [{'FERNET_KEY': FERNET_KEY}]
-metadata = [{'fernet_key': FERNET_KEY}]
-configurations = load_wazuh_configurations(configurations_path, __name__, params=params, metadata=metadata)
+# Configurations
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_worker.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 
 # Variables
-log_monitor_paths = [CLUSTER_LOGS_PATH]
+log_monitor_paths = [WAZUH_CLUSTER_LOGS_PATH]
 cluster_socket_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
-ossec_authd_socket_path = ("localhost", 1515)
+ossec_authd_socket_path = ("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
 receiver_sockets_params = [(ossec_authd_socket_path, 'AF_INET', 'SSL_TLSv1_2')]
-test_case_ids = [f"{test_case['name'].lower().replace(' ', '-')}" for test_case in message_tests]
 
 mitm_master = WorkerMID(address=cluster_socket_path, family='AF_UNIX', connection_protocol='TCP')
 
 monitored_sockets_params = [('wazuh-clusterd', mitm_master, True), ('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 
 # Fixtures
@@ -121,25 +121,10 @@ def set_up_groups(request, get_current_test_case):
         subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
-@pytest.fixture(scope='module', params=configurations, ids=['authd_worker_config'])
-def get_configuration(request):
-    """
-    Get configurations from the module
-    """
-    yield request.param
-
-
-@pytest.fixture(scope='function', params=message_tests, ids=test_case_ids)
-def get_current_test_case(request):
-    """
-    Get current test case from the module
-    """
-    return request.param
-
-
 # Tests
-def test_ossec_auth_messages(get_configuration, set_up_groups, configure_environment, configure_sockets_environment,
-                             connect_to_sockets_module, wait_for_authd_startup_module, get_current_test_case):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_ossec_auth_messages(test_configuration, test_metadata, set_up_groups, configure_sockets_environment,
+                             connect_to_sockets_module, wait_for_authd_startup_module):
     '''
     description:
         Checks that every message from the agent is correctly formatted for master,
@@ -184,7 +169,7 @@ def test_ossec_auth_messages(get_configuration, set_up_groups, configure_environ
     expected_output:
         - Registration request responses on Authd socket
     '''
-    test_case = get_current_test_case['test_case']
+    test_case = test_metadata
 
     for stage in test_case:
         # Push expected info to mitm queue

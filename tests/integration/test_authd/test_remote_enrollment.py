@@ -45,41 +45,29 @@ tags:
 '''
 import os
 import pytest
+import socket, time
+from pathlib import Path
 
-from wazuh_testing.tools import monitoring, LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.monitoring import SocketController, FileMonitor
-from wazuh_testing.tools.sockets import wait_for_tcp_port
-from wazuh_testing.tools.wazuh import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils import callbacks
+from wazuh_testing.modules.authd import PREFIX
+from wazuh_testing.tools.socket_controller import SocketController
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.utils.wazuh import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 from contextlib import contextmanager
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 
 # Configurations
-
-parameters = [
-    {'REMOTE_ENROLLMENT': 'no', 'CLUSTER_DISABLED': 'yes', 'NODE_TYPE': 'master'},
-    {'REMOTE_ENROLLMENT': 'yes', 'CLUSTER_DISABLED': 'yes', 'NODE_TYPE': 'master'},
-    {'REMOTE_ENROLLMENT': 'no', 'CLUSTER_DISABLED': 'no', 'NODE_TYPE': 'master'},
-    {'REMOTE_ENROLLMENT': 'yes', 'CLUSTER_DISABLED': 'no', 'NODE_TYPE': 'master'},
-    {'REMOTE_ENROLLMENT': 'no', 'CLUSTER_DISABLED': 'no', 'NODE_TYPE': 'worker'},
-    {'REMOTE_ENROLLMENT': 'yes', 'CLUSTER_DISABLED': 'no', 'NODE_TYPE': 'worker'}
-]
-
-metadata = [
-    {'remote_enrollment': 'no', 'node_type': 'no',  'id': 'no_remote_enrollment_standalone'},
-    {'remote_enrollment': 'yes', 'node_type': 'no',  'id': 'yes_remote_enrollment_standalone'},
-    {'remote_enrollment': 'no', 'node_type': 'master',  'id': 'no_remote_enrollment_cluster_master'},
-    {'remote_enrollment': 'yes', 'node_type': 'master',  'id': 'yes_remote_enrollment_cluster_master'},
-    {'remote_enrollment': 'no', 'node_type': 'worker',  'id': 'no_remote_enrollment_cluster_worker'},
-    {'remote_enrollment': 'yes', 'node_type': 'worker', 'id': 'yes_remote_enrollment_cluster_worker'}
-]
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__, params=parameters, metadata=metadata)
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_remote_enrollment.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
 log_monitor_paths = []
@@ -93,16 +81,34 @@ receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in t
 cluster_socket_address = ('localhost', 1516)
 remote_enrollment_address = ('localhost', 1515)
 
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
+
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
 INPUT_MESSAGE = "OSSEC A:'{}_{}'"
 
 
-@pytest.fixture(scope="module", params=configurations, ids=[f"{x['id']}" for x in metadata])
-def get_configuration(request):
-    """Get configurations from the module"""
-    yield request.param
+def wait_for_tcp_port(port, host='localhost', timeout=10):
+    """Wait until a port starts accepting TCP connections.
+    Args:
+        port (int): Port number.
+        host (str): Host address on which the port should be listening. Default 'localhost'
+        timeout (float): In seconds. How long to wait before raising errors.
+    Raises:
+        TimeoutError: The port isn't accepting connection after time specified in `timeout`.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            sock.connect((host, port))
+            sock.close()
+            return
+        except ConnectionRefusedError:
+            time.sleep(1)
 
+
+    raise TimeoutError(f'Waited too long for the port {port} on host {host} to start accepting messages')
 
 @contextmanager
 def not_raises(exception):
@@ -111,8 +117,8 @@ def not_raises(exception):
     except exception:
         raise pytest.fail("DID RAISE {0}".format(exception))
 
-
-def test_remote_enrollment(get_configuration, configure_environment, restart_wazuh_daemon_function, tear_down):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_remote_enrollment(test_configuration, test_metadata, daemons_handler, tear_down):
     '''
     description:
         Checks if the 'wazuh-authd' daemon remote enrollment is enabled/disabled according
@@ -161,7 +167,6 @@ def test_remote_enrollment(get_configuration, configure_environment, restart_waz
     expectation = not_raises(ConnectionRefusedError)
     expected_answer = 'OSSEC K:'
 
-    test_metadata = get_configuration['metadata']
     remote_enrollment_enabled = test_metadata['remote_enrollment'] == 'yes'
 
     if remote_enrollment_enabled:
@@ -171,10 +176,8 @@ def test_remote_enrollment(get_configuration, configure_environment, restart_waz
         expected_log = ".*Port 1515 was set as disabled.*"
         expectation = pytest.raises(ConnectionRefusedError)
 
-    FileMonitor(LOG_FILE_PATH).start(timeout=5,
-                                     callback=monitoring.make_callback(pattern=expected_log,
-                                                                       prefix=monitoring.AUTHD_DETECTOR_PREFIX),
-                                     error_message=f'Expected log not found: {expected_log}')
+    file_monitor.FileMonitor(WAZUH_LOG_PATH).start(timeout=5,
+                                     callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'))
     with expectation:
         ssl_socket = SocketController(remote_enrollment_address, family='AF_INET', connection_protocol='SSL_TLSv1_2')
 

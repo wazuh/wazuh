@@ -49,20 +49,22 @@ import subprocess
 import time
 
 import pytest
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
+from pathlib import Path
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
+# Paths
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_enroll_messages.yaml')
 
 # Configurations
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-message_tests = read_yaml(os.path.join(test_data_path, 'enroll_messages.yaml'))
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__, params=None, metadata=None)
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
 log_monitor_paths = []
@@ -71,14 +73,16 @@ receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
 
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
 
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
+
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 
 # Tests
 
-@pytest.fixture(scope="function", params=message_tests)
+@pytest.fixture(scope="function", params=test_metadata)
 def set_up_groups(request):
-    groups = request.param.get('groups', [])
+    groups = test_metadata['groups']
     for group in groups:
         subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
     yield request.param
@@ -86,15 +90,9 @@ def set_up_groups(request):
         subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
-@pytest.fixture(scope="module", params=configurations)
-def get_configuration(request):
-    """Get configurations from the module"""
-    yield request.param
-
-
-def test_ossec_auth_messages(get_configuration, set_up_groups, configure_environment, configure_sockets_environment,
-                             clean_client_keys_file_module, restart_wazuh_daemon, wait_for_authd_startup_module,
-                             connect_to_sockets_module):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_ossec_auth_messages(test_configuration, test_metadata, set_up_groups, configure_sockets_environment,
+                             clean_client_keys_file_module, wait_for_authd_startup_module, connect_to_sockets_module, daemons_handler):
     '''
     description:
         Checks if when the `wazuh-authd` daemon receives different types of enrollment requests,
@@ -147,7 +145,7 @@ def test_ossec_auth_messages(get_configuration, set_up_groups, configure_environ
         - keys
         - ssl
     '''
-    test_case = set_up_groups['test_case']
+    test_case = test_metadata['stages']
     for stage in test_case:
         # Reopen socket (socket is closed by manager after sending message with client key)
         receiver_sockets[0].open()

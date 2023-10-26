@@ -59,10 +59,11 @@ import os
 import pytest
 import time
 
-from wazuh_testing.tools import API_LOG_FILE_PATH, CLIENT_KEYS_PATH
-from wazuh_testing.api import get_api_details_dict
-from wazuh_testing.tools.file import truncate_file, read_yaml
-from wazuh_testing.tools.services import control_service
+from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.utils.file import truncate_file, read_yaml
+from wazuh_testing.utils.services import control_service
+from wazuh_testing.modules.api.utils import get_base_url, login
 
 
 # Marks
@@ -77,7 +78,7 @@ api_registration_requests_ids = [tcase['name'].replace(' ', '-').lower() for tca
 client_keys_update_timeout = 1
 
 def retrieve_client_key_entry(agent_parameters):
-    with open(CLIENT_KEYS_PATH) as client_keys_file:
+    with open(WAZUH_CLIENT_KEYS_PATH) as client_keys_file:
         client_keys_content = client_keys_file.readlines()
         client_keys_dictionary = []
         for entry in client_keys_content:
@@ -99,19 +100,19 @@ def retrieve_client_key_entry(agent_parameters):
 @pytest.fixture(scope='module')
 def clean_registered_agents():
     control_service('stop')
-    truncate_file(CLIENT_KEYS_PATH)
+    truncate_file(WAZUH_CLIENT_KEYS_PATH)
     control_service('start')
 
     yield
 
     control_service('stop')
-    truncate_file(CLIENT_KEYS_PATH)
+    truncate_file(WAZUH_CLIENT_KEYS_PATH)
     control_service('start')
 
 
 @pytest.fixture(scope='module')
 def truncate_api_log():
-    truncate_file(API_LOG_FILE_PATH)
+    truncate_file(WAZUH_API_LOG_FILE_PATH)
 
 
 def check_valid_agent_id(id):
@@ -198,8 +199,9 @@ def test_agentd_server_configuration(truncate_api_log, clean_registered_agents, 
         request_parameters = api_registration_parameters['parameters'][stage]
         expected = api_registration_parameters['expected'][stage]
 
-        api_details = get_api_details_dict()
-        api_query = f"{api_details['base_url']}/agents?"
+        url = get_base_url()
+        authentication_headers, _ = login()
+        api_query = f"{url}/agents?"
 
         expected_client_keys_ip = request_parameters['agent_ip']
         if api_registration_parameters['parameters'][stage]['ipv6']:
@@ -214,7 +216,7 @@ def test_agentd_server_configuration(truncate_api_log, clean_registered_agents, 
         request_json = {'name': request_parameters['agent_name'],
                         'ip':  request_parameters['agent_ip']}
 
-        response = requests.post(api_query, headers=api_details['auth_headers'], json=request_json,
+        response = requests.post(api_query, headers=authentication_headers, json=request_json,
                                  verify=False)
 
         # Assert response is the same specified in the api_registration_parameters

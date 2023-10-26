@@ -43,20 +43,24 @@ import subprocess
 import time
 
 import pytest
-from wazuh_testing.tools import WAZUH_DB_SOCKET_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
+from pathlib import Path
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
+# Paths
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_key_hash.yaml')
+
 
 # Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-message_tests = read_yaml(os.path.join(test_data_path, 'authd_key_hash.yaml'))
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__, params=None, metadata=None)
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 
 # Variables
@@ -64,33 +68,18 @@ log_monitor_paths = []
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
 receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
-test_case_ids = [f"{test_case['name'].lower().replace(' ', '-')}" for test_case in message_tests]
+
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 
 # Tests
-@pytest.fixture(scope="module", params=configurations)
-def get_configuration(request, ids=['authd_key_hash_config']):
-    """
-    Get configurations from the module
-    """
-    yield request.param
-
-
-@pytest.fixture(scope='function', params=message_tests, ids=test_case_ids)
-def get_current_test_case(request):
-    """
-    Get current test case from the module
-    """
-    return request.param
-
-
 @pytest.fixture(scope='function')
-def set_up_groups(get_current_test_case, request):
+def set_up_groups(test_metadata, request):
     """
     Set pre-existent groups.
     """
 
-    groups = get_current_test_case.get('groups', [])
+    groups = test_metadata.get('groups', [])
 
     for group in groups:
         subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
@@ -101,10 +90,10 @@ def set_up_groups(get_current_test_case, request):
         subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
-def test_ossec_auth_messages_with_key_hash(configure_environment, configure_sockets_environment,
-                                           connect_to_sockets_function, set_up_groups, insert_pre_existent_agents,
-                                           restart_wazuh_daemon_function, wait_for_authd_startup_function,
-                                           get_current_test_case, tear_down):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, configure_sockets_environment, daemons_handler,
+                                           connect_to_sockets, set_up_groups, insert_pre_existent_agents,
+                                           wait_for_authd_startup_function):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -155,8 +144,7 @@ def test_ossec_auth_messages_with_key_hash(configure_environment, configure_sock
     expected_output:
         - Registration request responses on Authd socket
     '''
-    case = get_current_test_case['test_case']
-
+    case = test_metadata
     for index, stage in enumerate(case):
         # Reopen socket (socket is closed by manager after sending message with client key)
         receiver_sockets[0].open()

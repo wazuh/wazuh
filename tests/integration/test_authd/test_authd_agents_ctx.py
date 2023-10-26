@@ -49,12 +49,12 @@ import subprocess
 import time
 
 import pytest
-from wazuh_testing.tools import WAZUH_PATH, LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import truncate_file, remove_file, recursive_directory_creation
-from wazuh_testing.tools.monitoring import FileMonitor
-from wazuh_testing.tools.services import control_service, check_daemon_status
-from wazuh_testing.api import remove_groups, set_up_groups
+from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
+from wazuh_testing.utils.configuration import load_wazuh_configurations
+from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.utils.services import control_service, check_daemon_status
+from wazuh_testing.modules.api.utils import remove_groups, set_up_groups
 from wazuh_testing.tools.wazuh_manager import remove_all_agents
 
 
@@ -85,6 +85,8 @@ timeout = 10
 login_attempts = 3
 sleep = 1
 
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
+
 @pytest.fixture(scope="module", params=configurations)
 def get_configuration(request):
     """Get configurations from the module"""
@@ -107,12 +109,12 @@ def wait_server_connection():
             return line
         return None
 
-    log_monitor = FileMonitor(LOG_FILE_PATH)
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=30, callback=callback_agentd_startup)
 
 
 def clean_logs():
-    truncate_file(LOG_FILE_PATH)
+    truncate_file(WAZUH_LOG_PATH)
 
 
 def clean_keys():
@@ -368,8 +370,8 @@ def duplicate_name_agent_delete_test(server):
 
 
 @pytest.mark.parametrize("server_type",["main", "local"])
-def test_ossec_authd_agents_ctx(get_configuration, configure_environment, configure_sockets_environment,
-                                     connect_to_sockets_module, restart_wazuh, server_type):
+def test_ossec_authd_agents_ctx(get_configuration, daemons_handler, configure_sockets_environment,
+                                     connect_to_sockets_module, server_type):
     '''
     description:
         Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
