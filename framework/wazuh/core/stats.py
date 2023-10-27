@@ -220,8 +220,7 @@ def get_daemons_stats_(filename: str) -> list:
 
 
 def is_agent_a_manager(agent_id: Union[str, int]) -> bool:
-    """
-    Check if the given agent ID corresponds to a manager agent.
+    """Check if the given agent ID corresponds to a manager agent.
 
     Parameters
     ----------
@@ -237,8 +236,7 @@ def is_agent_a_manager(agent_id: Union[str, int]) -> bool:
 
 
 def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
-    """
-    Get the socket path for retrieving statistics based on agent type.
+    """Get the socket path for retrieving statistics based on agent type.
 
     Parameters
     ----------
@@ -259,8 +257,7 @@ def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
 
 
 def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool = False) -> str:
-    """
-    Create a command to retrieve statistics based on agent type.
+    """Create a command to retrieve statistics based on agent type.
 
     Parameters
     ----------
@@ -289,8 +286,7 @@ def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool
 
 
 def check_if_daemon_exists_in_agent(agent_id: Union[str, int], daemon: str) -> bool:
-    """
-    Check if a daemon exists for a given agent.
+    """Check if a daemon exists for a given agent.
 
     Parameters
     ----------
