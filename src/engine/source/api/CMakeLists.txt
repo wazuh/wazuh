@@ -49,6 +49,8 @@ target_link_libraries(api
     fmt
     json
     kvdb
+    kvdb::ikvdb
+    kvdb::mocks
     metrics
     router
     store::fileDriver
