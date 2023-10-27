@@ -12056,7 +12056,6 @@ paths:
                               reset-agents-connection_queries: 1
                               delete-agent_queries: 0
                               select-agent-name_queries: 2
-                              select-agent-group_queries: 1
                               select-keepalive_queries: 0
                               find-agent_queries: 0
                               get-agent-info_queries: 39
@@ -12067,12 +12066,10 @@ paths:
                               sync-agent-info-set_queries: 37
                               sync-agent-groups-get_queries: 36
                               set-agent-groups_queries: 0
-                              get-groups-integrity_queries: 0
                             group_queries:
                               insert-agent-group_queries: 0
                               delete-group_queries: 0
                               select-groups_queries: 1
-                              find-group_queries: 1
                             belongs_queries:
                               delete-agent-belong_queries: 0
                               select-group-belong_queries: 0
@@ -12158,7 +12155,6 @@ paths:
                               reset-agents-connection_time: 0
                               delete-agent_time: 0
                               select-agent-name_time: 0
-                              select-agent-group_time: 0
                               select-keepalive_time: 0
                               find-agent_time: 0
                               get-agent-info_time: 2
@@ -12169,12 +12165,10 @@ paths:
                               sync-agent-info-set_time: 6
                               sync-agent-groups-get_time: 2
                               set-agent-groups_time: 0
-                              get-groups-integrity_time: 0
                             group_time:
                               insert-agent-group_time: 0
                               delete-group_time: 0
                               select-groups_time: 0
-                              find-group_time: 0
                             belongs_time:
                               delete-agent-belong_time: 0
                               select-group-belong_time: 0
