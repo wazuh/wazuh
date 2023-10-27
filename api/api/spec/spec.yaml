@@ -4177,7 +4177,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:vulnerability-detector:
+          wazuh-modulesd:vulnerability-detection:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
@@ -6319,6 +6319,8 @@ components:
         - socket
         - syscheck
         - syslog_output
+        - vulnerability-detection
+        - indexer
         # Wodle sections
         - aws-s3
         - azure-logs
@@ -6327,7 +6329,6 @@ components:
         - open-scap
         - osquery
         - syscollector
-        - vulnerability-detector
     field:
       in: query
       name: field
@@ -10301,15 +10302,16 @@ paths:
                         scan_on_start: yes
                         interval: "12h"
                         skip_nfs: yes
-                      vulnerability-detector:
-                        enabled: no
-                        interval: "5m"
-                        ignore_time: "6h"
-                        run_on_start: yes
-                        provider:
-                          name: nvd
-                          enabled: yes
-                          update_interval: "1h"
+                      vulnerability-detection:
+                        enabled: yes
+                        index-status: yes
+                        feed-update-interval: "60m"
+                      indexer:
+                        enabled: yes
+                        hosts:
+                          host: http://127.0.0.1:9200
+                        username: admin
+                        password: admin
                       syscheck:
                         disabled: no
                         frequency: 43200

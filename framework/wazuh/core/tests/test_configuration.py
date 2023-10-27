@@ -42,7 +42,6 @@ def mock_wazuh_path():
     ({}, None, 'new', 1),
     ({}, None, 'new', False),
     ({'old': [None]}, 'ruleset', 'include', [1]),
-    ({'old': [None]}, 'vulnerability-detector', 'provider', [1])
 ])
 def test_insert(json_dst, section_name, option, value):
     """Checks insert function."""
