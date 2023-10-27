@@ -2,26 +2,34 @@
 
 #include "exprBuilder.hpp"
 #include "tracer.hpp"
-namespace bk::taskf
-{
 
+namespace bk::rx
+{
 class Controller::TracerImpl final : public detail::Tracer
 {
 };
 
-Controller::Controller(base::Expression expression, std::unordered_set<std::string> traceables, std::function<void()> endCallback)
-    : m_tf()
-    , m_executor(1)
-    , m_event()
-    , m_traceables(std::move(traceables))
-    , m_expression(std::move(expression))
+Controller::Controller(base::Expression expression,
+                       std::unordered_set<std::string> traceables,
+                       std::function<void()> endCallback)
+    : m_traceables {traceables}
+    , m_expression {expression}
+    , m_policyInput {m_policySubject.get_subscriber()}
 {
     detail::ExprBuilder builder;
     std::unordered_map<std::string, std::shared_ptr<detail::Tracer>> traces;
-    builder.build(m_expression, m_tf, &m_event, traces, m_traceables, endCallback);
+    m_policyOutput = builder.build(expression, traces, m_traceables, m_policySubject.get_observable());
     for (auto& [name, trace] : traces)
     {
         m_traces.emplace(name, std::static_pointer_cast<TracerImpl>(trace));
+    }
+    if (endCallback != nullptr)
+    {
+        m_policyOutput.subscribe([endCallback](const RxEvent& event) { endCallback(); });
+    }
+    else
+    {
+        m_policyOutput.subscribe();
     }
 }
 
@@ -46,4 +54,5 @@ void Controller::unsubscribe(const std::string& traceable, Subscription subscrip
 
     it->second->unsubscribe(subscription);
 }
-} // namespace bk::taskf
+
+} // namespace bk::rx

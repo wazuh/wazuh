@@ -1,8 +1,20 @@
 #include <gtest/gtest.h>
 
+#include <bk/rx/controller.hpp>
 #include <bk/taskf/controller.hpp>
+#include <bk/mockController.hpp> // Force mock compilation
+
+#include "bk_test.hpp"
 
 using namespace bk::taskf;
+using namespace bk::test;
+using namespace base;
+
+const std::string PATH_NAME = "/name";
+const std::string PATH_RESULT = "/result";
+
+static const std::string SUCCES_TRACE = "Fake trace success";
+static const std::string FAILURE_TRACE = "Fake trace failure";
 
 /********************************************
  *
@@ -13,11 +25,6 @@ using namespace bk::taskf;
  * The expected result is an array of this struct, in evaluation order, like:
  * [{ "name": "term1", "result": true}]
  ********************************************/
-const std::string PATH_NAME = "/name";
-const std::string PATH_RESULT = "/result";
-
-const std::string SUCCES_TRACE = "Fake trace success";
-const std::string FAILURE_TRACE = "Fake trace failure";
 
 class EasyExp
 {
@@ -102,442 +109,795 @@ public:
     operator base::Expression() const { return m_expression; }
 };
 
-// Test parameters: Expression, expected result (name + term result)
-using BKexpParams = std::tuple<base::Expression, std::vector<std::pair<std::string, bool>>>;
-class BKTaskFlowControllerTest : public ::testing::TestWithParam<BKexpParams>
+using PipelineParams = std::tuple<std::string, base::Expression, Path>;
+class PipelineTest : public ::testing::TestWithParam<PipelineParams>
 {
 };
 
-TEST_P(BKTaskFlowControllerTest, buildAndIngest)
+template<typename BackEnd>
+inline void buildIngestTest(const base::Expression& expression, const Path& expected)
 {
-    auto [expr, expResult] = GetParam();
     auto counter = 0;
-    auto controller =
-        bk::taskf::Controller(expr,
-                              {},
-                              [&]()
-                              {
-                                  ++counter;
-                                  ASSERT_EQ(counter, 1)
-                                      << "Only one event is send but the end callback received more than one event";
-                              });
+    auto controller = BackEnd(expression, {}, [&]() { ++counter; });
     auto event = std::make_shared<json::Json>();
     ASSERT_NO_THROW(event = controller.ingestGet(std::move(event)));
 
-    auto jResult = event->getArray();
-    ASSERT_TRUE(jResult) << "The result is not an array: " << event->prettyStr();
+    ASSERT_EQ(counter, 1) << "Only one event was sent but the end callback received more than one event";
 
-    ASSERT_EQ(jResult->size(), expResult.size())
-        << "The result size is not the expected: " << event->prettyStr() << "\nDot Graph:\n"
-        << controller.printGraph() << "\n";
+    expected.check(event);
+}
 
-    // Check for each parcial result for each term (in order of eval)
-    for (std::size_t i = 0; i < expResult.size(); ++i)
-    {
-        const auto& jTermResult = jResult->at(i);
-        const auto& [name, result] = expResult[i];
+TEST_P(PipelineTest, TfProcessEvent)
+{
+    auto [name, expression, expectedPath] = GetParam();
+    auto testExpression = getTestExpression(expression);
+    buildIngestTest<bk::taskf::Controller>(testExpression, expectedPath);
+}
 
-        ASSERT_TRUE(jTermResult.isObject()) << "The result is not an object: " << jTermResult.prettyStr();
-        ASSERT_TRUE(jTermResult.isString(PATH_NAME)) << "The result has no name field: " << jTermResult.prettyStr();
-        ASSERT_TRUE(jTermResult.isBool(PATH_RESULT)) << "The result has no result field: " << jTermResult.prettyStr();
+TEST_P(PipelineTest, TfProcessTraces)
+{
+    GTEST_SKIP(); // TODO
+}
 
-        ASSERT_EQ(jTermResult.getString(PATH_NAME).value(), name)
-            << "The name is not the expected: " << jTermResult.prettyStr() << "\nFull order: " << event->prettyStr()
-            << "\nDot Graph:\n"
-            << controller.printGraph() << "\n";
-        ASSERT_EQ(jTermResult.getBool(PATH_RESULT).value(), result)
-            << "The result is not the expected: " << jTermResult.prettyStr() << "\nFull order: " << event->prettyStr()
-            << "\nDot Graph:\n"
-            << controller.printGraph() << "\n";
-    }
+TEST_P(PipelineTest, RxProessEvent)
+{
+    auto [name, expression, expectedPath] = GetParam();
+    auto testExpression = getTestExpression(expression);
+    buildIngestTest<bk::rx::Controller>(testExpression, expectedPath);
+}
+
+TEST_P(PipelineTest, RxProcessTraces)
+{
+    GTEST_SKIP(); // TODO
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    BKTaskFlow,
-    BKTaskFlowControllerTest,
+    BK,
+    PipelineTest,
     ::testing::Values(
-        // [2] Basic: Term
-        BKexpParams {EasyExp::term("term", true), {{"term", true}}},
-        BKexpParams {EasyExp::term("term", false), {{"term", false}}},
-        // Basic: Broadcast (The order is not important in broadcast, use chain instead for order) By default the
-        // [5] scheduler in taskflow invert the order
-        BKexpParams {EasyExp::broadcast("broadcast", {true, true, true, true, true}),
-                     {{"broadcast_4", true},
-                      {"broadcast_3", true},
-                      {"broadcast_2", true},
-                      {"broadcast_1", true},
-                      {"broadcast_0", true}}},
-        BKexpParams {EasyExp::broadcast("broadcast", {true, true, false, true, true}),
-                     {{"broadcast_4", true},
-                      {"broadcast_3", true},
-                      {"broadcast_2", false},
-                      {"broadcast_1", true},
-                      {"broadcast_0", true}}},
-        BKexpParams {EasyExp::broadcast("broadcast", {false, false, false, false, false}),
-                     {{"broadcast_4", false},
-                      {"broadcast_3", false},
-                      {"broadcast_2", false},
-                      {"broadcast_1", false},
-                      {"broadcast_0", false}}},
-        BKexpParams {EasyExp::broadcast("broadcast", {false}), {{"broadcast_0", false}}},
-        BKexpParams {EasyExp::broadcast("broadcast", {true}), {{"broadcast_0", true}}},
-        // [5] basic: Chain
-        BKexpParams {EasyExp::chain("chain", {true, true, true, true, true}),
-                     {{"chain_0", true}, {"chain_1", true}, {"chain_2", true}, {"chain_3", true}, {"chain_4", true}}},
-        BKexpParams {EasyExp::chain("chain", {true, true, false, true, true}),
-                     {{"chain_0", true}, {"chain_1", true}, {"chain_2", false}, {"chain_3", true}, {"chain_4", true}}},
-        BKexpParams {
-            EasyExp::chain("chain", {false, false, false, false, false}),
-            {{"chain_0", false}, {"chain_1", false}, {"chain_2", false}, {"chain_3", false}, {"chain_4", false}}},
-        BKexpParams {EasyExp::chain("chain", {false}), {{"chain_0", false}}},
-        BKexpParams {EasyExp::chain("chain", {true}), {{"chain_0", true}}},
-        // [4] Basic: Implication
-        BKexpParams {EasyExp::implication("implication", true, true),
-                     {{"implication_cond", true}, {"implication_imp", true}}},
-        BKexpParams {EasyExp::implication("implication", true, false),
-                     {{"implication_cond", true}, {"implication_imp", false}}},
-        BKexpParams {EasyExp::implication("implication", false, true), {{"implication_cond", false}}},
-        BKexpParams {EasyExp::implication("implication", false, false), {{"implication_cond", false}}},
-        // [5] Basic: Or
-        BKexpParams {EasyExp::or_("or", {true, true, true, true, true}), {{"or_0", true}}},
-        BKexpParams {EasyExp::or_("or", {false, false, true, true, true}),
-                     {{"or_0", false}, {"or_1", false}, {"or_2", true}}},
-        BKexpParams {EasyExp::or_("or", {false, false, false, false, false}),
-                     {{"or_0", false}, {"or_1", false}, {"or_2", false}, {"or_3", false}, {"or_4", false}}},
-        BKexpParams {EasyExp::or_("or", {false}), {{"or_0", false}}},
-        BKexpParams {EasyExp::or_("or", {true}), {{"or_0", true}}},
-        // [5] Basic: and
-        BKexpParams {EasyExp::and_("and", {true, true, true, true, true}),
-                     {{"and_0", true}, {"and_1", true}, {"and_2", true}, {"and_3", true}, {"and_4", true}}},
-        BKexpParams {EasyExp::and_("and", {true, true, false, true, true}),
-                     {{"and_0", true}, {"and_1", true}, {"and_2", false}}},
-        BKexpParams {EasyExp::and_("and", {false, false, false, false, false}), {{"and_0", false}}},
-        BKexpParams {EasyExp::and_("and", {false}), {{"and_0", false}}},
-        BKexpParams {EasyExp::and_("and", {true}), {{"and_0", true}}},
+        // Basic: Term
+        PipelineParams {"Basic: Term", build::term("t", true), Path(term("t", true))},
+        PipelineParams {"Basic: Term", build::term("t", false), Path(term("t", false))},
+        // Basic: Broadcast
+        PipelineParams {"Basic: Broadcast",
+                        Broadcast::create("broadcast",
+                                          {build::term("t0", true),
+                                           build::term("t1", true),
+                                           build::term("t2", true),
+                                           build::term("t3", true),
+                                           build::term("t4", true)}),
+                        Path(unord("broadcast",
+                                   term("t0", true),
+                                   term("t1", true),
+                                   term("t2", true),
+                                   term("t3", true),
+                                   term("t4", true)))},
+        PipelineParams {"Basic: Broadcast",
+                        Broadcast::create("broadcast",
+                                          {build::term("t0", true),
+                                           build::term("t1", true),
+                                           build::term("t2", false),
+                                           build::term("t3", true),
+                                           build::term("t4", true)}),
+                        Path(unord("broadcast",
+                                   term("t0", true),
+                                   term("t1", true),
+                                   term("t2", false),
+                                   term("t3", true),
+                                   term("t4", true)))},
+        PipelineParams {"Basic: Broadcast",
+                        Broadcast::create("broadcast",
+                                          {build::term("t0", false),
+                                           build::term("t1", false),
+                                           build::term("t2", false),
+                                           build::term("t3", false),
+                                           build::term("t4", false)}),
+                        Path(unord("broadcast",
+                                   term("t0", false),
+                                   term("t1", false),
+                                   term("t2", false),
+                                   term("t3", false),
+                                   term("t4", false)))},
+        PipelineParams {"Basic: Broadcast",
+                        Broadcast::create("broadcast", {build::term("t0", false)}),
+                        Path(unord("broadcast", term("t0", false)))},
+        PipelineParams {"Basic: Broadcast",
+                        Broadcast::create("broadcast", {build::term("t0", true)}),
+                        Path(unord("broadcast", term("t0", true)))},
+        // Basic: Chain
+        PipelineParams {
+            "Basic: Chain",
+            Chain::create("chain",
+                          {build::term("t0", true),
+                           build::term("t1", true),
+                           build::term("t2", true),
+                           build::term("t3", true),
+                           build::term("t4", true)}),
+            Path(order(
+                "chain", term("t0", true), term("t1", true), term("t2", true), term("t3", true), term("t4", true)))},
+        PipelineParams {
+            "Basic: Chain",
+            Chain::create("chain",
+                          {build::term("t0", true),
+                           build::term("t1", true),
+                           build::term("t2", false),
+                           build::term("t3", true),
+                           build::term("t4", true)}),
+            Path(order(
+                "chain", term("t0", true), term("t1", true), term("t2", false), term("t3", true), term("t4", true)))},
+        PipelineParams {"Basic: Chain",
+                        Chain::create("chain",
+                                      {build::term("t0", false),
+                                       build::term("t1", false),
+                                       build::term("t2", false),
+                                       build::term("t3", false),
+                                       build::term("t4", false)}),
+                        Path(order("chain",
+                                   term("t0", false),
+                                   term("t1", false),
+                                   term("t2", false),
+                                   term("t3", false),
+                                   term("t4", false)))},
+        PipelineParams {"Basic: Chain",
+                        Chain::create("chain", {build::term("t0", false)}),
+                        Path(order("chain", term("t0", false)))},
+        PipelineParams {
+            "Basic: Chain", Chain::create("chain", {build::term("t0", true)}), Path(order("chain", term("t0", true)))},
+        // Basic: Implication
+        PipelineParams {"Basic: Implication",
+                        Implication::create("implication", build::term("cond", true), build::term("imp", true)),
+                        Path(order("implication", term("cond", true), term("imp", true)))},
+        PipelineParams {"Basic: Implication",
+                        Implication::create("implication", build::term("cond", true), build::term("imp", false)),
+                        Path(order("implication", term("cond", true), term("imp", false)))},
+        PipelineParams {"Basic: Implication",
+                        Implication::create("implication", build::term("cond", false), build::term("imp", true)),
+                        Path(order("implication", term("cond", false)))},
+        PipelineParams {"Basic: Implication",
+                        Implication::create("implication", build::term("cond", false), build::term("imp", false)),
+                        Path(order("implication", term("cond", false)))},
+        // Basic: Or
+        PipelineParams {"Basic: Or",
+                        Or::create("or",
+                                   {build::term("t0", true),
+                                    build::term("t1", true),
+                                    build::term("t2", true),
+                                    build::term("t3", true),
+                                    build::term("t4", true)}),
+                        Path(order("or", term("t0", true)))},
+        PipelineParams {"Basic: Or",
+                        Or::create("or",
+                                   {build::term("t0", false),
+                                    build::term("t1", false),
+                                    build::term("t2", true),
+                                    build::term("t3", true),
+                                    build::term("t4", true)}),
+                        Path(order("or", term("t0", false), term("t1", false), term("t2", true)))},
+        PipelineParams {
+            "Basic: Or",
+            Or::create("or",
+                       {build::term("t0", false),
+                        build::term("t1", false),
+                        build::term("t2", false),
+                        build::term("t3", false),
+                        build::term("t4", false)}),
+            Path(order(
+                "or", term("t0", false), term("t1", false), term("t2", false), term("t3", false), term("t4", false)))},
+        PipelineParams {
+            "Basic: Or", Or::create("or", {build::term("t0", false)}), Path(order("or", term("t0", false)))},
+        PipelineParams {"Basic: Or", Or::create("or", {build::term("t0", true)}), Path(order("or", term("t0", true)))},
+        // Basic: And
+        PipelineParams {
+            "Basic: And",
+            And::create("and",
+                        {build::term("t0", true),
+                         build::term("t1", true),
+                         build::term("t2", true),
+                         build::term("t3", true),
+                         build::term("t4", true)}),
+            Path(
+                order(
+                    "and", term("t0", true), term("t1", true), term("t2", true), term("t3", true), term("t4", true)))},
+        PipelineParams {"Basic: And",
+                        And::create("and",
+                                    {build::term("t0", true),
+                                     build::term("t1", true),
+                                     build::term("t2", false),
+                                     build::term("t3", true),
+                                     build::term("t4", true)}),
+                        Path(order("and", term("t0", true), term("t1", true), term("t2", false)))},
+        PipelineParams {"Basic: And",
+                        And::create("and",
+                                    {build::term("t0", false),
+                                     build::term("t1", false),
+                                     build::term("t2", false),
+                                     build::term("t3", false),
+                                     build::term("t4", false)}),
+                        Path(order("and", term("t0", false)))},
+        PipelineParams {
+            "Basic: And", And::create("and", {build::term("t0", false)}), Path(order("and", term("t0", false)))},
+        PipelineParams {
+            "Basic: And", And::create("and", {build::term("t0", true)}), Path(order("and", term("t0", true)))},
         /*********************************************** BROADCAST TEST ***********************************************/
-        // [2] Complex: Broadcast of broadcast
-        BKexpParams {
-            base::Broadcast::create("broadcast",
-                                    {EasyExp::broadcast("broadcast_0", {true, true}),
-                                     EasyExp::broadcast("broadcast_1", {true, true})}),
-            {{"broadcast_1_1", true}, {"broadcast_1_0", true}, {"broadcast_0_1", true}, {"broadcast_0_0", true}}},
-        BKexpParams {
-            base::Broadcast::create("broadcast",
-                                    {EasyExp::broadcast("broadcast_0", {true, false}),
-                                     EasyExp::broadcast("broadcast_1", {false, true})}),
-            {{"broadcast_1_1", true}, {"broadcast_1_0", false}, {"broadcast_0_1", false}, {"broadcast_0_0", true}}},
-        // [2] Complex: Broadcast of chain
-        BKexpParams {
-            base::Broadcast::create("broadcast",
-                                    {EasyExp::chain("chain_0", {true, true}), EasyExp::chain("chain_1", {true, true})}),
-            {{"chain_1_0", true}, {"chain_1_1", true}, {"chain_0_0", true}, {"chain_0_1", true}}},
-        BKexpParams {base::Broadcast::create("broadcast",
-                                             {EasyExp::chain("chain_0", {true, false}),
-                                              EasyExp::chain("chain_1", {false, true})}),
-                     {{"chain_1_0", false}, {"chain_1_1", true}, {"chain_0_0", true}, {"chain_0_1", false}}},
-        // [4] Complex: Broadcast of implication
-        BKexpParams {base::Broadcast::create("broadcast",
-                                             {EasyExp::implication("implication_0", true, true),
-                                              EasyExp::implication("implication_1", true, true)}),
-                     {{"implication_1_cond", true},
-                      {"implication_1_imp", true},
-                      {"implication_0_cond", true},
-                      {"implication_0_imp", true}}},
-        BKexpParams {base::Broadcast::create("broadcast",
-                                             {EasyExp::implication("implication_0", true, false),
-                                              EasyExp::implication("implication_1", false, true)}),
-                     {{"implication_1_cond", false}, {"implication_0_cond", true}, {"implication_0_imp", false}}},
-        BKexpParams {base::Broadcast::create("broadcast",
-                                             {EasyExp::implication("implication_0", false, true),
-                                              EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_1_cond", true}, {"implication_1_imp", false}, {"implication_0_cond", false}}},
-        BKexpParams {base::Broadcast::create("broadcast",
-                                             {EasyExp::implication("implication_0", false, true),
-                                              EasyExp::implication("implication_1", false, true)}),
-                     {{"implication_1_cond", false}, {"implication_0_cond", false}}},
-        // [3] Complex: Broadcast of or
-        BKexpParams {base::Broadcast::create("broadcastXYZ",
-                                             {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
-                     {{"or_1_0", true}, {"or_0_0", true}}},
-        BKexpParams {base::Broadcast::create(
-                         "broadcast", {EasyExp::or_("or_0", {true, false}), EasyExp::or_("or_1", {false, true})}),
-                     {{"or_1_0", false}, {"or_1_1", true}, {"or_0_0", true}}},
-        BKexpParams {base::Broadcast::create(
-                         "broadcast", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
-                     {{"or_1_0", false}, {"or_1_1", false}, {"or_0_0", false}, {"or_0_1", false}}},
-
-        // [2] Complex: Broadcast of and
-        BKexpParams {base::Broadcast::create(
-                         "broadcast", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
-                     {{"and_1_0", true}, {"and_1_1", true}, {"and_0_0", true}, {"and_0_1", true}}},
-        BKexpParams {base::Broadcast::create(
-                         "broadcast", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
-                     {{"and_1_0", false}, {"and_0_0", false}}},
-        /*********************************************** CHAIN TEST ***********************************************/
-        // [3] Complex: Chain of broadcast
-        BKexpParams {
-            base::Chain::create("chain",
-                                {EasyExp::broadcast("broadcast_0", {true, true}),
-                                 EasyExp::broadcast("broadcast_1", {true, true})}),
-            {{"broadcast_0_1", true}, {"broadcast_0_0", true}, {"broadcast_1_1", true}, {"broadcast_1_0", true}}},
-        BKexpParams {
-            base::Chain::create("chain",
-                                {EasyExp::broadcast("broadcast_0", {false, false}),
-                                 EasyExp::broadcast("broadcast_1", {false, false})}),
-            {{"broadcast_0_1", false}, {"broadcast_0_0", false}, {"broadcast_1_1", false}, {"broadcast_1_0", false}}},
-        BKexpParams {
-            base::Chain::create("chain",
-                                {EasyExp::broadcast("broadcast_0", {false, true}),
-                                 EasyExp::broadcast("broadcast_1", {true, false})}),
-            {{"broadcast_0_1", true}, {"broadcast_0_0", false}, {"broadcast_1_1", false}, {"broadcast_1_0", true}}},
-        // [2] Complex: Chain of chain
-        BKexpParams {base::Chain::create(
-                         "chain", {EasyExp::chain("chain_0", {true, true}), EasyExp::chain("chain_1", {true, true})}),
-                     {{"chain_0_0", true}, {"chain_0_1", true}, {"chain_1_0", true}, {"chain_1_1", true}}},
-        BKexpParams {base::Chain::create(
-                         "chain", {EasyExp::chain("chain_0", {true, false}), EasyExp::chain("chain_1", {false, true})}),
-                     {{"chain_0_0", true}, {"chain_0_1", false}, {"chain_1_0", false}, {"chain_1_1", true}}},
-        // [4] Complex: Chain of implication
-        BKexpParams {base::Chain::create("chain",
-                                         {EasyExp::implication("implication_0", true, true),
-                                          EasyExp::implication("implication_1", true, true)}),
-                     {{"implication_0_cond", true},
-                      {"implication_0_imp", true},
-                      {"implication_1_cond", true},
-                      {"implication_1_imp", true}}},
-        BKexpParams {base::Chain::create("chain",
-                                         {EasyExp::implication("implication_0", true, false),
-                                          EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_0_cond", true},
-                      {"implication_0_imp", false},
-                      {"implication_1_cond", true},
-                      {"implication_1_imp", false}}},
-        BKexpParams {base::Chain::create("chain",
-                                         {EasyExp::implication("implication_0", false, true),
-                                          EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_0_cond", false}, {"implication_1_cond", true}, {"implication_1_imp", false}}},
-        BKexpParams {base::Chain::create("chain",
-                                         {EasyExp::implication("implication_0", false, true),
-                                          EasyExp::implication("implication_1", false, true)}),
-                     {{"implication_0_cond", false}, {"implication_1_cond", false}}},
-        // [3] Complex: Chain of or
-        BKexpParams {
-            base::Chain::create("chain", {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
-            {{"or_0_0", true}, {"or_1_0", true}}},
-        BKexpParams {
-            base::Chain::create("chain", {EasyExp::or_("or_0", {true, false}), EasyExp::or_("or_1", {false, true})}),
-            {{"or_0_0", true}, {"or_1_0", false}, {"or_1_1", true}}},
-        BKexpParams {
-            base::Chain::create("chain", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
-            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", false}, {"or_1_1", false}}},
-        // [2] Complex: Chain of and
-        BKexpParams {
-            base::Chain::create("chain", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
-            {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
-        BKexpParams {base::Chain::create(
-                         "chain", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
-                     {{"and_0_0", false}, {"and_1_0", false}}},
-        /********************************************** IMPLICATION TEST **********************************************/
-        // [2] Complex: Implication of broadcast - its always true
-        BKexpParams {
-            base::Implication::create("implication",
-                                      EasyExp::broadcast("broadcast_0", {true, true}),
-                                      EasyExp::broadcast("broadcast_1", {true, true})),
-            {{"broadcast_0_1", true}, {"broadcast_0_0", true}, {"broadcast_1_1", true}, {"broadcast_1_0", true}}},
-        BKexpParams {
-            base::Implication::create("implication",
-                                      EasyExp::broadcast("broadcast_0", {false, false}),
-                                      EasyExp::broadcast("broadcast_1", {false, false})),
-            {{"broadcast_0_1", false}, {"broadcast_0_0", false}, {"broadcast_1_1", false}, {"broadcast_1_0", false}}},
-        // [] Implication of chain
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::chain("chain_0", {true, true}),
-                                               EasyExp::chain("chain_1", {true, true})),
-                     {{"chain_0_0", true}, {"chain_0_1", true}, {"chain_1_0", true}, {"chain_1_1", true}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::chain("chain_0", {true, false}),
-                                               EasyExp::chain("chain_1", {false, true})),
-                     {{"chain_0_0", true}, {"chain_0_1", false}, {"chain_1_0", false}, {"chain_1_1", true}}},
-        // [] Implication of implication - if the condition is true, the result is true independently of the result of
-        // the implication
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::implication("implication_0", true, true),
-                                               EasyExp::implication("implication_1", true, true)),
-                     {{"implication_0_cond", true},
-                      {"implication_0_imp", true},
-                      {"implication_1_cond", true},
-                      {"implication_1_imp", true}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::implication("implication_0", true, false),
-                                               EasyExp::implication("implication_1", true, false)),
-                     {{"implication_0_cond", true},
-                      {"implication_0_imp", false},
-                      {"implication_1_cond", true},
-                      {"implication_1_imp", false}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::implication("implication_0", false, true),
-                                               EasyExp::implication("implication_1", true, false)),
-                     {{"implication_0_cond", false}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::implication("implication_0", false, true),
-                                               EasyExp::term("term", true)),
-                     {{"implication_0_cond", false}}},
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::implication("implication_0", true, true), EasyExp::term("term", true)),
-                     {{"implication_0_cond", true}, {"implication_0_imp", true}, {"term", true}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::term("term", true),
-                                               EasyExp::implication("implication_0", false, true)),
-                     {{"term", true}, {"implication_0_cond", false}}},
-        BKexpParams {base::Implication::create("implication",
-                                               EasyExp::term("term", false),
-                                               EasyExp::implication("implication_0", false, true)),
-                     {{"term", false}}},
-        // Implication of or
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})),
-                     {{"or_0_0", true}, {"or_1_0", true}}},
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::or_("or_0", {true, false}), EasyExp::or_("or_1", {false, true})),
-                     {{"or_0_0", true}, {"or_1_0", false}, {"or_1_1", true}}},
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})),
-                     {{"or_0_0", false}, {"or_0_1", false}}},
-        // Implication of and
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})),
-                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})),
-                     {{"and_0_0", false}}},
-        BKexpParams {base::Implication::create(
-                         "implication", EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})),
-                     {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}},
-        /********************************************** OR TEST **********************************************/
-        // [2] Complex: Or of broadcast
-        BKexpParams {base::Or::create("or",
-                                      {EasyExp::broadcast("broadcast_0", {true, true}),
-                                       EasyExp::broadcast("broadcast_1", {true, true})}),
-                     {{"broadcast_0_1", true}, {"broadcast_0_0", true}}},
-        BKexpParams {base::Or::create("or",
-                                      {EasyExp::broadcast("broadcast_0", {false, false}),
-                                       EasyExp::broadcast("broadcast_1", {false, false})}),
-                     {{"broadcast_0_1", false}, {"broadcast_0_0", false}}},
-        // [2] Complex: Or of chain
-        BKexpParams {
-            base::Or::create("or", {EasyExp::chain("chain_0", {true, true}), EasyExp::chain("chain_1", {true, true})}),
-            {{"chain_0_0", true}, {"chain_0_1", true}}},
-        BKexpParams {base::Or::create(
-                         "or", {EasyExp::chain("chain_0", {true, false}), EasyExp::chain("chain_1", {false, true})}),
-                     {{"chain_0_0", true}, {"chain_0_1", false}}},
-        // [4] Complex: Or of implication
-        BKexpParams {base::Or::create("or",
-                                      {EasyExp::implication("implication_0", true, true),
-                                       EasyExp::implication("implication_1", true, true)}),
-                     {{"implication_0_cond", true}, {"implication_0_imp", true}}},
-        BKexpParams {base::Or::create("or",
-                                      {EasyExp::implication("implication_0", true, false),
-                                       EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_0_cond", true}, {"implication_0_imp", false}}},
-        BKexpParams {base::Or::create("or",
-                                      {EasyExp::implication("implication_0", false, true),
-                                       EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_0_cond", false}, {"implication_1_cond", true}, {"implication_1_imp", false}}},
-        BKexpParams {base::Or::create("or",
-                                      {EasyExp::implication("implication_0", false, true),
-                                       EasyExp::implication("implication_1", false, true)}),
-                     {{"implication_0_cond", false}, {"implication_1_cond", false}}},
-        // [3] Complex: Or of or
-        BKexpParams {base::Or::create("or", {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
-                     {{"or_0_0", true}}},
-        BKexpParams {
-            base::Or::create("or", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, true})}),
-            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", false}, {"or_1_1", true}}},
-        BKexpParams {
-            base::Or::create("or", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
-            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", false}, {"or_1_1", false}}},
-        BKexpParams {
-            base::Or::create("or", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {true, false})}),
-            {{"or_0_0", false}, {"or_0_1", false}, {"or_1_0", true}}},
-        // [2] Complex: Or of and
-        BKexpParams {
-            base::Or::create("or", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
-            {{"and_0_0", true}, {"and_0_1", true}}},
-        BKexpParams {
-            base::Or::create("or", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
-            {{"and_0_0", false}, {"and_1_0", false}}},
-        BKexpParams {
-            base::Or::create("or", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})}),
-            {{"and_0_0", true}, {"and_0_1", true}}},
-        BKexpParams {
-            base::Or::create("or", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {true, false})}),
-            {{"and_0_0", false}, {"and_1_0", true}, {"and_1_1", false}}},
-        /********************************************** AND TEST **********************************************/
-        // [2] Complex: And of broadcast
-        BKexpParams {
-            base::And::create("and",
-                              {EasyExp::broadcast("broadcast_0", {true, true}),
-                               EasyExp::broadcast("broadcast_1", {true, true})}),
-            {{"broadcast_0_1", true}, {"broadcast_0_0", true}, {"broadcast_1_1", true}, {"broadcast_1_0", true}}},
-        BKexpParams {
-            base::And::create("and",
-                              {EasyExp::broadcast("broadcast_0", {false, false}),
-                               EasyExp::broadcast("broadcast_1", {false, false})}),
-            {{"broadcast_0_1", false}, {"broadcast_0_0", false}, {"broadcast_1_1", false}, {"broadcast_1_0", false}}},
-        // [2] Complex: And of chain
-        BKexpParams {base::And::create(
-                         "and", {EasyExp::chain("chain_0", {true, true}), EasyExp::chain("chain_1", {true, true})}),
-                     {{"chain_0_0", true}, {"chain_0_1", true}, {"chain_1_0", true}, {"chain_1_1", true}}},
-        BKexpParams {base::And::create(
-                         "and", {EasyExp::chain("chain_0", {true, false}), EasyExp::chain("chain_1", {false, true})}),
-                     {{"chain_0_0", true}, {"chain_0_1", false}, {"chain_1_0", false}, {"chain_1_1", true}}},
-        // [4] Complex: And of implication
-        BKexpParams {base::And::create("and",
-                                       {EasyExp::implication("implication_0", true, true),
-                                        EasyExp::implication("implication_1", true, true)}),
-                     {{"implication_0_cond", true},
-                      {"implication_0_imp", true},
-                      {"implication_1_cond", true},
-                      {"implication_1_imp", true}}},
-        BKexpParams {base::And::create("and",
-                                       {EasyExp::implication("implication_0", true, false),
-                                        EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_0_cond", true},
-                      {"implication_0_imp", false},
-                      {"implication_1_cond", true},
-                      {"implication_1_imp", false}}},
-        BKexpParams {base::And::create("and",
-                                       {EasyExp::implication("implication_0", false, true),
-                                        EasyExp::implication("implication_1", true, false)}),
-                     {{"implication_0_cond", false}}},
-        BKexpParams {base::And::create("and",
-                                       {EasyExp::implication("implication_0", true, true),
-                                        EasyExp::implication("implication_1", false, true)}),
-                     {{"implication_0_cond", true}, {"implication_0_imp", true}, {"implication_1_cond", false}}},
-        BKexpParams {base::And::create("and",
-                                       {EasyExp::implication("implication_0", false, true),
-                                        EasyExp::implication("implication_1", false, true)}),
-                     {{"implication_0_cond", false}}},
-        // [3] Complex: And of or
-        BKexpParams {base::And::create("and", {EasyExp::or_("or_0", {true, true}), EasyExp::or_("or_1", {true, true})}),
-                     {{"or_0_0", true}, {"or_1_0", true}}},
-        BKexpParams {
-            base::And::create("and", {EasyExp::or_("or_0", {false, true}), EasyExp::or_("or_1", {false, true})}),
-            {{"or_0_0", false}, {"or_0_1", true}, {"or_1_0", false}, {"or_1_1", true}}},
-        BKexpParams {
-            base::And::create("and", {EasyExp::or_("or_0", {false, false}), EasyExp::or_("or_1", {false, false})}),
-            {{"or_0_0", false}, {"or_0_1", false}}},
-        // [2] Complex: And of and
-        BKexpParams {
-            base::And::create("and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {true, true})}),
-            {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", true}, {"and_1_1", true}}},
-        BKexpParams {
-            base::And::create("and", {EasyExp::and_("and_0", {false, false}), EasyExp::and_("and_1", {false, false})}),
-            {{"and_0_0", false}}},
-        BKexpParams {
-            base::And::create("and", {EasyExp::and_("and_0", {true, true}), EasyExp::and_("and_1", {false, false})}),
-            {{"and_0_0", true}, {"and_0_1", true}, {"and_1_0", false}}} // End
-        ));
+        // Complex: Broadcast of broadcast
+        PipelineParams {
+            "Complex: Broadcast of broadcast",
+            Broadcast::create("broadcast",
+                              {Broadcast::create("broadcast_0", {build::term("t00", true), build::term("t01", true)}),
+                               Broadcast::create("broadcast_1", {build::term("t10", true), build::term("t11", true)})}),
+            Path(unord("broadcast",
+                       unord("broadcast_0", term("t00", true), term("t01", true)),
+                       unord("broadcast_1", term("t10", true), term("t11", true))))},
+        PipelineParams {"Complex: Broadcast of broadcast",
+                        Broadcast::create(
+                            "broadcast",
+                            {Broadcast::create("broadcast_0", {build::term("t00", true), build::term("t01", false)}),
+                             Broadcast::create("broadcast_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(unord("broadcast",
+                                   unord("broadcast_0", term("t00", true), term("t01", false)),
+                                   unord("broadcast_1", term("t10", false), term("t11", true))))},
+        // Complex: Broadcast of chain
+        PipelineParams {
+            "Complex: Broadcast of chain",
+            Broadcast::create("broadcast",
+                              {Chain::create("chain_0", {build::term("t00", true), build::term("t01", true)}),
+                               Chain::create("chain_1", {build::term("t10", true), build::term("t11", true)})}),
+            Path(unord("broadcast",
+                       order("chain_0", term("t00", true), term("t01", true)),
+                       order("chain_1", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: Broadcast of chain",
+            Broadcast::create("broadcast",
+                              {Chain::create("chain_0", {build::term("t00", true), build::term("t01", false)}),
+                               Chain::create("chain_1", {build::term("t10", false), build::term("t11", true)})}),
+            Path(unord("broadcast",
+                       order("chain_0", term("t00", true), term("t01", false)),
+                       order("chain_1", term("t10", false), term("t11", true))))},
+        // Complex: Broadcast of implication
+        PipelineParams {
+            "Complex: Broadcast of implication",
+            Broadcast::create(
+                "broadcast",
+                {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", true)),
+                 Implication::create("implication_1", build::term("cond1", true), build::term("imp1", true))}),
+            Path(unord("broadcast",
+                       order("implication_0", term("cond0", true), term("imp0", true)),
+                       order("implication_1", term("cond1", true), term("imp1", true))))},
+        PipelineParams {
+            "Complex: Broadcast of implication",
+            Broadcast::create(
+                "broadcast",
+                {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", false)),
+                 Implication::create("implication_1", build::term("cond1", false), build::term("imp1", true))}),
+            Path(unord("broadcast",
+                       order("implication_0", term("cond0", true), term("imp0", false)),
+                       order("implication_1", term("cond1", false))))},
+        PipelineParams {
+            "Complex: Broadcast of implication",
+            Broadcast::create(
+                "broadcast",
+                {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", true)),
+                 Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(unord("broadcast",
+                       order("implication_0", term("cond0", false)),
+                       order("implication_1", term("cond1", true), term("imp1", false))))},
+        PipelineParams {
+            "Complex: Broadcast of implication",
+            Broadcast::create(
+                "broadcast",
+                {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", true)),
+                 Implication::create("implication_1", build::term("cond1", false), build::term("imp1", true))}),
+            Path(unord("broadcast",
+                       order("implication_0", term("cond0", false)),
+                       order("implication_1", term("cond1", false))))},
+        // Complex: Broadcast of or
+        PipelineParams {"Complex: Broadcast of or",
+                        Broadcast::create("broadcast",
+                                          {Or::create("or_0", {build::term("t00", true), build::term("t01", true)}),
+                                           Or::create("or_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(unord("broadcast", order("or_0", term("t00", true)), order("or_1", term("t10", true))))},
+        PipelineParams {"Complex: Broadcast of or",
+                        Broadcast::create("broadcast",
+                                          {Or::create("or_0", {build::term("t00", true), build::term("t01", false)}),
+                                           Or::create("or_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(unord("broadcast",
+                                   order("or_0", term("t00", true)),
+                                   order("or_1", term("t10", false), term("t11", true))))},
+        PipelineParams {"Complex: Broadcast of or",
+                        Broadcast::create("broadcast",
+                                          {Or::create("or_0", {build::term("t00", false), build::term("t01", false)}),
+                                           Or::create("or_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(unord("broadcast",
+                                   order("or_0", term("t00", false), term("t01", false)),
+                                   order("or_1", term("t10", false), term("t11", false))))},
+        // Complex: Broadcast of and
+        PipelineParams {"Complex: Broadcast of and",
+                        Broadcast::create("broadcast",
+                                          {And::create("and_0", {build::term("t00", true), build::term("t01", true)}),
+                                           And::create("and_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(unord("broadcast",
+                                   order("and_0", term("t00", true), term("t01", true)),
+                                   order("and_1", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: Broadcast of and",
+            Broadcast::create("broadcast",
+                              {And::create("and_0", {build::term("t00", true), build::term("t01", false)}),
+                               And::create("and_1", {build::term("t10", false), build::term("t11", true)})}),
+            Path(unord("broadcast",
+                       order("and_0", term("t00", true), term("t01", false)),
+                       order("and_1", term("t10", false))))},
+        PipelineParams {
+            "Complex: Broadcast of and",
+            Broadcast::create("broadcast",
+                              {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                               And::create("and_1", {build::term("t10", false), build::term("t11", false)})}),
+            Path(unord("broadcast", order("and_0", term("t00", false)), order("and_1", term("t10", false))))},
+        /*********************************************** CHAIN TEST ***************************************************/
+        // Complex: Chain of broadcast
+        PipelineParams {
+            "Complex: Chain of broadcast",
+            Chain::create("chain",
+                          {Broadcast::create("broadcast_0", {build::term("t00", true), build::term("t01", true)}),
+                           Broadcast::create("broadcast_1", {build::term("t10", true), build::term("t11", true)})}),
+            Path(order("chain",
+                       unord("broadcast_0", term("t00", true), term("t01", true)),
+                       unord("broadcast_1", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: Chain of broadcast",
+            Chain::create("chain",
+                          {Broadcast::create("broadcast_0", {build::term("t00", false), build::term("t01", false)}),
+                           Broadcast::create("broadcast_1", {build::term("t10", false), build::term("t11", false)})}),
+            Path(order("chain",
+                       unord("broadcast_0", term("t00", false), term("t01", false)),
+                       unord("broadcast_1", term("t10", false), term("t11", false))))},
+        PipelineParams {
+            "Complex: Chain of broadcast",
+            Chain::create("chain",
+                          {Broadcast::create("broadcast_0", {build::term("t00", true), build::term("t01", false)}),
+                           Broadcast::create("broadcast_1", {build::term("t10", false), build::term("t11", true)})}),
+            Path(order("chain",
+                       unord("broadcast_0", term("t00", true), term("t01", false)),
+                       unord("broadcast_1", term("t10", false), term("t11", true))))},
+        // Complex: Chain of chain
+        PipelineParams {"Complex: Chain of chain",
+                        Chain::create("chain",
+                                      {Chain::create("chain_0", {build::term("t00", true), build::term("t01", true)}),
+                                       Chain::create("chain_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("chain",
+                                   order("chain_0", term("t00", true), term("t01", true)),
+                                   order("chain_1", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: Chain of chain",
+            Chain::create("chain",
+                          {Chain::create("chain_0", {build::term("t00", false), build::term("t01", false)}),
+                           Chain::create("chain_1", {build::term("t10", false), build::term("t11", false)})}),
+            Path(order("chain",
+                       order("chain_0", term("t00", false), term("t01", false)),
+                       order("chain_1", term("t10", false), term("t11", false))))},
+        PipelineParams {
+            "Complex: Chain of chain",
+            Chain::create("chain",
+                          {Chain::create("chain_0", {build::term("t00", true), build::term("t01", false)}),
+                           Chain::create("chain_1", {build::term("t10", false), build::term("t11", true)})}),
+            Path(order("chain",
+                       order("chain_0", term("t00", true), term("t01", false)),
+                       order("chain_1", term("t10", false), term("t11", true))))},
+        // Complex: Chain of implication
+        PipelineParams {
+            "Complex: Chain of implication",
+            Chain::create(
+                "chain",
+                {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", true)),
+                 Implication::create("implication_1", build::term("cond1", true), build::term("imp1", true))}),
+            Path(order("chain",
+                       order("implication_0", term("cond0", true), term("imp0", true)),
+                       order("implication_1", term("cond1", true), term("imp1", true))))},
+        PipelineParams {
+            "Complex: Chain of implication",
+            Chain::create(
+                "chain",
+                {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", false)),
+                 Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(order("chain",
+                       order("implication_0", term("cond0", true), term("imp0", false)),
+                       order("implication_1", term("cond1", true), term("imp1", false))))},
+        PipelineParams {
+            "Complex: Chain of implication",
+            Chain::create(
+                "chain",
+                {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", false)),
+                 Implication::create("implication_1", build::term("cond1", false), build::term("imp1", false))}),
+            Path(order(
+                "chain", order("implication_0", term("cond0", false)), order("implication_1", term("cond1", false))))},
+        PipelineParams {
+            "Complex: Chain of implication",
+            Chain::create(
+                "chain",
+                {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", false)),
+                 Implication::create("implication_1", build::term("cond1", false), build::term("imp1", true))}),
+            Path(order("chain",
+                       order("implication_0", term("cond0", true), term("imp0", false)),
+                       order("implication_1", term("cond1", false))))},
+        // Complex: Chain of or
+        PipelineParams {"Complex: Chain of or",
+                        Chain::create("chain",
+                                      {Or::create("or_0", {build::term("t00", true), build::term("t01", true)}),
+                                       Or::create("or_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("chain", order("or_0", term("t00", true)), order("or_1", term("t10", true))))},
+        PipelineParams {"Complex: Chain of or",
+                        Chain::create("chain",
+                                      {Or::create("or_0", {build::term("t00", true), build::term("t01", false)}),
+                                       Or::create("or_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(order("chain",
+                                   order("or_0", term("t00", true)),
+                                   order("or_1", term("t10", false), term("t11", true))))},
+        PipelineParams {"Complex: Chain of or",
+                        Chain::create("chain",
+                                      {Or::create("or_0", {build::term("t00", false), build::term("t01", false)}),
+                                       Or::create("or_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("chain",
+                                   order("or_0", term("t00", false), term("t01", false)),
+                                   order("or_1", term("t10", false), term("t11", false))))},
+        // Complex: Chain of and
+        PipelineParams {"Complex: Chain of and",
+                        Chain::create("chain",
+                                      {And::create("and_0", {build::term("t00", true), build::term("t01", true)}),
+                                       And::create("and_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("chain",
+                                   order("and_0", term("t00", true), term("t01", true)),
+                                   order("and_1", term("t10", true), term("t11", true))))},
+        PipelineParams {"Complex: Chain of and",
+                        Chain::create("chain",
+                                      {And::create("and_0", {build::term("t00", true), build::term("t01", false)}),
+                                       And::create("and_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(order("chain",
+                                   order("and_0", term("t00", true), term("t01", false)),
+                                   order("and_1", term("t10", false))))},
+        PipelineParams {"Complex: Chain of and",
+                        Chain::create("chain",
+                                      {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                                       And::create("and_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("chain", order("and_0", term("t00", false)), order("and_1", term("t10", false))))},
+        /*********************************************** IMPLICATION TEST *********************************************/
+        // Complex: Implication of broadcast
+        // its always true
+        PipelineParams {"Complex: Implication of broadcast",
+                        Implication::create(
+                            "implication",
+                            Broadcast::create("broadcast_cond", {build::term("t00", true), build::term("t01", true)}),
+                            Broadcast::create("broadcast_imp", {build::term("t10", true), build::term("t11", true)})),
+                        Path(order("implication",
+                                   unord("broadcast_cond", term("t00", true), term("t01", true)),
+                                   unord("broadcast_imp", term("t10", true), term("t11", true))))},
+        PipelineParams {"Complex: Implication of broadcast",
+                        Implication::create(
+                            "implication",
+                            Broadcast::create("broadcast_cond", {build::term("t00", false), build::term("t01", false)}),
+                            Broadcast::create("broadcast_imp", {build::term("t10", false), build::term("t11", false)})),
+                        Path(order("implication",
+                                   unord("broadcast_cond", term("t00", false), term("t01", false)),
+                                   unord("broadcast_imp", term("t10", false), term("t11", false))))},
+        // Complex: Implication of chain
+        // its always true
+        PipelineParams {
+            "Complex: Implication of chain",
+            Implication::create("implication",
+                                Chain::create("chain_cond", {build::term("t00", true), build::term("t01", true)}),
+                                Chain::create("chain_imp", {build::term("t10", true), build::term("t11", true)})),
+            Path(order("implication",
+                       order("chain_cond", term("t00", true), term("t01", true)),
+                       order("chain_imp", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: Implication of chain",
+            Implication::create("implication",
+                                Chain::create("chain_cond", {build::term("t00", true), build::term("t01", false)}),
+                                Chain::create("chain_imp", {build::term("t10", false), build::term("t11", true)})),
+            Path(order("implication",
+                       order("chain_cond", term("t00", true), term("t01", false)),
+                       order("chain_imp", term("t10", false), term("t11", true))))},
+        // Complex: Implication of implication
+        // if the condition is true, the result is true independently of the
+        // result of the implication
+        PipelineParams {
+            "Complex: Implication of implication",
+            Implication::create(
+                "implication",
+                Implication::create("implication_cond", build::term("cond0", true), build::term("imp0", true)),
+                Implication::create("implication_imp", build::term("cond1", true), build::term("imp1", true))),
+            Path(order("implication",
+                       order("implication_cond", term("cond0", true), term("imp0", true)),
+                       order("implication_imp", term("cond1", true), term("imp1", true))))},
+        PipelineParams {
+            "Complex: Implication of implication",
+            Implication::create(
+                "implication",
+                Implication::create("implication_cond", build::term("cond0", true), build::term("imp0", false)),
+                Implication::create("implication_imp", build::term("cond1", true), build::term("imp1", false))),
+            Path(order("implication",
+                       order("implication_cond", term("cond0", true), term("imp0", false)),
+                       order("implication_imp", term("cond1", true), term("imp1", false))))},
+        PipelineParams {
+            "Complex: Implication of implication",
+            Implication::create(
+                "implication",
+                Implication::create("implication_cond", build::term("cond0", false), build::term("imp0", true)),
+                Implication::create("implication_imp", build::term("cond1", true), build::term("imp1", false))),
+            Path(order("implication", order("implication_cond", term("cond0", false))))},
+        PipelineParams {
+            "Complex: Implication of implication",
+            Implication::create(
+                "implication",
+                Implication::create("implication_cond", build::term("cond0", false), build::term("imp0", true)),
+                Implication::create("implication_imp", build::term("cond1", false), build::term("imp1", true))),
+            Path(order("implication", order("implication_cond", term("cond0", false))))},
+        // Complex: Implication of or
+        PipelineParams {
+            "Complex: Implication of or",
+            Implication::create("implication",
+                                Or::create("or_cond", {build::term("t00", true), build::term("t01", true)}),
+                                Or::create("or_imp", {build::term("t10", true), build::term("t11", true)})),
+            Path(order("implication", order("or_cond", term("t00", true)), order("or_imp", term("t10", true))))},
+        PipelineParams {
+            "Complex: Implication of or",
+            Implication::create("implication",
+                                Or::create("or_cond", {build::term("t00", true), build::term("t01", false)}),
+                                Or::create("or_imp", {build::term("t10", false), build::term("t11", true)})),
+            Path(order("implication",
+                       order("or_cond", term("t00", true)),
+                       order("or_imp", term("t10", false), term("t11", true))))},
+        PipelineParams {
+            "Complex: Implication of or",
+            Implication::create("implication",
+                                Or::create("or_cond", {build::term("t00", false), build::term("t01", false)}),
+                                Or::create("or_imp", {build::term("t10", false), build::term("t11", false)})),
+            Path(order("implication", order("or_cond", term("t00", false), term("t01", false))))},
+        // Complex: Implication of and
+        PipelineParams {
+            "Complex: Implication of and",
+            Implication::create("implication",
+                                And::create("and_cond", {build::term("t00", true), build::term("t01", true)}),
+                                And::create("and_imp", {build::term("t10", true), build::term("t11", true)})),
+            Path(order("implication",
+                       order("and_cond", term("t00", true), term("t01", true)),
+                       order("and_imp", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: Implication of and",
+            Implication::create("implication",
+                                And::create("and_cond", {build::term("t00", true), build::term("t01", false)}),
+                                And::create("and_imp", {build::term("t10", false), build::term("t11", true)})),
+            Path(order("implication", order("and_cond", term("t00", true), term("t01", false))))},
+        PipelineParams {
+            "Complex: Implication of and",
+            Implication::create("implication",
+                                And::create("and_cond", {build::term("t00", false), build::term("t01", false)}),
+                                And::create("and_imp", {build::term("t10", false), build::term("t11", false)})),
+            Path(order("implication", order("and_cond", term("t00", false))))},
+        /*********************************************** OR TEST ******************************************************/
+        // Complex: Or of broadcast
+        PipelineParams {
+            "Complex: Or of broadcast",
+            Or::create("or",
+                       {Broadcast::create("broadcast_0", {build::term("t00", true), build::term("t01", true)}),
+                        Broadcast::create("broadcast_1", {build::term("t10", true), build::term("t11", true)})}),
+            Path(order("or", unord("broadcast_0", term("t00", true), term("t01", true))))},
+        PipelineParams {
+            "Complex: Or of broadcast",
+            Or::create("or",
+                       {Broadcast::create("broadcast_0", {build::term("t00", false), build::term("t01", false)}),
+                        Broadcast::create("broadcast_1", {build::term("t10", false), build::term("t11", false)})}),
+            Path(order("or", unord("broadcast_0", term("t00", false), term("t01", false))))},
+        // Complex: Or of chain
+        PipelineParams {"Complex: Or of chain",
+                        Or::create("or",
+                                   {Chain::create("chain_0", {build::term("t00", true), build::term("t01", true)}),
+                                    Chain::create("chain_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("or", order("chain_0", term("t00", true), term("t01", true))))},
+        PipelineParams {"Complex: Or of chain",
+                        Or::create("or",
+                                   {Chain::create("chain_0", {build::term("t00", false), build::term("t01", false)}),
+                                    Chain::create("chain_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("or", order("chain_0", term("t00", false), term("t01", false))))},
+        // Complex: Or of implication
+        PipelineParams {
+            "Complex: Or of implication",
+            Or::create("or",
+                       {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", true)),
+                        Implication::create("implication_1", build::term("cond1", true), build::term("imp1", true))}),
+            Path(order("or", order("implication_0", term("cond0", true), term("imp0", true))))},
+        PipelineParams {
+            "Complex: Or of implication",
+            Or::create("or",
+                       {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", false)),
+                        Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(order("or", order("implication_0", term("cond0", true), term("imp0", false))))},
+        PipelineParams {
+            "Complex: Or of implication",
+            Or::create("or",
+                       {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", true)),
+                        Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(order("or",
+                       order("implication_0", term("cond0", false)),
+                       order("implication_1", term("cond1", true), term("imp1", false))))},
+        PipelineParams {
+            "Complex: Or of implication",
+            Or::create("or",
+                       {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", false)),
+                        Implication::create("implication_1", build::term("cond1", false), build::term("imp1", false))}),
+            Path(order(
+                "or", order("implication_0", term("cond0", false)), order("implication_1", term("cond1", false))))},
+        PipelineParams {
+            "Complex: Or of implication",
+            Or::create("or",
+                       {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", false)),
+                        Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(order("or",
+                       order("implication_0", term("cond0", false)),
+                       order("implication_1", term("cond1", true), term("imp1", false))))},
+        // Complex: Or of or
+        PipelineParams {"Complex: Or of or",
+                        Or::create("or",
+                                   {Or::create("or_0", {build::term("t00", true), build::term("t01", true)}),
+                                    Or::create("or_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("or", order("or_0", term("t00", true))))},
+        PipelineParams {"Complex: Or of or",
+                        Or::create("or",
+                                   {Or::create("or_0", {build::term("t00", false), build::term("t01", false)}),
+                                    Or::create("or_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(order("or",
+                                   order("or_0", term("t00", false), term("t01", false)),
+                                   order("or_1", term("t10", false), term("t11", true))))},
+        PipelineParams {"Complex: Or of or",
+                        Or::create("or",
+                                   {Or::create("or_0", {build::term("t00", false), build::term("t01", false)}),
+                                    Or::create("or_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("or",
+                                   order("or_0", term("t00", false), term("t01", false)),
+                                   order("or_1", term("t10", false), term("t11", false))))},
+        PipelineParams {
+            "Complex: Or of or",
+            Or::create("or",
+                       {Or::create("or_0", {build::term("t00", false), build::term("t01", false)}),
+                        Or::create("or_1", {build::term("t10", true), build::term("t11", false)})}),
+            Path(order("or", order("or_0", term("t00", false), term("t01", false)), order("or_1", term("t10", true))))},
+        // Complex: Or of and
+        PipelineParams {"Complex: Or of and",
+                        Or::create("or",
+                                   {And::create("and_0", {build::term("t00", true), build::term("t01", true)}),
+                                    And::create("and_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("or", order("and_0", term("t00", true), term("t01", true))))},
+        PipelineParams {"Complex: Or of and",
+                        Or::create("or",
+                                   {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                                    And::create("and_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("or", order("and_0", term("t00", false)), order("and_1", term("t10", false))))},
+        PipelineParams {"Complex: Or of and",
+                        Or::create("or",
+                                   {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                                    And::create("and_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(order("or", order("and_0", term("t00", false)), order("and_1", term("t10", false))))},
+        PipelineParams {"Complex: Or of and",
+                        Or::create("or",
+                                   {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                                    And::create("and_1", {build::term("t10", true), build::term("t11", false)})}),
+                        Path(order("or",
+                                   order("and_0", term("t00", false)),
+                                   order("and_1", term("t10", true), term("t11", false))))},
+        PipelineParams {"Complex: Or of and",
+                        Or::create("or",
+                                   {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                                    And::create("and_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("or",
+                                   order("and_0", term("t00", false)),
+                                   order("and_1", term("t10", true), term("t11", true))))},
+        /********************************************** AND TEST ******************************************************/
+        // Complex: And of broadcast
+        PipelineParams {
+            "Complex: And of broadcast",
+            And::create("and",
+                        {Broadcast::create("broadcast_0", {build::term("t00", true), build::term("t01", true)}),
+                         Broadcast::create("broadcast_1", {build::term("t10", true), build::term("t11", true)})}),
+            Path(order("and",
+                       unord("broadcast_0", term("t00", true), term("t01", true)),
+                       unord("broadcast_1", term("t10", true), term("t11", true))))},
+        PipelineParams {
+            "Complex: And of broadcast",
+            And::create("and",
+                        {Broadcast::create("broadcast_0", {build::term("t00", false), build::term("t01", false)}),
+                         Broadcast::create("broadcast_1", {build::term("t10", false), build::term("t11", false)})}),
+            Path(order("and",
+                       unord("broadcast_0", term("t00", false), term("t01", false)),
+                       unord("broadcast_1", term("t10", false), term("t11", false))))},
+        // Complex: And of chain
+        PipelineParams {"Complex: And of chain",
+                        And::create("and",
+                                    {Chain::create("chain_0", {build::term("t00", true), build::term("t01", true)}),
+                                     Chain::create("chain_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("and",
+                                   order("chain_0", term("t00", true), term("t01", true)),
+                                   order("chain_1", term("t10", true), term("t11", true))))},
+        PipelineParams {"Complex: And of chain",
+                        And::create("and",
+                                    {Chain::create("chain_0", {build::term("t00", true), build::term("t01", false)}),
+                                     Chain::create("chain_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(order("and",
+                                   order("chain_0", term("t00", true), term("t01", false)),
+                                   order("chain_1", term("t10", false), term("t11", true))))},
+        // Complex: And of implication
+        PipelineParams {
+            "Complex: And of implication",
+            And::create("and",
+                        {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", true)),
+                         Implication::create("implication_1", build::term("cond1", true), build::term("imp1", true))}),
+            Path(order("and",
+                       order("implication_0", term("cond0", true), term("imp0", true)),
+                       order("implication_1", term("cond1", true), term("imp1", true))))},
+        PipelineParams {
+            "Complex: And of implication",
+            And::create("and",
+                        {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", false)),
+                         Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(order("and",
+                       order("implication_0", term("cond0", true), term("imp0", false)),
+                       order("implication_1", term("cond1", true), term("imp1", false))))},
+        PipelineParams {
+            "Complex: And of implication",
+            And::create("and",
+                        {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", true)),
+                         Implication::create("implication_1", build::term("cond1", true), build::term("imp1", false))}),
+            Path(order("and", order("implication_0", term("cond0", false))))},
+        PipelineParams {
+            "Complex: And of implication",
+            And::create("and",
+                        {Implication::create("implication_0", build::term("cond0", true), build::term("imp0", false)),
+                         Implication::create("implication_1", build::term("cond1", false), build::term("imp1", true))}),
+            Path(order("and",
+                       order("implication_0", term("cond0", true), term("imp0", false)),
+                       order("implication_1", term("cond1", false))))},
+        PipelineParams {
+            "Complex: And of implication",
+            And::create(
+                "and",
+                {Implication::create("implication_0", build::term("cond0", false), build::term("imp0", false)),
+                 Implication::create("implication_1", build::term("cond1", false), build::term("imp1", false))}),
+            Path(order("and", order("implication_0", term("cond0", false))))},
+        // Complex: And of or
+        PipelineParams {"Complex: And of or",
+                        And::create("and",
+                                    {Or::create("or_0", {build::term("t00", true), build::term("t01", true)}),
+                                     Or::create("or_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("and", order("or_0", term("t00", true)), order("or_1", term("t10", true))))},
+        PipelineParams {"Complex: And of or",
+                        And::create("and",
+                                    {Or::create("or_0", {build::term("t00", false), build::term("t01", true)}),
+                                     Or::create("or_1", {build::term("t10", false), build::term("t11", true)})}),
+                        Path(order("and",
+                                   order("or_0", term("t00", false), term("t01", true)),
+                                   order("or_1", term("t10", false), term("t11", true))))},
+        PipelineParams {"Complex: And of or",
+                        And::create("and",
+                                    {Or::create("or_0", {build::term("t00", false), build::term("t01", false)}),
+                                     Or::create("or_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("and", order("or_0", term("t00", false), term("t01", false))))},
+        // Complex: And of and
+        PipelineParams {"Complex: And of and",
+                        And::create("and",
+                                    {And::create("and_0", {build::term("t00", true), build::term("t01", true)}),
+                                     And::create("and_1", {build::term("t10", true), build::term("t11", true)})}),
+                        Path(order("and",
+                                   order("and_0", term("t00", true), term("t01", true)),
+                                   order("and_1", term("t10", true), term("t11", true))))},
+        PipelineParams {"Complex: And of and",
+                        And::create("and",
+                                    {And::create("and_0", {build::term("t00", false), build::term("t01", false)}),
+                                     And::create("and_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("and", order("and_0", term("t00", false))))},
+        PipelineParams {"Complex: And of and",
+                        And::create("and",
+                                    {And::create("and_0", {build::term("t00", true), build::term("t01", true)}),
+                                     And::create("and_1", {build::term("t10", false), build::term("t11", false)})}),
+                        Path(order("and",
+                                   order("and_0", term("t00", true), term("t01", true)),
+                                   order("and_1", term("t10", false))))}));
 
 struct Subscriber
 {
@@ -560,7 +920,7 @@ struct Subscriber
 
 TEST(BKTaskFlowTraceTest, Subscribe)
 {
-    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
@@ -569,7 +929,7 @@ TEST(BKTaskFlowTraceTest, Subscribe)
 
 TEST(BKTaskFlowTraceTest, SubscribeTraceableNotFound)
 {
-    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber s;
     auto subRes = c.subscribe("term2", s.getSubscriber());
     ASSERT_TRUE(base::isError(subRes));
@@ -578,7 +938,7 @@ TEST(BKTaskFlowTraceTest, SubscribeTraceableNotFound)
 
 TEST(BKTaskFlowTraceTest, MultipleSubscribers)
 {
-    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
@@ -589,7 +949,7 @@ TEST(BKTaskFlowTraceTest, MultipleSubscribers)
 
 TEST(BKTaskFlowTraceTest, Unsubscribe)
 {
-    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
@@ -599,7 +959,7 @@ TEST(BKTaskFlowTraceTest, Unsubscribe)
 
 TEST(BKTaskFlowTraceTest, UnsubscribeNotExists)
 {
-    Controller c(FakePolicy {EasyExp::term("term", true), {"term"}});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
