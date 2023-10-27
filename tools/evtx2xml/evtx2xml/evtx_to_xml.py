@@ -7,6 +7,7 @@ import argparse
 from evtx import PyEvtxParser  # https://github.com/omerbenamram/evtx/
 from urllib.parse import urlparse
 
+
 def evtx_to_xml(evtx_file_path):
 
     xml_records = []
@@ -25,10 +26,11 @@ def evtx_to_xml(evtx_file_path):
 
     print(final_xml)
 
+
 def check_url(url):
     try:
         response = requests.head(url)
-        valid : bool = 2 <= response.status_code // 100 <= 3
+        valid: bool = 2 <= response.status_code // 100 <= 3
         if not valid:
             print(f"Response code: {response.status_code}")
         return valid
@@ -36,12 +38,21 @@ def check_url(url):
         print(f"Error: {e}")
         return False
 
+
 def download_file(url, local_filename):
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(local_filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
+    try:
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+    except requests.RequestException as e:
+        print(f"Error: {e}")
+        # Delete the downloaded file
+        if os.path.exists(local_filename):
+            os.remove(local_filename)
+        sys.exit(1)
+
     return local_filename
 
 

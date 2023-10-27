@@ -13,21 +13,22 @@ class MultilineFormat(EventFormat):
         return event
 
     def get_events(self, events):
-
-        events_formated = []
         maxLines = int(self.config['lines'])
-        # Group events by maxLines
+        events_formated = []
+
         for event in events:
-            clean_event = event.strip()
-            # Split event by lines
-            lines = clean_event.splitlines()
-            chunks = []
-            for i in range(0, len(lines), maxLines):
-                chunk = lines[i:i + maxLines]
-                if len(chunk) == maxLines:
-                    events_formated.append(' '.join(chunk))
+            # split event in lines
+            lines = event.strip().splitlines()
+
+            # group lines into chunks of maximum size maxLines
+            chunks = [lines[i:i + maxLines] for i in range(0, len(lines), maxLines)]
+
+            # join the lines of each chunk into a single formatted event,
+            # but only if the chunk has exactly maxLines lines
+            events_formated.extend([' '.join(chunk) for chunk in chunks if len(chunk) == maxLines])
 
         return events_formated
+
 
     def is_multiline(self):
         return Formats.MULTI_LINE.value['multiline']
