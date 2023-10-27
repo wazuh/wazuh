@@ -1,6 +1,17 @@
+import argparse
+
 from engine_test.crud_integration import CrudIntegration
 from engine_test.event_format import Formats
 from engine_test.command import Command
+
+def check_positive(value):
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value} is not a valid integer")
+    if ivalue <= 0:
+         raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
+    return ivalue
 
 
 class AddCommand(Command):
@@ -27,8 +38,8 @@ class AddCommand(Command):
         args['post_parse'](args)
         integration = CrudIntegration()
         try:
-            if (args['integration_path'] != None):
-                integration.import_integration(args['integration_path'])
+            if (args['from_file'] != None):
+                integration.import_integration(args['from_file'])
             else:
                 integration.save_integration(args['integration_name'], args['format'], args['origin'], args['lines'])
         except Exception as ex:
@@ -39,9 +50,9 @@ class AddCommand(Command):
 
         group = parser_add.add_mutually_exclusive_group()
 
-        group.add_argument('-n', '--integration-name', type=str, help=f'Integration test name')
+        group.add_argument('-i', '--integration-name', type=str, help=f'Integration to test name')
 
-        group.add_argument('-p', '--integration-path', type=str, help=f'Integration path to import')
+        group.add_argument('--from-file', type=str, help=f'Add all integrations from the file to current configuration')
 
         parser_add.add_argument('-f', '--format', help=f'Format of integration.', choices=Formats.get_formats(),
                                 dest='format')
@@ -50,6 +61,6 @@ class AddCommand(Command):
                                 dest='origin')
 
         parser_add.add_argument('-l', '--lines', help='Number of lines. Only for multi-line format.',
-                                dest='lines')
+                                dest='lines', type=check_positive)
 
         parser_add.set_defaults(func=self.run, post_parse=self.adjust_origin)

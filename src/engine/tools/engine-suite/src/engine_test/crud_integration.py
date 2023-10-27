@@ -6,6 +6,7 @@ from engine_test.config import Config
 
 from importlib.metadata import files
 
+
 class CrudIntegration:
     def __init__(self):
         self.formats = Formats.get_formats()
@@ -52,9 +53,9 @@ class CrudIntegration:
             content = {
                 "format": format,
                 "origin": origin
-                }
+            }
         else:
-            content = { "format": format }
+            content = {"format": format}
 
         if (Formats.MULTI_LINE.value['name'] == format):
             if (lines != None):
@@ -70,7 +71,7 @@ class CrudIntegration:
 
         try:
             with open(Config.get_config_file(), 'w') as json_file:
-                json.dump(json_content, json_file, indent=4, separators=(',',': '))
+                json.dump(json_content, json_file, indent=4, separators=(',', ': '))
         except Exception as ex:
             print('Error while writing configuration file: {}'.format(ex))
             return False
@@ -98,7 +99,7 @@ class CrudIntegration:
 
         try:
             with open(Config.get_config_file(), 'w') as json_file:
-                json.dump(json_content, json_file, indent=4, separators=(',',': '))
+                json.dump(json_content, json_file, indent=4, separators=(',', ': '))
 
             print('Integration removed successfully.')
         except Exception as ex:
@@ -107,42 +108,26 @@ class CrudIntegration:
 
         return True
 
-    def import_integration(self, integration_path: str):
-        working_path = integration_path
-        path = Path(working_path)
-        if path.is_dir():
-            working_path = str(path.resolve())
-        else:
-            print(f'Error: directory does not exist ')
-            return
-
-        config_file = working_path + '/' + Config.get_config_file_name()
-
-        if not exists(config_file):
-            print(f"File '{config_file}' not found!")
-            return
+    def import_integration(self, integration_config: str):
 
         try:
-            with open(config_file) as fp:
+            with open(integration_config) as fp:
                 json_content = json.load(fp)
         except Exception as ex:
             print('Error while reading configuration file: {}'.format(ex))
-            return False
-
-        print(f"Importing from: '{working_path}'...\n")
+            exit(1)
 
         for item in json_content:
             try:
                 integration_name = item
                 format = json_content[item]['format']
-                origin = json_content[item]['origin']
+                origin = json_content[item]['origin'] if 'origin' in json_content[item] else None
                 lines = None
 
                 message = f"Adding integration '{item}' with format '{format}'"
+
                 if (Formats.MULTI_LINE.value['name'] == format):
                     lines = json_content[item]['lines']
-                    message += f", lines '{lines}'"
-                message += f" and origin '{origin}'"
 
                 print(message)
                 self.save_integration(integration_name, format, origin, lines)
