@@ -110,4 +110,6 @@ target_include_directories(base
     ${spdlog_SOURCE_DIR}/include
     ${rapidjson_SOURCE_DIR}/include
     ${ENGINE_SOURCE_DIR}/json
-    )
+    ${ENGINE_SOURCE_DIR}/base
+    ${ENGINE_SOURCE_DIR} # TODO remove when BUILDER is updated (#include <builder/builder.hpp)
+)
