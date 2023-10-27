@@ -205,6 +205,8 @@ Asset::Asset(const json::Json& jsonDefinition,
         }
         checkOp.push_back(base::Term<base::EngineOp>::create(
             "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); }));
+
+        m_check = base::And::create("condition", checkOp);
     }
 
     // Get stages
