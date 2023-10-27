@@ -15,14 +15,14 @@ class InputValidator:
     """
 
     def check_name(self, name: str, regex_str: str = r"\w+") -> bool:
-        """Abstract function to check a name matches a regex (\w+ by default).
+        """Abstract function to check a name matches a regex (\\w+ by default).
 
         Parameters
         ----------
         name : str
             Name to check.
         regex_str : str
-            Regular expression to do the matching. Default: r"\w+"
+            Regular expression to do the matching. Default: r"\\w+"
 
         Returns
         -------
