@@ -3,7 +3,7 @@
 
 #include <gmock/gmock.h>
 
-#include <kvdb/ikvdbhandler>
+#include <kvdb/ikvdbhandler.hpp>
 
 namespace kvdb::mocks
 {
@@ -11,20 +11,36 @@ namespace kvdb::mocks
 /******************************************************************************/
 // Helper functions to mock method responses
 /******************************************************************************/
-inline base::OptError kvdbError()
+
+inline base::RespOrError<bool> kvdbContainsOk()
+{
+    return true;
+}
+
+inline base::RespOrError<bool> kvdbContainsError()
 {
     return base::Error {"Mocked kvdb error"};
 }
 
-inline base::OptError kvdbOk()
+inline base::RespOrError<std::string> kvdbGetOk()
 {
-    return std::nullopt;
+    return "value";
+}
+
+inline base::RespOrError<std::string> kvdbGetError(const std::string& error)
+{
+    return base::Error {error};
+}
+
+inline base::RespOrError<std::list<std::pair<std::string, std::string>>> kvdbDumpOk()
+{
+    return std::list<std::pair<std::string, std::string>>();
 }
 
 /******************************************************************************/
 // Mock classes
 /******************************************************************************/
-class MockKVDBHandler : public kvdb::IKVDBHandler
+class MockKVDBHandler : public kvdbManager::IKVDBHandler
 {
 public:
     MOCK_METHOD((base::OptError), set, (const std::string& key, const std::string& value), (override));
@@ -33,22 +49,19 @@ public:
     MOCK_METHOD((base::OptError), remove, (const std::string& key), (override));
     MOCK_METHOD((base::RespOrError<bool>), contains, (const std::string& key), (override));
     MOCK_METHOD((base::RespOrError<std::string>), get, (const std::string& key), (override));
-    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>, base::Error >),
+    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>),
                 dump,
                 (const unsigned int page, const unsigned int records),
                 (override));
-    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>, base::Error >),
-                dump,
-                (),
-                (override));
-    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>, base::Error >),
+    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>), dump, (), ());
+    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>),
                 search,
                 (const std::string& prefix, const unsigned int page, const unsigned int records),
                 (override));
-    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>, base::Error >),
+    MOCK_METHOD((base::RespOrError<std::list<std::pair<std::string, std::string>>>),
                 search,
                 (const std::string& prefix),
-                (override));
+                ());
 };
 
 } // namespace kvdb::mocks

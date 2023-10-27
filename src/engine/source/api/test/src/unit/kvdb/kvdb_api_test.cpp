@@ -5,13 +5,16 @@
 #include <string>
 
 #include <api/kvdb/handlers.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdb/ikvdbhandler.hpp>
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/mockKvdbManager.hpp>
 #include <metrics/metricsManager.hpp>
 
 #include "../../apiAuxiliarFunctions.hpp"
 
 using namespace api::kvdb::handlers;
 using namespace metricsManager;
+using namespace kvdb::mocks;
 
 namespace
 {
@@ -48,7 +51,7 @@ const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyD
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
-std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+std::shared_ptr<MockKVDBManager> kvdbManager;
 std::string kvdbPath;
 
 void Setup()
@@ -64,18 +67,10 @@ void Setup()
     }
 
     std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
-
-    kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
-
-    kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
-
-    kvdbManager->initialize();
 }
 
 void TearDown()
 {
-    kvdbManager->finalize();
-
     if (std::filesystem::exists(kvdbPath))
     {
         std::filesystem::remove_all(kvdbPath);
@@ -117,7 +112,7 @@ protected:
     void TearDown() override { ::TearDown(); };
 };
 
-class DbSearchTestFuncionality : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+class DbSearchTestFuncionality : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
     void SetUp() override { ::Setup(); }
@@ -257,6 +252,7 @@ protected:
 
 TEST_F(KVDBApiTest, startup)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     ASSERT_NE(kvdbManager, nullptr);
 }
 
@@ -267,7 +263,9 @@ TEST_F(KVDBApiTest, managerGetOk)
 
 TEST_F(KVDBApiTest, managerGet)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
+    EXPECT_CALL(*kvdbManager, listDBs(true)).WillOnce(testing::Return(kvdbListDBsEmpty()));
     ASSERT_NO_THROW(cmd = managerGet(kvdbManager));
     const auto response = cmd(getWRequest(true));
     const auto expectedData = json::Json {R"({"status":"OK","dbs":[]})"};
@@ -280,11 +278,11 @@ TEST_F(KVDBApiTest, managerGet)
 
 TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    kvdbManager->createDB(KVDB_TEST_2);
-    kvdbManager->getKVDBHandler(KVDB_TEST_2, "test");
-
+    const std::vector<std::string> expected = {"test2"};
+    EXPECT_CALL(*kvdbManager, listDBs(true)).WillOnce(testing::Return(expected));
     ASSERT_NO_THROW(cmd = managerGet(kvdbManager));
     const auto response = cmd(getWRequest(true));
     const auto expectedData = json::Json {R"({"status":"OK","dbs":["test2"]})"};
@@ -302,6 +300,7 @@ TEST_F(KVDBApiTest, managerPostOk)
 
 TEST_F(KVDBApiTest, managerPostNameMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest());
@@ -315,6 +314,7 @@ TEST_F(KVDBApiTest, managerPostNameMissing)
 
 TEST_F(KVDBApiTest, managerPostNameEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(""));
@@ -328,7 +328,10 @@ TEST_F(KVDBApiTest, managerPostNameEmpty)
 
 TEST_F(KVDBApiTest, managerPost)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*kvdbManager, createDB(KVDB_TEST_1)).WillOnce(testing::Return(kvdbOk()));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
@@ -341,8 +344,11 @@ TEST_F(KVDBApiTest, managerPost)
 
 TEST_F(KVDBApiTest, managerPostWithJsonWithValueOK)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     createJsonFileWithValueOK();
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*kvdbManager, createDB(KVDB_TEST_1, JSON_FILE_WITH_VALUE_OK)).WillOnce(testing::Return(kvdbOk()));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_WITH_VALUE_OK));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
@@ -355,8 +361,11 @@ TEST_F(KVDBApiTest, managerPostWithJsonWithValueOK)
 
 TEST_F(KVDBApiTest, managerPostWithJsonWithoutValueOK)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     createJsonFileWithoutValueOK();
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*kvdbManager, createDB(KVDB_TEST_1, JSON_FILE_WITHOUT_VALUE_OK)).WillOnce(testing::Return(kvdbOk()));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_WITHOUT_VALUE_OK));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
@@ -369,7 +378,9 @@ TEST_F(KVDBApiTest, managerPostWithJsonWithoutValueOK)
 
 TEST_F(KVDBApiTest, managerPostWithPathEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
+    EXPECT_CALL(*kvdbManager, createDB(KVDB_TEST_1, "")).WillOnce(testing::Return(kvdbError("The path is empty.")));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, {""}));
     const auto expectedData =
@@ -383,8 +394,12 @@ TEST_F(KVDBApiTest, managerPostWithPathEmpty)
 
 TEST_F(KVDBApiTest, managerPostWithJsonPathNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     createJsonFileNOK();
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*kvdbManager, createDB(KVDB_TEST_1, "/tmp/kvdb_not_exists.json"))
+        .WillOnce(testing::Return(kvdbError("An error occurred while opening the file '/tmp/kvdb_not_exists.json'")));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_NOT_EXISTS));
     const auto expectedData = json::Json {
@@ -398,8 +413,12 @@ TEST_F(KVDBApiTest, managerPostWithJsonPathNotExists)
 
 TEST_F(KVDBApiTest, managerPostWithJsonNOK)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     createJsonFileNOK();
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*kvdbManager, createDB(KVDB_TEST_1, "/tmp/kvdb_nok.json"))
+        .WillOnce(testing::Return(kvdbError("An error occurred while parsing the JSON file '/tmp/kvdb_nok.json'")));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_NOK));
     const auto expectedData = json::Json {
@@ -413,10 +432,9 @@ TEST_F(KVDBApiTest, managerPostWithJsonNOK)
 
 TEST_F(KVDBApiTest, managerPostDBExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
-
-    kvdbManager->createDB(KVDB_TEST_1);
-
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(true));
     ASSERT_NO_THROW(cmd = managerPost(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The Database already exists."})"};
@@ -429,11 +447,13 @@ TEST_F(KVDBApiTest, managerPostDBExists)
 
 TEST_F(KVDBApiTest, managerDeleteOk)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     ASSERT_NO_THROW(managerDelete(kvdbManager));
 }
 
 TEST_F(KVDBApiTest, managerDeleteNameMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest());
@@ -447,6 +467,7 @@ TEST_F(KVDBApiTest, managerDeleteNameMissing)
 
 TEST_F(KVDBApiTest, managerDeleteNameEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest(""));
@@ -460,8 +481,10 @@ TEST_F(KVDBApiTest, managerDeleteNameEmpty)
 
 TEST_F(KVDBApiTest, managerDelete)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
-    kvdbManager->createDB(KVDB_TEST_1);
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*kvdbManager, deleteDB(KVDB_TEST_1)).WillOnce(testing::Return(kvdbOk()));
     ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
@@ -474,8 +497,9 @@ TEST_F(KVDBApiTest, managerDelete)
 
 TEST_F(KVDBApiTest, managerDeleteDBNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
-    kvdbManager->createDB(KVDB_TEST_2);
+    EXPECT_CALL(*kvdbManager, existsDB(KVDB_TEST_1)).WillOnce(testing::Return(false));
     ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The KVDB 'test1' does not exist."})"};
@@ -488,13 +512,11 @@ TEST_F(KVDBApiTest, managerDeleteDBNotExists)
 
 TEST_F(KVDBApiTest, managerDeleteDBInUse)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
-    ASSERT_FALSE(kvdbManager->createDB("test2"));
-    auto handler = kvdbManager->getKVDBHandler("test2", "test");
-    auto handler2 = kvdbManager->getKVDBHandler("test2", "test2");
-    auto handler3 = kvdbManager->getKVDBHandler("test2", "test3");
-
-    ASSERT_TRUE(std::holds_alternative<std::shared_ptr<kvdbManager::IKVDBHandler>>(handler));
+    EXPECT_CALL(*kvdbManager, existsDB("test2")).WillOnce(testing::Return(true));
+    EXPECT_CALL(*kvdbManager, deleteDB("test2"))
+        .WillOnce(testing::Return(kvdbError("Could not remove the DB 'test2'. Usage Reference Count: 3.")));
     ASSERT_NO_THROW(cmd = managerDelete(kvdbManager));
     const auto response = cmd(commonWRequest("test2"));
     const auto expectedData =
@@ -508,8 +530,10 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
 
 TEST_P(DumpParameters, ValidateParameters)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     auto [params, expected] = GetParam();
     api::Handler cmd;
+
     ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
     json::Json jsonParams(params.c_str());
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, jsonParams));
@@ -535,10 +559,18 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(DumpWithMultiplePages, Functionality)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     auto [params, expected] = GetParam();
 
     api::Handler cmd;
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, dump(testing::_, testing::_)).WillRepeatedly(testing::Return(kvdbDumpOk()));
+
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = managerDump(kvdbManager, "test"));
     json::Json jsonParams(params.c_str());
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, jsonParams));
@@ -554,11 +586,11 @@ INSTANTIATE_TEST_SUITE_P(
     KVDB,
     DumpWithMultiplePages,
     ::testing::Values(
-        std::make_tuple(R"({"name": "test_db", "page": 1, "records": 1})", R"({"status":"OK","entries":[]})"),
-        std::make_tuple(R"({"name": "test_db", "page": 0, "records": 0})",
+        std::make_tuple(R"({"name": "test", "page": 1, "records": 1})", R"({"status":"OK","entries":[]})"),
+        std::make_tuple(R"({"name": "test", "page": 0, "records": 0})",
                         R"({"status":"ERROR","entries":[],"error":"Field /page must be greater than 0"})"),
-        std::make_tuple(R"({"name": "test_db", "page": 1, "records": 10})", R"({"status":"OK","entries":[]})"),
-        std::make_tuple(R"({"name": "test_db", "page": 3, "records": 5})", R"({"status":"OK","entries":[]})")));
+        std::make_tuple(R"({"name": "test", "page": 1, "records": 10})", R"({"status":"OK","entries":[]})"),
+        std::make_tuple(R"({"name": "test", "page": 3, "records": 5})", R"({"status":"OK","entries":[]})")));
 
 TEST_F(KVDBApiTest, dbGetOk)
 {
@@ -567,6 +599,7 @@ TEST_F(KVDBApiTest, dbGetOk)
 
 TEST_F(KVDBApiTest, dbGetNameArrayNotString)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
@@ -583,6 +616,7 @@ TEST_F(KVDBApiTest, dbGetNameArrayNotString)
 
 TEST_F(KVDBApiTest, dbGetNameMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     json::Json params {R"({})"};
@@ -598,6 +632,7 @@ TEST_F(KVDBApiTest, dbGetNameMissing)
 
 TEST_F(KVDBApiTest, dbGetNameEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
@@ -613,6 +648,7 @@ TEST_F(KVDBApiTest, dbGetNameEmpty)
 
 TEST_F(KVDBApiTest, dbGetKeyMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     json::Json params {R"({"name":"test"})"};
@@ -628,6 +664,7 @@ TEST_F(KVDBApiTest, dbGetKeyMissing)
 
 TEST_F(KVDBApiTest, dbGetKeyEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
@@ -642,16 +679,13 @@ TEST_F(KVDBApiTest, dbGetKeyEmpty)
 
 TEST_F(KVDBApiTest, dbGetOneKey)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test", "test");
-
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-    auto result = handler->set("key1", "\"value1\"");
-    ASSERT_FALSE(result);
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillOnce(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(testing::_)).WillOnce(testing::Return(R"("value1")"));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillOnce(testing::Return(kvdbHandler));
 
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("test", "key1"));
@@ -665,16 +699,16 @@ TEST_F(KVDBApiTest, dbGetOneKey)
 
 TEST_F(KVDBApiTest, dbGetRepeatKeyNoError)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-    auto result = handler->set("key1", "\"\"");
-    ASSERT_FALSE(result);
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(testing::_)).WillRepeatedly(testing::Return(R"("")"));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1"));
+    const auto response = cmd(dbWRequest("test", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK","value":""})"};
 
     ASSERT_TRUE(response.isValid());
@@ -682,7 +716,7 @@ TEST_F(KVDBApiTest, dbGetRepeatKeyNoError)
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 
-    const auto response2 = cmd(dbWRequest("test_db", "key1"));
+    const auto response2 = cmd(dbWRequest("test", "key1"));
 
     ASSERT_TRUE(response2.isValid());
     ASSERT_EQ(response2.error(), 0);
@@ -692,20 +726,16 @@ TEST_F(KVDBApiTest, dbGetRepeatKeyNoError)
 
 TEST_F(KVDBApiTest, dbGetMoreThanOneKey)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    auto result = handler->set("key1", "\"\"");
-    ASSERT_FALSE(result);
-    auto result2 = handler->set("key2", "\"\"");
-    ASSERT_FALSE(result2);
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(testing::_)).WillRepeatedly(testing::Return(R"("")"));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
 
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1"));
+    const auto response = cmd(dbWRequest("test", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK","value":""})"};
 
     ASSERT_TRUE(response.isValid());
@@ -713,7 +743,7 @@ TEST_F(KVDBApiTest, dbGetMoreThanOneKey)
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 
-    const auto response2 = cmd(dbWRequest("test_db", "key2"));
+    const auto response2 = cmd(dbWRequest("test", "key2"));
 
     ASSERT_TRUE(response2.isValid());
     ASSERT_EQ(response2.error(), 0);
@@ -723,15 +753,11 @@ TEST_F(KVDBApiTest, dbGetMoreThanOneKey)
 
 TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    auto result = handler->set("key1", "\"\"");
-    ASSERT_FALSE(result);
+    EXPECT_CALL(*kvdbManager, existsDB("default2")).WillRepeatedly(testing::Return(false));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
 
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1"));
@@ -745,11 +771,17 @@ TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
 
 TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillOnce(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(testing::_))
+        .WillOnce(testing::Return(kvdbGetError("Can not get key 'keyNotExists'. Error: Key not found")));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillOnce(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbGet(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "keyNotExists"));
+    const auto response = cmd(dbWRequest("test", "keyNotExists"));
     const auto expectedData =
         json::Json {R"({"status":"ERROR","error":"Can not get key 'keyNotExists'. Error: Key not found"})"};
 
@@ -766,6 +798,7 @@ TEST_F(KVDBApiTest, dbDeleteOk)
 
 TEST_F(KVDBApiTest, dbDeleteNameMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     json::Json params {R"({})"};
@@ -781,6 +814,7 @@ TEST_F(KVDBApiTest, dbDeleteNameMissing)
 
 TEST_F(KVDBApiTest, dbDeleteNameArrayNotString)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
@@ -797,6 +831,7 @@ TEST_F(KVDBApiTest, dbDeleteNameArrayNotString)
 
 TEST_F(KVDBApiTest, dbDeleteNameEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
@@ -811,6 +846,7 @@ TEST_F(KVDBApiTest, dbDeleteNameEmpty)
 
 TEST_F(KVDBApiTest, dbDeleteKeyMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     json::Json params {R"({"name":"test"})"};
@@ -826,6 +862,7 @@ TEST_F(KVDBApiTest, dbDeleteKeyMissing)
 
 TEST_F(KVDBApiTest, dbDeleteKeyEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
@@ -840,19 +877,16 @@ TEST_F(KVDBApiTest, dbDeleteKeyEmpty)
 
 TEST_F(KVDBApiTest, dbDeleteOneKey)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    auto result = handler->set("key1", "");
-    ASSERT_FALSE(result);
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillOnce(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, remove(testing::_)).WillOnce(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillOnce(testing::Return(kvdbHandler));
 
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1"));
+    const auto response = cmd(dbWRequest("test", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -863,18 +897,16 @@ TEST_F(KVDBApiTest, dbDeleteOneKey)
 
 TEST_F(KVDBApiTest, dbDeleteRepeatKeyNoError)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    auto result = handler->set("key1", "");
-    ASSERT_FALSE(result);
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, remove(testing::_)).WillRepeatedly(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
 
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1"));
+    const auto response = cmd(dbWRequest("test", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -882,7 +914,7 @@ TEST_F(KVDBApiTest, dbDeleteRepeatKeyNoError)
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 
-    const auto response2 = cmd(dbWRequest("test_db", "key1"));
+    const auto response2 = cmd(dbWRequest("test", "key1"));
 
     ASSERT_TRUE(response2.isValid());
     ASSERT_EQ(response2.error(), 0);
@@ -892,20 +924,16 @@ TEST_F(KVDBApiTest, dbDeleteRepeatKeyNoError)
 
 TEST_F(KVDBApiTest, dbDeleteMoreThanOneKey)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-    auto result = handler->set("key1", "");
-    ASSERT_FALSE(result);
-    auto result2 = handler->set("key2", "");
-    ASSERT_FALSE(result2);
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, remove(testing::_)).WillRepeatedly(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
 
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1"));
+    const auto response = cmd(dbWRequest("test", "key1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -913,7 +941,7 @@ TEST_F(KVDBApiTest, dbDeleteMoreThanOneKey)
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 
-    const auto response2 = cmd(dbWRequest("test_db", "key2"));
+    const auto response2 = cmd(dbWRequest("test", "key2"));
 
     ASSERT_TRUE(response2.isValid());
     ASSERT_EQ(response2.error(), 0);
@@ -923,14 +951,10 @@ TEST_F(KVDBApiTest, dbDeleteMoreThanOneKey)
 
 TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test_db", "test");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-    auto result = handler->set("key1", "");
-    ASSERT_FALSE(result);
+    EXPECT_CALL(*kvdbManager, existsDB("default2")).WillOnce(testing::Return(false));
 
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1"));
@@ -944,11 +968,16 @@ TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
 
 TEST_F(KVDBApiTest, dbDeleteOneKeyNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, remove(testing::_)).WillRepeatedly(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbDelete(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "keyNotExists"));
+    const auto response = cmd(dbWRequest("test", "keyNotExists"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -964,6 +993,7 @@ TEST_F(KVDBApiTest, dbPutOk)
 
 TEST_F(KVDBApiTest, dbPutNameArrayNotString)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
@@ -980,6 +1010,7 @@ TEST_F(KVDBApiTest, dbPutNameArrayNotString)
 
 TEST_F(KVDBApiTest, dbPutNameMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"entry":{"key":"key1","value":"value1"}})"};
@@ -995,6 +1026,7 @@ TEST_F(KVDBApiTest, dbPutNameMissing)
 
 TEST_F(KVDBApiTest, dbPutNameEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
@@ -1009,6 +1041,7 @@ TEST_F(KVDBApiTest, dbPutNameEmpty)
 
 TEST_F(KVDBApiTest, dbPutKeyMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"name":"test","entry":{"value":"value1"}})"};
@@ -1024,6 +1057,7 @@ TEST_F(KVDBApiTest, dbPutKeyMissing)
 
 TEST_F(KVDBApiTest, dbPutKeyEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
@@ -1038,6 +1072,7 @@ TEST_F(KVDBApiTest, dbPutKeyEmpty)
 
 TEST_F(KVDBApiTest, dbPutValueMissing)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     json::Json params {R"({"name":"test","entry":{"key":"key1"}})"};
@@ -1053,11 +1088,16 @@ TEST_F(KVDBApiTest, dbPutValueMissing)
 
 TEST_F(KVDBApiTest, dbPutValueEmpty)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillOnce(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, set("key1", R"("")")).WillOnce(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillOnce(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1", ""));
+    const auto response = cmd(dbWRequest("test", "key1", ""));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -1068,11 +1108,16 @@ TEST_F(KVDBApiTest, dbPutValueEmpty)
 
 TEST_F(KVDBApiTest, dbPutOneKey)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillOnce(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, set("key1", R"("value1")")).WillOnce(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillOnce(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1", "value1"));
+    const auto response = cmd(dbWRequest("test", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -1083,11 +1128,16 @@ TEST_F(KVDBApiTest, dbPutOneKey)
 
 TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, set("key1", R"("value1")")).WillRepeatedly(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1", "value1"));
+    const auto response = cmd(dbWRequest("test", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -1095,7 +1145,7 @@ TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 
-    const auto response2 = cmd(dbWRequest("test_db", "key1", "value1"));
+    const auto response2 = cmd(dbWRequest("test", "key1", "value1"));
 
     ASSERT_TRUE(response2.isValid());
     ASSERT_EQ(response2.error(), 0);
@@ -1105,11 +1155,16 @@ TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
 
 TEST_F(KVDBApiTest, dbPutMoreThanOneKey)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
 
-    ASSERT_FALSE(kvdbManager->createDB("test_db"));
+    EXPECT_CALL(*kvdbManager, existsDB("test")).WillRepeatedly(testing::Return(true));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, set("key1", R"("value1")")).WillRepeatedly(testing::Return(kvdbOk()));
+    EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillRepeatedly(testing::Return(kvdbHandler));
+
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
-    const auto response = cmd(dbWRequest("test_db", "key1", "value1"));
+    const auto response = cmd(dbWRequest("test", "key1", "value1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -1117,7 +1172,8 @@ TEST_F(KVDBApiTest, dbPutMoreThanOneKey)
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
 
-    const auto response2 = cmd(dbWRequest("test_db", "key2", "value2"));
+    EXPECT_CALL(*kvdbHandler, set("key2", R"("value2")")).WillRepeatedly(testing::Return(kvdbOk()));
+    const auto response2 = cmd(dbWRequest("test", "key2", "value2"));
 
     ASSERT_TRUE(response2.isValid());
     ASSERT_EQ(response2.error(), 0);
@@ -1127,7 +1183,10 @@ TEST_F(KVDBApiTest, dbPutMoreThanOneKey)
 
 TEST_F(KVDBApiTest, dbPutKeyDBNotExists)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
+
+    EXPECT_CALL(*kvdbManager, existsDB("default2")).WillRepeatedly(testing::Return(false));
 
     ASSERT_NO_THROW(cmd = dbPut(kvdbManager, "test"));
     const auto response = cmd(dbWRequest("default2", "key1", "value1"));
@@ -1152,6 +1211,7 @@ TEST_F(KVDBApiTest, dbSearchOk)
 
 TEST_P(DbSearchTestParameters, ValidateParameters)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     auto [params, expectedMessage] = GetParam();
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = dbSearch(kvdbManager, "test"));
@@ -1185,21 +1245,65 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(DbSearchTestFuncionality, Functionality)
 {
+    std::shared_ptr<MockKVDBManager> kvdbManager = std::make_shared<MockKVDBManager>();
     api::Handler cmd;
-    auto [params, expectedValue] = GetParam();
-    ASSERT_FALSE(kvdbManager->createDB("test"));
-    auto resultHandler = kvdbManager->getKVDBHandler("test", "test");
+    auto [test, params, expectedValue] = GetParam();
 
-    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
-
-    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
-    handler->set("key1", "\"value1\"");
-    handler->set("key11", "\"value1\"");
-    handler->set("key2", "\"value2\"");
-    handler->set("key3", "\"value3\"");
-    handler->set("key4", "\"value4\"");
-    handler->set("key5", "\"value5\"");
+    EXPECT_CALL(*kvdbManager, existsDB(testing::_))
+        .WillOnce(testing::Invoke(
+            [&](const std::string& db)
+            {
+                if (db == "default2")
+                {
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
+            }));
+    auto kvdbHandler = std::make_shared<MockKVDBHandler>();
+    if (test != 3)
+    {
+        EXPECT_CALL(*kvdbHandler, search(testing::_, testing::_, testing::_))
+            .WillOnce(testing::Invoke(
+                [&](const std::string& prefix, const unsigned int page, const unsigned int records)
+                {
+                    std::list<std::pair<std::string, std::string>> list;
+                    if (test == 1)
+                    {
+                        list.emplace_back(std::make_pair("key1", R"("value1")"));
+                        list.emplace_back(std::make_pair("key11", R"("value1")"));
+                        return list;
+                    }
+                    else if (test == 2)
+                    {
+                        return std::list<std::pair<std::string, std::string>>();
+                    }
+                    else if (test == 4)
+                    {
+                        list.emplace_back(std::make_pair("key1", R"("value1")"));
+                        list.emplace_back(std::make_pair("key11", R"("value1")"));
+                        list.emplace_back(std::make_pair("key2", R"("value2")"));
+                        list.emplace_back(std::make_pair("key3", R"("value3")"));
+                        list.emplace_back(std::make_pair("key4", R"("value4")"));
+                        return list;
+                    }
+                    else if (test == 5)
+                    {
+                        list.emplace_back(std::make_pair("key11", R"("value1")"));
+                        return list;
+                    }
+                    else if (test == 6)
+                    {
+                        list.emplace_back(std::make_pair("key2", R"("value2")"));
+                        list.emplace_back(std::make_pair("key3", R"("value3")"));
+                        return list;
+                    }
+                    return std::list<std::pair<std::string, std::string>>();
+                }));
+        EXPECT_CALL(*kvdbManager, getKVDBHandler("test", "test")).WillOnce(testing::Return(kvdbHandler));
+    }
 
     ASSERT_NO_THROW(cmd = dbSearch(kvdbManager, "test"));
     json::Json jsonParams(params.c_str());
@@ -1217,17 +1321,23 @@ INSTANTIATE_TEST_SUITE_P(
     DbSearchTestFuncionality,
     ::testing::Values(
         std::make_tuple(
+            1,
             R"({"name":"test", "prefix":"key1"})",
             R"({"status":"OK","entries":[{"key":"key1","value":"value1"},{"key":"key11","value":"value1"}]})"),
-        std::make_tuple(R"({"name":"test", "prefix":"keyx"})", R"({"status":"OK","entries":[]})"),
-        std::make_tuple(R"({"name":"default2", "prefix":"keyx"})",
+        std::make_tuple(2, R"({"name":"test", "prefix":"keyx"})", R"({"status":"OK","entries":[]})"),
+        std::make_tuple(3,
+                        R"({"name":"default2", "prefix":"keyx"})",
                         R"({"status":"ERROR","entries":[],"error":"The KVDB 'default2' does not exist."})"),
         std::make_tuple(
+            4,
             R"({"name":"test", "prefix":"key", "page": 1, "records":"5"})",
             R"({"status":"OK","entries":[{"key":"key1","value":"value1"},{"key":"key11","value":"value1"},{"key":"key2","value":"value2"},{"key":"key3","value":"value3"},{"key":"key4","value":"value4"}]})"),
-        std::make_tuple(R"({"name":"test", "prefix":"key", "page": 2, "records":"1"})",
+        std::make_tuple(5,
+                        R"({"name":"test", "prefix":"key", "page": 2, "records":"1"})",
                         R"({"status":"OK","entries":[{"key":"key11","value":"value1"}]})"),
-        std::make_tuple(R"({"name":"test", "prefix":"key", "page": 2, "records":"2"})",
-                        R"({"status":"OK","entries":[{"key":"key2","value":"value2"},{"key":"key3","value":"value3"}]})")));
+        std::make_tuple(
+            6,
+            R"({"name":"test", "prefix":"key", "page": 2, "records":"2"})",
+            R"({"status":"OK","entries":[{"key":"key2","value":"value2"},{"key":"key3","value":"value3"}]})")));
 
 } // namespace

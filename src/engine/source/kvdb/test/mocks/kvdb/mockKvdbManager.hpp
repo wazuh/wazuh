@@ -3,7 +3,9 @@
 
 #include <gmock/gmock.h>
 
-#include <kvdb/ikvdbmanager>
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/ikvdbhandler.hpp>
+#include <kvdb/ikvdbmanager.hpp>
 
 namespace kvdb::mocks
 {
@@ -11,9 +13,9 @@ namespace kvdb::mocks
 /******************************************************************************/
 // Helper functions to mock method responses
 /******************************************************************************/
-inline base::OptError kvdbError()
+inline base::OptError kvdbError(const std::string error)
 {
-    return base::Error {"Mocked kvdb error"};
+    return base::Error {error};
 }
 
 inline base::OptError kvdbOk()
@@ -21,24 +23,37 @@ inline base::OptError kvdbOk()
     return std::nullopt;
 }
 
+inline base::RespOrError<std::shared_ptr<MockKVDBHandler>> getKVDBHandlerResp()
+{
+    return std::make_shared<MockKVDBHandler>();
+}
+
+inline std::vector<std::string> kvdbListDBsEmpty()
+{
+    return std::vector<std::string>();
+}
+
 /******************************************************************************/
 // Mock classes
 /******************************************************************************/
-class MockKVDBHandler : public kvdb::IKVDBHandler
+class MockKVDBManager : public kvdbManager::IKVDBManager
 {
 public:
+    MOCK_METHOD((void), initialize, (), (override));
+    MOCK_METHOD((void), finalize, (), (override));
     MOCK_METHOD((std::vector<std::string>), listDBs, (const bool loaded), (override));
     MOCK_METHOD((base::OptError), deleteDB, (const std::string& name), (override));
     MOCK_METHOD((base::OptError), createDB, (const std::string& name), (override));
     MOCK_METHOD((base::OptError), createDB, (const std::string& name, const std::string& path), (override));
     MOCK_METHOD((base::OptError), loadDBFromJson, (const std::string& name, const json::Json& content), (override));
-    MOCK_METHOD((std::map<std::string, RefInfo>), getKVDBScopesInfo, (), (override));
-    MOCK_METHOD((std::map<std::string, RefInfo>), getKVDBHandlersInfo, (), (override));
-    MOCK_METHOD((base::RespOrError<std::shared_ptr<IKVDBHandler>>),
+    MOCK_METHOD((bool), existsDB, (const std::string& name), (override));
+    MOCK_METHOD((std::map<std::string, kvdbManager::RefInfo>), getKVDBScopesInfo, (), ());
+    MOCK_METHOD((std::map<std::string, kvdbManager::RefInfo>), getKVDBHandlersInfo, (), (const));
+    MOCK_METHOD((base::RespOrError<std::shared_ptr<kvdbManager::IKVDBHandler>>),
                 getKVDBHandler,
                 (const std::string& dbName, const std::string& scopeName),
                 (override));
-    MOCK_METHOD((uint32_t), getKVDBHandlersCount, (const std::string& dbName), (override));
+    MOCK_METHOD((uint32_t), getKVDBHandlersCount, (const std::string& dbName), (const));
 };
 
 } // namespace kvdb::mocks
