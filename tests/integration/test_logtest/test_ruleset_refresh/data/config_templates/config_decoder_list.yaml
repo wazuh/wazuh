@@ -1,0 +1,70 @@
+---
+-
+  name: 'check_loading_files_default_directory'
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "Oct 15 21:07:00 linux-agent decoder_IT_test_decoder_0[29205]: Test IT decoder","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  decoder_dir : 'etc/decoders/'
+  decoder_file: "custom_decoder_0.xml"
+  decoder_name: "decoder_IT_test_decoder_0"
+  sections:
+     - section: 'ruleset'
+       elements:
+        - decoder_dir:
+            value: 'ruleset/decoders'
+        - rule_dir:
+            value: 'ruleset/rules'
+        - decoder_dir:
+            value: 'etc/decoders'
+-
+  name: 'check_decoder_dir_label'
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "Oct 15 21:07:00 linux-agent decoder_IT_test_decoder_1[29205]: Test IT decoder","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  decoder_dir: 'etc/decoders_1/'
+  decoder_file: "custom_decoder_1.xml"
+  decoder_name: 'decoder_IT_test_decoder_1'
+  sections:
+     - section: 'ruleset'
+       elements:
+        - decoder_dir:
+            value: 'ruleset/decoders'
+        - rule_dir:
+            value: 'ruleset/rules'
+        - rule_exclude:
+            value: '0215-policy_rules.xml'
+        - decoder_dir:
+            value: 'etc/decoders_1'
+-
+  name: 'check_decoder_include_label'
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "Oct 15 21:07:00 linux-agent decoder_IT_test_decoder_2[29205]: Test IT decoder","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  decoder_dir: 'etc/decoders_2/'
+  decoder_file: 'custom_decoder_2.xml'  
+  decoder_name: 'decoder_IT_test_decoder_2'
+  sections:
+     - section: 'ruleset'
+       elements:
+        - decoder_dir:
+            value: 'ruleset/decoders'
+        - rule_dir:
+            value: 'ruleset/rules'
+        - rule_exclude:
+            value: '0215-policy_rules.xml'
+        - decoder_include:
+            value: 'etc/decoders_2/custom_decoder_2.xml'
+-
+  name: 'check_decoder_exclude_label'
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "Oct 15 21:07:00 linux-agent decoder_IT_test_decoder_3[29205]: Test IT decoder","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  decoder_dir: 'etc/decoders'
+  decoder_file: 'custom_decoder_3.xml'  
+  decoder_name: 'decoder_IT_test_decoder_3'
+  test_exclude: 'yes'
+  sections:
+     - section: ruleset
+       elements:
+        - decoder_dir:
+            value: 'ruleset/decoders'
+        - decoder_dir:
+            value: 'etc/decoders'
+        - rule_dir:
+            value: 'ruleset/rules'
+        - rule_exclude:
+            value: '0215-policy_rules.xml'
+        - decoder_exclude:
+            value: 'custom_decoder_3.xml'

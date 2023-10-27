@@ -1,0 +1,32 @@
+# conf 1
+- tags:
+  - conf
+  apply_to_modules:
+  - test_remove_old_sessions
+  sections:
+  - section: rule_test
+    elements:
+    - enabled:
+        value: 'yes'
+    - threads:
+        value: '1'
+    - max_sessions:
+        value: '3'
+    - session_timeout:
+        value: '300'
+# conf 2
+- tags:
+  - conf
+  apply_to_modules:
+  - test_remove_old_session_for_inactivity
+  sections:
+  - section: rule_test
+    elements:
+    - enabled:
+        value: 'yes'
+    - threads:
+        value: '1'
+    - max_sessions:
+        value: '3'
+    - session_timeout:
+        value: '5'
