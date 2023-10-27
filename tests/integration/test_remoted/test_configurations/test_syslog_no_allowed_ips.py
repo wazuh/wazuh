@@ -18,8 +18,8 @@ from wazuh_testing.utils.network import format_ipv6_long
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_syslog_allowed_denied_ips.yaml')
-config_path = Path(CONFIGS_PATH, 'config_syslog_allowed_denied_ips.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_syslog_no_allowed_ips.yaml')
+config_path = Path(CONFIGS_PATH, 'config_syslog_no_allowed_ips.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
@@ -29,13 +29,13 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_allowed_denied_ips_syslog(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                            set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
+def test_syslog_no_allowed_ips(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
+                            set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check that 'wazuh-remoted' denied connection to the specified 'denied-ips'.
-                 For this purpose, it uses the configuration from test cases, check if the different errors are
-                 logged correctly and check if the API retrieves the expected configuration.
+    description: Check that 'wazuh-remoted' fails when 'allowed-ips' is not provided but syslog connection is used.
+                 For this purpose, it uses the configuration from test cases, and check that fail info message has been
+                 logged in 'ossec.log'.
 
     parameters:
         - test_configuration
@@ -57,22 +57,9 @@ def test_allowed_denied_ips_syslog(test_configuration, test_metadata, configure_
         - restart_wazuh_expect_error
             type: fixture
             brief: Restart service when expected error is None, once the test finishes stops the daemons.
-         - get_real_configuration
-            type: fixture
-            brief: get elements from section config and convert  list to dict
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    log_monitor.start(callback=generate_callback(patterns.INFO_NO_ALLOWED_IPS))
 
-    address = test_metadata['allowed-ips'][:-3]
-    netmask = test_metadata['allowed-ips'][-3:]
-    allowed_ips = format_ipv6_long(address) + netmask
-    log_monitor.start(callback=generate_callback(patterns.DETECT_SYSLOG_ALLOWED_IPS,
-                                                    replacement={
-                                                    "syslog_ips": allowed_ips}))
     assert log_monitor.callback_result
-
-
-    real_config_list = get_real_configuration
-
-    utils.compare_config_api_response(real_config_list, 'remote')
