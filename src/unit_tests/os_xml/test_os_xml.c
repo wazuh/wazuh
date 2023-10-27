@@ -1009,6 +1009,22 @@ void test_node_attribute_value_overflow(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
+void test_node_attribute_value_truncate_overflow(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test attr=\"%s\"></test>", overflow_string);
+    create_xml_file(xml_string, data->xml_file_name, 256);
+    const char *xml_path[] = { "test", NULL };
+
+    assert_int_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
+    assert_non_null(data->content1 = OS_GetAttributeContent(&data->xml, xml_path, "attr"));
+}
+
 void w_get_attr_val_by_name_null_attr(void ** state) {
 
     xml_node node = {0};
@@ -1227,6 +1243,9 @@ int main(void) {
 
         // Node attribute value inside XML overflow test
         cmocka_unit_test_setup_teardown(test_node_attribute_value_overflow, test_setup, test_teardown),
+
+        // Truncate node attribute value inside XML overflow test
+        cmocka_unit_test_setup_teardown(test_node_attribute_value_truncate_overflow, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -79,6 +79,7 @@ file(GLOB SYSCOLLECTOR_SRC
 
 add_library(syscollector SHARED
     ${SYSCOLLECTOR_SRC}
+    ${SRC_FOLDER}/${RESOURCE_OBJ}
     )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

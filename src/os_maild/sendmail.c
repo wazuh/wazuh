@@ -50,7 +50,7 @@
 
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 {
-    FILE *sendmail = NULL;
+    wfd_t *sendmail = NULL;
     int socket = -1;
     size_t final_to_sz;
     char *msg;
@@ -58,7 +58,8 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     char final_to[512];
 
     if (mail->smtpserver[0] == '/') {
-        sendmail = popen(mail->smtpserver, "w");
+        char *exec_cmd[2] = { mail->smtpserver, NULL };
+        sendmail = wpopenv(mail->smtpserver, exec_cmd, W_BIND_STDIN);
         if (!sendmail) {
             return (OS_INVALID);
         }
@@ -209,7 +210,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     snprintf(snd_msg, 127, FROM, mail->from);
 
     if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
+        fprintf(sendmail->file_in, "%s", snd_msg);
     } else {
         OS_SendTCP(socket, snd_msg);
     }
@@ -220,7 +221,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         snprintf(snd_msg, 127, REPLYTO, mail->reply_to);
 
         if (sendmail) {
-            fprintf(sendmail, "%s", snd_msg);
+            fprintf(sendmail->file_in, "%s", snd_msg);
         } else {
             OS_SendTCP(socket, snd_msg);
         }
@@ -237,7 +238,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 #endif
 
     if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
+        fprintf(sendmail->file_in, "%s", snd_msg);
     } else {
         OS_SendTCP(socket, snd_msg);
     }
@@ -247,11 +248,12 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     snprintf(snd_msg, 127, SUBJECT, sms_msg->subject);
 
     if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
-        fprintf(sendmail, ENDHEADER);
-        fprintf(sendmail, "%s", sms_msg->body);
+        fprintf(sendmail->file_in, "%s", snd_msg);
+        fprintf(sendmail->file_in, ENDHEADER);
+        fprintf(sendmail->file_in, "%s", sms_msg->body);
 
-        if (pclose(sendmail) == -1) {
+        fflush(sendmail->file_in);
+        if (wpclose(sendmail) == -1) {
             merror(WAITPID_ERROR, errno, strerror(errno));
         }
     } else {
@@ -294,7 +296,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
 int OS_Sendmail(MailConfig *mail, struct tm *p)
 {
-    FILE *sendmail = NULL;
+    wfd_t *sendmail = NULL;
     int socket = -1;
     unsigned int i = 0;
     char *msg;
@@ -311,7 +313,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     if (mail->smtpserver[0] == '/') {
-        sendmail = popen(mail->smtpserver, "w");
+        char *exec_cmd[2] = { mail->smtpserver, NULL };
+        sendmail = wpopenv(mail->smtpserver, exec_cmd, W_BIND_STDIN);
         if (!sendmail) {
             return (OS_INVALID);
         }
@@ -476,7 +479,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         snprintf(snd_msg, 256, TO, mail->to[0]);
 
         if (sendmail) {
-            fprintf(sendmail, "%s", snd_msg);
+            fprintf(sendmail->file_in, "%s", snd_msg);
         } else {
             OS_SendTCP(socket, snd_msg);
         }
@@ -486,7 +489,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     snprintf(snd_msg, 255, FROM, mail->from);
 
     if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
+        fprintf(sendmail->file_in, "%s", snd_msg);
     } else {
         OS_SendTCP(socket, snd_msg);
     }
@@ -496,7 +499,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         memset(snd_msg, '\0', 256);
         snprintf(snd_msg, 256, REPLYTO, mail->reply_to);
         if (sendmail) {
-            fprintf(sendmail, "%s", snd_msg);
+            fprintf(sendmail->file_in, "%s", snd_msg);
         } else {
             OS_SendTCP(socket, snd_msg);
         }
@@ -515,7 +518,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
                 snprintf(snd_msg, 256, TO, mail->to[i]);
 
                 if (sendmail) {
-                    fprintf(sendmail, "%s", snd_msg);
+                    fprintf(sendmail->file_in, "%s", snd_msg);
                 } else {
                     OS_SendTCP(socket, snd_msg);
                 }
@@ -538,7 +541,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             snprintf(snd_msg, 256, TO, mail->gran_to[i]);
 
             if (sendmail) {
-                fprintf(sendmail, "%s", snd_msg);
+                fprintf(sendmail->file_in, "%s", snd_msg);
             } else {
                 OS_SendTCP(socket, snd_msg);
             }
@@ -559,7 +562,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 #endif
 
     if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
+        fprintf(sendmail->file_in, "%s", snd_msg);
     } else {
         OS_SendTCP(socket, snd_msg);
     }
@@ -570,7 +573,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         snprintf(snd_msg, 256, XHEADER, mail->idsname);
 
         if (sendmail) {
-            fprintf(sendmail, "%s", snd_msg);
+            fprintf(sendmail->file_in, "%s", snd_msg);
         } else {
             OS_SendTCP(socket, snd_msg);
         }
@@ -591,8 +594,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
-        fprintf(sendmail, ENDHEADER);
+        fprintf(sendmail->file_in, "%s", snd_msg);
+        fprintf(sendmail->file_in, ENDHEADER);
     } else {
         OS_SendTCP(socket, snd_msg);
         OS_SendTCP(socket, ENDHEADER);
@@ -603,7 +606,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     /* Send multiple emails together if we have to */
     do {
         if (sendmail) {
-            fprintf(sendmail, "%s", mailmsg->mail->body);
+            fprintf(sendmail->file_in, "%s", mailmsg->mail->body);
         } else {
             OS_SendTCP(socket, mailmsg->mail->body);
         }
@@ -611,7 +614,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     } while (mailmsg);
 
     if (sendmail) {
-        if (pclose(sendmail) == -1) {
+        fflush(sendmail->file_in);
+        if (wpclose(sendmail) == -1) {
             merror(WAITPID_ERROR,errno, strerror(errno));
         }
     } else {
