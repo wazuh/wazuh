@@ -265,7 +265,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.sync_interval, 300);
     assert_int_equal(syscheck.sync_queue_size, 16384);
     assert_int_equal(syscheck.sync_thread_pool, 1);
-    assert_int_equal(syscheck.max_eps, 100);
+    assert_int_equal(syscheck.max_eps, 50);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
     assert_int_equal(syscheck.file_size_enabled, true);
@@ -611,7 +611,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
     cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
-    assert_int_equal(max_eps->valueint, 100);
+    assert_int_equal(max_eps->valueint, 50);
     cJSON *process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(process_priority->valueint, 10);
 

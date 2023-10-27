@@ -741,7 +741,7 @@ int Test_Localfile(const char * path){
     int fail = 0;
     logreader_config test_localfile = { .agent_cfg = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CLOCALFILE | CSOCKET, path, &test_localfile, NULL) < 0) {
+    if (ReadConfig(CAGENT_CONFIG | CLOCALFILE | CLGCSOCKET, path, &test_localfile, NULL) < 0) {
         merror(RCONFIG_ERROR,"Localfile", path);
         fail = 1;
     }

@@ -208,6 +208,16 @@ typedef struct _os_ip {
     bool is_ipv6;
 } os_ip;
 
+/* Common structure for socket forwarding in Analysisd and logcollector */
+typedef struct _socket_forwarder {
+    char   *name;
+    char   *location;
+    int    mode;
+    char   *prefix;
+    int    socket;
+    time_t last_attempt;
+} socket_forwarder;
+
 
 extern const char *__local_name;
 /*** Global prototypes ***/
@@ -307,6 +317,7 @@ extern const char *__local_name;
 #include "enrollment_op.h"
 #include "buffer_op.h"
 #include "atomic.h"
+#include "binaries_op.h"
 #include "logging_helper.h"
 #include "../shared_modules/rsync/include/rsync.h"
 #include "../shared_modules/dbsync/include/dbsync.h"

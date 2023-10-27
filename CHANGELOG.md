@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.9.0]
+
+
 ## [v4.8.0]
 
 ### Manager
@@ -124,6 +127,7 @@ All notable changes to this project will be documented in this file.
 - Refactored methods responsible for file synchronization within the cluster. ([#13065](https://github.com/wazuh/wazuh/pull/13065))
 - Changed schema constraints for sys_hwinfo table. ([#16065](https://github.com/wazuh/wazuh/pull/16065))
 - Auth process not start when registration password is empty. ([#15709](https://github.com/wazuh/wazuh/pull/15709))
+- Changed error messages about corrupt GetSecurityInfo messages from FIM to debug logs. ([#19400](https://github.com/wazuh/wazuh/pull/19400))
 
 #### Fixed
 
@@ -137,7 +141,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an issue where an erroneous tag appeared in the cluster logs. ([#15715](https://github.com/wazuh/wazuh/pull/15715))
 - Fixed log error displayed when there's a duplicate worker node name within a cluster. ([#15250](https://github.com/wazuh/wazuh/issues/15250))
 - Resolved an issue in the `agent_upgrade` CLI when used from worker nodes. ([#15487](https://github.com/wazuh/wazuh/pull/15487))
-- Fixed error in the `agent_upgrade` CLI when displaying upgrade result. ([18047](https://github.com/wazuh/wazuh/issues/18047))
+- Fixed error in the `agent_upgrade` CLI when displaying upgrade result. ([#18047](https://github.com/wazuh/wazuh/issues/18047))
 - Fixed error in which the connection with the cluster was broken in local clients for not sending keepalives messages. ([#15277](https://github.com/wazuh/wazuh/pull/15277))
 - Fixed error in which exceptions were not correctly handled when `dapi_err` command could not be sent to peers. ([#15298](https://github.com/wazuh/wazuh/pull/15298))
 - Fixed error in worker's Integrity sync task when a group folder was deleted in master. ([#16257](https://github.com/wazuh/wazuh/pull/16257))
@@ -156,9 +160,9 @@ All notable changes to this project will be documented in this file.
 - Added GuardDuty Native support to the AWS integration. ([#15226](https://github.com/wazuh/wazuh/pull/15226))
 - Added `--prefix` parameter to Azure Storage integration. ([#14768](https://github.com/wazuh/wazuh/pull/14768))
 - Added validations for empty and invalid values in AWS integration. ([#16493](https://github.com/wazuh/wazuh/pull/16493))
-- Added new unit tests for GCloud integration and increased coverage to 99%. ([13573](https://github.com/wazuh/wazuh/pull/13573))
-- Added new unit tests for Azure Storage integration and increased coverage to 99%. ([14104](https://github.com/wazuh/wazuh/pull/14104))
-- Added new unit tests for Docker Listener integration. ([14177](https://github.com/wazuh/wazuh/pull/14177))
+- Added new unit tests for GCloud integration and increased coverage to 99%. ([#13573](https://github.com/wazuh/wazuh/pull/13573))
+- Added new unit tests for Azure Storage integration and increased coverage to 99%. ([#14104](https://github.com/wazuh/wazuh/pull/14104))
+- Added new unit tests for Docker Listener integration. ([#14177](https://github.com/wazuh/wazuh/pull/14177))
 - Added support for Microsoft Graph security API. ([#18116](https://github.com/wazuh/wazuh/pull/18116))
 - Added wildcard support in FIM Windows registers. ([#15852](https://github.com/wazuh/wazuh/pull/15852))
 - Added wildcards support for folders in the localfile configuration on Windows. ([#15973](https://github.com/wazuh/wazuh/pull/15973))
@@ -166,7 +170,7 @@ All notable changes to this project will be documented in this file.
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
-- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547]https://github.com/wazuh/wazuh/pull/16547)
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547](https://github.com/wazuh/wazuh/pull/16547))
 
 #### Changed
 
@@ -179,12 +183,13 @@ All notable changes to this project will be documented in this file.
 - Changed agent IP lookup algorithm. ([#17161](https://github.com/wazuh/wazuh/pull/17161))
 - Changed InstallDate origin in windows installed programs. ([#14499](https://github.com/wazuh/wazuh/pull/14499))
 - Enhanced clarity of certain error messages in the AWS integration for better exception tracing. ([#14524](https://github.com/wazuh/wazuh/pull/14524))
-- Improved external integrations SQLite queries. ([13420](https://github.com/wazuh/wazuh/pull/13420))
+- Improved external integrations SQLite queries. ([#13420](https://github.com/wazuh/wazuh/pull/13420))
 - Improved items iteration for `Config` and `VPCFlow` AWS integrations. ([#16325](https://github.com/wazuh/wazuh/pull/16325))
 - Unit tests have been added to the shared JSON handling library. ([#14784](https://github.com/wazuh/wazuh/pull/14784))
 - Unit tests have been added to the shared SQLite handling library. ([#14476](https://github.com/wazuh/wazuh/pull/14476))
 - Improved command to change user and group from version 4.2.x to 4.x.x. ([#15032](https://github.com/wazuh/wazuh/pull/15032))
 - Changed the internal value of the open_attemps configuration. ([#15647](https://github.com/wazuh/wazuh/pull/15647))
+- Reduced the default FIM event throughput to 50 EPS. ([#19758](https://github.com/wazuh/wazuh/pull/19758))
 
 #### Fixed
 
@@ -192,7 +197,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a path length limitation that prevented FIM from reporting changes on Windows. ([#13588](https://github.com/wazuh/wazuh/pull/13588))
 - Updated the AWS integration to use the regions specified in the AWS config file when no regions are provided in `ossec.conf`. ([#14993](https://github.com/wazuh/wazuh/pull/14993))
 - Corrected the error code `#2` for the SIGINT signal within the AWS integration. ([#14850](https://github.com/wazuh/wazuh/pull/14850))
-- Fixed the `discard_regex` functionality for the AWS GuardDuty integration. ([14740](https://github.com/wazuh/wazuh/pull/14740))
+- Fixed the `discard_regex` functionality for the AWS GuardDuty integration. ([#14740](https://github.com/wazuh/wazuh/pull/14740))
 - Fixed error messages in the AWS integration when there is a `ClientError`. ([#14500](https://github.com/wazuh/wazuh/pull/14500))
 - Fixed error that could lead to duplicate logs when using the same dates in the AWS integration. ([#14493](https://github.com/wazuh/wazuh/pull/14493))
 - Fixed `check_bucket` method in AWS integration to be able to find logs without a folder in root. ([#16116](https://github.com/wazuh/wazuh/pull/16116))
@@ -207,13 +212,15 @@ All notable changes to this project will be documented in this file.
 - Fixed agent starts with an invalid fim configuration. ([#16268](https://github.com/wazuh/wazuh/pull/16268))
 - Fixed rootcheck scan trying to read deleted files. ([#15719](https://github.com/wazuh/wazuh/pull/15719))
 - Fixed compilation and build in Gentoo. ([#15739](https://github.com/wazuh/wazuh/pull/15739))
+- Fixed a crash when FIM scan windows longs paths. ([#19375](https://github.com/wazuh/wazuh/pull/19375))
+- Fixed FIM who-data support for aarch64 platforms. ([#19378](https://github.com/wazuh/wazuh/pull/19378))
 
 #### Removed
 
 - Unused option `local_ip` for agent configuration has been deleted. ([#13878](https://github.com/wazuh/wazuh/pull/13878))
-- Removed unused migration functionality from the AWS integration. ([14684](https://github.com/wazuh/wazuh/pull/14684))
+- Removed unused migration functionality from the AWS integration. ([#14684](https://github.com/wazuh/wazuh/pull/14684))
 - Deleted definitions of repeated classes in the AWS integration. ([#17655](https://github.com/wazuh/wazuh/pull/17655))
-- Removed duplicate methods in `AWSBucket` and reuse inherited ones from `WazuhIntegration`. ([15031](https://github.com/wazuh/wazuh/pull/15031))
+- Removed duplicate methods in `AWSBucket` and reuse inherited ones from `WazuhIntegration`. ([#15031](https://github.com/wazuh/wazuh/pull/15031))
 
 ### RESTful API
 
@@ -229,11 +236,12 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Changed the API's response status code for Wazuh cluster errors from 400 to 500. ([13646](https://github.com/wazuh/wazuh/pull/13646))
+- Changed the API's response status code for Wazuh cluster errors from 400 to 500. ([#13646](https://github.com/wazuh/wazuh/pull/13646))
+- Changed Operational API error messages to include additional information. ([#19001](https://github.com/wazuh/wazuh/pull/19001))
 
 #### Fixed
 
-- Fixed an unexpected behavior when using the `q` and `select` parameters in some endpoints. ([13421](https://github.com/wazuh/wazuh/pull/13421))
+- Fixed an unexpected behavior when using the `q` and `select` parameters in some endpoints. ([#13421](https://github.com/wazuh/wazuh/pull/13421))
 - Resolved an issue in the GET /manager/configuration API endpoint when retrieving the vulnerability detector configuration section. ([#15203](https://github.com/wazuh/wazuh/pull/15203))
 - Fixed `GET /agents/upgrade_result` endpoint internal error with code 1814 in large environments. ([#15152](https://github.com/wazuh/wazuh/pull/15152))
 - Enhanced the alphanumeric_symbols regex to better accommodate specific SCA remediation fields. ([#16756](https://github.com/wazuh/wazuh/pull/16756))
@@ -254,7 +262,21 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. ([#14138](https://github.com/wazuh/wazuh/pull/14138))
 
 
-## [v4.5.3]
+## [v4.5.4]
+
+### Manager
+
+#### Changed
+
+- Set a timeout on requests between components through the cluster. ([#19729](https://github.com/wazuh/wazuh/pull/19729))
+
+#### Fixed
+
+- Fixed a bug that might leave some worker's services hanging if the connection to the master was broken. ([#19702](https://github.com/wazuh/wazuh/pull/19702))
+- Fixed vulnerability scan on Windows agent when the OS version has no release data. ([#19706](https://github.com/wazuh/wazuh/pull/19706))
+
+
+## [v4.5.3] - 2023-10-10
 
 ### Manager
 
@@ -266,6 +288,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed a bug that might cause wazuh-analysisd to crash if it receives a status API query during startup. ([#18737](https://github.com/wazuh/wazuh/pull/18737))
 - Fixed a bug that might cause wazuh-maild to crash when handling large alerts. ([#18976](https://github.com/wazuh/wazuh/pull/18976))
+- Fixed an issue in Vulnerability Detector fetching the SLES 15 feed. ([#19217](https://github.com/wazuh/wazuh/pull/19217))
 
 ### Agent
 
@@ -278,6 +301,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in the memory handle at the agent's data provider helper. ([#18773](https://github.com/wazuh/wazuh/pull/18773))
 - Fixed a data mismatch in the OS name between the global and agents' databases. ([#18903](https://github.com/wazuh/wazuh/pull/18903))
 - Fixed an array limit check in wazuh-logcollector. ([#19069](https://github.com/wazuh/wazuh/pull/19069))
+- Fixed wrong Windows agent binaries metadata. ([#19286](https://github.com/wazuh/wazuh/pull/19286))
+- Fixed error during the windows agent upgrade. ([#19397](https://github.com/wazuh/wazuh/pull/19397))
 
 ### RESTful API
 

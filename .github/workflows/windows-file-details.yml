@@ -1,0 +1,60 @@
+name: Windows binaries' details
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/windows-file-details.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install mingw
+        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: make deps
+        run: make -C src deps TARGET=winagent -j2
+      - name: make
+        run: make -C src TARGET=winagent -j2
+      - name: Copy binaries
+        run: |
+          mkdir -p src/bin_files
+          # We exclude the installer from the test
+          find src/win32/ -regex '.*wazuh-agent-[0-9]+.[0-9]+.[0-9]+\.exe$' -delete
+          # We remove the executables that aren't distributed in the signed installer
+          rm -f src/win32/setup-*.exe
+          cp src/win32/*.exe src/bin_files/
+          # We exclude the libraries that aren't built by Wazuh
+          rm -f src/win32/libwinpthread-1.dll
+          rm -f src/win32/libgcc_s_dw2-1.dll
+          rm -f src/win32/libstdc++-6.dll
+          find src/ -name "*.dll" -not -path "src/external/*" -not -path "src/win32/SimpleSC/*" -not -path "src/win32/nsProcess/*" -exec cp {} src/bin_files/ \;
+      - name: Upload Artifact binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: src/bin_files
+  check_binaries_details:
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: Download Artifact binaries
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+          path: C:\binaries\
+      - name: Install dependencies
+        run: |
+          pip install -r src/win32/qa/requirements.txt
+      - name: Run tests
+        run: |
+          cd src/win32/qa
+          python -m pytest -vv ./test_bin_details.py

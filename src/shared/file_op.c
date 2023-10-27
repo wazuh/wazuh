@@ -1232,8 +1232,35 @@ char *basename_ex(char *path)
 
 int rename_ex(const char *source, const char *destination)
 {
-    if (!MoveFileEx(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+    BOOL file_created = FALSE;
+    DWORD dwFileAttributes = GetFileAttributes(destination);
+
+    if (dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
+        // If the destination file does not exist, create it.
+
+        const DWORD dwDesiredAccess = GENERIC_WRITE;
+        const DWORD dwShareMode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
+        const DWORD dwCreationDisposition = CREATE_ALWAYS;
+        const DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
+
+        HANDLE hFile = CreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+
+        if (hFile == INVALID_HANDLE_VALUE) {
+            mferror("Could not create file (%s) which returned (%lu)", destination, GetLastError());
+            return -1;
+        }
+
+        CloseHandle(hFile);
+        file_created = TRUE;
+    }
+
+    if (!ReplaceFile(destination, source, NULL, 0, NULL, NULL)) {
         mferror("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
+
+        if (file_created) {
+            // Delete the destination file as it's been created by this function.
+            DeleteFile(destination);
+        }
 
         return (-1);
     }
