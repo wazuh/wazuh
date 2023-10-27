@@ -8,14 +8,15 @@ from evtx import PyEvtxParser  # https://github.com/omerbenamram/evtx/
 from urllib.parse import urlparse
 
 def evtx_to_xml(evtx_file_path):
-    parser = PyEvtxParser(evtx_file_path, number_of_threads=0)
+
     xml_records = []
     try:
+        parser = PyEvtxParser(evtx_file_path, number_of_threads=0)
         for record in parser.records():
             cleaned_data = re.sub(r'<\?xml version="1.0" encoding="utf-8"\?>\n?', '', record['data'])
             xml_records.append(cleaned_data)
     except RuntimeError as e:
-        print(f'Error: {e}')
+        print(f'Error converting EVTX to XML: {e}')
         exit(0)
 
     final_xml = f'<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<Events>\n'
@@ -27,7 +28,10 @@ def evtx_to_xml(evtx_file_path):
 def check_url(url):
     try:
         response = requests.head(url)
-        return 2 <= response.status_code // 100 <= 3
+        valid : bool = 2 <= response.status_code // 100 <= 3
+        if not valid:
+            print(f"Response code: {response.status_code}")
+        return valid
     except requests.RequestException as e:
         print(f"Error: {e}")
         return False
