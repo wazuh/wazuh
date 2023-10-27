@@ -100,6 +100,7 @@ if (NOT ${TARGET} STREQUAL "")
           COMMAND ${SRC_FOLDER}/external/flatbuffers/build/flatc
           ARGS --cpp
           ARGS -o "${FLATBUFFERS_FOLDER}/../include" "${FILE}"
+          ARGS --no-warnings
           COMMENT "Building C++ header for ${schema} schema."
           DEPENDS ${FILE}
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -166,7 +167,7 @@ if (NOT ${TARGET} STREQUAL "")
         set(FBS_FILE "${FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
       endif()
       add_custom_target(${schema}_target
-        COMMAND ${FLATC_PATH}/flatc -c -o ${FLATBUFFERS_FOLDER}/../include/ ${FBS_FILE}
+        COMMAND ${FLATC_PATH}/flatc -c -o ${FLATBUFFERS_FOLDER}/../include/ --no-warnings ${FBS_FILE}
         COMMENT "Executing flatc to generate ${schema} header file."
       )
       add_dependencies(${PROJECT_NAME} ${schema}_target)
