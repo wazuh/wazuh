@@ -234,6 +234,7 @@ base::Expression Asset::getExpression() const
         case Asset::Type::RULE:
         case Asset::Type::DECODER:
         {
+            // TODO: fix this, it is a workaround so test can display if the asset succeededs or not
             std::vector<base::Expression> checkOp;
             checkOp.reserve(2);
             if (m_check)
