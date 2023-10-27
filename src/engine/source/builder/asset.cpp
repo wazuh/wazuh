@@ -191,6 +191,22 @@ Asset::Asset(const json::Json& jsonDefinition,
         }
     }
 
+    // TODO: fix this, it is a workaround so test can display if the asset succeededs or not
+    {
+        std::vector<base::Expression> checkOp;
+        if (m_check)
+        {
+            checkOp.push_back(m_check);
+        }
+        else
+        {
+            checkOp.push_back(base::Term<base::EngineOp>::create(
+                "AcceptAll", [](auto e) { return base::result::makeSuccess(e, ""); }));
+        }
+        checkOp.push_back(base::Term<base::EngineOp>::create(
+            "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); }));
+    }
+
     // Get stages
     m_stages = base::Chain::create("stages", {});
     auto asOp = m_stages->getPtr<base::Operation>();
@@ -234,26 +250,12 @@ base::Expression Asset::getExpression() const
         case Asset::Type::RULE:
         case Asset::Type::DECODER:
         {
-            // TODO: fix this, it is a workaround so test can display if the asset succeededs or not
-            std::vector<base::Expression> checkOp;
-            checkOp.reserve(2);
-            if (m_check)
-            {
-                checkOp.push_back(m_check);
-            } else {
-                checkOp.push_back(base::Term<base::EngineOp>::create(
-                "AcceptAll", [](auto e) { return base::result::makeSuccess(e, ""); }));
-            }
-            checkOp.push_back(base::Term<base::EngineOp>::create(
-                "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); }));
-
-
-            auto check = base::And::create("check", checkOp);
-
-            asset = base::Implication::create(m_name, check, m_stages);
+            asset = base::Implication::create(m_name, m_check, m_stages);
         }
         break;
-        case Asset::Type::FILTER: asset = base::And::create(m_name, {m_check}); break; // TODO Check empty filters (m_check == empty)
+        case Asset::Type::FILTER:
+            asset = base::And::create(m_name, {m_check});
+            break; // TODO Check empty filters (m_check == empty)
         default: throw std::runtime_error(fmt::format("Asset type not supported from asset '{}'", m_name));
     }
 
