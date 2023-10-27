@@ -150,7 +150,7 @@ Vagrant.configure("2") do |config|
         engine-integration add -n wazuh integrations/suricata/
 
         # Add filter for route
-        $ENGINE_DIR/wazuh-engine catalog -n system create filter << filters/allow-all.yml
+        $ENGINE_DIR/wazuh-engine catalog -n system create filter < filters/allow-all.yml
 
         cd $HOME
         echo "Creating default policy 'policy/wazuh/0'..."
