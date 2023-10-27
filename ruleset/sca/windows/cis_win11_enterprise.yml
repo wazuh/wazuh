@@ -6172,7 +6172,7 @@ checks:
 
   # 18.10.3.1 (L2) Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'. (Automated)
   - id: 18818
-    title: "(L2) Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'."
+    title: "Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'."
     description: "Manages a Windows app's ability to share data between users who have installed the app. Data is shared through the SharedLocal folder. This folder is available through the Windows.Storage API. The recommended state for this setting is: Disabled."
     rationale: "Users of a system could accidentally share sensitive data with other users on the same system."
     impact: "None - this is the default behavior."
@@ -6181,12 +6181,15 @@ checks:
       - cis: ["18.10.3.1"]
       - cis_csc_v7: ["14.6"]
       - iso_27001-2013: ["A.9.1.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData -> 0'
 
   # 18.10.3.2 (L1) Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'. (Automated)
   - id: 18819
-    title: "(L1) Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'."
+    title: "Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'."
     description: "This setting manages non-Administrator users' ability to install Windows app packages. The recommended state for this setting is: Enabled."
     rationale: "In a corporate managed environment, application installations should be managed centrally by IT staff, not by end users."
     impact: 'Non-Administrator users will not be able to install Microsoft Store app packages, unless they are explicitly permitted by other policies. If a Microsoft Store app is required for legitimate use, an Administrator will need to perform the installation from an Administrator context. This setting can prevent standard users (without Administrator access) from launching Office 365 (O365) applications, displaying the error: "Windows cannot access the specified device, path, or file. You may not have the appropriate permissions to access the item.".'
@@ -6200,12 +6203,15 @@ checks:
       - nist_sp_800-53: ["CM-7(5)"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx -> BlockNonAdminUserInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx -> BlockNonAdminUserInstall -> 1'
 
   # 18.10.4.1 (L1) Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'. (Automated)
   - id: 18820
-    title: "(L1) Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'."
+    title: "Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'."
     description: "This policy setting specifies whether Windows apps can be activated by voice (apps and Cortana) while the system is locked. The recommended state for this setting is: Enabled: Force Deny."
     rationale: "Access to any computer resource should not be allowed when the device is locked."
     impact: "Users will not be able to activate apps while the computer is locked."
@@ -6214,12 +6220,15 @@ checks:
       - cis: ["18.10.4.1"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy -> LetAppsActivateWithVoiceAboveLock'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy -> LetAppsActivateWithVoiceAboveLock -> 2'
 
   # 18.10.5.1 (L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'. (Automated)
   - id: 18821
-    title: "(L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
+    title: "Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
     description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it. The recommended state for this setting is: Enabled."
     rationale: "Enabling this setting allows an organization to use their enterprise user accounts instead of using their Microsoft accounts when accessing Windows store apps. This provides the organization with greater control over relevant credentials. Microsoft accounts cannot be centrally managed and as such enterprise credential security policies cannot be applied to them, which could put any information accessed by using Microsoft accounts at risk."
     impact: "Windows Store apps that typically require a Microsoft account to sign in will allow users to sign in with an enterprise account instead."
@@ -6230,12 +6239,15 @@ checks:
       - cis_csc_v7: ["16.2"]
       - nist_sp_800-53: ["AC-2(1)"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
 
   # 18.10.5.2 (L2) Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'. (Automated)
   - id: 18822
-    title: "(L2) Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'."
+    title: "Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'."
     description: "This policy setting controls whether Microsoft Store apps with Windows Runtime API access directly from web content can be launched. The recommended state for this setting is: Enabled."
     rationale: "Blocking apps from the web with direct access to the Windows API can prevent malicious apps from being run on a system. Only system administrators should be installing approved applications."
     impact: "Universal Windows apps which declare Windows Runtime API access in the ApplicationContentUriRules section of the manifest cannot be launched (Universal Windows apps which have not declared Windows Runtime API access in the manifest will not be affected)."
@@ -6249,12 +6261,15 @@ checks:
       - nist_sp_800-53: ["CM-7(5)"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT -> 1'
 
   # 18.10.7.1 (L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'. (Automated)
   - id: 18823
-    title: "(L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
+    title: "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
     description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones. The recommended state for this setting is: Enabled."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
     impact: "AutoPlay will not be allowed for MTP devices like cameras or phones."
@@ -6266,12 +6281,15 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
 
   # 18.10.7.2 (L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'. (Automated)
   - id: 18824
-    title: "(L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'."
+    title: "Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'."
     description: "This policy setting sets the default behavior for Autorun commands. Autorun commands are generally stored in autorun.inf files. They often launch the installation program or other routines. The recommended state for this setting is: Enabled: Do not execute any autorun commands."
     rationale: "Prior to Windows Vista, when media containing an autorun command is inserted, the system will automatically execute the program without user intervention. This creates a major security concern as code may be executed without user's knowledge. The default behavior starting with Windows Vista is to prompt the user whether autorun command is to be run. The autorun command is represented as a handler in the Autoplay dialog."
     impact: "AutoRun commands will be completely disabled."
@@ -6283,12 +6301,15 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> 1'
 
   # 18.10.7.3 (L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'. (Automated)
   - id: 18825
-    title: "(L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'."
+    title: "Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'."
     description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives. Note: You cannot use this policy setting to enable Autoplay on computer drives in which it is disabled by default, such as floppy disk and network drives. The recommended state for this setting is: Enabled: All drives."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
     impact: "Autoplay will be disabled - users will have to manually launch setup or installation programs that are provided on removable media."
@@ -6300,18 +6321,21 @@ checks:
       - cmmc_v2.0: ["MP.L2-3.8.7"]
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
 
   # 18.10.8.1.1 (L1) Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'. (Automated)
   - id: 18826
-    title: "(L1) Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'."
+    title: "Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'."
     description: "This policy setting determines whether enhanced anti-spoofing is configured for devices which support it. The recommended state for this setting is: Enabled."
     rationale: "Enterprise managed environments are now supporting a wider range of mobile devices, increasing the security on these devices will help protect against unauthorized access on your network."
     impact: "Windows will require all users on the device to use anti-spoofing for facial features, on devices which support it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti- spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti-spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
     references:
-      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/hello-for-"
+      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-biometrics-in-enterprise"
     compliance:
       - cis: ["18.10.8.1.1"]
       - cis_csc_v8: ["10.5"]
@@ -6319,12 +6343,15 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing -> 1'
 
   # 18.10.9.1.1 (BL) Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'. (Automated)
   - id: 18827
-    title: "(BL) Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'."
+    title: "Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'."
     description: "This policy setting configures whether or not fixed data drives formatted with the FAT file system can be unlocked and viewed on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with Service Pack 3 (SP3), or Windows XP with Service Pack 2 (SP2) operating systems. Note: This policy setting does not apply to drives that are formatted with the NTFS file system. The recommended state for this setting is: Disabled."
     rationale: "By default BitLocker virtualizes FAT formatted drives to permit access via the BitLocker To Go Reader on previous versions of Windows. Additionally the BitLocker To Go Reader application is applied to the unencrypted portion of the drive. The BitLocker To Go Reader application, like any other application, is subject to spoofing and could be a mechanism to propagate malware."
     impact: "Fixed data drives formatted with the FAT file system that are BitLocker-protected cannot be unlocked on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with SP3 or Windows XP with SP2. BitLockerToGo.exe will not be installed."
@@ -6333,16 +6360,19 @@ checks:
       - cis: ["18.10.9.1.1"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVDiscoveryVolumeType'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVDiscoveryVolumeType -> 0'
 
   # 18.10.9.1.2 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'. (Automated)
   - id: 18828
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'."
     description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The "Allow data recovery agent" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected fixed data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select "Omit recovery options from the BitLocker setup wizard" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In "Save BitLocker recovery information to Active Directory Domain Services" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select "Backup recovery password only", only the recovery password is stored in AD DS. Select the "Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the "Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled.'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive."
     impact: "To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker- protected fixed drives can be recovered Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.9.1.2"]
       - cis_csc_v8: ["3.6"]
@@ -6351,16 +6381,19 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - nist_sp_800-53: ["SC-28"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecovery'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecovery -> 1'
 
   # 18.10.9.1.3 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'. (Automated)
   - id: 18829
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
     description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The "Allow data recovery agent" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected fixed data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: True (checked).'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker- protected fixed drives can be recovered: Allow data recovery agent Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.9.1.3"]
       - cis_csc_v8: ["3.6"]
@@ -6369,16 +6402,19 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - nist_sp_800-53: ["SC-28"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVManageDRA'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVManageDRA -> 1'
 
   # 18.10.9.1.4 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Password' is set to 'Enabled: Allow 48-digit recovery password'. (Automated)
   - id: 18830
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Password' is set to 'Enabled: Allow 48-digit recovery password'."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Password' is set to 'Enabled: Allow 48-digit recovery password'."
     description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Allow 48-digit recovery password.'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "A 48-digit recovery password will be permitted for fixed drives."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow 48-digit recovery password: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker- protected fixed drives can be recovered: Recovery Password Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow 48-digit recovery password: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Recovery Password Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.9.1.4"]
       - cis_csc_v8: ["3.6"]
@@ -6387,16 +6423,19 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - nist_sp_800-53: ["SC-28"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryPassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryPassword -> 2'
 
   # 18.10.9.1.5 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key'. (Automated)
   - id: 18831
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key'."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key'."
     description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Allow 256-bit recovery key.'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "A 256-bit recovery key will be permitted for fixed drives."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow 256-bit recovery key: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker- protected fixed drives can be recovered: Recovery Key Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow 256-bit recovery key: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Recovery Key Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.9.1.5"]
       - cis_csc_v8: ["3.6"]
@@ -6405,12 +6444,99 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - nist_sp_800-53: ["SC-28"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryKey'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryKey -> 2'
+
+  # 18.10.9.1.6 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True'."
+    description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. Select "Omit recovery options from the BitLocker setup wizard" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. The recommended state for this setting is: Enabled: True (checked).'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "The ability to manually select recovery options for fixed drives will not be presented to the user in the BitLocker setup wizard."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.6"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHideRecoveryPage'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHideRecoveryPage -> 1'
+
+  # 18.10.9.1.7 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Save BitLocker recovery information to AD DS for fixed data drives' is set to 'Enabled: False' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Save BitLocker recovery information to AD DS for fixed data drives' is set to 'Enabled: False'."
+    description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Save BitLocker recovery information to Active Directory Domain Services" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select "Backup recovery password only", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: False (unchecked).'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: BitLocker recovery information to AD DS for fixed data drives Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.7"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryBackup -> 0'
+
+  # 18.10.9.1.8 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS' is set to 'Enabled: Backup recovery passwords and key packages' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS' is set to 'Enabled: Backup recovery passwords and key packages'."
+    description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Save BitLocker recovery information to Active Directory Domain Services" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select "Backup recovery password only", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: Backup recovery passwords and key packages.'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this value is ignored when the checkbox above it (Save BitLocker recovery information to AD DS for fixed data drives) is False (unchecked), as is required in Rule 18.9.11.1.7. If that checkbox is set to True (checked), both recovery passwords and key packages for fixed drives will be saved to AD DS."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Backup recovery passwords and key packages: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS: Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.8"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryInfoToStore'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryInfoToStore -> 1'
+
+  # 18.10.9.1.9 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives' is set to 'Enabled: False' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives' is set to 'Enabled: False'."
+    description: 'This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. Select the "Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the "Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled: False (unchecked).'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives: Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.9"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRequireActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRequireActiveDirectoryBackup -> 0'
 
   # 18.10.9.1.10 (BL) Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'. (Automated)
   - id: 18832
-    title: "(BL) Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'."
     description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on fixed data drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
     rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
     impact: "None - this is the default behavior."
@@ -6421,12 +6547,15 @@ checks:
       - cis: ["18.10.9.1.10"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHardwareEncryption'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHardwareEncryption -> 0'
 
   # 18.10.9.1.11 (BL) Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'. (Automated)
   - id: 18833
-    title: "(BL) Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'."
     description: "This policy setting specifies whether a password is required to unlock BitLocker-protected fixed data drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
     rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down rapid brute-force attacks against them."
     impact: "The password option will not be available when configuring BitLocker for fixed drives."
@@ -6439,12 +6568,15 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVPassphrase'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVPassphrase -> 0'
 
   # 18.10.9.1.12 (BL) Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'. (Automated)
   - id: 18834
-    title: "(BL) Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'."
+    title: "Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'."
     description: 'This policy setting allows you to specify whether smart cards can be used to authenticate user access to the BitLocker-protected fixed data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the "Require use of smart cards on fixed data drives" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled.'
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "None - this is the default behavior."
@@ -6452,12 +6584,15 @@ checks:
     compliance:
       - cis: ["18.10.9.1.12"]
       - cis_csc_v7: ["16.3"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVAllowUserCert'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVAllowUserCert -> 1'
 
   # 18.10.9.1.13 (BL) Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'. (Automated)
   - id: 18835
-    title: "(BL) Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'."
+    title: "Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'."
     description: 'This policy setting allows you to specify whether smart cards must be used to authenticate user access to the BitLocker-protected fixed data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require a smart card authentication by selecting the "Require use of smart cards on fixed data drives" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled: True (checked).'
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "Smart cards will be required to authenticate user access to fixed data drives. Use of smart cards requires PKI infrastructure. Users will need to authenticate with the smart card to unlock the fixed data drive every time they restart the computer."
@@ -6465,12 +6600,15 @@ checks:
     compliance:
       - cis: ["18.10.9.1.13"]
       - cis_csc_v7: ["16.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVEnforceUserCert'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVEnforceUserCert -> 1'
 
   # 18.10.9.2.1 (BL) Ensure 'Allow enhanced PINs for startup' is set to 'Enabled'. (Automated)
   - id: 18836
-    title: "(BL) Ensure 'Allow enhanced PINs for startup' is set to 'Enabled'."
+    title: "Ensure 'Allow enhanced PINs for startup' is set to 'Enabled'."
     description: "This policy setting allows you to configure whether or not enhanced startup PINs are used with BitLocker. Enhanced startup PINs permit the use of characters including uppercase and lowercase letters, symbols, numbers, and spaces. This policy setting is applied when you turn on BitLocker. The recommended state for this setting is: Enabled."
     rationale: "A numeric-only PIN provides less entropy than a PIN that is alpha-numeric. When not using enhanced PIN for startup, BitLocker requires the use of the function keys [F1-F10] for PIN entry since the PIN is entered in the pre-OS environment before localization support is available. This limits each PIN digit to one of ten possibilities. The TPM has an anti-hammering feature that includes a mechanism to exponentially increase the delay for PIN retry attempts; however, an attacker is able to more effectively mount a brute force attack using a domain of 10 digits of the function keys."
     impact: "All new BitLocker startup PINs set will be enhanced PINs. Note: Not all computers enable full keyboard support in the Pre-OS environment. Some keys may not be available. It is recommended this functionality be tested using the computers in your environment prior to it being deployed."
@@ -6482,12 +6620,15 @@ checks:
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> UseEnhancedPin'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> UseEnhancedPin -> 1'
 
   # 18.10.9.2.2 (BL) Ensure 'Allow Secure Boot for integrity validation' is set to 'Enabled'. (Automated)
   - id: 18837
-    title: "(BL) Ensure 'Allow Secure Boot for integrity validation' is set to 'Enabled'."
+    title: "Ensure 'Allow Secure Boot for integrity validation' is set to 'Enabled'."
     description: 'This policy setting allows you to configure whether Secure Boot will be allowed as the platform integrity provider for BitLocker operating system drives. Secure Boot ensures that the PC''s pre-boot environment only loads firmware that is digitally signed by authorized software publishers. Secure Boot also provides more flexibility for managing pre-boot configuration than legacy BitLocker integrity checks. Secure Boot requires a system that meets the UEFI 2.3.1 Specifications for Class 2 and Class 3 computers. When this policy is enabled and the hardware is capable of using Secure Boot for BitLocker scenarios, the "Use enhanced Boot Configuration Data validation profile" group policy setting is ignored and Secure Boot verifies BCD settings according to the Secure Boot policy setting, which is configured separately from BitLocker. Note: If the group policy setting "Configure TPM platform validation profile for native UEFI firmware configurations" is enabled and has PCR 7 omitted, BitLocker will be prevented from using Secure Boot for platform or Boot Configuration Data (BCD) integrity validation. The recommended state for this setting is: Enabled.'
     rationale: "Secure Boot ensures that only firmware digitally signed by authorized software publishers is loaded during computer startup, which reduces the risk of rootkits and other types of malware from gaining control of the system. It also helps provide protection against malicious users booting from an alternate operating system."
     impact: "None - this is the default behavior."
@@ -6498,12 +6639,15 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSAllowSecureBootForIntegrity'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSAllowSecureBootForIntegrity -> 1'
 
   # 18.10.9.2.3 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled'. (Automated)
   - id: 18838
-    title: "(BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled'."
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled'."
     description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. The "Allow certificate-based data recovery agent" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected operating system drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select "Omit recovery options from the BitLocker setup wizard" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In "Save BitLocker recovery information to Active Directory Domain Services", choose which BitLocker recovery information to store in AD DS for operating system drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select "Backup recovery password only", only the recovery password is stored in AD DS. Select the "Do not enable BitLocker until recovery information is stored in AD DS for operating system drives" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the "Do not enable BitLocker until recovery information is stored in AD DS for operating system drives" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled.'
     rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
     impact: "Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
@@ -6516,12 +6660,15 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - nist_sp_800-53: ["SC-28"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRecovery'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRecovery -> 1'
 
   # 18.10.9.2.4 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'. (Automated)
   - id: 18839
-    title: "(BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'."
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'."
     description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. The "Allow certificate-based data recovery agent" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected operating system drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: False (unchecked).'
     rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
     impact: "A Data Recovery Agent will not be permitted for the operating system drive. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
@@ -6534,12 +6681,141 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - nist_sp_800-53: ["SC-28"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSManageDRA'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSManageDRA -> 0'
+
+  # 18.10.9.2.5 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Recovery Password' is set to 'Enabled: Require 48-digit recovery password' (Automated)
+  - id: 18830
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Recovery Password' is set to 'Enabled: Require 48-digit recovery password'."
+    description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Require 48-digit recovery password.'
+    rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
+    impact: "A 48-digit recovery password will be required for the operating system drive. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Require 48-digit recovery password: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Operating System Drives\\Choose how BitLocker-protected operating system drives can be recovered: Recovery Password Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.2.5"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRecoveryPassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRecoveryPassword -> 2'
+
+  # 18.10.9.2.6 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'."
+    description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Do not allow 256-bit recovery key.'
+    rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
+    impact: "A 256-bit recovery key will not be permitted for the operating system drive. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not allow 256-bit recovery key: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Operating System Drives\\Choose how BitLocker-protected operating system drives can be recovered: Recovery Key Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.2.6"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRecoveryKey'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRecoveryKey -> 0'
+
+  # 18.10.9.2.7 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True'."
+    description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. Select "Omit recovery options from the BitLocker setup wizard" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. The recommended state for this setting is: Enabled: True (checked).'
+    rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
+    impact: "The ability to manually select recovery options for the operating drive will not be presented to the user in the BitLocker setup wizard."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Operating System Drives\\Choose how BitLocker-protected operating system drives can be recovered: Omit recovery options from the BitLocker setup wizard Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.2.7"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSHideRecoveryPage'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSHideRecoveryPage -> 1'
+
+  # 18.10.9.2.8 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Save BitLocker recovery information to AD DS for operating system drives' is set to 'Enabled: True' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Save BitLocker recovery information to AD DS for operating system drives' is set to 'Enabled: True'."
+    description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. In "Save BitLocker recovery information to Active Directory Domain Services", choose which BitLocker recovery information to store in AD DS for operating system drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select "Backup recovery password only", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: True (checked).'
+    rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
+    impact: "BitLocker recovery information for the operating system drive will be backed up to AD DS. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Operating System Drives\\Choose how BitLocker-protected operating system drives can be recovered: Save BitLocker recovery information to AD DS for operating system drives Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.2.8"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSActiveDirectoryBackup -> 1'
+
+  # 18.10.9.2.9 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Configure storage of BitLocker recovery information to AD DS:' is set to 'Enabled: Store recovery passwords and key packages' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Configure storage of BitLocker recovery information to AD DS:' is set to 'Enabled: Store recovery passwords and key packages'."
+    description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. In "Save BitLocker recovery information to Active Directory Domain Services", choose which BitLocker recovery information to store in AD DS for operating system drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select "Backup recovery password only", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: Store recovery passwords and key packages.'
+    rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
+    impact: "Both the recovery password and the key package for the operating system drive will be saved to AD DS. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Store recovery passwords and key packages: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Operating System Drives\\Choose how BitLocker-protected operating system drives can be recovered: Configure storage of BitLocker recovery information to AD DS: Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.2.9"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSActiveDirectoryInfoToStore'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSActiveDirectoryInfoToStore -> 1'
+
+  # 18.10.9.2.10 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for operating system drives' is set to 'Enabled: True' (Automated)
+  - id: 18831
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for operating system drives' is set to 'Enabled: True'."
+    description: 'This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. Select the "Do not enable BitLocker until recovery information is stored in AD DS for operating system drives" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the "Do not enable BitLocker until recovery information is stored in AD DS for operating system drives" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled: True (checked).'
+    rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
+    impact: "Users will need to be domain connected and the backup of BitLocker recovery information for the operating system drive must succeed in order to turn on BitLocker. This policy is not FIPS complaint."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Operating System Drives\\Choose how BitLocker-protected operating system drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for operating system drives Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.2.10"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRequireActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSRequireActiveDirectoryBackup -> 1'
 
   # 18.10.9.2.11 (BL) Ensure 'Configure use of hardware-based encryption for operating system drives' is set to 'Disabled'. (Automated)
   - id: 18840
-    title: "(BL) Ensure 'Configure use of hardware-based encryption for operating system drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of hardware-based encryption for operating system drives' is set to 'Disabled'."
     description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on operating system drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
     rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
     impact: "None - this is the default behavior."
@@ -6550,12 +6826,15 @@ checks:
       - cis: ["18.10.9.2.11"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSHardwareEncryption'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSHardwareEncryption -> 0'
 
   # 18.10.9.2.12 (BL) Ensure 'Configure use of passwords for operating system drives' is set to 'Disabled'. (Automated)
   - id: 18841
-    title: "(BL) Ensure 'Configure use of passwords for operating system drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of passwords for operating system drives' is set to 'Disabled'."
     description: "This policy setting specifies the constraints for passwords used to unlock BitLocker-protected operating system drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
     rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down rapid brute-force attacks against them."
     impact: "The password option will not be available when configuring BitLocker for the operating system drive."
@@ -6568,12 +6847,15 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSPassphrase'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> OSPassphrase -> 0'
 
   # 18.10.9.2.13 (BL) Ensure 'Require additional authentication at startup' is set to 'Enabled'. (Automated)
   - id: 18842
-    title: "(BL) Ensure 'Require additional authentication at startup' is set to 'Enabled'."
+    title: "Ensure 'Require additional authentication at startup' is set to 'Enabled'."
     description: 'This policy setting allows you to configure whether BitLocker requires additional authentication each time the computer starts and whether you are using BitLocker with or without a Trusted Platform Module (TPM). This policy setting is applied when you turn on BitLocker. Note: Only one of the additional authentication options can be required at startup, otherwise a policy error occurs. If you want to use BitLocker on a computer without a TPM, select the "Allow BitLocker without a compatible TPM" check box. In this mode a USB drive is required for start-up and the key information used to encrypt the drive is stored on the USB drive, creating a USB key. When the USB key is inserted the access to the drive is authenticated and the drive is accessible. If the USB key is lost or unavailable you will need to use one of the BitLocker recovery options to access the drive. On a computer with a compatible TPM, four types of authentication methods can be used at startup to provide added protection for encrypted data. When the computer starts, it can use only the TPM for authentication, or it can also require insertion of a USB flash drive containing a startup key, the entry of a 4-digit to 20-digit personal identification number (PIN), or both. Users can configure advanced startup options in the BitLocker setup wizard. Note #2: If you want to require the use of a startup PIN and a USB flash drive, you must configure BitLocker settings using the command-line tool manage-bde instead of the BitLocker Drive Encryption setup wizard. The recommended state for this setting is: Enabled.'
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A PIN requires physical presence to restart the computer. This functionality is not compatible with Wake on LAN solutions."
@@ -6582,12 +6864,15 @@ checks:
       - cis: ["18.10.9.2.13"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> UseAdvancedStartup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> UseAdvancedStartup -> 1'
 
   # 18.10.9.2.14 (BL) Ensure 'Require additional authentication at startup: Allow BitLocker without a compatible TPM' is set to 'Enabled: False'. (Automated)
   - id: 18843
-    title: "(BL) Ensure 'Require additional authentication at startup: Allow BitLocker without a compatible TPM' is set to 'Enabled: False'."
+    title: "Ensure 'Require additional authentication at startup: Allow BitLocker without a compatible TPM' is set to 'Enabled: False'."
     description: "This policy setting allows you to configure whether you can use BitLocker without a Trusted Platform Module (TPM), instead using a password or startup key on a USB flash drive. This policy setting is applied when you turn on BitLocker. The recommended state for this setting is: Enabled: False (unchecked)."
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A compatible TPM will be required in order to use BitLocker."
@@ -6596,12 +6881,15 @@ checks:
       - cis: ["18.10.9.2.14"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> EnableBDEWithNoTPM'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> EnableBDEWithNoTPM -> 0'
 
   # 18.10.9.3.1 (BL) Ensure 'Allow access to BitLocker-protected removable data drives from earlier versions of Windows' is set to 'Disabled'. (Automated)
   - id: 18844
-    title: "(BL) Ensure 'Allow access to BitLocker-protected removable data drives from earlier versions of Windows' is set to 'Disabled'."
+    title: "Ensure 'Allow access to BitLocker-protected removable data drives from earlier versions of Windows' is set to 'Disabled'."
     description: "This policy setting configures whether or not removable data drives formatted with the FAT file system can be unlocked and viewed on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with Service Pack 3 (SP3), or Windows XP with Service Pack 2 (SP2) operating systems. Note: This policy setting does not apply to drives that are formatted with the NTFS file system. The recommended state for this setting is: Disabled."
     rationale: "By default BitLocker virtualizes FAT formatted drives to permit access via the BitLocker To Go Reader on previous versions of Windows. Additionally the BitLocker To Go Reader application is applied to the unencrypted portion of the drive. The BitLocker To Go Reader application, like any other application, is subject to spoofing and could be a mechanism to propagate malware."
     impact: "Removable data drives formatted with the FAT file system that are BitLocker-protected cannot be unlocked on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with SP3 or Windows XP with SP2. BitLockerToGo.exe will not be installed."
@@ -6610,12 +6898,15 @@ checks:
       - cis: ["18.10.9.3.1"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDiscoveryVolumeType'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDiscoveryVolumeType -> 0'
 
   # 18.10.9.3.2 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered' is set to 'Enabled'. (Automated)
   - id: 18845
-    title: "(BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered' is set to 'Enabled'."
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered' is set to 'Enabled'."
     description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The "Allow data recovery agent" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected removable data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select "Omit recovery options from the BitLocker setup wizard" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In "Save BitLocker recovery information to Active Directory Domain Services" choose which BitLocker recovery information to store in AD DS for removable data drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. If you select "Backup recovery password only", only the recovery password is stored in AD DS. Select the "Do not enable BitLocker until recovery information is stored in AD DS for removable data drives" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the "Do not enable BitLocker until recovery information is stored in AD DS for removable data drives" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled.'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive."
     impact: "To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
@@ -6631,12 +6922,15 @@ checks:
       - pci_dss_v3.2.1: ["3.4"]
       - pci_dss_v4.0: ["3.5.1.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRecovery'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRecovery -> 1'
 
   # 18.10.9.3.3 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'. (Automated)
   - id: 18846
-    title: "(BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
     description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The "Allow data recovery agent" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected removable data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: True (checked).'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "None - this is the default behavior."
@@ -6652,12 +6946,39 @@ checks:
       - pci_dss_v3.2.1: ["3.4"]
       - pci_dss_v4.0: ["3.5.1.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVManageDRA'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVManageDRA -> 1'
+
+  # 18.10.9.3.4 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Password' is set to 'Enabled: Do not allow 48-digit recovery password' (Automated)
+  - id: 18847
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Password' is set to 'Enabled: Do not allow 48-digit recovery password'."
+    description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Do not allow 48-digit recovery password.'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "A 48-digit recovery password will not be permitted for removable drives."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not allow 48-digit recovery password: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Choose how BitLocker-protected removable drives can be recovered: Recovery Password Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.4"]
+      - cis_csc_v8: ["3.9"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["MP-5"]
+      - pci_dss_v3.2.1: ["3.4"]
+      - pci_dss_v4.0: ["3.5.1.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRecoveryPassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRecoveryPassword -> 0'
 
   # 18.10.9.3.5 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'. (Automated)
   - id: 18847
-    title: "(BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'."
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'."
     description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Configure user storage of BitLocker recovery information" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Do not allow 256-bit recovery key.'
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "A 256-bit recovery key will not be permitted for removable drives."
@@ -6673,12 +6994,111 @@ checks:
       - pci_dss_v3.2.1: ["3.4"]
       - pci_dss_v4.0: ["3.5.1.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRecoveryKey'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRecoveryKey -> 0'
+
+  # 18.10.9.3.6 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True' (Automated)
+  - id: 18847
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True'."
+    description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. Select "Omit recovery options from the BitLocker setup wizard" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. The recommended state for this setting is: Enabled: True (checked).'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "The ability to manually select recovery options for removable drives will not be presented to the user in the BitLocker setup wizard."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Choose how BitLocker-protected removable drives can be recovered: Omit recovery options from the BitLocker setup wizard Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.6"]
+      - cis_csc_v8: ["3.9"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["MP-5"]
+      - pci_dss_v3.2.1: ["3.4"]
+      - pci_dss_v4.0: ["3.5.1.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVHideRecoveryPage'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVHideRecoveryPage -> 1'
+
+  # 18.10.9.3.7 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Save BitLocker recovery information to AD DS for removable data drives' is set to 'Enabled: False' (Automated)
+  - id: 18847
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Save BitLocker recovery information to AD DS for removable data drives' is set to 'Enabled: False'."
+    description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Save BitLocker recovery information to Active Directory Domain Services" choose which BitLocker recovery information to store in AD DS for removable data drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. If you select "Backup recovery password only", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: False (unchecked).'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Choose how BitLocker-protected removable drives can be recovered: Save BitLocker recovery information to AD DS for removable data drives Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.7"]
+      - cis_csc_v8: ["3.9"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["MP-5"]
+      - pci_dss_v3.2.1: ["3.4"]
+      - pci_dss_v4.0: ["3.5.1.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVActiveDirectoryBackup -> 0'
+
+  # 18.10.9.3.8 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Configure storage of BitLocker recovery information to AD DS:' is set to 'Enabled: Backup recovery passwords and key packages' (Automated)
+  - id: 18847
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Configure storage of BitLocker recovery information to AD DS:' is set to 'Enabled: Backup recovery passwords and key packages'."
+    description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In "Save BitLocker recovery information to Active Directory Domain Services" choose which BitLocker recovery information to store in AD DS for removable data drives. If you select "Backup recovery password and key package", both the BitLocker recovery password and key package are stored in AD DS. If you select "Backup recovery password only", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: Backup recovery passwords and key packages.'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this value is ignored when the checkbox above it (Save BitLocker recovery information to AD DS for removable data drives) is False (unchecked), as is required in Rule 18.9.11.3.7. If that checkbox is set to True (checked), both recovery passwords and key packages for removable drives will be saved to AD DS."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Backup recovery passwords and key packages: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Choose how BitLocker-protected removable drives can be recovered: Configure storage of BitLocker recovery information to AD DS: Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.8"]
+      - cis_csc_v8: ["3.9"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["MP-5"]
+      - pci_dss_v3.2.1: ["3.4"]
+      - pci_dss_v4.0: ["3.5.1.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVActiveDirectoryInfoToStore'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVActiveDirectoryInfoToStore -> 1'
+
+  # 18.10.9.3.9 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for removable data drives' is set to 'Enabled: False' (Automated)
+  - id: 18847
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for removable data drives' is set to 'Enabled: False'."
+    description: 'This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. Select the "Do not enable BitLocker until recovery information is stored in AD DS for removable data drives" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the "Do not enable BitLocker until recovery information is stored in AD DS for removable data drives" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled: False (unchecked).'
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Choose how BitLocker-protected removable drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for removable data drives Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.5"]
+      - cis_csc_v8: ["3.9"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["MP.L2-3.8.6", "MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["MP-5"]
+      - pci_dss_v3.2.1: ["3.4"]
+      - pci_dss_v4.0: ["3.5.1.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRequireActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVRequireActiveDirectoryBackup -> 0'
 
   # 18.10.9.3.10 (BL) Ensure 'Configure use of hardware-based encryption for removable data drives' is set to 'Disabled'. (Automated)
   - id: 18848
-    title: "(BL) Ensure 'Configure use of hardware-based encryption for removable data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of hardware-based encryption for removable data drives' is set to 'Disabled'."
     description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on removable data drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
     rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
     impact: "None - this is the default behavior."
@@ -6689,12 +7109,15 @@ checks:
       - cis: ["18.10.9.3.10"]
       - cis_csc_v7: ["13.6"]
       - iso_27001-2013: ["A.6.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVHardwareEncryption'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVHardwareEncryption -> 0'
 
   # 18.10.9.3.11 (BL) Ensure 'Configure use of passwords for removable data drives' is set to 'Disabled'. (Automated)
   - id: 18849
-    title: "(BL) Ensure 'Configure use of passwords for removable data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of passwords for removable data drives' is set to 'Disabled'."
     description: "This policy setting allows you to specify whether a password is required to unlock BitLocker-protected removable data drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
     rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does not include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down use of rapid brute-force attacks against them."
     impact: "The password option will not be available when configuring BitLocker for removable drives."
@@ -6707,12 +7130,15 @@ checks:
       - iso_27001-2013: ["A.6.2.1"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVPassphrase'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVPassphrase -> 0'
 
   # 18.10.9.3.12 (BL) Ensure 'Configure use of smart cards on removable data drives' is set to 'Enabled'. (Automated)
   - id: 18850
-    title: "(BL) Ensure 'Configure use of smart cards on removable data drives' is set to 'Enabled'."
+    title: "Ensure 'Configure use of smart cards on removable data drives' is set to 'Enabled'."
     description: 'This policy setting specifies whether smart cards can be used to authenticate user access to BitLocker-protected removable data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the "Require use of smart cards on removable data drives" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled.'
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "None - this is the default behavior."
@@ -6720,12 +7146,15 @@ checks:
     compliance:
       - cis: ["18.10.9.3.12"]
       - cis_csc_v7: ["16.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVAllowUserCert'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVAllowUserCert -> 1'
 
   # 18.10.9.3.13 (BL) Ensure 'Configure use of smart cards on removable data drives: Require use of smart cards on removable data drives' is set to 'Enabled: True'. (Automated)
   - id: 18851
-    title: "(BL) Ensure 'Configure use of smart cards on removable data drives: Require use of smart cards on removable data drives' is set to 'Enabled: True'."
+    title: "Ensure 'Configure use of smart cards on removable data drives: Require use of smart cards on removable data drives' is set to 'Enabled: True'."
     description: 'This policy setting specifies whether smart cards must be used to authenticate user access to BitLocker-protected removable data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the "Require use of smart cards on removable data drives" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled: True (checked).'
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "Smart cards will be required to authenticate user access to removable data drives. Use of smart cards requires PKI infrastructure. Users will need to authenticate with the smart card to unlock the removable data drive every time they restart the computer."
@@ -6733,12 +7162,15 @@ checks:
     compliance:
       - cis: ["18.10.9.3.13"]
       - cis_csc_v7: ["16.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVEnforceUserCert'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVEnforceUserCert -> 1'
 
   # 18.10.9.3.14 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'. (Automated)
   - id: 18852
-    title: "(BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'."
+    title: "Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'."
     description: "This policy setting configures whether BitLocker protection is required for a computer to be able to write data to a removable data drive. All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access. The recommended state for this setting is: Enabled."
     rationale: "Users may not voluntarily encrypt removable drives prior to saving important data to the drive."
     impact: "All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access."
@@ -6754,12 +7186,34 @@ checks:
       - pci_dss_v3.2.1: ["3.4"]
       - pci_dss_v4.0: ["3.5.1.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyWriteAccess'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyWriteAccess -> 1'
+
+  # 18.10.9.3.15 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker: Do not allow write access to devices configured in another organization' is set to 'Enabled: False' (Automated)
+  - id: 18853
+    title: "Ensure 'Deny write access to removable drives not protected by BitLocker: Do not allow write access to devices configured in another organization' is set to 'Enabled: False'."
+    description: "This policy setting configures whether the computer will be able to write data to BitLocker-protected removable drives that were configured in another organization. The recommended state for this setting is: Enabled: False (unchecked)."
+    rationale: "Restricting write access to BitLocker-protected removable drives that were configured in another organization can hinder legitimate business operations where encrypted data sharing is necessary."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Removable Data Drives\\Deny write access to removable drives not protected by BitLocker: Do not allow write access to devices configured in another organization Note: This Group Policy path may not exist by default. It is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.3.15"]
+      - cis_csc_v8: ["10.5"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyCrossOrg'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDVDenyCrossOrg -> 0'
 
   # 18.10.9.4 (BL) Ensure 'Disable new DMA devices when this computer is locked' is set to 'Enabled'. (Automated)
   - id: 18853
-    title: "(BL) Ensure 'Disable new DMA devices when this computer is locked' is set to 'Enabled'."
+    title: "Ensure 'Disable new DMA devices when this computer is locked' is set to 'Enabled'."
     description: "This policy setting allows you to block direct memory access (DMA) for all hot pluggable PCI downstream ports until a user logs into Windows. The recommended state for this setting is: Enabled. Note: Microsoft changed the implementation of this setting in Windows 10 R1709 to strengthen its enforcement. As a result, some hardware configurations may experience unexpected problems with this setting in that release (or newer), until updated firmware and/or drivers from the vendor are installed to correct the problem. See the Impact Statement for more information."
     rationale: "A BitLocker-protected computer may be vulnerable to Direct Memory Access (DMA) attacks when the computer is turned on or is in the Standby power state - this includes when the workstation is locked. Enabling this setting will help prevent such an attack while the computer is left unattended."
     impact: "Newly attached hardware devices that use DMA will not function on a locked (or signed out) workstation until the user has unlocked the session or logged in. Some hardware configurations may experience unexpected problems with this setting in Windows 10 R1709 (or newer), requiring updated firmware and/or drivers to correct the problem. See MSKB 4057300 for more information. We recommend testing this setting on all examples of workstation hardware before deploying it on a large scale - to see if vendor firmware and/or driver updates are first required."
@@ -6770,12 +7224,15 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> DisableExternalDMAUnderLock'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> RDisableExternalDMAUnderLock -> 1'
 
   # 18.10.10.1 (L2) Ensure 'Allow Use of Camera' is set to 'Disabled'. (Automated)
   - id: 18854
-    title: "(L2) Ensure 'Allow Use of Camera' is set to 'Disabled'."
+    title: "Ensure 'Allow Use of Camera' is set to 'Disabled'."
     description: "This policy setting controls whether the use of Camera devices on the machine are permitted. The recommended state for this setting is: Disabled."
     rationale: "Cameras in a high security environment can pose serious privacy and data exfiltration risks - they should be disabled to help mitigate that risk."
     impact: "Users will not be able to utilize the camera on a system."
@@ -6787,12 +7244,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera -> 0'
 
   # 18.10.12.1 (L1) Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'. (Automated)
   - id: 18855
-    title: "(L1) Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'."
+    title: "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'."
     description: "This policy setting determines whether cloud consumer account state content is allowed in all Windows experiences. The recommended state for this setting is: Enabled."
     rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage."
     impact: "Users will not be able to use Microsoft consumer accounts on the system, and associated Windows experiences will instead present default fallback content."
@@ -6802,12 +7262,15 @@ checks:
       - cis_csc_v8: ["5.6"]
       - nist_sp_800-53: ["AC-2(1)"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent -> 1'
 
   # 18.10.12.2 (L2) Ensure 'Turn off cloud optimized content' is set to 'Enabled'. (Automated)
   - id: 18856
-    title: "(L2) Ensure 'Turn off cloud optimized content' is set to 'Enabled'."
+    title: "Ensure 'Turn off cloud optimized content' is set to 'Enabled'."
     description: "This policy setting turns off cloud optimized content in all Windows experiences. The recommended state for this setting is: Enabled."
     rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
     impact: "Windows experiences that use the cloud optimized content client component, will present the default fallback content instead of customized content."
@@ -6821,12 +7284,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableCloudOptimizedContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableCloudOptimizedContent -> 1'
 
   # 18.10.12.3 (L1) Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'. (Automated)
   - id: 18857
-    title: "(L1) Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'."
+    title: "Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'."
     description: "This policy setting turns off experiences that help consumers make the most of their devices and Microsoft account. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet, this policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions."
     rationale: "Having apps silently install in an enterprise managed environment is not good security practice - especially if the apps send data back to a third-party."
     impact: "Users will no longer see personalized recommendations from Microsoft and notifications about their Microsoft account."
@@ -6840,88 +7306,127 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
   # 18.10.13.1 (L1) Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'. (Automated)
   - id: 18858
-    title: "(L1) Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'."
+    title: "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'."
     description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device. The recommended state for this setting is: Enabled: First Time OR Enabled: Always."
     rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
     impact: "The pairing ceremony for connecting to new wireless display devices will always require a PIN."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: First Time OR Enabled: Always: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WirelessDisplay.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). The new Choose one of the following actions sub-option was later added as of the Windows 10 Release 1809 Administrative Templates. Choosing Enabled in the older templates is the equivalent of choosing Enabled: First Time in the newer templates."
     compliance:
       - cis: ["18.10.13.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing -> r:^1$|^2$'
 
   # 18.10.14.1 (L1) Ensure 'Do not display the password reveal button' is set to 'Enabled'. (Automated)
   - id: 18859
-    title: "(L1) Ensure 'Do not display the password reveal button' is set to 'Enabled'."
+    title: "Ensure 'Do not display the password reveal button' is set to 'Enabled'."
     description: "This policy setting allows you to configure the display of the password reveal button in password entry user experiences. The recommended state for this setting is: Enabled."
     rationale: "This is a useful feature when entering a long and complex password, especially when using a touchscreen. The potential risk is that someone else may see your password while surreptitiously observing your screen."
     impact: "The password reveal button will not be displayed after a user types a password in the password entry text box."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Do not display the password reveal button Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredUI.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.14.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal -> 1'
 
   # 18.10.14.2 (L1) Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'. (Automated)
   - id: 18860
-    title: "(L1) Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'."
+    title: "Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'."
     description: "This policy setting controls whether administrator accounts are displayed when a user attempts to elevate a running application. The recommended state for this setting is: Disabled."
     rationale: "Users could see the list of administrator accounts, making it slightly easier for a malicious user who has logged onto a console session to try to crack the passwords of those accounts."
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Enumerate administrator accounts on elevation Note: This Group Policy path is provided by the Group Policy template CredUI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.10.14.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators -> 0'
 
   # 18.10.14.3 (L1) Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'. (Automated)
   - id: 18861
-    title: "(L1) Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'."
+    title: "Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'."
     description: "This policy setting controls whether security questions can be used to reset local account passwords. The security question feature does not apply to domain accounts, only local accounts on the workstation. The recommended state for this setting is: Enabled."
-    rationale: "Users could establish security questions that are easily guessed or sleuthed by observing the user’s social media accounts, making it easier for a malicious actor to change the local user account password and gain access to the computer as that user account."
+    rationale: "Users could establish security questions that are easily guessed or sleuthed by observing the user's social media accounts, making it easier for a malicious actor to change the local user account password and gain access to the computer as that user account."
     impact: "Local user accounts will not be able to set up and use security questions to reset their passwords."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Prevent the use of security questions for local accounts Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredUI.admx/adml that is included with the Microsoft Windows 10 Release 1903 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.14.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions -> 1'
 
   # 18.10.15.1 (L1) Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'. (Automated)
   - id: 18862
-    title: "(L1) Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'."
+    title: "Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'."
     description: "This policy setting determines the amount of diagnostic and usage data reported to Microsoft: - A value of (0) Diagnostic data off (not recommended). Using this value, no diagnostic data is sent from the device. This value is only supported on Enterprise, Education, and Server editions. If you choose this setting, devices in your organization will still be secure. - A value of (1) Send required diagnostic data. This is the minimum diagnostic data necessary to keep Windows secure, up to date, and performing as expected. Using this value disables the Optional diagnostic data control in the Settings app. - A value of (3)Send optional diagnostic data. Additional diagnostic data is collected that helps us to detect, diagnose and fix issues, as well as make product improvements. Required diagnostic data will always be included when you choose to send optional diagnostic data. Optional diagnostic data can also include diagnostic log files and crash dumps. Use the Limit Dump Collection and the Limit Diagnostic Log Collection policies for more granular control of what optional diagnostic data is sent. Windows telemetry settings apply to the Windows operating system and some first party apps. This setting does not apply to third party apps running on Windows 10/11. The recommended state for this setting is: Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data. Note: If your organization relies on Windows Update, the minimum recommended setting is Required diagnostic data. Because no Windows Update information is collected when diagnostic data is off, important information about update failures is not sent. Microsoft uses this information to fix the causes of those failures and improve the quality of updates. Note #2: The Configure diagnostic data opt-in settings user interface group policy can be used to prevent end users from changing their data collection settings. Note #3: Enhanced diagnostic data setting is not available on Windows 11 and Windows Server 2022 and has been replaced with policies that can control the amount of optional diagnostic data that is sent. For more information on these settings visit Manage diagnostic data using Group Policy and MDM."
     rationale: "Sending any data to a third-party vendor is a security concern and should only be done on an as needed basis."
     impact: "Note that setting values of 0 or 1 will degrade certain experiences on the device."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Allow Diagnostic Data Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow Telemetry, but it was renamed to Allow Diagnostic Data starting with the Windows 11 Release 21H2 Administrative Templates."
     references:
-      - "https://docs.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-"
+      - "https://docs.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-data-in-your-organization"
     compliance:
       - cis: ["18.10.15.1"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry -> r:^0$|^1$'
+
+  # 18.10.15.2 (L2) Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage' (Automated)
+  - id: 26295
+    title: "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'."
+    description: "This policy setting controls whether the Connected User Experience and Telemetry service can automatically use an authenticated proxy to send data back to Microsoft. The recommended state for this setting is: Enabled: Disable Authenticated Proxy usage."
+    rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Authenticated Proxy usage: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.17.2"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy -> 1'
 
   # 18.10.15.3 (L1) Ensure 'Disable OneSettings Downloads' is set to 'Enabled'. (Automated)
   - id: 18863
-    title: "(L1) Ensure 'Disable OneSettings Downloads' is set to 'Enabled'."
+    title: "Ensure 'Disable OneSettings Downloads' is set to 'Enabled'."
     description: "This policy setting controls whether Windows attempts to connect with the OneSettings service to download configuration settings. The recommended state for this setting is: Enabled."
     rationale: "Sending data to a third-party vendor is a security concern and should only be done on an as-needed basis."
     impact: "Windows will not connect to the OneSettings service to download configuration settings."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Disable OneSettings Downloads Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.15.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads -> 1'
 
   # 18.10.15.4 (L1) Ensure 'Do not show feedback notifications' is set to 'Enabled'. (Automated)
   - id: 18864
-    title: "(L1) Ensure 'Do not show feedback notifications' is set to 'Enabled'."
+    title: "Ensure 'Do not show feedback notifications' is set to 'Enabled'."
     description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft. The recommended state for this setting is: Enabled."
     rationale: "Users should not be sending any feedback to third-party vendors in an enterprise managed environment."
     impact: "Users will no longer see feedback notifications through the Windows Feedback app."
@@ -6930,12 +7435,15 @@ checks:
       - cis: ["18.10.15.4"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications -> 1'
 
   # 18.10.15.5 (L1) Ensure 'Enable OneSettings Auditing' is set to 'Enabled'. (Automated)
   - id: 18865
-    title: "(L1) Ensure 'Enable OneSettings Auditing' is set to 'Enabled'."
+    title: "Ensure 'Enable OneSettings Auditing' is set to 'Enabled'."
     description: "This policy setting controls whether Windows records attempts to connect with the OneSettings service to the Event Log. The recommended state for this setting is: Enabled."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "Windows will record attempts to connect with the OneSettings service to the Applications and Services Logs\\Microsoft\\Windows\\Privacy-Auditing\\Operational Event Log channel."
@@ -6950,12 +7458,15 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing -> 1'
 
   # 18.10.15.6 (L1) Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'. (Automated)
   - id: 18866
-    title: "(L1) Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'."
+    title: "Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'."
     description: "This policy setting controls whether additional diagnostic logs are collected when more information is needed to troubleshoot a problem on the device. The recommended state for this setting is: Enabled. Note: Diagnostic logs are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited when recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information."
     rationale: "Sending data to a third-party vendor is a security concern and should only be done on an as-needed basis."
     impact: "Diagnostic logs and information such as crash dumps will not be collected for transmission to Microsoft."
@@ -6967,24 +7478,30 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection -> 1'
 
   # 18.10.15.7 (L1) Ensure 'Limit Dump Collection' is set to 'Enabled'. (Automated)
   - id: 18867
-    title: "(L1) Ensure 'Limit Dump Collection' is set to 'Enabled'."
+    title: "Ensure 'Limit Dump Collection' is set to 'Enabled'."
     description: "This policy setting limits the type of memory dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Memory dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited when recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information."
     rationale: "Memory dumps can contain sensitive information. Sending this data to a third-party vendor is a security concern and should only be done on an as-needed basis."
     impact: "Windows Error Reporting is limited to sending kernel mini and user mode triage memory dumps, reducing the risk of sending sensitive information to Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Dump Collection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.15.7"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection -> 1'
 
   # 18.10.15.8 (L1) Ensure 'Toggle user control over Insider builds' is set to 'Disabled'. (Automated)
   - id: 18868
-    title: "(L1) Ensure 'Toggle user control over Insider builds' is set to 'Disabled'."
+    title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'."
     description: 'This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under "Get Insider builds," and enable users to make their devices available for downloading and installing Windows preview software. The recommended state for this setting is: Disabled. Note: This policy setting applies only to devices running Windows 10 Pro or Windows 10 Enterprise, up until Release 1703. For Release 1709 or newer, Microsoft encourages using the Manage preview builds setting (Rule 18.9.103.1.1). We have kept this setting in the benchmark to ensure that any older builds of Windows 10 in the environment are still enforced.'
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
     impact: 'The item "Get Insider builds" will be unavailable.'
@@ -6998,12 +7515,15 @@ checks:
       - nist_sp_800-53: ["CM-10", "CM-7(2)", "CM-8(3)"]
       - pci_dss_v4.0: ["12.3.4"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview -> 0'
 
   # 18.10.16.1 (L1) Ensure 'Download Mode' is NOT set to 'Enabled: Internet'. (Automated)
   - id: 18869
-    title: "(L1) Ensure 'Download Mode' is NOT set to 'Enabled: Internet'."
+    title: "Ensure 'Download Mode' is NOT set to 'Enabled: Internet'."
     description: "This policy setting specifies the download method that Delivery Optimization can use in downloads of Windows Updates, Apps and App updates. The following methods are supported: - 0 = HTTP only, no peering. - 1 = HTTP blended with peering behind the same NAT. - 2 = HTTP blended with peering across a private group. Peering occurs on devices in the same Active Directory Site (if exist) or the same domain by default. When this option is selected, peering will cross NATs. To create a custom group use Group ID in combination with Mode 2. - 3 = HTTP blended with Internet Peering. - 99 = Simple download mode with no peering. Delivery Optimization downloads using HTTP only and does not attempt to contact the Delivery Optimization cloud services. - 100 = Bypass mode. Do not use Delivery Optimization and use BITS instead. The recommended state for this setting is any value EXCEPT: Enabled: Internet (3). Note: The default on all SKUs other than Enterprise, Enterprise LTSB or Education is Enabled: Internet (3), so on other SKUs, be sure to set this to a different value."
     rationale: "Due to privacy concerns and security risks, updates should only be downloaded directly from Microsoft, or from a trusted machine on the internal network that received its updates from a trusted source and approved by the network administrator."
     impact: "Machines will not be able to download updates from peers on the Internet. If set to Enabled: HTTP only (0), Enabled: Simple (99), or Enabled: Bypass (100), machines will not be able to download updates from other machines on the same LAN."
@@ -7016,12 +7536,13 @@ checks:
       - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_v3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
-    condition:
+    condition: all
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -> DODownloadMode -> r:^3$'
 
   # 18.10.17.1 (L1) Ensure 'Enable App Installer' is set to 'Disabled'. (Automated)
   - id: 18870
-    title: "(L1) Ensure 'Enable App Installer' is set to 'Disabled'."
+    title: "Ensure 'Enable App Installer' is set to 'Disabled'."
     description: "This policy setting controls whether user have access to the Windows Package Manager. Windows Package Manager is a package manager solution that consists of a command line tool and set of services for installing applications on Microsoft Windows 10 and 11. The recommended state for this setting is: Disabled."
     rationale: "Windows Package Manager is a command line tool can be used to discover, install, upgrade, remove and configure applications, and it can be used as a distribution channel for software packages containing tools and applications. Users should not have access to these types of development tools."
     impact: "Users will not have access to the command line tool, winget to discover, install, upgrade, remove, configure, or distribute applications."
@@ -7037,12 +7558,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableAppInstaller'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds ->EnableAppInstaller -> 0'
 
   # 18.10.17.2 (L1) Ensure 'Enable App Installer Experimental Features' is set to 'Disabled'. (Automated)
   - id: 18871
-    title: "(L1) Ensure 'Enable App Installer Experimental Features' is set to 'Disabled'."
+    title: "Ensure 'Enable App Installer Experimental Features' is set to 'Disabled'."
     description: "This policy setting controls whether users can enable experimental features in the Windows Package Manager. The recommended state for this setting is Disabled."
     rationale: "Windows Package Manager is a command line tool can be used to discover, install, upgrade, remove and configure applications, and it can be used as a distribution channel for software packages containing tools and applications. Users should not have access to experimental features."
     impact: "Users will not have access to experimental features in the command line tool, winget to discover, install, upgrade, remove, configure, or distribute applications."
@@ -7058,12 +7582,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableExperimentalFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> EnableExperimentalFeatures -> 0'
 
   # 18.10.17.3 (L1) Ensure 'Enable App Installer Hash Override' is set to 'Disabled'. (Automated)
   - id: 18872
-    title: "(L1) Ensure 'Enable App Installer Hash Override' is set to 'Disabled'."
+    title: "Ensure 'Enable App Installer Hash Override' is set to 'Disabled'."
     description: "This policy setting controls whether or not users can override the SHA256 security validation in the Windows Package Manager settings. The recommended state for this setting is: Disabled."
     rationale: "Users should not have the ability to override SHA256 security validation."
     impact: "Users will not have the ability to override the SHA256 security validation."
@@ -7079,12 +7606,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableHashOverride'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> EnableHashOverride -> 0'
 
   # 18.10.17.4 (L1) Ensure 'Enable App Installer ms-appinstaller protocol' is set to 'Disabled'. (Automated)
   - id: 18873
-    title: "(L1) Ensure 'Enable App Installer ms-appinstaller protocol' is set to 'Disabled'."
+    title: "Ensure 'Enable App Installer ms-appinstaller protocol' is set to 'Disabled'."
     description: "This policy setting controls whether users can install packages from a website that is using the ms-appinstaller protocol. The ms-appinstaller protocol allows users to install an application by clicking a link on a website. The recommended state for this setting is: Disabled."
     rationale: "Users should not have the ability to install an application by clicking a link on a website. If an unknown or malicious link is clicked, malicious software could be installed on the system."
     impact: "Users will not have the ability to use the ms-appinstaller protocol to install applications by clicking a link on a website."
@@ -7100,12 +7630,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableMSAppInstallerProtocol'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> EnableMSAppInstallerProtocol -> 0'
 
   # 18.10.26.1.1 (L1) Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
   - id: 18874
-    title: "(L1) Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+    title: "Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "None - this is the default behavior."
@@ -7117,12 +7650,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention -> 0'
 
   # 18.10.26.1.2 (L1) Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'. (Automated)
   - id: 18875
-    title: "(L1) Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
+    title: "Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7134,12 +7670,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> n:^(\d+) compare >= 32768'
 
   # 18.10.26.2.1 (L1) Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
   - id: 18876
-    title: "(L1) Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+    title: "Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "None - this is the default behavior."
@@ -7151,12 +7690,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention -> 0'
 
   # 18.10.26.2.2 (L1) Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'. (Automated)
   - id: 18877
-    title: "(L1) Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'."
+    title: "Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'."
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 196,608 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7168,12 +7710,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> n:^(\d+) compare >= 196608'
 
   # 18.10.26.3.1 (L1) Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
   - id: 18878
-    title: "(L1) Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+    title: "Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "None - this is the default behavior."
@@ -7185,12 +7730,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention -> 0'
 
   # 18.10.26.3.2 (L1) Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'. (Automated)
   - id: 18879
-    title: "(L1) Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
+    title: "Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7202,12 +7750,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> n:^(\d+) compare >= 32768'
 
   # 18.10.26.4.1 (L1) Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
   - id: 18880
-    title: "(L1) Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
+    title: "Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'."
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "None - this is the default behavior."
@@ -7219,12 +7770,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention -> 0'
 
   # 18.10.26.4.2 (L1) Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'. (Automated)
   - id: 18881
-    title: "(L1) Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
+    title: "Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'."
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     impact: "When event logs fill to capacity, they will stop recording information unless the retention method for each is set so that the computer will overwrite the oldest entries with the most recent ones. To mitigate the risk of loss of recent data, you can configure the retention method so that older events are overwritten as needed. The consequence of this configuration is that older events will be removed from the logs. Attackers can take advantage of such a configuration, because they can generate a large number of extraneous events to overwrite any evidence of their attack. These risks can be somewhat reduced if you automate the archival and backup of event log data. Ideally, all specifically monitored events should be sent to a server that uses Microsoft System Center Operations Manager (SCOM) or some other automated monitoring tool. Such a configuration is particularly important because an attacker who successfully compromises a server could clear the Security log. If all events are sent to a monitoring server, then you will be able to gather forensic information about the attacker's activities."
@@ -7236,12 +7790,15 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> n:^(\d+) compare >= 32768'
 
   # 18.10.29.2 (L1) Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'. (Automated)
   - id: 18882
-    title: "(L1) Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'."
+    title: "Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'."
     description: "Disabling Data Execution Prevention can allow certain legacy plug-in applications to function without terminating Explorer. The recommended state for this setting is: Disabled. Note: Some legacy plug-in applications and other software may not function with Data Execution Prevention and will require an exception to be defined for that specific plug-in/software."
     rationale: "Data Execution Prevention is an important security feature supported by Explorer that helps to limit the impact of certain types of malware."
     impact: "None - this is the default behavior."
@@ -7255,24 +7812,30 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> 0'
 
   # 18.10.29.3 (L2) Ensure 'Turn off files from Office.com in Quick access view' is set to 'Enabled'. (Automated)
   - id: 18883
-    title: "(L2) Ensure 'Turn off files from Office.com in Quick access view' is set to 'Enabled'."
+    title: "Ensure 'Turn off files from Office.com in Quick access view' is set to 'Enabled'."
     description: "This policy setting controls whether or not File Explorer will request files from the cloud and display them in Quick access view. The recommended state for this setting is: Enabled."
     rationale: "In a high security environment, data should never be sent or received from any third-party since this data could contain sensitive information."
     impact: "File Explorer will not be able to request recent cloud file metadata from Office.com and display it in the Quick access view."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off files from Office.com in Quick access view Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Explorer.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.29.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> DisableGraphRecentItems'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> DisableGraphRecentItems -> 1'
 
   # 18.10.29.4 (L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'. (Automated)
   - id: 18884
-    title: "(L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'."
+    title: "Ensure 'Turn off heap termination on corruption' is set to 'Disabled'."
     description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this. The recommended state for this setting is: Disabled."
     rationale: "Allowing an application to function after its session has become corrupt increases the risk posture to the system."
     impact: "None - this is the default behavior."
@@ -7284,12 +7847,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> 0'
 
   # 18.10.29.5 (L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'. (Automated)
   - id: 18885
-    title: "(L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'."
+    title: "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'."
     description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows. The recommended state for this setting is: Disabled."
     rationale: "Limiting the opening of files and folders to a limited set reduces the attack surface of the system."
     impact: "None - this is the default behavior."
@@ -7302,18 +7868,21 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior -> 0'
 
   # 18.10.33.1 (L1) Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'. (Automated)
   - id: 18886
-    title: "(L1) Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'."
+    title: "Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'."
     description: "By default, users can add their computer to a HomeGroup on a home network. The recommended state for this setting is: Enabled. Note: The HomeGroup feature is available in all workstation releases of Windows from Windows 7 through Windows 10 Release 1709. Microsoft removed the feature completely starting with Windows 10 Release 1803. However, if your environment still contains any Windows 10 Release 1709 (or older) workstations, then this setting remains important to disable HomeGroup on those systems."
     rationale: "While resources on a domain-joined computer cannot be shared with a HomeGroup, information from the domain-joined computer can be leaked to other computers in the HomeGroup."
     impact: "A user on this computer will not be able to add this computer to a HomeGroup. This setting does not affect other network sharing features. Mobile users who access printers and other shared devices on their home networks will not be able to leverage the ease of use provided by HomeGroup functionality."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\HomeGroup\\Prevent the computer from joining a homegroup Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Sharing.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     references:
-      - "https://support.microsoft.com/en-us/topic/9f802c8c-900f-60fb-826f-"
+      - "https://support.microsoft.com/en-us/topic/9f802c8c-900f-60fb-826f-6fe06add8fe9#homegroup-start-to-finish=windows-81&v1h=win81tab6&v2h=win7tab1"
     compliance:
       - cis: ["18.10.33.1"]
       - cis_csc_v8: ["4.8"]
@@ -7323,14 +7892,17 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup -> 1'
 
   # 18.10.37.2 (L2) Ensure 'Turn off location' is set to 'Enabled'. (Automated)
   - id: 18887
-    title: "(L2) Ensure 'Turn off location' is set to 'Enabled'."
+    title: "Ensure 'Turn off location' is set to 'Enabled'."
     description: "This policy setting turns off the location feature for the computer. The recommended state for this setting is: Enabled."
-    rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it’s not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
+    rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it's not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
     impact: "The location feature is turned off, and all programs on the computer are prevented from using location information from the location feature."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Location and Sensors\\Turn off location Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Sensors.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
@@ -7342,12 +7914,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation -> 1'
 
   # 18.10.41.1 (L2) Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'. (Automated)
   - id: 18888
-    title: "(L2) Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'."
+    title: "Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'."
     description: "This policy setting allows backup and restore of cellular text messages to Microsoft's cloud services. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, data should never be sent to any third-party since this data could contain sensitive information."
     impact: "Cellular text messages will not be backed up to (or restored from) Microsoft's cloud services."
@@ -7361,12 +7936,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync -> 0'
 
   # 18.10.42.1 (L1) Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'. (Automated)
   - id: 18889
-    title: "(L1) Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'."
+    title: "Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'."
     description: "This setting determines whether applications and services on the device can utilize new consumer Microsoft account authentication via the Windows OnlineID and WebAccountManager APIs. The recommended state for this setting is: Enabled."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used on their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
     impact: "All applications and services on the device will be prevented from new authentications using consumer Microsoft accounts via the Windows OnlineID and WebAccountManager APIs. Authentications performed directly by the user in web browsers or in apps that use OAuth will remain unaffected."
@@ -7380,18 +7958,21 @@ checks:
       - iso_27001-2013: ["A.9.2.1"]
       - nist_sp_800-53: ["AC-2(1)"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth -> 1'
 
   # 18.10.43.5.1 (L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'. (Automated)
   - id: 18890
-    title: "(L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'."
+    title: "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'."
     description: "This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. This setting can only be set by Group Policy. The recommended state for this setting is: Disabled."
     rationale: "The decision on whether or not to participate in Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-us/microsoft-365/security/defender-"
+      - "https://docs.microsoft.com/en-us/microsoft-365/security/defender-endpoint/enable-cloud-protection-microsoft-defender-antivirus?view=o365-worldwide"
     compliance:
       - cis: ["18.10.43.5.1"]
       - cis_csc_v8: ["4.8"]
@@ -7401,12 +7982,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting -> 0'
 
   # 18.10.43.5.2 (L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled'. (Automated)
   - id: 18891
-    title: "(L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled'."
+    title: "Ensure 'Join Microsoft MAPS' is set to 'Disabled'."
     description: "This policy setting allows you to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service is the online community that helps you choose how to respond to potential threats. The community also helps stop the spread of new malicious software infections. You can choose to send basic or additional information about detected software. Additional information helps Microsoft create new definitions and help it to protect your computer. Possible options are: - - - (0x0) Disabled (default) (0x1) Basic membership (0x2) Advanced membership Basic membership will send basic information to Microsoft about software that has been detected including where the software came from the actions that you apply or that are applied automatically and whether the actions were successful. Advanced membership in addition to basic information will send more information to Microsoft about malicious software spyware and potentially unwanted software including the location of the software file names how the software operates and how it has impacted your computer. The recommended state for this setting is: Disabled."
     rationale: "The information that would be sent can include things like location of detected items on your computer if harmful software was removed. The information would be automatically collected and sent. In some instances personal information might unintentionally be sent to Microsoft. However, Microsoft states that it will not use this information to identify you or contact you. For privacy reasons in high security environments, it is best to prevent these data submissions altogether."
     impact: "None - this is the default behavior."
@@ -7415,8 +7999,10 @@ checks:
       - cis: ["18.10.43.5.2"]
       - cis_csc_v7: ["9.2"]
       - iso_27001-2013: ["A.13.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting'
 
   # 18.10.43.6.1.1 (L1) Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'. (Automated)
   - id: 18892
