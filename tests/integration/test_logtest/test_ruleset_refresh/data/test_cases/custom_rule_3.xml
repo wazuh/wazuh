@@ -1,0 +1,18 @@
+<!--
+    {"it_logtest" : "rules", "test": "rule_exclude"}
+-->
+<group name="ITs,">
+
+  <rule id="100088" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="it_logtest">rules</field>
+    <description>Parent rules IT</description>
+  </rule>
+
+  <rule id="880003" level="3">
+    <if_sid>100088</if_sid>
+    <field name="test">^rule_exclude$</field>
+    <description>test rule_exclude</description>
+  </rule>
+
+</group>

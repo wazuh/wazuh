@@ -1,0 +1,4 @@
+<!-- Test: regex attribute without prematch/program_name/parent attribute -->
+<decoder name="test">
+  <regex>^\s*(\S+)\s*:</regex>
+</decoder>

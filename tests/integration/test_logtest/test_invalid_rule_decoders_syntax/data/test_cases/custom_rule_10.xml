@@ -1,0 +1,8 @@
+<!-- Test: invalid rule label -->
+<group name="testing">
+
+    <rule id="100001" level="3" invalid_label="value" >
+    <description>example_description</description>
+    </rule>
+    
+</group>

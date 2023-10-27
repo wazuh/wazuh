@@ -1,0 +1,106 @@
+---
+-
+  name: "Invalid rules syntax: garbage file"
+  rules: "custom_rule_0.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "(1226): Error reading XML file 'etc/rules/custom_rule_0.xml': XMLERR: Attribute 'is' has no value. (line 2)."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: no closing XML tag"
+  rules: "custom_rule_1.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "(1226): Error reading XML file 'etc/rules/custom_rule_1.xml': XMLERR: End of file and some elements were not closed. (line 11)."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: no group"
+  rules: "custom_rule_2.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: 'rules_op: Invalid root element "rule".Only "group" is allowed'
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: invalid level"
+  rules: "custom_rule_3.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: 'rules_op: Invalid level: 20. Must be an integer between 0 and 16.'
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: invalid rule overwrite"
+  rules: "custom_rule_4.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Rule ID '123123' does not exist but 'overwrite' is set to 'yes'. Still, the rule will be loaded."
+  output_data_codemsg: 1
+-
+  name: "Invalid rules syntax: same_* attribute without frequency and timeframe"
+  rules: "custom_rule_5.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Invalid use of frequency/context options. Missing if_matched on rule '100002'."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: invalid weekday"
+  rules: "custom_rule_6.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "(1241): Invalid day format: 'osvaldo'."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: no existing if_sid rule number"
+  rules: "custom_rule_7.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Signature ID '123123' was not found and will be ignored in the 'if_sid' option of rule '100001'"
+  output_data_codemsg: 1
+-
+  name: "Invalid rules syntax: no existing if_matched_sid rule number attribute without frequency and timeframe"
+  rules: "custom_rule_8.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Signature ID '100005' was not found. Invalid 'if_matched_sid'.Rule '100002' will be ignored"
+  output_data_codemsg: 1
+-
+  name: "Invalid rules syntax: non existing/invalid attribute"
+  rules: "custom_rule_9.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Invalid option 'madeup_attr' for rule '100001'."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: no invalid rule label"
+  rules: "custom_rule_10.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: 'rules_op: Invalid attribute "invalid_label". Only id, level, maxsize, accuracy, noalert, ignore, frequency and timeframe are allowed.'
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: non existing group in if_group"
+  rules: "custom_rule_11.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Group 'non_existing_group' was not found. Invalid 'if_group'. Rule '100002' will be ignored."
+  output_data_codemsg: 1
+-
+  name: "Invalid rules syntax: invalid values on option attribute"
+  rules: "custom_rule_12.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "(1235): Invalid value for element 'options': invalid_option."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: different_* attribute without frequency and timeframe"
+  rules: "custom_rule_13.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Invalid use of frequency/context options. Missing if_matched on rule '100002'."
+  output_data_codemsg: -1
+-
+  name: "Invalid rules syntax: non existing decoder"
+  rules: "custom_rule_14.xml"
+  input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "dummy log","log_format": "syslog","location": "master->/var/log/syslog"}}'
+  output_error: 0
+  output_data_msg: "Invalid decoder name: 'non_existing_decoder'."
+  output_data_codemsg: -1
