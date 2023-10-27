@@ -21,14 +21,33 @@ fileInput=$2
 fileOutput=$3
 diffCmd=$4
 
+cleanup() {
+    echo "Cleaning up..."
+    # Remove the temporary files
+    rm -f "formatted_output_sorted.json"
+    rm -f "file_output_sorted.json"
+    rm -f "$tempFile"
+    rm -f "formatted_output.json"
+}
+
+trap cleanup EXIT
+
 # Download a file if it is a URL
 download_if_url() {
     local path=$1
     # Check if the path is a URL
     if [[ $path == http://* ]] || [[ $path == https://* ]]; then
-        # Download the file and save it to a temporary file
+        # Create a temporary file
         local tempFile=$(mktemp)
+        # Attempt to download the file
         wget -O "$tempFile" "$path"
+        # Check the size of the downloaded file
+        local fileSize=$(stat -c%s "$tempFile")
+        if [[ $fileSize -eq 0 ]]; then
+            echo "Error: Failed to download file from URL: $path"
+            rm "$tempFile"  # Remove the empty temporary file
+            exit 1
+        fi
         # Extract the file extension from the URL
         local fileExtension="${path##*.}"
         echo "$tempFile" "$fileExtension"  # Return the path to the temporary file and the file extension
@@ -117,8 +136,3 @@ if [[ -n $diffCmd ]]; then
 else
     engine-diff "formatted_output_sorted.json" "file_output_sorted.json"
 fi
-# Remove the temporary files
-rm "formatted_output_sorted.json"
-rm "file_output_sorted.json"
-rm "$tempFile"
-rm "formatted_output.json"
