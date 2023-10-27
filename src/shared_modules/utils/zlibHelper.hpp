@@ -13,9 +13,13 @@
 #define _ZLIB_HELPER_HPP
 
 #include "customDeleter.hpp"
+#include "minizip/unzip.h"
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 #include <zlib.h>
 
 using ZFilePtr = std::unique_ptr<gzFile_s, CustomDeleter<decltype(&gzclose), gzclose>>;
@@ -87,6 +91,89 @@ namespace Utils
                 }
             } while (len == sizeof(buf));
             outputFile.close();
+        }
+
+        /**
+         * @brief Uncompress ZIP file and returns a list with the decompressed files.
+         *
+         * @param zipFilePath Compressed (.zip) file path.
+         * @param outputDir Folder where the output files will be stored.
+         * @return std::vector<std::string> List of decompressed files.
+         */
+        static std::vector<std::string> zipDecompress(const std::filesystem::path& zipFilePath,
+                                                      const std::filesystem::path& outputDir)
+        {
+            // Open .zip file.
+            auto unzFile {unzOpen(zipFilePath.c_str())};
+            if (!unzFile)
+            {
+                throw std::runtime_error {"Unable to open compressed file: " + zipFilePath.string()};
+            }
+
+            // Get .zip file information (amount of files, i.e.).
+            unz_global_info globalInfo;
+            if (unzGetGlobalInfo(unzFile, &globalInfo) != UNZ_OK)
+            {
+                unzClose(unzFile);
+                throw std::runtime_error {"Unable to get global information of file: " + zipFilePath.string()};
+            }
+
+            // Iterate all compressed files within the .zip file.
+            std::vector<std::string> decompressedFiles(globalInfo.number_entry);
+            for (uLong currentFileIndex {0}; currentFileIndex < globalInfo.number_entry; ++currentFileIndex)
+            {
+                unz_file_info fileInfo;
+                char filename[256];
+                if (unzGetCurrentFileInfo(unzFile, &fileInfo, filename, sizeof(filename), nullptr, 0, nullptr, 0) !=
+                    UNZ_OK)
+                {
+                    unzClose(unzFile);
+                    throw std::runtime_error {"Unable to get current file information"};
+                }
+
+                // Open current file within the .zip file.
+                if (unzOpenCurrentFile(unzFile) != UNZ_OK)
+                {
+                    unzClose(unzFile);
+                    throw std::runtime_error {"Unable to open current file: " + std::string(filename)};
+                }
+
+                // Read current file content.
+                std::vector<char> buffer(fileInfo.uncompressed_size);
+                if (unzReadCurrentFile(unzFile, buffer.data(), buffer.size()) < 0)
+                {
+                    unzCloseCurrentFile(unzFile);
+                    unzClose(unzFile);
+                    throw std::runtime_error {"Unable to read content of current file: " + std::string(filename)};
+                }
+
+                // Close current file.
+                unzCloseCurrentFile(unzFile);
+
+                // Store current file in output directory.
+                const auto outputFilepath {outputDir / std::string(filename)};
+                std::ofstream outFile {outputFilepath, std::ios::binary};
+                if (!outFile.good())
+                {
+                    throw std::runtime_error("Unable to create destination file: " + outputFilepath.string());
+                }
+                outFile.write(buffer.data(), buffer.size());
+                outFile.close();
+
+                // Set filename in output vector.
+                decompressedFiles[currentFileIndex] = outputFilepath.string();
+
+                // Go to next file within the .zip file.
+                if (currentFileIndex + 1 < globalInfo.number_entry)
+                {
+                    unzGoToNextFile(unzFile);
+                }
+            }
+
+            // Close .zip file.
+            unzClose(unzFile);
+
+            return decompressedFiles;
         }
     };
 } // namespace Utils

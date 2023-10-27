@@ -93,6 +93,7 @@ else()
         rt
         lzma
         z
+        minizip
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
