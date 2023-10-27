@@ -59,8 +59,8 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Paths
-test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
-test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_enroll_messages.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_common.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
@@ -91,7 +91,7 @@ def set_up_groups(request):
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_messages(test_configuration, test_metadata, set_up_groups, configure_sockets_environment,
+def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, set_up_groups, configure_sockets_environment,
                              clean_client_keys_file_module, wait_for_authd_startup_module, connect_to_sockets_module, daemons_handler):
     '''
     description:

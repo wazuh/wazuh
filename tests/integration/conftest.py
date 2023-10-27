@@ -423,6 +423,16 @@ def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
     yield from connect_to_sockets_implementation(request)
 
 
+@pytest.fixture(scope='function')
+def connect_to_sockets_function(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `connect_to_sockets_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from connect_to_sockets_implementation(request)
+
+
 @pytest.fixture(scope='module')
 def mock_agent_module():
     """Fixture to create a mocked agent in wazuh databases"""

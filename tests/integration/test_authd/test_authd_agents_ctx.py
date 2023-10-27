@@ -47,27 +47,31 @@ tags:
 import os
 import subprocess
 import time
+from pathlib import Path
 
 import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
-from wazuh_testing.utils.configuration import load_wazuh_configurations
 from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.services import control_service, check_daemon_status
 from wazuh_testing.modules.api.utils import remove_groups, set_up_groups
 from wazuh_testing.tools.wazuh_manager import remove_all_agents
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
+# Paths
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_common.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd.yaml')
 
 # Configurations
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__, params=None, metadata=None)
 CLIENT_KEYS_PATH = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
 
 # Variables
@@ -86,13 +90,6 @@ login_attempts = 3
 sleep = 1
 
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
-
-@pytest.fixture(scope="module", params=configurations)
-def get_configuration(request):
-    """Get configurations from the module"""
-    yield request.param
-
-
 
 def clean_agents_ctx():
     clean_keys()
@@ -285,7 +282,7 @@ def register_agent_local_server(Name, Group=None, IP=None):
 
 
 # Tests
-def duplicate_ip_agent_delete_test(server):
+def duplicate_ip_agent_delete_test(server, set_wazuh_configuration):
     """Register a first agent, then register an agent with duplicate IP.
         Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
 
@@ -328,7 +325,7 @@ def duplicate_ip_agent_delete_test(server):
     assert check_diff('userA', False), 'Agent diff folder was not removed'
 
 
-def duplicate_name_agent_delete_test(server):
+def duplicate_name_agent_delete_test(server, set_wazuh_configuration):
     """Register a first agent, then register an agent with duplicate Name.
         Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
 
@@ -370,7 +367,7 @@ def duplicate_name_agent_delete_test(server):
 
 
 @pytest.mark.parametrize("server_type",["main", "local"])
-def test_ossec_authd_agents_ctx(get_configuration, daemons_handler, configure_sockets_environment,
+def test_ossec_authd_agents_ctx(set_wazuh_configuration, daemons_handler, configure_sockets_environment,
                                      connect_to_sockets_module, server_type):
     '''
     description:

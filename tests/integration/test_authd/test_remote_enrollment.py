@@ -64,7 +64,7 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 
 # Configurations
-test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_remote_enrollment.yaml')
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_remote_enrollment.yaml')
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
@@ -118,7 +118,7 @@ def not_raises(exception):
         raise pytest.fail("DID RAISE {0}".format(exception))
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_remote_enrollment(test_configuration, test_metadata, daemons_handler, tear_down):
+def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler, tear_down):
     '''
     description:
         Checks if the 'wazuh-authd' daemon remote enrollment is enabled/disabled according

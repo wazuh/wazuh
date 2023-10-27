@@ -41,73 +41,48 @@ import os
 import ssl
 import time
 import pytest
-from wazuh_testing.tools import WAZUH_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
-from wazuh_testing.authd import validate_authd_response
+from pathlib import Path
+
+from wazuh_testing.constants.paths.logs import WAZUH_PATH
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.modules.authd.utils import validate_authd_response
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-
-parameters = [
-    {'USE_SOURCE_IP': 'yes'},
-    {'USE_SOURCE_IP': 'no'}
-]
-
-metadata = [
-    {'use_source_ip': 'yes'},
-    {'use_source_ip': 'no'}
-]
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-client_keys_path = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
-test_authd_use_source_ip_tests = read_yaml(os.path.join(test_data_path, 'test_authd_use_source_ip.yaml'))
-configuration_ids = [f"Use_source_ip_{x['USE_SOURCE_IP']}" for x in parameters]
-test_cases_ids = [case['name'].replace(' ', '_') for case in test_authd_use_source_ip_tests]
-configurations = load_wazuh_configurations(configurations_path, __name__, params=parameters, metadata=metadata)
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_use_source_ip.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_use_source_ip.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
 
 log_monitor_paths = []
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
 receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 # Fixtures
-
-
-@pytest.fixture(scope='module', params=configurations, ids=configuration_ids)
-def get_configuration(request):
-    """
-    Get configurations from the module
-    """
-    return request.param
-
-
-@pytest.fixture(scope='function', params=test_authd_use_source_ip_tests, ids=test_cases_ids)
-def get_current_test_case(request):
-    """Get current test case from the module"""
-    return request.param
-
-
 @pytest.fixture(scope='function')
-def configure_receiver_sockets(request, get_current_test_case):
+def configure_receiver_sockets(request, test_metadata):
     """
     Get configurations from the module
     """
     global receiver_sockets_params
-    if 'ipv6' in get_current_test_case:
+    if test_metadata['ipv6'] == 'yes':
         receiver_sockets_params = [(("localhost", 1515), 'AF_INET6', 'SSL_TLSv1_2')]
     else:
         receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
     return receiver_sockets_params
 
-
-def test_authd_use_source_ip(get_configuration, configure_environment, get_current_test_case, configure_receiver_sockets,
-                             configure_sockets_environment, clean_client_keys_file_function, restart_wazuh_daemon_function,
+# Test
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_receiver_sockets,
+                             configure_sockets_environment, clean_client_keys_file_function, daemons_handler,
                              wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
     '''
     description:
@@ -160,27 +135,23 @@ def test_authd_use_source_ip(get_configuration, configure_environment, get_curre
         - Registration request responses on Authd socket
     '''
 
-    metadata = get_configuration['metadata']
-    test_case =  get_current_test_case['test_case']
-
     # Reopen socket (socket is closed by manager after sending message with client key)
     receiver_sockets[0].open()
 
-    for stage in test_case:
-        message = stage['input']
-        receiver_sockets[0].send(message, size=False)
-        timeout = time.time() + 10
-        response = ''
-        while response == '':
-            response = receiver_sockets[0].receive().decode()
-            if time.time() > timeout:
-                assert response != '', 'The manager did not respond to the message sent.'
-        if metadata['use_source_ip'] == 'yes' and get_current_test_case['ip_specified'] == 'no':
-            if 'ipv6' in get_current_test_case:
-                expected = {"status": "success", "name": "user1", "ip": "0000:0000:0000:0000:0000:0000:0000:0001"}
-            else:
-                expected = {"status": "success", "name": "user1", "ip": "127.0.0.1"}
+    message = test_metadata['input']
+    receiver_sockets[0].send(message, size=False)
+    timeout = time.time() + 10
+    response = ''
+    while response == '':
+        response = receiver_sockets[0].receive().decode()
+        if time.time() > timeout:
+            assert response != '', 'The manager did not respond to the message sent.'
+    if test_metadata['use_source_ip'] == 'yes' and test_metadata['ip_specified'] == 'no':
+        if test_metadata['ipv6'] == 'yes':
+            expected = {"status": "success", "name": "user1", "ip": "0000:0000:0000:0000:0000:0000:0000:0001"}
         else:
-            expected = stage['output']
-        result, err_msg = validate_authd_response(response, expected)
-        assert result == 'success', f"Failed stage '{get_current_test_case['name']}': {err_msg} Complete response: '{response}'"
+            expected = {"status": "success", "name": "user1", "ip": "127.0.0.1"}
+    else:
+        expected = test_metadata['output']
+    result, err_msg = validate_authd_response(response, expected)
+    assert result == 'success', f"Failed: {err_msg} Complete response: '{response}'"

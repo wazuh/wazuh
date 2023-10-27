@@ -53,7 +53,7 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_authd.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_common.yaml')
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_valid_name_ip.yaml')
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
@@ -69,7 +69,7 @@ hostname = socket.gethostname()
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_valid_name_ip(test_configuration, test_metadata, configure_sockets_environment,
+def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment,
                              clean_client_keys_file_function, connect_to_sockets_module,
                              restart_authd_function, wait_for_authd_startup_function, tear_down):
     '''

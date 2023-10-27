@@ -11,7 +11,8 @@ from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db, clean_a
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.modules.authd.patterns import PREFIX, DAEMON_NAME
+from wazuh_testing.modules.authd.patterns import PREFIX
+from wazuh_testing.constants.daemons import AUTHD_DAEMON
 from wazuh_testing.utils.configuration import write_wazuh_conf, get_wazuh_conf, set_section_wazuh_conf,\
                                               load_wazuh_configurations
 from wazuh_testing.utils.services import control_service
@@ -28,7 +29,7 @@ def truncate_client_keys_file():
     Cleans any previous key in client.keys file.
     """
     try:
-        control_service("stop", DAEMON_NAME)
+        control_service("stop", AUTHD_DAEMON)
     except Exception:
         pass
     file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
@@ -56,7 +57,7 @@ def restart_authd(get_configuration):
     Restart Authd.
     """
     file.truncate_file(WAZUH_LOG_PATH)
-    control_service("restart", daemon=DAEMON_NAME)
+    control_service("restart", daemon=AUTHD_DAEMON)
 
 
 @pytest.fixture(scope='function')
@@ -65,7 +66,7 @@ def restart_authd_function():
     Restart Authd.
     """
     file.truncate_file(WAZUH_LOG_PATH)
-    control_service("restart", daemon=DAEMON_NAME)
+    control_service("restart", daemon=AUTHD_DAEMON)
 
 
 @pytest.fixture(scope='function')
@@ -73,7 +74,7 @@ def stop_authd_function():
     """
     Stop Authd.
     """
-    control_service("stop", daemon=DAEMON_NAME)
+    control_service("stop", daemon=AUTHD_DAEMON)
 
 
 @pytest.fixture(scope='module')
