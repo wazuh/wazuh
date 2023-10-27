@@ -17,7 +17,7 @@ target_link_libraries(cmds
     yml
     defs
     builders
-    rxbk
+    bk::rx
     server
     router
     store

@@ -10,6 +10,16 @@ CPMAddPackage(
     "-DTF_BUILD_EXAMPLES OFF"
 )
 
+CPMAddPackage(
+    NAME RxCpp
+    GITHUB_REPOSITORY ReactiveX/RxCpp
+    GIT_TAG v4.1.1
+    VERSION 4.1.1
+    OPTIONS
+    "RXCPP_DISABLE_TESTS_AND_EXAMPLES"
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY
+)
 
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
@@ -40,34 +50,43 @@ target_include_directories(bk_taskf
 target_link_libraries(bk_taskf PUBLIC bk::ibk)
 add_library(bk::taskf ALIAS bk_taskf)
 
+# RxCpp
+set(RXCPP_SRC_DIR ${SRC_DIR}/rx)
+
+add_library(bk_rx STATIC
+    ${RXCPP_SRC_DIR}/controller.cpp
+)
+target_include_directories(bk_rx
+    PUBLIC
+    ${INC_DIR}
+    ${RxCpp_SOURCE_DIR}/Rx/v2/src
+    
+    PRIVATE
+    ${RXCPP_SRC_DIR}
+    ${INC_DIR}/bk/rx
+)
+target_link_libraries(bk_rx PUBLIC bk::ibk)
+add_library(bk::rx ALIAS bk_rx)
+
 # Tests
 if(ENGINE_BUILD_TEST)
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
-# set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 ## Mocks
-# add_library(backend_mocks INTERFACE)
-# target_include_directories(backend_mocks INTERFACE ${TEST_MOCK_DIR})
-# target_link_libraries(backend_mocks INTERFACE gmock backend::ibackend)
-# add_library(backend::mocks ALIAS backend_mocks)
+add_library(bk_mocks INTERFACE)
+target_include_directories(bk_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(bk_mocks INTERFACE gmock bk::ibk)
+add_library(bk::mocks ALIAS bk_mocks)
 
-
-## TaskFlow Backend component test
-add_executable(tfbk_ctest
+## Backend component test
+add_executable(bk_ctest
     ${COMPONENT_SRC_DIR}/bk_test.cpp
 )
-target_link_libraries(tfbk_ctest gtest_main bk::taskf)
-gtest_discover_tests(tfbk_ctest)
-
-## TaskFlow Backend unit test
-add_executable(tfbk_utest
-    ${UNIT_SRC_DIR}/tfbk_test.cpp
-)
-target_include_directories(tfbk_utest PRIVATE ${TASKF_SRC_DIR})
-target_link_libraries(tfbk_utest gtest_main bk::taskf)
-gtest_discover_tests(tfbk_utest)
+target_link_libraries(bk_ctest gtest_main bk::taskf bk::rx bk::mocks)
+gtest_discover_tests(bk_ctest)
 
 endif(ENGINE_BUILD_TEST)

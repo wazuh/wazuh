@@ -32,7 +32,7 @@
 #include <parseEvent.hpp> // Event
 #include <rbac/rbac.hpp>
 #include <router/router.hpp>
-#include <rxbk/rxFactory.hpp>
+#include <bk/rx/controller.hpp>
 #include <schemf/schema.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
 #include <server/endpoints/unixStream.hpp>   //API

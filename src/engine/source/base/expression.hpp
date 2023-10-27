@@ -238,6 +238,13 @@ public:
      * @return the function that will be used to compute the term
      */
     T getFn() const { return m_fn; }
+
+    /**
+     * @brief Set the Function used to compute the term
+     * 
+     * @param fn 
+     */
+    void setFn(T fn) { m_fn = fn; }
 };
 
 // ----- Operations -----
