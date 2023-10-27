@@ -11,14 +11,12 @@ from urllib.parse import urlparse
 def evtx_to_xml(evtx_file_path):
 
     xml_records = []
-    try:
-        parser = PyEvtxParser(evtx_file_path, number_of_threads=0)
-        for record in parser.records():
-            cleaned_data = re.sub(r'<\?xml version="1.0" encoding="utf-8"\?>\n?', '', record['data'])
-            xml_records.append(cleaned_data)
-    except RuntimeError as e:
-        print(f'Error converting EVTX to XML: {e}')
-        exit(0)
+
+    parser = PyEvtxParser(evtx_file_path, number_of_threads=0)
+    for record in parser.records():
+        cleaned_data = re.sub(r'<\?xml version="1.0" encoding="utf-8"\?>\n?', '', record['data'])
+        xml_records.append(cleaned_data)
+
 
     final_xml = f'<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<Events>\n'
     final_xml += '\n'.join(xml_records)
@@ -34,7 +32,7 @@ def check_url(url):
         if not valid:
             print(f"Response code: {response.status_code}")
         return valid
-    except requests.RequestException as e:
+    except Exception as e:
         print(f"Error: {e}")
         return False
 
@@ -78,7 +76,13 @@ def main():
             print(f"Error: File {evtx_file_path_or_url} does not exist.")
             sys.exit(1)
 
-    evtx_to_xml(evtx_file_path_or_url)
+    try:
+        evtx_to_xml(evtx_file_path_or_url)
+    except Exception as e:
+        print(f"Error: {e}")
+        if isUrl:
+            os.remove(evtx_file_path_or_url)
+        sys.exit(1)
 
     # Delete the downloaded file
     if isUrl:

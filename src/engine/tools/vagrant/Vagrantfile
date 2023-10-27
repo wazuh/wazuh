@@ -183,9 +183,9 @@ Vagrant.configure("2") do |config|
         echo "Creating integrations of engine-test..."
         # TODO: think about a better way to do this, maybe save the default information in kvdb
         echo "{}" > /var/ossec/etc/engine-test.conf
-        engine-test add -n windows -f eventchannel
-        engine-test add -n syslog -f syslog -o /tmp/syslog.log
-        engine-test add -n remote-syslog -f remote-syslog -o 127.0.0.1
+        engine-test add -i windows -f eventchannel
+        engine-test add -i syslog -f syslog -o /tmp/syslog.log
+        engine-test add -i remote-syslog -f remote-syslog -o 127.0.0.1
 
         # Add user vagrant to wazuh group
         usermod -a -G wazuh vagrant
