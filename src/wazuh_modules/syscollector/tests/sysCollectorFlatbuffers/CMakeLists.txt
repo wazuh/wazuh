@@ -20,7 +20,7 @@ add_definitions(-DWAZUH_UNIT_TESTING)
 add_executable(${PROJECT_NAME}
     ${SYSCOLLECTOR_FLATBUFFERS_UNIT_TEST_SRC}
 )
-target_compile_definitions(${PROJECT_NAME} PUBLIC SCHEMA_ROOT_PATH="${SRC_FOLDER}/wazuh_modules/syscollector/schemas/")
+target_compile_definitions(${PROJECT_NAME} PUBLIC SCHEMA_ROOT_PATH="${SRC_FOLDER}/shared_modules/utils/flatbuffers/schemas/syscollectorRsync/")
 
 target_link_libraries(${PROJECT_NAME}
         debug gtestd
