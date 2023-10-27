@@ -1735,7 +1735,7 @@ build_shared_modules: $(WAZUHEXT_LIB)
 
 .PHONY: flatbuffers_schemas
 flatbuffers_schemas: ${FLATCCRT_LIB}
-	${FLATCC_BIN} --json -a -g -o generated_headers/ wazuh_modules/syscollector/schemas/*.fbs
+	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/syscollectorRsync/*.fbs
 	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/common/*.fbs
 	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/syscollectorDeltas/*.fbs
 
@@ -1750,7 +1750,7 @@ build_syscollector: build_shared_modules build_sysinfo
 endif
 
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector
 	mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
 
 #### Wazuh modules ##

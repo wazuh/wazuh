@@ -23,10 +23,10 @@ constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::string& templatePath)
 {
     // Initialize publisher.
-    auto selector = std::make_shared<ServerSelector>(config.at("indexer").at("hosts"));
+    auto selector = std::make_shared<ServerSelector>(config.at("hosts"));
 
     // Get index name.
-    auto indexName {config.at("indexer").at("name").get_ref<const std::string&>()};
+    auto indexName {config.at("name").get_ref<const std::string&>()};
 
     {
         // Read template file.

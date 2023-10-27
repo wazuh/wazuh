@@ -19,6 +19,8 @@
 #define EPS_LIMITS_MAX_EPS 100000
 #define EPS_LIMITS_MIN_EPS 0
 
+#define CTI_URL_DEFAULT "cti.wazuh.com"
+
 typedef struct __eps {
     // EPS limits configuration
     unsigned int maximum;
@@ -131,6 +133,9 @@ typedef struct __Config {
 
     // EPS limits configuration
     _eps eps;
+
+    // CTI URL
+    char *cti_url;
 } _Config;
 
 

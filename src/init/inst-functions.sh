@@ -33,7 +33,8 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
-VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
+INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
@@ -492,6 +493,10 @@ WriteManager()
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Indexer
+    cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Write syscheck
     WriteSyscheck "manager"
 
@@ -622,6 +627,10 @@ WriteLocal()
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Indexer
+    cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck
@@ -1076,6 +1085,10 @@ InstallLocal()
     ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vulnerabilities
     ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vulnerabilities/dictionaries
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${INSTALLDIR}/queue/vulnerabilities/dictionaries
+
+    # Install templates files
+    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json ${INSTALLDIR}/queue/indexer/vd_states_template.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

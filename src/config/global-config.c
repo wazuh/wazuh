@@ -158,7 +158,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
     const char *xml_limits = "limits";
-
+    const char *xml_cti_url = "cti-url";
 
     const char *xml_emailto = "email_to";
     const char *xml_emailfrom = "email_from";
@@ -201,6 +201,10 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             hostname_white_size++;
             ww++;
         }
+    }
+
+    if (Config) {
+        os_strdup(CTI_URL_DEFAULT, Config->cti_url);
     }
 
     /* Get mail_to size */
@@ -703,6 +707,15 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                     Config->agents_disconnection_alert_time = time;
                 }
             }
+#ifndef CLIENT
+        }
+        /* CTI URL parameter*/
+        else if (strcmp(node[i]->element, xml_cti_url) == 0) {
+            if(Config && strlen(node[i]->content) > 0) {
+                free(Config->cti_url);
+                os_strdup(node[i]->content, Config->cti_url);
+            }
+#endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -823,7 +836,9 @@ void config_free(_Config *config) {
     if (config->node_type) {
         free(config->node_type);
     }
-
+    if (config->cti_url) {
+        free(config->cti_url);
+    }
 }
 
 #ifndef CLIENT

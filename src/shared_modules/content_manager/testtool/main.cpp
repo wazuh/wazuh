@@ -19,6 +19,7 @@
  * @outputFolder: if defined, the content will be downloaded to this folder.
  * @dataFormat: Format of the content downloaded or after decompression.
  * @fileName: Name of the file to download or file name in case of raw content.
+ * @offset (integer): Api offset used to override (if greater) the one set on the database.
  */
 static const nlohmann::json CONFIG_PARAMETERS =
     R"(
@@ -37,7 +38,8 @@ static const nlohmann::json CONFIG_PARAMETERS =
                 "dataFormat": "json",
                 "contentFileName": "example.json",
                 "s3FileName": "content.filtered_little.1.xz",
-                "databasePath": "/tmp/content_updater/rocksdb"
+                "databasePath": "/tmp/content_updater/rocksdb",
+                "offset": 0
             }
         }
         )"_json;
@@ -47,7 +49,8 @@ int main()
     auto& instance = ContentModule::instance();
 
     // Server
-    instance.start(nullptr);
+    instance.start([](const modules_log_level_t logLevel, const std::string& message)
+                   { std::cout << message << std::endl; });
 
     // CLiente -> vulnenability  detector
     ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};

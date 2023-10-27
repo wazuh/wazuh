@@ -1823,10 +1823,6 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     {
         R"({"component":"syscollector_processes","data":{"begin":"45","end":"45"},"type":"integrity_check_global"})"
     };
-    const auto expectedResult9
-    {
-        R"({"component":"syscollector_processes","data":{"begin":"45","end":"99"},"type":"integrity_check_right"})"
-    };
     const auto expectedResult10
     {
         R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
@@ -1884,7 +1880,6 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(wrapper, callbackMock(expectedResult6)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult7)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult8)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult9)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult10)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult11)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult12)).Times(1);

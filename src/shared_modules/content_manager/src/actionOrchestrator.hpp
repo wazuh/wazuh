@@ -76,8 +76,8 @@ public:
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)
             {
-                const auto value = m_spBaseContext->spRocksDB->getLastKeyValue().second;
-                spUpdaterContext->currentOffset = value.empty() ? 0 : std::stoi(value.ToString());
+                spUpdaterContext->currentOffset =
+                    std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue().second.ToString());
             }
 
             // Run the updater chain
