@@ -51,6 +51,7 @@ from pathlib import Path
 
 import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.services import control_service, check_daemon_status
@@ -66,13 +67,11 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Paths
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_common.yaml')
-test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_agents_ctx.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-
-CLIENT_KEYS_PATH = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
 
 # Variables
 log_monitor_paths = []
@@ -80,16 +79,12 @@ log_monitor_paths = []
 ls_sock_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth'))
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (ls_sock_path, 'AF_UNIX', 'TCP')]
 
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
-
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets = None  # Set in the fixtures
 groups_infra = ['001','002', '003', '004']
 test_group = "TestGroup"
 timeout = 10
 login_attempts = 3
 sleep = 1
-
-daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 def clean_agents_ctx():
     clean_keys()
@@ -115,7 +110,7 @@ def clean_logs():
 
 
 def clean_keys():
-    truncate_file(CLIENT_KEYS_PATH)
+    truncate_file(WAZUH_CLIENT_KEYS_PATH)
 
 
 def clean_diff():
@@ -167,7 +162,7 @@ def check_diff(name, expected, timeout=30):
 def check_client_keys(id, expected):
     found = False
     try:
-        with open(CLIENT_KEYS_PATH) as client_file:
+        with open(WAZUH_CLIENT_KEYS_PATH) as client_file:
             client_lines = client_file.read().splitlines()
             for line in client_lines:
                 data = line.split(" ")
@@ -282,7 +277,7 @@ def register_agent_local_server(Name, Group=None, IP=None):
 
 
 # Tests
-def duplicate_ip_agent_delete_test(server, set_wazuh_configuration):
+def duplicate_ip_agent_delete_test(server):
     """Register a first agent, then register an agent with duplicate IP.
         Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
 
@@ -325,7 +320,7 @@ def duplicate_ip_agent_delete_test(server, set_wazuh_configuration):
     assert check_diff('userA', False), 'Agent diff folder was not removed'
 
 
-def duplicate_name_agent_delete_test(server, set_wazuh_configuration):
+def duplicate_name_agent_delete_test(server):
     """Register a first agent, then register an agent with duplicate Name.
         Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
 
@@ -365,10 +360,8 @@ def duplicate_name_agent_delete_test(server, set_wazuh_configuration):
     assert check_rids('003', False), 'Rids file was was not removed'
     assert check_diff('userB', False), 'Agent diff folder was not removed'
 
-
-@pytest.mark.parametrize("server_type",["main", "local"])
-def test_ossec_authd_agents_ctx(set_wazuh_configuration, daemons_handler, configure_sockets_environment,
-                                     connect_to_sockets_module, server_type):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets_module):
     '''
     description:
         Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
@@ -415,8 +408,8 @@ def test_ossec_authd_agents_ctx(set_wazuh_configuration, daemons_handler, config
     wait_server_connection()
     time.sleep(1)
     set_up_groups([test_group])
-    duplicate_ip_agent_delete_test(server_type)
-    duplicate_name_agent_delete_test(server_type)
+    duplicate_ip_agent_delete_test(test_metadata["server_type"])
+    duplicate_name_agent_delete_test(test_metadata["server_type"])
 
     clean_agents_ctx()
     remove_all_agents('wazuhdb')

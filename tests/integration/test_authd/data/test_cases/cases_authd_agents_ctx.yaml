@@ -1,0 +1,11 @@
+- name: get_configuration0-main
+  description:
+  configuration_parameters:
+  metadata:
+    server_type: "main"
+
+- name: get_configuration0-local
+  description:
+  configuration_parameters:
+  metadata:
+    server_type: "local"
