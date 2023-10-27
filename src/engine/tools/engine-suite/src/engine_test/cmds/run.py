@@ -12,6 +12,7 @@ DEFAULT_ASSETS = []
 DEFAULT_JSON_FORMAT = False
 DEFAULT_API_SOCKET = "/var/ossec/queue/sockets/engine-api"
 
+
 class RunCommand(Command):
     def __init__(self):
         pass
@@ -23,39 +24,41 @@ class RunCommand(Command):
 
     def configure(self, subparsers):
         parser_run = self.create_parser(subparsers)
-        parser_run.add_argument('-i', '--agent-id', help=f'Agent ID for event filling',
+        parser_run.add_argument('--agent-id', help=f'Agent ID for event filling',
                                 type=str, default=DEFAULT_AGENT_ID, dest='agent_id')
 
         parser_run.add_argument('--api-socket', help=f'Socket to connect to the API',
                                 type=str, default=DEFAULT_API_SOCKET, dest='api-socket')
 
-        parser_run.add_argument('-n', '--agent-name', help=f'Agent name for events filling',
+        parser_run.add_argument('--agent-name', help=f'Agent name for events filling',
                                 type=str, default=DEFAULT_AGENT_NAME, dest='agent_name')
 
-        parser_run.add_argument('-a', '--agent-ip', help=f'Register agent ip for events filling',
+        parser_run.add_argument('--agent-ip', help=f'Register agent ip for events filling',
                                 type=str, default=DEFAULT_AGENT_IP, dest='agent_ip')
 
-        parser_run.add_argument('-O', '--origin', help=f'Origin of the integration',
+        parser_run.add_argument('-o', '--origin', help=f'Origin of the integration',
                                 type=str, dest='origin')
 
-        parser_run.add_argument('-o', '--output', help=f'Output file where the events will be stored, if empty events wont be saved',
+        parser_run.add_argument('--output', help=f'Output file where the events will be stored, if empty events wont be saved',
                                 type=pathlib.Path, dest='output_file')
 
-        parser_run.add_argument('-N', '--namespaces', nargs='+', help=f'List of namespaces to include',
+        parser_run.add_argument('-n', '--namespaces', nargs='+', help=f'List of namespaces to include',
                                 default=DEFAULT_NAMESPACES, dest='namespaces')
 
         group = parser_run.add_mutually_exclusive_group()
 
         group.add_argument('-p', '--policy', help=f'Policy where to run the test. A temporary test session will be created and deleted when the command is completed.',
-                        default=DEFAULT_POLICY, dest='policy')
+                           default=DEFAULT_POLICY, dest='policy')
         group.add_argument('-s', '--session-name', help=f'Session where to run the test',
-                        dest='session_name')
+                           dest='session_name')
 
-        parser_run.add_argument('-d', '--debug', action='store_true', help=f'Log asset history',
-                                default=DEFAULT_VERBOSE, dest='verbose')
+        group_debug = parser_run.add_mutually_exclusive_group()
 
-        parser_run.add_argument('-D', '--full-debug', action='store_true', help=f'Log asset history and full tracing',
-                                default=DEFAULT_VERBOSE, dest='full_verbose')
+        group_debug.add_argument('-d', '--debug', action='store_true', help=f'Log asset history',
+                                 default=DEFAULT_VERBOSE, dest='verbose')
+
+        group_debug.add_argument('-dd', '--full-debug', action='store_true', help=f'Log asset history and full tracing',
+                                 default=DEFAULT_VERBOSE, dest='full_verbose')
 
         parser_run.add_argument('-t', '--trace', nargs='+', help=f'List of assets to filter trace',
                                 default=DEFAULT_ASSETS, dest='assets')
