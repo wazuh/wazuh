@@ -6,7 +6,6 @@
 
 #include "bk_test.hpp"
 
-using namespace bk::taskf;
 using namespace bk::test;
 using namespace base;
 
@@ -15,16 +14,6 @@ const std::string PATH_RESULT = "/result";
 
 static const std::string SUCCES_TRACE = "Fake trace success";
 static const std::string FAILURE_TRACE = "Fake trace failure";
-
-/********************************************
- *
- * Struct of result of each term
- *
- * { "name": "termName", "result": true/false}
- *
- * The expected result is an array of this struct, in evaluation order, like:
- * [{ "name": "term1", "result": true}]
- ********************************************/
 
 class EasyExp
 {
@@ -48,61 +37,6 @@ public:
                                                       }
                                                       return base::result::makeFailure(e, FAILURE_TRACE);
                                                   });
-    }
-
-    // The name of the term is the 'name' field + _ + the index of the term in the vector
-    static auto broadcast(const std::string& name, const std::vector<bool>& expResult) -> base::Expression
-    {
-        auto expr = base::Broadcast::create(name, {});
-        auto& broadcastExpr = expr->getOperands();
-        for (std::size_t i = 0; i < expResult.size(); ++i)
-        {
-            broadcastExpr.emplace_back(term(name + "_" + std::to_string(i), expResult[i]));
-        }
-        return expr;
-    }
-
-    // The name of the term is the 'name' field + _ + the index of the term in the vector
-    static auto chain(const std::string& name, const std::vector<bool>& expResult) -> base::Expression
-    {
-        auto expr = base::Chain::create(name, {});
-        auto& chainExpr = expr->getOperands();
-        for (std::size_t i = 0; i < expResult.size(); ++i)
-        {
-            chainExpr.emplace_back(term(name + "_" + std::to_string(i), expResult[i]));
-        }
-        return expr;
-    }
-
-    // The name of the term is the 'name' field + _0 for the condition and _imp for the implication
-    static auto implication(const std::string& name, bool condition, bool implication) -> base::Expression
-    {
-        auto expr = base::Implication::create(name, term(name + "_cond", condition), term(name + "_imp", implication));
-        return expr;
-    }
-
-    // The name of the term is the 'name' field + _ + the index of the term in the vector
-    static auto or_(const std::string& name, const std::vector<bool>& expResult) -> base::Expression
-    {
-        auto expr = base::Or::create(name, {});
-        auto& orExpr = expr->getOperands();
-        for (std::size_t i = 0; i < expResult.size(); ++i)
-        {
-            orExpr.emplace_back(term(name + "_" + std::to_string(i), expResult[i]));
-        }
-        return expr;
-    }
-
-    // The name of the term is the 'name' field + _ + the index of the term in the vector
-    static auto and_(const std::string& name, const std::vector<bool>& expResult) -> base::Expression
-    {
-        auto expr = base::And::create(name, {});
-        auto& andExpr = expr->getOperands();
-        for (std::size_t i = 0; i < expResult.size(); ++i)
-        {
-            andExpr.emplace_back(term(name + "_" + std::to_string(i), expResult[i]));
-        }
-        return expr;
     }
 
     // Cast operator to base::Expression
@@ -899,6 +833,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    order("and_0", term("t00", true), term("t01", true)),
                                    order("and_1", term("t10", false))))}));
 
+template <typename Controller>
 struct Subscriber
 {
     std::vector<std::string> traces;
@@ -918,28 +853,43 @@ struct Subscriber
     }
 };
 
-TEST(BKTaskFlowTraceTest, Subscribe)
+template<typename Controller>
+void subscribeTest()
 {
     Controller c(EasyExp::term("term", true), {"term"});
-    Subscriber s;
+    Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
     s.checkTraceActivation(c, {SUCCES_TRACE});
 }
 
-TEST(BKTaskFlowTraceTest, SubscribeTraceableNotFound)
+TEST(BKTraceTest, Subscribe)
+{
+    subscribeTest<bk::taskf::Controller>();
+    subscribeTest<bk::rx::Controller>();
+}
+
+template<typename Controller>
+void subscribeTraceableNotFoundTest()
 {
     Controller c(EasyExp::term("term", true), {"term"});
-    Subscriber s;
+    Subscriber<Controller> s;
     auto subRes = c.subscribe("term2", s.getSubscriber());
     ASSERT_TRUE(base::isError(subRes));
     s.checkTraceActivation(c, {});
 }
 
-TEST(BKTaskFlowTraceTest, MultipleSubscribers)
+TEST(BKTraceTest, SubscribeTraceableNotFound)
+{
+    subscribeTraceableNotFoundTest<bk::taskf::Controller>();
+    subscribeTraceableNotFoundTest<bk::rx::Controller>();
+}
+
+template<typename Controller>
+void multipleSubscribersTest()
 {
     Controller c(EasyExp::term("term", true), {"term"});
-    Subscriber s;
+    Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
     auto subRes2 = c.subscribe("term", s.getSubscriber());
@@ -947,24 +897,44 @@ TEST(BKTaskFlowTraceTest, MultipleSubscribers)
     s.checkTraceActivation(c, {SUCCES_TRACE, SUCCES_TRACE});
 }
 
-TEST(BKTaskFlowTraceTest, Unsubscribe)
+TEST(BKTraceTest, MultipleSubscribers)
+{
+    multipleSubscribersTest<bk::taskf::Controller>();
+    multipleSubscribersTest<bk::rx::Controller>();
+}
+
+template<typename Controller>
+void unsubscribeTest()
 {
     Controller c(EasyExp::term("term", true), {"term"});
-    Subscriber s;
+    Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
     ASSERT_NO_THROW(c.unsubscribe("term", base::getResponse<bk::Subscription>(subRes)));
     s.checkTraceActivation(c, {});
 }
 
-TEST(BKTaskFlowTraceTest, UnsubscribeNotExists)
+TEST(BKTraceTest, Unsubscribe)
+{
+    unsubscribeTest<bk::taskf::Controller>();
+    unsubscribeTest<bk::rx::Controller>();
+}
+
+template<typename Controller>
+void unsubscribeNotExistsTest()
 {
     Controller c(EasyExp::term("term", true), {"term"});
-    Subscriber s;
+    Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
     ASSERT_NO_THROW(c.unsubscribe("term", base::getResponse<bk::Subscription>(subRes)));
     ASSERT_NO_THROW(c.unsubscribe("term", base::getResponse<bk::Subscription>(subRes)));
     ASSERT_NO_THROW(c.unsubscribe("other", base::getResponse<bk::Subscription>(subRes)));
     s.checkTraceActivation(c, {});
+}
+
+TEST(BKTraceTest, UnsubscribeNotExists)
+{
+    unsubscribeNotExistsTest<bk::taskf::Controller>();
+    unsubscribeNotExistsTest<bk::rx::Controller>();
 }
