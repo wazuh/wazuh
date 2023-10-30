@@ -12,6 +12,7 @@
 #include "integrator.h"
 #include "shared.h"
 
+
 void help(const char *prog)
 {
     print_out(" ");
@@ -32,10 +33,6 @@ void help(const char *prog)
     exit(1);
 }
 
-#ifdef WAZUH_UNIT_TESTING
-int test_main() __attribute__ ((weak, alias ("main")));
-__attribute((weak))
-#endif
 int main(int argc, char **argv)
 {
     int i = 0;
@@ -74,10 +71,8 @@ int main(int argc, char **argv)
                 help(ARGV0);
                 break;
             case 'd':
-                if (MAX_DEBUG_LEVEL > debug_level) {
-                    nowDebug();
-                    debug_level++;
-                }
+                nowDebug();
+                debug_level = 1;
                 break;
             case 'u':
                 if(!optarg)
@@ -103,7 +98,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("integrator", "debug", 0, MAX_DEBUG_LEVEL);
+        debug_level = getDefine_Int("integrator", "debug", 0, 2);
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
