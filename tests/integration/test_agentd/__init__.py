@@ -95,7 +95,7 @@ def wait_server_rollback():
         Watch ossec.log until "Unable to connect to any server" message is found'
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT))
     assert (wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
 
 def delete_keys_file():

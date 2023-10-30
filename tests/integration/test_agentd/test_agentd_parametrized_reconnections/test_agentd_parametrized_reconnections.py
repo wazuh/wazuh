@@ -55,23 +55,22 @@ references:
 tags:
     - enrollment
 '''
+from datetime import timedelta
 import pytest
 from pathlib import Path
 import sys
-import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_enrollment, wait_connect, wait_server_rollback, add_custom_key, kill_server
+from .. import parse_time_from_log_line, wait_connect, wait_server_rollback, add_custom_key, check_connection_try, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -90,6 +89,8 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 """
 This test covers different options of delays between server connection attempts:
@@ -101,7 +102,7 @@ This test covers different options of delays between server connection attempts:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             truncate_monitored_files):
+                             truncate_monitored_files, daemons_handler):
     '''
     description: Check how the agent behaves when there are delays between connection
                  attempts to the server. For this purpose, different values for
@@ -112,27 +113,21 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     tier: 0
 
     parameters:
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated 'wazuh-authd' connection.
-        - start_authd:
-            type: fixture
-            brief: Enable the 'wazuh-authd' daemon to accept connections and perform enrollments.
-        - stop_agent:
-            type: fixture
-            brief: Stop Wazuh's agent.
-        - set_keys:
-            type: fixture
-            brief: Write to 'client.keys' file the agent's enrollment details.
-        - configure_environment:
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - teardown:
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
             type: fixture
-            brief: Stop the Remoted server
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that when the 'wazuh-agentd' daemon initializes, it connects to
@@ -145,7 +140,6 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
                        for the environment setup using the TCP and UDP protocols.
 
     expected_output:
-        - r'Valid key received'
         - r'Trying to connect to server'
         - r'Unable to connect to any server'
 
@@ -155,65 +149,51 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         - keys
     '''
     DELTA = 1
-    RECV_TIMEOUT = 5
-    ENROLLMENT_SLEEP = 20
-    LOG_TIMEOUT = 30
-    import pdb; pdb.set_trace()
 
-    # Stop target Agent
-    control_service('stop')
+    # 1 Check for unsuccessful connection retries in Agentd initialization
+    interval = test_metadata['RETRY_INTERVAL']
 
-    # Add dummy key in order to communicate with RemotedSimulator
-    add_custom_key()
-    
-    # Start service
-    control_service('start')
+    # Get first connection try log timestamp
+    matched_line = check_connection_try()
+    log_timestamp = parse_time_from_log_line(matched_line)
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['protocol'])
-    remoted_server.start()
-
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    # 2 Check for unsuccessful connection retries in Agentd initialization
-    interval = test_metadata['retry_interval']
-    if test_metadata['protocol'] == 'udp':
-        interval += RECV_TIMEOUT
-
-    if test_metadata['enroll'] == 'yes':
-        total_retries = test_metadata['max_retries'] + 1
-    else:
-        total_retries = test_metadata['max_retries']
-
-    for retry in range(total_retries):
-        # 3 If auto enrollment is enabled, retry check enrollment and retries after that
-        if test_metadata['enroll'] == 'yes' and retry == total_retries - 1:
-            # Wait successfully enrollment
-            wait_enrollment()
-            first_found_log_time = time.time()
-            # Next retry will be after enrollment sleep
-            interval = ENROLLMENT_SLEEP
-    
-        wazuh_log_monitor.start(timeout = interval + LOG_TIMEOUT, callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
-        second_found_log_time = time.time()
-        assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
+    for _ in range(1,test_metadata['MAX_RETRIES']):
+        # Get second connection try log timestamp
+        matched_line = check_connection_try()
+        actual_retry = parse_time_from_log_line(matched_line)
         
-        if retry > 0:
-            delta_retry = actual_retry - last_log
-            # Check if delay was applied
-            assert delta_retry >= timedelta(seconds=interval - DELTA), "Retries to quick"
-            assert delta_retry <= timedelta(seconds=interval + DELTA), "Retries to slow"
-        last_log = actual_retry
+        # Compute elapsed time
+        delta_retry = actual_retry - log_timestamp
+
+        # Check elapsed time is the spected
+        assert delta_retry >= timedelta(seconds=interval - DELTA), "Retries to quick"
+        assert delta_retry <= timedelta(seconds=interval + DELTA), "Retries to slow"
+        
+        # Second log becomes the first for next cycle
+        log_timestamp = actual_retry
+        
+    # 3 If auto enrollment is enabled, retry check enrollment
+    if test_metadata['ENROLL'] == 'yes':
+        # Add dummy key in order to communicate with RemotedSimulator
+        add_custom_key()
+        
+        # Start RemotedSimulator for successfully enrollment 
+        remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
+        remoted_server.start()
+        wait_connect()
+
+        # Shutdown RemotedSimulator
+        kill_server(remoted_server)
 
     # 4 Wait for server rollback
     wait_server_rollback()
 
-    # 5 Check amount of retries and enrollment
-    (connect, enroll) = count_retry_mesages()
-    assert connect == total_retries
-    if test_metadata['enroll'] == 'yes':
-        assert enroll == 1
-    else:
-        assert enroll == 0
+    #Check number of retries messages is the expected
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(accumulations = test_metadata['MAX_RETRIES'], callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT))
+    assert (wazuh_log_monitor.callback_result != None), f'Trying to connect to server message not found expected times'
 
-    kill_server(remoted_server)
+    #Check number of connected message is the expected
+    if test_metadata['ENROLL'] == 'yes':
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
+        assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
