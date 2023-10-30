@@ -2,7 +2,7 @@
 
 ## Details
 
-The `execution context` stage is part of the Content Manager orchestration initialization and is in charge of preparing the execution environment before any orchestration is started. This stage implementation can be seen in the [ExecutionContext](../../src/components/executionContext.hpp) class.
+The [execution context](../../src/components/executionContext.hpp) stage is part of the Content Manager orchestration initialization and is in charge of preparing the execution environment before any orchestration is started. This stage implementation can be seen in the [ExecutionContext](../../src/components/executionContext.hpp) class.
 
 The tasks that this stage performs are:
 - **Set up context**: Configure some of the fields present on the Updater Context.

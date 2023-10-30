@@ -2,7 +2,7 @@
 
 ## Details
 
-The `gzip decompressor` stage is part of the Content Manager orchestration and is in charge of decompressing the `.gz` files fetched in the download stage. If the decompression is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp).
+The [gzip decompressor](../../src/components/gzipDecompressor.hpp) stage is part of the Content Manager orchestration and is in charge of decompressing the `.gz` files fetched in the download stage. If the decompression is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp).
 
 ### Paths update example
 
