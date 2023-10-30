@@ -93,26 +93,7 @@ checks:
      rules:
       - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
 
-  # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated)
-   - id: 18503
-     title: "L1 Ensure 'Password must meet complexity requirements' is set to 'Enabled'."
-     description: "This policy setting checks all new passwords to ensure that they meet basic requirements for strong passwords. When this policy is enabled, passwords must meet the following minimum requirements: - Not contain the user's account name or parts of the user's full name that exceed two consecutive characters - Be at least six characters in length - Contain characters from three of the following categories: o English uppercase characters (A through Z) o English lowercase characters (a through z) o Base 10 digits (0 through 9) o Non-alphabetic characters (for example, !, $, #, %) o A catch-all category of any Unicode character that does not fall under the previous four categories. This fifth category can be regionally specific. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 26 to the power of 7 (approximately 8 x 10 to the power of 9 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 52 to the power of 7 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 627 combinations. An eight-character password has 26 to the power of 8 (or 2 x 10 to the power of 11) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as \"!\" or \"@\". Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
-     rationale: "Passwords that contain only alphanumeric characters are extremely easy to discover with several publicly available tools."
-     impact: "If the default password complexity configuration is retained, additional help desk calls for locked-out accounts could occur because users might not be accustomed to passwords that contain non-alphabetic characters. However, all users should be able to comply with the complexity requirement with minimal difficulty. If your organization has more stringent security requirements, you can create a custom version of the Passfilt.dll file that allows the use of arbitrarily complex password strength rules. For example, a custom password filter might require the use of non-upper row characters. (Upper row characters are those that require you to hold down the SHIFT key and press any of the digits between 1 and 0.) A custom password filter might also perform a dictionary check to verify that the proposed password does not contain common dictionary words or fragments. Also, the use of ALT key character combinations can greatly enhance the complexity of a password. However, such stringent password requirements can result in unhappy users and an extremely busy help desk. Alternatively, your organization could consider a requirement for all administrator passwords to use ALT characters in the 0128 - 0159 range. (ALT characters outside of this range can represent standard alphanumeric characters that would not add additional complexity to the password.)."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Password must meet complexity requirements."
-     references:
-       - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["1.1.5"]
-       - cis_csc_v8: ["5.2"]
-       - cis_csc_v7: ["4.4", "16.2"]
-       - cmmc_v2.0: ["IA.L2-3.5.7"]
-       - iso_27001-2013: ["A.9.4.3"]
-       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-       - soc_2: ["CC6.1"]
-     condition: all
-     rules:
+  # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not Implemented
 
   # 1.1.6 (L1) Ensure 'Relax minimum password length limits' is set to 'Enabled'. (Automated)
    - id: 18504
@@ -139,29 +120,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits -> 1'
 
-  # 1.1.7 (L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'. (Automated)
-   - id: 18505
-     title: "L1 Ensure 'Store passwords using reversible encryption' is set to 'Disabled'."
-     description: "This policy setting determines whether the operating system stores passwords in a way that uses reversible encryption, which provides support for application protocols that require knowledge of the user's password for authentication purposes. Passwords that are stored with reversible encryption are essentially the same as plaintext versions of the passwords. The recommended state for this setting is: Disabled. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
-     rationale: "Enabling this policy setting allows the operating system to store passwords in a weaker format that is much more susceptible to compromise and weakens your system security."
-     impact: "If your organization uses either the CHAP authentication protocol through remote access or IAS services or Digest Authentication in IIS, you must configure this policy setting to Enabled. This setting is extremely dangerous to apply through Group Policy on a user-by-user basis, because it requires the appropriate user account object to be opened in Active Directory Users and Computers."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Store passwords using reversible encryption."
-     references:
-       - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["1.1.7"]
-       - cis_csc_v8: ["3.11"]
-       - cis_csc_v7: ["16.4"]
-       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
-       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-       - iso_27001-2013: ["A.10.1.1"]
-       - nist_sp_800-53: ["SC-28", "SC-28(1)"]
-       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
-       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
+  # 1.1.7 (L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'. (Automated) - Not Implemented
 
   # 1.2.1 (L1) Ensure 'Account lockout duration' is set to '15 or more minute(s)'. (Automated)
    - id: 18506
@@ -202,23 +161,7 @@ checks:
       - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
       - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
 
-  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual)
-   - id: 18508
-     title: "L1 Ensure 'Allow Administrator account lockout' is set to 'Enabled'."
-     description: "This policy setting determines whether the built-in Administrator account is subject to the following Account Lockout Policy settings: Account lockout duration, Account lockout threshold, and Reset account lockout counter. By default, this account is excluded from the account lockout controls and will never be locked out with repeated bad password attempts. The recommended state for this setting is: Enabled. Note: This setting applies only to OSes patched as of October 11, 2022 (see MS KB5020282)."
-     rationale: "Enabling account lockout policies for the built-in Administrator account will reduce the likelihood of a successful brute force attack."
-     impact: "The built-in Administrator account will be subject to the policies in Section 1.2 Account Lockout Policy of this benchmark."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policies\\Allow Administrator account lockout."
-     references:
-       - 'https://support.microsoft.com/en-us/topic/kb5020282-account-lockout-available-'
-     compliance:
-       - cis: ["1.2.3"]
-       - cis_csc_v8: ["4.10"]
-       - cis_csc_v7: ["20", "10"]
-       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
-       - pci_dss_v4.0: ["8.3.4"]
-     condition:
-     rules:
+  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual) - Not Implemented
 
   # 1.2.4 (L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'. (Automated)
    - id: 18509
