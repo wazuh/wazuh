@@ -24,7 +24,7 @@ inline base::RespOrError<bool> kvdbContainsError()
 
 inline base::RespOrError<std::string> kvdbGetOk()
 {
-    return "value";
+    return R"("value")";
 }
 
 inline base::RespOrError<std::string> kvdbGetError(const std::string& error)
