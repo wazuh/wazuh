@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Changed schema constraints for sys_hwinfo table. ([#16065](https://github.com/wazuh/wazuh/pull/16065))
 - Auth process not start when registration password is empty. ([#15709](https://github.com/wazuh/wazuh/pull/15709))
 - Changed error messages about corrupt GetSecurityInfo messages from FIM to debug logs. ([#19400](https://github.com/wazuh/wazuh/pull/19400))
+- Changed the default settings for wazuh-db to perform database auto-vacuum more often. ([#19956](https://github.com/wazuh/wazuh/pull/19956))
 
 #### Fixed
 
