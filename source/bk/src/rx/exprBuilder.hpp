@@ -105,14 +105,6 @@ private:
                                 [condition, tracer = params.publisher](RxEvent result)
                                 {
                                     *condition = result->success();
-                                    // TODO: temporal fix to display history of assets, we need to
-                                    // rethink tracers
-                                    if (tracer != nullptr)
-                                    {
-                                        tracer(std::string {fmt::format("[condition]:{}",
-                                                                        *condition ? "success" : "failure")},
-                                               *condition);
-                                    }
                                     return result->success();
                                 });
                 recBuild(step1, op->getOperands()[1], params).subscribe();
