@@ -1376,6 +1376,62 @@ static void test_wm_gcp_bucket_read_invalid_nodes(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_complete_xml(void **state) {
+    OS_XML *xml = NULL;
+    if(os_calloc(1, sizeof(OS_XML), xml), xml == NULL)
+        return;
+    char *base_config = R"(<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Sysmon' Guid='{5770385f-c22a-43e0-bf4c-06f5698ffbd9}'/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x800000/0000000000</Keywords><TimeCreated SystemTime='2023-10-26T18:23:55.367105700Z'/><EventRecordID>89875</EventRecordID><Execution ProcessID='2748' ThreadID='3832'/><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>EC2AMAZ-UTVJU8R</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='RuleName'>technique_id=T1202,technique_name=Indirect Command Execution</Data><Data Name='UtcTime'>2023-10-26 18:23:55.361</Data><Data Name='ProcessGuid'>{a24b1ed4-aebb-653a-e439-000000001202}</Data><Data Name='ProcessId'>6076</Data><Data Name='Image'>C:\Windows\SysWOW64\wscript.exe</Data><Data Name='FileVersion'>5.812.10240.16384</Data><Data Name='Description'>Microsoft ® Windows Based Script Host</Data><Data Name='Product'>Microsoft ® Windows Script Host</Data><Data Name='Company'>Microsoft Corporation</Data><Data Name='OriginalFileName'>wscript.exe</Data><Data Name='CommandLine'>C:\Windows\SysWOW64\wscript.exe "C:\Users\Administrator\0.5840876.jse" </Data><Data Name='CurrentDirectory'>C:\Windows\system32</Data><Data Name='User'>EC2AMAZ-UTVJU8R\Administrator</Data><Data Name='LogonGuid'>{a24b1ed4-8370-6534-891a-0f0000000000}</Data><Data Name='LogonId'>0xf1a89</Data><Data Name='TerminalSessionId'>2</Data><Data Name='IntegrityLevel'>High</Data><Data Name='Hashes'>SHA1=5D7F2AFD2FF69D379B69DD94033B51EC537E8E52,MD5=F2748908C6B873CB1970DF4C07223E72,SHA256=0FBB4F848D9FB14D7BF81B0454203810869C527C3435E8747A2213DD86F8129A,IMPHASH=3602F3C025378F418F804C5D183603FE</Data><Data Name='ParentProcessGuid'>{a24b1ed4-aeb5-653a-e039-000000001202}</Data><Data Name='ParentProcessId'>5576</Data><Data Name='ParentImage'>C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE</Data><Data Name='ParentCommandLine'>"C:\Program Files (x86)\Microsoft Office\Root\Office16\WINWORD.EXE" /Automation -Embedding</Data></EventData></Event>)";
+    int result = OS_ReadXMLString(base_config, xml);
+    assert_int_equal(result,0);
+    OS_ClearXML(xml);
+    free(xml);
+}
+
+static void eventchannel_xml_test_1(void **state) {
+    OS_XML *xml = NULL;
+
+    if(os_calloc(1, sizeof(OS_XML), xml), xml == NULL)
+        return;
+
+    char *base_config = R"(<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Sysmon' Guid='{5770385f-c22a-43e0-bf4c-06f5698ffbd9}'/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2023-10-26T18:19:29.000498200Z'/><EventRecordID>89781</EventRecordID><Correlation/><Execution ProcessID='2748' ThreadID='3832'/><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>EC2AMAZ-UTVJU8R</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='RuleName'>technique_id=T1047,technique_name=Windows Management Instrumentation</Data><Data Name='UtcTime'>2023-10-26 18:19:28.736</Data><Data Name='ProcessGuid'>{a24b1ed4-adb0-653a-c339-000000001202}</Data><Data Name='ProcessId'>5576</Data><Data Name='Image'>C:\Windows\System32\wbem\WmiPrvSE.exe</Data><Data Name='FileVersion'>10.0.17763.1 (WinBuild.160101.0800)</Data><Data Name='Description'>WMI Provider Host</Data><Data Name='Product'>Microsoft® Windows® Operating System</Data><Data Name='Company'>Microsoft Corporation</Data><Data Name='OriginalFileName'>Wmiprvse.exe</Data><Data Name='CommandLine'>C:\Windows\system32\wbem\wmiprvse.exe -secured -Embedding</Data><Data Name='CurrentDirectory'>C:\Windows\system32\</Data><Data Name='User'>NT AUTHORITY\NETWORK SERVICE</Data><Data Name='LogonGuid'>{a24b1ed4-8152-6534-e403-000000000000}</Data><Data Name='LogonId'>0x3e4</Data><Data Name='TerminalSessionId'>0</Data><Data Name='IntegrityLevel'>System</Data><Data Name='Hashes'>SHA1=67C25C8F28B5FA7F5BAA85BF1D2726AED48E9CF0,MD5=06C66FF5CCDC2D22344A3EB761A4D38A,SHA256=B5C78BEF3883E3099F7EF844DA1446DB29107E5C0223B97F29E7FAFAB5527F15,IMPHASH=CFECEDC01015A4FD1BAACAC9E592D88B</Data><Data Name='ParentProcessGuid'>{a24b1ed4-8151-6534-1000-000000001202}</Data><Data Name='ParentProcessId'>768</Data><Data Name='ParentImage'>C:\Windows\System32\svchost.exe</Data><Data Name='ParentCommandLine'>C:\Windows\system32\svchost.exe -k DcomLaunch -p</Data></EventData></Event>)";
+    int result = OS_ReadXMLString(base_config, xml);
+
+    assert_int_equal(result,0);
+
+    OS_ClearXML(xml);
+    free(xml);
+}
+
+static void eventchannel_xml_test_2(void **state) {
+    OS_XML *xml = NULL;
+
+    if(os_calloc(1, sizeof(OS_XML), xml), xml == NULL)
+        return;
+
+    char *base_config = R"(<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Sysmon' Guid='{5770385f-c22a-43e0-bf4c-06f5698ffbd9}'/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2023-10-26T18:19:29.796990900Z'/><EventRecordID>89783</EventRecordID><Correlation/><Execution ProcessID='2748' ThreadID='3832'/><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>EC2AMAZ-UTVJU8R</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='RuleName'>technique_id=T1137,technique_name=Office Application Startup</Data><Data Name='UtcTime'>2023-10-26 18:19:29.763</Data><Data Name='ProcessGuid'>{a24b1ed4-adb1-653a-c439-000000001202}</Data><Data Name='ProcessId'>312</Data><Data Name='Image'>C:\Program Files (x86)\Microsoft Office\root\vfs\ProgramFilesCommonX64\Microsoft Shared\OFFICE16\ai.exe</Data><Data Name='FileVersion'>0.14.8.0</Data><Data Name='Description'>Artificial Intelligence (AI) Host for the Microsoft® Windows® Operating System and Platform x64.</Data><Data Name='Product'>Artificial Intelligence</Data><Data Name='Company'>Microsoft Corporation</Data><Data Name='OriginalFileName'>ai</Data><Data Name='CommandLine'>"C:\Program Files (x86)\Microsoft Office\root\vfs\ProgramFilesCommonX64\Microsoft Shared\OFFICE16\ai.exe" "E71110FE-1DCB-4E68-A0FB-CB385CCB6185" "31DAB46F-6B7D-4239-949D-B0B248034B07" "6152" "C:\Program Files (x86)\Microsoft Office\Root\Office16\WINWORD.EXE" "WordCombinedFloatieLreOnline.onnx"</Data><Data Name='CurrentDirectory'>C:\Windows\system32\</Data><Data Name='User'>EC2AMAZ-UTVJU8R\Administrator</Data><Data Name='LogonGuid'>{a24b1ed4-8370-6534-891a-0f0000000000}</Data><Data Name='LogonId'>0xf1a89</Data><Data Name='TerminalSessionId'>2</Data><Data Name='IntegrityLevel'>High</Data><Data Name='Hashes'>SHA1=74E7673192C49EFFA41E27E1E4C0427112535C0A,MD5=E960B85D2D59AA7D6035C054BD944467,SHA256=330D1E3814F490B447A9752993E1ECAB068C138B33DC24201D869AB16B178D0C,IMPHASH=A61E9571F0D455433D4933F861F95E08</Data><Data Name='ParentProcessGuid'>{a24b1ed4-adad-653a-c139-000000001202}</Data><Data Name='ParentProcessId'>6152</Data><Data Name='ParentImage'>C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE</Data><Data Name='ParentCommandLine'>"C:\Program Files (x86)\Microsoft Office\Root\Office16\WINWORD.EXE" /Automation -Embedding</Data></EventData></Event>)";
+    int result = OS_ReadXMLString(base_config, xml);
+
+    assert_int_equal(result,0);
+
+    OS_ClearXML(xml);
+    free(xml);
+}
+
+static void eventchannel_xml_test_3(void **state) {
+    OS_XML *xml = NULL;
+
+    if(os_calloc(1, sizeof(OS_XML), xml), xml == NULL)
+        return;
+
+    char *base_config = R"(<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Sysmon' Guid='{5770385f-c22a-43e0-bf4c-06f5698ffbd9}'/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2023-10-26T18:19:32.839789600Z'/><EventRecordID>89787</EventRecordID><Correlation/><Execution ProcessID='2748' ThreadID='3832'/><Channel>Microsoft-Windows-Sysmon/Operational</Channel><Computer>EC2AMAZ-UTVJU8R</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='RuleName'>technique_id=T1202,technique_name=Indirect Command Execution</Data><Data Name='UtcTime'>2023-10-26 18:19:32.824</Data><Data Name='ProcessGuid'>{a24b1ed4-adb4-653a-c639-000000001202}</Data><Data Name='ProcessId'>3148</Data><Data Name='Image'>C:\Windows\SysWOW64\wscript.exe</Data><Data Name='FileVersion'>5.812.10240.16384</Data><Data Name='Description'>Microsoft ® Windows Based Script Host</Data><Data Name='Product'>Microsoft ® Windows Script Host</Data><Data Name='Company'>Microsoft Corporation</Data><Data Name='OriginalFileName'>wscript.exe</Data><Data Name='CommandLine'>C:\Windows\SysWOW64\wscript.exe "C:\Users\Administrator\0.603924.jse" </Data><Data Name='CurrentDirectory'>C:\Windows\system32\</Data><Data Name='User'>EC2AMAZ-UTVJU8R\Administrator</Data><Data Name='LogonGuid'>{a24b1ed4-8370-6534-891a-0f0000000000}</Data><Data Name='LogonId'>0xf1a89</Data><Data Name='TerminalSessionId'>2</Data><Data Name='IntegrityLevel'>High</Data><Data Name='Hashes'>SHA1=5D7F2AFD2FF69D379B69DD94033B51EC537E8E52,MD5=F2748908C6B873CB1970DF4C07223E72,SHA256=0FBB4F848D9FB14D7BF81B0454203810869C527C3435E8747A2213DD86F8129A,IMPHASH=3602F3C025378F418F804C5D183603FE</Data><Data Name='ParentProcessGuid'>{a24b1ed4-adad-653a-c139-000000001202}</Data><Data Name='ParentProcessId'>6152</Data><Data Name='ParentImage'>C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE</Data><Data Name='ParentCommandLine'>"C:\Program Files (x86)\Microsoft Office\Root\Office16\WINWORD.EXE" /Automation -Embedding</Data></EventData></Event>)";
+    int result = OS_ReadXMLString(base_config, xml);
+
+    assert_int_equal(result,0);
+
+    OS_ClearXML(xml);
+    free(xml);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_full_configuration, setup_test_pubsub, teardown_test_pubsub),
@@ -1423,6 +1479,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_invalid_tag, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_invalid_element, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_invalid_nodes, setup_test_bucket, teardown_test_bucket),
+
+        cmocka_unit_test_setup_teardown(test_complete_xml, NULL, NULL),
+        cmocka_unit_test_setup_teardown(eventchannel_xml_test_1, NULL, NULL),
+        cmocka_unit_test_setup_teardown(eventchannel_xml_test_2, NULL, NULL),
+        cmocka_unit_test_setup_teardown(eventchannel_xml_test_3, NULL, NULL),
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

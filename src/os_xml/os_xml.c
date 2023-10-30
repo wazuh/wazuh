@@ -399,7 +399,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
                 retval = 0;
                 goto end;
             }
-        } else if ((location == 1) && (c == _R_CONFS) && (prevv == 1)) {
+        } else if ((location == 1) && (c == _R_CONFS)) {
             if ((c = xml_getc_fun(_lxml->fp, _lxml)) == '/') {
                 cont[count] = '\0';
                 count = 0;

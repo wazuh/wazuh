@@ -406,9 +406,10 @@ void test_comments4(void **state) {
 void test_special_chars(void **state) {
 
     test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str =   "<var name=\"var1\">value1</var>"
-                        "<root1>\\</root1\\></root1>";
-    char *xml_str = "<root1>\\</root1\\></root1>";
+    char *parse_str =   "<var name=\"var1\">value1</var>";
+    char *xml_str = "<var name=\"var1\">value1</var>";
+    // TODO: this case is not compliant on any xml standard:
+    //              "<root1>\</root1\></root1>"
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
