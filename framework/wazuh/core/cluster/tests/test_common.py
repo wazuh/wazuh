@@ -23,9 +23,6 @@ from uvloop import EventLoopPolicy, new_event_loop, Loop
 from wazuh import Wazuh
 from wazuh.core import exception
 
-import tracemalloc
-tracemalloc.start()
-
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()

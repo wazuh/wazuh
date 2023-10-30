@@ -14,8 +14,6 @@ from uvloop import EventLoopPolicy, Loop
 from freezegun import freeze_time
 
 import wazuh.core.exception as exception
-import tracemalloc
-tracemalloc.start()
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
