@@ -38,15 +38,27 @@ import aws_tools
 import buckets_s3
 import services
 import subscribers
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 
 def main(argv):
     # Parse arguments
     options = aws_tools.get_script_arguments()
+    # Set aws logger
+    aws_logger = WazuhCloudLogger(
+        logger_name=':aws_wodle:'
+    )
 
-    if int(options.debug) > 0:
-        aws_tools.debug_level = int(options.debug)
-        aws_tools.debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
+    # Get logging level
+    log_lvl = options.debug
+
+    # Set logging level
+    aws_logger.set_level(log_level=2)
+
+    aws_logger.info('Info test message')
+    aws_logger.debug('debug test message')
+    aws_logger.warning('warnings test message')
+    aws_logger.error('Error test message')
 
     try:
         if options.logBucket:
