@@ -67,9 +67,7 @@ private:
             Utils::HashData hash;
             while (inputFile.read(buffer.data(), buffer.size()))
             {
-                // LCOV_EXCL_START
                 hash.update(buffer.data(), inputFile.gcount());
-                // LCOV_EXCL_STOP
             }
             hash.update(buffer.data(), inputFile.gcount());
 

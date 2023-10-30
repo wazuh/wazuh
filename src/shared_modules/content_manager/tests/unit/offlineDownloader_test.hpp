@@ -44,12 +44,16 @@ protected:
      */
     static void SetUpTestSuite()
     {
+        // Create raw input file.
         std::ofstream testFileStream {m_inputFilePathRaw};
         testFileStream << "I'm a test file with a .txt extension." << std::endl;
         testFileStream.close();
 
+        // Create "compressed" input file with a greater size.
         testFileStream.open(m_inputFilePathCompressed);
-        testFileStream << "I'm a test file with a .gz extension." << std::endl;
+        testFileStream.fill(' ');
+        testFileStream.width(10000);
+        testFileStream << "I'm a larger test file with a .gz extension." << std::endl;
         testFileStream.close();
     }
 

@@ -71,7 +71,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
 }
 
 /**
- * @brief Tests the download of an inexistant file. Exception is excepted, as well as a fail stage status.
+ * @brief Tests the download of an inexistant file. Exception is expected, as well as a fail stage status.
  *
  */
 TEST_F(OfflineDownloaderTest, InexistantFileDownload)

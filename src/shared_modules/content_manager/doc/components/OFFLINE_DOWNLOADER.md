@@ -2,13 +2,13 @@
 
 ## Details
 
-The `offline downloader` stage is part of the Content Manager orchestration and is in charge of copying an input file from the local filesystem to be processed by the following stages. The input file hash is calculated and stored in order to avoid processing the same file multiple times in the next orchestration executions.
+The [offline downloader](../../src/components/offlineDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of copying an input file from the local filesystem to be processed by the following stages. The input file hash is calculated and stored in order to avoid processing the same file multiple times in the next orchestration executions.
 
-The copy can be made into any of the two following output directories:
+The copy will be made into any of the following output directories:
 - Downloads folder: If the input file is compressed.
 - Contents folder: If the input file is not compressed.
 
-If the copy is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) with the copy destination path.
+If the copy is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) field with the destination path of the copied file.
 
 > Note: Despite the class name, there is no such download performed. The copy is made entirely locally.
 

@@ -112,6 +112,36 @@ TEST_F(FactoryDownloaderTest, CreateOfflineDownloaderCompressedFile)
     EXPECT_EQ(config, expectedConfig);
 }
 
+/**
+ * @brief Check the creation of a OfflineDownloader for downloading a file with no extension.
+ *
+ */
+TEST_F(FactoryDownloaderTest, CreateOfflineDownloaderNoExtension)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file_without_extension",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file_without_extension",
+            "compressionType": "raw"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDownloader::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<OfflineDownloader>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
+}
+
 /*
  * @brief Check an invalid contentSource type.
  */
