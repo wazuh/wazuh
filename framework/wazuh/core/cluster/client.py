@@ -185,7 +185,7 @@ class AbstractClient(common.Handler):
             Socket to write data on.
         """
         self.transport = transport
-        future = asyncio.gather(self.log_exceptions(self.send_request(command=b'hello', data=self.client_data)))
+        future = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
         future.add_done_callback(self.connection_result)
 
     def connection_lost(self, exc):
