@@ -135,7 +135,7 @@ base::Expression opBuilderHelperStringTransformation(const std::string& targetFi
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             // We assert that references exists, checking if the optional from Json getter
             // is empty ot not. Then if is a reference we get the value from the event,
@@ -188,7 +188,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
                                                   std::shared_ptr<defs::IDefinitions> definitions,
                                                   const std::string& name)
 {
-    std::vector<int> rValueVector {};
+    std::vector<int64_t> rValueVector {};
     std::vector<std::string> rReferenceVector {};
 
     // Depending on rValue type we store the reference or the integer value, avoiding
@@ -244,11 +244,11 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
         case IntOperator::SUM:
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r > 0) && (l > INT64_MAX - r))
+                if ((r > 0) && (l > std::numeric_limits<int64_t>::max() - r))
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r < 0) && (l < INT64_MIN - r))
+                else if ((r < 0) && (l < std::numeric_limits<int64_t>::min() - r))
                 {
                     throw std::runtime_error(underflowFailureTrace);
                 }
@@ -261,11 +261,11 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
         case IntOperator::SUB:
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r < 0) && (l > INT64_MAX + r))
+                if ((r < 0) && (l > std::numeric_limits<int64_t>::max() + r))
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r > 0) && (l < INT64_MIN + r))
+                else if ((r > 0) && (l < std::numeric_limits<int64_t>::min() + r))
                 {
                     throw std::runtime_error(underflowFailureTrace);
                 }
@@ -278,11 +278,11 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
         case IntOperator::MUL:
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r != 0) && (l > INT64_MAX / r))
+                if ((r != 0) && (l > std::numeric_limits<int64_t>::max() / r))
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r != 0) && (l < INT64_MIN * r))
+                else if ((r != 0) && (l < std::numeric_limits<int64_t>::min() * r))
                 {
                     throw std::runtime_error(underflowFailureTrace);
                 }
@@ -314,12 +314,12 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
         [=,
          rValueVector = std::move(rValueVector),
          rReferenceVector = std::move(rReferenceVector),
-         targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+         targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             std::vector<int64_t> auxVector {};
             auxVector.insert(auxVector.begin(), rValueVector.begin(), rValueVector.end());
 
-            const auto lValue {event->getInt64(targetField)};
+            const auto lValue {event->getIntAsInt64(targetField)};
             if (!lValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -328,7 +328,7 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
             // Iterate throug all references and append them values to the value vector
             for (const auto& rValueItem : rReferenceVector)
             {
-                const auto resolvedRValue {event->getInt64(rValueItem)};
+                const auto resolvedRValue {event->getIntAsInt64(rValueItem)};
                 if (!resolvedRValue.has_value())
                 {
                     return base::result::makeFailure(event,
@@ -479,7 +479,7 @@ base::Expression opBuilderHelperStringTrim(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             // Get field value
             auto resolvedField {event->getString(targetField)};
@@ -541,7 +541,7 @@ base::Expression opBuilderHelperStringConcat(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             std::string result {};
 
@@ -564,7 +564,7 @@ base::Expression opBuilderHelperStringConcat(const std::string& targetField,
                     }
                     else if (event->isInt64(parameter.m_value))
                     {
-                        resolvedField = std::to_string(event->getInt64(parameter.m_value).value());
+                        resolvedField = std::to_string(event->getIntAsInt64(parameter.m_value).value());
                     }
                     else if (event->isString(parameter.m_value))
                     {
@@ -628,7 +628,7 @@ base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
         [=,
          targetField = std::move(targetField),
          separator = std::move(separator.m_value),
-         arrayName = std::move(arrayName.m_value)](base::Event event) -> base::result::Result<base::Event>
+         arrayName = std::move(arrayName.m_value)](const base::Event& event) -> base::result::Result<base::Event>
         {
             // Getting array field, must be a reference
             const auto stringJsonArray = event->getArray(arrayName);
@@ -689,7 +689,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         traceName,
         [=, targetField = std::move(targetField), sourceField = std::move(sourceField)](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             std::string strHex {};
 
@@ -760,7 +760,7 @@ base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         traceName,
         [=, targetField = std::move(targetField), sourceField = std::move(sourceField)](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             // Getting string field from a reference
             const auto refStrHEX = event->getString(sourceField.m_value);
@@ -819,7 +819,7 @@ base::Expression opBuilderHelperStringReplace(const std::string& targetField,
         [=,
          targetField = std::move(targetField),
          paramOldSubstr = std::move(paramOldSubstr),
-         paramNewSubstr = std::move(paramNewSubstr)](base::Event event) -> base::result::Result<base::Event>
+         paramNewSubstr = std::move(paramNewSubstr)](const base::Event& event) -> base::result::Result<base::Event>
         {
             if (!event->exists(targetField))
             {
@@ -960,7 +960,7 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             // TODO Remove try catch
             const auto resolvedField = event->getString(map_field);
@@ -1101,7 +1101,7 @@ HelperBuilder getBuilderArrayAppend(bool unique, std::shared_ptr<schemf::ISchema
         // Return result
         return base::Term<base::EngineOp>::create(
             name,
-            [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+            [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
             {
                 // Get target array, needed for check uniqueness
                 std::vector<json::Json> targetArray {};
@@ -1190,7 +1190,7 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), fieldReference = std::move(parameters[0].m_value)](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             // Check target and reference field exists
             if (!event->exists(fieldReference))
@@ -1247,7 +1247,7 @@ HelperBuilder getOpBuilderHelperEraseCustomFields(std::shared_ptr<schemf::ISchem
         // Return result
         return base::Term<base::EngineOp>::create(
             name,
-            [isCustomField, targetField, successTrace](base::Event event) -> base::result::Result<base::Event>
+            [isCustomField, targetField, successTrace](const base::Event& event) -> base::result::Result<base::Event>
             {
                 // Erase custom fields
                 event->eraseIfKey(isCustomField, false, targetField);
@@ -1286,7 +1286,7 @@ base::Expression opBuilderHelperAppendSplitString(const std::string& targetField
         [=,
          targetField = std::move(targetField),
          fieldReference = std::move(parameters[0].m_value),
-         separator = std::move(parameters[1].m_value[0])](base::Event event) -> base::result::Result<base::Event>
+         separator = std::move(parameters[1].m_value[0])](const base::Event& event) -> base::result::Result<base::Event>
         {
             const auto resolvedReference = event->getString(fieldReference);
             if (!resolvedReference.has_value())
@@ -1329,7 +1329,7 @@ base::Expression opBuilderHelperMerge(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), fieldReference = std::move(parameters[0].m_value)](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             // Check target and reference field exists
             if (!event->exists(fieldReference))
@@ -1387,7 +1387,7 @@ base::Expression opBuilderHelperDeleteField(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             bool result {false};
             try
@@ -1438,7 +1438,7 @@ base::Expression opBuilderHelperRenameField(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), sourceField = std::move(sourceField)](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             if (event->exists(sourceField.m_value))
             {
@@ -1506,7 +1506,7 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetFiel
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), name = std::move(name), ipStrPath = std::move(parameters[0].m_value)](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             const auto strIP = event->getString(ipStrPath);
 
@@ -1556,7 +1556,7 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField)](const base::Event& event) -> base::result::Result<base::Event>
         {
             auto sec =
                 std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
@@ -1607,13 +1607,13 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), parameter = std::move(parameters[0])](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             int64_t IntResolvedParameter;
             // Check parameter
             if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
-                const auto paramValue = event->getInt64(parameter.m_value);
+                const auto paramValue = event->getIntAsInt64(parameter.m_value);
                 if (paramValue.has_value())
                 {
                     IntResolvedParameter = paramValue.value();
@@ -1687,7 +1687,7 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), parameter = std::move(parameters[0])](
-            base::Event event) -> base::result::Result<base::Event>
+            const base::Event& event) -> base::result::Result<base::Event>
         {
             std::string resolvedParameter;
             // Check parameter
@@ -1787,7 +1787,7 @@ base::Expression opBuilderHelperGetValue(const std::string& targetField,
          targetField = std::move(targetField),
          parameter = std::move(parameters[0]),
          key = std::move(parameters[1].m_value),
-         definitionObject = std::move(definitionObject)](base::Event event) -> base::result::Result<base::Event>
+         definitionObject = std::move(definitionObject)](const base::Event& event) -> base::result::Result<base::Event>
         {
             // Get key
             std::string resolvedKey;

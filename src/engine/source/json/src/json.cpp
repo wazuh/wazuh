@@ -278,6 +278,33 @@ std::optional<int64_t> Json::getInt64(std::string_view path) const
     }
 }
 
+std::optional<int64_t> Json::getIntAsInt64(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value && value->IsInt64())
+        {
+            return value->GetInt64();
+        }
+        else if (value && value->IsInt())
+        {
+            return static_cast<int64_t>(value->GetInt());
+        }
+        else
+        {
+            return std::nullopt;
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] Invalid json path: '{}'", path));
+    }
+}
+
+
 std::optional<float_t> Json::getFloat(std::string_view path) const
 {
     auto pp = rapidjson::Pointer(path.data());
@@ -332,9 +359,17 @@ std::optional<double> Json::getNumberAsDouble(std::string_view path) const
             {
                 retval = static_cast<double>(value->GetInt());
             }
+            else if (value->IsInt64())
+            {
+                retval = static_cast<double>(value->GetInt64());
+            }
             else if (value->IsDouble())
             {
                 retval = value->GetDouble();
+            }
+            else if (value->IsFloat())
+            {
+                retval = value->GetFloat();
             }
         }
         return retval;
