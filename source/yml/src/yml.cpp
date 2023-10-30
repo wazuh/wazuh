@@ -29,6 +29,10 @@ rapidjson::Value Converter::parseScalar(const YAML::Node& node, rapidjson::Docum
     {
         v.SetInt(i);
     }
+    else if (int64_t i = 0; YAML::convert<int64_t>::decode(node, i))
+    {
+        v.SetInt64(i);
+    }
     else if (double d = 0.0f; YAML::convert<double>::decode(node, d))
     {
         v.SetDouble(d);
