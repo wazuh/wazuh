@@ -123,10 +123,5 @@ def test_configuration_file(get_configuration, configure_environment, restart_wa
     else:
         callback = callback_configuration_error
 
-    #wazuh_log_monitor.start(timeout=global_parameters.default_timeout, callback=callback,
-    #                        error_message='Event not found')
-
-    print(f"callback: {callback}")
-
     wazuh_log_monitor.start(callback=callback, timeout=global_parameters.default_timeout)
-    assert wazuh_log_monitor.callback_result, "Event not found"
+    assert wazuh_log_monitor.callback_result, 'Event not found'
