@@ -46,9 +46,9 @@ private:
         const std::map<std::string, std::string> COMPRESSED_EXTENSIONS {{".gz", "gzip"}, {".xz", "xz"}};
         const auto& fileExtension {std::filesystem::path(inputFile).extension()};
 
-        if (COMPRESSED_EXTENSIONS.find(fileExtension) != COMPRESSED_EXTENSIONS.end())
+        if (const auto& it {COMPRESSED_EXTENSIONS.find(fileExtension)}; it != COMPRESSED_EXTENSIONS.end())
         {
-            return COMPRESSED_EXTENSIONS.at(fileExtension);
+            return it->second;
         }
 
         return "raw";
