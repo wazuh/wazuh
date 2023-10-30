@@ -100,4 +100,3 @@ class WazuhCloudLogger:
         """
         logger_level = logging.DEBUG if log_level == 2 else logging.INFO
         self.logger.setLevel(logger_level)
-        

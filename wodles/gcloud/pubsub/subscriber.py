@@ -5,15 +5,18 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
-import logging
+
+"""This module contains the class for sending events from Google Cloud subscriber service to Wazuh."""
+
 from os.path import abspath, dirname
 from sys import path
 from json import JSONDecodeError
 
+# Local Imports
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 import exceptions
 from integration import WazuhGCloudIntegration
-
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 try:
     from google.cloud import pubsub_v1 as pubsub
@@ -25,7 +28,7 @@ except ImportError as e:
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
     """Class for sending events from Google Cloud to Wazuh."""
 
-    def __init__(self, credentials_file: str, project: str, logger: logging.Logger, subscription_id: str):
+    def __init__(self, credentials_file: str, project: str, logger: WazuhCloudLogger, subscription_id: str):
         """Instantiate a WazuhGCloudSubscriber object.
 
         Parameters
@@ -36,7 +39,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             Project name.
         subscription_id : str
             Subscription ID.
-        logger: logging.Logger
+        logger: WazuhCloudLogger
             The logger that will be used to send messages to stdout.
 
         Raises
