@@ -308,6 +308,16 @@ public:
      */
     std::optional<int64_t> getInt64(std::string_view path = "") const;
 
+
+    /**
+     * @brief Get the value of the int or int64 field as int64.
+     *
+     * @param path The path to the field.
+     * @return std::optional<int64_t> The value of the field or nothing if the path not found.
+     * @throws std::runtime_error If the path is invalid.
+     */
+    std::optional<int64_t> getIntAsInt64(std::string_view path = "") const;
+
     /**
      * @brief get the value of the float field.
      * Overwrites previous value. If reference field is not found, sets base field to

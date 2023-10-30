@@ -51,7 +51,7 @@ TEST(opBuilderHelperDateFromEpochTime, wrongParameters)
 TEST(opBuilderHelperDateFromEpochTime, nonCorrectArguments)
 {
     // Big number (bigger than INT_MAX)
-    auto biggerThanMax = 1 + static_cast<uint64_t>(INT64_MAX);
+    auto biggerThanMax = 1 + static_cast<uint64_t>(std::numeric_limits<int64_t>::max());
     auto event =
         std::make_shared<json::Json>(fmt::format(R"({{"field_ref": {}, "field": ""}})", biggerThanMax).c_str());
 

@@ -72,11 +72,11 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" "
-                                                     "could not be converted to int64_t: {}.",
-                                                     name,
-                                                     rightParameter.m_value,
-                                                     e.what()));
+                throw std::runtime_error(
+                    fmt::format(R"('{}' function: Parameter '{}' could not be converted to int64_t: '{}'.)",
+                                name,
+                                rightParameter.m_value,
+                                e.what()));
             }
 
             break;
@@ -84,9 +84,8 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
         case helper::base::Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
 
         default:
-            throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" has an invalid type ({}).",
+            throw std::runtime_error(fmt::format(R"('{}' function: Unsupported parameter type ({}).)",
                                                  name,
-                                                 rightParameter.m_value,
                                                  static_cast<int64_t>(rightParameter.m_type)));
     }
 
@@ -142,13 +141,13 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=](base::Event event) -> base::result::Result<base::Event>
+    return [=](const base::Event& event) -> base::result::Result<base::Event>
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        std::optional<int64_t> lValue {event->getInt64(targetField)};
+        auto lValue = event->getIntAsInt64(targetField);
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
@@ -157,7 +156,7 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
         int64_t resolvedValue {0};
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
-            std::optional<int64_t> resolvedRValue {event->getInt64(std::get<std::string>(rValue))};
+            auto resolvedRValue = event->getIntAsInt64(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);

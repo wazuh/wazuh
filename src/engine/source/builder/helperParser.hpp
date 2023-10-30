@@ -147,6 +147,7 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
 
     HelperToken helperToken {};
 
+    // TODO Check float/double and int64 numbers
     if (expressionToken.value.isNumber())
     {
         helperToken.name = "int";

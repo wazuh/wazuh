@@ -11,10 +11,8 @@
 using namespace base;
 namespace bld = builder::internals::builders;
 
-// INT64_MAX = 
-constexpr auto almostMaxNum = INT64_MAX - 1;
-// INT64_MIN =-
-constexpr auto almostMinNum = INT64_MIN + 1;
+constexpr auto almostMaxNum = std::numeric_limits<int64_t>::max() - 1;
+constexpr auto almostMinNum = std::numeric_limits<int64_t>::min() + 1;
 
 TEST(opBuilderHelperIntCalc, Builds)
 {
