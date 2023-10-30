@@ -1,19 +1,22 @@
 #include <any>
+#include <filesystem>
 #include <memory>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include <baseTypes.hpp>
 #include <json/json.hpp>
 #include <logging/logging.hpp>
-#include <baseTypes.hpp>
 
 #include <defs/mocks/failDef.hpp>
 #include <schemf/mockSchema.hpp>
 
-#include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
 
+#include <kvdb/ikvdbhandler.hpp>
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/mockKvdbManager.hpp>
 #include <mocks/fakeMetric.hpp>
 
 namespace
@@ -25,7 +28,6 @@ using namespace builder::internals::builders;
 constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
 constexpr auto DB_NAME = "kvdb";
 constexpr auto DB_NAME_1 = "test_db";
-
 
 std::filesystem::path uniquePath()
 {
@@ -42,7 +44,7 @@ class OpBuilderKVDBDecodeBitmask : public ::testing::TestWithParam<T>
 
 protected:
     std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdbManager::KVDBManager> m_kvdbManager;
+    std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<schemf::mocks::MockSchema> m_schema;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
     std::string kvdbPath;
@@ -60,30 +62,17 @@ protected:
         }
         m_manager = std::make_shared<FakeMetricManager>();
 
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
-        m_kvdbManager->initialize();
-        ASSERT_FALSE(m_kvdbManager->createDB(DB_NAME_1));
-
         m_schema = std::make_shared<schemf::mocks::MockSchema>();
         EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
 
         m_failDef = std::make_shared<defs::mocks::FailDef>();
+        m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
 
         m_builder = getOpBuilderHelperKVDBDecodeBitmask(m_kvdbManager, "test_scope", m_schema);
     }
 
     void TearDown() override
     {
-        try
-        {
-            m_kvdbManager->finalize();
-        }
-        catch (const std::exception& e)
-        {
-            FAIL() << "Exception: " << e.what();
-        }
-
         if (std::filesystem::exists(kvdbPath))
         {
             std::filesystem::remove_all(kvdbPath);
@@ -106,11 +95,10 @@ TEST_P(MapBuild, builds)
 
     auto [initialState, shouldPass] = GetParam();
 
-    // Insert initial state to DB
-    auto dbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-        m_kvdbManager->getKVDBHandler(DB_NAME_1, "test_scope"));
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(keyMap)).WillRepeatedly(testing::Return(initialState.str()));
 
-    ASSERT_FALSE(dbHandler->set(keyMap, initialState));
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "test_scope")).WillRepeatedly(testing::Return(kvdbHandler));
 
     if (shouldPass)
     {
@@ -168,7 +156,7 @@ INSTANTIATE_TEST_SUITE_P(
 using DecodeMaskT = std::tuple<std::string, std::vector<std::string>, bool>;
 class DecodeMask : public OpBuilderKVDBDecodeBitmask<DecodeMaskT>
 {
-private:
+protected:
     const json::Json map = json::Json {R"( {"0" : "one",
                                                  "1" : "two",
                                                  "2" : "four",
@@ -176,18 +164,10 @@ private:
                                                  "30" : "bit thirty",
                                                  "31" : "bit thirty one"
                                                  } )"};
-
-protected:
     const std::string m_keyMap = "keyMap";
     void SetUp() override
     {
         OpBuilderKVDBDecodeBitmask<DecodeMaskT>::SetUp(); // Call parent setup
-
-        // Insert initial state to DB
-        auto dbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test_scope"));
-
-        ASSERT_FALSE(dbHandler->set(m_keyMap, map));
     }
 };
 
@@ -205,6 +185,10 @@ TEST_P(DecodeMask, decoding)
         expectedArray.push_back(json::Json {str.c_str()});
     }
 
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(m_keyMap)).WillRepeatedly(testing::Return(map.str()));
+
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "test_scope")).WillRepeatedly(testing::Return(kvdbHandler));
     auto op = m_builder(dstFieldPath, "name", {DB_NAME_1, m_keyMap, maskField}, m_failDef)
                   ->getPtr<base::Term<base::EngineOp>>()
                   ->getFn();
@@ -283,30 +267,23 @@ INSTANTIATE_TEST_SUITE_P(
 using BuildParamsT = std::tuple<std::vector<std::string>, bool>;
 class BuildParams : public OpBuilderKVDBDecodeBitmask<BuildParamsT>
 {
-private:
-    const json::Json map = json::Json {R"( {"0" : "one" } )"};
-
 protected:
-    const std::string m_keyMap = "keyMap";
+    const json::Json m_map = json::Json {R"( {"0" : "one" } )"};
     void SetUp() override
     {
         OpBuilderKVDBDecodeBitmask<BuildParamsT>::SetUp(); // Call parent setup
-
-        // Insert initial state to DB
-        auto dbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test_scope"));
-
-        ASSERT_FALSE(dbHandler->set(m_keyMap, map));
     }
 };
 
 TEST_P(BuildParams, build)
 {
-
     const std::string dstFieldPath = "/dstField";
     const std::string maskField = "$mask";
 
     auto [params, shouldPass] = GetParam();
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(params[1])).WillRepeatedly(testing::Return(m_map.str()));
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "test_scope")).WillRepeatedly(testing::Return(kvdbHandler));
 
     if (shouldPass)
     {
@@ -316,25 +293,60 @@ TEST_P(BuildParams, build)
     {
         ASSERT_THROW(m_builder(dstFieldPath, "name", params, m_failDef), std::runtime_error);
     }
-
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    KVDBDecodeBitmask,
-    BuildParams,
-    ::testing::Values(
-        // Ok map
-        BuildParamsT({DB_NAME_1, "keyMap", "$mask"}, true),
-        // bad size
-        BuildParamsT({DB_NAME_1, "keyMap", "$mask", "test"}, false),
-        BuildParamsT({DB_NAME_1, "keyMap"}, false),
-        // bad type
-        BuildParamsT({DB_NAME_1, "keyMap", "value"}, false),
-        BuildParamsT({DB_NAME_1, "$keyMap", "$mask"}, false),
-        BuildParamsT({"$test_db", "keyMap", "$mask"}, false),
-        // Unknown db
-        BuildParamsT({"test_db1", "keyMap", "$mask"}, false),
-        // Unknown key
-        BuildParamsT({DB_NAME_1, "keyMap1", "$mask"}, false)
-        // end
-        ));
+INSTANTIATE_TEST_SUITE_P(KVDBDecodeBitmask,
+                         BuildParams,
+                         ::testing::Values(
+                             // Ok map
+                             BuildParamsT({DB_NAME_1, "keyMap", "$mask"}, true),
+                             // bad size
+                             BuildParamsT({DB_NAME_1, "keyMap", "$mask", "test"}, false),
+                             BuildParamsT({DB_NAME_1, "keyMap"}, false),
+                             // bad type
+                             BuildParamsT({DB_NAME_1, "keyMap", "value"}, false),
+                             BuildParamsT({DB_NAME_1, "$keyMap", "$mask"}, false),
+                             BuildParamsT({"$test_db", "keyMap", "$mask"}, false)
+                             // end
+                             ));
+
+// Test of search unknow key map and unknow DB [mask value, expected array result, should pass]
+using ValidateParamsT = std::tuple<std::vector<std::string>, bool>;
+class ValidateParams : public OpBuilderKVDBDecodeBitmask<ValidateParamsT>
+{
+protected:
+    void SetUp() override
+    {
+        OpBuilderKVDBDecodeBitmask<ValidateParamsT>::SetUp(); // Call parent setup
+    }
+};
+
+TEST_P(ValidateParams, params)
+{
+    const std::string dstFieldPath = "/dstField";
+    const std::string maskField = "$mask";
+
+    auto [params, shouldPass] = GetParam();
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "test_scope"))
+        .WillRepeatedly(testing::Return(kvdb::mocks::kvdbGetKVDBHandlerError("")));
+
+    if (shouldPass)
+    {
+        ASSERT_NO_THROW(m_builder(dstFieldPath, "name", params, m_failDef));
+    }
+    else
+    {
+        ASSERT_THROW(m_builder(dstFieldPath, "name", params, m_failDef), std::runtime_error);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(KVDBDecodeBitmask,
+                         ValidateParams,
+                         ::testing::Values(
+                             // Unknown db
+                             BuildParamsT({"test_db1", "keyMap", "$mask"}, false),
+                             // Unknown key
+                             BuildParamsT({DB_NAME_1, "keyMap1", "$mask"}, false)
+                             // end
+                             ));

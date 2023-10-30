@@ -23,9 +23,14 @@ inline base::OptError kvdbOk()
     return std::nullopt;
 }
 
-inline base::RespOrError<std::shared_ptr<MockKVDBHandler>> getKVDBHandlerResp()
+inline base::RespOrError<std::shared_ptr<kvdbManager::IKVDBHandler>> kvdbGetKVDBHandlerOk()
 {
     return std::make_shared<MockKVDBHandler>();
+}
+
+inline base::RespOrError<std::shared_ptr<kvdbManager::IKVDBHandler>> kvdbGetKVDBHandlerError(const std::string& error)
+{
+    return base::Error {error};
 }
 
 inline std::vector<std::string> kvdbListDBsEmpty()
