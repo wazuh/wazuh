@@ -51,6 +51,7 @@ from pathlib import Path
 
 import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
 from wazuh_testing.constants.platforms import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
 from wazuh_testing.tools.monitors import file_monitor
@@ -76,8 +77,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 # Variables
 log_monitor_paths = []
 
-ls_sock_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth'))
-receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (ls_sock_path, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
 receiver_sockets = None  # Set in the fixtures
 groups_infra = ['001','002', '003', '004']

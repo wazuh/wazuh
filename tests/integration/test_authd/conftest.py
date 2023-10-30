@@ -191,7 +191,7 @@ def wait_for_start_module():
 
 @pytest.fixture(scope='function')
 def insert_pre_existent_agents(test_metadata, stop_authd_function):
-    agents = test_metadata.get('pre_existent_agents', [])
+    agents = test_metadata['pre_existent_agents']
     time_now = int(time.time())
     try:
         keys_file = open(WAZUH_CLIENT_KEYS_PATH, 'w')

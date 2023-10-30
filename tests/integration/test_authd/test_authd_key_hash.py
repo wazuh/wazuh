@@ -67,10 +67,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 log_monitor_paths = []
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
-
-daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
-
+receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Tests
 @pytest.fixture(scope='function')
@@ -79,21 +76,23 @@ def set_up_groups(test_metadata, request):
     Set pre-existent groups.
     """
 
-    groups = test_metadata.get('groups', [])
+    groups = test_metadata['groups']
 
     for group in groups:
-        subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
+        if(group):
+            subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
 
     yield
 
     for group in groups:
-        subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
+        if(group):
+            subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
-                                           configure_sockets_environment, daemons_handler,
-                                           connect_to_sockets, set_up_groups, insert_pre_existent_agents,
+                                           configure_sockets_environment, connect_to_sockets_module,
+                                           set_up_groups, insert_pre_existent_agents,
                                            wait_for_authd_startup_function):
     '''
     description:
@@ -145,19 +144,17 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
     expected_output:
         - Registration request responses on Authd socket
     '''
-    case = test_metadata
-    for index, stage in enumerate(case):
-        # Reopen socket (socket is closed by manager after sending message with client key)
-        receiver_sockets[0].open()
-        expected = stage['output']
-        message = stage['input']
-        receiver_sockets[0].send(message, size=False)
-        timeout = time.time() + 10
-        response = ''
-        while response == '':
-            response = receiver_sockets[0].receive().decode()
-            if time.time() > timeout:
-                assert response != '', 'The manager did not respond to the message sent.'
-        assert response[:len(expected)] == expected, \
-            'Failed stage "{}". Response was: {} instead of: {}' \
-            .format(index+1, response, expected)
+    # Reopen socket (socket is closed by manager after sending message with client key)
+    receiver_sockets[0].open()
+    expected = test_metadata['output']
+    message = test_metadata['input']
+    receiver_sockets[0].send(message, size=False)
+    timeout = time.time() + 10
+    response = ''
+    while response == '':
+        response = receiver_sockets[0].receive().decode()
+        if time.time() > timeout:
+            assert response != '', 'The manager did not respond to the message sent.'
+    assert response[:len(expected)] == expected, \
+        'Failed: Response was: {} instead of: {}' \
+        .format(response, expected)

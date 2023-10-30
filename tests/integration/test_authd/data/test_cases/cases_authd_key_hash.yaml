@@ -13,6 +13,8 @@
         name: 'test_user'
         ip: 'any'
         key: '48a99873149358e48b13273c4ad07c44ed402bcb71fc94869f3e76b2f27637db'
+    groups:
+      -
 - name: 'Testing group, ip, and hash parsing options'
   description: 'Registering new agent with group, IP and hash'
   configuration_parameters:
@@ -59,3 +61,5 @@
         name: 'test_user'
         ip: '192.168.0.100'
         key: '48a99873149358e48b13273c4ad07c44ed402bcb71fc94869f3e76b2f27637db'
+    groups:
+      -
