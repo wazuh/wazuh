@@ -4,7 +4,7 @@
 
 The [CTI API downloader](../../src/components/CtiApiDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading content from a CTI API to be then processed by the following stages. The downloaded content is stored in one or multiple output files, whose paths will be then published for the consumers to read.
 
-The output content files can be stored into any of the two following output directories:
+The output content files will be stored in any of the following output directories:
 - Downloads folder: If the input files are compressed.
 - Contents folder: If the input files are not compressed.
 
@@ -37,10 +37,10 @@ The context fields related to this stage are:
 
 - `configData`
   + `url`: Used as the CTI API URL to download from.
-  + `compressionType`: Used to know whether the input file is compressed or not.
+  + `compressionType`: Used to determine whether the input file is compressed or not.
   + `contentfileName`: Used as name for the output content file.
 - `downloadsFolder`: Used as output folder when the input file is compressed.
 - `contentsFolder`: Used as output folder when the input file is not compressed.
 - `data`: Used to read and update the paths under the `paths` key. The stage status is also updated on this member.
 - `outputFolder`: Used as the destination file path base.
-- `currentOffset`: Used as the first offset that will be fetched from the API. It is also updated with the last offset fetched, so next time the download begins with the new (and more advanced) offset value.
+- `currentOffset`: Used as the first offset that will be fetched from the API. It is also updated with the last offset fetched, so next time the download begins with the new offset value.

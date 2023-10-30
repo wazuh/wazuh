@@ -16,7 +16,7 @@ The context fields related to this stage are:
 
 - `configData`
   + `url`: Used as the API URL to download from.
-  + `compressionType`: Used to know whether the input file is compressed or not.
+  + `compressionType`: Used to determine whether the input file is compressed or not.
   + `contentfileName`: Used as name for the output content file.
 - `downloadsFolder`: Used as output folder when the input file is compressed.
 - `contentsFolder`: Used as output folder when the input file is not compressed.
