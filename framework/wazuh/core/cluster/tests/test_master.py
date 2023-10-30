@@ -16,8 +16,6 @@ import uvloop
 from freezegun import freeze_time
 
 from wazuh.core import exception
-import tracemalloc
-tracemalloc.start()
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):

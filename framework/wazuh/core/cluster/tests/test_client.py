@@ -11,9 +11,6 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 from freezegun import freeze_time
 
-import tracemalloc
-tracemalloc.start()
-
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()

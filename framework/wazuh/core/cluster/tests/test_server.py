@@ -12,9 +12,6 @@ import pytest
 from freezegun import freeze_time
 from uvloop import EventLoopPolicy
 
-import tracemalloc
-tracemalloc.start()
-
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):

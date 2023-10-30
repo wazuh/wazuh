@@ -8,8 +8,6 @@ import asyncio
 from contextvars import ContextVar
 from unittest.mock import AsyncMock, MagicMock
 from unittest.mock import patch
-import tracemalloc
-tracemalloc.start()
 
 import pytest
 from uvloop import Loop
