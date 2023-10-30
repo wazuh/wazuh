@@ -9,9 +9,7 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
-
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import ALL_REGIONS
 
 DEFAULT_DATABASE_NAME = "aws_services"
 DEFAULT_TABLENAME = "aws_services"
@@ -135,7 +133,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
 
     @staticmethod
     def check_region(region: str) -> None:
-        if region not in aws_tools.ALL_REGIONS:
+        if region not in ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
     def get_last_log_date(self):

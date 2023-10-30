@@ -24,7 +24,7 @@ class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):
     def reformat_msg(self, event):
         aws_bucket.AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
-        # ES mapping expects for a dictionary, if the field is any other type (list or string)
+        # expects for a dictionary, if the field is any other type (list or string)
         # turn it into a dictionary
         for field_to_cast in DYNAMIC_FIELDS:
             if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):

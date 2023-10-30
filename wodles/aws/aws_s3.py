@@ -33,32 +33,23 @@
 import signal
 import sys
 
-
-import aws_tools
+# Local imports
 import buckets_s3
 import services
 import subscribers
-from shared.wazuh_cloud_logger import WazuhCloudLogger
+from aws_tools import (aws_logger, get_script_arguments, get_aws_config_params, ALL_REGIONS,
+                       SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL, arg_validate_security_lake_auth_params, handler)
 
 
 def main(argv):
     # Parse arguments
-    options = aws_tools.get_script_arguments()
-    # Set aws logger
-    aws_logger = WazuhCloudLogger(
-        logger_name=':aws_wodle:'
-    )
+    options = get_script_arguments()
 
-    # Get logging level
+    # Get logging level from argument
     log_lvl = options.debug
 
     # Set logging level
-    aws_logger.set_level(log_level=2)
-
-    aws_logger.info('Info test message')
-    aws_logger.debug('debug test message')
-    aws_logger.warning('warnings test message')
-    aws_logger.error('Error test message')
+    aws_logger.set_level(log_level=log_lvl)
 
     try:
         if options.logBucket:
@@ -117,24 +108,24 @@ def main(argv):
                 raise Exception("Invalid type of service")
 
             if not options.regions:
-                aws_config = aws_tools.get_aws_config_params()
+                aws_config = get_aws_config_params()
 
                 profile = options.aws_profile or "default"
 
                 if aws_config.has_option(profile, "region"):
                     options.regions.append(aws_config.get(profile, "region"))
                 else:
-                    aws_tools.debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                    options.regions = aws_tools.ALL_REGIONS
+                    aws_logger.warning("No regions were specified, trying to get events from all regions")
+                    options.regions = ALL_REGIONS
 
             for region in options.regions:
                 try:
                     service_type.check_region(region)
                 except ValueError:
-                    aws_tools.debug(f"+++ ERROR: The region '{region}' is not a valid one.", 1)
+                    aws_logger.error(f"The region '{region}' is not a valid one.")
                     exit(22)
 
-                aws_tools.debug('+++ Getting alerts from "{}" region.'.format(region), 1)
+                aws_logger.debug('Getting alerts from "{}" region.'.format(region))
 
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
@@ -155,12 +146,12 @@ def main(argv):
         elif options.subscriber:
             if options.subscriber.lower() == "security_lake":
                 if options.aws_profile:
-                    print(
-                        "+++ ERROR: The AWS Security Lake integration does not make use of the Profile authentication "
+                    aws_logger.error(
+                        "The AWS Security Lake integration does not make use of the Profile authentication "
                         f"method. Check the available ones for it in "
-                        f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
+                        f"{SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
-                aws_tools.arg_validate_security_lake_auth_params(options.external_id,options.queue,options.iam_role_arn)
+                arg_validate_security_lake_auth_params(options.external_id,options.queue,options.iam_role_arn)
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
                 asl_queue = subscribers.sqs_queue.AWSSQSQueue(
                     external_id=options.external_id,
@@ -191,21 +182,17 @@ def main(argv):
                 raise Exception("Invalid type of subscriber")
             asl_queue.sync_events()
     except Exception as err:
-        aws_tools.debug("+++ Error: {}".format(err), 2)
-        if aws_tools.debug_level > 0:
-            raise
-        print("ERROR: {}".format(err))
+        aws_logger.error("Error: {}".format(err))
         sys.exit(12)
 
 
 if __name__ == '__main__':
     try:
-        aws_tools.debug('Args: {args}'.format(args=str(sys.argv)), 2)
-        signal.signal(signal.SIGINT, aws_tools.handler)
+        aws_logger.debug('Args: {args}'.format
+                         (args=str(sys.argv)), 2)
+        signal.signal(signal.SIGINT, handler)
         main(sys.argv[1:])
         sys.exit(0)
     except Exception as e:
-        print("Unknown error: {}".format(e))
-        if aws_tools.debug_level > 0:
-            raise
+        aws_logger.error("Unknown error: {}".format(e))
         sys.exit(1)

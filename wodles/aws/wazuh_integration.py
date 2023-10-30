@@ -6,13 +6,17 @@ import socket
 import sqlite3
 import sys
 
+from aws_tools import (aws_logger, DEFAULT_AWS_CONFIG_PATH, get_aws_config_params, set_profile_dict_config,
+                       RETRY_ATTEMPTS_KEY, RETRY_MODE_CONFIG_KEY, RETRY_MODE_BOTO_KEY, DEPRECATED_MESSAGE,
+                       CREDENTIALS_URL)
+
+
 try:
     import boto3
 except ImportError:
-    print('ERROR: boto3 module is required.')
+    aws_logger.error('boto3 module is required.')
     sys.exit(4)
 
-import aws_tools
 import botocore
 import configparser
 import copy
@@ -31,10 +35,11 @@ from os import path
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
 
+# CONSTANTS
 DEPRECATED_TABLES = {'log_progress', 'trail_progress'}
 DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
 SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatchlogs'}
-WAZUH_DEFAULT_RETRY_CONFIGURATION = {aws_tools.RETRY_ATTEMPTS_KEY: 10, aws_tools.RETRY_MODE_BOTO_KEY: 'standard'}
+WAZUH_DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
 
 
@@ -115,12 +120,12 @@ class WazuhIntegration:
         """
         args = {}
 
-        if path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
+        if path.exists(DEFAULT_AWS_CONFIG_PATH):
             # Create boto Config object
             args['config'] = botocore.config.Config()
 
             # Get User Aws Config
-            aws_config = aws_tools.get_aws_config_params()
+            aws_config = get_aws_config_params()
 
             # Set profile
             profile = profile if profile is not None else 'default'
@@ -130,26 +135,26 @@ class WazuhIntegration:
                 profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
 
             except configparser.NoSectionError:
-                print(f"No profile named: '{profile}' was found in the user config file")
+                aws_logger.error(f"No profile named: '{profile}' was found in the user config file")
                 sys.exit(23)
 
             # Map Primary Botocore Config parameters with profile config file
             try:
                 # Checks for retries config in profile config and sets it if not found to avoid throttling exception
-                if aws_tools.RETRY_ATTEMPTS_KEY in profile_config \
-                        or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
+                if RETRY_ATTEMPTS_KEY in profile_config \
+                        or RETRY_MODE_CONFIG_KEY in profile_config:
                     retries = {
-                        aws_tools.RETRY_ATTEMPTS_KEY: int(profile_config.get(aws_tools.RETRY_ATTEMPTS_KEY, 10)),
-                        aws_tools.RETRY_MODE_BOTO_KEY: profile_config.get(aws_tools.RETRY_MODE_CONFIG_KEY, 'standard')
+                        RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
+                        RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
                     }
-                    aws_tools.debug(
+                    aws_logger.debug(
                         f"Retries parameters found in user profile. Using profile '{profile}' retries configuration",
                         2)
 
                 else:
                     # Set retry config
                     retries = copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION)
-                    aws_tools.debug(
+                    aws_logger.debug(
                         "No retries configuration found in profile config. Generating default configuration for "
                         f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
                         2)
@@ -161,23 +166,23 @@ class WazuhIntegration:
                 args['config'].signature_version = signature_version
 
                 # Set profile dictionaries configuration
-                aws_tools.set_profile_dict_config(boto_config=args,
-                                                  profile=profile,
-                                                  profile_config=profile_config)
+                set_profile_dict_config(boto_config=args,
+                                        profile=profile,
+                                        profile_config=profile_config)
 
             except (KeyError, ValueError) as e:
-                print('Invalid key or value found in config '.format(e))
+                aws_logger.error('Invalid key or value found in config '.format(e))
                 sys.exit(17)
 
-            aws_tools.debug(f"Created Config object using profile: '{profile}' configuration", 2)
+            aws_logger.debug(f"Created Config object using profile: '{profile}' configuration", 2)
 
         else:
             # Set retries parameters to avoid a throttling exception
             args['config'] = botocore.config.Config(retries=copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION))
-            aws_tools.debug(
-                f"Generating default configuration for retries: {aws_tools.RETRY_MODE_BOTO_KEY} "
-                f"{args['config'].retries[aws_tools.RETRY_MODE_BOTO_KEY]} - "
-                f"{aws_tools.RETRY_ATTEMPTS_KEY} {args['config'].retries[aws_tools.RETRY_ATTEMPTS_KEY]}",
+            aws_logger.debug(
+                f"Generating default configuration for retries: {RETRY_MODE_BOTO_KEY} "
+                f"{args['config'].retries[RETRY_MODE_BOTO_KEY]} - "
+                f"{RETRY_ATTEMPTS_KEY} {args['config'].retries[RETRY_ATTEMPTS_KEY]}",
                 2)
 
         return args
@@ -187,8 +192,10 @@ class WazuhIntegration:
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
-            print(aws_tools.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4",
-                                                      url=aws_tools.CREDENTIALS_URL))
+            aws_logger.info(DEPRECATED_MESSAGE.format(name="access_key and secret_key",
+                                                      release="4.4",
+                                                      url=CREDENTIALS_URL))
+
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
 
@@ -231,7 +238,7 @@ class WazuhIntegration:
                                              **self.connection_config)
 
         except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
-            print("ERROR: Access error: {}".format(e))
+            aws_logger.error("Access error: {}".format(e))
             sys.exit(3)
         return client
 
@@ -248,7 +255,7 @@ class WazuhIntegration:
         try:
             sts_client = boto_session.client(service_name='sts', **self.connection_config)
         except Exception as e:
-            print("Error getting STS client: {}".format(e))
+            aws_logger.error("Error getting STS client: {}".format(e))
             sys.exit(3)
 
         return sts_client
@@ -286,28 +293,28 @@ class WazuhIntegration:
         """
         try:
             json_msg = json.dumps(msg, default=str)
-            aws_tools.debug(json_msg, 3)
+            aws_logger.debug(json_msg)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
             encoded_msg = f"{MESSAGE_HEADER}{json_msg if dump_json else msg}".encode()
             # Logs warning if event is bigger than max size
             if len(encoded_msg) > utils.MAX_EVENT_SIZE:
-                aws_tools.debug(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.", 1)
+                aws_logger.warning(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.", 1)
             s.send(encoded_msg)
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                print("ERROR: Wazuh must be running.")
+                aws_logger.error("Wazuh must be running.")
                 sys.exit(11)
             elif e.errno == 90:
-                print("ERROR: Message too long to send to Wazuh.  Skipping message...")
-                aws_tools.debug('+++ ERROR: Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
+                aws_logger.error("Message too long to send to Wazuh.  Skipping message...")
+                aws_logger.debug('Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
                                 'Skipping message...', 1)
             else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
+                aws_logger.error("Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
         except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
+            aws_logger.error("Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
     def _decompress_gzip(self, raw_object: io.BytesIO):
@@ -330,7 +337,7 @@ class WazuhIntegration:
             gzip_file.seek(0)
             return gzip_file
         except (gzip.BadGzipFile, zlib.error, TypeError):
-            print(f'ERROR: invalid gzip file received.')
+            aws_logger.error('Invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
 
@@ -351,7 +358,7 @@ class WazuhIntegration:
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
             return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
         except zipfile.BadZipFile:
-            print('ERROR: invalid zip file received.')
+            aws_logger.error('Invalid zip file received.')
         if not self.skip_on_error:
             sys.exit(8)
 
@@ -371,7 +378,7 @@ class WazuhIntegration:
         elif log_key[-4:] == '.zip':
             return self._decompress_zip(raw_object)
         elif log_key[-7:] == '.snappy':
-            print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
+            aws_logger.error(f"Couldn't decompress the {log_key} file, snappy compression is not supported.")
             if not self.skip_on_error:
                 sys.exit(8)
         else:
@@ -472,10 +479,10 @@ class WazuhAWSDatabase(WazuhIntegration):
         :param sql_create_table: SQL query to create the table
         """
         try:
-            aws_tools.debug('+++ Table does not exist; create', 1)
+            aws_logger.debug('+++ Table does not exist; create', 1)
             self.db_cursor.execute(sql_create_table)
         except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            aws_logger.error("Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
     def init_db(self, sql_create_table):
@@ -485,7 +492,7 @@ class WazuhAWSDatabase(WazuhIntegration):
         try:
             tables = set(map(operator.itemgetter(0), self.db_cursor.execute(self.sql_find_table_names)))
         except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            aws_logger.error("Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
         # if table does not exist, create a new table
         if self.db_table_name not in tables:
@@ -505,7 +512,7 @@ class WazuhAWSDatabase(WazuhIntegration):
                     if metadata_version != self.wazuh_version:
                         self.db_cursor.execute(self.sql_update_version_metadata, {'wazuh_version': self.wazuh_version})
                 except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-                    print(f'ERROR: Error attempting to update the metadata table: {err}')
+                    aws_logger.error(f'Error attempting to update the metadata table: {err}')
                     sys.exit(5)
             else:
                 # The table does not exist; create it and insert the metadata value
@@ -514,15 +521,15 @@ class WazuhAWSDatabase(WazuhIntegration):
                     self.db_cursor.execute(self.sql_insert_version_metadata, {'wazuh_version': self.wazuh_version})
                     self.delete_deprecated_tables()
                 except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-                    print(f'ERROR: Error attempting to create the metadata table: {err}')
+                    aws_logger.error(f'Error attempting to create the metadata table: {err}')
                     sys.exit(5)
             self.db_connector.commit()
         except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-            print(f'ERROR: Error attempting to operate with the {self.db_path} database: {err}')
+            aws_logger.error(f'Error attempting to operate with the {self.db_path} database: {err}')
             sys.exit(5)
 
     def delete_deprecated_tables(self):
         tables = set([t[0] for t in self.db_cursor.execute(self.sql_find_table_names).fetchall()])
         for table in tables.intersection(DEPRECATED_TABLES):
-            aws_tools.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
+            aws_logger.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
             self.db_cursor.execute(self.sql_drop_table.format(table_name=table))
