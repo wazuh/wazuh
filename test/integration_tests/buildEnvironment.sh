@@ -12,8 +12,6 @@ setup_directories() {
 name: integration/wazuh-core-test/0
 decoders:
   - decoder/test-message/0
-filters:
-  - filter/allow-all/0
 EOM
 }
 
