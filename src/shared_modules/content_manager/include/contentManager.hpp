@@ -37,8 +37,10 @@ public:
     /**
      * @brief Starts module facade.
      *
+     * @param logFunction Log function.
+     *
      */
-    void start(const std::function<void(const modules_log_level_t, const std::string&)>& /*logFunction*/);
+    void start(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction);
 
     /**
      * @brief Stop module facade.
