@@ -123,7 +123,7 @@ def configure_environment(get_configuration, request):
             control_service('restart')
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def restart_wazuh(request):
     control_service('restart')
 
