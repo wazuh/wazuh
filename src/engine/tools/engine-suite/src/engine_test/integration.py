@@ -96,9 +96,9 @@ class Integration(CrudIntegration):
 
         # Get the values to send
         result = self.api_client.test_run(event)
-        hasTrace : bool = len(result["data"]["run"]["traces"]) > 0
+        hasTrace : bool = len(result["data"]["run"]["asset_traces"]) > 0
         rawOutput = result["data"]["run"]["output"]
-        rawTraces = result["data"]["run"]["traces"] if hasTrace else []
+        rawTraces = result["data"]["run"]["asset_traces"] if hasTrace else []
 
         # TODO: Move to centralize integration configuration
         # Get the conditions to print the output
@@ -118,7 +118,22 @@ class Integration(CrudIntegration):
         else:
             response += "---\n"
             if showTrace:
-                response += self.response_to_yml({keyTraces: rawTraces}) + "\n"
+                # Traces
+                response += keyTraces + ":"
+                if not hasTrace:
+                    response += " No traces generated for this event.\n\n"
+                else:
+                    response += "\n"
+                    for traceObjt in rawTraces:
+                        t : str = "[🟢] " if traceObjt['success'] else "[🔴] "
+                        t += traceObjt['asset']
+                        t += " -> success" if traceObjt['success'] else " -> failed"
+                        t += "\n"
+                        for trace in traceObjt['traces']:
+                            t += "  ↳ " + trace + "\n"
+                        response += t
+                    response += "\n"
+                # Output
                 response += self.response_to_yml({keyOutput: rawOutput}) + "\n"
             else:
                 response += self.response_to_yml(rawOutput) + "\n"
