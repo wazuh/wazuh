@@ -9,8 +9,6 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 from unittest.mock import patch, MagicMock, ANY, call
-import tracemalloc
-tracemalloc.start()
 
 from werkzeug.exceptions import Unauthorized
 

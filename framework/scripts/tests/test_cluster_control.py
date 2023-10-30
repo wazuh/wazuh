@@ -11,8 +11,6 @@ from uvloop import EventLoopPolicy, Loop
 import pytest
 
 import scripts.cluster_control as cluster_control
-import tracemalloc
-tracemalloc.start()
 
 @pytest.fixture(scope="session")
 def event_loop() -> Loop:

@@ -6,8 +6,6 @@ from asyncio import Event, Transport
 from asyncio.transports import BaseTransport
 from collections.abc import Callable
 from unittest.mock import patch, AsyncMock, call
-import tracemalloc
-tracemalloc.start()
 
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
