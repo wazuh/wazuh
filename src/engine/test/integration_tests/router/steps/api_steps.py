@@ -17,11 +17,6 @@ API_CATALOG = communication.APIClient(SOCKET_PATH, "catalog")
 API_KVDB = communication.APIClient(SOCKET_PATH, "kvdb")
 API_POLICY = communication.APIClient(SOCKET_PATH, "policy")
 
-POLICY_CONTENT = '''
-name: policy/wazuh/0
-integrations:
-  - integration/wazuh-core-test/0
-'''
 
 # First Scenario
 
@@ -31,7 +26,7 @@ def step_impl(context, name: str):
     policy_request = policy_pb2.PoliciesGet_Request()
 
     context.result = API_POLICY.send_command("policies", "get", policy_request)
-    if len(context.result['data']) == 0 or context.result['data']['status'] == "ERROR":
+    if len(context.result['data']['data']) == 0 or context.result['data']['status'] == "ERROR":
         delete = kvdb_pb2.managerDelete_Request()
         delete.name = "agents_host_data"
         context.result = API_KVDB.send_command(
@@ -50,6 +45,23 @@ def step_impl(context, name: str):
         policy_request.asset = "integration/wazuh-core-test/0"
         policy_request.namespace = "system"
         API_POLICY.send_command('asset', 'post', policy_request)
+
+    filter_request = catalog_pb2.ResourceGet_Request()
+    filter_request.name = "filter/allow-all/0"
+    filter_request.format = "json"
+    filter_request.namespaceid = "system"
+    context.result =  API_CATALOG.send_command("resource", "get", filter_request)
+    if len(context.result['data']) == 0 or context.result['data']['status'] == "ERROR":
+        filter_post_request = catalog_pb2.ResourcePost_Request()
+        filter_post_request.type = "filter"
+        filter_post_request.format = "yaml"
+        # Load content from file
+        with open(f"{RULESET_DIR}/filters/allow-all.yml", "r") as f:
+            filter_post_request.content = f.read()
+        filter_post_request.namespaceid = "system"
+
+        context.result = API_CATALOG.send_command(
+            "resource", "post", filter_post_request)
 
     get = router_pb2.RouteGet_Request()
     get.name = name
