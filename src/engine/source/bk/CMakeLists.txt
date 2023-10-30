@@ -6,8 +6,8 @@ CPMAddPackage(
   VERSION 3.6.0
   EXCLUDE_FROM_ALL YES
   OPTIONS
-    "-DTF_BUILD_TESTS OFF"
-    "-DTF_BUILD_EXAMPLES OFF"
+    "TF_BUILD_TESTS OFF"
+    "TF_BUILD_EXAMPLES OFF"
 )
 
 CPMAddPackage(
@@ -60,7 +60,7 @@ target_include_directories(bk_rx
     PUBLIC
     ${INC_DIR}
     ${RxCpp_SOURCE_DIR}/Rx/v2/src
-    
+
     PRIVATE
     ${RXCPP_SRC_DIR}
     ${INC_DIR}/bk/rx
