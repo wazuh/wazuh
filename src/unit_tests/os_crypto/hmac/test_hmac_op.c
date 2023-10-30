@@ -117,9 +117,8 @@ void test_hmac_file_popen_fail(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_hmac_string),
-//        Bug found when key is larger than 65 characters.
-//        cmocka_unit_test(test_hmac_string_length_key),
-//        cmocka_unit_test(test_hmac_file_length_key),
+        cmocka_unit_test(test_hmac_string_length_key),
+        cmocka_unit_test(test_hmac_file_length_key),
         cmocka_unit_test(test_hmac_file),
         cmocka_unit_test_setup_teardown(test_hmac_file_popen_fail, setup_group, teardown_group),
     };
