@@ -51,12 +51,17 @@ tags:
     - key_request
 '''
 import os
+import re
+from pathlib import Path
 
 import pytest
-from wazuh_testing.tools import LOG_FILE_PATH, WAZUH_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
-from wazuh_testing.authd import validate_authd_logs
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_PATH
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.utils import callbacks
+from wazuh_testing.modules.authd import PREFIX
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
@@ -64,40 +69,24 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 
 # Configurations
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-message_tests = read_yaml(os.path.join(test_data_path, 'test_key_request_messages.yaml'))
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__, params=None, metadata=None)
-script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files')
-script_filename = 'fetch_keys.py'
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_func.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_key_request_func.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
+script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files')
+script_filename = 'fetch_keys.py'
 kreq_sock_path = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'krequest')
-log_monitor_paths = [LOG_FILE_PATH]
 receiver_sockets_params = [(kreq_sock_path, 'AF_UNIX', 'UDP')]
-test_case_ids = [f"{test_case['name'].lower().replace(' ', '-')}" for test_case in message_tests]
 
 monitored_sockets_params = [('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None
 
 # Tests
-
-
-@pytest.fixture(scope='module', params=configurations, ids=['key_request'])
-def get_configuration(request):
-    """Get configurations from the module"""
-    yield request.param
-
-
-@pytest.fixture(scope='function', params=message_tests, ids=test_case_ids)
-def get_current_test_case(request):
-    """Get current test case from the module"""
-    return request.param
-
-
-def test_key_request_func(configure_environment, connect_to_sockets_function,
-                          get_current_test_case, tear_down, copy_tmp_script):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets_function,
+                          tear_down, copy_tmp_script, restart_authd_function, wait_for_authd_startup_function):
     '''
     description:
         Checks that every input message on the key request port generates the appropiate response to the manager.
@@ -138,10 +127,15 @@ def test_key_request_func(configure_environment, connect_to_sockets_function,
 
     key_request_sock = receiver_sockets[0]
 
-    for stage in get_current_test_case['test_case']:
-        message = stage['input']
-        response = stage.get('log', [])
+    message = test_metadata['input']
+    expected_logs = test_metadata['log']
 
-        key_request_sock.send(message, size=False)
-        # Monitor expected log messages
-        validate_authd_logs(response)
+    key_request_sock.send(message, size=False)
+    # Monitor expected log messages
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    for log in expected_logs:
+        print(log)
+        log = re.escape(log)
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
+        print(wazuh_log_monitor.callback_result)
+        assert wazuh_log_monitor.callback_result, f'Error event not detected'
