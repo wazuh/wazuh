@@ -149,6 +149,6 @@ def test_key_request_exec_path( test_configuration, test_metadata, set_wazuh_con
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     for log in expected_logs:
         log = re.escape(log)
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX} {log}'), timeout=10)
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
         print(wazuh_log_monitor.callback_result)
         assert wazuh_log_monitor.callback_result, f'Error event not detected'

@@ -134,7 +134,6 @@ def test_key_request_func(test_configuration, test_metadata, set_wazuh_configura
     # Monitor expected log messages
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     for log in expected_logs:
-        print(log)
         log = re.escape(log)
         wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
         print(wazuh_log_monitor.callback_result)
