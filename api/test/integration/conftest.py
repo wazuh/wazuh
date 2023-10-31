@@ -47,7 +47,7 @@ values_env_up = {
 }
 # env_mode : cluster or standalone
 # Indicates the environment to be used in the process.
-env_mode: str = 'cluster'
+env_mode: str = cluster_env_mode
 LAST_TESTS_FAILED = 0
 LAST_TEST = None
 
@@ -266,7 +266,6 @@ def start_containers():
             ["docker", "compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
             stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
-
             if current_process.returncode == 0:
                 time.sleep(values_env_build['interval'])
                 break
