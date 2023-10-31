@@ -1,4 +1,4 @@
-name: WODLES unit tests
+name: Wodles unit tests
 
 on:
   workflow_dispatch:
