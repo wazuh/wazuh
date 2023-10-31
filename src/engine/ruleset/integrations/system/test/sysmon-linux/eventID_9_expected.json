@@ -1,0 +1,65 @@
+[
+    {
+        "process": {
+            "executable": "/usr/bin/dd",
+            "pid": 4709,
+            "entity_id": "{924935dc-f9ab-6480-360c-0406c4550000}",
+            "name": "dd"
+        },
+        "agent": {
+            "type": "wazuh-agent",
+            "id": "001",
+            "name": "wazuh-agent-1"
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>9</EventID><Version>2</Version><Level>4</Level><Task>9</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T21:42:03.008500000Z\"/><EventRecordID>27092</EventRecordID><Correlation/><Execution ProcessID=\"4699\" ThreadID=\"4699\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 21:42:03.010</Data><Data Name=\"ProcessGuid\">{924935dc-f9ab-6480-360c-0406c4550000}</Data><Data Name=\"ProcessId\">4709</Data><Data Name=\"Image\">/usr/bin/dd</Data><Data Name=\"Device\">/dev/sda</Data><Data Name=\"User\">-</Data></EventData></Event>",
+        "related": {
+            "hosts": [
+                "202-u20-dev-agent"
+            ]
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "file": {
+            "path": "/dev/sda"
+        },
+        "log": {
+            "level": "Information"
+        },
+        "event": {
+            "type": [
+                "access",
+                "info"
+            ],
+            "action": "raw_access_read",
+            "original": "Jun  7 21:42:03 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>9</EventID><Version>2</Version><Level>4</Level><Task>9</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T21:42:03.008500000Z\"/><EventRecordID>27092</EventRecordID><Correlation/><Execution ProcessID=\"4699\" ThreadID=\"4699\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 21:42:03.010</Data><Data Name=\"ProcessGuid\">{924935dc-f9ab-6480-360c-0406c4550000}</Data><Data Name=\"ProcessId\">4709</Data><Data Name=\"Image\">/usr/bin/dd</Data><Data Name=\"Device\">/dev/sda</Data><Data Name=\"User\">-</Data></EventData></Event>",
+            "module": "sysmon-linux",
+            "dataset": "sysmon",
+            "category": [
+                "file",
+                "process"
+            ],
+            "outcome": "unknown",
+            "kind": "alert",
+            "code": "9",
+            "provider": "Linux-Sysmon",
+            "start": "2023-06-07T21:42:03.008500000Z"
+        },
+        "host": {
+            "id": "001",
+            "name": "202-u20-dev-agent",
+            "hostname": "202-u20-dev-agent"
+        },
+        "wazuh": {
+            "source": "logcollector",
+            "origin": "/test/syslog.log",
+            "registered_ip": "any",
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ],
+            "queue": 49
+        }
+    }
+]
