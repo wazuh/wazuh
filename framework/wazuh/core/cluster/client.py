@@ -168,13 +168,13 @@ class AbstractClient(common.Handler):
         future_result : asyncio.Future object
             Result of the hello request.
         """
-        response_msg = future_result.result()[0]
-        if isinstance(response_msg, Exception):
-            self.logger.error(f"Could not connect to master: {response_msg}.")
-            self.transport.close()
-        else:
+        try:
+            future_result.result()
             self.logger.info("Successfully connected to master.")
             self.connected = True
+        except Exception as e:        
+            self.logger.error(f"Could not connect to master: {str(e)}.")
+            self.transport.close()
 
     def connection_made(self, transport):
         """Define process of connecting to the server.
@@ -185,7 +185,7 @@ class AbstractClient(common.Handler):
             Socket to write data on.
         """
         self.transport = transport
-        future = asyncio.gather(self.log_exceptions(self.send_request(command=b'hello', data=self.client_data)))
+        future = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
         future.add_done_callback(self.connection_result)
 
     def connection_lost(self, exc):
@@ -210,9 +210,19 @@ class AbstractClient(common.Handler):
         self._cancel_all_tasks()
 
     def _cancel_all_tasks(self):
-        """Iterate asyncio tasks and cancel each of them."""
+        """Cancel all asyncio tasks and clients."""
         for task in asyncio.all_tasks():
-            task.cancel()
+            try:
+                task.cancel()
+            except Exception as e:
+                self.logger.error(f"Error cancelling task {task}: {e}")
+
+        for client in list(self.get_manager().local_server.clients.keys()):
+            try:
+                self.get_manager().local_server.clients[client].close()
+                del self.get_manager().local_server.clients[client]
+            except Exception as e:
+                self.logger.error(f"Error closing client {client}: {e}")
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for clients.

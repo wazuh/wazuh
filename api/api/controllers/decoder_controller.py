@@ -261,7 +261,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body: dict, filename: str = None, relative_dirname: str = None,
+async def put_file(request, body: bytes, filename: str = None, relative_dirname: str = None,
                    overwrite: bool = False, pretty: bool = False,
                    wait_for_complete: bool = False) -> web.Response:
     """Upload a decoder file.
@@ -269,7 +269,7 @@ async def put_file(request, body: dict, filename: str = None, relative_dirname: 
     Parameters
     ----------
     request : connexion.request
-    body : dict
+    body : bytes
         Body request with the file content to be uploaded.
     filename : str
         Name of the file.

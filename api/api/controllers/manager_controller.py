@@ -562,7 +562,7 @@ async def get_manager_config_ondemand(request, component: str, pretty: bool = Fa
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_configuration(request, body: dict, pretty: bool = False,
+async def update_configuration(request, body: bytes, pretty: bool = False,
                                wait_for_complete: bool = False) -> web.Response:
     """Update manager's or local_node's configuration (ossec.conf).
 
@@ -573,7 +573,7 @@ async def update_configuration(request, body: dict, pretty: bool = False,
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    body : dict
+    body : bytes
         New ossec.conf configuration.
 
     Returns

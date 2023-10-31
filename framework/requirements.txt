@@ -1,7 +1,7 @@
 aiohttp==3.8.5
 aiohttp-cache==2.2.0
 aiohttp-cors==0.7.0
-aiohttp-jinja2==1.4.2
+aiohttp-jinja2==1.5.1
 aioredis==1.3.1
 aiosignal==1.2.0
 asn1crypto==1.3.0
@@ -23,7 +23,7 @@ connexion==2.14.2
 cryptography==41.0.4
 Cython==0.29.21
 defusedxml==0.6.0
-docker==4.2.0
+docker==6.0.0
 docker-pycreds==0.4.0
 docutils==0.15.2
 ecdsa==0.16.1
@@ -81,7 +81,7 @@ tabulate==0.8.9
 typing-extensions==3.10.0.2
 typing-inspect==0.7.1
 urllib3==1.26.5
-uvloop==0.16.0
+uvloop==0.17.0
 websocket-client==0.57.0
 Werkzeug==2.2.3
 xmltodict==0.12.0

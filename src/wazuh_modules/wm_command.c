@@ -75,7 +75,7 @@ void * wm_command_main(wm_command_t * command) {
     #endif
         binary = argv[0];
 
-        if (!wm_get_path(binary, &full_path)) {
+        if (get_binary_path(binary, &full_path) == OS_INVALID) {
             mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", binary);
             pthread_exit(NULL);
         }

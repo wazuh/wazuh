@@ -20,7 +20,7 @@ jobs:
         run: make -C src deps TARGET=winagent -j2
       - name: make
         run: |
-          make -C src external win32/libgcc_s_dw2-1.dll win32/libstdc++-6.dll win32/libwinpthread-1.dll TARGET=winagent -j2
+          make -C src external win32/libgcc_s_dw2-1.dll win32/libstdc++-6.dll win32/libwinpthread-1.dll win32/libwinpthreadpatched.a TARGET=winagent -j2
           make -C src libwazuhext.dll CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32" TARGET=winagent -j2
           make -C src win32/syscollector TARGET=winagent -j2
           # Make folder and upload as artifacts.

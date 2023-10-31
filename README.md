@@ -77,31 +77,31 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 **Modules overview**
 
-![Modules overview](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app.png)
+![Modules overview](https://github.com/wazuh/wazuh-dashboard-plugins/raw/master/screenshots/app.png)
 
 **Security events**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app2.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app2.png)
 
 **Integrity monitoring**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app3.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app3.png)
 
 **Vulnerability detection**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app4.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app4.png)
 
 **Regulatory compliance**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app5.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app5.png)
 
 **Agents overview**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app6.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app6.png)
 
 **Agent summary**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app7.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app7.png)
 
 ## Orchestration
 
