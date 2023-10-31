@@ -8,3 +8,6 @@ pytest-asyncio==0.18.1
 pytest-html==2.1.1
 pytest-trio==0.7.0
 tavern==1.23.5
+gitpython==3.1.31
+gitdb==4.0.10
+smmap==5.0.0
