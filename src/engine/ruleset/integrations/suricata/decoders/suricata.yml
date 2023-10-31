@@ -18,6 +18,7 @@ definitions:
   is_good_appProto: string_not_equal($json_event.app_proto,failed) AND string_not_equal($json_event.app_proto,template) AND string_not_equal($json_event.app_proto,template-rust)
 
 check:
+  - json_event: parse_json($event.original)
   - json_event.event_type: exists()
   - json_event.flow_id: exists()
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`

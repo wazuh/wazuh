@@ -1,0 +1,185 @@
+[
+    {
+        "event": {
+            "original": "Jun  6 21:33:26 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:33:26.413289000Z\"/><EventRecordID>16178</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:33:26.421</Data><Data Name=\"ProcessGuid\">{924935dc-9e9a-647f-0ce7-4a0000000000}</Data><Data Name=\"ProcessId\">5697</Data><Data Name=\"User\">wazuh</Data><Data Name=\"Image\">/var/ossec/bin/wazuh-agentd</Data><Data Name=\"TargetFilename\">/var/ossec/queue/sockets/.wait</Data><Data Name=\"Hashes\">-</Data><Data Name=\"IsExecutable\">-</Data><Data Name=\"Archived\">-</Data></EventData></Event>",
+            "start": "2023-06-06T21:33:26.413289000Z",
+            "kind": "event",
+            "category": [
+                "file"
+            ],
+            "provider": "Linux-Sysmon",
+            "code": "23",
+            "module": "sysmon-linux",
+            "dataset": "sysmon",
+            "outcome": "success",
+            "type": [
+                "deletion"
+            ],
+            "action": "file_deleted"
+        },
+        "wazuh": {
+            "origin": "/test/syslog.log",
+            "registered_ip": "any",
+            "queue": 49,
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "source": "logcollector",
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ]
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "related": {
+            "hosts": [
+                "202-u20-dev-agent"
+            ]
+        },
+        "agent": {
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent",
+            "id": "001"
+        },
+        "host": {
+            "id": "001",
+            "hostname": "202-u20-dev-agent",
+            "name": "202-u20-dev-agent"
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:33:26.413289000Z\"/><EventRecordID>16178</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:33:26.421</Data><Data Name=\"ProcessGuid\">{924935dc-9e9a-647f-0ce7-4a0000000000}</Data><Data Name=\"ProcessId\">5697</Data><Data Name=\"User\">wazuh</Data><Data Name=\"Image\">/var/ossec/bin/wazuh-agentd</Data><Data Name=\"TargetFilename\">/var/ossec/queue/sockets/.wait</Data><Data Name=\"Hashes\">-</Data><Data Name=\"IsExecutable\">-</Data><Data Name=\"Archived\">-</Data></EventData></Event>",
+        "log": {
+            "level": "Information"
+        },
+        "process": {
+            "executable": "/var/ossec/bin/wazuh-agentd",
+            "name": "wazuh-agentd",
+            "pid": 5697,
+            "entity_id": "{924935dc-9e9a-647f-0ce7-4a0000000000}"
+        },
+        "file": {
+            "path": "/var/ossec/queue/sockets/.wait"
+        }
+    },
+    {
+        "related": {
+            "hosts": [
+                "202-u20-dev-agent"
+            ]
+        },
+        "agent": {
+            "id": "001",
+            "type": "wazuh-agent",
+            "name": "wazuh-agent-1"
+        },
+        "wazuh": {
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "origin": "/test/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ],
+            "source": "logcollector"
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:24:19.556615000Z\"/><EventRecordID>16007</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:24:19.564</Data><Data Name=\"ProcessGuid\">{924935dc-7392-647f-86e3-076450560000}</Data><Data Name=\"ProcessId\">3044</Data><Data Name=\"User\">-</Data><Data Name=\"Image\">/usr/bin/zsh</Data><Data Name=\"TargetFilename\">/root/.zsh_history.LOCK</Data><Data Name=\"Hashes\">-</Data><Data Name=\"IsExecutable\">-</Data><Data Name=\"Archived\">-</Data></EventData></Event>",
+        "ecs": {
+            "version": "8.8"
+        },
+        "log": {
+            "level": "Information"
+        },
+        "event": {
+            "start": "2023-06-06T21:24:19.556615000Z",
+            "type": [
+                "deletion"
+            ],
+            "provider": "Linux-Sysmon",
+            "module": "sysmon-linux",
+            "kind": "event",
+            "category": [
+                "file"
+            ],
+            "action": "file_deleted",
+            "code": "23",
+            "outcome": "success",
+            "original": "Jun  6 21:24:19 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:24:19.556615000Z\"/><EventRecordID>16007</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:24:19.564</Data><Data Name=\"ProcessGuid\">{924935dc-7392-647f-86e3-076450560000}</Data><Data Name=\"ProcessId\">3044</Data><Data Name=\"User\">-</Data><Data Name=\"Image\">/usr/bin/zsh</Data><Data Name=\"TargetFilename\">/root/.zsh_history.LOCK</Data><Data Name=\"Hashes\">-</Data><Data Name=\"IsExecutable\">-</Data><Data Name=\"Archived\">-</Data></EventData></Event>",
+            "dataset": "sysmon"
+        },
+        "host": {
+            "id": "001",
+            "hostname": "202-u20-dev-agent",
+            "name": "202-u20-dev-agent"
+        },
+        "process": {
+            "executable": "/usr/bin/zsh",
+            "pid": 3044,
+            "name": "zsh",
+            "entity_id": "{924935dc-7392-647f-86e3-076450560000}"
+        },
+        "file": {
+            "path": "/root/.zsh_history.LOCK"
+        }
+    },
+    {
+        "related": {
+            "hosts": [
+                "202-u20-dev-agent"
+            ]
+        },
+        "event": {
+            "code": "23",
+            "module": "sysmon-linux",
+            "type": [
+                "deletion"
+            ],
+            "original": "Jun  7 00:37:03 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T00:37:03.118930000Z\"/><EventRecordID>18568</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 00:37:03.126</Data><Data Name=\"ProcessGuid\">{924935dc-d12e-647f-ad3b-55211c560000}</Data><Data Name=\"ProcessId\">6046</Data><Data Name=\"User\">-</Data><Data Name=\"Image\">/usr/bin/python3.10</Data><Data Name=\"TargetFilename\">/var/lib/ubuntu-advantage/notices.json</Data><Data Name=\"Hashes\">-</Data><Data Name=\"IsExecutable\">-</Data><Data Name=\"Archived\">-</Data></EventData></Event>",
+            "dataset": "sysmon",
+            "action": "file_deleted",
+            "outcome": "success",
+            "category": [
+                "file"
+            ],
+            "start": "2023-06-07T00:37:03.118930000Z",
+            "provider": "Linux-Sysmon",
+            "kind": "event"
+        },
+        "wazuh": {
+            "source": "logcollector",
+            "registered_ip": "any",
+            "origin": "/test/syslog.log",
+            "queue": 49,
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ]
+        },
+        "file": {
+            "path": "/var/lib/ubuntu-advantage/notices.json"
+        },
+        "agent": {
+            "name": "wazuh-agent-1",
+            "id": "001",
+            "type": "wazuh-agent"
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>23</EventID><Version>5</Version><Level>4</Level><Task>23</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T00:37:03.118930000Z\"/><EventRecordID>18568</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 00:37:03.126</Data><Data Name=\"ProcessGuid\">{924935dc-d12e-647f-ad3b-55211c560000}</Data><Data Name=\"ProcessId\">6046</Data><Data Name=\"User\">-</Data><Data Name=\"Image\">/usr/bin/python3.10</Data><Data Name=\"TargetFilename\">/var/lib/ubuntu-advantage/notices.json</Data><Data Name=\"Hashes\">-</Data><Data Name=\"IsExecutable\">-</Data><Data Name=\"Archived\">-</Data></EventData></Event>",
+        "log": {
+            "level": "Information"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "host": {
+            "name": "202-u20-dev-agent",
+            "id": "001",
+            "hostname": "202-u20-dev-agent"
+        },
+        "process": {
+            "name": "python3.10",
+            "executable": "/usr/bin/python3.10",
+            "pid": 6046,
+            "entity_id": "{924935dc-d12e-647f-ad3b-55211c560000}"
+        }
+    }
+]

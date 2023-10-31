@@ -64,7 +64,7 @@ jobs:
 
     - name: Set Server Configuration
       # Set Server Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}}
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}} ${{env.TEST_TYPE}}
 
     - name: Health Test
       # Run integration tests using behave
