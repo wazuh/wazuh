@@ -274,7 +274,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
 
     // Detect message type
     json_type = cJSON_GetObjectItem(logJSON, "type");
-    if (!(json_type && (msg_type = json_type->valuestring))) {
+    if (!(cJSON_IsString(json_type) && (msg_type = json_type->valuestring))) {
         mdebug1("Invalid message. Type not found.");
         cJSON_Delete (logJSON);
         return (0);
@@ -359,7 +359,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
     os_calloc(OS_SIZE_6144, sizeof(char), msg);
     os_calloc(OS_SIZE_6144, sizeof(char), response);
 
-    if (iface = cJSON_GetObjectItem(logJSON, "iface"), iface) {
+    if (iface = cJSON_GetObjectItem(logJSON, "iface"), cJSON_IsObject(iface)) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * name = cJSON_GetObjectItem(iface, "name");
@@ -379,48 +379,48 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
         snprintf(msg, OS_SIZE_6144 - 1, "agent %s netinfo save", lf->agent_id);
 
-        if (scan_id) {
+        if (cJSON_IsNumber(scan_id)) {
             snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
         } else {
             wm_strcat(&msg, "NULL", ' ');
         }
 
-        if (scan_time) {
+        if (cJSON_IsString(scan_time)) {
             wm_strcat(&msg, scan_time->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (name) {
+        if (cJSON_IsString(name)) {
             wm_strcat(&msg, name->valuestring, '|');
             fillData(lf,"netinfo.iface.name",name->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (adapter) {
+        if (cJSON_IsString(adapter)) {
             wm_strcat(&msg, adapter->valuestring, '|');
             fillData(lf,"netinfo.iface.adapter",adapter->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (type) {
+        if (cJSON_IsString(type)) {
             wm_strcat(&msg, type->valuestring, '|');
             fillData(lf,"netinfo.iface.type",type->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (state) {
+        if (cJSON_IsString(state)) {
             wm_strcat(&msg, state->valuestring, '|');
             fillData(lf,"netinfo.iface.state",state->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (mtu) {
+        if (cJSON_IsNumber(mtu)) {
             char _mtu[OS_SIZE_128];
             snprintf(_mtu, OS_SIZE_128 - 1, "%d", mtu->valueint);
             fillData(lf,"netinfo.iface.mtu",_mtu);
@@ -429,14 +429,14 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (mac) {
+        if (cJSON_IsString(mac)) {
             wm_strcat(&msg, mac->valuestring, '|');
             fillData(lf,"netinfo.iface.mac",mac->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (tx_packets) {
+        if (cJSON_IsNumber(tx_packets)) {
             char txpack[OS_SIZE_512];
             snprintf(txpack, OS_SIZE_512 - 1, "%d", tx_packets->valueint);
             fillData(lf,"netinfo.iface.tx_packets",txpack);
@@ -445,7 +445,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (rx_packets) {
+        if (cJSON_IsNumber(rx_packets)) {
             char rxpack[OS_SIZE_512];
             snprintf(rxpack, OS_SIZE_512 - 1, "%d", rx_packets->valueint);
             fillData(lf,"netinfo.iface.rx_packets",rxpack);
@@ -454,7 +454,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (tx_bytes) {
+        if (cJSON_IsNumber(tx_bytes)) {
             char txbytes[OS_SIZE_512];
             snprintf(txbytes, OS_SIZE_512 - 1, "%d", tx_bytes->valueint);
             fillData(lf,"netinfo.iface.tx_bytes",txbytes);
@@ -463,7 +463,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (rx_bytes) {
+        if (cJSON_IsNumber(rx_bytes)) {
             char rxbytes[OS_SIZE_512];
             snprintf(rxbytes, OS_SIZE_512 - 1, "%d", rx_bytes->valueint);
             fillData(lf,"netinfo.iface.rx_bytes",rxbytes);
@@ -472,7 +472,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (tx_errors) {
+        if (cJSON_IsNumber(tx_errors)) {
             char txerrors[OS_SIZE_512];
             snprintf(txerrors, OS_SIZE_512 - 1, "%d", tx_errors->valueint);
             fillData(lf,"netinfo.iface.tx_errors",txerrors);
@@ -481,7 +481,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (rx_errors) {
+        if (cJSON_IsNumber(rx_errors)) {
             char rxerrors[OS_SIZE_512];
             snprintf(rxerrors, OS_SIZE_512 - 1, "%d", rx_errors->valueint);
             fillData(lf,"netinfo.iface.rx_errors",rxerrors);
@@ -490,7 +490,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (tx_dropped) {
+        if (cJSON_IsNumber(tx_dropped)) {
             char txdropped[OS_SIZE_512];
             snprintf(txdropped, OS_SIZE_512 - 1, "%d", tx_dropped->valueint);
             fillData(lf,"netinfo.iface.tx_dropped",txdropped);
@@ -499,7 +499,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (rx_dropped) {
+        if (cJSON_IsNumber(rx_dropped)) {
             char rxdropped[OS_SIZE_512];
             snprintf(rxdropped, OS_SIZE_512 - 1, "%d", rx_dropped->valueint);
             fillData(lf,"netinfo.iface.rx_dropped",rxdropped);
@@ -513,7 +513,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
             if (wdbc_parse_result(response, &message) == WDBC_OK) {
                 cJSON * ip;
 
-                if (ip = cJSON_GetObjectItem(iface, "IPv4"), ip) {
+                if (ip = cJSON_GetObjectItem(iface, "IPv4"), cJSON_IsObject(ip)) {
 
                     cJSON * address = cJSON_GetObjectItem(ip, "address");
                     cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
@@ -524,13 +524,13 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
                     snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
 
-                    if (scan_id) {
+                    if (cJSON_IsNumber(scan_id)) {
                         wm_strcat(&msg, id, ' ');
                     } else {
                         wm_strcat(&msg, "NULL", ' ');
                     }
 
-                    if (name) {
+                    if (cJSON_IsString(name)) {
                         wm_strcat(&msg, name->valuestring, '|');
                     } else {
                         wm_strcat(&msg, "NULL", '|');
@@ -539,21 +539,21 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                     // Information about an IPv4 interface
                     wm_strcat(&msg, "0", '|');
 
-                    if (gateway) {
+                    if (cJSON_IsString(gateway)) {
                         wm_strcat(&msg, gateway->valuestring, '|');
                         fillData(lf,"netinfo.iface.ipv4.gateway",gateway->valuestring);
                     } else {
                         wm_strcat(&msg, "NULL", '|');
                     }
 
-                    if (dhcp) {
+                    if (cJSON_IsString(dhcp)) {
                         wm_strcat(&msg, dhcp->valuestring, '|');
                         fillData(lf,"netinfo.iface.ipv4.dhcp",dhcp->valuestring);
                     } else {
                         wm_strcat(&msg, "NULL", '|');
                     }
 
-                    if (metric) {
+                    if (cJSON_IsNumber(metric)) {
                         char _metric[OS_SIZE_128];
                         snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
                         fillData(lf,"netinfo.iface.ipv4.metric", _metric);
@@ -573,21 +573,30 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
                     // Save addresses information into 'sys_netaddr' table
 
-                    if (address) {
+                    if (cJSON_IsArray(address)) {
                         char *ip4_address = NULL;
                         char *ip4_netmask = NULL;
                         char *ip4_broadcast = NULL;
-                        for (i = 0; i < cJSON_GetArraySize(address); i++) {
+                        const int array_size = cJSON_GetArraySize(address);
+
+                        for (i = 0; i < array_size; i++) {
+                            cJSON *address_i = cJSON_GetArrayItem(address, i);
+                            cJSON *netmask_i = cJSON_GetArrayItem(netmask, i);
+                            cJSON *broadcast_i = cJSON_GetArrayItem(broadcast, i);
+
+                            if (!cJSON_IsString(address_i)) {
+                                break;
+                            }
 
                             snprintf(msg, OS_SIZE_6144 - 1, "agent %s netaddr save", lf->agent_id);
 
-                            if (scan_id) {
+                            if (cJSON_IsNumber(scan_id)) {
                                 wm_strcat(&msg, id, ' ');
                             } else {
                                 wm_strcat(&msg, "NULL", ' ');
                             }
 
-                            if (name) {
+                            if (cJSON_IsString(name)) {
                                 wm_strcat(&msg, name->valuestring, '|');
                             } else {
                                 wm_strcat(&msg, "NULL", '|');
@@ -596,30 +605,30 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                             // Information about an IPv4 address
                             wm_strcat(&msg, "0", '|');
 
-                            wm_strcat(&msg, cJSON_GetArrayItem(address,i)->valuestring, '|');
+                            wm_strcat(&msg, address_i->valuestring, '|');
                             if(i == 0){
-                                os_strdup(cJSON_GetArrayItem(address,i)->valuestring, ip4_address);
+                                os_strdup(address_i->valuestring, ip4_address);
                             } else {
-                                wm_strcat(&ip4_address, cJSON_GetArrayItem(address,i)->valuestring, ',');
+                                wm_strcat(&ip4_address, address_i->valuestring, ',');
                             }
 
-                            if (cJSON_GetArrayItem(netmask,i) != NULL) {
-                                wm_strcat(&msg, cJSON_GetArrayItem(netmask,i)->valuestring, '|');
+                            if (cJSON_IsString(netmask_i)) {
+                                wm_strcat(&msg, netmask_i->valuestring, '|');
                                 if(i == 0){
-                                    os_strdup(cJSON_GetArrayItem(netmask,i)->valuestring, ip4_netmask);
+                                    os_strdup(netmask_i->valuestring, ip4_netmask);
                                 } else {
-                                    wm_strcat(&ip4_netmask, cJSON_GetArrayItem(netmask,i)->valuestring, ',');
+                                    wm_strcat(&ip4_netmask, netmask_i->valuestring, ',');
                                 }
                             } else {
                                 wm_strcat(&msg, "NULL", '|');
                             }
 
-                            if (cJSON_GetArrayItem(broadcast,i) != NULL) {
-                                wm_strcat(&msg, cJSON_GetArrayItem(broadcast,i)->valuestring, '|');
+                            if (cJSON_IsString(broadcast_i)) {
+                                wm_strcat(&msg, broadcast_i->valuestring, '|');
                                 if(i == 0){
-                                    os_strdup(cJSON_GetArrayItem(broadcast,i)->valuestring, ip4_broadcast);
+                                    os_strdup(broadcast_i->valuestring, ip4_broadcast);
                                 } else {
-                                    wm_strcat(&ip4_broadcast, cJSON_GetArrayItem(broadcast,i)->valuestring, ',');
+                                    wm_strcat(&ip4_broadcast, broadcast_i->valuestring, ',');
                                 }
                             } else {
                                 wm_strcat(&msg, "NULL", '|');
@@ -675,7 +684,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                     }
                 }
 
-                if (ip = cJSON_GetObjectItem(iface, "IPv6"), ip) {
+                if (ip = cJSON_GetObjectItem(iface, "IPv6"), cJSON_IsObject(ip)) {
                     cJSON * address = cJSON_GetObjectItem(ip, "address");
                     cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
                     cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
@@ -685,13 +694,13 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
                     snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
 
-                    if (scan_id) {
+                    if (cJSON_IsNumber(scan_id)) {
                         wm_strcat(&msg, id, ' ');
                     } else {
                         wm_strcat(&msg, "NULL", ' ');
                     }
 
-                    if (name) {
+                    if (cJSON_IsString(name)) {
                         wm_strcat(&msg, name->valuestring, '|');
                     } else {
                         wm_strcat(&msg, "NULL", '|');
@@ -700,21 +709,21 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                     // Information about an IPv6 interface
                     wm_strcat(&msg, "1", '|');
 
-                    if (gateway) {
+                    if (cJSON_IsString(gateway)) {
                         wm_strcat(&msg, gateway->valuestring, '|');
                         fillData(lf, "netinfo.iface.ipv6.gateway",gateway->valuestring);
                     } else {
                         wm_strcat(&msg, "NULL", '|');
                     }
 
-                    if (dhcp) {
+                    if (cJSON_IsString(dhcp)) {
                         wm_strcat(&msg, dhcp->valuestring, '|');
                         fillData(lf, "netinfo.iface.ipv6.dhcp",dhcp->valuestring);
                     } else {
                         wm_strcat(&msg, "NULL", '|');
                     }
 
-                    if (metric) {
+                    if (cJSON_IsNumber(metric)) {
                         char _metric[OS_SIZE_128];
                         snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
                         fillData(lf,"netinfo.iface.ipv6.metric",_metric);
@@ -732,21 +741,30 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                         goto end;
                     }
 
-                    if (address) {
+                    if (cJSON_IsArray(address)) {
                         char *ip6_address = NULL;
                         char *ip6_netmask = NULL;
                         char *ip6_broadcast = NULL;
-                        for (i = 0; i < cJSON_GetArraySize(address); i++) {
+                        const int array_size = cJSON_GetArraySize(address);
+
+                        for (i = 0; i < array_size; i++) {
+                            cJSON *address_i = cJSON_GetArrayItem(address, i);
+                            cJSON *netmask_i = cJSON_GetArrayItem(netmask, i);
+                            cJSON *broadcast_i = cJSON_GetArrayItem(broadcast, i);
+
+                            if (!cJSON_IsString(address_i)) {
+                                break;
+                            }
 
                             snprintf(msg, OS_SIZE_6144 - 1, "agent %s netaddr save", lf->agent_id);
 
-                            if (scan_id) {
+                            if (cJSON_IsNumber(scan_id)) {
                                 wm_strcat(&msg, id, ' ');
                             } else {
                                 wm_strcat(&msg, "NULL", ' ');
                             }
 
-                            if (name) {
+                            if (cJSON_IsString(name)) {
                                 wm_strcat(&msg, name->valuestring, '|');
                             } else {
                                 wm_strcat(&msg, "NULL", '|');
@@ -755,30 +773,30 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                             // Information about an IPv6 address
                             wm_strcat(&msg, "1", '|');
 
-                            wm_strcat(&msg, cJSON_GetArrayItem(address,i)->valuestring, '|');
+                            wm_strcat(&msg, address_i->valuestring, '|');
                             if(i == 0){
-                                os_strdup(cJSON_GetArrayItem(address,i)->valuestring,ip6_address);
+                                os_strdup(address_i->valuestring,ip6_address);
                             } else {
-                                wm_strcat(&ip6_address, cJSON_GetArrayItem(address,i)->valuestring, ',');
+                                wm_strcat(&ip6_address, address_i->valuestring, ',');
                             }
 
-                            if (cJSON_GetArrayItem(netmask,i) != NULL) {
-                                wm_strcat(&msg, cJSON_GetArrayItem(netmask,i)->valuestring, '|');
+                            if (netmask_i != NULL) {
+                                wm_strcat(&msg, netmask_i->valuestring, '|');
                                 if(i == 0){
-                                    os_strdup(cJSON_GetArrayItem(netmask,i)->valuestring,ip6_netmask);
+                                    os_strdup(netmask_i->valuestring,ip6_netmask);
                                 } else {
-                                    wm_strcat(&ip6_netmask, cJSON_GetArrayItem(netmask,i)->valuestring, ',');
+                                    wm_strcat(&ip6_netmask, netmask_i->valuestring, ',');
                                 }
                             } else {
                                 wm_strcat(&msg, "NULL", '|');
                             }
 
-                            if (cJSON_GetArrayItem(broadcast,i) != NULL) {
-                                wm_strcat(&msg, cJSON_GetArrayItem(broadcast,i)->valuestring, '|');
+                            if (broadcast_i != NULL) {
+                                wm_strcat(&msg, broadcast_i->valuestring, '|');
                                 if(i == 0){
-                                    os_strdup(cJSON_GetArrayItem(broadcast,i)->valuestring, ip6_broadcast);
+                                    os_strdup(broadcast_i->valuestring, ip6_broadcast);
                                 } else {
-                                    wm_strcat(&ip6_broadcast, cJSON_GetArrayItem(broadcast,i)->valuestring, ',');
+                                    wm_strcat(&ip6_broadcast, broadcast_i->valuestring, ',');
                                 }
                             } else {
                                 wm_strcat(&msg, "NULL", '|');
@@ -841,16 +859,19 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
         }
     } else {
         // Looking for 'end' message.
-        char * msg_type = NULL;
+        cJSON * msg_type = cJSON_GetObjectItem(logJSON, "type");
 
-        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-
-        if (!msg_type) {
+        if (!cJSON_IsString(msg_type)) {
             merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
             goto end;                                   // LCOV_EXCL_LINE
-        } else if (strcmp(msg_type, "network_end") == 0) {
+        } else if (strcmp(msg_type->valuestring, "network_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+
+            if (!cJSON_IsNumber(scan_id)) {
+                merror("at decode_netinfo(): missing scan ID."); // LCOV_EXCL_LINE
+                goto end;                                           // LCOV_EXCL_LINE
+            }
             snprintf(msg, OS_SIZE_6144 - 1, "agent %s netinfo del %d", lf->agent_id, scan_id->valueint);
 
             char *message;
@@ -1558,20 +1579,18 @@ end:
 
 int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
     char * msg = NULL;
-    cJSON * hotfix;
-    cJSON * scan_id;
-    cJSON * scan_time;
+    cJSON * hotfix = cJSON_GetObjectItem(logJSON, "hotfix");
+    cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+    cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
     char response[4096];
 
-    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+    if (!cJSON_IsNumber(scan_id)) {
         return -1;
     }
 
     os_calloc(OS_SIZE_1024, sizeof(char), msg);
 
-    if (hotfix = cJSON_GetObjectItem(logJSON, "hotfix"), hotfix) {
-        scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-
+    if (cJSON_IsString(hotfix) && cJSON_IsString(scan_time)) {
         snprintf(msg, OS_SIZE_1024, "agent %s hotfix save %d|%s|%s|",
                 lf->agent_id,
                 scan_id->valueint,
@@ -1592,7 +1611,7 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
         if (!msg_type) {
             merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
             free(msg);                                  // LCOV_EXCL_LINE
-            return -1;                                  // LCOV_EXCL_LINE                 
+            return -1;                                  // LCOV_EXCL_LINE
         } else if (strcmp(msg_type, "hotfix_end") == 0) {
             snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
 
@@ -2042,7 +2061,7 @@ static void fill_event_alert(Eventinfo * lf,                                    
 
 /**
  * @brief Get the mapping list object
- * 
+ *
  * @param type Scan type
  * @return mapping list if exist. NULL otherwise
  */
@@ -2073,8 +2092,8 @@ static const struct delta_values_mapping_list * get_mapping_list(const char *typ
 }
 
 /**
- * @brief Map delta values according to scan type 
- * 
+ * @brief Map delta values according to scan type
+ *
  * @param type scan type
  * @param data delta information
  */
@@ -2115,7 +2134,7 @@ static int decode_dbsync(Eventinfo * lf,   /* Event information */
 
                     delta_map_values(type, data_object);                            /* Map field's values if applies */
                     char * operation = operation_object->valuestring;               /* Operation is the operation to be
-                                                                                       performed in the table. */                    
+                                                                                       performed in the table. */
                     char * data = cJSON_PrintUnformatted(data_object);              /* Data is the JSON object with the
                                                                                        values to be processed. */
                     if (NULL != data) {
