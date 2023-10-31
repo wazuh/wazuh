@@ -6,13 +6,15 @@ import sys
 from os import path
 from datetime import datetime
 
+# Local imports
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import aws_logger
 
 
+# Classes
 class AWSInspector(aws_service.AWSService):
     """
     Class for getting AWS Inspector logs
@@ -66,11 +68,11 @@ class AWSInspector(aws_service.AWSService):
         """
         if len(arn_list) != 0:
             response = self.client.describe_findings(findingArns=arn_list)['findings']
-            aws_tools.debug(f"+++ Processing {len(response)} events", 3)
+            aws_logger.debug(f"+++ Processing {len(response)} events")
             for elem in response:
                 if self.event_should_be_skipped(elem):
-                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the '
-                                    f'"{self.discard_field}" field. The event will be skipped.', 2)
+                    aws_logger.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the '
+                                     f'"{self.discard_field}" field. The event will be skipped.')
                     continue
                 self.send_msg(self.format_message(elem))
                 self.sent_events += 1
@@ -109,7 +111,7 @@ class AWSInspector(aws_service.AWSService):
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
                                                                          {'beginDate': date_scan,
                                                                           'endDate': date_current}})
-        aws_tools.debug(f"+++ Listing findings starting from {date_scan}", 2)
+        aws_logger.debug(f"+++ Listing findings starting from {date_scan}")
         self.send_describe_findings(response['findingArns'])
         # Iterate if there are more elements
         while 'nextToken' in response:
@@ -119,9 +121,9 @@ class AWSInspector(aws_service.AWSService):
             self.send_describe_findings(response['findingArns'])
 
         if self.sent_events:
-            aws_tools.debug(f"+++ {self.sent_events} events collected and processed in {self.region}", 1)
+            aws_logger.debug(f"+++ {self.sent_events} events collected and processed in {self.region}")
         else:
-            aws_tools.debug(f'+++ There are no new events in the "{self.region}" region', 1)
+            aws_logger.debug(f'+++ There are no new events in the "{self.region}" region')
 
         # insert last scan in DB
         self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name), {

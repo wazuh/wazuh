@@ -12,11 +12,11 @@ import configparser
 from datetime import datetime
 from typing import Optional
 import re
-from sys import path
+import sys
 from os.path import dirname, abspath, join, expanduser
 
 # Local Imports
-path.insert(0, dirname(dirname(abspath(__file__))))
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 
@@ -36,12 +36,12 @@ RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
 
 
-# Set aws logger
+# Set AWS logger
 aws_logger = WazuhCloudLogger(
     logger_name=':aws_wodle:'
 )
 
-
+# Methods
 def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
     """Create a botocore.config.Config object with the specified profile and profile_config.
 

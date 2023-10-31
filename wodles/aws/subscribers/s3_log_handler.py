@@ -7,22 +7,22 @@ import io
 import json
 import re
 import sys
-
 from os import path
+
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+from aws_tools import aws_logger
 
 try:
     import pyarrow.parquet as pq
 except ImportError:
-    print('ERROR: pyarrow module is required.')
+    aws_logger('Pyarrow module is required.')
     sys.exit(10)
-
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 
 
+# Classes
 class AWSS3LogHandler:
     def obtain_logs(self, bucket: str, log_path: str) -> list:
         """Fetch a file from a bucket and obtain a list of events from it.
@@ -172,21 +172,21 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                         for event in self._json_event_generator(f.read())]
 
             except (json.JSONDecodeError, AttributeError):
-                aws_tools.debug("+++ Log file does not contain JSON objects. Trying with other formats.", 2)
+                aws_logger.debug("+++ Log file does not contain JSON objects. Trying with other formats.")
                 f.seek(0)
                 if self.is_csv(f):
-                    aws_tools.debug("+++ Log file is CSV formatted.", 2)
+                    aws_logger.debug("+++ Log file is CSV formatted.")
                     dialect = csv.Sniffer().sniff(f.read(1024))
                     f.seek(0)
                     reader = csv.DictReader(f, dialect=dialect)
                     return [dict({k: v for k, v in row.items() if v is not None},
                                  source='custom') for row in reader]
                 else:
-                    aws_tools.debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
+                    aws_logger.debug("+++ Data in the file does not seem to be CSV. Trying with plain text.")
                     try:
-                        return [dict(full_log=event, source="custom") for event in f.read().splitlines() ]
+                        return [dict(full_log=event, source="custom") for event in f.read().splitlines()]
                     except OSError:
-                        print(f"ERROR: Data in the file does not seem to be plain text either.")
+                        aws_logger.error(f"Data in the file does not seem to be plain text either.")
                         sys.exit(9)
 
     def process_file(self, message_body: dict) -> None:
@@ -216,13 +216,13 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             if 'full_log' in log:
                 # The processed logs origin is a plain text log file
                 if re.match(self.discard_regex, log['full_log']):
-                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. '
-                                    f'The event will be skipped.', 2)
+                    aws_logger.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. '
+                                     'The event will be skipped.')
                     continue
             elif self.event_should_be_skipped(log):
-                aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
-                                f'in the "{self.discard_field}" '
-                      f'field. The event will be skipped.', 2)
+                aws_logger.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
+                                 f'in the "{self.discard_field}" '
+                                 'field. The event will be skipped.')
                 continue
 
             msg['aws'].update(log)
@@ -268,18 +268,18 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         events : list
             Events contained inside the parquet file.
         """
-        aws_tools.debug(f'Processing file {log_path} in {bucket}', 2)
+        aws_logger.debug(f'Processing file {log_path} in {bucket}')
         events = []
         try:
             raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
         except Exception as e:
-            aws_tools.debug(f'Could not get the parquet file {log_path} in {bucket}: {e}', 1)
+            aws_logger.error(f'Could not get the parquet file {log_path} in {bucket}: {e}')
             sys.exit(21)
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
                 events.append(json.dumps(j))
-        aws_tools.debug(f'Found {len(events)} events in file {log_path}', 2)
+        aws_logger.debug(f'Found {len(events)} events in file {log_path}')
         return events
 
     def process_file(self, message_body: dict) -> None:
@@ -294,4 +294,4 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
                                           log_path=message_body['log_path'])
         for event in events_in_file:
             self.send_msg(event, dump_json=False)
-        aws_tools.debug(f'{len(events_in_file)} events sent to Analysisd', 2)
+        aws_logger.debug(f'{len(events_in_file)} events sent to Analysisd')

@@ -12,6 +12,8 @@ from datetime import datetime
 from datetime import timezone
 from os import path
 
+
+# Local imports
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
 
@@ -19,6 +21,7 @@ sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 from aws_tools import aws_logger
 
 
+# Classes
 class AWSCloudWatchLogs(aws_service.AWSService):
     """
     Class for getting AWS Cloudwatch logs
@@ -145,7 +148,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         self.only_logs_after_millis = int(datetime.strptime(only_logs_after, '%Y%m%d').replace(
             tzinfo=timezone.utc).timestamp() * 1000) if only_logs_after else None
         self.default_date_millis = int(self.default_date.timestamp() * 1000)
-        aws_logger.debug("only logs: {}".format(self.only_logs_after_millis), 1)
+        aws_logger.debug("only logs: {}".format(self.only_logs_after_millis))
 
     def get_alerts(self):
         """Iterate over all the log streams for each log group provided by the user in the given region to get their
@@ -162,7 +165,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         self.init_db(self.sql_cloudwatch_create_table.format(table_name=self.db_table_name))
 
         if self.reparse:
-            aws_logger.debug('Reparse mode ON', 1)
+            aws_logger.debug('Reparse mode ON')
 
         try:
             for log_group in self.log_group_list:
@@ -172,8 +175,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                     db_values = self.get_data_from_db(log_group=log_group, log_stream=log_stream)
                     aws_logger.debug('Token: "{}", start_time: "{}", '
                                      'end_time: "{}"'.format(db_values['token'] if db_values else None,
-                                                            db_values['start_time'] if db_values else None,
-                                                            db_values['end_time'] if db_values else None), 2)
+                                                             db_values['start_time'] if db_values else None,
+                                                             db_values['end_time'] if db_values else None), 2)
                     result_before = None
                     start_time = self.only_logs_after_millis if self.only_logs_after_millis else \
                         self.default_date_millis
@@ -209,7 +212,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
                 self.purge_db(log_group=log_group)
         finally:
-            aws_logger.debug("committing changes and closing the DB", 1)
+            aws_logger.debug("committing changes and closing the DB")
             self.close_db()
 
     def remove_aws_log_stream(self, log_group, log_stream):
@@ -226,11 +229,11 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             aws_logger.debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         except botocore.exceptions.ClientError as err:
-            aws_logger.error(f'The "remove_aws_log_stream" request failed: {err}', 1)
+            aws_logger.error(f'The "remove_aws_log_stream" request failed: {err}')
             sys.exit(16)
         except Exception:
-            aws_logger.error('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group),
-                            0)
+            aws_logger.error(
+                'Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group))
 
     def get_alerts_within_range(self, log_group, log_stream, token, start_time, end_time):
         """Get all the logs from a log stream with a timestamp between the range of the provided start and end times and
@@ -284,10 +287,10 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
             except botocore.exceptions.EndpointConnectionError:
                 aws_logger.warning(f'The "get_log_events" request was denied because the endpoint URL was not '
-                                f'available. Attempting again.', 1)
+                                   f'available. Attempting again.')
                 continue  # Needed to make the get_log_events request again
             except botocore.exceptions.ClientError as err:
-                aws_tools.debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
+                aws_logger.error(f'The "get_log_events" request failed: {err}')
                 sys.exit(16)
 
             # Update token
@@ -296,26 +299,26 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
             # Send events to Analysisd
             if response['events']:
-                aws_tools.debug('+++ Sending events to Analysisd...', 1)
+                aws_logger.debug('+++ Sending events to Analysisd...')
                 for event in response['events']:
                     event_msg = event['message']
                     try:
                         json_event = json.loads(event_msg)
                         if self.event_should_be_skipped(json_event):
-                            aws_tools.debug(
-                                f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
-                                f'field. The event will be skipped.', 2)
+                            aws_logger.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex found a match'
+                                f' in the "{self.discard_field}" field. The event will be skipped.')
                             continue
                     except ValueError:
                         # event_msg is not a JSON object, check if discard_regex.pattern matches the given string
-                        aws_tools.debug(f"+++ Retrieved log event is not a JSON object.", 3)
+                        aws_logger.debug(f"+++ Retrieved log event is not a JSON object.")
                         if re.match(self.discard_regex, event_msg):
-                            aws_tools.debug(
-                                f'+++ The "{self.discard_regex.pattern}" regex found a match. The event will be skipped.',
-                                2)
+                            aws_logger.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex found a match. '
+                                'The event will be skipped.')
                             continue
-                    aws_tools.debug('The message is "{}"'.format(event_msg), 2)
-                    aws_tools.debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
+                    aws_logger.debug('The message is "{}"'.format(event_msg))
+                    aws_logger.debug('The message\'s timestamp is {}'.format(event["timestamp"]))
                     self.send_msg(event_msg, dump_json=False)
                     sent_events += 1
 
@@ -330,10 +333,10 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                         max_end_time = event['timestamp']
 
             if sent_events:
-                aws_tools.debug(f"+++ Sent {sent_events} events to Analysisd", 1)
+                aws_logger.debug(f"+++ Sent {sent_events} events to Analysisd")
                 sent_events = 0
             else:
-                aws_tools.debug(f'+++ There are no new events in the "{log_group}" group', 1)
+                aws_logger.debug(f'+++ There are no new events in the "{log_group}" group')
 
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 
@@ -430,8 +433,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         values : dict
             Dict containing the token, start_time and end_time.
         """
-        aws_tools.debug('Saving data for log group "{}" and log stream "{}".'.format(log_group, log_stream), 1)
-        aws_tools.debug('The saved values are "{}"'.format(values), 2)
+        aws_logger.debug('Saving data for log group "{}" and log stream "{}".'.format(log_group, log_stream))
+        aws_logger.debug('The saved values are "{}"'.format(values))
         try:
             self.db_cursor.execute(self.sql_cloudwatch_insert.format(table_name=self.db_table_name), {
                 'aws_region': self.region,
@@ -441,7 +444,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 'start_time': values['start_time'],
                 'end_time': values['end_time']})
         except sqlite3.IntegrityError:
-            aws_tools.debug("Some data already exists on DB for that key. Updating their values...", 2)
+            aws_logger.debug("Some data already exists on DB for that key. Updating their values...")
             self.db_cursor.execute(self.sql_cloudwatch_update.format(table_name=self.db_table_name), {
                 'aws_region': self.region,
                 'aws_log_group': log_group,
@@ -464,7 +467,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         """
 
         result_list = list()
-        aws_tools.debug('Getting log streams for "{}" log group'.format(log_group), 1)
+        aws_logger.debug('Getting log streams for "{}" log group'.format(log_group))
 
         try:
             # Get all log streams using the token of the previous call to describe_log_streams
@@ -477,21 +480,21 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 token = response.get('nextToken')
 
             for log_stream in log_streams:
-                aws_tools.debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
+                aws_logger.debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group))
                 result_list.append(log_stream['logStreamName'])
 
             if result_list == list():
-                aws_tools.debug('No log streams were found for log group "{}"'.format(log_group), 1)
+                aws_logger.debug('No log streams were found for log group "{}"'.format(log_group))
 
         except botocore.exceptions.EndpointConnectionError as e:
-            print(f'ERROR: {str(e)}')
+            aws_logger.error(f'{str(e)}')
         except botocore.exceptions.ClientError as err:
-            aws_tools.debug(f'ERROR: The "get_log_streams" request failed: {err}', 1)
+            aws_logger.error(f'The "get_log_streams" request failed: {err}')
             sys.exit(16)
         except Exception:
-            aws_tools.debug(
+            aws_logger.debug(
                 '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
-                    log_group), 0)
+                    log_group))
 
         return result_list
 
@@ -503,7 +506,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         log group : str
             Name of the log group to check its log streams
         """
-        aws_tools.debug('Purging the BD', 1)
+        aws_logger.debug('Purging the BD')
         # Get the list of log streams from DB
         self.db_cursor.execute(self.sql_cloudwatch_select_logstreams.format(table_name=self.db_table_name), {
             'aws_region': self.region,
@@ -519,9 +522,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         # Check the difference and remove if applicable
         log_streams_to_purge = log_streams_sql - log_streams_aws
         if log_streams_to_purge != set():
-            aws_tools.debug(
-                'Data for the following log streams will be removed from {}: "{}"'.format(self.db_table_name,
-                                                                                          log_streams_to_purge), 2)
+            aws_logger.debug('Data for the following log streams will be removed from {}:'
+                             ' "{}"'.format(self.db_table_name, log_streams_to_purge))
         for log_stream in log_streams_to_purge:
             self.db_cursor.execute(self.sql_cloudwatch_purge.format(table_name=self.db_table_name), {
                 'aws_region': self.region,

@@ -7,16 +7,19 @@ import sys
 from os import path
 from datetime import datetime
 
+# Local imports
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 from aws_tools import ALL_REGIONS
 
+
+# Constants
 DEFAULT_DATABASE_NAME = "aws_services"
 DEFAULT_TABLENAME = "aws_services"
-
 AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
 
 
+# Classes
 class AWSService(wazuh_integration.WazuhAWSDatabase):
     """
     Represents a service which provides events.

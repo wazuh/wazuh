@@ -148,16 +148,14 @@ class WazuhIntegration:
                         RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
                     }
                     aws_logger.debug(
-                        f"Retries parameters found in user profile. Using profile '{profile}' retries configuration",
-                        2)
+                        f"Retries parameters found in user profile. Using profile '{profile}' retries configuration")
 
                 else:
                     # Set retry config
                     retries = copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION)
                     aws_logger.debug(
                         "No retries configuration found in profile config. Generating default configuration for "
-                        f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
-                        2)
+                        f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}")
 
                 args['config'].retries = retries
 
@@ -174,7 +172,7 @@ class WazuhIntegration:
                 aws_logger.error('Invalid key or value found in config '.format(e))
                 sys.exit(17)
 
-            aws_logger.debug(f"Created Config object using profile: '{profile}' configuration", 2)
+            aws_logger.debug(f"Created Config object using profile: '{profile}' configuration")
 
         else:
             # Set retries parameters to avoid a throttling exception
@@ -182,8 +180,7 @@ class WazuhIntegration:
             aws_logger.debug(
                 f"Generating default configuration for retries: {RETRY_MODE_BOTO_KEY} "
                 f"{args['config'].retries[RETRY_MODE_BOTO_KEY]} - "
-                f"{RETRY_ATTEMPTS_KEY} {args['config'].retries[RETRY_ATTEMPTS_KEY]}",
-                2)
+                f"{RETRY_ATTEMPTS_KEY} {args['config'].retries[RETRY_ATTEMPTS_KEY]}")
 
         return args
 
@@ -299,7 +296,7 @@ class WazuhIntegration:
             encoded_msg = f"{MESSAGE_HEADER}{json_msg if dump_json else msg}".encode()
             # Logs warning if event is bigger than max size
             if len(encoded_msg) > utils.MAX_EVENT_SIZE:
-                aws_logger.warning(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.", 1)
+                aws_logger.warning(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.")
             s.send(encoded_msg)
             s.close()
         except socket.error as e:
@@ -309,7 +306,7 @@ class WazuhIntegration:
             elif e.errno == 90:
                 aws_logger.error("Message too long to send to Wazuh.  Skipping message...")
                 aws_logger.debug('Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
-                                'Skipping message...', 1)
+                                'Skipping message...')
             else:
                 aws_logger.error("Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
@@ -479,7 +476,7 @@ class WazuhAWSDatabase(WazuhIntegration):
         :param sql_create_table: SQL query to create the table
         """
         try:
-            aws_logger.debug('+++ Table does not exist; create', 1)
+            aws_logger.debug('+++ Table does not exist; create')
             self.db_cursor.execute(sql_create_table)
         except Exception as e:
             aws_logger.error("Unable to create SQLite DB: {}".format(e))
@@ -531,5 +528,5 @@ class WazuhAWSDatabase(WazuhIntegration):
     def delete_deprecated_tables(self):
         tables = set([t[0] for t in self.db_cursor.execute(self.sql_find_table_names).fetchall()])
         for table in tables.intersection(DEPRECATED_TABLES):
-            aws_logger.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
+            aws_logger.debug(f"Removing deprecated '{table} 'table from {self.db_path}")
             self.db_cursor.execute(self.sql_drop_table.format(table_name=table))

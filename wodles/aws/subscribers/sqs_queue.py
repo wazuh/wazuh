@@ -12,9 +12,7 @@ import sqs_message_processor
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
-
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import aws_logger
 
 
 class AWSSQSQueue(wazuh_integration.WazuhIntegration):
@@ -78,10 +76,10 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
         try:
             url = self.client.get_queue_url(QueueName=self.sqs_name,
                                             QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
-            aws_tools.debug(f'The SQS queue is: {url}', 2)
+            aws_logger.debug(f'The SQS queue is: {url}')
             return url
         except botocore.exceptions.ClientError:
-            print('ERROR: Queue does not exist, verify the given name')
+            aws_logger.error('Queue does not exist, verify the given name')
             sys.exit(20)
 
     def delete_message(self, message: dict) -> None:
@@ -94,9 +92,9 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
         """
         try:
             self.client.delete_message(QueueUrl=self.sqs_url, ReceiptHandle=message["handle"])
-            aws_tools.debug(f'Message deleted from queue: {self.sqs_name}', 2)
+            aws_logger.debug(f'Message deleted from queue: {self.sqs_name}')
         except Exception as e:
-            aws_tools.debug(f'ERROR: Error deleting message from SQS: {e}', 1)
+            aws_logger.error(f'Error deleting message from SQS: {e}')
             sys.exit(21)
 
     def fetch_messages(self) -> dict:
@@ -108,12 +106,12 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
             A dictionary with a list of messages from the SQS queue.
         """
         try:
-            aws_tools.debug(f'Retrieving messages from: {self.sqs_name}', 2)
+            aws_logger.debug(f'Retrieving messages from: {self.sqs_name}')
             return self.client.receive_message(QueueUrl=self.sqs_url, AttributeNames=['All'],
                                                MaxNumberOfMessages=10, MessageAttributeNames=['All'],
                                                WaitTimeSeconds=20)
         except Exception as e:
-            aws_tools.debug(f'ERROR: Error receiving message from SQS: {e}', 1)
+            aws_logger.error(f'Error receiving message from SQS: {e}')
             sys.exit(21)
 
     def get_messages(self) -> list:
@@ -125,7 +123,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
             Parsed messages from the SQS queue.
         """
         sqs_raw_messages = self.fetch_messages()
-        aws_tools.debug(f'The raw message is: {sqs_raw_messages}', 3)
+        aws_logger.debug(f'The raw message is: {sqs_raw_messages}')
         sqs_messages = sqs_raw_messages.get('Messages', [])
 
         return self.message_processor.extract_message_info(sqs_messages)
@@ -140,8 +138,8 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
                     self.bucket_handler.process_file(message["route"])
                 except KeyError:
                     message_without_handle = {k: v for k, v in message.items() if k != 'handle'}
-                    aws_tools.debug(f"Processed message {message_without_handle} does not contain the expected format, "
-                                    f"omitting message.", 2)
+                    aws_logger.debug(f"Processed message {message_without_handle} "
+                                     "does not contain the expected format, omitting message.")
                     continue
                 self.delete_message(message)
             messages = self.get_messages()

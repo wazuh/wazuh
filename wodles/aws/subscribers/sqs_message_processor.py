@@ -6,10 +6,12 @@ import json
 import sys
 from os import path
 
+# Local imports
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import  aws_logger
 
 
+# Classes
 class AWSQueueMessageProcessor:
     """Class in charge of processing the messages retrieved from an AWS SQS queue."""
 
@@ -20,7 +22,7 @@ class AWSQueueMessageProcessor:
             msg_handle = mesg["ReceiptHandle"]
             message = json.loads(body)
 
-            aws_tools.debug(f'The message is: {message}', 2)
+            aws_logger.debug(f'The message is: {message}')
 
             message_information = self.parse_message(message)
             messages.append({**message_information, "handle": msg_handle})

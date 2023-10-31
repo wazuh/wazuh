@@ -77,6 +77,8 @@ def main(argv):
                 bucket_type = buckets_s3.server_access.AWSServerAccess
             else:
                 raise Exception("Invalid type of bucket")
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('172.30.0.1', port=55555, stdoutToServer=True, stderrToServer=True)
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
                                  profile=options.aws_profile,
@@ -189,7 +191,7 @@ def main(argv):
 if __name__ == '__main__':
     try:
         aws_logger.debug('Args: {args}'.format
-                         (args=str(sys.argv)), 2)
+                         (args=str(sys.argv)))
         signal.signal(signal.SIGINT, handler)
         main(sys.argv[1:])
         sys.exit(0)
