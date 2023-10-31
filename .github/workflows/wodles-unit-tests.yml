@@ -1,4 +1,4 @@
-name: API unit tests
+name: WODLES unit tests
 
 on:
   workflow_dispatch:
@@ -9,8 +9,8 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - '.github/workflows/api-unit-tests.yml'
-      - 'api/**'
+      - '.github/workflows/wodles-unit-tests.yml'
+      - 'wodles/**'
       - 'src/Makefile'
 
 jobs:
@@ -37,5 +37,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r framework/requirements-dev.txt
 
-      - name: Run API tests
-        run: python -m pytest api/api
+      - name: Run WODLES tests
+        run: python -m pytest wodles
