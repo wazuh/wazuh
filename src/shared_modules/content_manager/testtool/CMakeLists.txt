@@ -10,4 +10,6 @@ file(GLOB CONTENT_MANAGER_TEST_TOOL_SRC "*.cpp")
 
 add_executable(content_manager_test_tool ${CONTENT_MANAGER_TEST_TOOL_SRC})
 
-target_link_libraries(content_manager_test_tool content_manager)
+target_link_libraries(content_manager_test_tool
+        content_manager
+        pthread)
