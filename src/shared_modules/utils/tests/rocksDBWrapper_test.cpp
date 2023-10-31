@@ -320,3 +320,21 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
 
     EXPECT_EQ(counter, NUM_ELEMENTS);
 }
+
+/**
+ * @brief Tests create folders and directories recursively based
+ * on the provided path argument when initializing RocksDB instances
+ */
+TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
+{
+    const std::string DATABASE_NAME {"folder1/folder2/test.db"};
+
+    std::optional<Utils::RocksDBWrapper> db_wrapper;
+
+    EXPECT_NO_THROW({
+        db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME);
+    });
+
+    db_wrapper->deleteAll();
+    std::filesystem::remove_all(DATABASE_NAME);
+}

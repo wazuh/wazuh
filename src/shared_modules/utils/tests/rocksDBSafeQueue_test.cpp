@@ -146,3 +146,14 @@ TEST_F(RocksDBSafeQueueTest, CancelBlockingPop)
     t2.join();
 }
 
+TEST_F(RocksDBSafeQueueTest, CreateFolderRecursively)
+{
+    const std::string DATABASE_NAME {"folder1/folder2/test.db"};
+
+    EXPECT_NO_THROW({
+            (std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(RocksDBQueue<std::string>(DATABASE_NAME)));
+        });
+
+    std::error_code ec;
+    std::filesystem::remove_all(DATABASE_NAME, ec);
+}
