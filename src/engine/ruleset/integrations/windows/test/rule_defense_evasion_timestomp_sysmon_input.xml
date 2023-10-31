@@ -1,0 +1,31 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385f-c22a-43e0-bf4c-06f5698ffbd9}"/>
+      <EventID>2</EventID>
+      <Version>5</Version>
+      <Level>4</Level>
+      <Task>2</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8000000000000000</Keywords>
+      <TimeCreated SystemTime="2023-09-21T02:08:36.3387598Z"/>
+      <EventRecordID>13473</EventRecordID>
+      <Correlation/>
+      <Execution ProcessID="4360" ThreadID="5336"/>
+      <Channel>Microsoft-Windows-Sysmon/Operational</Channel>
+      <Computer>DESKTOP-22QKO5D</Computer>
+      <Security UserID="S-1-5-18"/>
+    </System>
+    <EventData>
+      <Data Name="RuleName">T1099</Data>
+      <Data Name="UtcTime">2023-09-21 02:08:36.328</Data>
+      <Data Name="ProcessGuid">{23b237de-6cd1-650b-0006-000000002000}</Data>
+      <Data Name="ProcessId">7008</Data>
+      <Data Name="Image">C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Data>
+      <Data Name="TargetFilename">C:\Users\prueba.exe</Data>
+      <Data Name="CreationUtcTime">1997-01-06 22:00:00.000</Data>
+      <Data Name="PreviousCreationUtcTime">2023-09-21 02:07:09.460</Data>
+      <Data Name="User">DESKTOP-22QKO5D\Positivo BGH</Data>
+    </EventData>
+  </Event>
+</Events>
