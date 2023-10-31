@@ -11,6 +11,7 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "secureCommunication.hpp"
 #include "shared_modules/indexer_connector/src/serverSelector.hpp"
 #include <fstream>
 
@@ -28,6 +29,20 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
     // Get index name.
     auto indexName {config.at("name").get_ref<const std::string&>()};
 
+    std::shared_ptr<SecureCommunication> secureCommunication;
+    try
+    {
+        secureCommunication = std::make_shared<SecureCommunication>(
+            SecureCommunication::builder(config.at("ssl").at("certificate_authorities")[0].get<std::string>())
+                .setBasicAuth(config.at("username").get<std::string>() + ":" + config.at("password").get<std::string>())
+                .setClientAuth(config.at("ssl").at("certificate").get<std::string>(),
+                               config.at("ssl").at("key").get<std::string>()));
+    }
+    catch (...)
+    {
+        throw std::runtime_error("Couldn't get secure communication configuration");
+    }
+
     {
         // Read template file.
         std::ifstream templateFile(templatePath);
@@ -43,7 +58,8 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
             templateData,
             [&](const std::string& response) {},
             [&](const std::string& error, const long statusCode)
-            { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); });
+            { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); },
+            secureCommunication);
     }
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
@@ -81,7 +97,8 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
                     bulkData,
                     [&](const std::string& response) {},
                     [&](const std::string& error, const long statusCode)
-                    { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; });
+                    { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; },
+                    secureCommunication);
             }
             catch (const std::exception& e)
             {
