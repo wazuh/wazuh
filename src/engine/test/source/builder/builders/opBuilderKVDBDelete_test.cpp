@@ -1,17 +1,18 @@
-#include <gtest/gtest.h>
-
 #include <any>
+#include <filesystem>
 #include <memory>
 #include <vector>
+
+#include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
-#include <kvdb/ikvdbmanager.hpp>
-#include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
 
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/mockKvdbManager.hpp>
 #include <mocks/fakeMetric.hpp>
 
 namespace
@@ -34,7 +35,7 @@ class KVDBDeleteHelper : public ::testing::TestWithParam<T>
 
 protected:
     std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdbManager::IKVDBManager> m_kvdbManager;
+    std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
     builder::internals::HelperBuilder m_builder;
     std::string kvdbPath;
@@ -51,18 +52,11 @@ protected:
             std::filesystem::remove_all(kvdbPath);
         }
 
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
         m_manager = std::make_shared<FakeMetricManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
-
-        m_kvdbManager->initialize();
-
-        auto err1 = m_kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(err1);
+        m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
 
         m_builder = getOpBuilderKVDBDelete(m_kvdbManager, "builder_test");
-
-        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
     void TearDown() override
@@ -95,15 +89,17 @@ TEST_P(DeleteParams, builds)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_delete";
 
-    auto [parameters, shouldPass] = GetParam();
+    auto [params, shouldPass] = GetParam();
 
     if (shouldPass)
     {
-        ASSERT_NO_THROW(m_builder(targetField, rawName, parameters, m_failDef));
+        auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test")).WillOnce(testing::Return(kvdbHandler));
+        ASSERT_NO_THROW(m_builder(targetField, rawName, params, m_failDef));
     }
     else
     {
-        ASSERT_THROW(m_builder(targetField, rawName, parameters, m_failDef), std::runtime_error);
+        ASSERT_THROW(m_builder(targetField, rawName, params, m_failDef), std::runtime_error);
     }
 }
 
@@ -123,18 +119,7 @@ using DeleteKeyT = std::tuple<std::vector<std::string>, bool, std::string>;
 class DeleteKey : public KVDBDeleteHelper<DeleteKeyT>
 {
 protected:
-    void SetUp() override
-    {
-        KVDBDeleteHelper<DeleteKeyT>::SetUp();
-
-        // Insert initial state to DB
-        auto handler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test"));
-
-        ASSERT_FALSE(handler->set("key1", "value"));
-        ASSERT_FALSE(handler->set("key2", "value"));
-        ASSERT_FALSE(handler->set("key3", "value"));
-    }
+    void SetUp() override { KVDBDeleteHelper<DeleteKeyT>::SetUp(); }
 };
 
 // Test of delete function
@@ -143,20 +128,29 @@ TEST_P(DeleteKey, deleting)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_delete";
 
-    auto [parameters, shouldPass, rawEvent] = GetParam();
+    auto [params, shouldPass, rawEvent] = GetParam();
     auto event = std::make_shared<json::Json>(rawEvent.c_str());
 
     result::Result<Event> resultEvent;
 
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*kvdbHandler, get(params[1])).WillRepeatedly(testing::Return(rawEvent));
+
     if (shouldPass)
     {
-            auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test"))
+            .WillRepeatedly(testing::Return(kvdbHandler));
+        auto op = m_builder(targetField, rawName, params, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
         ASSERT_NO_THROW(resultEvent = op(event));
         ASSERT_TRUE(resultEvent.success());
     }
     else
     {
-        ASSERT_THROW(auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn(), std::runtime_error);
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test"))
+            .WillRepeatedly(testing::Return(kvdb::mocks::kvdbGetKVDBHandlerError("")));
+        ASSERT_THROW(
+            auto op = m_builder(targetField, rawName, params, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn(),
+            std::runtime_error);
     }
 }
 
