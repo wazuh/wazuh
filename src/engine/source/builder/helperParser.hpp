@@ -128,30 +128,31 @@ inline std::tuple<std::string, json::Json> toBuilderInput(const ExpressionToken&
         throw std::runtime_error("Expression field is empty");
     }
 
+    bool isValueIntiger = expressionToken.value.isInt() || expressionToken.value.isInt64();
+
     if (expressionToken.op == ExpressionOperator::EQUAL)
     {
         return std::make_tuple(expressionToken.field.substr(1), expressionToken.value);
     }
 
     if (expressionToken.op == ExpressionOperator::NOT_EQUAL && !expressionToken.value.isString()
-        && !expressionToken.value.isNumber())
+        && !isValueIntiger)
     {
         throw std::runtime_error("Not equal operator is not supported for non string or number values");
     }
 
     // Rest of operators only support string or number values
-    if (!expressionToken.value.isString() && !expressionToken.value.isNumber())
+    if (!expressionToken.value.isString() && !isValueIntiger)
     {
         throw std::runtime_error("Expression value is not string or number");
     }
 
     HelperToken helperToken {};
 
-    // TODO Check float/double and int64 numbers
-    if (expressionToken.value.isNumber())
+    if (isValueIntiger)
     {
         helperToken.name = "int";
-        helperToken.args = {std::to_string(expressionToken.value.getInt().value())};
+        helperToken.args = {std::to_string(expressionToken.value.getIntAsInt64().value())};
     }
     else
     {

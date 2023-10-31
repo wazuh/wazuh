@@ -1042,6 +1042,36 @@ TEST_F(JsonGettersTest, GetInt64)
     ASSERT_THROW(jObjInt64.getInt64("object/key"), std::runtime_error);
 }
 
+// Test parameter for check if path if empty [should pass, input json str, path]
+class IntAsInt64 : public ::testing::TestWithParam<int64_t>
+{
+};
+
+TEST_P(IntAsInt64, IntAsInt64)
+{
+    auto number = GetParam();
+    Json inputJson {fmt::format(R"({{"a":{}}})", number).c_str()};
+
+    ASSERT_TRUE(inputJson.isNumber("/a"));
+    if (number > std::numeric_limits<int>::max() || number < std::numeric_limits<int>::min())
+    {
+        ASSERT_TRUE(inputJson.getInt64("/a").has_value());
+        ASSERT_EQ(inputJson.getInt64("/a").value(), number);
+    }
+    else
+    {
+        ASSERT_TRUE(inputJson.getInt("/a").has_value());
+        ASSERT_EQ(inputJson.getInt("/a").value(), number);
+    }
+
+    ASSERT_TRUE(inputJson.getIntAsInt64("/a").has_value());
+    ASSERT_EQ(inputJson.getIntAsInt64("/a").value(), number);
+}
+
+INSTANTIATE_TEST_SUITE_P(Json,
+                         IntAsInt64,
+                         ::testing::Values(0, 1, 2, 3, static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 10));
+
 TEST_F(JsonGettersTest, GetFloat)
 {
     // Success cases
