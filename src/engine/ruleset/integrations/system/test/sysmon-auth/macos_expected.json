@@ -1,0 +1,126 @@
+[
+  {
+    "agent": {
+      "type": "wazuh-agent",
+      "name": "wazuh-agent-1",
+      "id": "001"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "type": [
+        "end"
+      ],
+      "outcome": "success",
+      "start": "2023-05-31T09:47:16.000Z",
+      "action": "ssh_login",
+      "original": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006",
+      "module": "system",
+      "kind": "event",
+      "category": [
+        "authentication",
+        "session"
+      ]
+    },
+    "host": {
+      "hostname": "jal",
+      "id": "001"
+    },
+    "process": {
+      "tty": {
+        "char_device": {
+          "major": "006"
+        }
+      },
+      "name": "sshd"
+    },
+    "related": {
+      "hosts": [
+        "jal"
+      ],
+      "user": [
+        "jizquierdo"
+      ]
+    },
+    "user": {
+      "name": "jizquierdo"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "origin": "/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "registered_ip": "any",
+      "source": "logcollector",
+      "queue": 49
+    },
+    "message": "jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006"
+  },
+  {
+    "event": {
+      "original": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006",
+      "kind": "event",
+      "dataset": "system-auth",
+      "action": "ssh_login",
+      "module": "system",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "outcome": "success",
+      "start": "2023-05-31T09:47:16.000Z",
+      "type": [
+        "access",
+        "allowed",
+        "start"
+      ]
+    },
+    "message": "jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006",
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "wazuh": {
+      "source": "logcollector",
+      "registered_ip": "any",
+      "origin": "/test/syslog.log",
+      "queue": 49,
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/syslog.log"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "host": {
+      "hostname": "jal",
+      "id": "001"
+    },
+    "process": {
+      "name": "sshd",
+      "tty": {
+        "char_device": {
+          "major": "006"
+        }
+      }
+    },
+    "related": {
+      "hosts": [
+        "jal"
+      ],
+      "user": [
+        "jizquierdo"
+      ]
+    },
+    "user": {
+      "name": "jizquierdo"
+    }
+  }
+]

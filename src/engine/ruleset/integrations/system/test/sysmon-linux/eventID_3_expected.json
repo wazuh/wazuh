@@ -1,0 +1,233 @@
+[
+    {
+        "destination": {
+            "ip": "fe80:0:0:0:a00:27ff:fee3:816e",
+            "port": 546
+        },
+        "event": {
+            "outcome": "success",
+            "module": "sysmon-linux",
+            "provider": "Linux-Sysmon",
+            "code": "3",
+            "start": "2023-06-07T03:08:51.879804000Z",
+            "kind": "event",
+            "dataset": "sysmon",
+            "type": [
+                "start",
+                "connection",
+                "protocol"
+            ],
+            "category": [
+                "network"
+            ],
+            "original": "Jun  7 03:08:51 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>3</EventID><Version>5</Version><Level>4</Level><Task>3</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T03:08:51.879804000Z\"/><EventRecordID>20363</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 03:08:51.887</Data><Data Name=\"ProcessGuid\">{924935dc-6e7a-647f-4128-ad8fc0550000}</Data><Data Name=\"ProcessId\">745</Data><Data Name=\"Image\">/usr/lib/systemd/systemd-networkd</Data><Data Name=\"User\">systemd-network</Data><Data Name=\"Protocol\">udp</Data><Data Name=\"Initiated\">false</Data><Data Name=\"SourceIsIpv6\">true</Data><Data Name=\"SourceIp\">0:0:0:0:0:0:0:0</Data><Data Name=\"SourceHostname\">-</Data><Data Name=\"SourcePort\">0</Data><Data Name=\"SourcePortName\">-</Data><Data Name=\"DestinationIsIpv6\">true</Data><Data Name=\"DestinationIp\">fe80:0:0:0:a00:27ff:fee3:816e</Data><Data Name=\"DestinationHostname\">-</Data><Data Name=\"DestinationPort\">546</Data><Data Name=\"DestinationPortName\">-</Data></EventData></Event>",
+            "action": "network_connection"
+        },
+        "host": {
+            "id": "001",
+            "name": "202-u20-dev-agent",
+            "hostname": "202-u20-dev-agent"
+        },
+        "source": {
+            "port": 0,
+            "ip": "0:0:0:0:0:0:0:0"
+        },
+        "wazuh": {
+            "source": "logcollector",
+            "queue": 49,
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ],
+            "origin": "/test/syslog.log",
+            "registered_ip": "any"
+        },
+        "related": {
+            "hosts": [
+                "202-u20-dev-agent"
+            ],
+            "ip": [
+                "0:0:0:0:0:0:0:0",
+                "fe80:0:0:0:a00:27ff:fee3:816e"
+            ]
+        },
+        "network": {
+            "type": "ipv6",
+            "direction": "ingress",
+            "transport": "udp"
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>3</EventID><Version>5</Version><Level>4</Level><Task>3</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T03:08:51.879804000Z\"/><EventRecordID>20363</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 03:08:51.887</Data><Data Name=\"ProcessGuid\">{924935dc-6e7a-647f-4128-ad8fc0550000}</Data><Data Name=\"ProcessId\">745</Data><Data Name=\"Image\">/usr/lib/systemd/systemd-networkd</Data><Data Name=\"User\">systemd-network</Data><Data Name=\"Protocol\">udp</Data><Data Name=\"Initiated\">false</Data><Data Name=\"SourceIsIpv6\">true</Data><Data Name=\"SourceIp\">0:0:0:0:0:0:0:0</Data><Data Name=\"SourceHostname\">-</Data><Data Name=\"SourcePort\">0</Data><Data Name=\"SourcePortName\">-</Data><Data Name=\"DestinationIsIpv6\">true</Data><Data Name=\"DestinationIp\">fe80:0:0:0:a00:27ff:fee3:816e</Data><Data Name=\"DestinationHostname\">-</Data><Data Name=\"DestinationPort\">546</Data><Data Name=\"DestinationPortName\">-</Data></EventData></Event>",
+        "process": {
+            "executable": "/usr/lib/systemd/systemd-networkd",
+            "name": "systemd-networkd",
+            "entity_id": "{924935dc-6e7a-647f-4128-ad8fc0550000}",
+            "pid": 745
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "log": {
+            "level": "Information"
+        },
+        "agent": {
+            "name": "wazuh-agent-1",
+            "id": "001",
+            "type": "wazuh-agent"
+        }
+    },
+    {
+        "ecs": {
+            "version": "8.8"
+        },
+        "network": {
+            "type": "ipv4",
+            "transport": "udp",
+            "direction": "egress"
+        },
+        "agent": {
+            "type": "wazuh-agent",
+            "id": "001",
+            "name": "wazuh-agent-1"
+        },
+        "process": {
+            "name": "systemd-resolved",
+            "executable": "/usr/lib/systemd/systemd-resolved",
+            "pid": 747,
+            "entity_id": "{924935dc-6e7a-647f-11af-0af4a1550000}"
+        },
+        "destination": {
+            "ip": "127.0.0.1",
+            "port": 34331
+        },
+        "related": {
+            "ip": [
+                "127.0.0.53",
+                "127.0.0.1"
+            ],
+            "hosts": [
+                "202-u20-dev-agent"
+            ]
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>3</EventID><Version>5</Version><Level>4</Level><Task>3</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:10:04.370531000Z\"/><EventRecordID>15805</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:10:04.378</Data><Data Name=\"ProcessGuid\">{924935dc-6e7a-647f-11af-0af4a1550000}</Data><Data Name=\"ProcessId\">747</Data><Data Name=\"Image\">/usr/lib/systemd/systemd-resolved</Data><Data Name=\"User\">systemd-resolve</Data><Data Name=\"Protocol\">udp</Data><Data Name=\"Initiated\">true</Data><Data Name=\"SourceIsIpv6\">false</Data><Data Name=\"SourceIp\">127.0.0.53</Data><Data Name=\"SourceHostname\">-</Data><Data Name=\"SourcePort\">53</Data><Data Name=\"SourcePortName\">-</Data><Data Name=\"DestinationIsIpv6\">false</Data><Data Name=\"DestinationIp\">127.0.0.1</Data><Data Name=\"DestinationHostname\">-</Data><Data Name=\"DestinationPort\">34331</Data><Data Name=\"DestinationPortName\">-</Data></EventData></Event>",
+        "event": {
+            "module": "sysmon-linux",
+            "original": "Jun  6 21:10:04 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>3</EventID><Version>5</Version><Level>4</Level><Task>3</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:10:04.370531000Z\"/><EventRecordID>15805</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:10:04.378</Data><Data Name=\"ProcessGuid\">{924935dc-6e7a-647f-11af-0af4a1550000}</Data><Data Name=\"ProcessId\">747</Data><Data Name=\"Image\">/usr/lib/systemd/systemd-resolved</Data><Data Name=\"User\">systemd-resolve</Data><Data Name=\"Protocol\">udp</Data><Data Name=\"Initiated\">true</Data><Data Name=\"SourceIsIpv6\">false</Data><Data Name=\"SourceIp\">127.0.0.53</Data><Data Name=\"SourceHostname\">-</Data><Data Name=\"SourcePort\">53</Data><Data Name=\"SourcePortName\">-</Data><Data Name=\"DestinationIsIpv6\">false</Data><Data Name=\"DestinationIp\">127.0.0.1</Data><Data Name=\"DestinationHostname\">-</Data><Data Name=\"DestinationPort\">34331</Data><Data Name=\"DestinationPortName\">-</Data></EventData></Event>",
+            "start": "2023-06-06T21:10:04.370531000Z",
+            "kind": "event",
+            "provider": "Linux-Sysmon",
+            "action": "network_connection",
+            "type": [
+                "start",
+                "connection",
+                "protocol"
+            ],
+            "code": "3",
+            "outcome": "success",
+            "category": [
+                "network"
+            ],
+            "dataset": "sysmon"
+        },
+        "log": {
+            "level": "Information"
+        },
+        "wazuh": {
+            "source": "logcollector",
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ],
+            "registered_ip": "any",
+            "origin": "/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "queue": 49
+        },
+        "host": {
+            "hostname": "202-u20-dev-agent",
+            "id": "001",
+            "name": "202-u20-dev-agent"
+        },
+        "source": {
+            "ip": "127.0.0.53",
+            "port": 53
+        }
+    },
+    {
+        "log": {
+            "level": "Information"
+        },
+        "event": {
+            "type": [
+                "start",
+                "connection",
+                "protocol"
+            ],
+            "category": [
+                "network"
+            ],
+            "code": "3",
+            "dataset": "sysmon",
+            "kind": "event",
+            "outcome": "success",
+            "module": "sysmon-linux",
+            "provider": "Linux-Sysmon",
+            "original": "Jun  6 21:33:26 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>3</EventID><Version>5</Version><Level>4</Level><Task>3</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:33:26.411991000Z\"/><EventRecordID>16177</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:33:26.419</Data><Data Name=\"ProcessGuid\">{924935dc-9e9a-647f-0ce7-4a0000000000}</Data><Data Name=\"ProcessId\">5697</Data><Data Name=\"Image\">/var/ossec/bin/wazuh-agentd</Data><Data Name=\"User\">wazuh</Data><Data Name=\"Protocol\">tcp</Data><Data Name=\"Initiated\">true</Data><Data Name=\"SourceIsIpv6\">false</Data><Data Name=\"SourceIp\">192.168.3.202</Data><Data Name=\"SourceHostname\">-</Data><Data Name=\"SourcePort\">42154</Data><Data Name=\"SourcePortName\">-</Data><Data Name=\"DestinationIsIpv6\">false</Data><Data Name=\"DestinationIp\">192.168.3.104</Data><Data Name=\"DestinationHostname\">-</Data><Data Name=\"DestinationPort\">1514</Data><Data Name=\"DestinationPortName\">-</Data></EventData></Event>",
+            "start": "2023-06-06T21:33:26.411991000Z",
+            "action": "network_connection"
+        },
+        "related": {
+            "hosts": [
+                "202-u20-dev-agent"
+            ],
+            "ip": [
+                "192.168.3.202",
+                "192.168.3.104"
+            ]
+        },
+        "process": {
+            "name": "wazuh-agentd",
+            "pid": 5697,
+            "executable": "/var/ossec/bin/wazuh-agentd",
+            "entity_id": "{924935dc-9e9a-647f-0ce7-4a0000000000}"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "host": {
+            "hostname": "202-u20-dev-agent",
+            "name": "202-u20-dev-agent",
+            "id": "001"
+        },
+        "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>3</EventID><Version>5</Version><Level>4</Level><Task>3</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:33:26.411991000Z\"/><EventRecordID>16177</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:33:26.419</Data><Data Name=\"ProcessGuid\">{924935dc-9e9a-647f-0ce7-4a0000000000}</Data><Data Name=\"ProcessId\">5697</Data><Data Name=\"Image\">/var/ossec/bin/wazuh-agentd</Data><Data Name=\"User\">wazuh</Data><Data Name=\"Protocol\">tcp</Data><Data Name=\"Initiated\">true</Data><Data Name=\"SourceIsIpv6\">false</Data><Data Name=\"SourceIp\">192.168.3.202</Data><Data Name=\"SourceHostname\">-</Data><Data Name=\"SourcePort\">42154</Data><Data Name=\"SourcePortName\">-</Data><Data Name=\"DestinationIsIpv6\">false</Data><Data Name=\"DestinationIp\">192.168.3.104</Data><Data Name=\"DestinationHostname\">-</Data><Data Name=\"DestinationPort\">1514</Data><Data Name=\"DestinationPortName\">-</Data></EventData></Event>",
+        "source": {
+            "port": 42154,
+            "ip": "192.168.3.202"
+        },
+        "destination": {
+            "ip": "192.168.3.104",
+            "port": 1514
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "sysmon-linux"
+            ],
+            "source": "logcollector",
+            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "queue": 49,
+            "origin": "/test/syslog.log",
+            "registered_ip": "any"
+        },
+        "agent": {
+            "type": "wazuh-agent",
+            "id": "001",
+            "name": "wazuh-agent-1"
+        },
+        "network": {
+            "type": "ipv4",
+            "direction": "egress",
+            "transport": "tcp"
+        }
+    }
+]

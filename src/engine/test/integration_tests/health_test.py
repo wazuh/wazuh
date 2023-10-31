@@ -2,6 +2,7 @@ import sys
 import subprocess
 import json
 import os
+import re
 
 def run_command(command):
     try:
@@ -11,29 +12,13 @@ def run_command(command):
         print(f"Error executing command: {e}")
         return None
 
-def check_or_create_session(github_working_dir, session_name):
-    session_get = f"cd {github_working_dir}/src/engine/build && ./main test --api_socket {github_working_dir}/environment/queue/sockets/engine-api session get {session_name}"
-    result = run_command(session_get)
-    print(result)
-
-    if result.returncode != 0:
-        print(f"Session '{session_name}' does not exist. Creating it...")
-        session_post = f"cd {github_working_dir}/src/engine/build && ./main test --client_timeout 100000 --api_socket {github_working_dir}/environment/queue/sockets/engine-api session create {session_name}"
-        result = run_command(session_post)
-        print(result)
-
-        if result.returncode != 0:
-            sys.exit(1)
-        print(f"Session '{session_name}' created successfully.")
-    else:
-        print(f"Session '{session_name}' already exists.")
-
 def execute_integration_test(github_working_dir, os_path, input_file_path):
     main_command = "cat"
-    # Ejecutar el comando y obtener la salida
-    output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test run {os.path.basename(os_path)} --api-socket {github_working_dir}/environment/queue/sockets/engine-api -n wazuh system -j", shell=True, stderr=subprocess.STDOUT)
+    engine_test_conf = f"{github_working_dir}/environment/engine/etc/engine-test.conf"
+    # Execute the command and get the output
+    output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {os.path.basename(os_path)} -p policy/wazuh/1 --api-socket {github_working_dir}/environment/queue/sockets/engine-api -n wazuh system -j", shell=True, stderr=subprocess.STDOUT)
 
-    # Dividir la salida en cadenas JSON individuales
+    # Split the output into individual JSON strings
     output_str = output.decode('utf-8')
     json_strings = output_str.strip().split('\n')
 
@@ -44,55 +29,69 @@ def execute_integration_test(github_working_dir, os_path, input_file_path):
             parsed_json = json.loads(json_string)
             parsed_results.append(parsed_json)
         except json.JSONDecodeError as e:
-            print(f"Error al parsear JSON: {e}")
+            print(f"Error parsing JSON: {e}")
 
     return parsed_results
 
-def compare_results(parsed_results, expected_json, input_file_name):
+def compare_results(parsed_results, expected_json, input_file_name, mismatches):
     for event_json in parsed_results:
         if 'TestSessionID' in event_json:
             del event_json['TestSessionID']
         try:
             if event_json not in expected_json:
-                print(f"JSON events in '{input_file_name}' do not match the 'expected.json' file.")
+                mismatches.append(input_file_name)
+                return
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON event: {e}")
 
-def process_integration_tests(github_working_dir, allowed_integrations, session_name):
+def process_integration_tests(github_working_dir, allowed_integrations):
     integrations_directory = os.path.join(github_working_dir, "src/engine/ruleset/integrations")
+
+    mismatches = []
 
     for os_dir in os.listdir(integrations_directory):
         os_path = os.path.join(integrations_directory, os_dir)
 
         if os.path.isdir(os_path) and os.path.basename(os_path) in allowed_integrations:
             test_directory = os.path.join(os_path, "test")
-
             if os.path.isdir(test_directory):
-                for input_file in os.listdir(test_directory):
-                    if input_file.endswith("input.xml"):
-                        input_file_path = os.path.join(test_directory, input_file)
-                        expected_file = input_file.replace("input.xml", "expected.json")
-                        expected_file_path = os.path.join(test_directory, expected_file)
+                for root, dirs, files in os.walk(test_directory):
+                    for input_file in files:
+                        match = re.search(r'_input\..*$', input_file)
+                        if match:
+                            print(input_file)
+                            input_file_path = os.path.join(root, input_file)
+                            new_extension = "_expected.json"
+                            expected_file = re.sub(r'_input\..*$', new_extension, input_file)
+                            expected_file_path = os.path.join(root, expected_file)
 
-                        if os.path.isfile(expected_file_path):
-                            expected_json = {}
-                            with open(expected_file_path, 'r') as file:
-                                expected_json = json.load(file)
+                            if os.path.isfile(expected_file_path):
+                                expected_json = {}
+                                with open(expected_file_path, 'r') as file:
+                                    expected_json = json.load(file)
 
-                            parsed_results = execute_integration_test(github_working_dir, os_path, input_file_path)
-                            compare_results(parsed_results, expected_json, input_file)
-                        else:
-                            print(f"Expected file 'expected.json' corresponding to '{input_file}' in '{test_directory}' was not found.")
+                                parsed_results = execute_integration_test(github_working_dir, os_path, input_file_path)
+                                compare_results(parsed_results, expected_json, input_file, mismatches)
+                                print(expected_file)
+                            else:
+                                print(f"Expected file '{expected_file}' corresponding to '{input_file}' in '{root}' was not found.")
+
+    if mismatches:
+        print("\nFiles with no expected result:")
+        for mismatch in mismatches:
+            print(mismatch)
+
+    return 0 if not mismatches else 1
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(1)
 
     github_working_dir = sys.argv[1]
-    allowed_integrations = ["windows"]
-    session_name = "HealthTest"
+    # TODO: Add apache-access/error
+    allowed_integrations = ["windows", "syslog", "suricata", "system"]
 
-    check_or_create_session(github_working_dir, session_name)
-    process_integration_tests(github_working_dir, allowed_integrations, session_name)
+    error_code = process_integration_tests(github_working_dir, allowed_integrations)
 
-print("Process completed.")
+    print("Process completed.")
+    sys.exit(error_code)  # Set the error code at the end of the script

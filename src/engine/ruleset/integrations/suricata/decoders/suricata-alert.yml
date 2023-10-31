@@ -63,3 +63,6 @@ normalize:
       - http.version: $json_event.http.protocol
       - related.hosts: array_append($json_event.http.hostname)
       - user_agent.original: $json_event.http.http_user_agent
+
+  - map:
+      - json_event: delete()
