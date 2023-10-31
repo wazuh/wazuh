@@ -41,6 +41,7 @@
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
+extern int audit_queue_full_reported;
 
 typedef enum fim_event_type {
     FIM_ADD,
@@ -489,6 +490,11 @@ void remove_audit_rule_syscheck(const char *path);
  * @param [in] running atomic_int that holds the status of the running thread.
  */
 void audit_read_events(int *audit_sock, atomic_int_t *running);
+
+/**
+ * @brief Thread in charge of pulling messages from the audit queue and parse them to generate events.
+ */
+void *audit_parse_thread();
 
 /**
  * @brief Makes Audit thread to wait for audit healthcheck to be performed
