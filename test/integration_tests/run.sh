@@ -47,14 +47,14 @@ main() {
     # Replace occurrences of /var/ossec with the new path
     sed -i "s|github_workspace|$environment_dir|g" "$serv_conf_file"
     # Execute the binary with the argument "server start"
-    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error start &
+    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error --api_timeout 100000 start &
     # Capture the process ID of the binary
     local binary_pid=$!
     # Wait for the server to start
     sleep 2
     if [ "$test_type" == "integration_test" ]; then
         ENGINE_DIR=$engine_src_dir ENV_DIR=$github_working_dir run_behave_tests "$integration_tests_dir"
-        exit exit_code=$?
+        exit_code=$?
     elif [ "$test_type" == "health_test" ]; then
         run_test_health "$integration_tests_dir"
         exit_code=$?
