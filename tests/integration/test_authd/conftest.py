@@ -201,29 +201,30 @@ def insert_pre_existent_agents(test_metadata, stop_authd_function):
     clean_agents_from_db()
 
     for agent in agents:
-        id = agent['id'] if 'id' in agent else '001'
-        name = agent['name'] if 'name' in agent else f"TestAgent{id}"
-        ip = agent['ip'] if 'ip' in agent else 'any'
-        key = agent['key'] if 'key' in agent else 'TopSecret'
-        connection_status = agent['connection_status'] if 'connection_status' in agent else 'never_connected'
-        if 'disconnection_time' in agent and 'delta' in agent['disconnection_time']:
-            disconnection_time = time_now + agent['disconnection_time']['delta']
-        elif 'disconnection_time' in agent and 'value' in agent['disconnection_time']:
-            disconnection_time = agent['disconnection_time']['value']
-        else:
-            disconnection_time = time_now
-        if 'registration_time' in agent and 'delta' in agent['registration_time']:
-            registration_time = time_now + agent['registration_time']['delta']
-        elif 'registration_time' in agent and 'value' in agent['registration_time']:
-            registration_time = agent['registration_time']['value']
-        else:
-            registration_time = time_now
+        if(agent):
+            id = agent['id'] if 'id' in agent else '001'
+            name = agent['name'] if 'name' in agent else f"TestAgent{id}"
+            ip = agent['ip'] if 'ip' in agent else 'any'
+            key = agent['key'] if 'key' in agent else 'TopSecret'
+            connection_status = agent['connection_status'] if 'connection_status' in agent else 'never_connected'
+            if 'disconnection_time' in agent and 'delta' in agent['disconnection_time']:
+                disconnection_time = time_now + agent['disconnection_time']['delta']
+            elif 'disconnection_time' in agent and 'value' in agent['disconnection_time']:
+                disconnection_time = agent['disconnection_time']['value']
+            else:
+                disconnection_time = time_now
+            if 'registration_time' in agent and 'delta' in agent['registration_time']:
+                registration_time = time_now + agent['registration_time']['delta']
+            elif 'registration_time' in agent and 'value' in agent['registration_time']:
+                registration_time = agent['registration_time']['value']
+            else:
+                registration_time = time_now
 
-        # Write agent in client.keys
-        keys_file.write(f"{id} {name} {ip} {key}\n")
+            # Write agent in client.keys
+            keys_file.write(f"{id} {name} {ip} {key}\n")
 
-        # Write agent in global.db
-        insert_agent_in_db(id, name, ip, registration_time, connection_status, disconnection_time)
+            # Write agent in global.db
+            insert_agent_in_db(id, name, ip, registration_time, connection_status, disconnection_time)
 
     keys_file.close()
 

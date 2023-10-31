@@ -39,73 +39,61 @@ tags:
 '''
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from wazuh_testing.tools import WAZUH_PATH, WAZUH_DB_SOCKET_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
+from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, WAZUH_PATH
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
-
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
-
 
 # Configurations
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-message_tests = read_yaml(os.path.join(test_data_path, 'local_enroll_messages.yaml'))
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__, params=None, metadata=None)
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_local.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_local.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
 log_monitor_paths = []
 ls_sock_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth'))
 receiver_sockets_params = [(ls_sock_path, 'AF_UNIX', 'TCP'), (WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
-test_case_ids = [f"{test_case['name'].lower().replace(' ', '-')}" for test_case in message_tests]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # TODO Replace or delete
 monitored_sockets_params = [('wazuh-db', None, True), ('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None
 
 # Fixtures
-
-
-@pytest.fixture(scope='module', params=configurations, ids=['authd_local_config'])
-def get_configuration(request):
-    """Get configurations from the module"""
-    yield request.param
-
-
-@pytest.fixture(scope='function', params=message_tests, ids=test_case_ids)
-def get_current_test_case(request):
-    """
-    Get current test case from the module
-    """
-    return request.param
-
-
 @pytest.fixture(scope='function')
-def set_up_groups(get_current_test_case, request):
+def set_up_groups(test_metadata, request):
     """
     Set pre-existent groups.
     """
 
-    groups = get_current_test_case.get('groups', [])
+    groups = test_metadata['groups']
 
     for group in groups:
-        subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
+        if(group):
+            subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
 
     yield
 
     for group in groups:
-        subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
+        if(group):
+            subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
 # Tests
-def test_authd_local_messages(configure_environment, configure_sockets_environment, connect_to_sockets_function,
-                              set_up_groups, insert_pre_existent_agents, restart_wazuh_daemon_function,
-                              wait_for_authd_startup_function, get_current_test_case, tear_down):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment,
+                              connect_to_sockets_function, set_up_groups, insert_pre_existent_agents,
+                              restart_wazuh_daemon_function, wait_for_authd_startup_function, tear_down):
     '''
     description:
         Checks that every input message in trough local authd port generates the adequate response to worker.
@@ -156,14 +144,14 @@ def test_authd_local_messages(configure_environment, configure_sockets_environme
     expected_output:
         - Registration request responses on Authd socket
     '''
-    case = get_current_test_case['test_case']
-    for index, stage in enumerate(case):
+    cases = test_metadata['cases']
+    for case in cases:
         # Reopen socket (socket is closed by manager after sending message with client key)
         receiver_sockets[0].open()
-        expected = stage['output']
-        message = stage['input']
+        expected = case['output']
+        message = case['input']
         receiver_sockets[0].send(message, size=True)
         response = receiver_sockets[0].receive(size=True).decode()
         assert response[:len(expected)] == expected, \
-            'Failed stage "{}". Response was: {} instead of: {}' \
-            .format(index+1, response, expected)
+            'Failed: Response was: {} instead of: {}' \
+            .format(response, expected)
