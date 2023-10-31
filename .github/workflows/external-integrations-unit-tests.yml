@@ -37,5 +37,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r framework/requirements-dev.txt
 
-      - name: Run EXTERNAL INTEGRATIONS tests
+      - name: Run External integrations tests
         run: python -m pytest integrations
