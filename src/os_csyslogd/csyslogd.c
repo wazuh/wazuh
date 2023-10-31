@@ -144,12 +144,9 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         }
     }
 
-#ifdef WAZUH_UNIT_TESTING
     if (sources.alert_log) {
         os_free(fileq);
     }
-#endif
- 
 }
 
 /* Format Field for output */
