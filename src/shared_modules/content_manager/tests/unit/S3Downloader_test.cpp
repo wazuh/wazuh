@@ -14,6 +14,8 @@
 #include "fakes/fakeServer.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
+#include "gtest/gtest.h"
+#include <filesystem>
 #include <memory>
 #include <stdexcept>
 
