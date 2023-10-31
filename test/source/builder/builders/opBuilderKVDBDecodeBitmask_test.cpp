@@ -14,7 +14,6 @@
 
 #include <opBuilderKVDB.hpp>
 
-#include <kvdb/ikvdbhandler.hpp>
 #include <kvdb/mockKvdbHandler.hpp>
 #include <kvdb/mockKvdbManager.hpp>
 #include <mocks/fakeMetric.hpp>
