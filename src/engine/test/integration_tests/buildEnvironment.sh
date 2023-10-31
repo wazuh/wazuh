@@ -21,6 +21,9 @@ load_integrations() {
     # Capture the process ID of the binary
     local binary_pid=$!
 
+    # Add filter for route
+    "$engine_src_dir/build/main" catalog --api_socket $environment_dir/queue/sockets/engine-api -n system create filter < $engine_src_dir/ruleset/filters/allow-all.yml
+
     cd $engine_src_dir/ruleset
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n system wazuh-core/
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/syslog/

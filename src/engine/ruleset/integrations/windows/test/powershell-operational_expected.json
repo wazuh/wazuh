@@ -1,0 +1,256 @@
+[
+    {
+        "event": {
+            "start": "2020-05-14T11:33:51.393884Z",
+            "kind": "event",
+            "module": "windows",
+            "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n  <System>\n    <Provider Name=\"Microsoft-Windows-PowerShell\" Guid=\"A0C1853B-5C40-4B15-8766-3CF1C58F985A\">\n    </Provider>\n    <EventID>4104</EventID>\n    <Version>1</Version>\n    <Level>5</Level>\n    <Task>2</Task>\n    <Opcode>15</Opcode>\n    <Keywords>0x0</Keywords>\n    <TimeCreated SystemTime=\"2020-05-14T11:33:51.393884Z\">\n    </TimeCreated>\n    <EventRecordID>3582</EventRecordID>\n    <Correlation ActivityID=\"FB13C9DE-29F7-0000-79DB-13FBF729D601\">\n    </Correlation>\n    <Execution ProcessID=\"4844\" ThreadID=\"4428\">\n    </Execution>\n    <Channel>Microsoft-Windows-PowerShell/Operational</Channel>\n    <Computer>vagrant</Computer>\n    <Security UserID=\"S-1-5-21-1350058589-2282154016-2764056528-1000\">\n    </Security>\n  </System>\n  <EventData>\n    <Data Name=\"MessageNumber\">1</Data>\n    <Data Name=\"MessageTotal\">1</Data>\n    <Data Name=\"ScriptBlockText\" />\n    <Data Name=\"ScriptBlockId\">f5521cbd-656e-4296-b74d-9ffb4eec23b0</Data>\n    <Data Name=\"Path\">C:\\Users\\vagrant\\Desktop\\patata.ps1</Data>\n  </EventData>\n</Event>\n",
+            "category": [
+                "process"
+            ],
+            "dataset": "powershell",
+            "type": [
+                "info"
+            ],
+            "code": "4104",
+            "provider": "Microsoft-Windows-PowerShell",
+            "id": "4104"
+        },
+        "host": {
+            "name": "vagrant",
+            "id": "001"
+        },
+        "agent": {
+            "id": "001",
+            "type": "wazuh-agent",
+            "name": "wazuh-agent-1"
+        },
+        "message": "Creating script block text",
+        "log": {
+            "level": "Verbose"
+        },
+        "wazuh": {
+            "origin": "EventChannel",
+            "decoders": [
+                "windows-event",
+                "windows-powershell-operational"
+            ],
+            "registered_ip": "any",
+            "queue": 102,
+            "location": "[001] (wazuh-agent-1) any->EventChannel",
+            "source": "logcollector"
+        },
+        "powershell": {
+            "sequence": "1",
+            "file": {
+                "script_block_id": "f5521cbd-656e-4296-b74d-9ffb4eec23b0",
+                "script_block_text": ""
+            },
+            "total": "1"
+        },
+        "windows": {
+            "System": {
+                "Keywords": {
+                    "#text": "0x0"
+                },
+                "Provider": {
+                    "@Guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+                    "@Name": "Microsoft-Windows-PowerShell"
+                },
+                "EventID": {
+                    "#text": "4104"
+                },
+                "Level": {
+                    "#text": "5"
+                },
+                "Computer": {
+                    "#text": "vagrant"
+                },
+                "TimeCreated": {
+                    "@SystemTime": "2020-05-14T11:33:51.393884Z"
+                },
+                "Version": {
+                    "#text": "1"
+                },
+                "EventRecordID": {
+                    "#text": "3582"
+                },
+                "Security": {
+                    "@UserID": "S-1-5-21-1350058589-2282154016-2764056528-1000"
+                },
+                "Channel": {
+                    "#text": "Microsoft-Windows-PowerShell/Operational"
+                },
+                "Opcode": {
+                    "#text": "15"
+                },
+                "Correlation": {
+                    "@ActivityID": "FB13C9DE-29F7-0000-79DB-13FBF729D601"
+                },
+                "Execution": {
+                    "@ThreadID": "4428",
+                    "@ProcessID": "4844"
+                },
+                "Task": {
+                    "#text": "2"
+                }
+            },
+            "EventData": {
+                "ScriptBlockText": "",
+                "Path": "C:\\Users\\vagrant\\Desktop\\patata.ps1",
+                "ScriptBlockId": "f5521cbd-656e-4296-b74d-9ffb4eec23b0",
+                "MessageTotal": "1",
+                "MessageNumber": "1"
+            },
+            "logon": {
+                "provider_name": "Microsoft-Windows-PowerShell",
+                "version": "1",
+                "process": {
+                    "pid": "4844",
+                    "thread": {
+                        "id": "4428"
+                    }
+                },
+                "computer_name": "vagrant",
+                "task": "2",
+                "record_id": "3582",
+                "channel": "Microsoft-Windows-PowerShell/Operational",
+                "provider_guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+                "event_id": "4104",
+                "keywords": [
+                    "AnyKeyword"
+                ]
+            }
+        },
+        "ecs": {
+            "version": "8.8"
+        }
+    },
+    {
+        "log": {
+            "level": "Verbose"
+        },
+        "powershell": {
+            "sequence": "1",
+            "total": "1",
+            "file": {
+                "script_block_id": "50d2dbda-7361-4926-a94d-d9eadfdb43fa",
+                "script_block_text": ".\\patata.ps1"
+            }
+        },
+        "message": "Creating script block text",
+        "ecs": {
+            "version": "8.8"
+        },
+        "host": {
+            "id": "001",
+            "name": "vagrant"
+        },
+        "agent": {
+            "type": "wazuh-agent",
+            "name": "wazuh-agent-1",
+            "id": "001"
+        },
+        "event": {
+            "category": [
+                "process"
+            ],
+            "dataset": "powershell",
+            "module": "windows",
+            "type": [
+                "info"
+            ],
+            "code": "4104",
+            "start": "2020-05-14T11:33:51.389266Z",
+            "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n  <System>\n    <Provider Name=\"Microsoft-Windows-PowerShell\" Guid=\"A0C1853B-5C40-4B15-8766-3CF1C58F985A\">\n    </Provider>\n    <EventID>4104</EventID>\n    <Version>1</Version>\n    <Level>5</Level>\n    <Task>2</Task>\n    <Opcode>15</Opcode>\n    <Keywords>0x0</Keywords>\n    <TimeCreated SystemTime=\"2020-05-14T11:33:51.389266Z\">\n    </TimeCreated>\n    <EventRecordID>3580</EventRecordID>\n    <Correlation ActivityID=\"FB13C9DE-29F7-0001-18E0-13FBF729D601\">\n    </Correlation>\n    <Execution ProcessID=\"4844\" ThreadID=\"4428\">\n    </Execution>\n    <Channel>Microsoft-Windows-PowerShell/Operational</Channel>\n    <Computer>vagrant</Computer>\n    <Security UserID=\"S-1-5-21-1350058589-2282154016-2764056528-1000\">\n    </Security>\n  </System>\n  <EventData>\n    <Data Name=\"MessageNumber\">1</Data>\n    <Data Name=\"MessageTotal\">1</Data>\n    <Data Name=\"ScriptBlockText\">.\\patata.ps1</Data>\n    <Data Name=\"ScriptBlockId\">50d2dbda-7361-4926-a94d-d9eadfdb43fa</Data>\n    <Data Name=\"Path\" />\n  </EventData>\n</Event>\n",
+            "id": "4104",
+            "provider": "Microsoft-Windows-PowerShell",
+            "kind": "event"
+        },
+        "windows": {
+            "logon": {
+                "keywords": [
+                    "AnyKeyword"
+                ],
+                "task": "2",
+                "channel": "Microsoft-Windows-PowerShell/Operational",
+                "event_id": "4104",
+                "record_id": "3580",
+                "provider_guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+                "provider_name": "Microsoft-Windows-PowerShell",
+                "version": "1",
+                "computer_name": "vagrant",
+                "process": {
+                    "pid": "4844",
+                    "thread": {
+                        "id": "4428"
+                    }
+                }
+            },
+            "EventData": {
+                "MessageTotal": "1",
+                "MessageNumber": "1",
+                "ScriptBlockId": "50d2dbda-7361-4926-a94d-d9eadfdb43fa",
+                "Path": "",
+                "ScriptBlockText": ".\\patata.ps1"
+            },
+            "System": {
+                "Computer": {
+                    "#text": "vagrant"
+                },
+                "Keywords": {
+                    "#text": "0x0"
+                },
+                "Execution": {
+                    "@ThreadID": "4428",
+                    "@ProcessID": "4844"
+                },
+                "Provider": {
+                    "@Name": "Microsoft-Windows-PowerShell",
+                    "@Guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A"
+                },
+                "Version": {
+                    "#text": "1"
+                },
+                "Task": {
+                    "#text": "2"
+                },
+                "EventRecordID": {
+                    "#text": "3580"
+                },
+                "Correlation": {
+                    "@ActivityID": "FB13C9DE-29F7-0001-18E0-13FBF729D601"
+                },
+                "Opcode": {
+                    "#text": "15"
+                },
+                "TimeCreated": {
+                    "@SystemTime": "2020-05-14T11:33:51.389266Z"
+                },
+                "Security": {
+                    "@UserID": "S-1-5-21-1350058589-2282154016-2764056528-1000"
+                },
+                "Channel": {
+                    "#text": "Microsoft-Windows-PowerShell/Operational"
+                },
+                "EventID": {
+                    "#text": "4104"
+                },
+                "Level": {
+                    "#text": "5"
+                }
+            }
+        },
+        "wazuh": {
+            "queue": 102,
+            "decoders": [
+                "windows-event",
+                "windows-powershell-operational"
+            ],
+            "origin": "EventChannel",
+            "location": "[001] (wazuh-agent-1) any->EventChannel",
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]
