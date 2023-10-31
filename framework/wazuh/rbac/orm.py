@@ -19,7 +19,7 @@ from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-from sqlalchemy.orm import Session, sessionmaker, relationship, declarative_base, Mapped
+from sqlalchemy.orm import Session, sessionmaker, relationship, declarative_base
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.sql.expression import select, delete
 from sqlalchemy.sql import text
