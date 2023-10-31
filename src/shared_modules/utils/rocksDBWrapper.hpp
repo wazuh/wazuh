@@ -13,9 +13,9 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
-#include <rocksdb/db.h>
 #include <filesystem>
 #include <iostream>
+#include <rocksdb/db.h>
 #include <string>
 
 namespace Utils
@@ -27,10 +27,17 @@ namespace Utils
     class RocksDBWrapper
     {
     public:
-        explicit RocksDBWrapper(const std::string& dbPath)
+        /**
+         * @brief Reads and, if specified, initializes a RocksDB database.
+         *
+         * @param dbPath Path where the database should be stored.
+         * @param createIfMissing If true, the database will be initialized if it's not already. If false, an exception
+         * will be raised if the database doesn't exist.
+         */
+        explicit RocksDBWrapper(const std::string& dbPath, const bool& createIfMissing = true)
         {
             rocksdb::Options options;
-            options.create_if_missing = true;
+            options.create_if_missing = createIfMissing;
             rocksdb::DB* dbRawPtr;
 
             // Create directories recursively if they do not exist
@@ -39,7 +46,7 @@ namespace Utils
             const auto status {rocksdb::DB::Open(options, dbPath, &dbRawPtr)};
             if (!status.ok())
             {
-                throw std::runtime_error("Failed to open RocksDB database");
+                throw std::runtime_error {"Failed to open RocksDB database: " + status.ToString()};
             }
             // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete the
             // allocated RocksDB instance.

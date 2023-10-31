@@ -1,7 +1,10 @@
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
+#include "utils/rocksDBWrapper.hpp"
+#include "utils/timeHelper.h"
 #include <chrono>
 #include <iostream>
+#include <string>
 #include <thread>
 
 /*
@@ -10,6 +13,9 @@
  * @topicName: Name of the topic.
  * @interval: Interval in seconds to execute the content provider.
  * @ondemand: If true, the content provider will be executed on demand.
+ * @createDatabase: If true, the RocksDB database will be initialized automatically. If false, the database is assumed
+ * to be already initialized.
+ * @initialOffset: Offset to be inserted in the database. Only used when @createDatabase is true.
  * @configData: Configuration data to create the orchestration of the content provider.
  * @contentSource: Source of the content.
  * @compressionType: Compression type of the content.
@@ -19,7 +25,6 @@
  * @outputFolder: if defined, the content will be downloaded to this folder.
  * @dataFormat: Format of the content downloaded or after decompression.
  * @contentFileName: Name for the downloaded file (unless using the 'offline' or 'file' contentSource).
- * @offset (integer): Api offset used to override (if greater) the one set on the database.
  */
 static const nlohmann::json CONFIG_PARAMETERS =
     R"(
@@ -27,6 +32,8 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "topicName": "test",
             "interval": 10,
             "ondemand": true,
+            "createDatabase": true,
+            "initialOffset": "0",
             "configData":
             {
                 "contentSource": "api",
@@ -37,14 +44,23 @@ static const nlohmann::json CONFIG_PARAMETERS =
                 "outputFolder": "/tmp/testProvider",
                 "dataFormat": "json",
                 "contentFileName": "example.json",
-                "databasePath": "/tmp/content_updater/rocksdb",
-                "offset": 0
+                "databasePath": "/tmp/content_updater/rocksdb"
             }
         }
         )"_json;
 
 int main()
 {
+    if (CONFIG_PARAMETERS.at("createDatabase"))
+    {
+        // Create RocksDB database if needed.
+        const auto& initialOffset {CONFIG_PARAMETERS.at("initialOffset").get_ref<const std::string&>()};
+        const auto& databasePath {CONFIG_PARAMETERS.at("configData").at("databasePath").get_ref<const std::string&>()};
+
+        Utils::RocksDBWrapper rocksDbConnector(databasePath);
+        rocksDbConnector.put(Utils::getCompactTimestamp(std::time(nullptr)), initialOffset);
+    }
+
     auto& instance = ContentModule::instance();
 
     // Server

@@ -10,6 +10,10 @@
  */
 
 #include "rocksDBWrapper_test.hpp"
+#include "rocksDBWrapper.hpp"
+#include "gtest/gtest.h"
+#include <filesystem>
+#include <stdexcept>
 
 /**
  * @brief Tests the put function
@@ -331,10 +335,19 @@ TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 
     std::optional<Utils::RocksDBWrapper> db_wrapper;
 
-    EXPECT_NO_THROW({
-        db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME);
-    });
+    EXPECT_NO_THROW({ db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME); });
 
     db_wrapper->deleteAll();
     std::filesystem::remove_all(DATABASE_NAME);
+}
+
+/**
+ * @brief Tests the opening of a database that doesn't exist. An exception is expected given that the 'createIfMissing'
+ * parameter is 'false'.
+ *
+ */
+TEST_F(RocksDBWrapperTest, OpenInexistantDatabase)
+{
+    const auto DATABASE_NAME {"OpenInexistantDatabase"};
+    EXPECT_THROW(Utils::RocksDBWrapper rocksDbConnector(DATABASE_NAME, false), std::runtime_error);
 }

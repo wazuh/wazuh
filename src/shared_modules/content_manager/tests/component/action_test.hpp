@@ -14,7 +14,10 @@
 
 #include "fakes/fakeServer.hpp"
 #include "routerProvider.hpp"
+#include "timeHelper.h"
+#include "utils/rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
+#include <chrono>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <memory>
@@ -30,6 +33,9 @@ protected:
     ~ActionTest() override = default;
 
     nlohmann::json m_parameters; ///< Parameters used to create the Action
+
+    inline static const auto m_databasePath {std::filesystem::temp_directory_path() /
+                                             "action_test_database"}; ///< Path used for storing the RocksDB database.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
@@ -54,12 +60,11 @@ protected:
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/action-tests",
                     "dataFormat": "json",
-                    "contentFileName": "sample.json",
-                    "databasePath": "/tmp/action-tests/rocksdb",
-                    "offset": 0
+                    "contentFileName": "sample.json"
                 }
             }
         )"_json;
+        m_parameters["databasePath"] = m_databasePath.string();
 
         // Init router provider.
         const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
@@ -87,7 +92,7 @@ protected:
     }
 
     /**
-     * @brief Creates the fakeServer for the runtime of the test suite
+     * @brief Creates the fakeServer and the RocksDB database for the runtime of the test suite.
      */
     // cppcheck-suppress unusedFunction
     static void SetUpTestSuite()
@@ -96,15 +101,20 @@ protected:
         {
             m_spFakeServer = std::make_unique<FakeServer>("localhost", 4444);
         }
+
+        // Initialize RocksDB database with an initial offset.
+        auto databaseDriver {Utils::RocksDBWrapper(m_databasePath.string())};
+        databaseDriver.put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
     }
 
     /**
-     * @brief Resets fakeServer causing the shutdown of the test server.
+     * @brief Resets fakeServer causing the shutdown of the test server. It also removes the database folder.
      */
     // cppcheck-suppress unusedFunction
     static void TearDownTestSuite()
     {
         m_spFakeServer.reset();
+        std::filesystem::remove_all(m_databasePath);
     }
 };
 

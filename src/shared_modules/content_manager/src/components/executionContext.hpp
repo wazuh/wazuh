@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_path() / "output_folder"};
@@ -36,80 +37,16 @@ class ExecutionContext final : public AbstractHandler<std::shared_ptr<UpdaterBas
 {
 private:
     /**
-     * @brief Reads and returns the last offset from the database.
+     * @brief Initializes the RocksDB driver with the database at 'databasePath'.
      *
-     * @param context Updater context configured with the database driver.
-     * @return unsigned int Last offset from the database.
+     * @param context Updater base context.
      */
-    unsigned int getDatabaseOffset(const UpdaterBaseContext& context) const
+    void openDatabase(UpdaterBaseContext& context) const
     {
-        unsigned int databaseOffset;
-        try
-        {
-            databaseOffset = std::stoi(context.spRocksDB->getLastKeyValue().second.ToString());
-        }
-        catch (const std::runtime_error&)
-        {
-            // First execution. Set offset to zero.
-            databaseOffset = 0;
-            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
-        }
+        const auto& databasePath {context.configData.at("databasePath").get_ref<const std::string&>()};
 
-        return databaseOffset;
-    }
-
-    /**
-     * @brief Parses the offset from the input configuration.
-     *
-     * @param inputConfig Reference to the input config.
-     * @return unsigned int Non-negative offset from the input config.
-     */
-    unsigned int getConfigOffset(const nlohmann::json& inputConfig) const
-    {
-        const auto configOffset {inputConfig.at("offset").get<int>()};
-        if (configOffset < 0)
-        {
-            throw std::runtime_error {"Offset should be a non-negative number: " + std::to_string(configOffset)};
-        }
-
-        return configOffset;
-    }
-
-    /**
-     * @brief Creates the RocksDB instance.
-     *
-     * @param context updater base context.
-     */
-    void createRocksDB(UpdaterBaseContext& context) const
-    {
-        // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
-        const auto databaseName {"/updater_" + context.topicName + "_metadata"};
-        const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
-
-        // Check if the output folder exists.
-        if (!std::filesystem::exists(databasePath))
-        {
-            // Create the folders.
-            std::filesystem::create_directories(databasePath);
-        }
-
-        // Initialize RocksDB driver instance.
-        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
-
-        // Read input offsets.
-        const auto databaseOffset {getDatabaseOffset(context)};
-        const auto configOffset {getConfigOffset(context.configData)};
-
-        // Choose the greatest between the DB and the config offset.
-        const auto currentOffset {std::max(databaseOffset, configOffset)};
-
-        if (currentOffset > databaseOffset)
-        {
-            // Put the current offset in the database.
-            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), std::to_string(currentOffset));
-        }
-
-        std::cout << "API offset to be used: " << currentOffset << std::endl;
+        // Initialize RocksDB driver instance. If the database doesn't exists, this will throw.
+        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath, false);
     }
 
     /**
@@ -163,13 +100,14 @@ public:
      */
     std::shared_ptr<UpdaterBaseContext> handleRequest(std::shared_ptr<UpdaterBaseContext> context) override
     {
-        // Check if the database path is given and not empty.
+        // Open database if the database folder was given.
         if (context->configData.contains("databasePath") &&
-            !context->configData.at("databasePath").get<std::string>().empty())
+            !context->configData.at("databasePath").get_ref<const std::string&>().empty())
         {
-            createRocksDB(*context);
+            openDatabase(*context);
         }
 
+        // Create output folders.
         createOutputFolder(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(context);

@@ -12,6 +12,7 @@
 #include "executionContext_test.hpp"
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
+#include "utils/rocksDBWrapper.hpp"
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -112,129 +113,26 @@ TEST_F(ExecutionContextTest, TestValidCaseWhenTheOutputFolderPathIsNotEmptyAndEx
 }
 
 /**
- * @brief Test the correct instantiation of the RocksDB database.
+ * @brief Test the opening of the RocksDB database when it is not initialized.
  *
  */
-TEST_F(ExecutionContextTest, DatabaseGeneration)
+TEST_F(ExecutionContextTest, NotCreatedDatabaseOpening)
 {
-    constexpr auto OFFSET {0};
-
     m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
-
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database. A negative offset is set in the config.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationNegativeOffset)
-{
-    constexpr auto OFFSET {-1};
-
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
 
     EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::runtime_error);
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
 }
 
 /**
- * @brief Test the correct instantiation of the RocksDB database. A positive offset is set in the config.
+ * @brief Test the opening of the RocksDB database when it is already initialized.
  *
  */
-TEST_F(ExecutionContextTest, DatabaseGenerationPositiveOffset)
+TEST_F(ExecutionContextTest, CreatedDatabaseOpening)
 {
-    constexpr auto OFFSET {100};
+    // Create database.
+    Utils::RocksDBWrapper(m_databasePath.string());
 
     m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
 
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database in two sequential executions. The second execution has
- * a config offset that is less than the config offset from first execution. The first offset should remain after both
- * executions.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetLessThanDatabaseOffset)
-{
-    constexpr auto FIRST_OFFSET {100};
-    constexpr auto SECOND_OFFSET {50};
-
-    // First execution.
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = FIRST_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(FIRST_OFFSET));
-
-    // Call RocksDBWrapper destructor.
-    m_spUpdaterBaseContext->spRocksDB.reset();
-
-    // Second execution.
-    m_spUpdaterBaseContext->configData["offset"] = SECOND_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(FIRST_OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database in two sequential executions. The second execution has
- * a config offset that is greater than the config offset from first execution. The second offset should remain after
- * both executions.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetGreaterThanDatabaseOffset)
-{
-    constexpr auto FIRST_OFFSET {100};
-    constexpr auto SECOND_OFFSET {500};
-
-    // First execution.
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = FIRST_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(FIRST_OFFSET));
-
-    // Call RocksDBWrapper destructor.
-    m_spUpdaterBaseContext->spRocksDB.reset();
-
-    // Second execution.
-    m_spUpdaterBaseContext->configData["offset"] = SECOND_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(SECOND_OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database in two sequential executions. Both executions have
- * the same config offset.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetEqualToDatabaseOffset)
-{
-    constexpr auto OFFSET {100};
-
-    // First execution.
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
-
-    // Call RocksDBWrapper destructor.
-    m_spUpdaterBaseContext->spRocksDB.reset();
-
-    // Second execution.
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
 }
