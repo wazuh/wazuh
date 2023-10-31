@@ -7,17 +7,17 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-list(APPEND os_crypto_sha1_tests_names "test_sha1_op")
-list(APPEND os_crypto_sha1_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
-                                        -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
-                                        -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen")
+list(APPEND hmac_tests_names "test_hmac_op")
+list(APPEND hmac_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
+                             -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen")
 
 # Compiling tests
-list(LENGTH os_crypto_sha1_tests_names count)
+list(LENGTH hmac_tests_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
-    list(GET os_crypto_sha1_tests_names ${counter} test_name)
-    list(GET os_crypto_sha1_tests_flags ${counter} test_flags)
+    list(GET hmac_tests_names ${counter} test_name)
+    list(GET hmac_tests_flags ${counter} test_flags)
     add_executable(${test_name} ${test_name}.c)
     if(${TARGET} STREQUAL "server")
         target_link_libraries(

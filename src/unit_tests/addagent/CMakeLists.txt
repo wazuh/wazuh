@@ -26,9 +26,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 list(APPEND addagent_names "test_manage_keys")
 list(APPEND addagent_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
-                            -Wl,--wrap,mkstemp_ex \
-                            -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,rename_ex\
-                            -Wl,--wrap,encode_base64 -Wl,--wrap,decode_base64")
+                            -Wl,--wrap,mkstemp_ex -Wl,--wrap,popen \
+                            -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fprintf \
+                            -Wl,--wrap,fgets -Wl,--wrap,rename_ex -Wl,--wrap,encode_base64 -Wl,--wrap,decode_base64")
 
 list(LENGTH addagent_names count)
 math(EXPR count "${count} - 1")

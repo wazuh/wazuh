@@ -13,12 +13,13 @@
 #include <cmocka.h>
 
 #include "../headers/shared.h"
-#include "../../os_crypto/blowfish/bf_op.h"
+#include "../../os_crypto/aes/aes_op.h"
 #include "../../wrappers/common.h"
 
 // Tests
 
-void test_blowfish(void **state)
+void test_aes_string
+(void **state)
 {
     const char *key = "test_key";
     const char *string = "test string";
@@ -26,15 +27,18 @@ void test_blowfish(void **state)
     char buffer1[buffersize];
     char buffer2[buffersize];
 
-    assert_int_equal(OS_BF_Str(string, buffer1, key, buffersize, OS_ENCRYPT), 1);
-    assert_int_equal(OS_BF_Str(buffer1, buffer2, key, buffersize, OS_DECRYPT), 1);
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
 
-    assert_string_equal(buffer2, string);
+    assert_int_equal(OS_AES_Str(string, buffer1, key, strlen(string), OS_ENCRYPT), 16);
+    assert_int_equal(OS_AES_Str(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT), 11);
+
+    assert_int_equal(strncmp(buffer2, string, strlen(string)), 0);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_blowfish),
+        cmocka_unit_test(test_aes_string),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
