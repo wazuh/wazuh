@@ -171,12 +171,13 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             for log_group in self.log_group_list:
                 for log_stream in self.get_log_streams(log_group=log_group):
                     aws_logger.debug(
-                        'Getting data from DB for log stream "{}" in log group "{}"'.format(log_stream, log_group), 1)
+                        'Getting data from DB for log stream '
+                        '"{}" in log group "{}"'.format(log_stream, log_group))
                     db_values = self.get_data_from_db(log_group=log_group, log_stream=log_stream)
                     aws_logger.debug('Token: "{}", start_time: "{}", '
                                      'end_time: "{}"'.format(db_values['token'] if db_values else None,
                                                              db_values['start_time'] if db_values else None,
-                                                             db_values['end_time'] if db_values else None), 2)
+                                                             db_values['end_time'] if db_values else None))
                     result_before = None
                     start_time = self.only_logs_after_millis if self.only_logs_after_millis else \
                         self.default_date_millis
@@ -226,7 +227,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             Name of the log stream to be removed
         """
         try:
-            aws_logger.debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
+            aws_logger.debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream))
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         except botocore.exceptions.ClientError as err:
             aws_logger.error(f'The "remove_aws_log_stream" request failed: {err}')
@@ -278,7 +279,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         while response is None or response['events'] != list():
             aws_logger.debug(
                 'Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
-                '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
+                '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time))
 
             # Try to get CloudWatch Log events until the request succeeds or the allowed number of attempts is reached
             try:
