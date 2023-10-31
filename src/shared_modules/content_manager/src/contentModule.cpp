@@ -25,7 +25,6 @@ static void logFunction(const modules_log_level_t logLevel, const std::string& m
     }
 }
 
-// \cond
 void ContentModule::start(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
 {
     if (!GS_LOG_FUNCTION)
@@ -35,7 +34,6 @@ void ContentModule::start(const std::function<void(const modules_log_level_t, co
 
     ContentModuleFacade::instance().start();
 }
-// \endcond
 
 void ContentModule::stop()
 {
