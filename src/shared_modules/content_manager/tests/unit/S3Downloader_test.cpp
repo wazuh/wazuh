@@ -41,6 +41,7 @@ void S3DownloaderTest::SetUp()
     m_spUpdaterContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
     m_spUpdaterContext->spUpdaterBaseContext->downloadsFolder = (m_outputFolder / "downloads").string();
     m_spUpdaterContext->spUpdaterBaseContext->contentsFolder = (m_outputFolder / "contents").string();
+    m_spUpdaterContext->spUpdaterBaseContext->configData["url"] = "localhost:4444/";
 
     std::filesystem::create_directory(m_outputFolder);
     std::filesystem::create_directory(m_spUpdaterContext->spUpdaterBaseContext->downloadsFolder);
@@ -74,10 +75,9 @@ TEST_F(S3DownloaderTest, DownloadBadURL)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
 
-    // Set invalid config data.
-    m_spUpdaterContext->spUpdaterBaseContext->configData["url"] = "localhost:999999";
+    // Set invalid config data. This will make the downloader to download from 'localhost:4444/invalid_file'.
     m_spUpdaterContext->spUpdaterBaseContext->configData["compressionType"] = "raw";
-    m_spUpdaterContext->spUpdaterBaseContext->configData["s3FileName"] = "filename";
+    m_spUpdaterContext->spUpdaterBaseContext->configData["s3FileName"] = "invalid_file";
 
     // Run downloader.
     ASSERT_THROW(S3Downloader().handleRequest(m_spUpdaterContext), std::runtime_error);
@@ -102,7 +102,6 @@ TEST_F(S3DownloaderTest, DownloadRawFile)
     expectedData["stageStatus"].push_back(OK_STATUS);
 
     // Set config data. This will make the downloader to download from 'localhost:4444/raw'.
-    m_spUpdaterContext->spUpdaterBaseContext->configData["url"] = "localhost:4444/";
     m_spUpdaterContext->spUpdaterBaseContext->configData["compressionType"] = "raw";
     m_spUpdaterContext->spUpdaterBaseContext->configData["s3FileName"] = "raw";
 
@@ -132,7 +131,6 @@ TEST_F(S3DownloaderTest, DownloadCompressedFile)
     expectedData["stageStatus"].push_back(OK_STATUS);
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
-    m_spUpdaterContext->spUpdaterBaseContext->configData["url"] = "localhost:4444/";
     m_spUpdaterContext->spUpdaterBaseContext->configData["compressionType"] = "xz";
     m_spUpdaterContext->spUpdaterBaseContext->configData["s3FileName"] = "xz";
 
