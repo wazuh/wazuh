@@ -4,9 +4,13 @@
 
 import json
 import sys
+
+# Local imports
 from aws_bucket import AWSCustomBucket
+from aws_tools import aws_logger
 
 
+# Classes
 class AWSWAFBucket(AWSCustomBucket):
     standard_http_headers = ['a-im', 'accept', 'accept-charset', 'accept-encoding', 'accept-language',
                              'access-control-request-method', 'access-control-request-headers', 'authorization',
@@ -45,13 +49,13 @@ class AWSWAFBucket(AWSCustomBucket):
                                     headers[name] = element["value"]
                             event['httpRequest']['headers'] = headers
                         except (KeyError, TypeError):
-                            print(f"ERROR: the {log_key} file doesn't have the expected structure.")
+                            aws_logger.error(f"The {log_key} file doesn't have the expected structure.")
                             if not self.skip_on_error:
                                 sys.exit(9)
                         content.append(event)
 
                 except json.JSONDecodeError:
-                    print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
+                    aws_logger.error("Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
                     if not self.skip_on_error:
                         sys.exit(9)
 

@@ -2,20 +2,22 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
-from os import path
-import botocore
 import re
+import sys
+import botocore
+from os import path
 
+# Local imports
 from aws_bucket import INVALID_CREDENTIALS_ERROR_CODE, INVALID_CREDENTIALS_ERROR_MESSAGE
 from aws_bucket import INVALID_REQUEST_TIME_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_MESSAGE
 from aws_bucket import THROTTLING_EXCEPTION_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_MESSAGE
 from aws_bucket import AWSCustomBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import aws_logger
 
 
+# Classes
 class AWSServerAccess(AWSCustomBucket):
 
     def __init__(self, **kwargs):
@@ -50,33 +52,33 @@ class AWSServerAccess(AWSCustomBucket):
                         match_start = date_match.span()[0] if date_match else None
                     except TypeError:
                         if self.skip_on_error:
-                            aws_tools.debug(
-                                f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, "
-                                "skipping it.", 1)
+                            aws_logger.warning(
+                                f"The format of the {bucket_file['Key']} filename is not valid, "
+                                "skipping it.")
                             continue
                         else:
-                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the valid format.")
+                            aws_logger.error(f"The filename of {bucket_file['Key']} doesn't have the valid format.")
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
-                        aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
+                        aws_logger.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}")
                         continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
-                                            1)
+                            aws_logger.debug(
+                                f"++ File previously processed, but reparse flag set: {bucket_file['Key']}")
                         else:
-                            aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
+                            aws_logger.debug(f"++ Skipping previously processed file: {bucket_file['Key']}")
                             continue
 
-                    aws_tools.debug(f"++ Found new log: {bucket_file['Key']}", 2)
+                    aws_logger.debug(f"++ Found new log: {bucket_file['Key']}")
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                     self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                     # Remove file from S3 Bucket
                     if self.delete_file:
-                        aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                        aws_logger.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}")
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
                     processed_logs += 1
@@ -93,10 +95,9 @@ class AWSServerAccess(AWSCustomBucket):
 
         except Exception as err:
             if hasattr(err, 'message'):
-                aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
+                aws_logger.error(f"Unexpected error querying/working with objects in S3: {err.message}")
             else:
-                aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+                aws_logger.error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
@@ -123,7 +124,7 @@ class AWSServerAccess(AWSCustomBucket):
         try:
             bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/')
             if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
-                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                aws_logger.error("No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
             error_message = "Unknown"
@@ -140,7 +141,7 @@ class AWSServerAccess(AWSCustomBucket):
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
 
-            print(f"ERROR: {error_message}")
+            aws_logger.error(f"{error_message}")
             exit(exit_number)
 
     def load_information_from_file(self, log_key):

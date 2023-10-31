@@ -3,8 +3,10 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import csv
-from aws_bucket import AWSCustomBucket
 
+# Local imports
+from aws_bucket import AWSCustomBucket
+from aws_tools import aws_logger
 
 class CiscoUmbrella(AWSCustomBucket):
 
@@ -40,7 +42,7 @@ class CiscoUmbrella(AWSCustomBucket):
                               'destination_port', 'categories'
                               )
             else:
-                print("ERROR: Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
+                aws_logger.error("Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
                 exit(12)
             csv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=',')
 

@@ -17,7 +17,6 @@ sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 from aws_tools import aws_logger, get_script_arguments
 
-
 # Constants
 MAX_RECORD_RETENTION = 500
 PATH_DATE_FORMAT = "%Y/%m/%d"
@@ -41,6 +40,7 @@ AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
                            'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
 
 
+# Classes
 class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     """
     Represents a bucket with events on the inside.
@@ -581,7 +581,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
                         if self.reparse:
-                            aws_logger.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}")
+                            aws_logger.debug(
+                                f"++ File previously processed, but reparse flag set: {bucket_file['Key']}")
                         else:
                             aws_logger.debug(f"++ Skipping previously processed file: {bucket_file['Key']}")
                             continue
@@ -617,7 +618,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='iter_files_in_bucket')}: {error}"
                 exit_number = 16
             else:
-                error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
+                error_message = f'The "iter_files_in_bucket" request failed: {error}'
                 exit_number = 1
             aws_logger.error(f"{error_message}")
             exit(exit_number)

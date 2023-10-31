@@ -3,19 +3,23 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from os import path
 import json
+from os import path
+
+# Local imports
 from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
-
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import aws_logger
 
+
+# Constants
 GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html'
 GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stored in S3 via Kinesis was deprecated ' \
                                'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
                                'bucket instead. Check {url} for more information.'
 
 
+# Classes
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
@@ -36,10 +40,9 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                                                                     Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
-                aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
+                aws_logger.error(f"Unexpected error querying/working with objects in S3: {err.message}")
             else:
-                aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+                aws_logger.error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def get_service_prefix(self, account_id):
@@ -71,7 +74,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             self.send_msg(msg)
 
     def reformat_msg(self, event):
-        aws_tools.debug('++ Reformat message', 3)
+        aws_logger.debug('++ Reformat message')
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
                 'action' in event['aws']['service'] and \
                 'portProbeAction' in event['aws']['service']['action'] and \

@@ -4,21 +4,24 @@
 
 import csv
 import sys
+import operator
 from os import path
+from datetime import datetime
+
+# Local imports
 from aws_bucket import AWSLogsBucket
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+from aws_tools import aws_logger, ALL_REGIONS
+
+# Boto3 import
 try:
     import boto3
 except ImportError:
-    print('ERROR: boto3 module is required.')
+    aws_logger.error('boto3 module is required.')
     sys.exit(4)
 
-import operator
-from datetime import datetime
 
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
-
-
+# Classes
 class AWSVPCFlowBucket(AWSLogsBucket):
     """
     Represents a bucket with AWS VPC logs
@@ -156,13 +159,13 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         boto_session = boto3.Session(**conn_args)
 
-        if region not in aws_tools.ALL_REGIONS:
+        if region not in ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
         try:
             ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
-            print("Error getting EC2 client: {}".format(e))
+            aws_logger.error("Error getting EC2 client: {}".format(e))
             sys.exit(3)
 
         return ec2_client
@@ -172,13 +175,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             ec2_client = self.get_ec2_client(access_key, secret_key, region, profile_name=profile_name)
             return list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         except ValueError:
-            aws_tools.debug(
-                self.empty_bucket_message_template_without_log_id.format(aws_account_id=account_id, aws_region=region),
-                msg_level=1
-            )
-            aws_tools.debug(
-                f"+++ WARNING: Check the provided region: '{region}'. It's an invalid one.", msg_level=1
-            )
+            aws_logger.debug(
+                self.empty_bucket_message_template_without_log_id.format(aws_account_id=account_id, aws_region=region))
+            aws_logger.warning(
+                f"Check the provided region: '{region}'. It's an invalid one.")
             return []
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
@@ -201,7 +201,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
-                aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                aws_logger.debug("+++ Working on {} - {}".format(aws_account_id, aws_region))
                 # get flow log ids for the current region
                 flow_logs_ids = self.get_flow_logs_ids(
                     self.access_key, self.secret_key, aws_region, aws_account_id, profile_name=self.profile_name
@@ -231,7 +231,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None, flow_log_id=None):
-        aws_tools.debug("+++ DB Maintenance", 1)
+        aws_logger.debug("+++ DB Maintenance")
         try:
             if self.db_count_region(aws_account_id, aws_region, flow_log_id) > self.retain_db_records:
                 self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
@@ -241,7 +241,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     'flow_log_id': flow_log_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            aws_logger.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
@@ -250,9 +250,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
         if self.reparse:
             if self.already_processed(log_file['Key'], aws_account_id, aws_region, flow_log_id):
-                aws_tools.debug(
-                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
-                    2)
+                aws_logger.error(
+                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']))
         else:
             try:
                 self.db_cursor.execute(self.sql_mark_complete.format(table_name=self.db_table_name), {
@@ -263,4 +262,4 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     'log_key': log_file['Key'],
                     'created_date': self.get_creation_date(log_file)})
             except Exception as e:
-                aws_tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+                aws_logger.error("Error marking log {} as completed: {}".format(log_file['Key'], e))
