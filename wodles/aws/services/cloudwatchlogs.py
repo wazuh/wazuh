@@ -507,7 +507,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         log group : str
             Name of the log group to check its log streams
         """
-        aws_logger.debug('Purging the BD')
+        aws_logger.debug('Purging the Database')
         # Get the list of log streams from DB
         self.db_cursor.execute(self.sql_cloudwatch_select_logstreams.format(table_name=self.db_table_name), {
             'aws_region': self.region,

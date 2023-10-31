@@ -49,7 +49,7 @@ def main(argv):
     log_lvl = options.debug
 
     # Set logging level
-    aws_logger.set_level(log_level=log_lvl)
+    aws_logger.set_level(log_level=int(log_lvl))
 
     try:
         if options.logBucket:

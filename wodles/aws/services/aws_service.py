@@ -14,8 +14,7 @@ from aws_tools import ALL_REGIONS
 
 
 # Constants
-DEFAULT_DATABASE_NAME = "aws_services"
-DEFAULT_TABLENAME = "aws_services"
+DEFAULT_DATABASE_NAME = DEFAULT_TABLENAME = "aws_services"
 AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
 
 
@@ -64,7 +63,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
                  service_endpoint: str = None,
                  iam_role_duration: str = None, **kwargs):
         # DB name
-        self.db_name = 'aws_services'
+        self.db_name = DEFAULT_DATABASE_NAME
         # Table name
         self.db_table_name = db_table_name
 

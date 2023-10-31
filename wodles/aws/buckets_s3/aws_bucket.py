@@ -657,8 +657,11 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
+            else:
+                error_message = error
 
-            aws_logger.error(f"{error_message}")
+            aws_logger.error(f"{error_message}",
+                             f"bucket: {self.bucket} ")
             exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
             aws_logger.error(f"{str(e)}")
