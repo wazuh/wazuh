@@ -56,8 +56,8 @@ checks:
      impact: "If the Maximum password age setting is too low, users are required to change their passwords very often. Such a configuration can reduce security in the organization, because users might write their passwords in an insecure location or lose them. If the value for this policy setting is too high, the level of security within an organization is reduced because it allows potential attackers more time in which to discover user passwords or to use compromised accounts."
      remediation: "To establish the recommended configuration via GP, set the following UI path to 365 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age."
      references:
-       - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
      compliance:
        - cis: ["1.1.2"]
        - cis_csc_v8: ["5.2"]
@@ -78,8 +78,8 @@ checks:
      impact: "If an administrator sets a password for a user but wants that user to change the password when the user first logs on, the administrator must select the User must change password at next logon check box, or the user will not be able to change the password until the next day."
      remediation: "To establish the recommended configuration via GP, set the following UI path to 1 or more day(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password age."
      references:
-       - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
      compliance:
        - cis: ["1.1.3"]
        - cis_csc_v8: ["5.2"]
@@ -99,8 +99,8 @@ checks:
      impact: "Requirements for extremely long passwords can actually decrease the security of an organization, because users might leave the information in an insecure location or lose it. If very long passwords are required, mistyped passwords could cause account lockouts and increase the volume of help desk calls. If your organization has issues with forgotten passwords due to password length requirements, consider teaching your users about passphrases, which are often easier to remember and, due to the larger number of character combinations, much harder to discover. Note: Older versions of Windows such as Windows 98 and Windows NT 4.0 do not support passwords that are longer than 14 characters. Computers that run these older operating systems are unable to authenticate with computers or domains that use accounts that require long passwords."
      remediation: "To establish the recommended configuration via GP, set the following UI path to 14 or more character(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password length."
      references:
-       - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
      compliance:
        - cis: ["1.1.4"]
        - cis_csc_v8: ["5.2"]
@@ -123,9 +123,9 @@ checks:
      impact: "The Minimum password length setting may be configured higher than 14 characters. If very long passwords are required, mistyped passwords could cause account lockouts and increase the volume of help desk calls. If your organization has issues with forgotten passwords due to password length requirements, consider teaching your users about passphrases, which are often easier to remember and, due to the larger number of character combinations, much harder to discover."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Relax minimum password length limits Note: This setting is only available within the built-in OS security template of Windows 10 Release 2004 and Server 2022 (or newer), and is not available via older versions of the OS, or via downloadable Administrative Templates (ADMX/ADML). Therefore, you must use a Windows 10 Release 2004 or Server 2022 system (or newer) to view or edit this setting with the Group Policy Management Console (GPMC) or Group Policy Management Editor (GPME)."
      references:
-       - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
-       - 'https://support.microsoft.com/en-us/topic/minimum-password-length-auditing-and-enforcement-on-certain-versions-of-windows-5ef7fecf-3325-f56b-cc10-4fd565aacc59'
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+      - "https://support.microsoft.com/en-us/topic/minimum-password-length-auditing-and-enforcement-on-certain-versions-of-windows-5ef7fecf-3325-f56b-cc10-4fd565aacc59"
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
      compliance:
        - cis: ["1.1.6"]
        - cis_csc_v8: ["5.2"]
@@ -249,7 +249,7 @@ checks:
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Take ownership of files or other objects."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-User/'
      compliance:
        - cis: ["2.2.39"]
        - cis_csc_v8: ["6.8"]
@@ -270,7 +270,7 @@ checks:
      impact: "Users will not be able to log onto the computer with their Microsoft account."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-block-microsoft-accounts"
      compliance:
        - cis: ["2.3.1.1"]
        - cis_csc_v8: ["5.6"]
@@ -291,7 +291,7 @@ checks:
      impact: "All network users will need to authenticate before they can access shared resources. If you disable the Guest account and the Network Access: Sharing and Security Model option is set to Guest Only, network logons, such as those performed by the Microsoft Network Server (SMB Service), will fail. This policy setting should have little impact on most organizations because it is the default setting in Microsoft Windows 2000, Windows XP, and Windows Server™ 2003."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Guest account status."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-guest-account-status"
      compliance:
        - cis: ["2.3.1.2"]
        - cis_csc_v8: ["4.7"]
@@ -312,7 +312,7 @@ checks:
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only."
      references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-limit-local-account-use-of-blank-passwords-to-console-logon-only"
      compliance:
        - cis: ["2.3.1.3"]
        - cis_csc_v8: ["5.2"]
